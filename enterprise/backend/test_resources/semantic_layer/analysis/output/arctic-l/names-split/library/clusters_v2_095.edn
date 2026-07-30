@@ -1,0 +1,174 @@
+{:threshold 0.95,
+ :catalog :library,
+ :embeddings "names_split_arctic-l_1024d.json",
+ :name-count 253,
+ :degree-distribution {:min 0, :p25 0, :median 0, :p75 0, :max 2, :mean 0.158102766798419},
+ :connected-components
+ {:count 234,
+  :multi-member 15,
+  :top
+  [{:members ["gh_pull_request_commit" "gh_pull_request_review" "gh_pull_request"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9791951444054615,
+    :min-sim 0.9706449181527242}
+   {:members ["ms_token_check" "ms_first_token_check" "ms_latest_token_check"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.9518288841496295,
+    :min-sim 0.9379480084009473}
+   {:members ["website_page_view" "website_page_view_anonymous" "page_view_anonymous"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.9596729025384514,
+    :min-sim 0.9484877858502929}
+   {:members ["pylon_ticket" "pylon_ticket_reason" "pylon_ticket_link"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.9536541735167282,
+    :min-sim 0.9441473920066392}
+   {:members ["hi_timeline_event" "hi_timeline"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9553342870119693,
+    :min-sim 0.9553342870119693}
+   {:members ["metabase_version" "ms_metabase_version"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9516795541758644,
+    :min-sim 0.9516795541758644}
+   {:members ["hi_metabase_field_values" "hi_metabase_field"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9672451685614425,
+    :min-sim 0.9672451685614425}
+   {:members ["gh_issue" "gh_project_issue"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.956027219713521,
+    :min-sim 0.956027219713521}
+   {:members ["linear_team_project" "linear_team"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9524873275466805,
+    :min-sim 0.9524873275466805}
+   {:members ["usage_stats_anonymous" "usage_stats_anonymous_history"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9710171989026427,
+    :min-sim 0.9710171989026427}
+   {:members ["monthly_revenue_change_customer" "monthly_revenue_change"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9536038361790168,
+    :min-sim 0.9536038361790168}
+   {:members ["stripe_price" "stripe_price_tier"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9504000293356782,
+    :min-sim 0.9504000293356782}
+   {:members ["accounts" "account"], :size 2, :density 1.0, :avg-sim 0.9598059495848998, :min-sim 0.9598059495848998}
+   {:members ["hi_metabase_table" "hi_metabase_database"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.950360331661508,
+    :min-sim 0.950360331661508}
+   {:members ["stripe_invoice" "stripe_invoice_item"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9554018689063841,
+    :min-sim 0.9554018689063841}]},
+ :greedy-cliques
+ {:count 237,
+  :multi-member 18,
+  :top
+  [{:members ["gh_pull_request_review" "gh_pull_request" "gh_pull_request_commit"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9791951444054613,
+    :min-sim 0.9706449181527242}
+   {:members ["ms_token_check" "ms_first_token_check"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9546243383085563,
+    :min-sim 0.9546243383085563}
+   {:members ["website_page_view" "website_page_view_anonymous"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9510230514926149,
+    :min-sim 0.9510230514926149}
+   {:members ["pylon_ticket_reason" "pylon_ticket"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9504984204511977,
+    :min-sim 0.9504984204511977}
+   {:members ["hi_timeline_event" "hi_timeline"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9553342870119693,
+    :min-sim 0.9553342870119693}
+   {:members ["metabase_version" "ms_metabase_version"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9516795541758644,
+    :min-sim 0.9516795541758644}
+   {:members ["hi_metabase_field" "hi_metabase_field_values"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9672451685614425,
+    :min-sim 0.9672451685614425}
+   {:members ["gh_issue" "gh_project_issue"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.956027219713521,
+    :min-sim 0.956027219713521}
+   {:members ["linear_team" "linear_team_project"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9524873275466805,
+    :min-sim 0.9524873275466805}
+   {:members ["usage_stats_anonymous_history" "usage_stats_anonymous"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9710171989026427,
+    :min-sim 0.9710171989026427}
+   {:members ["monthly_revenue_change" "monthly_revenue_change_customer"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9536038361790168,
+    :min-sim 0.9536038361790168}
+   {:members ["stripe_price_tier" "stripe_price"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9504000293356782,
+    :min-sim 0.9504000293356782}
+   {:members ["account" "accounts"], :size 2, :density 1.0, :avg-sim 0.9598059495848998, :min-sim 0.9598059495848998}
+   {:members ["pylon_ticket_link" "pylon_ticket"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9663167080923476,
+    :min-sim 0.9663167080923476}
+   {:members ["hi_metabase_database" "hi_metabase_table"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.950360331661508,
+    :min-sim 0.950360331661508}]},
+ :avg-linkage-hac
+ {:count 237,
+  :multi-member 15,
+  :top
+  [{:size 3, :members ["gh_pull_request_review" "gh_pull_request" "gh_pull_request_commit"]}
+   {:size 2, :members ["gh_issue" "gh_project_issue"]}
+   {:size 2, :members ["hi_timeline_event" "hi_timeline"]}
+   {:size 2, :members ["stripe_price_tier" "stripe_price"]}
+   {:size 2, :members ["ms_token_check" "ms_latest_token_check"]}
+   {:size 2, :members ["metabase_version" "ms_metabase_version"]}
+   {:size 2, :members ["hi_metabase_field" "hi_metabase_field_values"]}
+   {:size 2, :members ["stripe_invoice" "stripe_invoice_item"]}
+   {:size 2, :members ["linear_team" "linear_team_project"]}
+   {:size 2, :members ["pylon_ticket_link" "pylon_ticket"]}
+   {:size 2, :members ["account" "accounts"]}
+   {:size 2, :members ["usage_stats_anonymous_history" "usage_stats_anonymous"]}
+   {:size 2, :members ["page_view_anonymous" "website_page_view_anonymous"]}
+   {:size 2, :members ["hi_metabase_database" "hi_metabase_table"]}
+   {:size 2, :members ["monthly_revenue_change" "monthly_revenue_change_customer"]}]}}

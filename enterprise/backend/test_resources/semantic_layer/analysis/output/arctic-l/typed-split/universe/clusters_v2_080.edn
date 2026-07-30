@@ -1,0 +1,616 @@
+{:threshold 0.8,
+ :catalog :universe,
+ :embeddings "typed_split_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 131, :median 647, :p75 1564, :max 2783, :mean 870.5415699024617},
+ :connected-components
+ {:count 12,
+  :multi-member 2,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "fake_table_130"
+     "historical bug counts by feature and cluster"
+     "account + domain name - (margaret's)"
+     "test_csv_1_20240906154004"
+     "segment empty version customers in old versions (1 out of 2) (1)"
+     "orders model test"
+     "characters_20230627161111"
+     "webinar session"
+     "tag_member"
+     "export_demo_20240917230918"
+     "model_index"
+     "linear_issue_202509161110_20250916141133"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "products model from question"
+     "record_version"
+     "customer interaction"
+     "log_visitor_online"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "broadcast_topic"
+     "user_group"
+     "customer_survey_q_3_2025_dropdown_lists"
+     "revenue product"
+     "test file"
+     "2025 jan feb survey analysis"
+     "characters_20230613124615"
+     "security_advisory"
+     "commit_pull_request"
+     "... (4293 total)"],
+    :size 4293,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["meetabase data, dashboards and vibes in madrid 🇪🇸 guests 2025 09 23 21 11 37"
+     "meetabase_data_dashboards_and_vibes_in_ba_guests_20250626160559"
+     "meetabase_data_dashboards_and_vibes_in_madrid_gu_20250923212105"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9073796335384682,
+    :min-sim 0.8809619682204348}
+   {:members ["talk to sales vs. talk to a person"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["zapier_expiring_enterprise_trials"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["sf_muni_bus_stops"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["mailchimp_overlap_emails_20230719214317"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["ramen_ratings_20250207152837"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["trump_tweets"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["multifamily_physical_inspection_scores"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["gymshark_products_cleaned_20251015123905"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["instance_ids_for_disable_password_login_20231017091504"],
+    :size 1,
+    :density 1.0,
+    :avg-sim 1.0,
+    :min-sim 1.0}
+   {:members ["feature_flag_unravel_contact_list___combined_fea_20231020124937"],
+    :size 1,
+    :density 1.0,
+    :avg-sim 1.0,
+    :min-sim 1.0}]},
+ :greedy-cliques
+ {:count 3178,
+  :multi-member 3168,
+  :top
+  [{:members
+    ["fake_table_130"
+     "orders model test"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "fake_table_82"
+     "groups"
+     "... (740 total)"],
+    :size 740,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "... (733 total)"],
+    :size 733,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "... (732 total)"],
+    :size 732,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "orders model test"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "fake_table_82"
+     "... (731 total)"],
+    :size 731,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "... (730 total)"],
+    :size 730,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["orders model test"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "... (730 total)"],
+    :size 730,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "... (729 total)"],
+    :size 729,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "fake_table_82"
+     "groups"
+     "... (729 total)"],
+    :size 729,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "orders model test"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "fake_table_82"
+     "... (729 total)"],
+    :size 729,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "... (728 total)"],
+    :size 728,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "... (728 total)"],
+    :size 728,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "fake_table_82"
+     "groups"
+     "... (728 total)"],
+    :size 728,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "nums"
+     "... (727 total)"],
+    :size 727,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "log_url"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "sub_features"
+     "hi_document"
+     "... (727 total)"],
+    :size 727,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["fake_table_130"
+     "orders model test"
+     "characters_20230627161111"
+     "webinar session"
+     "export_demo_20240917230918"
+     "model_index"
+     "book3"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "gh_user"
+     "v_users"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "model index"
+     "filter"
+     "query_cache"
+     "hello"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "fake_table_82"
+     "groups"
+     "... (727 total)"],
+    :size 727,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}]},
+ :avg-linkage-hac nil}

@@ -1,0 +1,528 @@
+{:threshold 0.85,
+ :catalog :library,
+ :embeddings "search-text_arctic-l_1024d.json",
+ :name-count 253,
+ :degree-distribution {:min 0, :p25 0, :median 2, :p75 8, :max 38, :mean 5.928853754940711},
+ :connected-components
+ {:count 81,
+  :multi-member 16,
+  :top
+  [{:members
+    ["hi_cache_config"
+     "hi_model_index"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_core_user"
+     "hi_data_permission"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_setting"
+     "hi_notification"
+     "hi_segment"
+     "hi_timeline_event"
+     "hi_collection_bookmark"
+     "hi_notification_subscription"
+     "hi_action"
+     "hi_report_dashboard"
+     "hi_channel"
+     "hi_db_router"
+     "dashboard_event"
+     "hi_metric"
+     "hi_permissions_group_membership"
+     "hi_notification_card"
+     "hi_report_card"
+     "hi_card_bookmark"
+     "hi_timeline"
+     "hi_dashboardcard_series"
+     "... (122 total)"],
+    :size 122,
+    :density 0.09023167592467145,
+    :avg-sim 0.7653388563396202,
+    :min-sim 0.574540627503244}
+   {:members
+    ["instance_events_monthly_usage"
+     "large_table"
+     "monthly_account_subscription_status_and_usage"
+     "self_hosted_daily_stats_ping_monthly_usage"
+     "stg_selfhosted_daily_instance_metrics"
+     "monthly_account_usage"
+     "monthly_account_subscription_status"
+     "case_studies_page_views"
+     "python_load20x100_in_1000x200_out"
+     "python_load_transform_base"
+     "self_hosted_instance_monthly_usage"],
+    :size 11,
+    :density 0.3272727272727273,
+    :avg-sim 0.8238853280244418,
+    :min-sim 0.6696091944078798}
+   {:members
+    ["linear_team_project"
+     "linear_team"
+     "linear_project_member"
+     "linear_project"
+     "linear_user"
+     "activity_log"
+     "monthly_revenue"
+     "customer"
+     "account_history"
+     "customer_health_score_history"
+     "cloud_providers_seed"],
+    :size 11,
+    :density 0.3272727272727273,
+    :avg-sim 0.8060534691955309,
+    :min-sim 0.6703324953612504}
+   {:members
+    ["salesforce_lead"
+     "salesforce_account"
+     "salesforce_token"
+     "salesforce_opportunity"
+     "salesforce_contact"
+     "salesforce_opportunity_history"],
+    :size 6,
+    :density 0.7333333333333333,
+    :avg-sim 0.8765606372886139,
+    :min-sim 0.7588022526618912}
+   {:members
+    ["ms_hosted_instance_action"
+     "ms_hosted_instance_healthcheck"
+     "ms_hosting_shared_resource"
+     "ms_hosted_instance"
+     "ms_hosted_instance_scheduled_maintenance"
+     "ms_hosting_scheduled_maintenance"],
+    :size 6,
+    :density 0.6,
+    :avg-sim 0.8672136954593657,
+    :min-sim 0.8184647263478138}
+   {:members
+    ["daily_instance_feature_stats"
+     "daily_instance_metrics"
+     "monthly_instance_feature_stats"
+     "daily_instance_feature_availability"
+     "daily_instance_tracking_attributes"],
+    :size 5,
+    :density 0.5,
+    :avg-sim 0.8571693645796099,
+    :min-sim 0.8063597449367637}
+   {:members ["arr" "open bugs" "open p1 bugs" "new enterprise leads"],
+    :size 4,
+    :density 0.6666666666666667,
+    :avg-sim 0.8792456975399615,
+    :min-sim 0.8276034295806293}
+   {:members ["lever_job" "lever_interview" "lever_application" "lever_application_history"],
+    :size 4,
+    :density 0.8333333333333333,
+    :avg-sim 0.8850534616713999,
+    :min-sim 0.8422120985533514}
+   {:members ["monthly_revenue_customer" "monthly_revenue_change" "monthly_revenue_change_customer"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9274332841848759,
+    :min-sim 0.8946026843278632}
+   {:members ["website_page_view" "page_view_anonymous" "website_page_view_anonymous"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9454730523072655,
+    :min-sim 0.9219570302525026}
+   {:members ["pipedrive_lead" "pipedrive_person" "pipedrive_organization"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.8662238922117188,
+    :min-sim 0.8599325032372149}
+   {:members ["stg_metabase_store_crm_survey_response" "stg_survey_monkey_response_answer"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9148668192945876,
+    :min-sim 0.9148668192945876}
+   {:members ["pipedrive_deal" "pipedrive_deal_field_history"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.867432749825145,
+    :min-sim 0.867432749825145}
+   {:members ["aws_cost_line_item_legacy" "monthly_infrastructure_cost_legacy"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9207962036304429,
+    :min-sim 0.9207962036304429}
+   {:members ["usage_stats_anonymous" "usage_stats_anonymous_history"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9579307171751646,
+    :min-sim 0.9579307171751646}]},
+ :greedy-cliques
+ {:count 176,
+  :multi-member 111,
+  :top
+  [{:members
+    ["hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_collection_bookmark"
+     "hi_channel"
+     "hi_metric"
+     "hi_metabase_field_values"
+     "hi_notification_card"
+     "hi_report_card"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"
+     "hi_timeline"
+     "hi_collection"
+     "hi_report_dashboardcard"
+     "hi_notification"],
+    :size 18,
+    :density 1.0,
+    :avg-sim 0.8884281725993752,
+    :min-sim 0.850504475142991}
+   {:members
+    ["hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_collection_bookmark"
+     "hi_channel"
+     "hi_metric"
+     "hi_metabase_field_values"
+     "hi_notification_card"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"
+     "hi_collection"
+     "hi_notification"],
+    :size 16,
+    :density 1.0,
+    :avg-sim 0.8905455229404947,
+    :min-sim 0.850504475142991}
+   {:members
+    ["model_event"
+     "serialization_event"
+     "database_event"
+     "question_event"
+     "metabot_event"
+     "action_event"
+     "dashboard_event"
+     "embed_share_event"
+     "setting_event"
+     "search_event"
+     "invite_event"
+     "account_event"
+     "task_event"
+     "setup_event"],
+    :size 14,
+    :density 1.0,
+    :avg-sim 0.8990571865524424,
+    :min-sim 0.850338393048885}
+   {:members
+    ["hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_collection_bookmark"
+     "hi_core_user"
+     "hi_channel"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"
+     "hi_notification"],
+    :size 14,
+    :density 1.0,
+    :avg-sim 0.8973026752569758,
+    :min-sim 0.8512347767935213}
+   {:members
+    ["hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_collection_bookmark"
+     "hi_core_user"
+     "hi_channel"
+     "hi_data_permission"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_notification"],
+    :size 14,
+    :density 1.0,
+    :avg-sim 0.894453526342056,
+    :min-sim 0.8512347767935213}
+   {:members
+    ["hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_channel"
+     "hi_metric"
+     "hi_segment"
+     "hi_metabase_field_values"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"
+     "hi_timeline"
+     "hi_notification"],
+    :size 14,
+    :density 1.0,
+    :avg-sim 0.8917370936049689,
+    :min-sim 0.8522101287097243}
+   {:members
+    ["hi_timeline_event"
+     "hi_metabase_field"
+     "hi_channel"
+     "hi_metric"
+     "hi_metabase_field_values"
+     "hi_notification_card"
+     "hi_pulse_card"
+     "hi_report_card"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"
+     "hi_timeline"
+     "hi_report_dashboardcard"],
+    :size 14,
+    :density 1.0,
+    :avg-sim 0.8875888615565645,
+    :min-sim 0.8502281106433607}
+   {:members
+    ["hi_glossary"
+     "hi_timeline_event"
+     "hi_metabase_field"
+     "hi_channel"
+     "hi_metric"
+     "hi_metabase_field_values"
+     "hi_notification_card"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"],
+    :size 13,
+    :density 1.0,
+    :avg-sim 0.8914275220569658,
+    :min-sim 0.8530143174406152}
+   {:members
+    ["model_event"
+     "serialization_event"
+     "database_event"
+     "metabot_event"
+     "action_event"
+     "dashboard_event"
+     "upsell_event"
+     "unified_instance_event"
+     "setting_event"
+     "search_event"
+     "account_event"
+     "task_event"
+     "setup_event"],
+    :size 13,
+    :density 1.0,
+    :avg-sim 0.9015539517455619,
+    :min-sim 0.850589726593728}
+   {:members
+    ["hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_notification_subscription"
+     "hi_channel"
+     "hi_notification_card"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_notification"],
+    :size 12,
+    :density 1.0,
+    :avg-sim 0.8940246057102831,
+    :min-sim 0.8505829248510103}
+   {:members
+    ["hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_core_user"
+     "hi_data_permission"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_cache_config"
+     "hi_notification"],
+    :size 12,
+    :density 1.0,
+    :avg-sim 0.9000285742421748,
+    :min-sim 0.8526222554181396}
+   {:members
+    ["hi_metabase_field"
+     "hi_core_user"
+     "hi_channel"
+     "hi_data_permission"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_setting"
+     "hi_notification"],
+    :size 12,
+    :density 1.0,
+    :avg-sim 0.8960425191927653,
+    :min-sim 0.8502285563977268}
+   {:members
+    ["model_event"
+     "serialization_event"
+     "database_event"
+     "csv_upload_event"
+     "metabot_event"
+     "action_event"
+     "dashboard_event"
+     "setting_event"
+     "search_event"
+     "account_event"
+     "task_event"
+     "setup_event"],
+    :size 12,
+    :density 1.0,
+    :avg-sim 0.9054116765208976,
+    :min-sim 0.8534115432085376}
+   {:members
+    ["hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_notification_card"
+     "hi_report_card"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_card_bookmark"
+     "hi_timeline"
+     "hi_dashboardcard_series"
+     "hi_collection"
+     "hi_report_dashboardcard"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.8925788517513178,
+    :min-sim 0.8545858273324977}
+   {:members
+    ["hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_core_user"
+     "hi_permissions_group_membership"
+     "hi_data_permission"
+     "hi_metabase_field_values"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_notification"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.897126085434115,
+    :min-sim 0.8514582511714994}]},
+ :avg-linkage-hac
+ {:count 129,
+  :multi-member 41,
+  :top
+  [{:size 23,
+    :members
+    ["hi_glossary"
+     "hi_model_index"
+     "hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_metabase_field"
+     "hi_collection_bookmark"
+     "hi_core_user"
+     "hi_report_dashboard"
+     "hi_metric"
+     "hi_segment"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_report_card"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_card_bookmark"
+     "hi_timeline"
+     "hi_dashboardcard_series"
+     "hi_collection"
+     "hi_cache_config"
+     "hi_report_dashboardcard"]}
+   {:size 16,
+    :members
+    ["model_event"
+     "serialization_event"
+     "database_event"
+     "csv_upload_event"
+     "question_event"
+     "metabot_event"
+     "action_event"
+     "dashboard_event"
+     "upsell_event"
+     "unified_instance_event"
+     "setting_event"
+     "search_event"
+     "invite_event"
+     "account_event"
+     "task_event"
+     "setup_event"]}
+   {:size 10,
+    :members
+    ["gh_issue"
+     "gh_issue_assignee"
+     "gh_issue_comment"
+     "gh_issue_label_history"
+     "gh_project_issue"
+     "gh_stargazer"
+     "gh_issue_label"
+     "gh_issue_customer_mention"
+     "gh_user"
+     "gh_issue_reaction"]}
+   {:size 8,
+    :members
+    ["hi_pulse_channel_recipient"
+     "hi_notification_subscription"
+     "hi_channel"
+     "hi_notification_recipient"
+     "hi_notification_card"
+     "hi_pulse_card"
+     "hi_notification_handler"
+     "hi_notification"]}
+   {:size 6,
+    :members
+    ["ms_hosted_instance_healthcheck"
+     "ms_hosting_shared_resource"
+     "ms_hosted_instance"
+     "ms_hosted_instance_action"
+     "ms_hosting_scheduled_maintenance"
+     "ms_hosted_instance_scheduled_maintenance"]}
+   {:size 6,
+    :members
+    ["activity_log" "monthly_revenue" "account_history" "customer_health_score_history" "customer" "linear_project"]}
+   {:size 5,
+    :members ["salesforce_account" "salesforce_lead" "salesforce_token" "salesforce_opportunity" "salesforce_contact"]}
+   {:size 4,
+    :members
+    ["monthly_account_subscription_status_and_usage"
+     "instance_events_monthly_usage"
+     "monthly_account_usage"
+     "monthly_account_subscription_status"]}
+   {:size 4, :members ["ms_user" "ms_utm" "ms_contact" "ms_address"]}
+   {:size 4, :members ["pylon_ticket_product_area" "pylon_ticket_reason" "pylon_ticket_link" "pylon_ticket"]}
+   {:size 4, :members ["lever_job" "lever_application_history" "lever_interview" "lever_application"]}
+   {:size 3, :members ["website_page_view" "page_view_anonymous" "website_page_view_anonymous"]}
+   {:size 3, :members ["ms_stripe_charge" "ms_token" "ms_subscription"]}
+   {:size 3, :members ["pipedrive_person" "pipedrive_organization" "pipedrive_lead"]}
+   {:size 3, :members ["gh_pull_request_review" "gh_pull_request" "gh_pull_request_commit"]}]}}

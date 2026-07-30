@@ -1,0 +1,829 @@
+{:threshold 0.9,
+ :catalog :universe,
+ :embeddings "typed_split_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 2, :median 6, :p75 20, :max 394, :mean 29.91082210868556},
+ :connected-components
+ {:count 643,
+  :multi-member 214,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "all bugs"
+     "export_demo_20240917230918"
+     "commit_pull_request"
+     "some kind of test"
+     "filter"
+     "hello"
+     "issue_comment"
+     "feature_flag"
+     "usage_stats"
+     "user_activity"
+     "permissions"
+     "user activity"
+     "answer"
+     "trace_20250825145602"
+     "tests"
+     "note"
+     "test_another_20240918201114"
+     "let's see - modified"
+     "test_20230620170201"
+     "all_20230825133017"
+     "question"
+     "magic_link"
+     "contact_link"
+     "benchmark_runs"
+     "metric_results"
+     "problem_feedback_links"
+     "demo"
+     "test_20231204115443"
+     "site_report_by_site"
+     "... (2978 total)"],
+    :size 2978,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["pokemon cards 2024 10 18t13 27 59.638645z"
+     "pokemon_cards_20230927_20231019133115"
+     "pokemon_cards_20230927_20231110122031"
+     "pokemon_cards_2024_10_18t13_27_59_638645z_20241018132934"
+     "pokemon___pokemon_20231101134339"
+     "pokemon tcg cards"
+     "pokemon_tcg_cards_20230626190907"
+     "pokemon cards"
+     "pokedex_with_images_20230626190917"
+     "pokemon___pokemon_20231019165525"
+     "pokedex_20240118185214"
+     "pokemon_202403_20240314164815"
+     "pokemon___pokemon_20231019170516"
+     "pokemon tcg cards 20230609205606"
+     "random pokemon card"
+     "pokemon_tcg_cards_20230609205606"
+     "pokemon 202403"
+     "poketinder_20241220205902"
+     "pokemon_v2_pokemondexnumber"
+     "pokemon_v2_pokemon"
+     "powerful_pokemon"
+     "pokemon tcg cards (personal collection)"
+     "pokedex_ver_sv1"
+     "pokedex"
+     "pokemon_v2_pokedex"
+     "pokedex with images"
+     "pokemon_v2_locationgameindex"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "... (183 total)"],
+    :size 183,
+    :density 0.215516723713445,
+    :avg-sim 0.8701946768742433,
+    :min-sim 0.7218309716278828}
+   {:members
+    ["named success engineer"
+     "named-success-engineers-program"
+     "named_success_engineer_20250814015309"
+     "named success engineers program"
+     "named_success_engineers_20230628183249"
+     "named_success_engineers_20230620170105"
+     "named_success_engineers_tools_20250429140006"
+     "named_success_engineers__1__20230731195719"
+     "named_success_engineers"
+     "named_success_engineers_20230620211707"
+     "named_success_engineers_program"
+     "named_success_engineers_pivot"
+     "named_success_engineer_20250814014438"
+     "named_success_engineering_test_20250813183617"
+     "named success engineering test"
+     "named_success_engineers_pivot_table"
+     "named_success_engineers_deprecated_pivot"
+     "named_engineer_test_1"
+     "named_success_engineers_deprecated_pivot_table"
+     "named_success_engineers_deprecated_query_result_v_2"
+     "named_success_engineers_deprecated_program"
+     "named engineer + account"
+     "named_success_engineers_query_result_v_2"
+     "account for  succcess engineers"],
+    :size 24,
+    :density 0.3405797101449275,
+    :avg-sim 0.8770137699679236,
+    :min-sim 0.7290714445579204}
+   {:members
+    ["metabase experts website funnel (safe)"
+     "metabase_experts_tracking_leads_funnel_view"
+     "metabase_experts_tracking_website_funnel_view"
+     "metabase_experts_tracking_metabase_experts_info"
+     "metabase_experts_tracking_applications"
+     "metabase_experts_tracking_sheet_14"
+     "metabase_experts_tracking_sheet_18"
+     "metabase_experts_tracking_sheet_8"
+     "metabase_experts_tracking_sheet_10"
+     "metabase_experts_tracking_sheet_11"
+     "metabase_experts_tracking_sheet_15"
+     "metabase_experts_tracking_sheet_17"
+     "metabase_experts_tracking_referred_clients"
+     "metabase_experts_tracking_sheet_16"
+     "metabase_experts_tracking_metabase_setup_workshop_questions"
+     "metabase_experts_tracking_sheet_12"
+     "metabase_experts_tracking_sheet_9"
+     "metabase_experts_tracking_sheet_13"],
+    :size 18,
+    :density 0.5555555555555556,
+    :avg-sim 0.9223627902883491,
+    :min-sim 0.8500516487221292}
+   {:members
+    ["livestorm_webinar_data_registrants"
+     "livestorm_webinar_data_copy_of_registrants"
+     "webinars_questions_livestorm_sheet_1"
+     "livestorm_webinar_data_webinars_quesitons"
+     "webinars_questions_livestorm_sheet_2"
+     "webinars_performance_sheet_2"
+     "webinars_performance_sheet_1"
+     "webinars_performance_sheet_3"
+     "webinars_performance_sheet_6"
+     "webinars_performance_combined_1"
+     "webinars_performance_sheet_5"
+     "webinars_performance_sheet_4"
+     "webinars_performance_sheet_9"
+     "actions_webinar_survey_sheet_1"],
+    :size 14,
+    :density 0.3626373626373626,
+    :avg-sim 0.8943457234777316,
+    :min-sim 0.8146425206315655}
+   {:members
+    ["qrtz triggers"
+     "qrtz_fired_triggers"
+     "hi_qrtz_triggers"
+     "qrtz_locks"
+     "qrtz_paused_trigger_grps"
+     "qrtz_cron_triggers"
+     "qrtz_blob_triggers"
+     "qrtz_triggers"
+     "qrtz_simple_triggers"
+     "qrtz_simprop_triggers"
+     "qrtz_job_details"],
+    :size 11,
+    :density 0.6545454545454545,
+    :avg-sim 0.9129746574465463,
+    :min-sim 0.8315963822032918}
+   {:members
+    ["metabot private beta signup onboarded"
+     "metabot_private_beta_signup_onboarded_20250724174645"
+     "stats_gsheet_folder_metabot_private_beta_signup___onboarded"
+     "stats_gsheet_folder_metabot_private_beta_signup____dlt_version"
+     "stats_gsheet_folder_metabot_private_beta_signup____dlt_sentinel_table"
+     "stats_gsheet_folder_metabot_private_beta_signup_staging____dlt_sentinel_table"
+     "stats_gsheet_folder_metabot_private_beta_signup___submissions"
+     "stats_gsheet_folder_metabot_private_beta_signup____dlt_spreadsheet_info"
+     "stats_gsheet_folder_metabot_private_beta_signup____dlt_loads"
+     "stats_gsheet_folder_metabot_private_beta_signup____dlt_pipeline_state"
+     "stats_gsheet_folder_metabot_private_beta_signup_staging____dlt_version"],
+    :size 11,
+    :density 0.6909090909090909,
+    :avg-sim 0.9126510234749382,
+    :min-sim 0.8001153433556143}
+   {:members
+    ["dog breeds"
+     "dog_breeds"
+     "dog_breeds_20230822154241"
+     "dog_breeds_20230608084529"
+     "dog_breeds_20230530162616"
+     "dog_breeds_20230622181122"
+     "dog_breeds_20230530161840"
+     "dog_breeds_20230626125455"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.972462584199629,
+    :min-sim 0.9432134067878184}
+   {:members
+    ["alternative metal"
+     "alternative_metal_20230606141156"
+     "alternative_metal_20230626140904"
+     "alternative_metal_20230626143544"
+     "alternative metals"
+     "alternative_metal_20230606152944"
+     "alternative_metal_20230626133032"
+     "alternative_metal_20230626145126"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.9635613052034957,
+    :min-sim 0.9160524993235738}
+   {:members
+    ["(staging) contrast webinar stats"
+     "contrast_webinars_data_sheet_1"
+     "contrast_webinars_data_attendees"
+     "copy_of_contrast_webinars_data_attendees"
+     "contrast_webinars_data_registrants"
+     "copy_of_contrast_webinars_data_registrants"
+     "copy_of_contrast_webinars_data_replay_viewers"
+     "contrast_webinars_data_replay_viewers"],
+    :size 8,
+    :density 0.75,
+    :avg-sim 0.9213643525286587,
+    :min-sim 0.8822684104291453}
+   {:members
+    ["lkup_id_last"
+     "lkup_id_base"
+     "lkup_id_home"
+     "lkup_cd_bases"
+     "lkup_cd_fld"
+     "lkup_cd_h"
+     "lkup_cd_hand"
+     "lkup_cd_event"],
+    :size 8,
+    :density 0.4285714285714286,
+    :avg-sim 0.8965417960253312,
+    :min-sim 0.8439117232946554}
+   {:members
+    ["weekday hours"
+     "operating_hours"
+     "operating_hours_history"
+     "operating_hours_holiday"
+     "operating_hours_feed"
+     "operating_hours_holiday_feed"
+     "operating_hours_holiday_history"],
+    :size 7,
+    :density 0.7142857142857143,
+    :avg-sim 0.9224318540855331,
+    :min-sim 0.879970277516192}
+   {:members
+    ["dlrs_lookup_rollup_calculate_job_c"
+     "dlrs_declarative_lookup_rollup_summaries_c"
+     "dlrs_lookup_rollup_summary_c"
+     "dlrs_lookup_rollup_summary_log_c"
+     "dlrs_lookup_rollup_summary_schedule_items_c"
+     "dlrs_lookup_parent_c"
+     "dlrs_lookup_child_c"],
+    :size 7,
+    :density 0.619047619047619,
+    :avg-sim 0.9144456122030665,
+    :min-sim 0.8672970974097398}
+   {:members
+    ["stg_fms_enterprise_arr_unpivot"
+     "stg_fms_self_service_arr_unpivot"
+     "stg_fms_embedding_arr_unpivot"
+     "stg_fms_enterprise_arr"
+     "stg_fms_self_service_arr"
+     "stg_fms_embedding_arr"
+     "stg_fms_self_service_trials"],
+    :size 7,
+    :density 0.380952380952381,
+    :avg-sim 0.8735913461619433,
+    :min-sim 0.7481345366948317}
+   {:members
+    ["virtual_join_2026_survey_results_session_summary"
+     "virtual_join_2026_survey_results_goals_exploded_"
+     "virtual_join_2026_survey_results_session_mentions"
+     "virtual_join_2026_survey_results_responses"
+     "virtual_join_2026_survey_results_agenda"
+     "virtual_join_2026_survey_results_improvements_exploded_"
+     "virtual_join_2026_survey_results_raw_data"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9551897423429061,
+    :min-sim 0.9345553206201871}]},
+ :greedy-cliques
+ {:count 2867,
+  :multi-member 2438,
+  :top
+  [{:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "... (198 total)"],
+    :size 198,
+    :density 1.0,
+    :avg-sim 0.9487966437533671,
+    :min-sim 0.9070462293960745}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "... (198 total)"],
+    :size 198,
+    :density 1.0,
+    :avg-sim 0.9486539949723002,
+    :min-sim 0.9047144898964591}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_15"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_159"
+     "fake_table_110"
+     "fake_table_106"
+     "fake_table_193"
+     "fake_table_38"
+     "... (164 total)"],
+    :size 164,
+    :density 1.0,
+    :avg-sim 0.949880235214762,
+    :min-sim 0.9000030702376748}
+   {:members
+    ["fake_table_130"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_150"
+     "fake_table_110"
+     "fake_table_106"
+     "fake_table_38"
+     "fake_table_87"
+     "fake_table_85"
+     "fake_table_128"
+     "... (121 total)"],
+    :size 121,
+    :density 1.0,
+    :avg-sim 0.9513571698669908,
+    :min-sim 0.9002148424417113}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "april_20230622183131"
+     "111_20240619132549"
+     "x_20250514224408"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "hello_20240926110149"
+     "test_another_20240918201007"
+     "trivia_20240918213955"
+     "... (71 total)"],
+    :size 71,
+    :density 1.0,
+    :avg-sim 0.9325229652439523,
+    :min-sim 0.9003340147665055}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "april_20230622183131"
+     "hello_20240926132109"
+     "orders2_20231130164757"
+     "111_20240619132549"
+     "x_20250514224408"
+     "sheet_20240918230541"
+     "chat_20250226180012"
+     "hello_20240926110149"
+     "... (69 total)"],
+    :size 69,
+    :density 1.0,
+    :avg-sim 0.9323231741094504,
+    :min-sim 0.9003593771772046}
+   {:members
+    ["thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "trace_20250825145602"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "april_20230622183131"
+     "hello_20240926132109"
+     "111_20240619132549"
+     "x_20250514224408"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "hello_20240926110149"
+     "test_another_20240918201007"
+     "test_another_20240918201330"
+     "... (65 total)"],
+    :size 65,
+    :density 1.0,
+    :avg-sim 0.9335398029638318,
+    :min-sim 0.9002642822945309}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "trace_20250825145602"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "april_20230622183131"
+     "systems_20250617145524"
+     "111_20240619132549"
+     "x_20250514224408"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "test_another_20240918201007"
+     "trivia_20240918213955"
+     "test_another_20240918201330"
+     "comments_20240523204350"
+     "... (65 total)"],
+    :size 65,
+    :density 1.0,
+    :avg-sim 0.9334793945446102,
+    :min-sim 0.9002510941585496}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "trace_20250825145602"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "april_20230622183131"
+     "111_20240619132549"
+     "x_20250514224408"
+     "23022"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "hello_20240926110149"
+     "test_another_20240918201007"
+     "... (64 total)"],
+    :size 64,
+    :density 1.0,
+    :avg-sim 0.934475517192115,
+    :min-sim 0.9002343963126195}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "april_20230622183131"
+     "111_20240619132549"
+     "x_20250514224408"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "test_another_20240918201007"
+     "trivia_20240918213955"
+     "comments_20240523204350"
+     "trivia_20240918213823"
+     "user_page_views__1_data_l_q_i2d_5hsk3aop8y_d_20241206170815"
+     "... (64 total)"],
+    :size 64,
+    :density 1.0,
+    :avg-sim 0.9326671257209407,
+    :min-sim 0.9003340147665055}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "all_posts_table_1_20240412021122"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "april_20230622183131"
+     "111_20240619132549"
+     "x_20250514224408"
+     "23022"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "... (64 total)"],
+    :size 64,
+    :density 1.0,
+    :avg-sim 0.9342649627048455,
+    :min-sim 0.9003212772012047}
+   {:members
+    ["issue_comment"
+     "answer"
+     "tests"
+     "note"
+     "let's see - modified"
+     "test_20230620170201"
+     "question"
+     "magic_link"
+     "answer_choice"
+     "contact_link"
+     "demo"
+     "16249-2"
+     "test_20231204115443"
+     "a"
+     "first"
+     "issues"
+     "23022"
+     "mark's question"
+     "post_link"
+     "comments2"
+     "comments_20240523204350"
+     "source"
+     "test result"
+     "contact"
+     "post link"
+     "share_content"
+     "file_link"
+     "issue_referenced"
+     "test_2"
+     "let's see"
+     "... (63 total)"],
+    :size 63,
+    :density 1.0,
+    :avg-sim 0.9291230189752046,
+    :min-sim 0.9000051686464233}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "april_20230622183131"
+     "111_20240619132549"
+     "x_20250514224408"
+     "23022"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "test_another_20240918201007"
+     "... (63 total)"],
+    :size 63,
+    :density 1.0,
+    :avg-sim 0.9346142056992937,
+    :min-sim 0.9001464724479472}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "trace_20250825145602"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "april_20230622183131"
+     "111_20240619132549"
+     "x_20250514224408"
+     "sheet_20240918230541"
+     "book3_20240920154351"
+     "hello_20240926110149"
+     "test_another_20240918201007"
+     "test_another_20240918201330"
+     "user_page_views__1_data_l_q_i2d_5hsk3aop8y_d_20241206170815"
+     "... (62 total)"],
+    :size 62,
+    :density 1.0,
+    :avg-sim 0.9343322579458606,
+    :min-sim 0.9002470432548865}
+   {:members
+    ["issue_comment"
+     "answer"
+     "note"
+     "let's see - modified"
+     "x_20250514215647"
+     "test_20230620170201"
+     "question"
+     "answer_choice"
+     "contact_link"
+     "demo"
+     "16249-2"
+     "test_20231204115443"
+     "first"
+     "issues"
+     "111_20240619132549"
+     "x_20250514224408"
+     "23022"
+     "mark's question"
+     "post_link"
+     "comments2"
+     "comments_20240523204350"
+     "source"
+     "test result"
+     "contact"
+     "post link"
+     "share_content"
+     "file_link"
+     "issue_referenced"
+     "test_2"
+     "let's see"
+     "... (61 total)"],
+    :size 61,
+    :density 1.0,
+    :avg-sim 0.9293349460916362,
+    :min-sim 0.9000051686464233}]},
+ :avg-linkage-hac nil}
