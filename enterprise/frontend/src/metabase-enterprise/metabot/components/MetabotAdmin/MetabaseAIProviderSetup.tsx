@@ -273,22 +273,24 @@ export function MetabaseAIProviderSetup({
             ))}
 
           {(onCancel || connectAction) && (
-            <Flex justify={onCancel ? "space-between" : "end"}>
-              {onCancel && (
-                <Button disabled={isMutating} onClick={onCancel}>
-                  {t`Back`}
-                </Button>
-              )}
-              {connectAction && (
-                <Button
-                  variant="filled"
-                  loading={isMutating}
-                  disabled={isMutating}
-                  onClick={connectAction}
-                >
-                  {t`Connect`}
-                </Button>
-              )}
+            <Flex justify="end">
+              <Group gap="sm">
+                {onCancel && (
+                  <Button disabled={isMutating} onClick={onCancel}>
+                    {t`Back`}
+                  </Button>
+                )}
+                {connectAction && (
+                  <Button
+                    variant="filled"
+                    loading={isMutating}
+                    disabled={isMutating}
+                    onClick={connectAction}
+                  >
+                    {t`Connect`}
+                  </Button>
+                )}
+              </Group>
             </Flex>
           )}
         </>
