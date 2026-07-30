@@ -29,7 +29,10 @@ on:
         options:
           - Bumps the branch picked above
       release_type:
-        description: "beta - before gold, on a release branch. patch - at gold and after, on a release branch. preminor - at gold, on master. alpha - any time, on master. custom - any time, on a one-off branch."
+        # Option names are capitalised for emphasis only - the values stay
+        # lowercase. The label renders as plain text, so caps is the only
+        # emphasis available (same reason prerelease_id below shouts FIRST).
+        description: "BETA - before gold, on a release branch. PATCH - at gold and after, on a release branch. PREMINOR - at gold, on master. ALPHA - any time, on master. CUSTOM - any time, on a one-off branch."
         type: choice
         required: true
         # Pinned so the release-cycle ordering below does not decide the
