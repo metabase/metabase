@@ -676,6 +676,33 @@
       (is (= sql (sql-parsing/strip-large-literal-lists sql))
           (pr-str (subs sql 0 (min 40 (count sql))))))))
 
+(deftest ^:parallel strip-ignores-strings-and-comments-test
+  (testing "Keyword matches inside string literals are not stripped"
+    (doseq [sql [(str "SELECT 'x IN (" (str/join ", " (range 150)) ")' AS s FROM t")
+                 (str "SELECT 'VALUES " (str/join ", " (map #(format "(%d)" %) (range 150))) "' AS s FROM t")
+                 (str "SELECT 'it''s ARRAY[" (str/join ", " (range 150)) "]' AS s FROM t")
+                 (str "SELECT \"col IN (" (str/join ", " (range 150)) ")\" FROM t")]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Keyword matches inside comments are not stripped"
+    (doseq [sql [(str "SELECT a FROM t -- ids IN (" (str/join ", " (range 150)) ")")
+                 (str "SELECT a FROM t -- ids IN (" (str/join ", " (range 150)) ")\nWHERE a = 1")
+                 (str "SELECT a /* IN (" (str/join ", " (range 150)) ") */ FROM t")]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Code after a string or comment containing a keyword still strips"
+    (let [sql (str "SELECT 'IN (1,2,3)' AS s /* VALUES (9) */ FROM t WHERE id " (in-list 150))]
+      (is (= "SELECT 'IN (1,2,3)' AS s /* VALUES (9) */ FROM t WHERE id IN (NULL)"
+             (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-rejects-empty-elements-test
+  (testing "Lists with empty elements are invalid SQL and are not rewritten into valid SQL"
+    (doseq [sql [(str "SELECT * FROM t WHERE id IN (" (apply str (repeat 150 ",")) ")")
+                 (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)) ", )")
+                 (str "SELECT * FROM t WHERE id IN (, " (str/join ", " (range 150)) ")")
+                 (str "SELECT * FROM t WHERE id IN (1, , " (str/join ", " (range 150)) ")")
+                 (str "SELECT * FROM t WHERE (a, b) IN ("
+                      (str/join ", " (map #(format "(%d, %d)" % %) (range 150))) ", )")]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) (subs sql 0 45)))))
+
 (deftest ^:parallel strip-keyword-false-positives-test
   (testing "Words containing 'in'/'values' and quoted identifiers are not treated as keywords"
     (doseq [sql ["SELECT margin FROM t WHERE margin > 10"

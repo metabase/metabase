@@ -76,6 +76,30 @@
             (inc i))
           (recur (inc i)))))))
 
+(defn- code-region-end
+  "Scan from `pos` toward `target`, skipping string literals (`'...'`, `\"...\"`), line comments
+   (`-- ...`), and block comments (`/* ... */`). Returns `target` when it is reached in plain-code
+   context, or the end of the skipped region that overlaps `target` — i.e. a return value greater
+   than `target` means `target` sits inside a string or comment."
+  ^long [^String sql ^long pos ^long target ^long n]
+  (loop [i pos]
+    (if (>= i target)
+      i
+      (let [ch (.charAt sql i)]
+        (cond
+          (or (= ch \') (= ch \"))
+          (recur (skip-string-literal sql i n))
+
+          (and (= ch \-) (< (inc i) n) (= (.charAt sql (inc i)) \-))
+          (let [nl (.indexOf sql "\n" (int i))]
+            (recur (if (neg? nl) n (long (inc nl)))))
+
+          (and (= ch \/) (< (inc i) n) (= (.charAt sql (inc i)) \*))
+          (let [end (.indexOf sql "*/" (int (+ i 2)))]
+            (recur (if (neg? end) n (long (+ end 2)))))
+
+          :else (recur (inc i)))))))
+
 (defn- skip-balanced-parens
   "Starting at an opening `(`, advance past the matching `)`.
    Handles nested parens and SQL string literals. Returns the position immediately after the closing `)`."
@@ -173,21 +197,24 @@
    at the first disqualifying character."
   [^String sql ^long open-pos ^long n close-ch]
   (let [close-ch (char close-ch)]
-    (loop [i (inc open-pos), items 1]
+    ;; item? tracks whether the current comma-delimited element has any content, so empty elements
+    ;; (`IN (,,,)`, leading/trailing commas) disqualify instead of being rewritten into valid SQL.
+    (loop [i (inc open-pos), items 1, item? false]
       (when (< i n)
         (let [ch (.charAt sql i)]
           (cond
-            (= ch close-ch)         [items (inc i)]
-            (= ch \')               (recur (skip-string-literal sql i n) items)
-            (= ch \,)               (recur (inc i) (inc items))
+            (= ch close-ch)         (when item? [items (inc i)])
+            (= ch \')               (recur (skip-string-literal sql i n) items true)
+            (= ch \,)               (when item? (recur (inc i) (inc items) false))
             (Character/isLetter ch) (let [end (word-end sql i n)]
                                       (when (contains? allowed-in-list-words
                                                        (u/lower-case-en (.substring sql i end)))
-                                        (recur end items)))
-            (or (Character/isDigit ch)
-                (Character/isWhitespace ch)
-                (= ch \.) (= ch \-) (= ch \+))
-            (recur (inc i) items)
+                                        (recur end items true)))
+            (Character/isWhitespace ch)
+            (recur (inc i) items item?)
+
+            (or (Character/isDigit ch) (= ch \.) (= ch \-) (= ch \+))
+            (recur (inc i) items true)
 
             :else nil))))))
 
@@ -202,8 +229,10 @@
       (when (< i n)
         (let [ch (.charAt sql i)]
           (cond
+            ;; expect-comma? must hold at the close so a trailing comma disqualifies instead of
+            ;; being rewritten into valid SQL
             (= ch \))
-            (when (pos? tuples) [tuples arity (inc i)])
+            (when (and (pos? tuples) expect-comma?) [tuples arity (inc i)])
 
             (and expect-comma? (= ch \,))
             (recur (inc i) tuples arity false)
@@ -245,7 +274,8 @@
 
 (defn- strip-large-literal-lists*
   "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
-   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
+   IN list — with a NULL placeholder. Keyword matches inside string literals and comments are
+   ignored. Returns `sql` itself when nothing was stripped."
   ^String [^String sql]
   (let [matcher (re-matcher literal-list-keyword-pattern sql)
         n       (.length sql)]
@@ -259,17 +289,23 @@
               sql)
             (let [match-start (.start matcher)
                   match-end   (.end matcher)
-                  [replacement resume] (let [ch (.charAt sql match-start)]
-                                         (cond
-                                           (or (= ch \V) (= ch \v)) (strip-values-at sql match-start match-end n)
-                                           (or (= ch \A) (= ch \a)) (strip-array-at sql match-start match-end n)
-                                           :else                    (strip-in-at sql match-start match-end n)))]
-              (if replacement
-                (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
-                (.append sb sql (int i) (int resume)))
-              (recur (long resume)
-                     (or stripped? (some? replacement))
-                     (.find matcher (int resume))))))))))
+                  code-end    (code-region-end sql i match-start n)]
+              (if (> code-end match-start)
+                ;; the match sits inside a string literal or comment: copy through the enclosing
+                ;; region untouched and keep scanning after it
+                (do (.append sb sql (int i) (int code-end))
+                    (recur (long code-end) stripped? (.find matcher (int code-end))))
+                (let [[replacement resume] (let [ch (.charAt sql match-start)]
+                                             (cond
+                                               (or (= ch \V) (= ch \v)) (strip-values-at sql match-start match-end n)
+                                               (or (= ch \A) (= ch \a)) (strip-array-at sql match-start match-end n)
+                                               :else                    (strip-in-at sql match-start match-end n)))]
+                  (if replacement
+                    (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
+                    (.append sb sql (int i) (int resume)))
+                  (recur (long resume)
+                         (or stripped? (some? replacement))
+                         (.find matcher (int resume))))))))))))
 
 (defn strip-large-literal-lists
   "Replace large literal lists with NULL placeholders: VALUES clauses with more than
