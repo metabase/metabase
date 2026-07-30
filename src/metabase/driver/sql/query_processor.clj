@@ -1928,7 +1928,7 @@
   (sql.helpers/where honeysql-form (->honeysql driver clause)))
 
 (defn- predicates->honeysql [driver predicates]
-  (let [predicates (mapv #(->honeysql driver %) predicates)]
+  (let [predicates (map #(->honeysql driver %) predicates)]
     (if (= 1 (count predicates))
       (first predicates)
       (into [:and] predicates))))
