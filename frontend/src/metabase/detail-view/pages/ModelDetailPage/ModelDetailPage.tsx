@@ -44,7 +44,7 @@ export function ModelDetailPage() {
   } = useGetCardQueryMetadataQuery(cardId == null ? skipToken : cardId);
 
   const table = queryMetadata?.tables?.find(
-    (table) => table.id === getQuestionVirtualTableId(cardId),
+    (table) => cardId != null && table.id === getQuestionVirtualTableId(cardId),
   );
   const metadata = useSelector(getMetadata);
   const tableQuery = useMemo(
