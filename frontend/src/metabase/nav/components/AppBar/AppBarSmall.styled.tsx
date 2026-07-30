@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
+import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/ui";
 
 interface AppBarHeaderProps {
   isSubheaderVisible?: boolean;

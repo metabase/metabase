@@ -12,8 +12,7 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import { Box, Group, Stack, rem } from "metabase/ui";
+import { Box, Group, NAV_SIDEBAR_WIDTH, Stack, rem } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,

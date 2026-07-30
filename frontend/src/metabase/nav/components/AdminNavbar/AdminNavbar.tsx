@@ -11,9 +11,15 @@ import type { AdminPath } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Flex, Group, Icon } from "metabase/ui";
+import {
+  ADMIN_NAVBAR_HEIGHT,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+} from "metabase/ui";
 
-import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
 import StoreLink from "../StoreLink";
 

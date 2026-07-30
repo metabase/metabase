@@ -19,7 +19,6 @@ import {
 } from "metabase/common/search";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useSelector } from "metabase/redux";
 import type { To } from "metabase/router";
 import {
@@ -29,7 +28,14 @@ import {
   useNavigationType,
 } from "metabase/router";
 import { getSetting } from "metabase/settings";
-import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
+import {
+  APP_BAR_HEIGHT,
+  Box,
+  Flex,
+  Icon,
+  UnstyledButton,
+  rem,
+} from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
