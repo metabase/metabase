@@ -49,7 +49,6 @@
    based on their create-queries permissions across all databases."
   [user-id]
   (let [db-ids             (t2/select-pks-set :model/Database)
-        _                  (data-perms/prime-schema-perms-cache)
         create-query-perms (into #{}
                                  (map #(data-perms/most-permissive-database-permission-for-user
                                         user-id :perms/create-queries %))

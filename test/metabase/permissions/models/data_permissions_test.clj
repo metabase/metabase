@@ -108,15 +108,25 @@
           (#'data-perms/schema-perms user-id [10])
           (#'data-perms/schema-perms user-id [10 11])
           (is (= [[10] [11]] @schema-loads))
-          (is (= #{10 11} (:db-ids @schema-cache))))
-        (testing "a cross-database question loads every database once and marks the cache complete"
-          (#'data-perms/all-schema-perms user-id)
-          (#'data-perms/all-schema-perms user-id)
-          (is (= [[10] [11] :all] @schema-loads))
-          (is (true? (:all-dbs? @schema-cache)))
-          (testing "after which single-database questions need no further loads"
-            (#'data-perms/schema-perms user-id [12])
-            (is (= [[10] [11] :all] @schema-loads))))))))
+          (is (= #{10 11} (:db-ids @schema-cache))))))))
+
+(deftest permission-caches-memoize-most-permissive-values-test
+  (let [user-id 1
+        loads   (atom 0)
+        cache   (atom {})]
+    (binding [api/*current-user-id*                     user-id
+              data-perms/*most-permissive-perms-cache*  cache]
+      (mt/with-dynamic-fn-redefs [data-perms/load-most-permissive-db-perms
+                                  (fn [_user-id perm-type]
+                                    (swap! loads inc)
+                                    {10 (data-perms/most-permissive-value perm-type)})]
+        (testing "cross-database questions share one memoized load per permission type"
+          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
+          (is (= :query-builder-and-native
+                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
+          (is (= :no
+                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 11)))
+          (is (= 1 @loads)))))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
