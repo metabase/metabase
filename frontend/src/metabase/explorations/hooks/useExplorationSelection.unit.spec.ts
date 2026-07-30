@@ -66,11 +66,12 @@ function metricBlockOf(result: {
 
 describe("useExplorationSelection", () => {
   describe("addMetric", () => {
-    it("keeps every referenced dimension as a candidate but selects only the interesting ones", () => {
+    it("selects every curated dimension of the metric, regardless of interestingness", () => {
       const dimHigh = makeDim("dim-high", 0.9);
       const dimLow = makeDim("dim-low", 0.3);
-      const metric = makeMetric(1, ["dim-high", "dim-low"]);
-      const dimensionsById = makeDimensionsById([dimHigh, dimLow]);
+      const dimUnscored = makeDim("dim-unscored", null);
+      const metric = makeMetric(1, ["dim-high", "dim-low", "dim-unscored"]);
+      const dimensionsById = makeDimensionsById([dimHigh, dimLow, dimUnscored]);
 
       const { result } = renderSelection();
 
@@ -82,25 +83,12 @@ describe("useExplorationSelection", () => {
       expect(block.dimensions.map((d) => d.id)).toEqual([
         "dim-high",
         "dim-low",
+        "dim-unscored",
       ]);
-      expect([...block.selectedDimensionIds]).toEqual(["dim-high"]);
-    });
-
-    it("selects all referenced dimensions when none are interesting", () => {
-      const dimA = makeDim("dim-a", 0.2);
-      const dimB = makeDim("dim-b", null);
-      const metric = makeMetric(1, ["dim-a", "dim-b"]);
-      const dimensionsById = makeDimensionsById([dimA, dimB]);
-
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.addMetric(metric, { dimensionsById });
-      });
-
-      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
-        "dim-a",
-        "dim-b",
+      expect([...block.selectedDimensionIds].sort()).toEqual([
+        "dim-high",
+        "dim-low",
+        "dim-unscored",
       ]);
     });
 
@@ -151,15 +139,21 @@ describe("useExplorationSelection", () => {
 
       const { result } = renderSelection();
 
-      // First add selects only the interesting dimension.
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
+      });
+      // The user prunes the selection by hand...
+      act(() => {
+        result.current.toggleDimensionSelected(
+          metricBlockOf(result).id,
+          "dim-low",
+        );
       });
       expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
         "dim-high",
       ]);
 
-      // Re-adding with an explicit extra dimension grows the existing block's selection.
+      // ...re-adding with an explicit extra dimension grows the existing block's selection.
       act(() => {
         result.current.addMetric(metric, {
           dimensionsById,
@@ -174,7 +168,7 @@ describe("useExplorationSelection", () => {
       ]);
     });
 
-    it("replaces the interesting defaults with exactly the requested dimensions when replace is set", () => {
+    it("replaces the select-all default with exactly the requested dimensions when replace is set", () => {
       const dimHigh = makeDim("dim-high", 0.9);
       const dimLow = makeDim("dim-low", 0.1);
       const metric = makeMetric(1, ["dim-high", "dim-low"]);
@@ -276,18 +270,20 @@ describe("useExplorationSelection", () => {
       });
       const blockId = result.current.blocks[0].id;
 
+      // All curated dimensions start selected; toggling turns one off...
+      act(() => {
+        result.current.toggleDimensionSelected(blockId, "dim-low");
+      });
+      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+        "dim-high",
+      ]);
+
+      // ...and toggling it again turns it back on.
       act(() => {
         result.current.toggleDimensionSelected(blockId, "dim-low");
       });
       expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
         "dim-high",
-        "dim-low",
-      ]);
-
-      act(() => {
-        result.current.toggleDimensionSelected(blockId, "dim-high");
-      });
-      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
         "dim-low",
       ]);
     });
