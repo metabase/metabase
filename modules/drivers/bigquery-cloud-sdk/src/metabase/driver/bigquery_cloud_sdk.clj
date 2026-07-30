@@ -725,9 +725,8 @@
 
 (def ^:private max-sql-query-length-chars
   "BigQuery's maximum standard SQL query length, in characters — counting comments and whitespace exactly as
-  BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...');
-  [[validate-query-length!]] surfaces the same failure client-side, with an actionable message, before the request
-  is sent. Plain `def` (not `^:const`) so tests can reference/redef it. See
+  BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...').
+  See
   https://cloud.google.com/bigquery/quotas#query_limits ('Maximum query length: 1 MB')."
   (* 1024 1024))
 
