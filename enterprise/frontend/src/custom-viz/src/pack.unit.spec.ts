@@ -16,6 +16,8 @@ import { gunzipSync } from "node:zlib";
 import { extract as tarExtract } from "tar-stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { version as SDK_VERSION } from "../package.json";
+
 import {
   MAX_COMPRESSED_BYTES,
   MAX_UNCOMPRESSED_BYTES,
@@ -119,6 +121,47 @@ describe("pack", () => {
     for (const entry of entries) {
       expect(entry.mode).toBe(0o644);
     }
+  });
+
+  it("stamps the SDK version into the packed manifest", async () => {
+    buildProject();
+    await packPlugin(projectDir);
+
+    const entries = await readTgz(join(projectDir, TGZ_NAME));
+    const sourceManifest = JSON.parse(
+      readFileSync(join(projectDir, "metabase-plugin.json"), "utf-8"),
+    );
+    const packedManifest = JSON.parse(entries[0].content.toString());
+
+    expect(packedManifest).toEqual({
+      ...sourceManifest,
+      sdk: {
+        version: SDK_VERSION,
+      },
+    });
+  });
+
+  it("overwrites a hand-written sdk.version with the real SDK version", async () => {
+    buildProject();
+    editJson("metabase-plugin.json", (manifest) => {
+      manifest.sdk = { version: "0.0.0-fake" };
+    });
+    await packPlugin(projectDir);
+
+    const entries = await readTgz(join(projectDir, TGZ_NAME));
+    const packedManifest = JSON.parse(entries[0].content.toString());
+
+    expect(packedManifest.sdk.version).toBe(SDK_VERSION);
+  });
+
+  it("does not modify the source manifest", async () => {
+    buildProject();
+    const manifestPath = join(projectDir, "metabase-plugin.json");
+    const before = readFileSync(manifestPath, "utf-8");
+
+    await packPlugin(projectDir);
+
+    expect(readFileSync(manifestPath, "utf-8")).toBe(before);
   });
 
   it("leaves out extraneous assets", async () => {

@@ -9,6 +9,8 @@ import { gzipSync } from "node:zlib";
 
 import { pack as tarPack } from "tar-stream";
 
+import { version as SDK_VERSION } from "../package.json";
+
 // Limits enforced by the Metabase backend on uploaded plugin bundles.
 export const MAX_COMPRESSED_BYTES = 5 * 1024 * 1024;
 export const MAX_UNCOMPRESSED_BYTES = 25 * 1024 * 1024;
@@ -59,7 +61,18 @@ export async function packPlugin(dir: string = process.cwd()) {
     );
   };
 
-  addEntry("metabase-plugin.json", readFileSync(manifestPath));
+  const stampedManifest = {
+    ...manifest,
+    sdk: {
+      ...manifest.sdk,
+      version: SDK_VERSION,
+    },
+  };
+
+  addEntry(
+    "metabase-plugin.json",
+    Buffer.from(JSON.stringify(stampedManifest, null, 2) + "\n"),
+  );
   addEntry("dist/index.js", readFileSync(bundlePath));
 
   for (const assetName of assetNames) {

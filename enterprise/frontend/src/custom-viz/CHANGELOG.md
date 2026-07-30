@@ -12,6 +12,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 - Per-column formatting: visualization settings now include a `column` function that resolves a column's effective formatting settings — instance-wide defaults, the column's metadata settings, and the card-level settings from the column formatting popover, merged in that order. Pass its result to `formatValue` to render values the way the user configured them ([#78128](https://github.com/metabase/metabase/pull/78128)).
 - New `@metabase/custom-viz pack` command packages a built visualization into an upload-ready `.tgz`. Scaffolded projects call it from their `build` script instead of carrying their own copy of the packaging script, so fixes to packaging and to the bundle size limits now come with a package upgrade. Pass `--dir` to pack a project in another directory.
+- `@metabase/custom-viz pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Your source `metabase-plugin.json` is not modified.
 
 ### Bug Fixes
 
