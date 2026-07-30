@@ -1,6 +1,7 @@
 import * as Lib from "metabase-lib";
 import type {
   CardDisplayType,
+  DatasetColumn,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -9,7 +10,10 @@ type DefaultDisplay = {
   settings?: Partial<VisualizationSettings>;
 };
 
-export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
+export const defaultDisplay = (
+  query: Lib.Query,
+  resultColumns?: readonly DatasetColumn[],
+): DefaultDisplay => {
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {
@@ -19,6 +23,10 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   const stageIndex = -1;
   const aggregations = Lib.aggregations(query, stageIndex);
   const breakouts = Lib.breakouts(query, stageIndex);
+  const resultBreakoutColumnTypes = getResultBreakoutColumnTypes(
+    resultColumns,
+    breakouts.length,
+  );
 
   if (aggregations.length === 0 && breakouts.length === 0) {
     return { display: "table" };
@@ -29,7 +37,12 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   }
 
   if (aggregations.length === 1 && breakouts.length === 1) {
-    const [{ column }] = getBreakoutsWithColumns(query, stageIndex, breakouts);
+    const [{ column }] = getBreakoutsWithColumns(
+      query,
+      stageIndex,
+      breakouts,
+      resultBreakoutColumnTypes,
+    );
 
     if (column != null && Lib.isState(column)) {
       return {
@@ -57,6 +70,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       query,
       stageIndex,
       breakouts,
+      resultBreakoutColumnTypes,
     );
 
     const breakoutInfo = Lib.displayInfo(query, stageIndex, breakout);
@@ -84,6 +98,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       query,
       stageIndex,
       breakouts,
+      resultBreakoutColumnTypes,
     );
 
     const isAnyBreakoutTemporal = breakoutsWithColumns.some(({ column }) => {
@@ -135,9 +150,27 @@ const getBreakoutsWithColumns = (
   query: Lib.Query,
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
+  resultBreakoutColumnTypes: Lib.ColumnTypeInfo[],
 ) => {
-  return breakouts.map((breakout) => {
-    const column = Lib.breakoutColumn(query, stageIndex, breakout);
+  return breakouts.map((breakout, index) => {
+    const column =
+      Lib.breakoutColumn(query, stageIndex, breakout) ??
+      resultBreakoutColumnTypes[index] ??
+      null;
     return { breakout, column };
   });
+};
+
+const getResultBreakoutColumnTypes = (
+  resultColumns: readonly DatasetColumn[] | undefined,
+  breakoutCount: number,
+): Lib.ColumnTypeInfo[] => {
+  const breakoutColumns =
+    resultColumns?.filter((column) => column.source === "breakout") ?? [];
+
+  if (breakoutColumns.length !== breakoutCount) {
+    return [];
+  }
+
+  return breakoutColumns.map(Lib.legacyColumnTypeInfo);
 };
