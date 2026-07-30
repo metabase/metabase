@@ -100,16 +100,33 @@ for (const el of graphElements) {
   shortNameCounts[n] = (shortNameCounts[n] || 0) + 1;
 }
 
-function moduleNameForElement(el) {
-  const baseName = getName(el.type);
-  return shortNameCounts[baseName] > 1 ? patternToDirName(el.pattern) : baseName;
+// Directory-name disambiguation can itself collide (shared/nav and app/nav
+// both live in a dir named "nav"), so later duplicates get tier-qualified.
+const elementNames = new Map();
+{
+  const used = new Set();
+  for (const el of graphElements) {
+    if (el.type === "app/misc") continue;
+    const base = getName(el.type);
+    let name = shortNameCounts[base] > 1 ? patternToDirName(el.pattern) : base;
+    if (used.has(name)) name = `${getTier(el.type)}/${name}`;
+    used.add(name);
+    elementNames.set(el.type, name);
+  }
 }
 
-/** Map collapsed directory paths → short module names, sorted longest-first for prefix matching */
+function moduleNameForElement(el) {
+  if (el.type === "app/misc") return "misc";
+  return elementNames.get(el.type);
+}
+
+/** Map collapsed directory paths → short module names, sorted longest-first for prefix matching.
+ * Iterates ALL elements (not the per-type deduped graphElements) since a type
+ * can own several patterns — a dir plus loose entry files. */
 const moduleNamesUnsorted = {};
-for (const el of graphElements) {
-  if (el.type === "app/misc") continue;
-  moduleNamesUnsorted[patternToDir(el.pattern)] = moduleNameForElement(el);
+for (const el of elements) {
+  if (el.type === "other" || el.type === "app/misc") continue;
+  moduleNamesUnsorted[patternToDir(el.pattern)] = elementNames.get(el.type);
 }
 // Map individual app/misc file paths to "misc"
 for (const el of elements) {
@@ -134,35 +151,47 @@ const sharedSubtiers = [
   // Top: embedding-SDK packaging
   {
     id: "shared_embedding",
-    modules: ["custom-viz", "embedding-ee", "embedding-sdk-package", "embedding-sdk-shared", "metabase-shared"],
+    modules: [
+      "custom-viz", "embedding", "embedding-ee", "embedding-sdk",
+      "embedding-sdk-shared", "embedding-sdk-window-bridge",
+    ],
   },
-  // Shared modules slated to become features (closest to feature tier).
-  // Split into two rows, ordered roughly by import-popularity.
-  {
-    id: "shared_pages",
-    modules: ["collections", "data-studio", "documents", "setup", "search", "metrics"],
-  },
+  // Feature-adjacent shared modules (closest to feature tier)
   {
     id: "shared_apps",
-    modules: ["detail-view", "browse", "auth", "home", "metrics-viewer", "account"],
+    modules: [
+      "detail-view", "metabot", "nav", "notifications", "monitor",
+      "actions", "transforms", "comments", "content-translation",
+    ],
   },
   // Domain shared concepts — the core data/visualization primitives
   {
     id: "shared_domain",
-    modules: ["common", "querying", "api", "visualizations", "embedding", "palette", "metadata", "comments", "transforms"],
+    modules: [
+      "common", "querying", "api", "visualizations", "visualizer",
+      "parameters", "metadata", "palette", "static-viz",
+    ],
   },
   // Content / lifecycle pieces shared across features
   {
     id: "shared_content",
     modules: [
-      "archive", "data-grid", "databases", "history", "new",
-      "pulse", "questions", "status", "timelines",
+      "archive", "data-grid", "databases", "new", "pulse",
+      "questions", "status", "timelines", "rich_text_editing", "schema",
+    ],
+  },
+  // Redux / routing / plugin wiring infrastructure
+  {
+    id: "shared_infra",
+    modules: [
+      "redux", "redux-store", "selectors", "plugins", "route-guards",
+      "routes-stable-id-aware", "error-boundary", "cljs-dev-tools",
     ],
   },
   // Bottom: pure utilities (closest to lib tier)
   {
     id: "shared_utils",
-    modules: ["forms", "hoc", "hooks", "i18n", "router", "styled-components", "types", "urls"],
+    modules: ["forms", "hoc", "hooks", "router", "styled-components", "types", "urls"],
   },
 ];
 const SHARED_FALLBACK_SUBTIER = sharedSubtiers[sharedSubtiers.length - 1].id;
@@ -183,8 +212,11 @@ function tierForElement(el) {
   return baseTier;
 }
 
-/** Tier ordering for the graph layout (feature at top, lib at bottom) */
-const tierOrder = [...new Set(graphElements.map((e) => getTier(e.type)))].reverse();
+/** Tier ordering for the graph layout (app at top, lib at bottom). Fixed
+ * rather than derived from element order, which shifts as modules move. */
+const tierOrder = ["app", "feature", "shared", "basic", "lib"].filter((t) =>
+  graphElements.some((e) => getTier(e.type) === t),
+);
 
 // Insert a synthetic "meta_feature" tier for enterprise, above "feature"
 const featureIdx = tierOrder.indexOf("feature");
@@ -221,11 +253,16 @@ for (const el of elements) {
   if (el.type === "app/misc") moduleToBaseTier["misc"] = "app";
 }
 
+// Catch-all bucket for files not claimed by any element (loose entry files,
+// leftovers in partially-claimed dirs). Rendered grey in the app row.
+tiers["app"].modules.push("other");
+moduleToBaseTier["other"] = "app";
+
 /** Directories already assigned to a tier */
 const namedDirs = new Set();
 for (const el of elements) {
   if (el.type === "other" || el.type === "app/misc") continue;
-  const match = el.pattern.match(/^frontend\/src\/metabase\/(\w+)\//);
+  const match = el.pattern.match(/^frontend\/src\/metabase\/([\w-]+)\//);
   if (match) namedDirs.add(match[1]);
 }
 
@@ -243,11 +280,11 @@ const spines = [
     "misc",            // app
     "enterprise",      // meta_feature
     "dashboard",       // feature
-    "custom-viz",      // shared_embedding
-    "collections",     // shared_pages
-    "home",            // shared_apps
+    "embedding",       // shared_embedding
+    "metabot",         // shared_apps
     "common",          // shared_domain
     "archive",         // shared_content
+    "redux",           // shared_infra
     "urls",            // shared_utils
     "ui",              // basic
     "metabase-types",  // lib
@@ -263,44 +300,44 @@ const spines = [
 
 const moduleDirs = [
   ...new Set(
-    graphElements
-      .filter((el) => el.type !== "app/misc")
+    elements
+      .filter((el) => el.type !== "app/misc" && el.type !== "other")
       .map((el) => patternToDir(el.pattern).replace(/\/$/, ""))
-      .filter((dir) => existsSync(dir)),
+      .filter((dir) => !dir.includes("*") && existsSync(dir)),
   ),
 ];
 
 /** Build collapse pattern from elements */
 function buildCollapsePattern() {
-  const topLevel = [];
-  const extraPrefixes = [];
-  for (const el of graphElements) {
-    const m = el.pattern.match(/^frontend\/src\/([\w-]+)\/(?:\*\/)?\*\*$/);
-    if (m) {
-      topLevel.push(m[1]);
-      continue;
-    }
-    const rawMatch = el.pattern.match(/^([^*]+)\/\*\*$/);
-    if (rawMatch && !rawMatch[1].startsWith("frontend/src/")) {
-      extraPrefixes.push(`^${rawMatch[1]}/`);
-    }
+  // One literal prefix per module directory, sorted longest-first so nested
+  // module dirs win the regex alternation over their parent (mlv1 inside
+  // mlv2's dir, app/embedding-iframe-sdk inside shared/embedding's dir, ...).
+  // Single-file elements (mode: "full") are skipped — depcruise reports them
+  // uncollapsed and their exact path is already a moduleNames key. The
+  // trailing generic pattern collapses not-yet-assigned dirs into per-dir
+  // buckets that render as "other".
+  const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const filePaths = elements
+    .filter((el) => el.mode === "full" && !el.pattern.includes("*"))
+    .map((el) => el.pattern);
+  const dirPrefixes = new Map();
+  for (const el of elements) {
+    if (el.type === "other" || el.type === "app/misc") continue;
+    if (!el.pattern.includes("**")) continue;
+    const dir = patternToDir(el.pattern);
+    if (dirPrefixes.has(dir)) continue;
+    // Single-file elements nested inside this dir (e.g. the window-bridge
+    // file inside embedding-sdk-shared) must not be vacuumed into its bucket.
+    const nestedFiles = filePaths
+      .filter((p) => p !== dir && p.startsWith(dir))
+      .map((p) => `${escapeRegex(p.slice(dir.length))}$`);
+    const lookahead = nestedFiles.length > 0 ? `(?!${nestedFiles.join("|")})` : "";
+    dirPrefixes.set(dir, `^${dir}${lookahead}`);
   }
-  // Two-level patterns like `frontend/src/metabase-lib/v1/**` need a more
-  // specific alternation BEFORE the matching top-level entry, so sub-dir files
-  // don't get vacuumed into the parent bucket (e.g. mlv1 → mlv2).
-  const subPrefixes = [];
-  for (const el of graphElements) {
-    const sub = el.pattern.match(/^frontend\/src\/([\w-]+)\/([\w-]+)\/\*\*$/);
-    if (sub && topLevel.includes(sub[1])) {
-      subPrefixes.push(`^frontend/src/${sub[1]}/${sub[2]}/`);
-    }
-  }
-  // Order: most specific first so they win in regex alternation.
-  const parts = [];
-  parts.push(...subPrefixes);
-  if (topLevel.length > 0) parts.push(`^frontend/src/(${topLevel.join("|")})/`);
-  parts.push(`^frontend/src/metabase/([^/]+)/`);
-  parts.push(...extraPrefixes);
+  const parts = [...dirPrefixes.entries()]
+    .sort(([a], [b]) => b.length - a.length)
+    .map(([, regex]) => regex);
+  parts.push("^frontend/src/metabase/([^/]+)/");
   return parts.join("|");
 }
 
@@ -341,6 +378,11 @@ const tierIndex = {};
 tierOrder.forEach((t, i) => {
   tierIndex[t] = i;
 });
+
+// Modules whose outgoing boundary rules are NOT enforced by the linter
+const unenforcedModules = new Set(
+  graphElements.filter((e) => !e.enforceOutgoing).map((e) => moduleNameForElement(e)),
+);
 
 // ---------------------------------------------------------------------------
 // Collect edges and violations from collapsed output
@@ -443,19 +485,15 @@ function buildDot() {
   }
   emit("");
 
-  // Modules whose outgoing boundary rules are NOT enforced by the linter
-  const unenforcedModules = new Set(
-    graphElements.filter((e) => !e.enforceOutgoing).map((e) => moduleNameForElement(e)),
-  );
-
   // Module nodes — unenforced modules get a bold border so it's visible
   // which modules still need their boundaries locked down.
   for (const tierId of tierOrder) {
     const { color, modules } = tiers[tierId];
     for (const mod of modules) {
       const extra = unenforcedModules.has(mod) ? ` penwidth="2"` : "";
+      const fill = mod === "other" ? "#eeeeee" : color;
       emit(
-        `  "${mod}" [label="${mod}" fillcolor="${color}" group="${tierId}"${extra}]`,
+        `  "${mod}" [label="${mod}" fillcolor="${fill}" group="${tierId}"${extra}]`,
       );
     }
   }
@@ -666,22 +704,23 @@ function postProcessSvg(svg) {
     const arrowX2 = swatchCenterX + 20;
     const arrowY = legendLibY + swatchHalfH + 28;
     const violationLabelY = arrowY + 14;
-    // Bold-bordered sample rect = "unenforced"
+    // Bold-bordered sample rect = "unenforced" — only shown while any
+    // module still has enforceOutgoing: false.
+    const showUnenforced = unenforcedModules.size > 0;
     const sampleW = 40;
     const sampleH = 14;
     const sampleX = swatchCenterX - sampleW / 2;
     const sampleY = violationLabelY + 14;
     const unenforcedLabelY = sampleY + sampleH + 12;
     // Rounded box around the whole legend column
-    const boxPad = 14;
     const titleH = 22;
     const boxX = swatchCenterX - 50;
     const boxW = 100;
     const boxY = firstY - swatchHalfH - titleH - 6;
-    const boxBottom = unenforcedLabelY + 8;
+    const boxBottom = (showUnenforced ? unenforcedLabelY : violationLabelY) + 8;
     const boxH = boxBottom - boxY;
 
-    bottomExtra = Math.max(0, boxBottom - graphTop - height + minY + 4);
+    bottomExtra = Math.max(0, boxBottom - graphTop - height + minY + 24);
 
     injected.push(
       `<g id="legend-box">`,
@@ -693,14 +732,18 @@ function postProcessSvg(svg) {
       `  <line x1="${arrowX1}" y1="${arrowY}" x2="${arrowX2}" y2="${arrowY}" stroke="red" stroke-width="2" marker-end="url(#arrowhead-red)"/>`,
       `  <text x="${swatchCenterX}" y="${violationLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">violation</text>`,
       `</g>`,
-      `<g id="legend-unenforced">`,
-      `  <rect x="${sampleX}" y="${sampleY}" width="${sampleW}" height="${sampleH}" rx="4" ry="4" fill="none" stroke="#333333" stroke-width="2"/>`,
-      `  <text x="${swatchCenterX}" y="${unenforcedLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">unenforced</text>`,
-      `</g>`,
     );
+    if (showUnenforced) {
+      injected.push(
+        `<g id="legend-unenforced">`,
+        `  <rect x="${sampleX}" y="${sampleY}" width="${sampleW}" height="${sampleH}" rx="4" ry="4" fill="none" stroke="#333333" stroke-width="2"/>`,
+        `  <text x="${swatchCenterX}" y="${unenforcedLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">unenforced</text>`,
+        `</g>`,
+      );
+    }
   }
 
-  // --- "Other modules" sidebar ---
+  // --- "Other modules" sidebar (omitted when every dir is assigned) ---
   const otherDirs = readdirSync("frontend/src/metabase", {
     withFileTypes: true,
   })
@@ -719,20 +762,22 @@ function postProcessSvg(svg) {
   const boxX = graphRight + 20;
   const boxY = graphTop + 30;
 
-  injected.push(
-    `<g id="other-modules">`,
-    `  <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="8" ry="8" fill="white" stroke="#cccccc" stroke-width="1"/>`,
-    `  <text x="${boxX + boxWidth / 2}" y="${boxY + 20}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="12" fill="#666666">Other Modules</text>`,
-    `  <line x1="${boxX + padding}" y1="${boxY + headerHeight}" x2="${boxX + boxWidth - padding}" y2="${boxY + headerHeight}" stroke="#eeeeee" stroke-width="1"/>`,
-    ...otherDirs.map((dir, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = boxX + padding + col * (colWidth + colGap);
-      const y = boxY + headerHeight + padding + row * lineHeight + 12;
-      return `  <text x="${x}" y="${y}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">${dir}</text>`;
-    }),
-    `</g>`,
-  );
+  if (otherDirs.length > 0) {
+    injected.push(
+      `<g id="other-modules">`,
+      `  <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="8" ry="8" fill="white" stroke="#cccccc" stroke-width="1"/>`,
+      `  <text x="${boxX + boxWidth / 2}" y="${boxY + 20}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="12" fill="#666666">Other Modules</text>`,
+      `  <line x1="${boxX + padding}" y1="${boxY + headerHeight}" x2="${boxX + boxWidth - padding}" y2="${boxY + headerHeight}" stroke="#eeeeee" stroke-width="1"/>`,
+      ...otherDirs.map((dir, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const x = boxX + padding + col * (colWidth + colGap);
+        const y = boxY + headerHeight + padding + row * lineHeight + 12;
+        return `  <text x="${x}" y="${y}" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">${dir}</text>`;
+      }),
+      `</g>`,
+    );
+  }
 
   // Crop empty space on the left so the legend sits near the canvas edge,
   // and expand viewBox for the right-side sidebar + any legend indicator
@@ -741,8 +786,10 @@ function postProcessSvg(svg) {
     ? (lastBounds.minX + lastBounds.maxX) / 2 - 50
     : minX;
   const newMinX = Math.max(minX, legendBoxLeft - 10);
-  const newWidth = width - (newMinX - minX) + boxWidth + 60;
-  const newHeight = Math.max(height, boxHeight + 40) + bottomExtra;
+  const sidebarWidth = otherDirs.length > 0 ? boxWidth + 60 : 0;
+  const newWidth = width - (newMinX - minX) + sidebarWidth;
+  const newHeight =
+    Math.max(height, otherDirs.length > 0 ? boxHeight + 40 : 0) + bottomExtra;
 
   svg = svg.replace(
     /viewBox="[^"]+"/,
