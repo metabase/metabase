@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getScrollIntoViewMock, screen, within } from "__support__/ui";
+import { getScrollIntoViewMock, screen, waitFor, within } from "__support__/ui";
 import type { ChecklistItemValue } from "metabase/redux/store";
 
 import { setup } from "./setup";
@@ -10,7 +10,11 @@ const getItem = (checklistItem: ChecklistItemValue) => {
 };
 
 const getItemControl = (label: string) => {
-  const labelRegex = new RegExp(label, "i");
+  // Labels can contain regex metacharacters, e.g. "Set up AI (optional)"
+  const labelRegex = new RegExp(
+    label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "i",
+  );
 
   return screen.getByRole("button", {
     name: labelRegex,
@@ -24,13 +28,12 @@ describe("Onboarding", () => {
     jest.clearAllMocks();
   });
 
-  it("should have four sections by default for admins", () => {
+  it("should have three sections by default for admins", () => {
     setup();
 
     [
-      "Set up your Metabase",
-      "Start visualizing your data",
-      "Get email updates and alerts",
+      "Set things up",
+      "Explore your data",
       "Get the most out of Metabase",
     ].forEach((section) => {
       expect(
@@ -39,32 +42,29 @@ describe("Onboarding", () => {
     });
   });
 
-  it("should not render the 'Set up' section for non-admins", () => {
+  it("should not render the 'Set things up' section for non-admins", () => {
     setup({ isAdmin: false });
 
-    [
-      "Start visualizing your data",
-      "Get email updates and alerts",
-      "Get the most out of Metabase",
-    ].forEach((section) => {
+    ["Explore your data", "Get the most out of Metabase"].forEach((section) => {
       expect(
         screen.getByRole("heading", { name: section }),
       ).toBeInTheDocument();
     });
 
     expect(
-      screen.queryByRole("heading", { name: "Set up your Metabase" }),
+      screen.queryByRole("heading", { name: "Set things up" }),
     ).not.toBeInTheDocument();
 
     expect(screen.queryByTestId("database-item")).not.toBeInTheDocument();
     expect(screen.queryByTestId("invite-item")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ai-item")).not.toBeInTheDocument();
   });
 
   it("'database' accordion item should be open by default for admins", () => {
     setup();
 
     const databaseItem = getItem("database");
-    const databaseItemControl = getItemControl("Connect to your database");
+    const databaseItemControl = getItemControl("Connect Metabase to your data");
     const cta = within(databaseItem).getByRole("link");
 
     expect(databaseItem).toHaveAttribute("data-active", "true");
@@ -73,28 +73,36 @@ describe("Onboarding", () => {
 
     expect(
       within(databaseItem).getByText(
-        "You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. Metabase connects to more than 15 popular databases.",
+        "Connect one or more databases. You can query these databases directly, either with the query builder or the native SQL editor.",
       ),
     ).toBeInTheDocument();
 
     expect(cta).toHaveAttribute("href", "/admin/databases/create");
     expect(
-      within(cta).getByRole("button", { name: "Add Database" }),
+      within(cta).getByRole("button", { name: "Add database" }),
     ).toBeInTheDocument();
 
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
-  it("'x-ray' accordion item should be open by default for non-admins", () => {
+  it("'query' accordion item should be open by default for non-admins", () => {
     setup({ isAdmin: false });
 
-    const xRayItem = getItem("x-ray");
-    const xRayItemControl = getItemControl("Create automatic dashboards");
+    const queryItem = getItem("query");
+    const queryItemControl = getItemControl("Query your data");
 
-    expect(xRayItem).toHaveAttribute("data-active", "true");
-    expect(xRayItemControl).toHaveAttribute("data-active", "true");
-    expect(xRayItemControl).toHaveAttribute("aria-expanded", "true");
+    expect(queryItem).toHaveAttribute("data-active", "true");
+    expect(queryItemControl).toHaveAttribute("data-active", "true");
+    expect(queryItemControl).toHaveAttribute("aria-expanded", "true");
 
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+  });
+
+  it("should fall back to the default item when the remembered item is hidden", () => {
+    setup({ openItem: "ai", aiFeaturesEnabled: false });
+
+    expect(screen.queryByTestId("ai-item")).not.toBeInTheDocument();
+    expect(getItem("database")).toHaveAttribute("data-active", "true");
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
@@ -103,83 +111,66 @@ describe("Onboarding", () => {
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
 
     expect(getItem("database")).toHaveAttribute("data-active", "true");
-    await userEvent.click(getItemControl("Query with SQL"));
-    expect(scrollIntoViewMock).toHaveBeenCalled();
+    await userEvent.click(getItemControl("Query your data"));
+    // The scroll is deferred until the expand animation finishes
+    await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
 
     expect(getItem("database")).not.toHaveAttribute("data-active");
-    expect(getItem("sql")).toHaveAttribute("data-active", "true");
+    expect(getItem("query")).toHaveAttribute("data-active", "true");
   });
 
   it("should scroll the last remembered item into view on page load", async () => {
-    setup({ openItem: "sql" });
+    setup({ openItem: "query" });
 
-    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalledTimes(1));
 
     // closing the item should not trigger `scrollIntoView` again
-    await userEvent.click(getItemControl("Query with SQL"));
+    await userEvent.click(getItemControl("Query your data"));
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 
   it("only one item can be expanded at a time", async () => {
     setup();
 
-    const databaseItemControl = getItemControl("Connect to your database");
-    const sqlItemControl = getItemControl("Query with SQL");
+    const databaseItemControl = getItemControl("Connect Metabase to your data");
+    const queryItemControl = getItemControl("Query your data");
 
     expect(databaseItemControl).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(sqlItemControl);
+    await userEvent.click(queryItemControl);
 
     expect(databaseItemControl).toHaveAttribute("aria-expanded", "false");
-    expect(sqlItemControl).toHaveAttribute("aria-expanded", "true");
+    expect(queryItemControl).toHaveAttribute("aria-expanded", "true");
   });
 
-  it.each<ChecklistItemValue>([
-    "x-ray",
-    "notebook",
-    "sql",
-    "dashboard",
-    "subscription",
-    "alert",
-  ])("%s CTA should not be visible to non-admins", (item) => {
-    setup({ isAdmin: false, openItem: item });
-
-    expect(screen.getByTestId(`${item}-item`)).toHaveAttribute(
-      "data-active",
-      "true",
-    );
-    expect(screen.queryByTestId(`${item}-cta`)).not.toBeInTheDocument();
-  });
-
-  describe("'Set up your Metabase' section", () => {
-    it("'add database' item should render properly", () => {
+  describe("'Set things up' section", () => {
+    it("'database' item should render properly", () => {
       setup();
 
-      expect(getItemControl("Connect to your database")).toBeInTheDocument();
+      expect(
+        getItemControl("Connect Metabase to your data"),
+      ).toBeInTheDocument();
 
       const databaseItem = getItem("database");
       const cta = within(databaseItem).getByRole("link");
 
       expect(cta).toHaveAttribute("href", "/admin/databases/create");
       expect(
-        within(cta).getByRole("button", { name: "Add Database" }),
+        within(cta).getByRole("button", { name: "Add database" }),
       ).toBeInTheDocument();
     });
 
-    it("'invite people' item should render properly", async () => {
+    it("'invite' item should render properly", () => {
       setup({ openItem: "invite" });
 
       const inviteItem = getItem("invite");
-      // There are two buttons with the same text
-      const [controlLabel] = within(inviteItem).getAllByRole("button", {
-        name: "Invite people",
-      });
+      const controlLabel = getItemControl("Invite people to your Metabase");
       const [primaryCTA, secondaryCTA] =
         within(inviteItem).getAllByRole("link");
 
       expect(controlLabel).not.toHaveAttribute("href");
       expect(
         within(inviteItem).getByText(
-          "Don't be shy with invites. Metabase makes self-service analytics easy.",
+          "You can invite people via email right away, even if you'll go on to set up single sign-on with your identity provider later on.",
         ),
       ).toBeInTheDocument();
 
@@ -196,247 +187,172 @@ describe("Onboarding", () => {
       ).toBeInTheDocument();
       expect(
         within(secondaryCTA).getByRole("button", {
-          name: "Set up Single Sign-on",
+          name: "Set up single sign-on",
         }),
       ).toBeInTheDocument();
     });
+
+    it("'ai' item should render properly", () => {
+      setup({ openItem: "ai" });
+
+      expect(getItemControl("Set up AI (optional)")).toBeInTheDocument();
+
+      const aiItem = getItem("ai");
+      expect(
+        within(aiItem).getByText(/ask Metabot directly in the Metabase app/),
+      ).toBeInTheDocument();
+
+      const cta = within(screen.getByTestId("ai-cta")).getByRole("link");
+
+      expect(cta).toHaveAttribute("href", "/admin/metabot/mcp");
+      expect(
+        within(cta).getByRole("button", { name: "Set up MCP" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not render the 'ai' item when AI features are disabled", () => {
+      setup({ aiFeaturesEnabled: false });
+
+      expect(screen.queryByTestId("ai-item")).not.toBeInTheDocument();
+      expect(screen.getByTestId("database-item")).toBeInTheDocument();
+      expect(screen.getByTestId("invite-item")).toBeInTheDocument();
+    });
   });
 
-  describe("'Start visualizing your data' section", () => {
-    it("'x-ray' item should render properly", () => {
-      setup({ openItem: "x-ray" });
+  describe("'Explore your data' section", () => {
+    it("'query' item should render properly", () => {
+      setup({ openItem: "query" });
 
-      expect(getItemControl("Create automatic dashboards")).toBeInTheDocument();
-      expect(
-        within(getItem("x-ray")).getByText(
-          /Hover over a table and click the yellow lightning bolt/,
-        ),
-      ).toBeInTheDocument();
+      expect(getItemControl("Query your data")).toBeInTheDocument();
 
-      const cta = within(getItem("x-ray")).getByRole("link");
+      const queryItem = getItem("query");
 
-      expect(cta).toHaveAttribute("href", "/browse/databases");
-      expect(
-        within(cta).getByRole("button", { name: "Browse data" }),
-      ).toBeInTheDocument();
-    });
-
-    it("'x-ray' CTA should not render if x-rays are disabled", () => {
-      setup({ openItem: "x-ray", enableXrays: false });
-      expect(
-        within(getItem("x-ray")).queryByText(
-          /Hover over a table and click the yellow lightning bolt/,
-        ),
-      ).not.toBeInTheDocument();
-      expect(
-        within(getItem("x-ray")).getByText(
-          /You need to enable this feature first./,
-        ),
-      ).toBeInTheDocument();
-
-      expect(
-        within(getItem("x-ray")).queryByTestId("x-ray-cta"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("copy for disabled x-rays should be slightly different for non-admins", () => {
-      setup({ openItem: "x-ray", enableXrays: false, isAdmin: false });
-      expect(
-        within(getItem("x-ray")).queryByText(
-          /Hover over a table and click the yellow lightning bolt/,
-        ),
-      ).not.toBeInTheDocument();
-      expect(
-        within(getItem("x-ray")).getByText(
-          /An admin needs to enable this feature first./,
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("'notebook' item should render properly", () => {
-      setup({ openItem: "notebook" });
-
-      expect(
-        getItemControl("Make an interactive chart with the query builder"),
-      ).toBeInTheDocument();
-
-      const cta = within(getItem("notebook")).getByRole("link");
-
-      expect(cta).toHaveAttribute(
-        "href",
-        expect.stringMatching(/^\/question\/notebook#[a-zA-Z0-9]{20}/),
-      );
-      expect(
-        within(cta).getByRole("button", { name: "New question" }),
-      ).toBeInTheDocument();
-    });
-
-    it("'sql' item should render properly", () => {
-      setup({ openItem: "sql" });
-
-      expect(getItemControl("Query with SQL")).toBeInTheDocument();
-
-      const docsLink = within(getItem("sql")).getByText("SQL templates");
-
-      expect(docsLink).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/docs/latest/questions/native-editor/sql-parameters.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss",
+      ["+ New", "AI exploration", "Question", "Native query"].forEach(
+        (highlight) => {
+          expect(within(queryItem).getByText(highlight)).toBeInTheDocument();
+        },
       );
 
-      const cta = within(screen.getByTestId("sql-cta")).getByRole("link");
-
-      expect(cta).toHaveAttribute(
-        "href",
-        expect.stringMatching(/^\/question#[a-zA-Z0-9]{20}/),
-      );
-      expect(
-        within(cta).getByRole("button", { name: "New native query" }),
-      ).toBeInTheDocument();
+      expect(screen.queryByTestId("query-cta")).not.toBeInTheDocument();
     });
 
     it("'dashboard' item should render properly", () => {
       setup({ openItem: "dashboard" });
 
+      expect(getItemControl("Create a dashboard")).toBeInTheDocument();
+
+      const dashboardItem = getItem("dashboard");
+
       expect(
-        getItemControl("Create and filter a dashboard"),
+        within(dashboardItem).getByText(
+          /You can present questions, text, and links on a dashboard/,
+        ),
       ).toBeInTheDocument();
-
-      const docsLink = within(getItem("dashboard")).getByText(
-        "dashboard with tabs",
-      );
-
-      expect(docsLink).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/docs/latest/dashboards/introduction.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#dashboard-tabs",
-      );
-
-      const cta = within(screen.getByTestId("dashboard-cta")).getByRole("link");
-
-      expect(cta).toHaveAttribute("href", "/dashboard/1");
       expect(
-        within(cta).getByRole("button", { name: "See a sample dashboard" }),
-      ).toBeInTheDocument();
+        within(dashboardItem).getByTitle("How to use dashboards?"),
+      ).toHaveAttribute("src", expect.stringContaining("FAst1nabBck"));
+
+      expect(screen.queryByTestId("dashboard-cta")).not.toBeInTheDocument();
     });
-
-    it("should not render CTA for the example dashboard if example dashboard doesn't exist", () => {
-      setup({ openItem: "dashboard", hasExampleDashboard: false });
-
-      expect(
-        screen.queryByRole("button", { name: "Edit a sample dashboard" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("'Get email updates and alerts' section", () => {
-    it("'subscription' item should render properly", () => {
-      setup({ openItem: "subscription" });
-
-      expect(
-        getItemControl("Subscribe to a dashboard by email or Slack"),
-      ).toBeInTheDocument();
-
-      const commsSetup = screen.getByTestId("subscription-communication-setup");
-
-      expect(
-        within(commsSetup).getByRole("link", { name: "Set up email" }),
-      ).toHaveAttribute("href", "/admin/settings/email");
-      expect(
-        within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/slack");
-
-      const cta = screen.getByTestId("subscription-cta");
-      expect(within(cta).getByRole("link")).toHaveAttribute(
-        "href",
-        "/dashboard/1",
-      );
-      expect(
-        within(cta).getByRole("button", {
-          name: "Set up subscriptions for a sample dashboard",
-        }),
-      ).toBeInTheDocument();
-    });
-
-    it("should not render CTA for the example dashboard if example dashboard doesn't exist", () => {
-      setup({ openItem: "subscription", hasExampleDashboard: false });
-
-      expect(screen.queryByTestId("subscription-cta")).not.toBeInTheDocument();
-    });
-
-    it.each<ChecklistItemValue>(["subscription", "alert"])(
-      "should not render %s email and slack setup links for hosted instances",
-      (item) => {
-        setup({ openItem: item, isHosted: true });
-        expect(
-          screen.queryByTestId(`${item}-communication-setup`),
-        ).not.toBeInTheDocument();
-      },
-    );
 
     it("'alert' item should render properly", () => {
       setup({ openItem: "alert" });
 
       expect(
-        getItemControl("Get alerts when metrics behave unexpectedly"),
+        getItemControl("Get notified when data changes"),
       ).toBeInTheDocument();
 
-      const commsSetup = screen.getByTestId("alert-communication-setup");
+      const alertItem = getItem("alert");
 
+      expect(within(alertItem).getByText("Alerts")).toBeInTheDocument();
       expect(
-        within(commsSetup).getByRole("link", { name: "Set up email" }),
-      ).toHaveAttribute("href", "/admin/settings/email");
-      expect(
-        within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/slack");
-
-      const cta = screen.getByTestId("alert-cta");
-      expect(within(cta).getByRole("link")).toHaveAttribute(
-        "href",
-        "/question/12",
-      );
-      expect(
-        within(cta).getByRole("button", {
-          name: "Set up alert for a sample question",
-        }),
+        within(alertItem).getByText("Dashboard subscriptions"),
       ).toBeInTheDocument();
-    });
-
-    it("'alert' item docs links", () => {
-      setup({ openItem: "alert" });
-
-      const goalDoc = within(getItem("alert")).getByText("Goal line alerts");
-      const progressDoc = within(getItem("alert")).getByText(
-        "Progress bar alerts",
-      );
-      const resultDoc = within(getItem("alert")).getByText("Results alerts");
-
-      expect(goalDoc).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/docs/latest/questions/sharing/alerts.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#goal-line-alerts",
-      );
-      expect(progressDoc).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/docs/latest/questions/sharing/alerts.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#progress-bar-alerts",
-      );
-      expect(resultDoc).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/docs/latest/questions/sharing/alerts.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#results-alerts",
-      );
-    });
-
-    it.each<ChecklistItemValue>(["subscription", "alert"])(
-      "should not render %s email and Slack setup links for hosted instances",
-      (i) => {
-        setup({ openItem: i, isHosted: true });
-        expect(
-          screen.queryByTestId(`${i}-communication-setup`),
-        ).not.toBeInTheDocument();
-      },
-    );
-
-    it("should not render CTA for the example question if example dashboard doesn't exist", () => {
-      setup({ openItem: "subscription", hasExampleDashboard: false });
+      expect(
+        within(alertItem).getByTitle("How to create an alert?"),
+      ).toHaveAttribute("src", expect.stringContaining("MPw5__mVg58"));
 
       expect(screen.queryByTestId("alert-cta")).not.toBeInTheDocument();
+    });
+
+    it("'data-studio' item should render properly", () => {
+      setup({ openItem: "data-studio" });
+
+      expect(
+        getItemControl("Build your semantic layer in Data Studio"),
+      ).toBeInTheDocument();
+
+      const dataStudioItem = getItem("data-studio");
+
+      expect(
+        within(dataStudioItem).getByText(
+          /has all the tools you'll need to get your data organized/,
+        ),
+      ).toBeInTheDocument();
+
+      const cta = within(screen.getByTestId("data-studio-cta")).getByRole(
+        "link",
+      );
+
+      expect(cta).toHaveAttribute("href", "/data-studio");
+      expect(
+        within(cta).getByRole("button", { name: "Go to Data studio" }),
+      ).toBeInTheDocument();
+    });
+
+    it("'data-studio' copy is visible to viewers, but the CTA is not", () => {
+      setup({ isAdmin: false, openItem: "data-studio" });
+
+      expect(
+        within(getItem("data-studio")).getByText(
+          /has all the tools you'll need to get your data organized/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("data-studio-cta")).not.toBeInTheDocument();
+    });
+
+    it("'data-studio' CTA should be visible to non-admin analysts", () => {
+      setup({ isAdmin: false, isAnalyst: true, openItem: "data-studio" });
+
+      const cta = within(screen.getByTestId("data-studio-cta")).getByRole(
+        "link",
+      );
+
+      expect(cta).toHaveAttribute("href", "/data-studio");
+    });
+
+    it("'permissions' item should render properly", () => {
+      setup({ openItem: "permissions" });
+
+      expect(getItemControl("Set up permissions")).toBeInTheDocument();
+
+      const permissionsItem = getItem("permissions");
+
+      expect(
+        within(permissionsItem).getByText(
+          /Create groups, set permissions on the groups/,
+        ),
+      ).toBeInTheDocument();
+
+      const cta = within(screen.getByTestId("permissions-cta")).getByRole(
+        "link",
+      );
+
+      expect(cta).toHaveAttribute("href", "/admin/permissions");
+      expect(
+        within(cta).getByRole("button", { name: "Go to Admin" }),
+      ).toBeInTheDocument();
+    });
+
+    it("'permissions' copy is visible to non-admins, but the CTA is not", () => {
+      setup({ isAdmin: false, openItem: "permissions" });
+
+      expect(
+        within(getItem("permissions")).getByText(
+          /Create groups, set permissions on the groups/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("permissions-cta")).not.toBeInTheDocument();
     });
   });
 
@@ -465,6 +381,9 @@ describe("Onboarding", () => {
         "href",
         "https://www.metabase.com/docs/latest/?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss",
       );
+      expect(
+        within(learning).getByRole("link", { name: "Learn" }),
+      ).toHaveAttribute("href", "https://www.metabase.com/learn/");
     });
 
     it("should not render the premium 'help' section", () => {

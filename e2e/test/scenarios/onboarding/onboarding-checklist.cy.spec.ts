@@ -1,5 +1,5 @@
 const { H } = cy;
-import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
+import type { ChecklistItemValue } from "metabase/redux/store";
 
 describe("Onboarding checklist page", () => {
   beforeEach(() => {
@@ -10,20 +10,20 @@ describe("Onboarding checklist page", () => {
 
   it("should let non-admins access this page", () => {
     cy.get("[data-accordion=true]").within(() => {
-      cy.findByRole("heading", { name: "Start visualizing your data" }).should(
+      cy.findByRole("heading", { name: "Explore your data" }).should(
         "be.visible",
       );
-      cy.contains(
-        "Hover over a table and click the yellow lightning bolt",
-      ).should("be.visible");
+      cy.contains("to create a question in natural language").should(
+        "be.visible",
+      );
 
-      cy.findByText("Make an interactive chart with the query builder").click();
+      cy.findByText("Create a dashboard").click();
       cy.contains(
-        "Filter and summarize data, add custom columns, join data from other tables, and more",
+        "You can present questions, text, and links on a dashboard",
       ).should("be.visible");
-      cy.contains(
-        "Hover over a table and click the yellow lightning bolt",
-      ).should("not.be.visible");
+      cy.contains("to create a question in natural language").should(
+        "not.be.visible",
+      );
     });
   });
 });
@@ -79,6 +79,8 @@ describe("Onboarding checklist events", () => {
     H.restore();
     cy.signInAsAdmin();
 
+    H.updateSetting("ai-features-enabled?", true);
+
     H.resetSnowplow();
     H.enableTracking();
   });
@@ -103,12 +105,12 @@ describe("Onboarding checklist events", () => {
       const items: ChecklistItemValue[] = [
         "invite",
         "database",
-        "x-ray",
-        "notebook",
-        "sql",
+        "ai",
+        "query",
         "dashboard",
-        "subscription",
         "alert",
+        "data-studio",
+        "permissions",
       ];
 
       cy.visit("/getting-started");
@@ -131,7 +133,7 @@ describe("Onboarding checklist events", () => {
         })
         .should("have.attr", "aria-selected", "true");
 
-      cy.findByTestId("database-cta").button("Add Database").click();
+      cy.findByTestId("database-cta").button("Add database").click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "database",
@@ -150,11 +152,41 @@ describe("Onboarding checklist events", () => {
 
       cy.go("back");
 
-      cy.findByTestId("invite-cta").button("Set up Single Sign-on").click();
+      cy.findByTestId("invite-cta").button("Set up single sign-on").click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
         event_detail: "secondary",
+      });
+
+      cy.go("back");
+
+      cy.findByTestId("ai-item").click();
+      cy.findByTestId("ai-cta").button("Set up MCP").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "onboarding_checklist_cta_clicked",
+        triggered_from: "ai",
+        event_detail: "primary",
+      });
+
+      cy.go("back");
+
+      cy.findByTestId("data-studio-item").click();
+      cy.findByTestId("data-studio-cta").button("Go to Data studio").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "onboarding_checklist_cta_clicked",
+        triggered_from: "data-studio",
+        event_detail: "primary",
+      });
+
+      cy.go("back");
+
+      cy.findByTestId("permissions-item").click();
+      cy.findByTestId("permissions-cta").button("Go to Admin").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "onboarding_checklist_cta_clicked",
+        triggered_from: "permissions",
+        event_detail: "primary",
       });
     });
   });

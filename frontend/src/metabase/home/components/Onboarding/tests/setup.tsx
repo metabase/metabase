@@ -23,10 +23,8 @@ import { Onboarding } from "../Onboarding";
 
 export type SetupProps = {
   isAdmin?: boolean;
-  applicationName?: string;
-  enableXrays?: boolean;
-  hasExampleDashboard?: boolean;
-  isHosted?: boolean;
+  isAnalyst?: boolean;
+  aiFeaturesEnabled?: boolean;
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
@@ -35,10 +33,8 @@ export type SetupProps = {
 
 export const setup = ({
   isAdmin = true,
-  applicationName,
-  enableXrays = true,
-  hasExampleDashboard = true,
-  isHosted = false,
+  isAnalyst = false,
+  aiFeaturesEnabled = true,
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
@@ -53,12 +49,12 @@ export const setup = ({
         "last-opened-onboarding-checklist-item": openItem,
       },
     }),
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      is_data_analyst: isAnalyst,
+    }),
     settings: mockSettings({
-      "application-name": applicationName,
-      "enable-xrays": enableXrays,
-      "example-dashboard-id": hasExampleDashboard ? 1 : null,
-      "is-hosted?": isHosted,
+      "ai-features-enabled?": aiFeaturesEnabled,
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),
       "token-status": hasTokenFeatures

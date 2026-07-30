@@ -3,101 +3,84 @@
   position: relative;
 }
 
-.item:not([data-css-specificity-hack="🪗"]) {
-  &,
-  & + &,
-  &[data-active="true"] {
-    border: 0;
-    margin-top: 0;
-  }
+/*
+ * Every slot override below is prefixed with `.accordion` to out-specify the
+ * single-class theme rules in metabase/ui's Accordion.module.css. The compound
+ * selectors are written flat on purpose: nesting them would make postcss-nesting
+ * wrap them in `:is()` and change the specificity math.
+ */
 
-  &:not(:last-child) {
-    margin-bottom: 0.25rem;
-  }
+.accordion .item,
+.accordion .item + .item,
+.accordion .item[data-active="true"] {
+  border: 0;
+  margin-top: 0;
+  /* Keeps an item scrolled to via `block: "start"` clear of the app bar, and
+     leaves its header near the top so the panel below it stays visible. */
+  scroll-margin-top: 6rem;
 }
 
-.label:not([data-css-specificity-hack="🪗"]) {
+.accordion .item:not(:last-child) {
+  margin-bottom: 0.5rem;
+}
+
+.accordion .label {
   color: var(--mb-color-text-primary);
   font-weight: normal;
 }
 
-.control:not([data-css-specificity-hack="🪗"]) {
-  background: linear-gradient(
-    to right,
-    var(--mb-color-background_surface-hover) 3rem,
-    transparent 3rem
-  );
+.accordion .control {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary);
-  padding-left: 0;
   height: 3rem;
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-hover);
-    color: var(--mb-color-core-brand);
-
-    .label,
-    .chevron {
-      color: var(--mb-color-core-brand);
-    }
-  }
-
-  [data-active="true"] & {
-    background: linear-gradient(
-      to right,
-      var(--mb-color-core-brand) 3rem,
-      transparent 3rem
-    );
-
-    &:hover {
-      background: linear-gradient(
-        to right,
-        var(--mb-color-core-brand) 3rem,
-        var(--mb-color-background_surface-hover) 3rem
-      );
-
-      .label,
-      .chevron svg {
-        color: var(--mb-color-core-brand);
-      }
-    }
-  }
+  padding-inline-start: 0;
 }
 
-.chevron:not([data-css-specificity-hack="🪗"]) {
+.accordion .control:hover {
+  background-color: var(--mb-color-background_surface-hover);
+  color: var(--mb-color-core-brand);
+}
+
+.accordion .control:hover .label,
+.accordion .control:hover .chevron {
+  color: var(--mb-color-core-brand);
+}
+
+/*
+ * The icon slot is the tinted tile itself — Mantine already renders it as a
+ * flex-centered span. 2.875rem is the control's 3rem height minus its 1px
+ * borders, so the tile sits flush inside the rounded control.
+ */
+.accordion .icon {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  border-radius: 0.5rem;
+  color: var(--mb-color-core-brand);
+  flex: 0 0 auto;
+  height: 2.875rem;
+  margin-inline-end: 1rem;
+  width: 3rem;
+}
+
+.accordion .control:hover .icon {
+  background-color: var(--mb-color-background_surface-brand-subtle-hover);
+}
+
+.accordion .control[data-active] .icon {
+  background-color: var(--mb-color-background_surface-brand-strong);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.accordion .chevron {
   border: 0;
 }
 
-.content:not([data-css-specificity-hack="🪗"]) {
+.accordion .content {
   border: 0;
   color: var(--mb-color-text-secondary);
   padding-inline: 1rem;
   padding-top: 1.5rem;
   padding-bottom: 3rem;
-}
-
-.icon:not([data-css-specificity-hack="🪗"]) {
-  color: var(--mb-color-core-brand);
-  height: 3rem;
-  margin-right: 1rem;
-  width: 3rem;
-
-  [data-active="true"] & {
-    color: var(--mb-color-text-primary-inverse);
-  }
-}
-
-.list {
-  list-style-type: circle;
-
-  li {
-    margin-left: 2rem;
-  }
-}
-
-.inlineIcon {
-  vertical-align: middle;
 }
 
 .support {
@@ -123,4 +106,27 @@
 .image {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
+}
+
+/*
+ * The keyhole is line art, so it's inlined and tinted from these custom
+ * properties. They resolve through theme-aware tokens, which is what makes the
+ * illustration work in both color schemes.
+ */
+.illustration {
+  --permissions-illustration-line: var(--mb-color-core-brand);
+  --permissions-illustration-line-soft: var(--mb-color-core-brand);
+  --permissions-illustration-surface: var(
+    --mb-color-illustration-tertiary-brand
+  );
+
+  aspect-ratio: 560 / 316;
+  background-color: var(--mb-color-illustration-secondary-brand);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+}
+
+.illustration svg {
+  height: auto;
+  max-width: 100%;
 }
