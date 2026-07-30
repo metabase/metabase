@@ -204,6 +204,11 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
+      namespace: "embedding_hub";
+      key: "isNavbarOpened";
+      value: boolean;
+    }
+  | {
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;

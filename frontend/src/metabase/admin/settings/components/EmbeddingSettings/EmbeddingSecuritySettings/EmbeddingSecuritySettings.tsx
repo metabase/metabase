@@ -8,9 +8,10 @@ import {
 import { CorsInputWidget } from "./CorsInputWidget";
 import { SameSiteSelectWidget } from "./SameSiteSelectWidget";
 
-export function EmbeddingSecuritySettings() {
+/** Split out so the embedding hub can compose the widgets under its own page wrapper. */
+export function EmbeddingSecurityWidgets() {
   return (
-    <SettingsPageWrapper title={t`Security`}>
+    <>
       <SettingsSection>
         <CorsInputWidget />
       </SettingsSection>
@@ -18,6 +19,14 @@ export function EmbeddingSecuritySettings() {
       <SettingsSection>
         <SameSiteSelectWidget />
       </SettingsSection>
+    </>
+  );
+}
+
+export function EmbeddingSecuritySettings() {
+  return (
+    <SettingsPageWrapper title={t`Security`}>
+      <EmbeddingSecurityWidgets />
     </SettingsPageWrapper>
   );
 }
