@@ -81,7 +81,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    npm install @metabase/embedding-sdk-react@64-alpha
    ```
 
-   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint (the app's APIs) and the `@metabase/embedding-sdk-react/data-app-dev/config` entrypoint `vite.config.ts` uses (the dev/build preset, which serves the sandbox entry). Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
+   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint (the app's APIs) and the `@metabase/embedding-sdk-react/data-app-dev/config` entrypoint `vite.config.ts` uses (the dev/build preset, which serves the sandbox entry). Do not use `latest` or `64-stable` as data apps are not yet released.
 3. **Ensure the repo-root `.gitignore` ignores `.env.local`** — do this *before* creating any credentials file so the secret can never be committed. Create the `.gitignore` if the repo doesn't have one, then add the entry if it's missing:
 
    ```bash
