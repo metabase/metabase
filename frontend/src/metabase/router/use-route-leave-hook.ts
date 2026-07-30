@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef } from "react";
 import { UNSAFE_RouteContext } from "react-router";
 
 import type { RouteHook } from "./types";
-import { registerLeaveHook } from "./v7/blocking-history";
+import { registerLeaveHook } from "./v7/leave-hooks";
 
 /**
  * Register a hook that runs before a navigation leaves the route this component
