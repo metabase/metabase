@@ -9,6 +9,7 @@ import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState
 import {
   Box,
   Card,
+  Ellipsified,
   Flex,
   LoadingOverlay,
   Stack,
@@ -46,6 +47,7 @@ type EventColumn = {
   title: string;
   sort?: CliEventSortColumn;
   align?: "right";
+  grow?: boolean;
   render?: (value: RowValue) => ReactNode;
 };
 
@@ -80,15 +82,19 @@ const EVENT_COLUMN_META: Record<
     render: (value) =>
       value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
   }),
-  error_message: () => ({ title: t`Error message`, sort: "error_message" }),
+  error_message: () => ({
+    title: t`Error message`,
+    sort: "error_message",
+    grow: true,
+    render: (value) =>
+      value == null || value === "" ? (
+        EMPTY_CELL_PLACEHOLDER
+      ) : (
+        <Ellipsified>{String(value)}</Ellipsified>
+      ),
+  }),
 };
 
-/**
- * The curated columns surfaced in the events table, in display order. Derived from the same
- * {@link cliEventColumnKeys} the row-level query projects to (see `buildEventsQuery`). Any other view column (raw ids, client_name, group_name, …) is never even requested, and
- * `tenant_name`/`ip_address`/`error_message` are only requested when tenants/PII retention are
- * enabled.
- */
 export function eventColumns(
   hasTenants: boolean,
   hasPii: boolean,
@@ -227,8 +233,7 @@ function CliEventsTableInner({
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
-  // result by name. Names are upper- or lower-cased depending on the warehouse (the audit DB is H2,
-  // which upper-cases; Postgres lower-cases), so match case-insensitively.
+  // result by name. Names are upper- or lower-cased depending on the warehouse, so match case-insensitively.
   const columnIndex = useMemo(() => {
     const cols = data?.data?.cols ?? [];
     return new Map(cols.map((col, index) => [col.name.toLowerCase(), index]));
@@ -253,9 +258,9 @@ function CliEventsTableInner({
       columns.map((column) => ({
         id: column.key,
         header: column.title,
-        width: "auto",
-        minWidth: 120,
-        maxAutoWidth: 320,
+        ...(column.grow
+          ? { minWidth: 120 }
+          : { width: "auto" as const, minWidth: 120, maxAutoWidth: 320 }),
         enableSorting: !!column.sort,
         sortDescFirst: column.sort === "created_at",
         accessorFn: (row) => row[column.key],

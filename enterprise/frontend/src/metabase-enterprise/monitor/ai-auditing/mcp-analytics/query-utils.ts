@@ -32,12 +32,6 @@ type McpDataSources = {
 // Name of the count aggregation column produced by `Lib.aggregateByCount`.
 const COUNT_COLUMN = "count";
 
-/**
- * Apply the shared user/group/tenant filters to a query. The group filter joins the audit
- * `v_group_members` view and filters by `group_id` (a user can belong to several groups); the
- * user and tenant filters are plain `user_id` / `tenant_id` equalities. Each no-ops when its id
- * is unset.
- */
 function applyScopeFilters(
   query: Query,
   {
@@ -289,14 +283,6 @@ export const MCP_EVENT_SORT_COLUMNS = [
 
 export type McpEventSortColumn = (typeof MCP_EVENT_SORT_COLUMNS)[number];
 
-/**
- * The exact `v_mcp_tool_calls` columns the events table is allowed to see, in display order.
- * `tenant_name` only when tenants are enabled; `ip_address`/`error_message` (PII) only when PII
- * retention is on. This is the single source of truth for both the row-level query's column
- * projection ({@link buildEventsQuery}) and the table's display curation (`eventColumns` in
- * McpEventsTable.tsx) — so the two can never drift and ship a column to the browser that the UI
- * was never meant to show, regardless of the retention/tenant settings.
- */
 export function mcpEventColumnKeys(
   hasTenants: boolean,
   hasPii: boolean,
@@ -335,12 +321,6 @@ type EventsQueryOpts = McpFilters &
     hasPii: boolean;
   };
 
-/**
- * Restrict the query to exactly the curated {@link mcpEventColumnKeys} columns. Without this the
- * query returns the view's full row (every column, including PII like `ip_address` and
- * `error_message`) regardless of the tenant/retention settings — the frontend only *hid* those
- * columns from the rendered table, they still shipped to the browser and sat in the RTK cache.
- */
 function projectToEventColumns(
   query: Query,
   hasTenants: boolean,
@@ -352,14 +332,6 @@ function projectToEventColumns(
   return Lib.withFields(query, 0, fields);
 }
 
-/**
- * Build the row-level events query for the Events tab: the filtered view with no aggregation,
- * ordered by the chosen sort column (default `created_at` descending), then by the `tool_call_id`
- * primary key as a tiebreaker. The tiebreaker makes the sort a total order — without it,
- * pagination can skip or duplicate rows across page boundaries when the sort column has ties (the
- * DB is free to order ties differently between requests). Pagination is applied separately via
- * {@link paginateEventsQuery}.
- */
 export function buildEventsQuery({
   provider,
   table,
