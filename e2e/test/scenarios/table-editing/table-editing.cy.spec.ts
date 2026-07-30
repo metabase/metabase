@@ -134,7 +134,11 @@ describe("scenarios > table-editing", () => {
         `CREATE TABLE IF NOT EXISTS ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
         "postgres",
       );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: INLINE_EDIT_TEST_TABLE_NAME,
+        retrigger: true,
+      });
 
       H.getTableId({
         databaseId: WRITABLE_DB_ID,
