@@ -27,7 +27,7 @@ import type { DataReferenceItem } from "metabase/querying/components/DataReferen
 import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/parameters/components/template_tags/TagEditorSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";

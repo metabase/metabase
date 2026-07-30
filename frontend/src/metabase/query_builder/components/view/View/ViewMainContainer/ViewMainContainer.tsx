@@ -4,7 +4,7 @@ import cx from "classnames";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
+import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";

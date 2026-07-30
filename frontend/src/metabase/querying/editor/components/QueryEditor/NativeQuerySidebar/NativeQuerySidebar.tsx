@@ -3,7 +3,7 @@ import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/parameters/components/template_tags/TagEditorSidebar";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

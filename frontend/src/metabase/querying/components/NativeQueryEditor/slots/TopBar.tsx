@@ -6,13 +6,12 @@ import {
   isValidElement,
 } from "react";
 
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";
-
-import { ParametersList } from "./ParametersList";
 
 /**
  * The top bar of the native query editor. Renders the data source selector on
@@ -58,7 +57,7 @@ export const TopBar = forwardRef<HTMLDivElement, PropsWithChildren>(
     const leftActions: ReactNode[] = [];
     const rightActions: ReactNode[] = [];
     Children.toArray(children).forEach((child) => {
-      if (isValidElement(child) && child.type === ParametersList) {
+      if (isValidElement(child) && child.type === NativeQueryParametersList) {
         leftActions.push(child);
       } else {
         rightActions.push(child);
