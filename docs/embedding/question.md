@@ -250,7 +250,7 @@ These components are available via the `InteractiveQuestion` namespace (like `<I
 
 ### Let people save their changes
 
-Saving works the opposite way in each setup: it's on by default in the SDK's `InteractiveQuestion`, and off by default in the `<metabase-question>` web component.
+### Saving with web components
 
 With a web component, turn saving on with `is-save-enabled="true"`, and set the collection that saved questions land in with `target-collection`:
 
@@ -262,14 +262,14 @@ With a web component, turn saving on with `is-save-enabled="true"`, and set the 
 ></metabase-question>
 ```
 
-With the SDK, you get four props instead:
+### Saving with the React SDK
+
+With the SDK, you get four props to control saving questions:
 
 - `isSaveEnabled` shows or hides the save button.
 - `onBeforeSave` runs before a save (it can be async).
 - `onSave` runs after a successful save. It receives the updated question and a context object with `isNewQuestion`.
 - `targetCollection` pre-selects the collection to save to and hides the collection picker.
-
-`onBeforeSave` and `onSave` have no web component equivalent, so reach for the SDK if you need to run your own code around a save.
 
 To prevent people from saving changes (or saving as a new question), set `isSaveEnabled={false}`:
 
@@ -277,13 +277,13 @@ To prevent people from saving changes (or saving as a new question), set `isSave
 {% include_file "{{ dirname }}/sdk/snippets/questions/disable-question-save.tsx" %}
 ```
 
-In the embed wizard, this corresponds to the **Allow people to save new questions** option.
+In the embedding wizard, this corresponds to the **Allow people to save new questions** option.
 
 ## Filter results based on your app's context
 
 To show each customer only their own data, you have two options, depending on how you authenticate.
 
-**Guest embeds** can [lock a parameter](./guest-embedding.md#locked-parameters). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. That's what makes locked parameters worth using: an embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
+Embeds with **Guest** authentication can [lock a parameter](./guest-embedding.md#locked-parameters). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
 
 ```javascript
 const payload = {
@@ -297,11 +297,11 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-**SSO embeds** identify each viewer with their own Metabase account, so you can apply [data permissions](../permissions/embedding.md), [row and column security](../permissions/row-and-column-security.md), and [database routing](../permissions/database-routing.md) instead of locking parameters by hand.
+Embeds with **SSO** don't need to lock parameters, because you can apply [data permissions](../permissions/embedding.md), [row and column security](../permissions/row-and-column-security.md), and [database routing](../permissions/database-routing.md) instead of locking parameters by hand.
 
 ## Embed the query builder or SQL editor
 
-To let people build questions from scratch, rather than explore one you've already saved, check out [Embed the query builder](./query-builder.md).
+To let people build questions from scratch, check out [Embed the query builder](./query-builder.md).
 
 ## Use your app to control parameters
 
