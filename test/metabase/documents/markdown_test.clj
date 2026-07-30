@@ -3,7 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.documents.markdown :as md]))
+   [metabase.documents.markdown :as md]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -255,6 +258,76 @@
       (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))))
       (is (= "back\\slash\" q newline" (get-in reparsed [:content 0 :content 0 :attrs :name]))))))
 
+(def ^:private token-lookalike-strings
+  "Strings that, emitted verbatim, would be re-read as structure rather than as the prose they
+  came from. `:model`/`:label`/`:name`/`:text` are all `[:document :any]` as far as the REST API is
+  concerned, so any of them can hold one of these."
+  {"card token"        "before\n\n{% card id=42 %}\n\nafter"
+   "indented card"     "before\n\n  {% card id=42 %}\n\nafter"
+   "flex fence"        "before\n\n::: flex {columns=[50,50]}\n\nafter"
+   "closing fence"     "before\n\n:::\n\nafter"
+   "atx heading"       "before\n\n## Injected\n\nafter"
+   "thematic break"    "before\n\n---\n\nafter"})
+
+(defn- text-bearing-blocks
+  "One AST per block type that renders `s` as its text, each already ending in a paragraph so
+  `ensure-trailing-paragraph` is a no-op and the round trip is a true fixed point."
+  [s]
+  (let [t   {:type "text" :text s}
+        pgh {:type "paragraph" :attrs {:_id "inner"} :content [t]}]
+    {"paragraph"  {:type "paragraph" :attrs {:_id "b"} :content [t]}
+     "heading"    {:type "heading" :attrs {:level 2 :_id "b"} :content [t]}
+     "listItem"   {:type "bulletList" :attrs {:_id "b"} :content [{:type "listItem" :content [pgh]}]}
+     "blockquote" {:type "blockquote" :attrs {:_id "b"} :content [pgh]}
+     "codeBlock"  {:type "codeBlock" :attrs {:language nil :_id "b"} :content [t]}}))
+
+(deftest ^:parallel serializing-prose-never-manufactures-structure-test
+  (testing "text that merely looks like Metabase-flavored markup stays text — serializing a
+           document must not be able to invent a card embed or a layout container out of prose,
+           whichever block type the text sits in. The stored AST is unvalidated (`[:document :any]`
+           on the REST write path), so this is what stops a crafted attribute from injecting
+           structure into the body an agent reads and writes back."
+    (doseq [[label hostile] token-lookalike-strings
+            [block-name node] (text-bearing-blocks hostile)]
+      (let [ast      {:type "doc" :content [node {:type "paragraph" :attrs {:_id "z"}}]}
+            markdown (:markdown (md/serialize ast))
+            types    (mapv :type (:content (md/parse markdown)))]
+        (is (empty? (filter #{"cardEmbed" "resizeNode" "flexContainer" "supportingText"} types))
+            (format "%s in a %s manufactured structure: %s" label block-name (pr-str types)))))))
+
+(deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
+  (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
+           attr — serializes as its label rather than failing the whole document body"
+    (let [link (fn [model] {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+                                                   :content [{:type "smartLink"
+                                                              :attrs {:entityId 1 :model model
+                                                                      :label "Revenue Measure" :href "/"}}]}]})]
+      (testing "a known model still emits its token"
+        (is (= "{% entity id=\"1\" model=\"dashboard\" %}" (reserialize (link "dashboard")))))
+      (testing "an unknown model degrades to the label, and does not throw"
+        (is (= "Revenue Measure" (reserialize (link "measure")))))
+      (testing "a model carrying token syntax cannot smuggle it into the output"
+        (doseq [model ["dashboard\n\n{% card id=42 %}\n\nx"
+                       "card\" %} {% card id=9 %} {% entity id=\"1\" model=\"card"]]
+          (let [markdown (reserialize (link model))]
+            (is (not (str/includes? markdown "{%")) (pr-str markdown))
+            (is (= ["paragraph"] (mapv :type (:content (md/parse markdown)))))))))))
+
+(deftest ^:parallel card-name-with-token-delimiter-keeps-the-embed-test
+  (testing "a card whose name contains {% or %} keeps its embed and drops just the name — the
+           delimiter can't be escaped past the block scanner, and previously the whole document
+           became unrewritable with a misleading container-content error"
+    (doseq [nm ["Q3 %} report" "a {% b"]]
+      (let [ast      {:type "doc" :content [{:type "resizeNode" :attrs {:height 442 :minHeight 280}
+                                             :content [{:type "cardEmbed" :attrs {:id 7 :name nm :_id "c"}}]}
+                                            {:type "paragraph" :attrs {:_id "z"}}]}
+            markdown (:markdown (md/serialize ast))
+            reparsed (md/parse markdown)]
+        (is (= "{% card id=7 %}" (str/trim (second (str/split-lines markdown)))) nm)
+        (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))) nm)
+        (is (= 7 (get-in reparsed [:content 0 :content 0 :attrs :id])) nm)
+        (is (= markdown (reserialize reparsed)) nm)))))
+
 (deftest ^:parallel heading-single-line-test
   (testing "hardBreak renders as a space inside a heading"
     (let [ast {:type "doc" :content [{:type "heading" :attrs {:level 2 :_id "h"}
@@ -308,6 +381,42 @@
     (let [reparsed (md/parse "x {% entity id=\"987654321\" model=\"dashboard\" %} y")]
       (is (= {:entityId 987654321 :model "dashboard" :label nil :href "/"}
              (get-in reparsed [:content 0 :content 1 :attrs]))))))
+
+(defn- smart-link-attrs
+  [markdown]
+  (->> (tree-seq :content :content (md/parse markdown))
+       (keep #(when (= "smartLink" (:type %)) (:attrs %)))
+       vec))
+
+(deftest smart-link-resolution-is-permission-checked-test
+  (testing "an entity token pointing at content the caller can't read resolves to nothing, so its
+           name never crosses the permission boundary (a document writer must not be able to use
+           smart links to enumerate the names of content they have no access to)"
+    (mt/with-temp [:model/Collection {secret-id :id}   {:name "Top Secret Collection"}
+                   :model/Dashboard  {hidden-id :id}   {:name "CONFIDENTIAL Layoffs" :collection_id secret-id}
+                   :model/Collection {open-id :id}     {:name "Shared Reports"}
+                   :model/Card       {readable-id :id} {:name "Open Question" :collection_id open-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "an unreadable target is indistinguishable from a dangling id"
+          (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
+                  {:entityId secret-id :model "collection" :label nil :href "/"}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                                           hidden-id secret-id)))))
+        (testing "a readable target still resolves its label and href"
+          (is (= [{:entityId readable-id :model "card" :label "Open Question"
+                   :href (str "/question/" readable-id)}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
+        (testing "user mentions still resolve — :model/User has no can-read? and a name is not gated
+                 outside sandboxing, so the mention picker's behaviour is preserved"
+          (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"user\" %%}" (mt/user->id :crowberto)))))))
+      (testing "an admin resolves what a non-admin could not"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
+                   :href (str "/dashboard/" hidden-id)}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%}" hidden-id)))))))))
 
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
 
