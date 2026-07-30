@@ -805,13 +805,33 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      hoverHeaderCell();
     }
   });
 
   if (description != null) {
     hovercard().should("contain.text", description);
   }
+}
+
+// Open the preview's column-description hovercard. The hovercard opens on a
+// delayed `openDelay` timer, and a single one-shot `realHover()` can miss it:
+// after `cy.wait("@dataset")` the table re-renders on a microtask (fetch
+// resolution) and Chrome v133+ headless hit-tests CDP mouse events
+// differently, either of which drops the hover and cancels the open timer,
+// leaving the hovercard permanently absent for that attempt. Re-query the cell
+// for each dispatch so the events land on the post-render DOM node, and fire
+// both `mouseover` (bubbles → React 18 synthetic onMouseEnter for any wrapper)
+// and `mouseenter` (for native useEventListener handlers Mantine attaches
+// directly to the cell).
+function hoverHeaderCell() {
+  const headerCell = () =>
+    cy
+      .findByTestId("header-cell")
+      .findByTestId("cell-data")
+      .should("be.visible");
+  headerCell().trigger("mouseenter", { force: true });
+  headerCell().trigger("mouseover", { force: true });
 }
 
 function verifyObjectDetailPreview({
