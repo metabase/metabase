@@ -143,7 +143,12 @@
 
 (mu/defn- schema->params* :- [:sequential :metabase.api.open-api/parameter]
   [schema in-fn renames]
-  (let [{:keys [properties required]} (mjs-collect-definitions schema)
+  ;; deref a top-level registry reference (e.g. a params schema defined with `mr/def`) to the underlying `:map` —
+  ;; `mjs/transform` turns an unresolved reference into a lone `$ref` with no `:properties`, which would silently
+  ;; drop every parameter from the spec. Top-level-only on purpose: children keep their refs so shared schemas
+  ;; still emit `$ref`s into `#/components/schemas/` (see [[mr/resolve-schema]]'s walk for why not that fn).
+  (let [schema                        (-> schema mc/schema mc/deref-all)
+        {:keys [properties required]} (mjs-collect-definitions schema)
         required                      (set required)]
     (for [[k param-schema] properties
           :let             [k (get renames k k)]

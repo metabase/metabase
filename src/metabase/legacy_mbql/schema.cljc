@@ -477,7 +477,7 @@
 
 (defclause ^{:added "0.50.0"} offset
   opts [:ref ::lib.schema.common/options]
-  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
+  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::AnyAggregation]]
   n    ::lib.schema.expression.window/offset.n)
 
 (defmethod options-style-method :offset [_tag] ::options-style.mbql5)
@@ -536,7 +536,7 @@
                        :else                            :field))}
    [:number             number?]
    [:numeric-expression [:ref ::NumericExpression]]
-   [:aggregation        [:ref ::Aggregation]]
+   [:aggregation        [:ref ::AnyAggregation]]
    [:value              [:ref ::value]]
    [:field              [:ref ::Reference]]])
 
@@ -549,7 +549,7 @@
                        (is-clause? :value x)             :value
                        (is-clause? datetime-functions x) :datetime-expression
                        :else                             :else))}
-   [:aggregation         [:ref ::Aggregation]]
+   [:aggregation         [:ref ::AnyAggregation]]
    [:value               [:ref ::value]]
    [:datetime-expression [:ref ::DatetimeExpression]]
    [:else                [:or
@@ -577,7 +577,7 @@
    [:boolean-expression   [:ref ::BooleanExpression]]
    [:numeric-expression   [:ref ::NumericExpression]]
    [:datetime-expression  [:ref ::DatetimeExpression]]
-   [:aggregation          [:ref ::Aggregation]]
+   [:aggregation          [:ref ::AnyAggregation]]
    [:aggregation-ref      [:ref ::aggregation]]
    [:string               :string]
    [:string-expression    [:ref ::StringExpression]]
@@ -1400,7 +1400,7 @@
 
 (defmethod options-style-method :aggregation-options [_tag] ::options-style.last-always)
 
-(mr/def ::Aggregation
+(mr/def ::AnyAggregation
   "Schema for anything that is a valid `:aggregation` clause."
   [:and
    [:multi
@@ -1463,7 +1463,7 @@
   [:sequential
    {:min              1
     :decode/normalize #'normalize-aggregations}
-   [:ref ::Aggregation]])
+   [:ref ::AnyAggregation]])
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
 ;;
