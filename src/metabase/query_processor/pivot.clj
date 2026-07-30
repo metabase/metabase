@@ -12,7 +12,6 @@
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -700,31 +699,35 @@
         (cond-> (seq (:info query)) qp/userland-query)
         (qp/process-query rff))))
 
+(defn- running-in-clojure-test?
+  "True when a `clojure.test` test is currently on the stack — the presence of `*testing-vars*` is the
+  authoritative signal that a test is running. `resolve` (not `requiring-resolve`) is enough: if
+  `clojure.test` isn't loaded, no test is running."
+  []
+  (boolean (some-> (resolve 'clojure.test/*testing-vars*) deref seq)))
+
 (def ^:dynamic *check-pivot-parity?*
   "Controls whether [[run-pivot-query]] runs both the native and multi-query pivot paths whenever both are
   applicable and reports disagreement via [[*on-parity-mismatch*]]. Left at the default sentinel
-  `::default`, parity is on whenever tests are running — either the JVM is a test build
-  (`config/is-test?`) or code is currently inside a `clojure.test` test. Bind to `true` or `false` to
-  override; the [[without-pivot-parity-check]] helper does exactly that for tests whose queries
-  intentionally diverge between the two paths."
+  `::default`, parity is on whenever a `clojure.test` test is currently running. Bind to `true` or
+  `false` to override; the [[without-pivot-parity-check]] helper does exactly that for tests whose
+  queries intentionally diverge between the two paths."
   ::default)
 
 (defn- pivot-parity-enabled?
-  "Resolve [[*check-pivot-parity?*]] to a boolean. `::default` means \"on when running tests\" — either
-  `config/is-test?` (a test-mode JVM) or a `clojure.test` test is currently on the stack. `resolve` (not
-  `requiring-resolve`) is enough: if `clojure.test` isn't loaded, no test is running."
+  "Resolve [[*check-pivot-parity?*]] to a boolean. `::default` means \"on when a `clojure.test` test is
+  running\"."
   []
   (case *check-pivot-parity?*
-    ::default (or config/is-test?
-                  (boolean (some-> (resolve 'clojure.test/*testing-vars*) deref seq)))
+    ::default (running-in-clojure-test?)
     (boolean *check-pivot-parity?*)))
 
 (defn- default-on-parity-mismatch!
-  "Default handler for pivot parity mismatches: reports a `clojure.test` failure in test builds — the two
-  outcomes are handed to the reporter as `:expected` (multi-query) and `:actual` (native) so the test
-  runner prints the diff — and logs otherwise."
+  "Default handler for pivot parity mismatches: reports a `clojure.test` failure when a test is on the
+  stack — the two outcomes are handed to the reporter as `:expected` (multi-query) and `:actual` (native)
+  so the test runner prints the diff — and logs otherwise."
   [{:keys [native-outcome multi-outcome] :as ctx}]
-  (if config/is-test?
+  (if (running-in-clojure-test?)
     ((requiring-resolve 'clojure.test/do-report)
      {:type     :fail
       :message  "Pivot parity mismatch — native and multi-query paths disagree"
@@ -812,10 +815,10 @@
    (qp.setup/with-qp-setup [query query]
      (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query)
            db          (query-database query)
-           applicable? (native-path-applicable? db query)
-           use-native? (and applicable? (qp.settings/use-native-pivot-tables))
+           nativable?  (native-path-applicable? db query)
+           use-native? (and nativable? (qp.settings/use-native-pivot-tables))
            primary     (if use-native? run-native-pivot-query run-pivot-query-multi)
            secondary   (if use-native? run-pivot-query-multi run-native-pivot-query)]
-       (if (and applicable? (pivot-parity-enabled?))
+       (if (and nativable? (pivot-parity-enabled?))
          (run-with-parity-check primary secondary query rff use-native?)
          (primary query rff))))))
