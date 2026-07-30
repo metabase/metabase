@@ -894,6 +894,56 @@
           (is (re-find #"Too many query parameters" (ex-message ex))
               "the underlying BigQuery error message should be preserved"))))))
 
+(deftest validate-query-length-test
+  (testing "BigQuery rejects oversized queries client-side, before the request is sent, with an actionable error"
+    (let [limit @#'bigquery/max-sql-query-length-chars]
+      (testing "at or under the limit, nothing is thrown"
+        (is (nil? (#'bigquery/validate-query-length! "SELECT 1" nil)))
+        ;; exactly at the limit proceeds (boundary inclusive)
+        (is (nil? (#'bigquery/validate-query-length! (str/join (repeat limit "x")) nil))))
+      (testing "one character over the limit throws a localized :invalid-query"
+        (let [sql (str/join (repeat (inc limit) "x"))
+              ex  (try
+                    (#'bigquery/validate-query-length! sql [:param])
+                    nil
+                    (catch Throwable t t))]
+          (is (some? ex) "expected the oversized query to throw")
+          (is (= :invalid-query (some-> ex ex-data :type)))
+          (is (= sql (some-> ex ex-data :sql))
+              "the offending SQL is attached for diagnostics")
+          (is (= [:param] (some-> ex ex-data :parameters)))
+          (is (re-find #"(?i)too large for BigQuery" (ex-message ex)))
+          (is (re-find #"(?i)maximum" (ex-message ex)))))
+      (testing "the Metabase `-- remark` comment (appended in execute-reducible-query) is counted toward the limit"
+        ;; base alone is under the limit; base + remark crosses it.
+        (let [base   (str/join (repeat (- limit 10) "x"))
+              remark "\n\n-- some remark"
+              ex     (try
+                       (#'bigquery/validate-query-length! (str base remark) nil)
+                       nil
+                       (catch Throwable t t))]
+          (is (some? ex)
+              "the remark pushes an otherwise-valid query over the limit, exactly as BigQuery would count it")
+          (is (= :invalid-query (some-> ex ex-data :type))))))))
+
+(deftest execute-bigquery-rejects-oversized-query-before-send-test
+  (testing "execute-bigquery rejects an oversized query as :invalid-query before contacting BigQuery"
+    (let [limit         @#'bigquery/max-sql-query-length-chars
+          too-large-sql (str/join (repeat (inc limit) "x"))
+          client-calls  (atom 0)]
+      (mt/with-dynamic-fn-redefs [bigquery/database-details->client
+                                  (fn [_details]
+                                    (swap! client-calls inc)
+                                    (throw (ex-info "client must not be created for an oversized query" {})))]
+        (let [ex (try
+                   (#'bigquery/execute-bigquery (constantly nil) {} too-large-sql [] nil)
+                   nil
+                   (catch Throwable t t))]
+          (is (some? ex))
+          (is (= :invalid-query (some-> ex ex-data :type)))
+          (is (zero? @client-calls)
+              "the oversized query must be rejected before any BigQuery client/job is created"))))))
+
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
