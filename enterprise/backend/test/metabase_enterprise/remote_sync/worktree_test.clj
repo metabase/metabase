@@ -121,6 +121,16 @@
         (testing "they are when explicitly asked for"
           (is (contains? (visible {:include-worktrees? true}) worktree-collection)))))))
 
+(deftest worktree-collection-children-match-the-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-h"}
+                 :model/Collection {main-collection :id} {}
+                 :model/Collection parent {:worktree_id worktree}
+                 :model/Collection {child :id} {:location (format "/%d/" (:id parent))}]
+    (testing "the children of a worktree collection are its worktree's collections"
+      (is (= #{child} (set (map :id (collection/effective-children parent))))))
+    (testing "the children of a main-app collection never include worktree collections"
+      (is (empty? (collection/effective-children (t2/select-one :model/Collection :id main-collection)))))))
+
 (deftest delete-worktree!-removes-its-content-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-f"}
                  :model/Collection {main-collection :id} {}

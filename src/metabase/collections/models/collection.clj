@@ -792,6 +792,7 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
+   [:worktree-id {:optional true} [:maybe :int]]
    [:include-worktrees? {:optional true} :boolean]
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
@@ -804,6 +805,7 @@
   {:cte-name nil
    :include-archived-items :exclude
    :include-trash-collection? false
+   :worktree-id nil
    :include-worktrees? false
    :effective-child-of nil
    :archive-operation-id nil
@@ -921,7 +923,7 @@
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             (when-not (:include-worktrees? visibility-config)
-              (remote-sync/exclude-worktrees-clause :c.worktree_id))
+              [:= :c.worktree_id (:worktree-id visibility-config)])
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
@@ -1207,7 +1209,8 @@
   [collection collection-table-alias visibility-config & additional-honeysql-where-clauses]
   (into
    [:and
-    (effective-child-of-filter-clause collection collection-table-alias visibility-config)
+    (effective-child-of-filter-clause collection collection-table-alias
+                                      (assoc visibility-config :worktree-id (:worktree_id collection)))
     ;; don't want personal collections in collection items. Only on the sidebar
     [:= :personal_owner_id nil]]
    ;; (any additional conditions)
