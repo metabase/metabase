@@ -328,8 +328,20 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.log(
       "Expand the rows up front - we'll need them later for the assertion",
     );
-    TablePicker.getDatabase("Writable Postgres12").should("be.visible").click();
+    // The picker tree keeps mounting after the databases request resolves, so
+    // clicking the database row before its expand handler is wired drops the click
+    // and the schema fetch that populates the tables never fires. Wait for the
+    // expand toggle to render collapsed, click it, then confirm it expanded so the
+    // schema request reliably occurs before we select the database.
+    TablePicker.getDatabaseToggle("Writable Postgres12")
+      .should("have.attr", "aria-expanded", "false")
+      .click();
     cy.wait("@getSchema");
+    TablePicker.getDatabaseToggle("Writable Postgres12").should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
 
     TablePicker.getDatabase("Writable Postgres12")
       .find('input[type="checkbox"]')
