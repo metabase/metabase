@@ -150,10 +150,10 @@
 ;;; [[with-relevant-permissions-for-user]] and both keyed by user ID so we NEVER accidentally use the cache of the
 ;;; wrong user:
 ;;;
-;;;  - [[*table-perms-cache*]]     -> every permission row, table-level rows included; loaded per database, all
-;;;                                  permission types at once
-;;;  - [[*schema-perms-cache*]] -> `table_id`-collapsed distinct rows; loaded for all permission types and all
-;;;                                  databases in a single query on first use
+;;;  - [[*table-perms-cache*]]  -> every permission row, table-level rows included; loaded per database, all
+;;;                                permission types at once
+;;;  - [[*schema-perms-cache*]] -> `table_id`-collapsed distinct rows; loaded per database (all permission types at
+;;;                                once), or every database in one query for cross-database questions
 ;;;
 ;;; Both caches are point-in-time snapshots for the request: nothing invalidates them when data_permissions is
 ;;; written, so code that mutates permissions and re-checks them within the same request scope reads pre-write
@@ -205,19 +205,23 @@
   (atom {:db-ids #{} :perms {}}))
 
 (def ^:dynamic *schema-perms-cache*
-  "A dynamically-bound atom caching the current user's schema-level permission tuples, as a map of
-  `{user-id {perm-type {db-id #{tuple}}}}` — keyed by user ID so that we NEVER accidentally use the cache of the
-  wrong user, with key presence doubling as the loaded marker — where each tuple is
+  "A dynamically-bound atom caching the current user's schema-level permission tuples: the user's
+  `data_permissions` rows with `table_id` projected away and duplicates collapsed by `SELECT DISTINCT` — schema is
+  the finest granularity this cache can answer. It serves every permission question that never cares which table a
+  row came from (e.g. [[full-db-permission-for-user]], [[schema-permission-for-user]] or
+  [[user-has-any-perms-of-type?]]). Rows for inactive tables are excluded, matching [[*table-perms-cache*]].
+  Keys are:
+    - :db-ids   -> A set of the IDs of databases which have already been fetched.
+    - :all-dbs? -> True once a cross-database question loaded every database in one query, meaning nothing further
+                   ever needs fetching.
+    - :perms    -> `{user-id {perm-type {db-id #{tuple}}}}` — keyed by user ID so that we NEVER accidentally use the
+                   cache of the wrong user — where each tuple is
 
-      {:group-id g :schema s :value v :table-level? b}
+                       {:group-id g :schema s :value v :table-level? b}
 
-  i.e. the user's `data_permissions` rows with `table_id` projected away and duplicates collapsed by
-  `SELECT DISTINCT` — schema is the finest granularity this cache can answer. It serves every permission question
-  that never cares which table a row came from (e.g. [[full-db-permission-for-user]], [[schema-permission-for-user]]
-  or [[user-has-any-perms-of-type?]]). The whole map is loaded in a single query on first use, for all permission
-  types and all databases: collapsing `table_id` keeps it to a few tuples per database no matter how many per-table
-  rows exist. Rows for inactive tables are excluded, matching [[*table-perms-cache*]]."
-  (atom {}))
+  Single-database questions load one database at a time — all permission types at once — like
+  [[*table-perms-cache*]]; [[prime-schema-perms-cache]] batch-loads for checks that loop over many databases."
+  (atom {:db-ids #{} :perms {}}))
 
 (defn- perm-rows-query-base
   "The FROM/JOIN/WHERE shared by [[table-perm-rows]] and [[schema-perm-rows]]: one user's groups' rows for every
@@ -319,7 +323,7 @@
   the cache-aware functions in this namespace."
   [user-id & body]
   `(binding [*table-perms-cache*  (atom {:db-ids #{} :perms {}})
-             *schema-perms-cache* (atom {})
+             *schema-perms-cache* (atom {:db-ids #{} :perms {}})
              *sandboxes-for-user* (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
@@ -417,17 +421,40 @@
   (rows->schema-perms (schema-perm-rows user-id db-ids)))
 
 (defn- schema-perms
-  "Returns `{perm-type {db-id #{tuple}}}` (see [[*schema-perms-cache*]]) for the given user; the caller picks what it
-  needs out of the returned map. Answered from the cache when available; the first miss loads every permission type
-  across every database in one query on purpose, even when the caller asks about a single one: most consumers ask
-  cross-database questions (\"does the user have this permission on any database?\", or a check looping over every
-  database), and the `SELECT DISTINCT` keeps the result a few tuples per database."
+  "Returns `{perm-type {db-id #{tuple}}}` (see [[*schema-perms-cache*]]) for the given user and database IDs; the
+  caller picks what it needs out of the returned map. When the request cache is available, missing databases are
+  loaded and stored — every permission type at once — and the user's whole cached map is returned; otherwise the
+  requested rows are loaded directly."
+  [user-id db-ids]
+  (if (use-cache? user-id)
+    (do
+      (when-not (:all-dbs? @*schema-perms-cache*)
+        (let [missing-db-ids (into [] (remove (:db-ids @*schema-perms-cache*)) db-ids)]
+          (when (seq missing-db-ids)
+            (let [loaded (load-schema-perms user-id missing-db-ids)]
+              (swap! *schema-perms-cache*
+                     (fn [cache]
+                       (-> cache
+                           (update :db-ids into missing-db-ids)
+                           (update-in [:perms user-id] #(merge-with merge % loaded)))))))))
+      (get-in @*schema-perms-cache* [:perms user-id]))
+    (load-schema-perms user-id db-ids)))
+
+(defn- all-schema-perms
+  "Like [[schema-perms]] but for cross-database questions (\"does the user have this permission on any database?\"):
+  loads every database in one query on the first miss and marks the cache complete under `:all-dbs?`. The
+  `SELECT DISTINCT` keeps the result a few tuples per database."
   [user-id]
   (if (use-cache? user-id)
     (do
-      (when-not (contains? @*schema-perms-cache* user-id)
-        (swap! *schema-perms-cache* assoc user-id (load-schema-perms user-id nil)))
-      (get @*schema-perms-cache* user-id))
+      (when-not (:all-dbs? @*schema-perms-cache*)
+        (let [loaded (load-schema-perms user-id nil)]
+          (swap! *schema-perms-cache*
+                 (fn [cache]
+                   (-> cache
+                       (assoc :all-dbs? true)
+                       (assoc-in [:perms user-id] loaded))))))
+      (get-in @*schema-perms-cache* [:perms user-id]))
     (load-schema-perms user-id nil)))
 
 (defn- schema-perms-for-db
@@ -435,9 +462,24 @@
   caller to pick from. Without a request cache the load is scoped to the one database instead of scanning all of the
   user's rows."
   [user-id db-id]
-  (if (use-cache? user-id)
-    (schema-perms user-id)
-    (load-schema-perms user-id [db-id])))
+  (schema-perms user-id [db-id]))
+
+(defn prime-schema-perms-cache
+  "Eagerly load [[*schema-perms-cache*]] for the current user. Schema-level checks fill the cache one database at a
+  time, so call this before checking permissions across many databases — with `db-ids` to load specific databases in
+  one query, or with no arguments to load every database. A no-op for superusers (their checks never read the cache)
+  and when the request cache is unavailable."
+  ([]
+   (when (and (use-cache? api/*current-user-id*)
+              (not api/*is-superuser?*))
+     (all-schema-perms api/*current-user-id*)
+     nil))
+  ([db-ids]
+   (when (and (use-cache? api/*current-user-id*)
+              (not api/*is-superuser?*)
+              (seq db-ids))
+     (schema-perms api/*current-user-id* db-ids)
+     nil)))
 
 ;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
 
@@ -766,7 +808,7 @@
         (boolean (some (fn [[db-id tuples]]
                          (and (not (exclude? db-id))
                               (some #(= (:value %) value) tuples)))
-                       (get (schema-perms user-id) perm-type))))))
+                       (get (all-schema-perms user-id) perm-type))))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"

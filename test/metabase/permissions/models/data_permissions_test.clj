@@ -82,7 +82,7 @@
         table-loads  (atom [])
         schema-loads (atom [])
         table-cache  (atom {:db-ids #{} :perms {}})
-        schema-cache (atom {})]
+        schema-cache (atom {:db-ids #{} :perms {}})]
     (binding [api/*current-user-id*           user-id
               data-perms/*table-perms-cache*  table-cache
               data-perms/*schema-perms-cache* schema-cache]
@@ -91,20 +91,28 @@
                                     (swap! table-loads conj db-ids)
                                     {:perms/view-data (zipmap db-ids (repeat {:groups {} :tables {}}))})
                                   data-perms/load-schema-perms
-                                  (fn [_user-id _db-ids]
-                                    (swap! schema-loads conj :all)
-                                    {:perms/view-data {10 #{{:value :unrestricted}}}})]
+                                  (fn [_user-id db-ids]
+                                    (swap! schema-loads conj (or db-ids :all))
+                                    {:perms/view-data (zipmap (or db-ids [10]) (repeat #{{:value :unrestricted}}))})]
         (testing "the table cache loads only databases not already fetched"
           (#'data-perms/table-perms user-id [10])
           (#'data-perms/table-perms user-id [10 11])
           (#'data-perms/table-perms user-id [10 11])
           (is (= [[10] [11]] @table-loads))
           (is (= #{10 11} (:db-ids @table-cache))))
-        (testing "the schema cache loads everything once"
-          (#'data-perms/schema-perms user-id)
-          (#'data-perms/schema-perms user-id)
-          (is (= [:all] @schema-loads))
-          (is (contains? @schema-cache user-id)))))))
+        (testing "the schema cache loads only databases not already fetched"
+          (#'data-perms/schema-perms user-id [10])
+          (#'data-perms/schema-perms user-id [10 11])
+          (is (= [[10] [11]] @schema-loads))
+          (is (= #{10 11} (:db-ids @schema-cache))))
+        (testing "a cross-database question loads every database once and marks the cache complete"
+          (#'data-perms/all-schema-perms user-id)
+          (#'data-perms/all-schema-perms user-id)
+          (is (= [[10] [11] :all] @schema-loads))
+          (is (true? (:all-dbs? @schema-cache)))
+          (testing "after which single-database questions need no further loads"
+            (#'data-perms/schema-perms user-id [12])
+            (is (= [[10] [11] :all] @schema-loads))))))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
