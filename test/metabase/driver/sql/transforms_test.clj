@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -290,3 +291,36 @@
               (is (= written (:rows-affected insert-result))
                   (format "%s: INSERT :rows-affected (%s) should equal %s — failure means the driver also undercounts DML"
                           driver/*driver* (pr-str (:rows-affected insert-result)) written)))))))))
+
+(defn- ensure-schema!
+  "Create `schema` for the current driver. `driver/create-schema-if-needed!` is the production seam,
+  but drivers that don't implement it inherit a no-op default and expect the schema to already
+  exist, so those get the DDL directly."
+  [driver conn-spec schema]
+  (if (identical? (get-method driver/create-schema-if-needed! driver)
+                  (get-method driver/create-schema-if-needed! :default))
+    (driver/execute-raw-queries! driver conn-spec
+                                 [[(str "CREATE SCHEMA IF NOT EXISTS "
+                                        (sql.u/quote-name driver :schema schema))]])
+    (driver/create-schema-if-needed! driver conn-spec schema)))
+
+(deftest transform-target-in-dashed-schema-round-trips-test
+  ;; A schema name with a dash in it is ordinary -- Postgres, H2, Snowflake and SQL Server all accept
+  ;; one. The qualified identifier has to survive both the create and drop code paths.
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (mt/with-premium-features #{:transforms-basic}
+      (let [dashed-schema "dashed-schema-probe"
+            conn-spec     (driver/connection-spec driver/*driver* (mt/db))]
+        (ensure-schema! driver/*driver* conn-spec dashed-schema)
+        (transforms.tu/with-transform-cleanup! [target {:type     :table
+                                                        :schema   dashed-schema
+                                                        :name     "dashed_table_probe"
+                                                        :database (mt/id)}]
+          (let [target-table (:name target)
+                exists?      #(driver/table-exists? driver/*driver* (mt/db)
+                                                    {:schema dashed-schema, :name target-table})]
+            (driver/create-table! driver/*driver* (mt/id) (keyword dashed-schema target-table)
+                                  {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+            (is (exists?) "the target table is created in the dashed schema")
+            (transforms.tu/drop-target! target)
+            (is (not (exists?)) "and dropping the transform target actually drops the table")))))))

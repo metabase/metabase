@@ -13,7 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+   [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-columns quote-identifier
                                              quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -159,18 +159,6 @@
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
-
-(defn- dot-qualified
-  "Rewrite a schema-qualified keyword so the whole dotted path lives in its name: `:schema/tbl` -> `:schema.tbl`.
-  Takes a keyword or a dot-qualified string; returns a keyword."
-  [table-name]
-  ;; not (keyword table-name) straight through: HoneySQL munges dashes to underscores in a
-  ;; keyword's namespace but not in its name, so a catalog named `test-data` would reach the
-  ;; database as `test_data`.
-  (let [kw (keyword table-name)]
-    (keyword (if-let [schema (namespace kw)]
-               (str schema "." (name kw))
-               (name kw)))))
 
 (defn- drop-table-sql [driver table-name]
   (first (sql/format {:drop-table [:if-exists (dot-qualified table-name)]}

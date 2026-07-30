@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.quoting :as quoting]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -404,12 +405,28 @@
 
 (deftest ^:parallel dot-qualified-test
   (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
-    (are [table-name expected] (= expected (#'driver.sql-jdbc/dot-qualified table-name))
+    (are [table-name expected] (= expected (quoting/dot-qualified table-name))
       (keyword "test-data" "some_tbl") :test-data.some_tbl
       (keyword "test-data" "a.b")      :test-data.a.b
       (keyword "some_tbl")             :some_tbl
       "test-data.tbl"                  :test-data.tbl
       "some_tbl"                       :some_tbl)))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel create-table-sql-preserves-dashes-test
+  (let [create-sql #(#'driver.sql-jdbc/create-table!-sql %1 %2 [["id" [:int]]])]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, CREATE TABLE
+              targets a schema that isn't there"
+      (is (= "CREATE TABLE `test-data`.`some_tbl` (`id` INT)"
+             (create-sql :mysql (keyword "test-data" "some_tbl"))))
+      (is (= "CREATE TABLE \"test-data\".\"some_tbl\" (\"id\" INT)"
+             (create-sql :postgres (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "CREATE TABLE `some_tbl` (`id` INT)"
+             (create-sql :mysql (keyword "some_tbl")))))
+    (testing "dot-qualified strings split into segments"
+      (is (= "CREATE TABLE \"schema\".\"name\" (\"id\" INT)"
+             (create-sql :postgres "schema.name"))))))
 
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel drop-table-sql-preserves-dashes-test
