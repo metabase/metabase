@@ -250,6 +250,8 @@ These components are available via the `InteractiveQuestion` namespace (like `<I
 
 ### Let people save their changes
 
+If you're using embeds with SSO, you can let people save their work.
+
 ### Saving with web components
 
 With a web component, turn saving on with `is-save-enabled="true"`, and set the collection that saved questions land in with `target-collection`:
