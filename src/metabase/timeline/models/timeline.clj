@@ -22,7 +22,7 @@
   [timeline]
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
-  (update (remote-sync/remove-worktree-id-helper timeline) :icon (fn [icon]
+  (update timeline :icon (fn [icon]
                            (if (= icon "balloons") timeline-event/default-icon icon))))
 
 (t2/define-before-insert :model/Timeline [model]
@@ -61,7 +61,7 @@
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      [:worktree_id :worktree_id_helper]
+   :skip      [:worktree_id]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

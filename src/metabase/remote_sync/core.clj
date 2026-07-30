@@ -4,7 +4,13 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(p/import-vars
+ [metabase.remote-sync.worktree
+  default-worktree-id
+  default-worktree-id?])
 
 (defn worktree-id-of
   "The `worktree_id` of the `parent-model` row with `parent-id`, or `nil` when there is no parent."
@@ -16,14 +22,14 @@
   "Returns `instance`, having checked that the current user may create it: content in a worktree is admin-only. A
   pull, which materializes a worktree without a user, is exempt."
   [instance]
-  (when (and (:worktree_id instance) (not mi/*deserializing?*))
+  (when (and (not (default-worktree-id? (:worktree_id instance))) (not mi/*deserializing?*))
     (api/check-superuser))
   instance)
 
 (defn inherit-worktree-id
   "`before-insert` helper stamping `instance`'s `:worktree_id` from the parent that `parent-key` (e.g.
   `:collection_id`) points at, so new content lands in the same worktree as the parent it is created under. A row
-  with no parent -- a worktree's root content -- keeps the `:worktree_id` it was given.
+  with no parent -- a worktree's root content -- keeps the `:worktree_id` it was given, defaulting to the main app.
 
   Creating content in a worktree is admin-only, whether the worktree was inherited or passed in; a pull, which runs
   without a user, is exempt."
@@ -31,12 +37,16 @@
   (check-worktree-create-allowed
    (if-let [parent-id (get instance parent-key)]
      (assoc instance :worktree_id (worktree-id-of parent-model parent-id))
-     instance)))
+     (update instance :worktree_id #(or % (default-worktree-id))))))
 
 (defn check-parent-same-worktree
   "`before-update` guard throwing a 400 when `parent-key` (e.g. `:collection_id`) changes to a parent in a different
-  worktree than this row's -- content cannot move into, out of, or between worktrees. `parent-model` is the parent's
-  model. Returns nil; call for side effect."
+  worktree than this row's. `parent-model` is the parent's model. Returns nil; call for side effect.
+
+  The composite `(parent_id, worktree_id)` foreign key rejects this move too, but only as a referential integrity
+  error. Content a user can reparent from the UI checks here first, so the API answers 400 rather than surfacing a
+  constraint violation. Rows a user cannot reparent -- dashboard cards, tabs, series, parameter cards, actions,
+  transform tag assignments -- rely on the foreign key alone."
   [instance parent-model parent-key]
   (when (contains? (t2/changes instance) parent-key)
     (let [current (:worktree_id (t2/original instance))
@@ -50,33 +60,30 @@
 
 (defn check-worktree-id-unchanged
   "`before-update` guard rejecting a direct write to `worktree_id`: membership is derived from the parent, never
-  edited. Returns nil; call for side effect."
+  edited. Returns nil; call for side effect.
+
+  The composite `(parent_id, worktree_id)` foreign keys already reject a row whose worktree stops matching its
+  parent's, but they cannot see a row with no parent -- root-level content, and Collections, whose parent is a
+  `location` path rather than a foreign key. This covers those."
   [instance]
   (when (contains? (t2/changes instance) :worktree_id)
     (throw (ex-info (tru "A worktree_id cannot be changed.") {:status-code 400})))
   nil)
 
-(defn remove-worktree-id-helper
-  "`after-select` helper dropping the generated `worktree_id_helper` column (it backs per-worktree entity_id
-  uniqueness) so it can never make it back into an INSERT or UPDATE."
-  [instance]
-  (dissoc instance :worktree_id_helper))
-
 (defn worktree-accessible?
-  "Whether `instance` is accessible to the current user: worktree content is admin-only, main-app content
-  (`:worktree_id` `nil`) is not restricted here. AND this into a worktree-scoped model's `can-read?` /
-  `can-write?` / `can-create?`."
+  "Whether `instance` is accessible to the current user: worktree content is admin-only, main-app content is not
+  restricted here. AND this into a worktree-scoped model's `can-read?` / `can-write?` / `can-create?`."
   [instance]
-  (or (nil? (:worktree_id instance))
+  (or (default-worktree-id? (:worktree_id instance))
       api/*is-superuser?*))
 
 (defn exclude-worktrees-clause
-  "HoneySQL predicate matching only main-app rows (`worktree_id IS NULL`). Listings take it unless they were asked
-  to include worktree content, so browsing the app never mixes in a worktree's copy of everything. `column`
-  defaults to `:worktree_id`; pass a qualified column when the query joins other tables."
+  "HoneySQL predicate matching only main-app rows. Listings take it unless they were asked to include worktree
+  content, so browsing the app never mixes in a worktree's copy of everything. `column` defaults to `:worktree_id`;
+  pass a qualified column when the query joins other tables."
   ([] (exclude-worktrees-clause :worktree_id))
   ([column]
-   [:= column nil]))
+   [:= column (default-worktree-id)]))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

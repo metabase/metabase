@@ -200,20 +200,19 @@
     {:quoted false})))
 
 (def ^:private generated-columns
-  "Computed/generated columns that can never be included in an `INSERT` when copying rows between databases.
-  `worktree_id_helper` is on every remote-sync worktree-scoped content table."
-  [:unique_table_helper :unique_field_helper :worktree_id_helper])
+  "Computed/generated columns that can never be included in an `INSERT` when copying rows between databases."
+  [:unique_table_helper :unique_field_helper])
 
 (defn- model-results-xform [model]
   (comp
    (map #(apply dissoc % generated-columns))
    (case model
      :model/Database
-    ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
-    ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
-    ;; Sample Database, the correct details are reset automatically on every
-    ;; launch (see [[metabase.sample-data.impl/update-sample-database-if-needed!]]), and we don't support connecting other H2
-    ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
+     ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
+     ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
+     ;; Sample Database, the correct details are reset automatically on every
+     ;; launch (see [[metabase.sample-data.impl/update-sample-database-if-needed!]]), and we don't support connecting other H2
+     ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
      (map (fn [database]
             (cond-> database
               (or (:is_attached_dwh database)

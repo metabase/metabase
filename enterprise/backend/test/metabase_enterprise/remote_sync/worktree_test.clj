@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.jobs :as transforms.jobs]
@@ -44,13 +45,13 @@
                 (worktree-id :model/DashboardTab tab)]))))
     (testing "the parent wins over an explicitly passed worktree_id"
       (mt/with-temp [:model/Card {card :id} {:collection_id main-collection :worktree_id worktree}]
-        (is (nil? (worktree-id :model/Card card)))))
+        (is (remote-sync/default-worktree-id? (worktree-id :model/Card card)))))
     (testing "a sub-collection joins its parent's worktree"
       (mt/with-temp [:model/Collection {child :id} {:location (format "/%d/" collection)}]
         (is (= worktree (worktree-id :model/Collection child)))))
-    (testing "content created in the main app has no worktree"
+    (testing "content created in the main app belongs to the default worktree"
       (mt/with-temp [:model/Card {card :id} {:collection_id main-collection}]
-        (is (nil? (worktree-id :model/Card card)))))))
+        (is (remote-sync/default-worktree-id? (worktree-id :model/Card card)))))))
 
 (deftest worktree-membership-is-immutable-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-b"}
@@ -86,8 +87,6 @@
                      :model/Collection {collection-2 :id} {:entity_id entity-id :worktree_id worktree-2}]
         (testing "the same entity_id can be checked out into several worktrees"
           (is (not= collection-1 collection-2)))
-        (testing "the generated helper column never leaks into selected instances"
-          (is (not (contains? (t2/select-one :model/Collection :id collection-1) :worktree_id_helper))))
         (testing "entity-id lookups resolve within the worktree serdes is loading"
           (is (= collection-1 (binding [serdes/*worktree-id* worktree-1]
                                 (:id (serdes/lookup-by-id :model/Collection entity-id)))))
@@ -137,8 +136,9 @@
                                     serdes/*worktree-id* worktree]
                             (worktree-id :model/Collection (load! "Pulled" 999999))))))
         (testing "the plain serdes API only ever loads into the main app"
-          (is (nil? (binding [mi/*deserializing?* true]
-                      (worktree-id :model/Collection (load! "Imported" worktree))))))))))
+          (is (remote-sync/default-worktree-id?
+               (binding [mi/*deserializing?* true]
+                 (worktree-id :model/Collection (load! "Imported" worktree))))))))))
 
 (deftest serdes-extraction-is-scoped-to-the-worktree-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-j"}

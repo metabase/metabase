@@ -10,6 +10,7 @@
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -32,7 +33,7 @@
   not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (some? (:worktree_id collection))
+  (or (not (remote-sync/default-worktree-id? (:worktree_id collection)))
       (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
@@ -74,7 +75,7 @@
   editable: a worktree is a working copy of its branch."
   :feature :none
   [model-key instance]
-  (or (some? (:worktree_id instance))
+  (or (not (remote-sync/default-worktree-id? (:worktree_id instance)))
       (spec/model-editable? model-key instance)))
 
 (defenterprise batch-model-editable?

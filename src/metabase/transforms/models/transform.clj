@@ -221,10 +221,9 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
-  (let [transform (remote-sync/remove-worktree-id-helper transform)]
-    (if source
-      (assoc transform :source_type (transforms-base.u/transform-source-type source))
-      transform)))
+  (if source
+    (assoc transform :source_type (transforms-base.u/transform-source-type source))
+    transform))
 
 (defn- hydrate-permission
   "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`
@@ -255,7 +254,7 @@
   "Whether the current user can run `instance`. Running requires write permission, and a transform checked out into
   a remote-sync worktree is never run: a worktree is a working copy of a branch."
   [instance & args]
-  (and (nil? (:worktree_id instance))
+  (and (remote-sync/default-worktree-id? (:worktree_id instance))
        (apply transform-writable? instance args)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
@@ -484,7 +483,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:worktree_id :worktree_id_helper :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

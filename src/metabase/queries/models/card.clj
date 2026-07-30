@@ -822,7 +822,6 @@
   ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
   (-> card
-      remote-sync/remove-worktree-id-helper
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
@@ -1423,7 +1422,7 @@
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
-   :skip [:worktree_id :worktree_id_helper
+   :skip [:worktree_id
           ;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
           ;; serialized representation is versioned by :card_schema instead
           :metabase_version

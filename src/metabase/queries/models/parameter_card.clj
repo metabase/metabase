@@ -36,14 +36,9 @@
   (u/prog1 (remote-sync/inherit-worktree-id pc :model/Card :card_id)
     (validate-parameterized-object-type <>)))
 
-(t2/define-after-select :model/ParameterCard
-  [pc]
-  (remote-sync/remove-worktree-id-helper pc))
-
 (t2/define-before-update :model/ParameterCard
   [pc]
   (remote-sync/check-worktree-id-unchanged pc)
-  (remote-sync/check-parent-same-worktree pc :model/Card :card_id)
   (u/prog1 pc
     (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))

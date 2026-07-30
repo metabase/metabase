@@ -133,7 +133,6 @@
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
-      remote-sync/remove-worktree-id-helper
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
@@ -425,7 +424,7 @@
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [:worktree_id :worktree_id_helper
+   :skip      [:worktree_id
                ;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated

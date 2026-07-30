@@ -93,14 +93,9 @@
   (u/prog1 (remote-sync/inherit-worktree-id action :model/Card :model_id)
     (check-model-is-not-a-saved-question model-id)))
 
-(t2/define-after-select :model/Action
-  [action]
-  (remote-sync/remove-worktree-id-helper action))
-
 (t2/define-before-update :model/Action
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (remote-sync/check-worktree-id-unchanged changes)
-  (remote-sync/check-parent-same-worktree changes :model/Card :model_id)
   (u/prog1 changes
     (if archived?
       (t2/delete! :model/DashboardCard :action_id id)
@@ -447,7 +442,7 @@
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :description :entity_id :name :public_uuid]
-   :skip      [:worktree_id :worktree_id_helper]
+   :skip      [:worktree_id]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)

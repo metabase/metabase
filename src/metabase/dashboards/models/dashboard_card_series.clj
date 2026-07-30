@@ -17,12 +17,7 @@
 (t2/define-before-update :model/DashboardCardSeries
   [series]
   (remote-sync/check-worktree-id-unchanged series)
-  (remote-sync/check-parent-same-worktree series :model/DashboardCard :dashboardcard_id)
   series)
-
-(t2/define-after-select :model/DashboardCardSeries
-  [series]
-  (remote-sync/remove-worktree-id-helper series))
 
 ;; Serialization
 

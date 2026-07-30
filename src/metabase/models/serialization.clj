@@ -70,6 +70,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.remote-sync.worktree :as remote-sync.worktree]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -100,11 +101,17 @@
 
 (def worktree-scoped-models
   "Serdes model names whose table carries a `worktree_id` column and enforces entity_id uniqueness per worktree
-  (`UNIQUE (entity_id, worktree_id_helper)`). Entity-id matching for these is scoped by [[*worktree-id*]], so a
+  (`UNIQUE (entity_id, worktree_id)`). Entity-id matching for these is scoped by [[*worktree-id*]], so a
   worktree pull matches and creates rows inside its own checkout instead of colliding with the main app's copy of
   the same entity."
   #{"Action" "Card" "Collection" "Dashboard" "DashboardCard" "DashboardTab" "Document" "NativeQuerySnippet"
     "ParameterCard" "Timeline" "Transform" "TransformTransformTag"})
+
+(defn current-worktree-id
+  "[[*worktree-id*]] resolved to the id actually stored in `worktree_id`: `nil` means the main app, which is the
+  default worktree."
+  []
+  (or *worktree-id* (remote-sync.worktree/default-worktree-id)))
 
 (defn worktree-scoped?
   "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."
@@ -117,7 +124,7 @@
   export only ever contains one worktree's content -- the main app's, for the plain serdes API."
   [model]
   (when (worktree-scoped? model)
-    [:= :worktree_id *worktree-id*]))
+    [:= :worktree_id (current-worktree-id)]))
 
 (mr/def ::model-keyword
   [:and
@@ -203,7 +210,7 @@
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
     (if (worktree-scoped? model-name)
-      (t2/select-one-fn pk [model pk] :entity_id eid :worktree_id *worktree-id*)
+      (t2/select-one-fn pk [model pk] :entity_id eid :worktree_id (current-worktree-id))
       (t2/select-one-fn pk [model pk] :entity_id eid))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
@@ -743,7 +750,7 @@
   (log/tracef "Inserting %s" model-name)
   (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name))
                                          (cond-> ingested
-                                           (worktree-scoped? model-name) (assoc :worktree_id *worktree-id*)))))
+                                           (worktree-scoped? model-name) (assoc :worktree_id (current-worktree-id))))))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -828,7 +835,7 @@
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
   (if (worktree-scoped? model)
-    (t2/select-one model :entity_id id-str :worktree_id *worktree-id*)
+    (t2/select-one model :entity_id id-str :worktree_id (current-worktree-id))
     (t2/select-one model :entity_id id-str)))
 
 (defn storage-default-collection-path

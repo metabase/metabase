@@ -28,12 +28,7 @@
 (t2/define-before-update :model/DashboardTab
   [tab]
   (remote-sync/check-worktree-id-unchanged tab)
-  (remote-sync/check-parent-same-worktree tab :model/Dashboard :dashboard_id)
   tab)
-
-(t2/define-after-select :model/DashboardTab
-  [tab]
-  (remote-sync/remove-worktree-id-helper tab))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
@@ -69,7 +64,7 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      [:worktree_id :worktree_id_helper]
+   :skip      [:worktree_id]
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

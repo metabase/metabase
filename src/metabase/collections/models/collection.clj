@@ -306,9 +306,7 @@
     (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
-  (-> collection
-      remote-sync/remove-worktree-id-helper
-      maybe-localize-system-collection-name))
+  (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection
   (derive :metabase/model)
@@ -923,7 +921,7 @@
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             (when-not (:include-worktrees? visibility-config)
-              [:= :c.worktree_id (:worktree-id visibility-config)])
+              [:= :c.worktree_id (or (:worktree-id visibility-config) (remote-sync/default-worktree-id))])
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
@@ -1805,6 +1803,7 @@
                  (cond->
                   (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
                   parent-id (assoc :worktree_id (remote-sync/worktree-id-of :model/Collection parent-id)))
+                 (update :worktree_id #(or % (remote-sync/default-worktree-id)))
                  remote-sync/check-worktree-create-allowed)
       (assert-valid-remote-synced-parent <>))))
 
@@ -2217,7 +2216,7 @@
           :namespace
           :slug
           :type]
-   :skip [:worktree_id :worktree_id_helper]
+   :skip [:worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

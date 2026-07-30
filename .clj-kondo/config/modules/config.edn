@@ -1437,6 +1437,7 @@
            classloader
            legacy-mbql
            lib
+           remote-sync
            settings
            util}
    :model-imports #{:model/Card
@@ -1941,13 +1942,13 @@
 
   remote-sync
   {:team "UX West"
-   :api  #{metabase.remote-sync.core
-           metabase.remote-sync.init}
+   :api  #{metabase.remote-sync.core metabase.remote-sync.init metabase.remote-sync.worktree}
    :uses #{api
+           app-db
            models
            premium-features
            util}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Collection :model/RemoteSyncWorktree}}
 
   request
   {:team "UX West"
@@ -2504,6 +2505,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            models
+           remote-sync
            request
            transforms
            transforms-base
@@ -3449,6 +3451,7 @@
            events
            models
            premium-features
+           remote-sync
            search
            settings
            startup
@@ -3458,7 +3461,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask}
+   :model-exports #{:model/RemoteSyncTask :model/RemoteSyncWorktree}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
