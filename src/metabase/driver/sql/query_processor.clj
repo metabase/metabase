@@ -1424,6 +1424,8 @@
     (let [agg (agg-by-id (:aggregation *inner-query*) agg-uuid)]
       (&recur agg))
 
+    ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
+    ;; same as the aggregation
     [:distinct & _]
     (->honeysql driver (h2x/identifier :field-alias :count))
 
@@ -1433,6 +1435,10 @@
     [:offset {:lib/source-name source-name} _expr _n]
     (->honeysql driver (h2x/identifier :field-alias source-name))
 
+    ;; for everything else just use the name of the aggregation as an identifier, e.g. `:sum`
+    ;;
+    ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
+    ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
     [ag-type & _]
     (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
