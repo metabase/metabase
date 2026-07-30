@@ -343,10 +343,10 @@ jobs:
       - name: Get extra tags
         id: taglist
         uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
         with:
-          env:
-            AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
-            AWS_REGION: ${{ vars.AWS_REGION }}
           result-encoding: string
           script: | # js
             const { getExtraTagsForVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
