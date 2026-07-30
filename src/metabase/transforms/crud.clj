@@ -11,6 +11,7 @@
    [metabase.events.core :as events]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -113,13 +114,18 @@
                    (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))
 
 (defn get-transforms
-  "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
+  "Get a list of transforms. Transforms checked out into a remote-sync worktree are left out unless
+  `include-worktrees` is set."
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id include-worktrees]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
-                                                                  (when database-id
-                                                                    [[:= :source_database_id database-id]]))
+                                                                  (cond-> []
+                                                                    database-id
+                                                                    (conj [:= :source_database_id database-id])
+
+                                                                    (not include-worktrees)
+                                                                    (conj (remote-sync/exclude-worktrees-clause))))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
