@@ -449,7 +449,10 @@
        :response_format         "concise"}
       {:action "list_models"    :database_id 1 :limit 5 :offset 0 :response_format "detailed"}
       {:action "get_fields"     :table_ids [1 2] :include_hidden true}
-      {:action "get_fields"     :table_ids [1] :offset 10 :response_format "detailed"})))
+      {:action "get_fields"     :table_ids [1] :offset 10 :response_format "detailed"}
+      ;; ignored — table ids are globally unique, so it constrains nothing, and rejecting it
+      ;; costs a retry for a caller carrying it over from list_tables
+      {:action "get_fields"     :table_ids [1] :database_id 1})))
 
 ;;; ---------------------------------------------- get_fields guards -----------------------------------------------
 

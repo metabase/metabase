@@ -9,7 +9,7 @@ description: The query dialect execute_query and question_write's `query` accept
 
 `get_content`'s `definition` include returns queries in this same shape, so a definition you read can be edited and sent back as-is.
 
-Loop: author → `execute_query` `validate_only: true` (checks shape + ids, mints a `query_handle`, runs nothing) → execute → save via `question_write` with that `query_handle` (saves exactly what ran).
+Loop: author → `execute_query` `validate_only: true` (checks shape + ids, returns `cols` — the exact output columns execution will produce — and mints a `query_handle`, runs nothing) → execute → save via `question_write` with that `query_handle` (saves exactly what ran). The `cols` from validation are the names later stages, `order-by`, and `visualization_settings` bind to — read them instead of guessing (see "Output column names").
 
 ## Shape
 
@@ -32,7 +32,7 @@ Top level: `{"lib/type": "mbql/query", "database": <numeric db id>, "stages": [.
 1. **Every clause is `["op", {}, ...args]` — write the options map at position 1 even when empty.** `["count", {}]`, not `["count"]`. (A missing `{}` is repaired server-side, but write it so your query matches later reads.)
 2. **A field ref names its column by numeric id**: `["field", {}, 42]` — the id from `browse_data` `get_fields`. A wrong id that happens to exist resolves to the wrong column *silently*, so copy ids from tool output, never from memory.
 
-In a **later stage**, reference a previous stage's column by its **string machine name**: `["field", {}, "count"]`. An aggregation's output name is the bare function (`count`, `sum`, `avg`; a second `sum` is `sum_2`) unless its options set `"name"`; a breakout keeps the source field's machine name even when bucketed — never use display labels ("Max of Total").
+In a **later stage**, reference a previous stage's column by its **string machine name**, carrying its `base-type`: `["field", {"base-type": "type/Integer"}, "count"]`. The server can usually infer the type from the previous stage, but not always (e.g. across complex join prefixes) — supply it, copying `name` and `base_type` from a `validate_only` run's `cols`. An aggregation's output name is the bare function (`count`, `sum`, `avg`; a second `sum` is `sum_2`) unless its options set `"name"`; a breakout keeps the source field's machine name even when bucketed — never use display labels ("Max of Total").
 
 Field options: `temporal-unit` (bucket a datetime: `"day"`, `"week"`, `"month"`, `"quarter"`, `"year"`, …), `binning` (`{"strategy": "num-bins", "num-bins": 10}` for histograms), `join-alias` (required on every explicitly-joined ref), `source-field` (implicit-FK disambiguation, a numeric field id).
 
@@ -98,8 +98,8 @@ Filter on an aggregation's result in a **next** stage, referencing it by output 
    "aggregation": [["count", {}]],
    "breakout": [["field", {}, 43]]},
   {"lib/type": "mbql.stage/mbql",
-   "filters": [[">", {}, ["field", {}, "count"], 10]],
-   "order-by": [["desc", {}, ["field", {}, "count"]]]}
+   "filters": [[">", {}, ["field", {"base-type": "type/Integer"}, "count"], 10]],
+   "order-by": [["desc", {}, ["field", {"base-type": "type/Integer"}, "count"]]]}
 ]
 ```
 
@@ -114,7 +114,7 @@ Window function: `offset` sits in `aggregation` and reads another breakout row �
  "database": 1,
  "stages": [{"lib/type": "mbql.stage/mbql",
              "source-card": 137,
-             "filters": [[">", {}, ["field", {}, "total"], 100]],
+             "filters": [[">", {}, ["field", {"base-type": "type/Float"}, "total"], 100]],
              "limit": 50}]}
 ```
 
@@ -130,6 +130,17 @@ Referenced by numeric id (copied from tool responses) on a stage whose `source-t
 
 `browse_data` `get_fields` lists each table's measures, segments, and metrics with ids. To compose *on top of* one, read its definition via `get_content` (`include: ["definition"]`) — it returns clauses in this dialect you can inline and extend.
 
+## Output column names
+
+The names a query's result carries — what later stages, `order-by`, and `visualization_settings` bind to — are derived, not guessed:
+
+- An aggregation's output name is its bare function name (`count`, `sum`, `count_where` — underscored) unless its options set `"name"`.
+- A breakout keeps its source field's machine name, even when bucketed.
+- On a **name collision** the later column takes a `_2` suffix (`TITLE`, `TITLE_2`).
+- **FK-remapped columns can steal a plain name.** When a column has a display remap configured (e.g. `PRODUCT_ID` shown as the product's title), the result carries an extra injected column (marked `remapped_from` in `cols`) that can claim the name your breakout expected, pushing the breakout to `TITLE_2` — an `order-by` on the bare name then sorts the wrong column *silently*.
+
+Run `validate_only: true` and read the returned `cols` before referencing any output name — it is the exact projection execution will produce, at no row cost.
+
 ## Translating the request
 
 - **A constraint is a filter, not a breakout**: "only/where/for X" → `filters`; reserve `breakout` for "by / per / for each / over time".
@@ -139,10 +150,11 @@ Referenced by numeric id (copied from tool responses) on a stage whose `source-t
 ## Don't
 
 - Don't invent or guess ids — copy them from `browse_data` / `search` output. A wrong name errors loudly; a wrong id can silently hit the wrong column.
-- Don't use `card__<id>` strings, `metabase://` URIs, or 21-char entity_ids anywhere — `source-card` takes the bare numeric id.
+- Don't use `card__<id>` strings, URI schemes, or 21-char entity_ids anywhere — `source-card` takes the bare numeric id.
 - Don't omit the `{}` options slot or put options anywhere but position 1.
 - Don't put a stage-container key (`aggregation`, `filters`, `breakout`, `limit`) at a clause head — clauses go *inside* those arrays.
 - Don't reference a same-stage aggregation by name (`["field", {}, "count"]`) in `order-by` — use `["aggregation", {}, <index>]`; name refs to aggregations are for the *next* stage.
+- Don't order by an output name you did not verify — a remap or collision can hand the name to a different column (see "Output column names"); check `validate_only`'s `cols` first.
 - Don't subtract dates with `-` — use `["datetime-diff", {}, a, b, "day"]`.
 - Don't breakout the same field twice in one stage (bucketed and raw).
 - Don't reference a previous stage's column by display label — machine name only.

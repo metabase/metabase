@@ -1206,6 +1206,47 @@
       (is (= ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
              (get-in repaired ["stages" 0 "order-by" 0 2]))))))
 
+(deftest ^:parallel rewrite-order-by-string-agg-name-test
+  (testing "a string-named field ref naming an aggregation's output column is rewritten to an
+            aggregation ref — same-stage, that name resolves to no source column"
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["count" {}]]
+                                 "order-by"     [["desc" {} ["field" {} "count"]]]}]}
+          repaired (repair/repair trivial-mp input)
+          stage    (get-in repaired ["stages" 0])
+          agg-uuid (agg-uuid-of stage 0)
+          [head _opts ref] (get-in stage ["order-by" 0 2])]
+      (is (uuid-string? agg-uuid))
+      (is (= ["aggregation" agg-uuid] [head ref]))
+      (testing "idempotent"
+        (is (= repaired (repair/repair trivial-mp repaired))))))
+  (testing "the loose match folds case and hyphens, so \"Count Where\" finds count-where"
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["count-where" {}
+                                                  [">" {}
+                                                   ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                   10]]]
+                                 "order-by"     [["desc" {} ["field" {} "Count Where"]]]}]}
+          stage    (get-in (repair/repair trivial-mp input) ["stages" 0])]
+      (is (= "aggregation" (get-in stage ["order-by" 0 2 0])))))
+  (testing "an ambiguous name — two aggregations with the same head — is left alone"
+    (let [order-by [["desc" {} ["field" {} "sum"]]]
+          input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                                 ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "SUBTOTAL"]]]]
+                                 "order-by"     order-by}]}
+          stage    (get-in (repair/repair trivial-mp input) ["stages" 0])]
+      (is (= "field" (get-in stage ["order-by" 0 2 0]))))))
+
 (deftest ^:parallel rewrite-order-by-idempotent-test
   (testing "running repair twice produces the same result (UUID is stable across runs)"
     (let [input  {"lib/type" "mbql/query"

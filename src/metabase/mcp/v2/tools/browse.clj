@@ -87,8 +87,10 @@
                                  :response_format :fields}}
    "list_models"    {:required [:database_id]
                      :allowed  #{:database_id :limit :offset :response_format :fields}}
+   ;; `database_id` is accepted and ignored: table ids are globally unique, so it constrains
+   ;; nothing — and rejecting it costs a retry for a caller carrying it over from list_tables.
    "get_fields"     {:required [:table_ids]
-                     :allowed  #{:table_ids :include_hidden :offset :response_format :fields}}})
+                     :allowed  #{:table_ids :database_id :include_hidden :offset :response_format :fields}}})
 
 (defn- validate-args-for-action!
   [{:keys [action] :as args}]
@@ -498,7 +500,7 @@
    [:action (into [:enum {:description "What to browse. list_databases → list_schemas → list_tables → get_fields walks the hierarchy; list_models lists the models built on a database."}]
                   ["list_databases" "list_schemas" "list_tables" "list_models" "get_fields"])]
    [:database_id {:optional true}
-    [:maybe [:int {:description "Numeric database id (databases have no entity_id). Required for list_schemas, list_tables, and list_models."}]]]
+    [:maybe [:int {:description "Numeric database id (databases have no entity_id). Required for list_schemas, list_tables, and list_models; accepted and ignored for get_fields (table ids are globally unique)."}]]]
    [:schema {:optional true}
     [:maybe [:string {:description "list_tables only: the schema to list. Omit (or pass \"\") for databases without schemas."}]]]
    [:search {:optional true}

@@ -573,3 +573,21 @@
                                            :query_type :native}]
             (is (=? {:min {:name "min" :type "number"}}
                     (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))))))
+
+(deftest get-content-fields-native-reference-test
+  (let [mp        (mt/metadata-provider)
+        q0        (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        state-col (->> (lib/breakoutable-columns q0)
+                       (filter #(and (= (:id %) (mt/id :people :state)) (:fk-field-id %)))
+                       first)
+        query     (-> q0 (lib/aggregate (lib/count)) (lib/breakout state-col))]
+    (mt/with-temp [:model/Card card {:dataset_query query}]
+      (testing "the fields include carries the {{#id}} aliases — compile-time SQL names an
+                implicit join prefixes, which appear nowhere in result_metadata"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [row (content-one {:items [{:type "question" :id (:id card)}] :include ["fields"]})
+                ref (:native_reference row)]
+            (is (nil? (:error row)))
+            (is (= (format "{{#%d}}" (:id card)) (:tag ref)))
+            (is (= ["PEOPLE__via__USER_ID__STATE" "count"]
+                   (mapv :alias (:columns ref))))))))))

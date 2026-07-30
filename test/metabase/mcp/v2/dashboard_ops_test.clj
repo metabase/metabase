@@ -621,3 +621,36 @@
             native-current
             [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "region"]}]
             {9 native-card}))))))
+
+(deftest compile-ops-reports-all-failing-ops-test
+  (testing "an invalid batch names every failing op in one error — the save is atomic, so a
+            per-op drip would cost the caller a full resend per defect"
+    (let [e (try
+              (dashboard-ops/compile-ops
+               empty-dash
+               [{:op "add_tab" :id -1 :name "A"}
+                {:op "remove" :dashcard_id 999}
+                {:op "rename_tab" :tab_id 777 :name "X"}]
+               {})
+              nil
+              (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? e))
+      (is (re-find #"2 of 3 ops failed" (ex-message e)))
+      (is (re-find #"op 1 \(dashcard_id\): no dashcard with id 999" (ex-message e)))
+      (is (re-find #"op 2 \(tab_id\): no tab with id 777" (ex-message e))))))
+
+(deftest wire-parameter-incompatible-type-explains-test
+  (testing "a field the card exposes under an incompatible parameter type names the column and
+            the parameter families that can filter it, instead of claiming the field is absent"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "State" :type "string/="}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :parameter_mappings []}]}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"op 0.*column \"STATE\".*location/. or category"
+           (with-redefs [metabase.parameters.mapping-targets/target-for-field (constantly nil)
+                         metabase.parameters.mapping-targets/field-target-explanation
+                         (constantly {:column-name "STATE" :compatible-families ["location" "category"]})]
+             (dashboard-ops/compile-ops
+              current
+              [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
+              {9 a-card})))))))

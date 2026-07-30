@@ -34,11 +34,13 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.template-tags :as v2.template-tags]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -162,12 +164,16 @@
 ;;; ------------------------------------------------- Response -----------------------------------------------------
 
 (defn- response-cols
+  ;; `remapped_from` marks a display column the remap middleware injected for another column in
+  ;; the row (e.g. a product title shown for an FK). Surfacing it explains why an injected
+  ;; column may hold the plain name while the authored column carries a `_2` suffix.
   [cols]
-  (mapv (fn [{:keys [name base_type effective_type display_name]}]
+  (mapv (fn [{:keys [name base_type effective_type display_name remapped_from]}]
           (cond-> {:name         name
                    :base_type    (u/qualified-name base_type)
                    :display_name display_name}
-            effective_type (assoc :effective_type (u/qualified-name effective_type))))
+            effective_type (assoc :effective_type (u/qualified-name effective_type))
+            remapped_from  (assoc :remapped_from remapped_from)))
         cols))
 
 (defn- steering-line
@@ -185,14 +191,30 @@
                              (common/encode-serialized-query serialized-query)
                              prompt))
 
+(defn- projected-cols
+  "The columns the validated query will return, computed from metadata without touching the
+   warehouse. [[qp.preprocess/query->expected-cols]] runs the same preprocess + annotate
+   pipeline execution runs, so the names — including remap-injected display columns and
+   collision suffixes like `TITLE_2` — are exactly what execution would announce. A query the
+   preprocessor rejects surfaces as a teaching error: it would fail identically at execution."
+  [serialized-query]
+  (try
+    (vec (qp.preprocess/query->expected-cols serialized-query))
+    (catch Exception e
+      (common/throw-teaching-error (str "Query validation failed: " (ex-message e))))))
+
 (defn- validate-only-response!
   [session-id serialized-query prompt]
-  (let [counts {:query_handle (mint-handle! session-id serialized-query prompt)
-                :returned     0
-                :truncated    false}]
+  (let [cols    (projected-cols serialized-query)
+        payload {:query_handle (mint-handle! session-id serialized-query prompt)
+                 :returned     0
+                 :truncated    false
+                 :cols         (response-cols cols)}]
     (common/success-content
-     (str (json/encode counts)
-          "\nQuery validated, not executed — execute or save it later by passing this query_handle."))))
+     (str (json/encode payload)
+          "\nQuery validated, not executed — cols is the exact output shape execution will return"
+          " (order-by names and visualization_settings bind to these). Execute or save it later"
+          " by passing this query_handle."))))
 
 (defn- execute-response!
   [session-id serialized-query prompt row-limit]
@@ -232,12 +254,12 @@
    [:prompt {:optional true}
     [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle and carried along its cursor pages."}]]]
    [:validate_only {:optional true}
-    [:maybe [:boolean {:description "true validates against schema + database metadata and mints a query_handle without executing (default false)."}]]]
+    [:maybe [:boolean {:description "true validates against schema + database metadata, returns the projected output columns (cols), and mints a query_handle without executing (default false)."}]]]
    [:row_limit {:optional true}
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute a query, returning rows plus a query_handle. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
+  "Validate and execute a query, returning rows plus a query_handle. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks against schema + database metadata, mints a handle, and returns cols — the exact output columns (names, types) execution would produce — without pulling any rows; use it to see output names (collision suffixes like TITLE_2, remap-injected columns) before ordering by a column name, referencing one in a later stage, or binding visualization_settings. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
 
 Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (browse_data get_fields lists every column's id) — never invent or guess ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}; each stage \"lib/type\": \"mbql.stage/mbql\" plus source-table: <numeric table id> or source-card: \"<entity_id>\" (numeric card id also accepted) on the FIRST stage only — later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <numeric field id>], or a bare column-name string against a previous stage ([\"field\", {}, \"count\"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example (order count by month, ORDERS = table 5, CREATED_AT = field 42): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": 5, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, 42]]}]}. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn(\"query-dialect\") before authoring a non-trivial query (joins, expressions, multi-stage); learn(\"query-dialect\", \"operators\") lists every operator. Native SQL is rejected at any depth — use execute_sql."
   {:name        "execute_query"
@@ -290,16 +312,27 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
     (boolean? value) :boolean
     :else            :text))
 
+(defn- dimension-parameter-value
+  "The parameter value a field-filter binding sends: a bare scalar is wrapped as a one-element
+   list for the operator families whose widgets send lists (an equality filter's value is
+   `[\"CA\"]` even for a single state), while date widget types take their scalar string
+   grammar (`\"2024-01-01~2024-06-30\"`, `\"past30days\"`) unwrapped."
+  [widget-type value]
+  (if (or (sequential? value)
+          (str/starts-with? (u/qualified-name (or widget-type :category)) "date"))
+    value
+    [value]))
+
 (defn- bind-template-tag-values
   "Bind `template-tag-values` into `query` (a live lib native query whose `{{tag}}` occurrences
-   are already extracted as `:text` tag declarations). Returns
-   `{:query <query with retyped tags> :parameters <parameter list>}` — the parameters ride
-   outside the query because [[metabase.lib.core/prepare-for-serialization]] strips
-   `:parameters` at every level as runtime-only; the caller re-attaches them top-level after
-   serializing, where the QP's parameter middleware picks them up and compiles them to
-   driver-level prepared-statement bind params. A name with no matching `{{tag}}` in the SQL
-   is a teaching error, as is naming a snippet or card-reference tag — those splice
-   server-side SQL text, never caller values."
+   are extracted as `:text` tag declarations unless a `template_tags` entry declared them
+   otherwise). Returns `{:query <query with retyped tags> :parameters <parameter list>}` — the
+   parameters ride outside the query because [[metabase.lib.core/prepare-for-serialization]]
+   strips `:parameters` at every level as runtime-only; the caller re-attaches them top-level
+   after serializing, where the QP's parameter middleware picks them up and compiles them to
+   driver-level prepared-statement bind params (plain tags) or expanded filter SQL (field
+   filters). A name with no matching `{{tag}}` in the SQL is a teaching error, as is naming a
+   snippet or card-reference tag — those splice server-side SQL text, never caller values."
   [query template-tag-values]
   (let [tags     (lib/template-tags query)
         by-name  (m/index-by :name tags)
@@ -320,15 +353,30 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                               (format "{{%s}} is a %s-reference tag — it splices server-side SQL text and cannot be populated through template_tag_values, which binds only plain {{tag}} variables."
                                       tag-name (name tag-type)))
 
+                             (= :dimension tag-type)
+                             {:tag       tag
+                              :parameter {:type   (or (:widget-type tag) :category)
+                                          :target [:dimension [:template-tag tag-name]]
+                                          :value  (dimension-parameter-value (:widget-type tag) value)}}
+
+                             (= :temporal-unit tag-type)
+                             {:tag       tag
+                              :parameter {:type   :temporal-unit
+                                          :target [:dimension [:template-tag tag-name]]
+                                          :value  value}}
+
                              :else
-                             {:tag (assoc tag :type (value->tag-type value)) :value value})))
+                             ;; An undeclared tag is extracted as `:text`; the value's JSON type
+                             ;; retypes it so a number binds numerically. A declared type sticks.
+                             (let [tag (cond-> tag
+                                         (= :text tag-type) (assoc :type (value->tag-type value)))]
+                               {:tag       tag
+                                :parameter {:type   (:type tag)
+                                            :target [:variable [:template-tag tag-name]]
+                                            :value  value}}))))
                        template-tag-values)]
     {:query      (lib/with-template-tags query (mapv :tag bindings))
-     :parameters (mapv (fn [{:keys [tag value]}]
-                         {:type   (:type tag)
-                          :target [:variable [:template-tag (:name tag)]]
-                          :value  value})
-                       bindings)}))
+     :parameters (mapv :parameter bindings)}))
 
 (defn- sql-steering-line
   [returned]
@@ -372,12 +420,16 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
     [:int {:min 1 :description "Numeric id of the database to run the SQL against. Requires native-query permission on it."}]]
    [:sql
     [:string {:min 1 :description "The raw SQL text, run verbatim against the database. Put caller-supplied values behind {{tag}} placeholders bound via template_tag_values — never splice them into this string."}]]
+   [:template_tags {:optional true}
+    [:maybe v2.template-tags/template-tags-arg-schema]]
    [:template_tag_values {:optional true}
-    [:maybe [:map-of {:description "Values for the {{tag}} placeholders in sql, keyed by tag name. Each value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. Snippet ({{snippet: …}}) and card-reference ({{#123}}) tags cannot be populated here."}
-             ;; No date case: a date value arrives as a JSON string and binds as `:text`, which
-             ;; the warehouse coerces. A `:date` tag type would change the QP's parsing, so it
-             ;; needs an explicit caller signal rather than a guess at the string's shape.
-             :keyword [:or :string number? :boolean]]]]
+    [:maybe [:map-of {:description "Values for the {{tag}} placeholders in sql, keyed by tag name. A plain tag's value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. A tag declared as a field filter via template_tags takes the filter-widget value shape for its widget_type — a list for equality/containment filters ([\"CA\"]; a bare scalar is wrapped for you), a date grammar string for date widgets (\"2024-01-01~2024-06-30\", \"past30days\"), [min, max] for number/between. Snippet ({{snippet: …}}) and card-reference ({{#123}}) tags cannot be populated here."}
+             ;; No date case for plain tags: a date value arrives as a JSON string and binds as
+             ;; `:text`, which the warehouse coerces. A `:date` tag type would change the QP's
+             ;; parsing, so it needs an explicit declaration via template_tags rather than a
+             ;; guess at the string's shape.
+             :keyword [:or :string number? :boolean
+                       [:sequential [:or :string number? :boolean]]]]]]
    [:prompt {:optional true}
     [:maybe [:string {:min 1 :max 10000 :description "The user's original request, stored with the minted query_handle and carried along its cursor pages."}]]]
    [:validate_only {:optional true}
@@ -386,16 +438,17 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-sql
-  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
+  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. template_tags declares tag definitions (same shape as question_write's native.template_tags — learn(\"native-parameters\")): declare a field filter ({\"type\": \"dimension\", \"field_id\": …, \"widget_type\": …}) or temporal-unit tag here and bind its value through template_tag_values, so a field-filter card can be exercised BEFORE it is saved; plain {{tag}} variables need no declaration. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
   ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
   ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
   {:name  "execute_sql"
    :scope metabot.scope/agent-sql-execute
    :args  execute-sql-args-schema}
-  [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
+  [{:keys [database_id sql template_tags template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
   (let [mp    (lib-be/application-database-metadata-provider database_id)
-        query (lib/native-query mp sql)
+        query (-> (lib/native-query mp sql)
+                  (v2.template-tags/apply-template-tags template_tags))
         {:keys [query parameters]} (if (seq template_tag_values)
                                      (bind-template-tag-values query template_tag_values)
                                      {:query query})

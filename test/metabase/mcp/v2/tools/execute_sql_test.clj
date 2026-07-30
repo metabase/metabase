@@ -182,6 +182,39 @@
                                                        :template_tag_values {:flag false}}))))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest execute-sql-declared-field-filter-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid  (str "execute-sql-ff-" (random-uuid))
+            args (fn [values]
+                   {:database_id         (mt/id)
+                    :sql                 "SELECT count(*) AS C FROM PEOPLE WHERE {{state}}"
+                    :template_tags       {:state {:type        "dimension"
+                                                  :field_id    (mt/id :people :state)
+                                                  :widget_type "string/="}}
+                    :template_tag_values values})]
+        (testing "a field filter declared via template_tags is exercisable before any card exists"
+          (let [unfiltered (count-value (payload (call! sid (args nil))))
+                one-state  (count-value (payload (call! sid (args {:state ["CA"]}))))]
+            (is (pos? unfiltered))
+            (is (< 0 one-state unfiltered))
+            (testing "and a bare scalar value is wrapped into the widget's list shape"
+              (is (= one-state (count-value (payload (call! sid (args {:state "CA"})))))))))
+        (testing "a dimension tag missing its widget_type is a teaching error"
+          (is (str/includes? (error-text (call! sid {:database_id   (mt/id)
+                                                     :sql           "SELECT count(*) AS C FROM PEOPLE WHERE {{state}}"
+                                                     :template_tags {:state {:type     "dimension"
+                                                                             :field_id (mt/id :people :state)}}}))
+                             "widget_type")))
+        (testing "a declared tag naming no {{tag}} in the SQL is a teaching error"
+          (is (str/includes? (error-text (call! sid {:database_id   (mt/id)
+                                                     :sql           "SELECT 1"
+                                                     :template_tags {:state {:type        "dimension"
+                                                                             :field_id    (mt/id :people :state)
+                                                                             :widget_type "string/="}}}))
+                             "does not appear in the SQL")))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest execute-sql-template-tag-teaching-errors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]

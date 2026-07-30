@@ -57,16 +57,17 @@
      :column-name  (name tag-name)
      :display-name (or (:display-name tag) (name tag-name))}))
 
-(defn- column-compatible?
-  "Whether `column` can back a parameter of `parameter-type`. Mirrors the frontend's
-   `isParameterCompatibleWithColumn`: the parameter's family decides which type of column it accepts."
-  [parameter-type column]
+(defn- family-compatible?
+  "Whether `column` can back a parameter of `family` (the pre-slash part of a parameter type).
+   Mirrors the frontend's `isParameterCompatibleWithColumn`: the parameter's family decides
+   which type of column it accepts."
+  [family column]
   (let [column-type (or (:effective-type column) (:base-type column))
         semantic    (:semantic-type column)
         id?         (or (isa? semantic :type/PK) (isa? semantic :type/FK))
         address?    (isa? semantic :type/Address)
         text?       (or (isa? column-type :type/Text) (isa? column-type :type/TextLike))]
-    (case (parameter-family parameter-type)
+    (case family
       "date"          (isa? column-type :type/Temporal)
       "temporal-unit" (isa? column-type :type/Temporal)
       "id"            id?
@@ -76,6 +77,19 @@
       "boolean"       (isa? column-type :type/Boolean)
       "category"      true
       false)))
+
+(defn- column-compatible?
+  "Whether `column` can back a parameter of `parameter-type`."
+  [parameter-type column]
+  (family-compatible? (parameter-family parameter-type) column))
+
+(def ^:private parameter-families
+  ["string" "number" "date" "boolean" "id" "location" "temporal-unit" "category"])
+
+(defn compatible-parameter-families
+  "The parameter-type families (`\"string\"`, `\"location\"`, …) that can filter on `column`."
+  [column]
+  (filterv #(family-compatible? % column) parameter-families))
 
 (defn- dimension-ref
   "The ref for `column` to embed in a `:dimension` target. A `:dimension` target is not an MBQL 5 clause — it still
@@ -124,6 +138,32 @@
        (filter #(= field-id (params/param-target->field-id (:target %) card)))
        first
        :target))
+
+(defn target-field-id
+  "The field id `target` (a raw mapping-target clause) resolves to on `card`, or nil when it resolves to none."
+  [card target]
+  (try
+    (params/param-target->field-id (lib/normalize ::lib.schema.parameter/target target) card)
+    (catch Exception _ nil)))
+
+(defn field-target-explanation
+  "Why [[target-for-field]] returned nil for `field-id` on `card` for `parameter`, when that can be told apart from
+  \"the card doesn't expose the field\". Returns
+  `{:column-name … :compatible-families [\"location\" …]}` when the card's query does expose `field-id` but
+  `parameter`'s type cannot filter that column — the column exists, the parameter's family is wrong for it — and nil
+  otherwise (field genuinely absent, native card, or diagnosis failed)."
+  [card parameter field-id]
+  (try
+    (let [query (card-query card)]
+      (when (and query (not (lib/native-only-query? query)))
+        (when-let [col (some #(when (= field-id (:id %)) %)
+                             (params/filterable-columns-for-query card -1))]
+          (when-not (column-compatible? (:type parameter) col)
+            {:column-name         (:name col)
+             :compatible-families (compatible-parameter-families col)}))))
+    (catch Exception e
+      (log/warnf e "Could not diagnose mapping target for card %s" (:id card))
+      nil)))
 
 (defn template-tag-types
   "Map of template-tag name (string) -> tag type keyword for `card`'s native query — e.g.

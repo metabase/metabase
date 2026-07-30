@@ -72,7 +72,7 @@ String:
 - `["month-name", {}, <int>]`, `["quarter-name", {}, <int>]`, `["day-name", {}, <int>]`
 
 Conditional:
-- `["case", {}, [[<pred1>, <val1>], [<pred2>, <val2>], ...], <default?>]` — alias `if`.
+- `["case", {}, [[<pred1>, <val1>], [<pred2>, <val2>], ...], <default?>]` — alias `if`. A `<valN>` slot rejects a `null` literal; the default slot allows it, and an omitted default *is* NULL. To yield "unknown" for a condition (no prior month, division by zero), invert the predicates so that case falls through to the default: `["case", {}, [[<has-data>, <value>]]]` — not `0`, which fakes a real measurement.
 - `["coalesce", {}, <a>, <b>, ...]` — first non-null.
 
 Temporal:

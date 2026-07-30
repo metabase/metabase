@@ -9,6 +9,7 @@
    [[metabase.dashboards.write/update-dashboard!]]) — so write permission enforcement,
    transactionality, and event publishing are inherited, never reimplemented."
   (:require
+   [clojure.string :as str]
    [malli.error :as me]
    [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
@@ -55,15 +56,18 @@
                  [(:id card) card])))))
 
 (defn- check-cards-exist!
-  "Reject an op naming a card the caller cannot read, before any write happens. Covers series
-   cards too: they are placed on the dashboard just as `card_id` is, and leaving them unchecked
-   would both skip the permission boundary and hand the projection a card it never fetched."
+  "Reject ops naming cards the caller cannot read, before any write happens — one error naming
+   every offender, since the save is atomic and a per-op drip would cost a resend each. Covers
+   series cards too: they are placed on the dashboard just as `card_id` is, and leaving them
+   unchecked would both skip the permission boundary and hand the projection a card it never
+   fetched."
   [ops cards]
-  (doseq [[idx op] (map-indexed vector ops)
-          card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
-          :when    (and card-id (not (contains? cards card-id)))]
-    (dashboard-ops/op-error!
-     idx (format "%s): no card with id %s that you can read." (:op op) card-id))))
+  (let [missing (for [[idx op] (map-indexed vector ops)
+                      card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
+                      :when    (and card-id (not (contains? cards card-id)))]
+                  (format "op %d (%s): no card with id %s that you can read." idx (:op op) card-id))]
+    (when (seq missing)
+      (common/throw-teaching-error (str/join "\n" missing)))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
@@ -406,7 +410,7 @@
 (registry/deftool dashboard-write
   "Create or update a dashboard and edit its layout with ordered ops applied as one atomic save — nothing is
   written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry cannot
-  double-add. method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
+  double-add; a rejected batch reports every failing op at once, so fix them all and resend. method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
   false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
   ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
   add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove,

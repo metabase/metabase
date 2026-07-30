@@ -559,7 +559,36 @@
       {:definition definition})))
 
 (def ^:private card-definition-include (definition-include card-definition))
-(defn- fields-include [row] {:result_metadata (vec (:result_metadata row))})
+
+(defn- native-reference-columns
+  "The column names the card exposes when referenced in native SQL as `{{#id}}`. For an MBQL card
+   these are the compiled subquery's SELECT aliases — join-prefixed (`Products__CATEGORY`,
+   `PEOPLE__via__USER_ID__SOURCE`) and suffixed on collision (`TITLE_2`) — which are derived at
+   compile time and never appear among the card's own result column names, so nothing else
+   surfaces them. For a native card the SQL's own output names pass through unchanged."
+  [row]
+  (try
+    (if-let [cols (and (::query row)
+                       (not (lib/native-only-query? (::query row)))
+                       (not-empty (lib/returned-columns (::query row))))]
+      (mapv (fn [col]
+              {:alias        (or (:lib/desired-column-alias col) (:name col))
+               :display_name (:display-name col)})
+            cols)
+      (some->> (:result_metadata row)
+               not-empty
+               (mapv (fn [col] {:alias (:name col) :display_name (:display_name col)}))))
+    (catch Exception e
+      (log/warnf e "Could not compute native-reference aliases for card %s" (:id row))
+      nil)))
+
+(defn- fields-include
+  [row]
+  (let [aliases (native-reference-columns row)]
+    (cond-> {:result_metadata (vec (:result_metadata row))}
+      (seq aliases)
+      (assoc :native_reference {:tag     (format "{{#%d}}" (:id row))
+                                :columns aliases}))))
 
 (def ^:private type->spec
   "Per-type dispatch, co-located. Each entry carries the fetch fn (`:fetch`, id-or-eid ->
@@ -684,7 +713,7 @@
              [:fields {:optional true}
               [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the fields catalog resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to its outermost block's span, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata, plus native_reference — the column aliases the card exposes when referenced as {{#id}} in native SQL; these compile-time aliases like Products__CATEGORY or TITLE_2 differ from the card's own result column names and are not otherwise discoverable), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to its outermost block's span, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
                           "definition" "fields" "parameters" "layout" "dimensions" "comments"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}

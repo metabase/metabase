@@ -1,6 +1,6 @@
 ---
 name: native-parameters
-description: Template tags for native SQL questions written through question_write's `native` — tag kinds, field-filter vs raw-variable, the template_tags shape, widget types, [[ ]] optional blocks, wiring tags to dashboards. Read before first passing template_tags. Triggers — "add a filter widget to my SQL", "parameterize this query", "field filter", "why does my variable return no rows", "wire a dashboard filter to a SQL card".
+description: Template tags for native SQL — question_write's `native` and execute_sql's `template_tags` — tag kinds, field-filter vs raw-variable, the template_tags shape, widget types, [[ ]] optional blocks, {{#id}} card references and their column aliases, wiring tags to dashboards. Read before first passing template_tags. Triggers — "add a filter widget to my SQL", "parameterize this query", "field filter", "why does my variable return no rows", "wire a dashboard filter to a SQL card".
 ---
 
 # Native SQL parameters (template tags)
@@ -56,10 +56,12 @@ Field ids: `browse_data {"action": "get_fields", "table_ids": [<table id>]}`. `w
 
 Wrap any clause that should drop when its value is empty, keyword included: `WHERE true [[AND {{category}}]] [[AND total > {{min_total}}]]`. One nesting level; several optional `AND` blocks need a real `WHERE` first. A `required: true` tag or one with a `default` always has a value, so its clause never drops.
 
+**An unbound `[[ ]]` block hides broken SQL.** The block is deleted before the SQL is parsed, so a typo'd column or table name inside it never errors on a run that leaves the tag empty — the query "passes" with the defect intact. Always test every optional block at least once with its value bound (via `execute_sql`'s `template_tag_values` or `run_saved_question`'s `parameters`).
+
 ## Snippet and card references
 
 - `{{#42}}` (or `{{#42-slug}}`) inlines saved card 42 as a subquery: `SELECT * FROM {{#42}}`, `WITH x AS {{#42}} …`. It runs with its own saved defaults — its parameters can't be set from the parent.
-- The subquery's columns are the card's **result** columns. MBQL aggregations get machine names — `count`, `avg`, then `avg_2` for the second average — which collide with SQL keywords, so quote them: `SELECT cs."avg", cs."count" FROM {{#42}} cs`. Run the card once (execute_query or run_saved_question) to see the exact names.
+- **The subquery's column names are compile-time SQL aliases, not the card's displayed names.** For an MBQL card: an aggregation is its machine name (`count`, `avg`, `avg_2` for the second average); a column from an explicit join is `<JoinAlias>__<COL>` (`Products__CATEGORY`); a column reached through an implicit FK is `<TABLE>__via__<FK>__<COL>` (`PEOPLE__via__USER_ID__STATE`); a collision appends `_2` (`TITLE_2`). Don't derive these by hand — read them with `get_content` `include: ["fields"]`, whose `native_reference` section lists the exact aliases for the `{{#id}}` reference. Machine names collide with SQL keywords, so quote them: `SELECT cs."avg", cs."count" FROM {{#42}} cs`.
 - `{{snippet: Name}}` splices a shared SQL snippet by name — it must already exist (find via `search` or `get_content` type `snippet`).
 - Neither takes a value or wires to a dashboard parameter — only field filters and raw variables are user-fillable. Nothing to configure in `template_tags`; entries for them (as `get_content` returns) are accepted on round-trip and ignored.
 
@@ -84,7 +86,7 @@ dashboard_write {"method": "update", "id": 40,
 
 The dashboard parameter's `type` must be compatible with the tag's widget_type (same vocabulary). Dashboard-side detail: `learn("dashboard-filters")`.
 
-**Ad-hoc SQL** (no saved card): `execute_sql` binds `{{tag}}` values via `template_tag_values` as prepared-statement parameters — plain variables only; field filters exist only on saved questions.
+**Ad-hoc SQL** (no saved card): `execute_sql` binds `{{tag}}` values via `template_tag_values` — plain variables bind as prepared-statement parameters from the value's JSON type alone. To exercise a **field filter or temporal-unit tag before saving**, declare it in `execute_sql`'s `template_tags` (same shape as above) and bind its value in `template_tag_values` using the widget's value shape: a list for equality/containment (`["Gadget"]`; a bare scalar is wrapped for you), the date grammar string for date widgets, `[min, max]` for `number/between`. Test the SQL this way first, then save the exact query via `question_write` with the returned `query_handle` — never loosen the card (e.g. wrapping a required filter in `[[ ]]`) just to make it testable.
 
 ## Don't
 
@@ -93,5 +95,7 @@ The dashboard parameter's `type` must be compatible with the tag's widget_type (
 - Don't omit `widget_type` on a dimension tag, or `field_id` on a dimension/temporal-unit tag — required.
 - Don't use native SQL for DDL or `;`-chained statements — single read statement only.
 - Don't expect `[[ ]]` to fix a case/type mismatch — `WHERE plan = {{p}}` returns zero rows on a case-sensitive engine when the value's case is off.
+- Don't trust a run where every `[[ ]]` block dropped — deleted blocks are never parsed, so broken SQL inside them passes silently; bind each one at least once.
+- Don't guess a `{{#id}}` subquery's column aliases — read them from `get_content` `include: ["fields"]` (`native_reference`).
 - Don't name a tag in `template_tags` with no `{{tag}}` in the SQL — an error, not a no-op.
 - Don't rely on `default: false` on a boolean tag — a false default reads as no default, and a run that omits the value fails with "missing required parameters". Pass the boolean on every run, or wrap its clause in `[[ ]]`.

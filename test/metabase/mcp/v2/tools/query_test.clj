@@ -114,7 +114,7 @@
           (doseq [col (:cols body)]
             (is (string? (:name col)))
             (is (string? (:base_type col)))
-            (is (empty? (dissoc col :name :base_type :display_name :effective_type))
+            (is (empty? (dissoc col :name :base_type :display_name :effective_type :remapped_from))
                 "any other key is internal metadata leaking onto the wire")))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
@@ -145,7 +145,34 @@
           (is (str/includes? (response-text result) "Query validated, not executed")))
         (testing "GHY-4142: the affordance the message names works — the minted handle executes the validated query"
           (let [run-body (payload (call! sid {:query_handle (:query_handle body)}))]
-            (is (= 3 (:returned run-body)))))))))
+            (is (= 3 (:returned run-body)))
+            (testing "and the cols validation projected are the cols execution announced"
+              (is (= (map :name (:cols body)) (map :name (:cols run-body)))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest validate-only-cols-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query         (orders-query
+                                               {:aggregation [["count" {}]]
+                                                :breakout    [["field" {:temporal-unit "month"}
+                                                               (conj (table-name-ref :orders) "CREATED_AT")]]})
+                               :validate_only true})
+            body   (payload result)]
+        (testing "validate_only returns the projected output columns without executing"
+          (is (= ["CREATED_AT" "count"] (mapv :name (:cols body))))
+          (doseq [col (:cols body)]
+            (is (string? (:base_type col)))
+            (is (string? (:display_name col))))
+          (is (nil? (:rows body)))))
+      (testing "a query the preprocessor rejects fails validation instead of minting cols"
+        (let [result (call! (str (random-uuid))
+                            {:query         (orders-query
+                                             {:aggregation [["count" {}]]
+                                              :breakout    [["field" {} 0]]})
+                             :validate_only true})]
+          (is (:isError result)))))))
 
 ;;; ------------------------------------------------ Cursor paging -------------------------------------------------
 
@@ -541,3 +568,22 @@
           (is (str/includes? msg "browse_data"))
           (is (not (str/includes? msg "read_resource")))
           (is (not (str/includes? msg "metabase://"))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest same-stage-order-by-aggregation-name-repair-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (testing "ordering by an aggregation's output name in the stage that computes it is repaired
+                to an aggregation ref — the string ref would demand a base-type and still compile
+                to a nonexistent source column"
+        (let [sid    (str (random-uuid))
+              result (call! sid {:query (orders-query
+                                         {:aggregation [["count" {}]]
+                                          :breakout    [["field" {:temporal-unit "year"}
+                                                         (conj (table-name-ref :orders) "CREATED_AT")]]
+                                          :order-by    [["desc" {} ["field" {} "count"]]]})})
+              body   (payload result)
+              idx    (col-index (:cols body) "count")
+              counts (mapv #(nth % idx) (:rows body))]
+          (is (pos? (:returned body)))
+          (is (= (vec (sort-by - counts)) counts)))))))

@@ -1356,6 +1356,14 @@
 ;;;   * stamps a UUID into the matching aggregation's options (if it doesn't already have one);
 ;;;   * replaces the inline `order-by` aggregation with `["aggregation" {} "<that-uuid>"]`.
 ;;;
+;;; The same treatment covers the string-named variant of the mistake: `order-by:
+;;; [[desc, {}, [field, {}, "count"]]]` - referencing the aggregation by its *output column
+;;; name*, which is only valid from a later stage. Same-stage, the schema demands a
+;;; `base-type` on the string ref, and even with one supplied the compiled SQL points at a
+;;; source column that does not exist. When the name matches exactly one aggregation's head,
+;;; the ref is rewritten to an integer-index aggregation reference, which the index pass
+;;; below canonicalises to UUID form.
+;;;
 ;;; This does NOT introduce general placeholder-UUID handling (Phase 2 step 10 - `@agg-N`
 ;;; references); we only resolve the very specific "order-by re-states the aggregation inline"
 ;;; mistake. If the LLM writes a `["aggregation" {} "..."]` ref directly, we leave it alone.
@@ -1409,6 +1417,39 @@
        (>= (count clause) 3)
        (contains? #{"asc" "desc"} (first clause))))
 
+(defn- string-named-field-clause?
+  "`[\"field\" {opts} \"<name>\"]` - a field reference by string column name."
+  [clause]
+  (and (vector? clause)
+       (= 3 (count clause))
+       (= "field" (nth clause 0))
+       (map? (nth clause 1))
+       (string? (nth clause 2))))
+
+(defn- normalize-agg-name-key
+  "Loose matching key folding case and hyphens/whitespace to underscores, so `Count` or
+  `count-where` matches the `count` / `count_where` output name an aggregation head produces."
+  [s]
+  (when (string? s)
+    (-> s u/lower-case-en (str/replace #"[-\s]+" "_"))))
+
+(defn- unique-agg-index-for-name
+  "The index of the single aggregation in `aggs` whose head loosely matches `col-name` (the
+  aggregation's output column is named after its head: `count`, `sum`, `count_where`, …), or
+  nil when no aggregation matches or more than one does (two `sum`s - the name alone cannot
+  say which)."
+  [aggs col-name]
+  (let [target (normalize-agg-name-key col-name)
+        hits   (into []
+                     (keep-indexed (fn [i agg]
+                                     (when (and (vector? agg)
+                                                (string? (first agg))
+                                                (= target (normalize-agg-name-key (first agg))))
+                                       i)))
+                     aggs)]
+    (when (= 1 (count hits))
+      (first hits))))
+
 (defn- rewrite-order-by-inline-aggs-in-stage
   "Apply the inline-agg-in-`order-by` rewrite to a single string-keyed stage map. Returns the
   updated stage. No-op when the stage has no `order-by` or no `aggregation`."
@@ -1442,6 +1483,17 @@
                            [stamped uuid] (ensure-aggregation-uuid (nth @*aggs* idx))]
                        (swap! *aggs* assoc idx stamped)
                        (assoc direction-clause 2 ["aggregation" {} uuid]))
+
+                     ;; String-named field ref naming an aggregation's own output, e.g.
+                     ;; `["field" {} "count"]`. A same-stage output column cannot be referenced
+                     ;; by name - a `base-type` would satisfy the schema but the compiled SQL
+                     ;; still points at a source column that does not exist - so the ref must
+                     ;; become an aggregation reference. The `["aggregation" {} <idx>]` form
+                     ;; written here is canonicalised to UUID form by the integer-index pass.
+                     (and (string-named-field-clause? inner)
+                          (unique-agg-index-for-name aggs (nth inner 2)))
+                     (assoc direction-clause 2
+                            ["aggregation" {} (unique-agg-index-for-name aggs (nth inner 2))])
 
                      :else
                      direction-clause))))
@@ -2767,7 +2819,9 @@
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
-       referenced aggregation's `lib/uuid` if needed);
+       referenced aggregation's `lib/uuid` if needed); a string-named field ref that names an
+       aggregation's output column (`[\"field\" {} \"count\"]`) gets the same rewrite, via the
+       integer-index form pass 3.5 canonicalises;
     3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
        stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
        aggregation clause and `base-type`/`effective-type` on the ref's options;

@@ -37,7 +37,7 @@
     :description "The query dialect for execute_query and question_write's `query`: numeric-id refs, clause grammar, joins, expressions, multi-stage queries. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
     :references  ["operators"]}
    {:name        "native-parameters"
-    :description "Template tags for native SQL (question_write's `native`): tag kinds, field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks. Read before first passing template_tags."
+    :description "Template tags for native SQL (question_write's `native`, execute_sql's `template_tags`): tag kinds, field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks, {{#id}} column aliases. Read before first passing template_tags."
     :references  []}
    {:name        "dashboard-filters"
     :description "Dashboard parameters: add_parameter types, wire_parameter target grammar, autowire, linked filters, value sources, inline parameters. Read before your first add_parameter or wire_parameter."

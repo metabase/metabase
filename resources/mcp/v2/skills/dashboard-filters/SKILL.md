@@ -17,6 +17,8 @@ dashboard_write {"method": "update", "id": 40,
 
 `parameter_id` is a short slug-like string you choose and reuse in later ops (`"category"`, `"date_range"`); the server derives the URL slug from `name`. Inspect existing wiring with `get_content` — a dashboard's `parameters` list each parameter's id, type, and wired dashcard ids.
 
+Before sending a large `ops` payload, dry-run it with `validate_only: true` — every op is compiled and **all** failing ops are reported in one response, without writing (only per-field parameter-mapping permission checks wait for the real save). Fix everything the report names and resend the full batch; never silently drop an op you didn't see fail.
+
 ## Parameter types
 
 `type` is a closed vocabulary: string ops `string/=` `string/!=` `string/contains` `string/does-not-contain` `string/starts-with` `string/ends-with`; number ops `number/=` `number/!=` `number/between` `number/>=` `number/<=`; dates `date/all-options` (fullest) `date/single` `date/range` `date/relative` `date/month-year` `date/quarter-year`; plus `category`, `id`, `boolean/=`, `temporal-unit`, `location/city|state|zip_code|country`. `sectionId` groups the widget in the editor: `"string"`, `"number"`, `"date"`, `"id"`, `"location"`, `"temporal-unit"`.
@@ -31,6 +33,8 @@ Other `add_parameter`/`update_parameter` fields: `default` (scalar, or array for
 | Native-SQL card, wire a tag by name | `target_tag: "<tag name>"` — the server reads the tag's type and emits the right mapping (field filter vs raw variable) |
 | A `{{placeholder}}` in a text, heading, or iframe card's own content | `target: ["text-tag", "<name>"]` — the name must appear as `{{name}}` in that card's text or embed |
 | Neither fits (advanced) | `target: ["dimension", ["template-tag", "category"]]` — the raw mapping clause |
+
+**Type compatibility decides whether a wire succeeds.** `target_field` maps only when the parameter's type family accepts the column: `string/…` takes text columns **except** address-semantic ones (City/State/ZIP/Country — those take `location/…`, or `category`); `id` takes PK/FK columns and `number/…` excludes them; `date/…` and `temporal-unit` take datetime columns; `category` takes anything. Columns reached through an implicit FK join (a breakout on another table's column) wire like any other — when a wire on one fails, the cause is almost always the family, not the join; the rejection names the column and the families it takes. Match the parameter's `type` to the column before wiring — e.g. a State breakout pairs with `location/state`, never `string/=`.
 
 `autowire: true` (with `target_field`) also maps every **other** card exposing the same field — silently skipping those that don't; the named `dashcard_id` must expose it or the op fails. A wire whose target resolves to nothing on the card is rejected at compile time, on `validate_only` and real saves alike.
 
@@ -64,6 +68,7 @@ Two hard constraints, one root: **linked filters read table-metadata foreign key
 ## Don't
 
 - Don't add a parameter and forget to wire it — the widget renders but filters nothing.
+- Don't give an address-semantic column (State, City, ZIP, Country) a `string/…` parameter — the string family excludes address columns; use `location/…` or `category`.
 - Don't guess `target_tag` names — read the card's `template_tags` via `get_content` first; the error on a wrong name lists what exists.
 - Don't wire a raw `target` when `target_field` or `target_tag` fits — hand-built clauses are where wiring bugs live.
 - Don't expect a linked filter to work across a model/question join or with a static/card value source — it needs a metadata FK and a live source.

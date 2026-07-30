@@ -427,6 +427,24 @@
       :else
       (op-error! idx "move_parameter): pass `index` to reorder the header, or `dashcard_id` to place it on a card."))))
 
+(defn- incompatible-type-message
+  "The teaching sentence for a wire whose column exists but whose parameter type cannot filter
+   it — without it the failure reads as \"the field isn't there\", which sends the caller
+   hunting through the card's columns instead of fixing the parameter's type."
+  [parameter {:keys [column-name compatible-families]}]
+  (format (str "the card exposes it as column %s, but a parameter of type %s cannot filter that "
+               "column — it takes %s parameters. Change the parameter's type, or wire a "
+               "different field.")
+          (pr-str column-name)
+          (u/qualified-name (:type parameter))
+          (if (seq compatible-families)
+            (str/join " or " (map (fn [family]
+                                    (if (contains? #{"category" "id" "temporal-unit"} family)
+                                      family
+                                      (str family "/…")))
+                                  compatible-families))
+            "no")))
+
 (defn- wire-one
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
    exposes no target for `field-id`."
@@ -443,9 +461,15 @@
                        :target       target})))
 
       explicit?
-      (op-error! idx (format (str "wire_parameter): dashcard %s does not expose field %s for parameter %s. "
-                                  "Read the dashboard with get_content to see each card's columns.")
-                             (:id dashcard) field-id (pr-str (:id parameter))))
+      (op-error! idx
+                 (if-let [explanation (when card
+                                        (mapping-targets/field-target-explanation card parameter field-id))]
+                   (format "wire_parameter): field %s cannot back parameter %s on dashcard %s — %s"
+                           field-id (pr-str (:id parameter)) (:id dashcard)
+                           (incompatible-type-message parameter explanation))
+                   (format (str "wire_parameter): dashcard %s does not expose field %s for parameter %s. "
+                                "Read the dashboard with get_content to see each card's columns.")
+                           (:id dashcard) field-id (pr-str (:id parameter)))))
 
       :else dashcard)))
 
@@ -543,12 +567,18 @@
       (check-text-tag-target! idx dashcard target)
       (let [card (wire-card! state idx dashcard)]
         (when-not (mapping-targets/wireable-target? card parameter target)
-          (op-error! idx (format (str "wire_parameter): target %s resolves to nothing on card %s — the "
-                                      "card exposes no matching column or template tag for parameter "
-                                      "%s. Read the card with get_content to see its columns and "
-                                      "template tags. %s")
-                                 (pr-str target) (:card_id dashcard) (pr-str (:id parameter))
-                                 skills/wire-target-grammar)))))
+          (op-error! idx
+                     (if-let [explanation (some->> (mapping-targets/target-field-id card target)
+                                                   (mapping-targets/field-target-explanation card parameter))]
+                       (format "wire_parameter): target %s cannot back parameter %s on card %s — %s"
+                               (pr-str target) (pr-str (:id parameter)) (:card_id dashcard)
+                               (incompatible-type-message parameter explanation))
+                       (format (str "wire_parameter): target %s resolves to nothing on card %s — the "
+                                    "card exposes no matching column or template tag for parameter "
+                                    "%s. Read the card with get_content to see its columns and "
+                                    "template tags. %s")
+                               (pr-str target) (:card_id dashcard) (pr-str (:id parameter))
+                               skills/wire-target-grammar))))))
     target))
 
 (defn- wire-target
@@ -607,16 +637,38 @@
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
+(defn- teaching-error?
+  [e]
+  (and (instance? clojure.lang.ExceptionInfo e)
+       (= 400 (:status-code (ex-data e)))))
+
 (defn compile-ops
   "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
    return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
    saves. New rows carry the caller's negative ids. `cards` maps every card id the ops may touch
-   to its card row; this namespace does no I/O, so the caller resolves that. Throws a teaching
-   error naming the op index on any invalid op."
+   to its card row; this namespace does no I/O, so the caller resolves that.
+
+   Invalid ops throw one teaching error naming every failing op, not just the first — the save
+   is atomic, so a caller fixing one op at a time would pay a full resend per defect. A failing
+   op contributes nothing to the working state, so an op downstream of it can fail with a
+   follow-on error (e.g. a reference to the id the failed op would have created); those are
+   still real errors in the batch as sent."
   ([current ops] (compile-ops current ops {}))
   ([current ops cards]
-   (-> (reduce-kv (fn [state idx op] (apply-op state idx op))
-                  (init-state current cards)
-                  (vec ops))
-       check-tab-coverage!
-       (select-keys [:dashcards :tabs :parameters]))))
+   (let [*errors (volatile! [])
+         state   (reduce-kv (fn [state idx op]
+                              (try
+                                (apply-op state idx op)
+                                (catch Exception e
+                                  (if (teaching-error? e)
+                                    (do (vswap! *errors conj (ex-message e)) state)
+                                    (throw e)))))
+                            (init-state current cards)
+                            (vec ops))]
+     (when-let [errors (not-empty @*errors)]
+       (common/throw-teaching-error
+        (format "%d of %d ops failed — nothing was saved. Fix them all and resend the batch:\n%s"
+                (count errors) (count ops) (str/join "\n" errors))))
+     (-> state
+         check-tab-coverage!
+         (select-keys [:dashcards :tabs :parameters])))))

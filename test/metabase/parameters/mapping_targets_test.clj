@@ -133,3 +133,24 @@
             name-field-id (mt/id :venues :name)]
         (is (true?  (mapping-targets/wireable-target? card parameter [:dimension [:field name-field-id nil]])))
         (is (false? (mapping-targets/wireable-target? card parameter [:dimension [:field Integer/MAX_VALUE nil]])))))))
+
+(deftest field-target-explanation-test
+  (let [mp        (mt/metadata-provider)
+        q0        (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        state-col (->> (lib/breakoutable-columns q0)
+                       (filter #(and (= (:id %) (mt/id :people :state)) (:fk-field-id %)))
+                       first)
+        query     (-> q0 (lib/aggregate (lib/count)) (lib/breakout state-col))]
+    (mt/with-temp [:model/Card card {:dataset_query query}]
+      (testing "an implicitly-FK-joined address column is exposed, but not to the string family"
+        (is (nil? (mapping-targets/target-for-field card {:id "p1" :type :string/=} (mt/id :people :state))))
+        (is (= {:column-name         "STATE"
+                :compatible-families ["location" "category"]}
+               (mapping-targets/field-target-explanation card {:id "p1" :type :string/=} (mt/id :people :state)))))
+      (testing "the families the explanation names actually resolve to a target"
+        (is (some? (mapping-targets/target-for-field card {:id "p1" :type :location/state} (mt/id :people :state))))
+        (is (some? (mapping-targets/target-for-field card {:id "p1" :type :category} (mt/id :people :state)))))
+      (testing "a compatible pairing has nothing to explain"
+        (is (nil? (mapping-targets/field-target-explanation card {:id "p1" :type :location/state} (mt/id :people :state)))))
+      (testing "a field the card does not expose at all has no explanation — absence is the diagnosis"
+        (is (nil? (mapping-targets/field-target-explanation card {:id "p1" :type :string/=} 0)))))))
