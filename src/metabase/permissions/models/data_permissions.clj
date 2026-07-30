@@ -1284,9 +1284,7 @@
                                     :where  [:and
                                              [:in :group_id group-ids]
                                              [:in :perm_type ["perms/create-queries" "perms/download-results"]]
-                                             [:not-in :db_id {:select [:id]
-                                                              :from [(t2/table-name :model/Database)]
-                                                              :where [:= :is_audit true]}]]}))
+                                             [:not= :db_id audit/audit-db-id]]}))
           ;; Group by (group_id, perm_type) → set of values
           perms-by-grp (when all-perms
                          (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
