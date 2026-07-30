@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib-be.locked-query-map :as lib.locked-query-map]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
@@ -130,7 +130,9 @@
      (fn
        ([preprocessed]
         (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
-        (lib.locked-query-map/locked-query preprocessed))
+        (if config/is-prod?
+          preprocessed
+          (lib-be/locked-query preprocessed)))
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
