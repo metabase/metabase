@@ -272,6 +272,19 @@
      :dimension-mappings (perf/mapv (comp mappings-by-dim-id :dimension-id)
                                     persisted-mappings)}))
 
+(defn- breakout-default-match
+  "The first of `breakout-refs` that `dimension-mappings` maps to a dimension, as
+   `{:dimension-id ... :breakout-ref ...}`, or nil when none is mapped. The ref is kept alongside the id
+   because it carries the bucketing the mapping target does not — see [[with-breakout-default]]."
+  [breakout-refs dimension-mappings]
+  (let [dimension-id-by-column (into {}
+                                     (map (juxt (comp column-ref->key :target) :dimension-id))
+                                     dimension-mappings)]
+    (perf/some (fn [breakout-ref]
+                 (when-let [id (dimension-id-by-column (column-ref->key breakout-ref))]
+                   {:dimension-id id, :breakout-ref breakout-ref}))
+               breakout-refs)))
+
 (defn breakout-default-dimension-id
   "The `:id` of the dimension that `dimension-mappings` maps to the first of `breakout-refs`, or nil when
    no breakout is mapped. Matching ignores bucketing, since a breakout carries a `:temporal-unit` or
@@ -280,10 +293,7 @@
    A metric authored before curated dimensions expressed its default dimension as a breakout on its own
    query, so this recovers that default when such a metric is modernized."
   [breakout-refs dimension-mappings]
-  (let [dimension-id-by-column (into {}
-                                     (map (juxt (comp column-ref->key :target) :dimension-id))
-                                     dimension-mappings)]
-    (perf/some (comp dimension-id-by-column column-ref->key) breakout-refs)))
+  (:dimension-id (breakout-default-match breakout-refs dimension-mappings)))
 
 (defn set-default-dimension
   "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension.
@@ -295,19 +305,36 @@
                  (dissoc dim :default)))
              persisted-dims))
 
+(defn- with-default-temporal-unit
+  "Carry `unit` onto the dimension `id` as its `:default-temporal-unit`, when `valid-unit?` accepts it
+   for that dimension's column type."
+  [dimensions id unit valid-unit?]
+  (if (nil? unit)
+    dimensions
+    (perf/mapv (fn [dim]
+                 (cond-> dim
+                   (and (= id (:id dim))
+                        (valid-unit? (:effective-type dim) unit))
+                   (assoc :default-temporal-unit unit)))
+               dimensions)))
+
 (defn with-breakout-default
   "Restore the default a metric expressed as a breakout on its own query: mark the dimension that
-   `dimension-mappings` maps to the first of `breakout-refs` as the sole `:default`.
+   `dimension-mappings` maps to the first of `breakout-refs` as the sole `:default`, and carry that
+   breakout's `:temporal-unit` over as the dimension's `:default-temporal-unit`.
 
    Returns `dimensions` untouched when they already carry a default (a curated choice always wins) or
    when no breakout maps to one of them — a metric with no breakout had no default, and inventing one
    would give it a breakout it never had on dashboards. Idempotent, so it is safe to re-run over a
    dimension set that has already been repaired."
-  [dimensions dimension-mappings breakout-refs]
+  [dimensions dimension-mappings breakout-refs valid-unit?]
   (if (perf/some :default dimensions)
     dimensions
-    (if-let [id (breakout-default-dimension-id breakout-refs dimension-mappings)]
-      (set-default-dimension dimensions id)
+    (if-let [{:keys [dimension-id breakout-ref]} (breakout-default-match breakout-refs dimension-mappings)]
+      (-> (set-default-dimension dimensions dimension-id)
+          (with-default-temporal-unit dimension-id
+            (:temporal-unit (second breakout-ref))
+            valid-unit?))
       dimensions)))
 
 (defn reorder-dimensions

@@ -133,7 +133,8 @@
                              lib-metric/extract-persisted-dimensions)]
       {:dimensions         (lib-metric/with-breakout-default dimensions
                              dimension-mappings
-                             (breakout-refs query))
+                             (breakout-refs query)
+                             lib-metric/valid-temporal-unit-for-type?)
        :dimension-mappings dimension-mappings})))
 
 (defn add-breakout-default
@@ -150,7 +151,10 @@
   [dimensions dimension-mappings query]
   (if (or (empty? query) (some :default dimensions))
     dimensions
-    (lib-metric/with-breakout-default dimensions dimension-mappings (breakout-refs query))))
+    (lib-metric/with-breakout-default dimensions
+      dimension-mappings
+      (breakout-refs query)
+      lib-metric/valid-temporal-unit-for-type?)))
 
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit

@@ -865,3 +865,51 @@
            (is (not (contains? (set (map :name (:dimensions (t2/select-one :model/Card :id metric-id))))
                                "QUANTITY"))
                "so the removal survives a subsequent read")))))))
+
+(defn- default-dimension-units
+  "The `:default-temporal-unit`s of the `:default` dimensions the metric API reports for `metric-id`.
+   `GET /api/metric/:id` serves the persisted dimensions as-is, so the keys stay kebab-case here — the
+   snake_case `default_temporal_unit` is the `->api-dimension` shape served by `/dimension`."
+  [metric-id]
+  (->> (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id))
+       :dimensions
+       (filter :default)
+       (mapv :default-temporal-unit)))
+
+(deftest pre-curation-metric-preserves-default-dimension-bucket-test
+  (testing (str "The old \"Default time dimension\" breakout carried a grain as well as a column. "
+                "Recovering only the column would make a metric authored as \"Orders by year\" render "
+                "monthly, because the dashboard query swaps the metric's breakouts for the default "
+                "dimension's and the bucket falls back to `:month`.")
+    (let [mp (mt/metadata-provider)]
+      (pre-curation-metric!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                           :year)))
+       (fn [metric-id]
+         (is (= [(mt/id :orders :created_at)] (default-dimension-field-ids metric-id)))
+         (is (= ["year"] (default-dimension-units metric-id))))))))
+
+(deftest pre-curation-metric-unbucketed-breakout-gets-no-bucket-test
+  (testing "An unbucketed breakout recovers the column but must not invent a grain."
+    (let [mp (mt/metadata-provider)]
+      (pre-curation-metric!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib.metadata/field mp (mt/id :orders :quantity))))
+       (fn [metric-id]
+         (is (= [(mt/id :orders :quantity)] (default-dimension-field-ids metric-id)))
+         (is (= [nil] (default-dimension-units metric-id))))))))
+
+(deftest released-metric-preserves-default-dimension-bucket-test
+  (testing "The same recovery applies to the populated-but-default-less shape upgrading customers have."
+    (let [mp (mt/metadata-provider)]
+      (released-metric-with-default-less-dimensions!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                           :quarter)))
+       (fn [metric-id]
+         (is (= [(mt/id :orders :created_at)] (default-dimension-field-ids metric-id)))
+         (is (= ["quarter"] (default-dimension-units metric-id))))))))

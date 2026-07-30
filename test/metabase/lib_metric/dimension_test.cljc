@@ -1,7 +1,8 @@
 (ns metabase.lib-metric.dimension-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib-metric.dimension :as lib-metric.dimension]))
+   [metabase.lib-metric.dimension :as lib-metric.dimension]
+   [metabase.lib-metric.projection :as lib-metric.projection]))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
@@ -134,29 +135,65 @@
       (is (nil? (lib-metric.dimension/breakout-default-dimension-id [target-1] nil))))))
 
 (deftest ^:parallel with-breakout-default-test
-  (let [mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
-                  {:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
-        dims     [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2"}]]
+  (let [mappings  [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
+                   {:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
+        dims      [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2"}]
+        with-default (fn [dims refs]
+                       (lib-metric.dimension/with-breakout-default
+                         dims mappings refs lib-metric.projection/valid-temporal-unit-for-type?))]
     (testing "marks the dimension mapped to the breakout as the sole default"
       (is (= [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2" :default true}]
-             (lib-metric.dimension/with-breakout-default dims mappings [target-2]))))
+             (with-default dims [target-2]))))
     (testing "a bucketed breakout still matches its unbucketed mapping target"
       (is (= [uuid-1]
-             (->> (lib-metric.dimension/with-breakout-default
-                    dims mappings [[:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"
-                                            :temporal-unit :quarter} 1]])
+             (->> (with-default dims [[:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"
+                                               :temporal-unit :quarter} 1]])
                   (filter :default)
                   (mapv :id)))))
     (testing "a curated default always wins -- dimensions are returned untouched"
       (let [curated [{:id uuid-1 :name "col1" :default true} {:id uuid-2 :name "col2"}]]
-        (is (= curated (lib-metric.dimension/with-breakout-default curated mappings [target-2])))))
+        (is (= curated (with-default curated [target-2])))))
     (testing "no breakout, or no breakout that maps to a dimension, leaves the set untouched"
-      (is (= dims (lib-metric.dimension/with-breakout-default dims mappings [])))
-      (is (= dims (lib-metric.dimension/with-breakout-default dims mappings [target-99])))
-      (is (= dims (lib-metric.dimension/with-breakout-default dims nil [target-2]))))
+      (is (= dims (with-default dims [])))
+      (is (= dims (with-default dims [target-99])))
+      (is (= dims (lib-metric.dimension/with-breakout-default
+                    dims nil [target-2] lib-metric.projection/valid-temporal-unit-for-type?))))
     (testing "idempotent -- re-running over an already-repaired set is a no-op"
-      (let [once (lib-metric.dimension/with-breakout-default dims mappings [target-2])]
-        (is (= once (lib-metric.dimension/with-breakout-default once mappings [target-2])))))))
+      (let [once (with-default dims [target-2])]
+        (is (= once (with-default once [target-2])))))))
+
+(deftest ^:parallel with-breakout-default-preserves-temporal-unit-test
+  (let [mappings   [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+        datetime   [{:id uuid-1 :name "col1" :effective-type :type/DateTime}]
+        bucketed   (fn [unit] [[:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"
+                                        :temporal-unit unit} 1]])
+        recovered  (fn [dims refs]
+                     (-> (lib-metric.dimension/with-breakout-default
+                           dims mappings refs lib-metric.projection/valid-temporal-unit-for-type?)
+                         first
+                         (select-keys [:default :default-temporal-unit])))]
+    (testing "the breakout's bucket is carried over, so the metric keeps the grain it was authored at"
+      (is (= {:default true :default-temporal-unit :year}
+             (recovered datetime (bucketed :year)))))
+    (testing "an unbucketed breakout recovers the dimension but sets no unit"
+      (is (= {:default true} (recovered datetime [target-1]))))
+    (testing "a unit the dimension's own picker would not offer is dropped rather than persisted"
+      (testing "hidden from the picker"
+        (is (= {:default true} (recovered datetime (bucketed :millisecond)))))
+      (testing "belongs to another temporal type"
+        (is (= {:default true}
+               (recovered [{:id uuid-1 :name "col1" :effective-type :type/Date}]
+                          (bucketed :hour)))))
+      (testing "column is not temporal at all"
+        (is (= {:default true}
+               (recovered [{:id uuid-1 :name "col1" :effective-type :type/Text}]
+                          (bucketed :year))))))
+    (testing "idempotent -- the recovered unit survives a re-run"
+      (let [once (lib-metric.dimension/with-breakout-default
+                   datetime mappings (bucketed :year) lib-metric.projection/valid-temporal-unit-for-type?)]
+        (is (= once (lib-metric.dimension/with-breakout-default
+                      once mappings (bucketed :year)
+                      lib-metric.projection/valid-temporal-unit-for-type?)))))))
 
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 
