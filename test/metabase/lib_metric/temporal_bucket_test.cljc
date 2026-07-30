@@ -125,6 +125,21 @@
       (is (sequential? buckets))
       (is (zero? (count buckets))))))
 
+(deftest ^:parallel valid-temporal-unit-for-type?-test
+  (testing "units the picker offers for the type are accepted"
+    (is (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime :week))
+    (is (lib-metric.projection/valid-temporal-unit-for-type? :type/Date :month))
+    (is (lib-metric.projection/valid-temporal-unit-for-type? :type/Time :minute)))
+  (testing "units hidden from the picker are rejected, so a stored default can never name one"
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/Date :year-of-era)))
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime :millisecond))))
+  (testing "units belonging to a different temporal type are rejected"
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/Date :hour))))
+  (testing "non-temporal columns and non-units accept nothing"
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/Text :month)))
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime :not-a-unit)))
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime nil)))))
+
 (deftest ^:parallel available-temporal-buckets-marks-selected-test
   (testing "The configured default and explicit projection selection are marked independently"
     (let [projection [:dimension {:temporal-unit :month} uuid-datetime]

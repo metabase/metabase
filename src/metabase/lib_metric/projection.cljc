@@ -189,7 +189,7 @@
                    (contains? option option-key) (dissoc option-key)
                    (= (:unit option) unit)       (assoc option-key true))))))
 
-(defn available-temporal-buckets-for-type
+(defn- available-temporal-buckets-for-type
   "Given a column type and nillable default-unit and selected-unit, return the appropriate bucket options."
   [column-type default-unit selected-unit]
   (let [options       (cond
@@ -203,6 +203,12 @@
       (= :inherited default-unit) (->> (perf/mapv #(dissoc % :default)))
       default-unit  (mark-unit :default  default-unit)
       selected-unit (mark-unit :selected selected-unit))))
+
+(defn valid-temporal-unit-for-type?
+  "Whether `unit` is a bucket a user may pick for a column of `column-type`."
+  [column-type unit]
+  (boolean (perf/some #(= unit (:unit %))
+                      (available-temporal-buckets-for-type column-type nil nil))))
 
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get available temporal buckets for a dimension based on its effective-type."

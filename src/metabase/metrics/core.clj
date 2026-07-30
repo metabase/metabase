@@ -329,6 +329,17 @@
     (save-dimensions! entity dimensions persisted-mappings)
     (added-dimensions dimensions persisted-mappings)))
 
+(defn- validate-default-temporal-unit!
+  "Throw a 400 unless `unit` is a bucket the picker offers for `dimension`'s column type. Guards against
+   persisting a `:default-temporal-unit` that the dimension's own bucket list would not contain."
+  [dimension unit]
+  (when-not (lib-metric/valid-temporal-unit-for-type? (:effective-type dimension) unit)
+    ;; Names the rejected value: this fires both for a non-unit ("not-a-unit") and for a real unit the
+    ;; column cannot take (`:hour` on a date), and the generic phrasing made the first case baffling.
+    (throw (ex-info (tru "{0} is not a temporal unit this dimension can be bucketed by."
+                         (pr-str unit))
+                    {:status-code 400}))))
+
 (defn update-dimension!
   "Update a single dimension's `display_name`, `description`, `default_temporal_unit`, and/or source
    column (`source` is a `{:type :field-id}`). Changing the source column is only allowed to a column
@@ -339,15 +350,9 @@
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
         current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
                                (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
-        default-temporal-unit (some-> default_temporal_unit keyword)
-        _                  (when (and (contains? body :default_temporal_unit)
-                                      (not (some #(= default-temporal-unit (:unit %))
-                                                 (lib-metric/available-temporal-buckets-for-type
-                                                  (or (:effective-type current) (:base-type current))
-                                                  nil
-                                                  nil))))
-                             (throw (ex-info (tru "Default temporal unit is not valid for this dimension.")
-                                             {:status-code 400})))
+        temporal-unit      (some-> default_temporal_unit keyword)
+        _                  (when (contains? body :default_temporal_unit)
+                             (validate-default-temporal-unit! current temporal-unit))
         source-pair        (when source
                              (let [pair (u/seek #(= (:field-id source) (pair->field-id %))
                                                 (entity-computed-pairs entity))]
@@ -361,11 +366,10 @@
                                                  {:status-code 400})))
                                pair))
         updates            (cond-> {}
-                             (some? display_name)          (assoc :display-name display_name)
-                             (contains? body :description) (assoc :description (:description body))
-                             (contains? body :default_temporal_unit)
-                             (assoc :default-temporal-unit default-temporal-unit)
-                             source-pair                   (assoc :source-pair source-pair))
+                             (some? display_name)                    (assoc :display-name display_name)
+                             (contains? body :description)           (assoc :description (:description body))
+                             (contains? body :default_temporal_unit) (assoc :default-temporal-unit temporal-unit)
+                             source-pair                             (assoc :source-pair source-pair))
         {:keys [dimensions dimension-mappings]}
         (lib-metric/update-dimension persisted-dims persisted-mappings dimension-id updates)]
     (save-dimensions! entity dimensions dimension-mappings)
