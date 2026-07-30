@@ -88,6 +88,7 @@
      metadata-provider]
     [lib-metric.projection
      add-projection-positions
+     available-temporal-buckets-for-type
      default-breakout-dimensions
      dimension-breakout
      project-dimension
@@ -122,6 +123,7 @@
      (def metric-context-metadata-provider "See [[lib-metric.metadata.provider/metric-context-metadata-provider]]." lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider "See [[lib-metric.metadata.js/metadata-provider]]." lib-metric.metadata.js/metadata-provider)
      (def add-projection-positions "See [[lib-metric.projection/add-projection-positions]]." lib-metric.projection/add-projection-positions)
+     (def available-temporal-buckets-for-type "See [[lib-metric.projection/available-temporal-buckets-for-type]]." lib-metric.projection/available-temporal-buckets-for-type)
      (def default-breakout-dimensions "See [[lib-metric.projection/default-breakout-dimensions]]." lib-metric.projection/default-breakout-dimensions)
      (def dimension-breakout "See [[lib-metric.projection/dimension-breakout]]." lib-metric.projection/dimension-breakout)
      (def project-dimension "See [[lib-metric.projection/project-dimension]]." lib-metric.projection/project-dimension)

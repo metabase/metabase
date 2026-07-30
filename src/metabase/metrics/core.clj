@@ -330,15 +330,24 @@
     (added-dimensions dimensions persisted-mappings)))
 
 (defn update-dimension!
-  "Update a single dimension's `display_name`, `description`, and/or source column (`source` is a
-   `{:type :field-id}`). Changing the source column is only allowed to a column of the same effective
-   type. Returns the updated API dimension."
-  [metadata-type id dimension-id {:keys [display_name source] :as body}]
+  "Update a single dimension's `display_name`, `description`, `default_temporal_unit`, and/or source
+   column (`source` is a `{:type :field-id}`). Changing the source column is only allowed to a column
+   of the same effective type. Returns the updated API dimension."
+  [metadata-type id dimension-id {:keys [display_name default_temporal_unit source] :as body}]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
         current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
                                (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
+        default-temporal-unit (some-> default_temporal_unit keyword)
+        _                  (when (and (contains? body :default_temporal_unit)
+                                      (not (some #(= default-temporal-unit (:unit %))
+                                                 (lib-metric/available-temporal-buckets-for-type
+                                                  (or (:effective-type current) (:base-type current))
+                                                  nil
+                                                  nil))))
+                             (throw (ex-info (tru "Default temporal unit is not valid for this dimension.")
+                                             {:status-code 400})))
         source-pair        (when source
                              (let [pair (u/seek #(= (:field-id source) (pair->field-id %))
                                                 (entity-computed-pairs entity))]
@@ -354,6 +363,8 @@
         updates            (cond-> {}
                              (some? display_name)          (assoc :display-name display_name)
                              (contains? body :description) (assoc :description (:description body))
+                             (contains? body :default_temporal_unit)
+                             (assoc :default-temporal-unit default-temporal-unit)
                              source-pair                   (assoc :source-pair source-pair))
         {:keys [dimensions dimension-mappings]}
         (lib-metric/update-dimension persisted-dims persisted-mappings dimension-id updates)]

@@ -164,11 +164,13 @@
         lib.schema.temporal-bucketing/ordered-time-bucketing-units))
 
 (def ^:private date-bucket-options
-  (perf/mapv (fn [unit]
-               (cond-> {:lib/type :option/temporal-bucketing
-                        :unit unit}
-                 (= unit :day) (assoc :default true)))
-             lib.schema.temporal-bucketing/ordered-date-bucketing-units))
+  (into []
+        (comp (remove hidden-bucketing-options)
+              (map (fn [unit]
+                     (cond-> {:lib/type :option/temporal-bucketing
+                              :unit unit}
+                       (= unit :day) (assoc :default true)))))
+        lib.schema.temporal-bucketing/ordered-date-bucketing-units))
 
 (def ^:private datetime-bucket-options
   (let [units (into [] (remove hidden-bucketing-options)
@@ -187,7 +189,7 @@
                    (contains? option option-key) (dissoc option-key)
                    (= (:unit option) unit)       (assoc option-key true))))))
 
-(defn- available-temporal-buckets-for-type
+(defn available-temporal-buckets-for-type
   "Given a column type and nillable default-unit and selected-unit, return the appropriate bucket options."
   [column-type default-unit selected-unit]
   (let [options       (cond
@@ -213,7 +215,7 @@
                                      (:temporal-unit (second proj))))
                                  flat-projs)]
     (if (isa? effective-type :type/Temporal)
-      (available-temporal-buckets-for-type effective-type nil selected-unit)
+      (available-temporal-buckets-for-type effective-type (:default-temporal-unit dimension) selected-unit)
       [])))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]

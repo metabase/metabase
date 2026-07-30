@@ -35,6 +35,8 @@
            :effective_type (some-> (:effective-type dim) u/qualified-name)
            :semantic_type  (some-> (:semantic-type dim) u/qualified-name)
            :default        (boolean (:default dim))}
+    (:default-temporal-unit dim)
+    (assoc :default_temporal_unit (u/qualified-name (:default-temporal-unit dim)))
     (:status dim)  (assoc :status (:status dim))
     (:group dim)   (assoc :group (->api-group (:group dim)))
     (:sources dim) (assoc :sources (mapv ->api-source (:sources dim)))))
