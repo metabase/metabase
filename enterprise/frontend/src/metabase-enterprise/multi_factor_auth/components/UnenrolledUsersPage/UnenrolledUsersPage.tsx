@@ -1,18 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { usePagination } from "metabase/common/hooks/use-pagination";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { useListUnenrolledMfaUsersQuery } from "metabase-enterprise/api";
 import type { MfaAdminUser } from "metabase-types/api";
 
 import {
   MfaUsersPage,
-  PAGE_SIZE,
   getEmailColumn,
   getNameColumn,
+  useMfaUsersQuery,
 } from "../MfaUsersPage";
 
 function getColumns(): TreeTableColumnDef<MfaAdminUser>[] {
@@ -20,38 +17,28 @@ function getColumns(): TreeTableColumnDef<MfaAdminUser>[] {
 }
 
 export const UnenrolledUsersPage = () => {
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
-  const { page, handleNextPage, handlePreviousPage, resetPage } =
-    usePagination();
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    resetPage();
-  };
-
-  const { data, isLoading, error } = useListUnenrolledMfaUsersQuery({
-    query: debouncedSearch || undefined,
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
-  });
+  const { params, listProps, debouncedSearch } = useMfaUsersQuery();
+  const { data, isLoading, error } = useListUnenrolledMfaUsersQuery(params);
 
   const columns = useMemo(() => getColumns(), []);
 
+  const emptyMessage = useMemo(
+    () =>
+      data?.data.length === 0 && !debouncedSearch && !isLoading
+        ? t`No unenrolled users`
+        : t`No results found`,
+    [data, debouncedSearch, isLoading],
+  );
+
   return (
     <MfaUsersPage
+      {...listProps}
+      emptyMessage={emptyMessage}
       title={t`Users without 2FA`}
-      emptyMessage={t`No results found`}
       tableAriaLabel={t`Users without two-factor authentication`}
       testId="mfa-unenrolled-users-table"
       columns={columns}
-      users={data?.data ?? []}
-      searchValue={search}
-      onSearchChange={handleSearchChange}
-      page={page}
-      total={data?.total ?? 0}
-      onNextPage={handleNextPage}
-      onPreviousPage={handlePreviousPage}
+      response={data}
       isLoading={isLoading}
       error={error}
     />

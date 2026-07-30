@@ -96,10 +96,15 @@ describe("EnrolledUsersPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when nobody is enrolled", async () => {
+  it("distinguishes nobody being enrolled from a search that matches nobody", async () => {
     setup({ users: [] });
 
+    expect(await screen.findByText("No enrolled users")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByPlaceholderText("Search…"), "nobody");
+
     expect(await screen.findByText("No results found")).toBeInTheDocument();
+    expect(screen.queryByText("No enrolled users")).not.toBeInTheDocument();
   });
 
   it("shows an error state instead of an empty table when the request fails", async () => {

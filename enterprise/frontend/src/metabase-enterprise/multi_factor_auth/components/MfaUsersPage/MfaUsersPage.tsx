@@ -15,7 +15,7 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { MfaAdminUser } from "metabase-types/api";
+import type { MfaAdminUser, MfaUserListResponse } from "metabase-types/api";
 
 import { AUTHENTICATION_PATH } from "../../constants";
 
@@ -23,17 +23,16 @@ import S from "./MfaUsersPage.module.css";
 
 export const PAGE_SIZE = 25;
 
-interface MfaUsersPageProps<TUser extends MfaAdminUser> {
+export interface MfaUsersPageProps<TUser extends MfaAdminUser> {
   title: string;
   emptyMessage: string;
   tableAriaLabel: string;
   testId: string;
   columns: TreeTableColumnDef<TUser>[];
-  users: TUser[];
+  response: MfaUserListResponse<TUser> | undefined;
   searchValue: string;
   onSearchChange: (value: string) => void;
   page: number;
-  total: number;
   onNextPage: () => void;
   onPreviousPage: () => void;
   isLoading: boolean;
@@ -46,16 +45,17 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
   tableAriaLabel,
   testId,
   columns,
-  users,
+  response,
   searchValue,
   onSearchChange,
   page,
-  total,
   onNextPage,
   onPreviousPage,
   isLoading,
   error,
 }: MfaUsersPageProps<TUser>) => {
+  const users = response?.data ?? [];
+
   const instance = useTreeTableInstance<TUser>({
     data: users,
     columns,
@@ -108,7 +108,7 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
           page={page}
           pageSize={PAGE_SIZE}
           itemsLength={users.length}
-          total={total}
+          total={response?.total ?? 0}
           onPreviousPage={onPreviousPage}
           onNextPage={onNextPage}
         />
