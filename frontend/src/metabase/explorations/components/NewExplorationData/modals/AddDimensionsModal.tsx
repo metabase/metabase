@@ -16,6 +16,7 @@ import type {
 import {
   DIMENSION_TYPE_ORDER,
   filterDimensionGroupsBySearch,
+  formatDimensionLabel,
   getDimensionTypeKey,
   getDimensionTypeLabel,
 } from "../utils";
@@ -103,7 +104,7 @@ export function AddDimensionsModal({
       )
       .map((group) => ({
         key: group.dimensions[0].id,
-        label: group.name,
+        label: formatDimensionLabel(group.dimensions[0]),
         interestingness: group.dimension_interestingness,
       }));
   }, [groups, activeTab]);

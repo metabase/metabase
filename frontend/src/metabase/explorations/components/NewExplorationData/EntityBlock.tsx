@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getDimensionIcon } from "metabase/common/utils/columns";
@@ -17,12 +16,11 @@ import type {
   DimensionId,
   ExplorationMetric,
   IconName,
-  MetricDimension,
 } from "metabase-types/api";
 
 import S from "./NewExplorationData.module.css";
 import { SelectedPills, TogglePill } from "./Pills";
-import { formatDimensionLabel, groupDimensionsByGroupSource } from "./utils";
+import { formatDimensionLabel } from "./utils";
 
 interface EntityBlockProps {
   iconName: IconName;
@@ -116,18 +114,6 @@ export function MetricBlockItem({
   onRemoveBlock,
   onToggleDimension,
 }: MetricBlockItemProps) {
-  const sections = useMemo(() => {
-    const out: { label: string; dimensions: MetricDimension[] }[] = [];
-    for (const row of groupDimensionsByGroupSource(block.dimensions)) {
-      if (row.type === "header") {
-        out.push({ label: row.label, dimensions: [] });
-      } else {
-        out[out.length - 1]?.dimensions.push(row.dimension);
-      }
-    }
-    return out;
-  }, [block.dimensions]);
-
   const selectedPills = block.dimensions
     .filter((d) => block.selectedDimensionIds.has(d.id))
     .map((d) => ({
@@ -150,25 +136,18 @@ export function MetricBlockItem({
           <Text size="sm" c="text-secondary">
             {t`Modify which dimensions to see this metric by`}
           </Text>
-          {sections.map((section) => (
-            <Stack key={section.label} gap="sm">
-              <Text size="sm" c="text-secondary">
-                {section.label}
-              </Text>
-              <Group align="center" gap="sm" wrap="wrap">
-                {section.dimensions.map((dimension) => (
-                  <TogglePill
-                    key={dimension.id}
-                    label={dimension.display_name ?? dimension.id}
-                    selected={block.selectedDimensionIds.has(dimension.id)}
-                    disabled={disabled}
-                    interestingness={dimension.dimension_interestingness}
-                    onToggle={() => onToggleDimension(dimension.id)}
-                  />
-                ))}
-              </Group>
-            </Stack>
-          ))}
+          <Group align="center" gap="sm" wrap="wrap">
+            {block.dimensions.map((dimension) => (
+              <TogglePill
+                key={dimension.id}
+                label={formatDimensionLabel(dimension)}
+                selected={block.selectedDimensionIds.has(dimension.id)}
+                disabled={disabled}
+                interestingness={dimension.dimension_interestingness}
+                onToggle={() => onToggleDimension(dimension.id)}
+              />
+            ))}
+          </Group>
         </Stack>
       ) : (
         <SelectedPills pills={selectedPills} />
