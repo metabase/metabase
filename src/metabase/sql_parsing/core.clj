@@ -47,7 +47,8 @@
 ;; slow at character-by-character string scanning over multi-MB inputs.
 
 (def ^:private ^:const strip-threshold
-  "Only strip VALUES clauses / IN lists with more than this many tuples/items."
+  "Strip VALUES clauses with more than this many tuples, and IN lists / ARRAY literals with at
+   least this many commas."
   100)
 
 (def ^:private literal-list-keyword-pattern
@@ -75,30 +76,6 @@
             (recur (+ i 2)) ; escaped (doubled) quote
             (inc i))
           (recur (inc i)))))))
-
-(defn- code-region-end
-  "Scan from `pos` toward `target`, skipping string literals (`'...'`, `\"...\"`), line comments
-   (`-- ...`), and block comments (`/* ... */`). Returns `target` when it is reached in plain-code
-   context, or the end of the skipped region that overlaps `target` — i.e. a return value greater
-   than `target` means `target` sits inside a string or comment."
-  ^long [^String sql ^long pos ^long target ^long n]
-  (loop [i pos]
-    (if (>= i target)
-      i
-      (let [ch (.charAt sql i)]
-        (cond
-          (or (= ch \') (= ch \"))
-          (recur (skip-string-literal sql i n))
-
-          (and (= ch \-) (< (inc i) n) (= (.charAt sql (inc i)) \-))
-          (let [nl (.indexOf sql "\n" (int i))]
-            (recur (if (neg? nl) n (long (inc nl)))))
-
-          (and (= ch \/) (< (inc i) n) (= (.charAt sql (inc i)) \*))
-          (let [end (.indexOf sql "*/" (int (+ i 2)))]
-            (recur (if (neg? end) n (long (+ end 2)))))
-
-          :else (recur (inc i)))))))
 
 (defn- skip-balanced-parens
   "Starting at an opening `(`, advance past the matching `)`.
@@ -174,108 +151,48 @@
        end-pos]
       [nil match-end])))
 
-(def ^:private allowed-in-list-words
-  "The only bare words allowed inside an IN list for it to count as literal-only."
-  #{"null" "true" "false"})
-
-(defn- word-end
-  "Return the position after the run of letters starting at `pos`."
-  ^long [^String sql ^long pos ^long n]
-  (loop [i (inc pos)]
-    (if (and (< i n) (Character/isLetter (.charAt sql i)))
-      (recur (inc i))
-      i)))
-
-(defn- literal-list-end
-  "Scan the flat list opening at `open-pos` and terminated by `close-ch`. If it is literal-only —
-   numbers, single-quoted strings, NULL/TRUE/FALSE, signs, commas and whitespace — return
-   [item-count end-pos] with end-pos just after the closing delimiter; otherwise nil. Anything
-   else — column references, function calls, subqueries, bind parameters, nested brackets —
-   disqualifies the list, since stripping those would change analysis results or parameter counts.
-   Double quotes also disqualify: this scan is dialect-agnostic, and in identifier-quoting dialects
-   `\"x\"` in a list is a column reference, not a string. Single pass over `sql` in place, bailing
-   at the first disqualifying character."
-  [^String sql ^long open-pos ^long n close-ch]
-  (let [close-ch (char close-ch)]
-    ;; item? tracks whether the current comma-delimited element has any content, so empty elements
-    ;; (`IN (,,,)`, leading/trailing commas) disqualify instead of being rewritten into valid SQL.
-    (loop [i (inc open-pos), items 1, item? false]
-      (when (< i n)
-        (let [ch (.charAt sql i)]
-          (cond
-            (= ch close-ch)         (when item? [items (inc i)])
-            (= ch \')               (recur (skip-string-literal sql i n) items true)
-            (= ch \,)               (when item? (recur (inc i) (inc items) false))
-            (Character/isLetter ch) (let [end (word-end sql i n)]
-                                      (when (contains? allowed-in-list-words
-                                                       (u/lower-case-en (.substring sql i end)))
-                                        (recur end items true)))
-            (Character/isWhitespace ch)
-            (recur (inc i) items item?)
-
-            (or (Character/isDigit ch) (= ch \.) (= ch \-) (= ch \+))
-            (recur (inc i) items true)
-
-            :else nil))))))
-
-(defn- literal-tuple-list-end
-  "Scan a list of literal-only tuples `((1, 'a'), (2, 'b'), ...)` whose outer paren opens at
-   `open-pos`. Every tuple must be a flat literal-only list. Returns
-   [tuple-count first-tuple-arity end-pos] with end-pos just after the outer closing paren, or nil
-   if the content is not a pure tuple list."
+(defn- simple-list-end
+  "Scan the list opening at `open-pos` (`(` or `[`). If it contains only numbers, single-quoted
+   strings, signs, commas, whitespace, and balanced parens (VALUES-style tuples), return
+   [comma-count end-pos] with end-pos just past the matching closing delimiter. Any other
+   character — subqueries, column references, casts, bind parameters — returns nil, leaving the
+   list untouched."
   [^String sql ^long open-pos ^long n]
-  (loop [i (inc open-pos), tuples 0, arity 0, expect-comma? false]
-    (let [i (skip-whitespace sql i n)]
+  (let [close-ch (char (if (= (.charAt sql open-pos) \[) \] \)))]
+    (loop [i (inc open-pos), depth 1, commas 0]
       (when (< i n)
         (let [ch (.charAt sql i)]
           (cond
-            ;; expect-comma? must hold at the close so a trailing comma disqualifies instead of
-            ;; being rewritten into valid SQL
-            (= ch \))
-            (when (and (pos? tuples) expect-comma?) [tuples arity (inc i)])
-
-            (and expect-comma? (= ch \,))
-            (recur (inc i) tuples arity false)
-
-            (and (not expect-comma?) (= ch \())
-            (when-let [[items end] (literal-list-end sql i n \))]
-              (recur (long end) (inc tuples) (if (zero? tuples) (long items) arity) true))
+            (and (= ch close-ch) (= depth 1)) [commas (inc i)]
+            (= ch \')                         (recur (skip-string-literal sql i n) depth commas)
+            (= ch \()                         (recur (inc i) (inc depth) commas)
+            (= ch \))                         (when (> depth 1) (recur (inc i) (dec depth) commas))
+            (= ch \,)                         (recur (inc i) depth (inc commas))
+            (or (Character/isDigit ch)
+                (Character/isWhitespace ch)
+                (= ch \.) (= ch \-) (= ch \+))
+            (recur (inc i) depth commas)
 
             :else nil))))))
 
-(defn- strip-in-at
-  "Decide whether to strip the IN list whose `IN (` match spans [match-start, match-end).
-   Handles flat literal lists — `IN (1, 2, ...)` → `IN (NULL)` — and lists of literal-only
-   tuples — `(a, b) IN ((1, 1), (2, 2), ...)` → `IN ((NULL, NULL))`, preserving the first tuple's
-   arity. Returns [replacement resume-pos], or [nil match-end] to leave the list untouched
-   (resuming just inside the paren, so a large list nested in a subquery —
-   `IN (SELECT ... WHERE x IN (...))` — is still found)."
+(defn- strip-list-at
+  "Decide whether to strip the IN list or ARRAY literal whose keyword match spans
+   [match-start, match-end). Returns [replacement resume-pos]: `IN (NULL)` / `ARRAY[NULL]`
+   covering the whole list, or [nil match-end] to leave it untouched (resuming just inside the
+   delimiter, so a large list nested in a subquery — `IN (SELECT ... WHERE x IN (...))` — is
+   still found)."
   [^String sql ^long match-start ^long match-end ^long n]
-  (let [open-pos (dec match-end)]
-    (or (when-let [[items end-pos] (literal-list-end sql open-pos n \))]
-          (when (> (long items) strip-threshold)
-            [(str (extract-keyword sql match-start match-end) " (NULL)") end-pos]))
-        (when-let [[tuples arity end-pos] (literal-tuple-list-end sql open-pos n)]
-          (when (> (long tuples) strip-threshold)
-            [(str (extract-keyword sql match-start match-end)
-                  " ((" (str/join ", " (repeat arity "NULL")) "))")
-             end-pos]))
-        [nil match-end])))
-
-(defn- strip-array-at
-  "Decide whether to strip the array literal whose `ARRAY [` match spans [match-start, match-end).
-   Returns [replacement resume-pos]: `ARRAY[NULL]` covering the whole literal-only list, or
-   [nil match-end] to leave it untouched."
-  [^String sql ^long match-start ^long match-end ^long n]
-  (or (when-let [[items end-pos] (literal-list-end sql (dec match-end) n \])]
-        (when (> (long items) strip-threshold)
-          [(str (extract-keyword sql match-start match-end) "[NULL]") end-pos]))
-      [nil match-end]))
+  (let [open-pos         (dec match-end)
+        [commas end-pos] (simple-list-end sql open-pos n)]
+    (if (and commas (>= (long commas) strip-threshold))
+      [(str (extract-keyword sql match-start match-end)
+            (if (= (.charAt sql open-pos) \[) "[NULL]" " (NULL)"))
+       end-pos]
+      [nil match-end])))
 
 (defn- strip-large-literal-lists*
   "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
-   IN list — with a NULL placeholder. Keyword matches inside string literals and comments are
-   ignored. Returns `sql` itself when nothing was stripped."
+   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
   ^String [^String sql]
   (let [matcher (re-matcher literal-list-keyword-pattern sql)
         n       (.length sql)]
@@ -289,33 +206,30 @@
               sql)
             (let [match-start (.start matcher)
                   match-end   (.end matcher)
-                  code-end    (code-region-end sql i match-start n)]
-              (if (> code-end match-start)
-                ;; the match sits inside a string literal or comment: copy through the enclosing
-                ;; region untouched and keep scanning after it
-                (do (.append sb sql (int i) (int code-end))
-                    (recur (long code-end) stripped? (.find matcher (int code-end))))
-                (let [[replacement resume] (let [ch (.charAt sql match-start)]
-                                             (cond
-                                               (or (= ch \V) (= ch \v)) (strip-values-at sql match-start match-end n)
-                                               (or (= ch \A) (= ch \a)) (strip-array-at sql match-start match-end n)
-                                               :else                    (strip-in-at sql match-start match-end n)))]
-                  (if replacement
-                    (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
-                    (.append sb sql (int i) (int resume)))
-                  (recur (long resume)
-                         (or stripped? (some? replacement))
-                         (.find matcher (int resume))))))))))))
+                  [replacement resume] (let [ch (.charAt sql match-start)]
+                                         (if (or (= ch \V) (= ch \v))
+                                           (strip-values-at sql match-start match-end n)
+                                           (strip-list-at sql match-start match-end n)))]
+              (if replacement
+                (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
+                (.append sb sql (int i) (int resume)))
+              (recur (long resume)
+                     (or stripped? (some? replacement))
+                     (.find matcher (int resume))))))))))
 
 (defn strip-large-literal-lists
   "Replace large literal lists with NULL placeholders: VALUES clauses with more than
    [[strip-threshold]] tuples become a single-row NULL tuple (preserving the column count from the
-   first tuple), literal-only IN lists with more than [[strip-threshold]] items become `IN (NULL)`
-   (tuple lists become `IN ((NULL, ...))`, preserving the first tuple's arity), and literal-only
-   ARRAY literals become `ARRAY[NULL]`. All surrounding SQL structure is preserved.
+   first tuple), and simple IN lists / ARRAY literals — numbers, single-quoted strings, and
+   VALUES-style tuples of them — with at least [[strip-threshold]] commas become `IN (NULL)` /
+   `ARRAY[NULL]`. All surrounding SQL structure is preserved.
 
    This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
-   On any error, returns the original SQL unchanged so parsing can proceed normally."
+   On any error, returns the original SQL unchanged so parsing can proceed normally.
+
+   Best-effort by design: stripping only feeds fail-soft analysis, and execution paths restore the
+   original SQL when anything was stripped ([[is-single-stmt-of-type?]]), so edge cases like
+   keyword-shaped text inside string literals or comments are deliberately not guarded against."
   ^String [^String sql]
   (try
     (strip-large-literal-lists* sql)
