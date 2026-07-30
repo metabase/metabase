@@ -305,6 +305,9 @@
    [:visualization_settings {:optional true} [:maybe :map]]
    [:cache_ttl {:optional true} [:maybe :int]]
    [:archived {:optional true} [:maybe :boolean]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "collection_position" "cache_ttl"]]]]
    [:column_metadata {:optional true}
     [:maybe [:sequential
              [:map
@@ -324,7 +327,8 @@
    :args         question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (common/dispatch-write
-                  {:create-required [:name]}
+                  {:create-required [:name]
+                   :clearable       #{:description :collection_position :cache_ttl}}
                   args)
         payload (common/readback token-scopes [metabot.scope/agent-resource-read]
                                  (case op

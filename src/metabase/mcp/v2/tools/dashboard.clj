@@ -355,11 +355,15 @@
                                          "Archiving is the only removal path — there is no hard delete.")}]]]
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "Dry run: returns the layout the ops would produce, writing nothing."}]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "collection_position" "cache_ttl"]]]]
    [:ops {:optional true}
     [:maybe [:sequential {:description "Editor operations, applied in order as one atomic save."} op-schema]]]])
 
 (def ^:private dashboard-write-entry
-  {:create-required [:name]})
+  {:create-required [:name]
+   :clearable       #{:description :collection_position :cache_ttl}})
 
 ;;; ------------------------------------------------- Handler ------------------------------------------------------
 

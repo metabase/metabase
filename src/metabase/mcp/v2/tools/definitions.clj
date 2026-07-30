@@ -293,7 +293,13 @@
                                          "the only removal path — there is no hard delete.")}]]]
    [:revision_message {:optional true}
     [:maybe [:string {:min 1 :description (str "Update only, required: a short sentence describing the change, "
-                                               "recorded in the revision history.")}]]]])
+                                               "recorded in the revision history.")}]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description (str "Update only: property names to unset (description). Needed "
+                                                   "because a null cannot say \"clear this\" — strict clients fill "
+                                                   "every unset property with null, so nulls are stripped at the "
+                                                   "boundary.")}
+                          "description"]]]]])
 
 ;;; ------------------------------------------------ segment_write -------------------------------------------------
 
@@ -310,7 +316,8 @@
                           "write. May reference other segments, but cycles are rejected.")}))
 
 (def ^:private segment-write-entry
-  {:create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]
+   :clearable       #{:description}})
 
 (registry/deftool segment-write
   "Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries'
@@ -376,7 +383,8 @@
                           "rejected.")}))
 
 (def ^:private measure-write-entry
-  {:create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]
+   :clearable       #{:description}})
 
 (registry/deftool measure-write
   "Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another

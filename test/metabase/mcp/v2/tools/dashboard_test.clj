@@ -187,10 +187,42 @@
                (t2/select-one [:model/Dashboard :name :width :auto_apply_filters :archived]
                               :id (:id dash))))))))
 
+(deftest clear-list-clears-attributes-test
+  (testing "GHY-4191: `clear` names the properties to unset, which null cannot say — the boundary
+            strips nulls because strict clients flood every declared property with one."
+    (mt/with-temp [:model/Dashboard dash {:name                "Sales"
+                                          :description         "old"
+                                          :collection_position 1
+                                          :cache_ttl           10}]
+      (testing "the named properties are unset, and unnamed ones are untouched"
+        (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                 (wire {:method "update" :id (:id dash)
+                                        :clear ["description" "cache_ttl"]})))
+        (is (= {:name "Sales" :description nil :collection_position 1 :cache_ttl nil}
+               (t2/select-one [:model/Dashboard :name :description :collection_position :cache_ttl]
+                              :id (:id dash)))))
+      (testing "clearing alongside an ordinary set in the same call"
+        (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                 (wire {:method "update" :id (:id dash)
+                                        :name "Renamed" :clear ["collection_position"]})))
+        (is (= {:name "Renamed" :collection_position nil}
+               (t2/select-one [:model/Dashboard :name :collection_position] :id (:id dash)))))
+      (testing "a property that isn't clearable is refused rather than silently ignored. The
+                schema enum rejects it at the boundary and names the ones that are clearable, so
+                the handler's own check (see common-test) is only a backstop against the enum and
+                the tool's `:clearable` set drifting apart"
+        (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                          (wire {:method "update" :id (:id dash)
+                                                 :clear ["name"]})))]
+          (is (re-find #"clear" err))
+          (is (re-find #"description" err)))
+        (is (= "Renamed" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))))
+
 (deftest clearable-attributes-cannot-be-cleared-with-null-test
   (testing "GHY-4147: the flip side of the boundary strip, pinned so it stays a decision rather
             than a surprise. These four columns are nullable and clearing them is meaningful, but
-            null is already spoken for as \"I did not set this\", so it cannot express it."
+            null is already spoken for as \"I did not set this\", so it cannot express it — the
+            `clear` list added in GHY-4191 is how a caller says it instead."
     (mt/with-temp [:model/Collection coll {}
                    :model/Dashboard  dash {:name                "Sales"
                                            :description         "old"

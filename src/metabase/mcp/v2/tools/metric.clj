@@ -206,12 +206,16 @@
              [:string {:description "21-character entity_id of the collection, or \"root\" for the root collection."}]]]]
    [:collection_position {:optional true}
     [:maybe [:int {:description "Pins the metric at this position in its collection."}]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "collection_position"]]]]
    [:archived {:optional true}
     [:maybe [:boolean {:description (str "Update only: true moves the metric to the trash, false restores it. "
                                          "Archiving is the only removal path — there is no hard delete.")}]]]])
 
 (def ^:private metric-write-entry
-  {:create-required [:name]})
+  {:create-required [:name]
+   :clearable       #{:description :collection_position}})
 
 (registry/deftool metric-write
   "Create or update a metric: a saved, reusable aggregation that lives in a collection and can be queried on its own

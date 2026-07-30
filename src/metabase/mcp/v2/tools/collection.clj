@@ -104,6 +104,9 @@
                                     "21-character entity_id, or \"root\" for the top level. Omitted on create means "
                                     "the root collection. You need write access to the parent.")}
              :int :string]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, authority_level). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "authority_level"]]]]
    [:archived {:optional true}
     [:maybe [:boolean {:description (str "Update only: true moves the collection and its contents to the trash, false "
                                          "restores them. Archiving is the only removal path — there is no hard "
@@ -118,7 +121,8 @@
              "official"]]]])
 
 (def ^:private collection-write-entry
-  {:create-required [:name]})
+  {:create-required [:name]
+   :clearable       #{:description :authority_level}})
 
 (registry/deftool collection-write
   "Create, rename, move, archive, or restore a collection — the folders that hold questions, dashboards, models, and
