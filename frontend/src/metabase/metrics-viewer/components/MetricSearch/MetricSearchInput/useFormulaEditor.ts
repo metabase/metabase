@@ -18,6 +18,7 @@ import {
 } from "../../../utils/source-ids";
 import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
 import {
+  type MetricIdentityEntry,
   type MetricNameMap,
   applyTrackedDefinitions,
   buildFullTextWithIdentities,
@@ -190,6 +191,61 @@ export function useFormulaEditor({
     [],
   );
 
+  /** One transaction that fixes the doc (only if it diverges), sets the caret, and installs identities atomically. */
+  const syncViewWithSession = useCallback(
+    (
+      view: EditorView,
+      fullText: string,
+      identities: MetricIdentityEntry[],
+      caretPos: number,
+    ) => {
+      const currentDoc = view.state.doc.toString();
+      // Replacing the doc with identical text still wipes identities
+      // (TrackDel maps positions through the deletion), so only dispatch
+      // changes when the text actually diverges.
+      const changes =
+        currentDoc !== fullText
+          ? { from: 0, to: currentDoc.length, insert: fullText }
+          : undefined;
+      isSyncingDocRef.current = true;
+      view.dispatch({
+        changes,
+        selection: EditorSelection.cursor(caretPos),
+        effects: setMetricIdentities.of(identitiesFromEntries(identities)),
+        annotations: [
+          Transaction.addToHistory.of(false),
+          programmaticFormulaUpdate.of(true),
+        ],
+      });
+      isSyncingDocRef.current = false;
+    },
+    [],
+  );
+
+  /** Session text, identities and caret derived from the committed entities and the requested caret. */
+  const planEditingSession = useCallback(() => {
+    const { text: fullText, identities } = buildFullTextWithIdentities(
+      formulaEntitiesRef.current,
+      metricNamesRef.current,
+    );
+    const requestedCaret = pendingCaretPositionRef.current;
+    return {
+      fullText,
+      identities,
+      caretPos: Math.min(requestedCaret ?? Infinity, fullText.length),
+      shouldOpenDropdown: requestedCaret === null,
+    };
+  }, [metricNamesRef]);
+
+  /** Resets the React side of a session: the committed baseline and the editing flags. */
+  const applySessionState = useCallback((fullText: string) => {
+    textAtFocusRef.current = fullText;
+    editTextRef.current = fullText;
+    setIsFocused(true);
+    setValidationError(null);
+    setIsExpressionDirty(false);
+  }, []);
+
   const initializeEditingSession = useCallback(
     (viewOverride?: EditorView) => {
       if (isCollapsingRef.current) {
@@ -202,41 +258,26 @@ export function useFormulaEditor({
         return;
       }
       isEditingSessionActiveRef.current = true;
-      const { text: fullText, identities } = buildFullTextWithIdentities(
-        formulaEntitiesRef.current,
-        metricNamesRef.current,
-      );
 
-      const requestedCaret = pendingCaretPositionRef.current;
-      const shouldOpenDropdown = requestedCaret === null;
-      const caretPos = Math.min(requestedCaret ?? Infinity, fullText.length);
-
-      textAtFocusRef.current = fullText;
-      editTextRef.current = fullText;
-      setIsFocused(true);
-      setValidationError(null);
-      setIsExpressionDirty(false);
+      const { fullText, identities, caretPos, shouldOpenDropdown } =
+        planEditingSession();
+      applySessionState(fullText);
 
       const view = viewOverride ?? editorRef.current?.view;
-      if (view) {
-        const currentDoc = view.state.doc.toString();
-        isSyncingDocRef.current = true;
-        view.dispatch({
-          ...(currentDoc !== fullText
-            ? { changes: { from: 0, to: currentDoc.length, insert: fullText } }
-            : null),
-          selection: EditorSelection.cursor(caretPos),
-          effects: setMetricIdentities.of(identitiesFromEntries(identities)),
-          annotations: [
-            Transaction.addToHistory.of(false),
-            programmaticFormulaUpdate.of(true),
-          ],
-        });
-        isSyncingDocRef.current = false;
-        scheduleDropdownAtCaret(view, caretPos, shouldOpenDropdown);
+      if (!view) {
+        return;
       }
+
+      syncViewWithSession(view, fullText, identities, caretPos);
+      scheduleDropdownAtCaret(view, caretPos, shouldOpenDropdown);
     },
-    [editorRef, metricNamesRef, scheduleDropdownAtCaret],
+    [
+      editorRef,
+      planEditingSession,
+      applySessionState,
+      syncViewWithSession,
+      scheduleDropdownAtCaret,
+    ],
   );
 
   const handleInputFocus = useCallback(() => {
