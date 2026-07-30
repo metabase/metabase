@@ -1,5 +1,5 @@
 name: AI Benchmark
-run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || (inputs.pr != '' && format('PR#{0}', inputs.pr) || (inputs.ref != '' && inputs.ref || 'master')) }}"
+run-name: "dispatch evals · ${{ github.event_name == 'pull_request' && format('smoke PR#{0}', github.event.pull_request.number) || (inputs.ref != '' && inputs.ref || (inputs.pr != '' && format('PR#{0}', inputs.pr) || 'master')) }}"
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ on:
         required: false
         default: ""
       ref:
-        description: "Metabase branch, tag or sha (resolved to a full sha; ignored if pr is set)"
+        description: "Metabase branch, tag or sha (resolved to a full sha; overrides the PR head, and must sit on the PR's branch when both are given)"
         required: false
         default: ""
       scope:
@@ -97,13 +97,17 @@ jobs:
           DEFAULT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [[ -n "$PR" ]]; then
-            SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)
-            echo "PR #${PR} head -> ${SHA}"
-          elif [[ -n "$REF" ]]; then
+          # `ref` wins over `pr`, matching evals' eval-run.yml, which this dispatches into — same two
+          # inputs with opposite precedence in chained workflows would be a trap. eval-run also
+          # rejects a ref that doesn't sit on the PR's branch; that check stays there rather than
+          # being duplicated here.
+          if [[ -n "$REF" ]]; then
             # `ref` accepts a branch or tag; fetch-artifact and the image tag need a full sha.
             SHA=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${REF}" --jq .sha)
             echo "ref ${REF} -> ${SHA}"
+          elif [[ -n "$PR" ]]; then
+            SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .head.sha)
+            echo "PR #${PR} head -> ${SHA}"
           else
             SHA="$DEFAULT_SHA"
             echo "neither pr nor ref given; using this run's commit -> ${SHA}"
