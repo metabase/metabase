@@ -945,9 +945,15 @@
       :type/Float              [:float]
       :type/Integer            [:int]
       :type/Number             [:bigint]
-      :type/Text               [:text]
+      :type/Text               [[:raw "nvarchar(max)"]]
       :type/Time               [:time]
-      :type/UUID               [:uniqueidentifier])))
+      :type/UUID               [:uniqueidentifier]))
+  (testing ":type/Text must not compile to `text`/`ntext` -- SQL Server rejects those in GROUP BY, ORDER BY,
+            and comparisons (\"The text, ntext, and image data types cannot be compared or sorted\")"
+    (let [ddl (#'driver.sql-jdbc/create-table!-sql :sqlserver :dbo/t
+                                                   [["state" (driver/type->database-type :sqlserver :type/Text)]])]
+      (is (re-find #"(?i)nvarchar\(max\)" ddl))
+      (is (not (re-find #"(?i)\bn?text\b" ddl))))))
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
