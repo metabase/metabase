@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/actions/containers/ActionPicker/ActionPicker.styled";
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useSetting } from "metabase/settings";
@@ -126,6 +126,7 @@ export function GlossaryTable({
         emptyBody={
           <Center>
             <EmptyState
+              className={S.emptyState}
               message={t`No terms yet`}
               illustrationElement={<NoObjectError mb="-1.5rem" />}
             />
