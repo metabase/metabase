@@ -23,6 +23,25 @@
                 [{:id 1, :engine "h2", :details "{:db \"metabase.db\"}"}
                  {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}])))))))
 
+(deftest ^:parallel model-results-xform-table-test
+  (testing "transform_id is nulled out (metabase#78704)"
+    ;; transform (and its sibling tables) aren't copied -- see models-to-exclude below -- so a Table row
+    ;; that still points at one via transform_id would reference a row that will never exist in the
+    ;; target, and trip fk_metabase_table_transform_id at commit.
+    (is (= [{:id 1, :name "orders", :transform_id nil}
+            {:id 2, :name "products", :transform_id nil}]
+           (into
+            []
+            (#'copy/model-results-xform :model/Table)
+            [{:id 1, :name "orders", :transform_id 7}
+             {:id 2, :name "products", :transform_id nil}]))))
+  (testing "unique_table_helper (a computed column) is still dropped"
+    (is (= [{:id 1, :name "orders", :transform_id nil}]
+           (into
+            []
+            (#'copy/model-results-xform :model/Table)
+            [{:id 1, :name "orders", :transform_id nil, :unique_table_helper "orders"}])))))
+
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
   #{:model/AgentApiCallLog
