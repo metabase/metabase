@@ -9,6 +9,7 @@ import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState
 import {
   Box,
   Card,
+  Ellipsified,
   Flex,
   LoadingOverlay,
   Stack,
@@ -19,14 +20,14 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
-import { useMcpEventsQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/hooks/useMcpEventsQuery";
+import { useCliEventsQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliEventsQuery";
 import {
-  MCP_EVENT_SORT_COLUMNS,
-  type McpEventSortColumn,
-  type McpFilters,
-  mcpEventColumnKeys,
-} from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
-import { buildEventsQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
+  CLI_EVENT_SORT_COLUMNS,
+  type CliEventSortColumn,
+  type CliFilters,
+  buildEventsQuery,
+  cliEventColumnKeys,
+} from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -36,24 +37,25 @@ import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
 
 export const EVENTS_PAGE_SIZE = 25;
 
-const DEFAULT_SORTING: SortingOptions<McpEventSortColumn> = {
+const DEFAULT_SORTING: SortingOptions<CliEventSortColumn> = {
   sort_column: "created_at",
   sort_direction: "desc",
 };
 
 type EventColumn = {
-  key: McpEventSortColumn;
+  key: CliEventSortColumn;
   title: string;
-  sort?: McpEventSortColumn;
+  sort?: CliEventSortColumn;
   align?: "right";
+  grow?: boolean;
   render?: (value: RowValue) => ReactNode;
 };
 
 const EVENT_COLUMN_META: Record<
-  McpEventSortColumn,
+  CliEventSortColumn,
   () => Omit<EventColumn, "key">
 > = {
-  tool_call_id: () => ({ title: t`ID`, sort: "tool_call_id" }),
+  call_id: () => ({ title: t`ID`, sort: "call_id" }),
   created_at: () => ({
     title: t`Created at`,
     sort: "created_at",
@@ -64,14 +66,10 @@ const EVENT_COLUMN_META: Record<
         <DateTime value={String(value)} />
       ),
   }),
-  tool_name: () => ({ title: t`Tool`, sort: "tool_name" }),
+  operation: () => ({ title: t`Operation`, sort: "operation" }),
   client_display_name: () => ({
     title: t`Client`,
     sort: "client_display_name",
-  }),
-  client_version: () => ({
-    title: t`Client version`,
-    sort: "client_version",
   }),
   user_display_name: () => ({ title: t`User`, sort: "user_display_name" }),
   tenant_name: () => ({ title: t`Tenant`, sort: "tenant_name" }),
@@ -84,21 +82,24 @@ const EVENT_COLUMN_META: Record<
     render: (value) =>
       value == null ? EMPTY_CELL_PLACEHOLDER : formatNumber(Number(value)),
   }),
-  error_type: () => ({ title: t`Error type`, sort: "error_type" }),
-  error_message: () => ({ title: t`Error message`, sort: "error_message" }),
+  error_message: () => ({
+    title: t`Error message`,
+    sort: "error_message",
+    grow: true,
+    render: (value) =>
+      value == null || value === "" ? (
+        EMPTY_CELL_PLACEHOLDER
+      ) : (
+        <Ellipsified>{String(value)}</Ellipsified>
+      ),
+  }),
 };
 
-/**
- * The curated columns surfaced in the events table, in display order. Derived from the same
- * {@link mcpEventColumnKeys} the row-level query projects to (see `buildEventsQuery`). Any other view column (raw ids, client_name, user_agent, …) is never even requested, and
- * `tenant_name`/`ip_address`/`error_message` are only requested when tenants/PII retention are
- * enabled.
- */
 export function eventColumns(
   hasTenants: boolean,
   hasPii: boolean,
 ): EventColumn[] {
-  return mcpEventColumnKeys(hasTenants, hasPii).map((key) => ({
+  return cliEventColumnKeys(hasTenants, hasPii).map((key) => ({
     key,
     ...EVENT_COLUMN_META[key](),
   }));
@@ -120,9 +121,9 @@ type PaginationProps = {
 };
 
 type SortProps = {
-  sortingOptions: SortingOptions<McpEventSortColumn>;
+  sortingOptions: SortingOptions<CliEventSortColumn>;
   onSortingOptionsChange: (
-    sortingOptions: SortingOptions<McpEventSortColumn>,
+    sortingOptions: SortingOptions<CliEventSortColumn>,
   ) => void;
 };
 
@@ -134,7 +135,7 @@ type MetadataSources = {
   groupMembersTable: TableMetadata | CardMetadata;
 };
 
-type BaseProps = McpFilters &
+type BaseProps = CliFilters &
   PaginationProps &
   SortProps & {
     hasTenants: boolean;
@@ -144,7 +145,7 @@ type BaseProps = McpFilters &
 type Props = BaseProps & Nullable<MetadataSources>;
 type InnerProps = BaseProps & MetadataSources;
 
-export function McpEventsTable({
+export function CliEventsTable({
   provider,
   table,
   groupMembersTable,
@@ -154,7 +155,7 @@ export function McpEventsTable({
     return null;
   }
   return (
-    <McpEventsTableInner
+    <CliEventsTableInner
       provider={provider}
       table={table}
       groupMembersTable={groupMembersTable}
@@ -163,7 +164,7 @@ export function McpEventsTable({
   );
 }
 
-function McpEventsTableInner({
+function CliEventsTableInner({
   provider,
   table,
   groupMembersTable,
@@ -224,7 +225,7 @@ function McpEventsTableInner({
     ],
   );
 
-  const { data, isFetching, error } = useMcpEventsQuery(
+  const { data, isFetching, error } = useCliEventsQuery(
     query,
     page,
     EVENTS_PAGE_SIZE,
@@ -232,8 +233,7 @@ function McpEventsTableInner({
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
-  // result by name. Names are upper- or lower-cased depending on the warehouse (the audit DB is H2,
-  // which upper-cases; Postgres lower-cases), so match case-insensitively.
+  // result by name. Names are upper- or lower-cased depending on the warehouse, so match case-insensitively.
   const columnIndex = useMemo(() => {
     const cols = data?.data?.cols ?? [];
     return new Map(cols.map((col, index) => [col.name.toLowerCase(), index]));
@@ -248,7 +248,7 @@ function McpEventsTableInner({
           return [column.key, index != null ? rawRow[index] : null];
         }),
       );
-      const id = String(values.tool_call_id ?? `${page}-${rowIndex}`);
+      const id = String(values.call_id ?? `${page}-${rowIndex}`);
       return { id, ...values };
     });
   }, [data, columns, columnIndex, page]);
@@ -258,9 +258,9 @@ function McpEventsTableInner({
       columns.map((column) => ({
         id: column.key,
         header: column.title,
-        width: "auto",
-        minWidth: 120,
-        maxAutoWidth: 320,
+        ...(column.grow
+          ? { minWidth: 120 }
+          : { width: "auto" as const, minWidth: 120, maxAutoWidth: 320 }),
         enableSorting: !!column.sort,
         sortDescFirst: column.sort === "created_at",
         accessorFn: (row) => row[column.key],
@@ -280,7 +280,7 @@ function McpEventsTableInner({
 
   const { sortingState, onSortingChange } = useSortingStateChange({
     sortingOptions: effectiveSorting,
-    columns: MCP_EVENT_SORT_COLUMNS,
+    columns: CLI_EVENT_SORT_COLUMNS,
     defaultSorting: DEFAULT_SORTING,
     onSortingOptionsChange,
   });
@@ -310,7 +310,7 @@ function McpEventsTableInner({
         p={0}
         pos="relative"
         withBorder
-        data-testid="mcp-events-table"
+        data-testid="cli-events-table"
       >
         {error ? (
           <Flex mih="60vh" align="center" justify="center">
@@ -324,9 +324,9 @@ function McpEventsTableInner({
             <TreeTable
               instance={treeTableInstance}
               hierarchical={false}
-              ariaLabel={t`Tool calls`}
-              emptyState={<MonitorEmptyState label={t`No tool calls found`} />}
-              getRowProps={() => ({ "data-testid": "mcp-event" })}
+              ariaLabel={t`Calls`}
+              emptyState={<MonitorEmptyState label={t`No calls found`} />}
+              getRowProps={() => ({ "data-testid": "cli-event" })}
             />
           </>
         )}

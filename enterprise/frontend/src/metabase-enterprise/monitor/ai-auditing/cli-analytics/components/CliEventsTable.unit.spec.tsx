@@ -41,18 +41,9 @@ describe("eventColumns", () => {
     expect(all).not.toContain("group_name");
   });
 
-  it("marks the expected columns sortable and leaves the rest static", () => {
+  it("marks every column sortable", () => {
     const columns = eventColumns(true, true);
-    const sortable = columns.filter((c) => c.sort).map((c) => c.key);
-    expect(sortable).toEqual([
-      "created_at",
-      "operation",
-      "client_display_name",
-      "user_display_name",
-      "status",
-      "duration_ms",
-    ]);
-    // the PK and free-text columns are not sortable
-    expect(columns.find((c) => c.key === "call_id")?.sort).toBeUndefined();
+    expect(columns.every((c) => c.sort)).toBe(true);
+    expect(columns.map((c) => c.sort)).toEqual(columns.map((c) => c.key));
   });
 });

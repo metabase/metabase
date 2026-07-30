@@ -242,6 +242,11 @@ describe("MonitorLayout", () => {
       route: Urls.monitorAiAuditingMcp(),
       section: "ai-auditing-mcp",
     },
+    {
+      label: "CLI analytics",
+      route: Urls.monitorAiAuditingCli(),
+      section: "ai-auditing-cli",
+    },
   ] as const;
 
   it.each(AI_AUDITING_SECTION_CASES)(
@@ -474,12 +479,17 @@ describe("MonitorLayout", () => {
       "href",
       Urls.monitorAiAuditingMcp(),
     );
+    expect(screen.getByRole("link", { name: "CLI analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingCli(),
+    );
   });
 
   it.each([
     { label: "Usage stats", icon: "lineandbar" },
     { label: "Conversations", icon: "comment" },
     { label: "MCP analytics", icon: "metabot" },
+    { label: "CLI analytics", icon: "code_block" },
   ])("shows the $icon icon for $label", async ({ label, icon }) => {
     setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
 
@@ -511,6 +521,11 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("link", { name: "Conversations" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "CLI analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingCli(),
+    );
+    expect(getTabGem("CLI analytics")).not.toBeInTheDocument();
   });
 
   it("hides the whole AI Auditing group when audit_app is unavailable", async () => {
@@ -523,9 +538,11 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("heading", { name: AI_AUDITING_GROUP }),
     ).not.toBeInTheDocument();
-    ["Usage stats", "Conversations", "MCP analytics"].forEach((name) => {
-      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
-    });
+    ["Usage stats", "Conversations", "MCP analytics", "CLI analytics"].forEach(
+      (name) => {
+        expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+      },
+    );
   });
 
   it("keeps MCP analytics available when the MCP server toggle is off", async () => {

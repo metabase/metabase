@@ -1,20 +1,20 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  Query,
-  TableMetadata,
-} from "metabase-lib";
-import * as Lib from "metabase-lib";
-import type { SortDirection } from "metabase-types/api";
-
 import {
   applyDateFilter,
   applyIdFilter,
   breakoutByColumn,
   findColumn,
   joinGroupMembers,
-} from "../metabot-analytics/components/ConversationStatsPage/query-utils";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils";
+import type {
+  CardMetadata,
+  ColumnMetadata,
+  MetadataProvider,
+  Query,
+  TableMetadata,
+} from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type { SortDirection } from "metabase-types/api";
 
 export type McpFilters = {
   dateFilter: DateFilterValue;
@@ -32,12 +32,6 @@ type McpDataSources = {
 // Name of the count aggregation column produced by `Lib.aggregateByCount`.
 const COUNT_COLUMN = "count";
 
-/**
- * Apply the shared user/group/tenant filters to a query. The group filter joins the audit
- * `v_group_members` view and filters by `group_id` (a user can belong to several groups); the
- * user and tenant filters are plain `user_id` / `tenant_id` equalities. Each no-ops when its id
- * is unset.
- */
 function applyScopeFilters(
   query: Query,
   {
@@ -289,6 +283,26 @@ export const MCP_EVENT_SORT_COLUMNS = [
 
 export type McpEventSortColumn = (typeof MCP_EVENT_SORT_COLUMNS)[number];
 
+export function mcpEventColumnKeys(
+  hasTenants: boolean,
+  hasPii: boolean,
+): McpEventSortColumn[] {
+  return [
+    "tool_call_id",
+    "created_at",
+    "tool_name",
+    "client_display_name",
+    "client_version",
+    "user_display_name",
+    ...(hasTenants ? (["tenant_name"] as const) : []),
+    ...(hasPii ? (["ip_address"] as const) : []),
+    "status",
+    "duration_ms",
+    "error_type",
+    ...(hasPii ? (["error_message"] as const) : []),
+  ];
+}
+
 /** Append an order-by on `columnName` in `direction` if it's orderable. No-op if absent. */
 function orderByColumn(
   query: Query,
@@ -303,16 +317,21 @@ type EventsQueryOpts = McpFilters &
   McpDataSources & {
     sortColumn?: McpEventSortColumn;
     sortDirection?: SortDirection;
+    hasTenants: boolean;
+    hasPii: boolean;
   };
 
-/**
- * Build the row-level events query for the Events tab: the filtered view with no aggregation,
- * ordered by the chosen sort column (default `created_at` descending), then by the `tool_call_id`
- * primary key as a tiebreaker. The tiebreaker makes the sort a total order — without it,
- * pagination can skip or duplicate rows across page boundaries when the sort column has ties (the
- * DB is free to order ties differently between requests). Pagination is applied separately via
- * {@link paginateEventsQuery}.
- */
+function projectToEventColumns(
+  query: Query,
+  hasTenants: boolean,
+  hasPii: boolean,
+): Query {
+  const fields = mcpEventColumnKeys(hasTenants, hasPii)
+    .map((name) => findColumn(query, name, Lib.fieldableColumns))
+    .filter((column): column is ColumnMetadata => column != null);
+  return Lib.withFields(query, 0, fields);
+}
+
 export function buildEventsQuery({
   provider,
   table,
@@ -323,6 +342,8 @@ export function buildEventsQuery({
   tenantId,
   sortColumn = "created_at",
   sortDirection = "desc",
+  hasTenants,
+  hasPii,
 }: EventsQueryOpts): Query {
   let query = buildBaseQuery({
     provider,
@@ -336,6 +357,7 @@ export function buildEventsQuery({
 
   query = orderByColumn(query, sortColumn, sortDirection);
   query = orderByColumn(query, "tool_call_id", "desc");
+  query = projectToEventColumns(query, hasTenants, hasPii);
 
   return query;
 }

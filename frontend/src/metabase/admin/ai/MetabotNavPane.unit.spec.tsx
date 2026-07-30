@@ -13,11 +13,13 @@ import { MetabotNavPane } from "./MetabotNavPane";
 const setup = ({
   aiFeaturesEnabled = true,
   aiControlsEnabled = false,
+  auditAppEnabled = false,
   isConfigured = true,
   initialRoute = "/admin/metabot",
 }: {
   aiFeaturesEnabled?: boolean;
   aiControlsEnabled?: boolean;
+  auditAppEnabled?: boolean;
   isConfigured?: boolean;
   initialRoute?: string;
 } = {}) => {
@@ -25,6 +27,7 @@ const setup = ({
     "ai-features-enabled?": aiFeaturesEnabled,
     "token-features": createMockTokenFeatures({
       ai_controls: aiControlsEnabled,
+      audit_app: auditAppEnabled,
     }),
   });
 
@@ -89,6 +92,14 @@ describe("MetabotNavPane", () => {
         selector: '[data-disabled="true"] *',
       }),
     ).toBeInTheDocument();
+  });
+
+  it("no longer exposes the Auditing folder or CLI analytics with audit_app", async () => {
+    setup({ aiControlsEnabled: true, auditAppEnabled: true });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(screen.queryByText("Auditing")).not.toBeInTheDocument();
+    expect(screen.queryByText("CLI analytics")).not.toBeInTheDocument();
   });
 
   it("displays the ai controls upsell links when the ai controls feature is unavailable", async () => {

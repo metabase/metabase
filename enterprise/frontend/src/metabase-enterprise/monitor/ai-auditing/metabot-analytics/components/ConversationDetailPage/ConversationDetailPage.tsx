@@ -22,7 +22,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -41,16 +41,19 @@ import {
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
+import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
+import type {
+  ConversationFeedback,
+  GeneratedQuery,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
-
-import { useGetMetabotAnalyticsConversationQuery } from "../../api";
-import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
-export function ConversationDetailPage({ params }: WithRouterProps) {
+export function ConversationDetailPage() {
+  const { params } = useRouter();
   const convoId = params.convoId;
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedToolCall, setSelectedToolCall] =

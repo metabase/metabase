@@ -184,6 +184,10 @@ export function getMonitorRedirects() {
         path="/admin/metabot/usage-auditing/mcp"
         element={redirect(Urls.monitorAiAuditingMcp())}
       />
+      <Route
+        path="/admin/metabot/usage-auditing/cli"
+        element={redirect(Urls.monitorAiAuditingCli())}
+      />
       <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>
   );

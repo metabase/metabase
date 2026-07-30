@@ -8,6 +8,7 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils";
 import type {
   CardMetadata,
+  ColumnMetadata,
   MetadataProvider,
   Query,
   TableMetadata,
@@ -332,15 +333,37 @@ export function buildTotalCountQuery({
 }
 
 export const CLI_EVENT_SORT_COLUMNS = [
+  "call_id",
   "created_at",
   "operation",
   "client_display_name",
   "user_display_name",
+  "tenant_name",
+  "ip_address",
   "status",
   "duration_ms",
+  "error_message",
 ] as const;
 
 export type CliEventSortColumn = (typeof CLI_EVENT_SORT_COLUMNS)[number];
+
+export function cliEventColumnKeys(
+  hasTenants: boolean,
+  hasPii: boolean,
+): CliEventSortColumn[] {
+  return [
+    "call_id",
+    "created_at",
+    "operation",
+    "client_display_name",
+    "user_display_name",
+    ...(hasTenants ? (["tenant_name"] as const) : []),
+    ...(hasPii ? (["ip_address"] as const) : []),
+    "status",
+    "duration_ms",
+    ...(hasPii ? (["error_message"] as const) : []),
+  ];
+}
 
 /** Append an order-by on `columnName` in `direction` if it's orderable. No-op if absent. */
 function orderByColumn(
@@ -352,20 +375,25 @@ function orderByColumn(
   return col ? Lib.orderBy(query, 0, col, direction) : query;
 }
 
+function projectToEventColumns(
+  query: Query,
+  hasTenants: boolean,
+  hasPii: boolean,
+): Query {
+  const fields = cliEventColumnKeys(hasTenants, hasPii)
+    .map((name) => findColumn(query, name, Lib.fieldableColumns))
+    .filter((column): column is ColumnMetadata => column != null);
+  return Lib.withFields(query, 0, fields);
+}
+
 type EventsQueryOpts = CliFilters &
   CliDataSources & {
     sortColumn?: CliEventSortColumn;
     sortDirection?: SortDirection;
+    hasTenants: boolean;
+    hasPii: boolean;
   };
 
-/**
- * Build the row-level events query for the Events tab: the filtered view with no aggregation,
- * ordered by the chosen sort column (default `created_at` descending), then by the `call_id`
- * primary key as a tiebreaker. The tiebreaker makes the sort a total order — without it,
- * pagination can skip or duplicate rows across page boundaries when the sort column has ties (the
- * DB is free to order ties differently between requests). Pagination is applied separately via
- * {@link paginateEventsQuery}.
- */
 export function buildEventsQuery({
   provider,
   table,
@@ -376,6 +404,8 @@ export function buildEventsQuery({
   tenantId,
   sortColumn = "created_at",
   sortDirection = "desc",
+  hasTenants,
+  hasPii,
 }: EventsQueryOpts): Query {
   let query = buildBaseQuery({
     provider,
@@ -389,6 +419,7 @@ export function buildEventsQuery({
 
   query = orderByColumn(query, sortColumn, sortDirection);
   query = orderByColumn(query, "call_id", "desc");
+  query = projectToEventColumns(query, hasTenants, hasPii);
 
   return query;
 }

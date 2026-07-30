@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Skeleton } from "metabase/ui";
+import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import { buildCallsByDayByClientQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import { toSeriesByBreakoutRawSeries } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/raw-series";
 import { BreakoutChartCard } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/BreakoutChartCard";
 import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type {
@@ -10,10 +13,6 @@ import type {
   Query,
   TableMetadata,
 } from "metabase-lib";
-
-import type { CliFilters } from "../query-utils";
-import { buildCallsByDayByClientQuery } from "../query-utils";
-import { toSeriesByBreakoutRawSeries } from "../raw-series";
 
 const CHART_HEIGHT = 320;
 

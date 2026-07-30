@@ -1,8 +1,7 @@
 import { useMemo } from "react";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
@@ -10,35 +9,37 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 import {
+  VIEW_AGENT_API_CALLS,
   VIEW_GROUP_MEMBERS,
-  VIEW_MCP_TOOL_CALLS,
-} from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
-import { useMcpHasData } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/hooks/useMcpHasData";
-import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
-import { mcpUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/url-state";
+} from "metabase-enterprise/monitor/ai-auditing/cli-analytics/constants";
+import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliHasData";
+import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import type { CliTab } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
+import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import {
-  // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
-  ConversationFilters as McpToolCallsFilter,
+  // The shared audit filter bar; aliased since it has nothing to do with Metabot "conversations".
+  ConversationFilters as CliCallsFilter,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 
-import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
-import { McpBreakoutChart } from "./McpBreakoutChart";
-import { McpCallsTimelineChart } from "./McpCallsTimelineChart";
-import { McpEventsTable } from "./McpEventsTable";
+import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
+import { CliBreakoutChart } from "./CliBreakoutChart";
+import { CliCallerLivenessTable } from "./CliCallerLivenessTable";
+import { CliCallsTimelineChart } from "./CliCallsTimelineChart";
+import { CliEventsTable } from "./CliEventsTable";
 
 /**
- * AI Auditing MCP analytics page. Renders live ad-hoc queries over the `v_mcp_tool_calls` audit view
- * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
- * filters.
+ * AI Auditing CLI analytics page. Renders live ad-hoc queries over the `v_agent_api_calls` audit view
+ * across two tabs (Charts and a row-level Calls table), sharing URL-state date/user/group
+ * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function McpAnalyticsPage() {
+export function CliAnalyticsPage() {
   const { location } = useRouter();
   const [
     { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
-  ] = useUrlState(location, mcpUrlStateConfig);
+  ] = useUrlState(location, cliUrlStateConfig);
 
   const {
     dateFilter,
@@ -52,15 +53,14 @@ export function McpAnalyticsPage() {
     hasTenants,
   } = useFilterOptions({ date, user, group, tenant });
 
-  // IP address and error message are PII (null unless retention is on), so only surface those
-  // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
-  const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
+
+  const callsAudit = useAuditTable(VIEW_AGENT_API_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
   const dataSources = {
-    provider: toolCallsAudit.provider,
-    table: toolCallsAudit.table,
+    provider: callsAudit.provider,
+    table: callsAudit.table,
     groupMembersTable: groupMembersAudit.table,
   };
 
@@ -71,54 +71,49 @@ export function McpAnalyticsPage() {
     [sort_column, sort_direction],
   );
 
-  const { isInitialLoading, isRefetching, hasData, count, error } =
-    useMcpHasData({
-      ...dataSources,
-      ...chartFilters,
-    });
-  // Initial load shows a loader (never the empty state). After the first result, a filter
-  // change keeps the charts mounted so they show their own skeletons while refetching; the
-  // empty state only appears once a load has resolved to zero rows.
+  const { isInitialLoading, isRefetching, hasData, count } = useCliHasData({
+    ...dataSources,
+    ...chartFilters,
+  });
   const showEmpty = !isInitialLoading && !isRefetching && !hasData;
 
   // Only surface the errors section when the current filters actually match failed calls, so a
   // healthy instance doesn't show a row of empty error charts.
-  const { hasData: hasErrors } = useMcpHasData({
+  const { hasData: hasErrors } = useCliHasData({
     ...dataSources,
     ...chartFilters,
     errorsOnly: true,
   });
 
-  // The events (Tool calls) tab is a data grid that should scroll internally.
+  // The Calls tab is a data grid that should scroll internally.
   const isEventsTab = tab === "events";
 
   const content = (
     <MonitorMain>
       <Stack gap="lg" {...(isEventsTab ? { flex: 1, mih: 0 } : {})}>
-        <MonitorHeaderTitle>{t`MCP analytics`}</MonitorHeaderTitle>
+        <MonitorHeaderTitle>{t`CLI analytics`}</MonitorHeaderTitle>
 
         <Tabs
           variant="pills"
           value={tab}
-          onChange={(val) =>
-            patchUrlState({ tab: val === "events" ? "events" : "charts" })
-          }
+          // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
+          onChange={(val) => patchUrlState({ tab: val as CliTab })}
           keepMounted={false}
           {...(isEventsTab
             ? {
                 flex: 1,
                 mih: 0,
                 display: "flex",
-                style: { flexDirection: "column" },
+                style: { flexDirection: "column" as const },
               }
             : {})}
         >
           <Tabs.List mb="md">
             <Tabs.Tab value="charts">{t`Usage`}</Tabs.Tab>
-            <Tabs.Tab value="events">{t`Tool calls`}</Tabs.Tab>
+            <Tabs.Tab value="events">{t`Calls`}</Tabs.Tab>
           </Tabs.List>
 
-          <McpToolCallsFilter
+          <CliCallsFilter
             date={date}
             onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
             user={user}
@@ -134,17 +129,8 @@ export function McpAnalyticsPage() {
             hasTenants={hasTenants}
           />
 
-          {match({ isInitialLoading, showEmpty, error })
-            .with({ error: P.nonNullable }, () => (
-              <Tabs.Panel value={tab} mt="md">
-                <Flex mih="60vh" align="center" justify="center">
-                  <LoadingAndErrorWrapper loading={false} error={error} />
-                </Flex>
-              </Tabs.Panel>
-            ))
+          {match({ isInitialLoading, showEmpty })
             .with({ isInitialLoading: true }, () => (
-              // Keeps the active tab's panel/tabpanel relationship intact (aria-controls on the
-              // selected tab must point at a rendered element) while the initial load is pending.
               <Tabs.Panel value={tab} mt="md">
                 <Flex mih="60vh" align="center" justify="center">
                   <Loader size="lg" />
@@ -153,28 +139,38 @@ export function McpAnalyticsPage() {
             ))
             .with({ showEmpty: true }, () => (
               <Tabs.Panel value={tab} mt="md">
-                <McpAnalyticsEmptyState />
+                <CliAnalyticsEmptyState />
               </Tabs.Panel>
             ))
             .otherwise(() => (
               <>
                 <Tabs.Panel value="charts" mt="md">
                   <Stack gap="lg">
-                    <McpCallsTimelineChart
+                    <CliCallsTimelineChart
                       {...dataSources}
                       {...chartFilters}
                       title={t`Calls by client over time`}
                     />
                     <SimpleGrid cols={2} spacing="lg">
-                      <McpBreakoutChart
+                      <CliBreakoutChart
                         {...dataSources}
                         {...chartFilters}
-                        title={t`Calls by tool`}
+                        title={t`Calls by client`}
                         display="pie"
-                        breakoutColumn="tool_name"
+                        breakoutColumn="client_display_name"
                         h={500}
                       />
-                      <McpBreakoutChart
+                      <CliBreakoutChart
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`Calls by operation`}
+                        display="row"
+                        breakoutColumn="operation"
+                        h={500}
+                      />
+                    </SimpleGrid>
+                    <SimpleGrid cols={2} spacing="lg">
+                      <CliBreakoutChart
                         {...dataSources}
                         {...chartFilters}
                         title={t`Calls by user`}
@@ -182,37 +178,32 @@ export function McpAnalyticsPage() {
                         breakoutColumn="user_display_name"
                         h={500}
                       />
+                      <CliCallerLivenessTable
+                        {...dataSources}
+                        {...chartFilters}
+                        title={t`User activity`}
+                        h={500}
+                      />
                     </SimpleGrid>
 
                     {hasErrors && (
                       <>
                         <Title order={3} mt="md">{t`Errors`}</Title>
-                        <McpCallsTimelineChart
+                        <CliCallsTimelineChart
                           {...dataSources}
                           {...chartFilters}
                           title={t`Calls by status over time`}
                           buildQuery={buildCallsByDayByStatusQuery}
                         />
-                        <SimpleGrid cols={2} spacing="lg">
-                          <McpBreakoutChart
-                            {...dataSources}
-                            {...chartFilters}
-                            title={t`Errors by type`}
-                            display="pie"
-                            breakoutColumn="error_type"
-                            errorsOnly
-                            h={500}
-                          />
-                          <McpBreakoutChart
-                            {...dataSources}
-                            {...chartFilters}
-                            title={t`Errors by tool`}
-                            display="row"
-                            breakoutColumn="tool_name"
-                            errorsOnly
-                            h={500}
-                          />
-                        </SimpleGrid>
+                        <CliBreakoutChart
+                          {...dataSources}
+                          {...chartFilters}
+                          title={t`Errors by operation`}
+                          display="row"
+                          breakoutColumn="operation"
+                          errorsOnly
+                          h={500}
+                        />
                       </>
                     )}
                   </Stack>
@@ -226,16 +217,14 @@ export function McpAnalyticsPage() {
                   display="flex"
                   style={{ flexDirection: "column" }}
                 >
-                  <McpEventsTable
+                  <CliEventsTable
                     {...dataSources}
                     {...chartFilters}
                     hasTenants={hasTenants}
                     hasPii={hasPii}
                     page={page}
                     total={count}
-                    onPageChange={(newPage) =>
-                      patchUrlState({ page: newPage }, { immediate: true })
-                    }
+                    onPageChange={(newPage) => patchUrlState({ page: newPage })}
                     sortingOptions={sortingOptions}
                     onSortingOptionsChange={(newSorting) =>
                       patchUrlState({

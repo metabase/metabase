@@ -7,10 +7,17 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,
@@ -24,11 +31,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { AUDIT_DB_ID } from "../constants";
-
 import { CliAnalyticsPage } from "./CliAnalyticsPage";
-
-const RoutedCliAnalyticsPage = withRouteProps(CliAnalyticsPage);
 
 registerVisualizations();
 
@@ -147,16 +150,16 @@ function setupEndpoints(dataset: Dataset = datasetResponse) {
 
 /** Render `CliAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
 function setup({ dataset }: { dataset?: Dataset } = {}) {
+  // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
+  // for its virtualized rows to render.
+  mockGetBoundingClientRect({ width: 100, height: 100 });
   setupEnterprisePlugins();
   setupEndpoints(dataset);
 
   return renderWithProviders(
-    <Route
-      path="/admin/metabot/usage-auditing/cli"
-      element={<RoutedCliAnalyticsPage />}
-    />,
+    <Route path="/monitor/ai-auditing/cli" element={<CliAnalyticsPage />} />,
     {
-      initialRoute: "/admin/metabot/usage-auditing/cli",
+      initialRoute: "/monitor/ai-auditing/cli",
       withRouter: true,
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -198,15 +201,21 @@ describe("CliAnalyticsPage", () => {
     await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
 
     const eventsPanel = screen.getByRole("tabpanel");
-    expect(await within(eventsPanel).findByRole("table")).toBeInTheDocument();
+    expect(
+      await within(eventsPanel).findByRole("treegrid", { name: "Calls" }),
+    ).toBeInTheDocument();
     // a curated column header and a cell value from the mocked page render
-    expect(within(eventsPanel).getByText("Operation")).toBeInTheDocument();
+    expect(
+      await within(eventsPanel).findByRole("columnheader", {
+        name: "Operation",
+      }),
+    ).toBeInTheDocument();
     expect(
       await within(eventsPanel).findByText("POST /api/agent/v1/query"),
     ).toBeInTheDocument();
   });
 
-  it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {
+  it("keeps the header, tabs, and filters visible and shows an empty state in place of the tab content when there is no activity", async () => {
     setup({ dataset: emptyDatasetResponse });
 
     expect(
@@ -214,12 +223,16 @@ describe("CliAnalyticsPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
 
-    // No tabs render when the view is empty — so neither the charts nor the events table can.
+    // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
+    const usageTab = screen.getByRole("tab", { name: "Usage" });
+    expect(usageTab).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Calls" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("tab", { name: "Usage" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("tab", { name: "Calls" }),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+
+    const panel = screen.getByRole("tabpanel");
+    expect(usageTab).toHaveAttribute("aria-controls", panel.id);
+    expect(within(panel).getByText("No CLI activity")).toBeInTheDocument();
   });
 });

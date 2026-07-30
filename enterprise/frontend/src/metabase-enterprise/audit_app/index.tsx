@@ -16,8 +16,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { User } from "metabase-types/api";
 
-import { getCliAnalyticsNavItems } from "./cli-analytics/nav";
-import { getCliAnalyticsRoutes } from "./cli-analytics/routes";
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
@@ -52,8 +50,6 @@ export function initializePlugin() {
     PLUGIN_AUDIT.getAiAuditingRoutes = hasPremiumFeature("ai_controls")
       ? getAiAuditingRoutes
       : getAiAuditingUpsellRoutes;
-    PLUGIN_AUDIT.getCliAnalyticsNavItems = getCliAnalyticsNavItems;
-    PLUGIN_AUDIT.getCliAnalyticsRoutes = getCliAnalyticsRoutes;
     PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
   }
 }

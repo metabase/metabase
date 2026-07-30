@@ -133,6 +133,7 @@ describe("application routes", () => {
         "/monitor/ai-auditing/conversations/42",
       ],
       ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
+      ["/admin/metabot/usage-auditing/cli", "/monitor/ai-auditing/cli"],
     ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
       const { history } = setupAppRoutes({ initialRoute });
 

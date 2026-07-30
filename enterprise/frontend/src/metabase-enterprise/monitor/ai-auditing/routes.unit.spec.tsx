@@ -24,6 +24,9 @@ jest.mock(
 jest.mock("./mcp-analytics/components/McpAnalyticsPage", () => ({
   McpAnalyticsPage: () => <div>MCP analytics page</div>,
 }));
+jest.mock("./cli-analytics/components/CliAnalyticsPage", () => ({
+  CliAnalyticsPage: () => <div>CLI analytics page</div>,
+}));
 
 type SetupOpts = {
   route: string;
@@ -137,6 +140,21 @@ describe("AI Auditing routes", () => {
       screen.queryByText("AI features are disabled"),
     ).not.toBeInTheDocument();
   });
+
+  it.each([false, true])(
+    "renders CLI analytics unconditionally when upsell is %s",
+    (upsell) => {
+      setup({
+        route: Urls.monitorAiAuditingCli(),
+        upsell,
+        aiFeaturesEnabled: false,
+        isConfigured: false,
+        mcpEnabled: false,
+      });
+
+      expect(screen.getByText("CLI analytics page")).toBeInTheDocument();
+    },
+  );
 
   it("applies MCP availability to the upsell route set", () => {
     setup({

@@ -6,14 +6,14 @@ import {
   setupPermissionMembershipEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
+import type {
+  ConversationDetail,
+  ConversationFeedback,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import type { ConversationDetail, ConversationFeedback } from "../../types";
-
 import { ConversationDetailPage } from "./ConversationDetailPage";
-
-const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
 
 jest.mock("metabase/monitor/components/MonitorLayout", () => ({
   MonitorMain: ({ children }: { children: React.ReactNode }) => children,
@@ -110,7 +110,7 @@ function setup(conversation: ConversationDetail) {
   return renderWithProviders(
     <Route
       path="/conversations/:convoId"
-      element={<RoutedConversationDetailPage />}
+      element={<ConversationDetailPage />}
     />,
     {
       withRouter: true,

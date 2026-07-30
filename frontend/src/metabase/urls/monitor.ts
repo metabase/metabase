@@ -108,3 +108,7 @@ export function monitorAiAuditingConversationDetail(convoId: string) {
 export function monitorAiAuditingMcp() {
   return `${monitorAiAuditing()}/mcp`;
 }
+
+export function monitorAiAuditingCli() {
+  return `${monitorAiAuditing()}/cli`;
+}

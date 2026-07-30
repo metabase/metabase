@@ -12,7 +12,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
@@ -83,11 +83,10 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const PageComponent = withRouteProps(
+  const PageComponent =
     mode === "broken"
       ? BrokenDependencyDiagnosticsPage
-      : UnreferencedDependencyDiagnosticsPage,
-  );
+      : UnreferencedDependencyDiagnosticsPage;
 
   const { history } = renderWithProviders(
     <Route

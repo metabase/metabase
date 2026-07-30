@@ -15,8 +15,9 @@ import {
   within,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,
@@ -30,11 +31,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { AUDIT_DB_ID } from "../constants";
-
 import { McpAnalyticsPage } from "./McpAnalyticsPage";
-
-const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
 
 registerVisualizations();
 
@@ -205,10 +202,7 @@ function setup({
   setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
-    <Route
-      path="/monitor/ai-auditing/mcp"
-      element={<RoutedMcpAnalyticsPage />}
-    />,
+    <Route path="/monitor/ai-auditing/mcp" element={<McpAnalyticsPage />} />,
     {
       initialRoute: "/monitor/ai-auditing/mcp",
       withRouter: true,

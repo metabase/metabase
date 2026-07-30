@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { paginateEventsQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { Dataset } from "metabase-types/api";
 
-import { paginateEventsQuery } from "../query-utils";
-
 type EventsPageResult = {
   data: Dataset | undefined;
   isFetching: boolean;
+  error: unknown;
 };
 
 /**
@@ -28,7 +28,9 @@ export function useCliEventsQuery(
     [query, page, pageSize],
   );
 
-  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? skipToken);
+  const { data, isFetching, error } = useGetAdhocQueryQuery(
+    jsQuery ?? skipToken,
+  );
 
-  return { data, isFetching };
+  return { data, isFetching, error };
 }

@@ -18,13 +18,8 @@ import {
   within,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
-
 import {
   ALL_USERS_GROUP,
   BOBBY,
@@ -33,12 +28,14 @@ import {
   ROBERT,
   ROBERT_TENANT,
   selectFilterOption,
-} from "../../tests/fixtures";
-import type { ConversationSummary } from "../../types";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
+import type { ConversationSummary } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { ConversationsPage } from "./ConversationsPage";
-
-const RoutedConversationsPage = withRouteProps(ConversationsPage);
 
 const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
 const CONVERSATIONS_ENDPOINT = "path:/api/ee/metabot-analytics/conversations";
@@ -123,7 +120,7 @@ function setup({
 
   return renderWithProviders(
     <>
-      <Route path={CONVERSATIONS_PATH} element={<RoutedConversationsPage />} />
+      <Route path={CONVERSATIONS_PATH} element={<ConversationsPage />} />
       <Route
         path={`${CONVERSATIONS_PATH}/:conversationId`}
         element={<div data-testid="conversation-detail-page" />}
