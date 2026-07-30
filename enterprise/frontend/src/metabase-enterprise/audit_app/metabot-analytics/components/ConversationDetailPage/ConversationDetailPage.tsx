@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { skipToken, useGetAdhocQueriesMetadataQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -77,6 +77,22 @@ export function ConversationDetailPage() {
     conversationMessages,
     { isSlack },
   );
+
+  const notebookQueries = useMemo(
+    () =>
+      (conversation?.queries ?? [])
+        .filter((query) => query.query_type === "notebook")
+        .map((query) => query.mbql)
+        .filter(
+          (mbql): mbql is DatasetQuery => mbql != null && mbql.database != null,
+        ),
+    [conversation?.queries],
+  );
+
+  const { isLoading: isMetadataLoading, isError: isMetadataError } =
+    useGetAdhocQueriesMetadataQuery(
+      notebookQueries.length > 0 ? { queries: notebookQueries } : skipToken,
+    );
 
   if (isLoading || error) {
     return (
@@ -179,6 +195,8 @@ export function ConversationDetailPage() {
               <GeneratedQueryCard
                 key={query.call_id ?? `${query.message_id}-${query.query_id}`}
                 query={query}
+                isMetadataLoading={isMetadataLoading}
+                isMetadataError={isMetadataError}
               />
             ))}
           </Stack>
@@ -268,10 +286,23 @@ function FeedbackCard({
   );
 }
 
-export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
+export function GeneratedQueryCard({
+  query,
+  isMetadataLoading,
+  isMetadataError,
+}: {
+  query: GeneratedQuery;
+  isMetadataLoading: boolean;
+  isMetadataError: boolean;
+}) {
   if (query.query_type === "notebook" && query.mbql) {
     return (
-      <NotebookGeneratedQueryCard mbql={query.mbql} display={query.display} />
+      <NotebookGeneratedQueryCard
+        mbql={query.mbql}
+        display={query.display}
+        isMetadataLoading={isMetadataLoading}
+        isMetadataError={isMetadataError}
+      />
     );
   }
   return <SqlGeneratedQueryCard query={query} />;
@@ -345,13 +376,14 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 function NotebookGeneratedQueryCard({
   mbql,
   display,
+  isMetadataLoading,
+  isMetadataError,
 }: {
   mbql: DatasetQuery;
   display: VisualizationDisplay | null;
+  isMetadataLoading: boolean;
+  isMetadataError: boolean;
 }) {
-  const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
-    mbql.database != null ? mbql : skipToken,
-  );
   const metadata = useSelector(getMetadata);
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
@@ -370,7 +402,7 @@ function NotebookGeneratedQueryCard({
     return display ? q.lockDisplay() : q;
   }, [mbql, metadata, display]);
 
-  if (isLoading) {
+  if (isMetadataLoading) {
     return (
       <Card withBorder shadow="none" p="md">
         <Flex justify="center" align="center" mih={120}>
@@ -380,7 +412,7 @@ function NotebookGeneratedQueryCard({
     );
   }
 
-  if (isError || mbql.database == null) {
+  if (isMetadataError || mbql.database == null) {
     return (
       <Card withBorder shadow="none" p="md">
         <CodeEditor

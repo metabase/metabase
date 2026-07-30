@@ -28,6 +28,10 @@ export type DownloadDatasetArgs = {
   body?: Record<string, unknown>;
 };
 
+export type GetAdhocQueriesMetadataRequest = {
+  queries: readonly DatasetQuery[];
+};
+
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     downloadDataset: builder.mutation<Response, DownloadDatasetArgs>({
@@ -103,6 +107,25 @@ export const datasetApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, QueryMetadataSchema)),
         ),
     }),
+    // Metadata for several ad-hoc queries in one request. Tables shared between
+    // the queries are fetched once, and the single response means `updateMetadata`
+    // rebuilds the metadata graph once instead of once per query.
+    getAdhocQueriesMetadata: builder.query<
+      CardQueryMetadata,
+      GetAdhocQueriesMetadataRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/dataset/query_metadata",
+        body,
+      }),
+      providesTags: (metadata) =>
+        metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
+    }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({
         method: "POST",
@@ -132,6 +155,7 @@ export const {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryMetadataQuery,
   useLazyGetAdhocQueryMetadataQuery,
+  useGetAdhocQueriesMetadataQuery,
   useGetNativeDatasetQuery,
   useGetRemappedParameterValueQuery,
 } = datasetApi;
