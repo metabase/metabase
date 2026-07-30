@@ -467,7 +467,7 @@
   "scripts": {
     "mage": "./bin/mage",
     "build": "bun run build:cljs && bun run build:js",
-    "build-embedding-sdk-package": "bun run embedding-sdk:clean:dist && bun install && bun run types:ensure && bun run build-release:cljs && bun run embedding-sdk:generate-package && bun run embedding-sdk:generate-package-support-files && bun run build-release:embedding-sdk-package && bun run build-embedding-sdk-node && bun run embedding-sdk:dts:generate",
+    "build-embedding-sdk-package": "bun run embedding-sdk:clean:dist && bun install && bun run build-release:cljs && bun run embedding-sdk:generate-package && bun run embedding-sdk:generate-package-support-files && bun run build-release:embedding-sdk-package && bun run build-embedding-sdk-node && bun run embedding-sdk:dts:generate",
     "build-embedding-sdk-node": "rspack --config rspack.embedding-sdk-node.config.js",
     "build-embedding-sdk-node:watch": "bun run build-embedding-sdk-node --watch",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && bun run build:cljs && bun run concurrently -n 'js' -c 'green,cyan' 'bun run build-hot:js'",
@@ -516,7 +516,8 @@
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:generate-package-support-files": "tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts",
     "embedding-sdk:test-unit": "bun run test-unit enterprise/frontend/src/embedding-sdk-package/ enterprise/frontend/src/embedding-sdk-bundle/ enterprise/frontend/src/embedding-sdk-shared/",
-    "embedding-sdk:dts:generate": "bun run embedding-sdk:clean:tsbuildinfo && ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true && bun run embedding-sdk:dts:fixup",
+    "embedding-sdk:dts:generate": "bun run types:ensure && bun run embedding-sdk:dts:generate:pure",
+    "embedding-sdk:dts:generate:pure": "bun run embedding-sdk:clean:tsbuildinfo && ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true && bun run embedding-sdk:dts:fixup",
     "embedding-sdk:dts:fixup": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
     "embedding-sdk:docs:generate": "bun run build-release:embedding-sdk-package && bun run embedding-sdk:dts:generate && bun run embedding-sdk:docs:generate:pure",
