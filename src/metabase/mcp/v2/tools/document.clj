@@ -16,6 +16,7 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -205,8 +206,15 @@
               [:old_str :string]
               [:new_str :string]
               [:replace_all {:optional true} [:maybe :boolean]]]]]]
-   [:collection_id {:optional true} [:maybe [:or :int :string]]]
-   [:collection_position {:optional true} [:maybe :int]]
+   ;; Numeric ids and positions are positive here, matching what the model layer enforces. Declared
+   ;; loosely they pass validation and then fail a `mu/defn` schema deeper in, which the caller only
+   ;; ever sees as the sanitized "Internal error" — a rejection that names the constraint is the
+   ;; whole value of declaring it.
+   ;; Kept as an `:or` so the generated JSON schema still shows both accepted shapes, which is what
+   ;; the agent reads. The humanized message lists each branch rather than one sentence; an
+   ;; `:error/message` on the `:or` itself is ignored by Malli's humanizer.
+   [:collection_id {:optional true} [:maybe [:or ms/PositiveInt :string]]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:archived {:optional true} [:maybe :boolean]]])
 
 (registry/deftool document-write-tool
