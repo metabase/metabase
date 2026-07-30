@@ -58,7 +58,7 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {:listChanged true} :resources {}}
+    :capabilities    {:tools {:listChanged true} :resources {} :prompts {}}
     :serverInfo      server-info}))
 
 (defn- mcp-app-ui-capability?
@@ -107,6 +107,12 @@
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
           :ok                        (jsonrpc-response id {:contents (:contents result)}))))))
 
+(defn- handle-resources-templates-list [id _params]
+  (jsonrpc-response id {:resourceTemplates []}))
+
+(defn- handle-prompts-list [id _params]
+  (jsonrpc-response id {:prompts []}))
+
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
@@ -135,6 +141,8 @@
       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
+      "resources/templates/list"  (handle-resources-templates-list id params)
+      "prompts/list"              (handle-prompts-list id params)
       "ping"                      (handle-ping id params)
       (if id
         (jsonrpc-error id -32601 (str "Method not found: " method))

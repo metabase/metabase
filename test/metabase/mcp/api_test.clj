@@ -243,7 +243,7 @@
       (is (= 1 (get-in response [:body :id])))
       (let [result (get-in response [:body :result])]
         (is (= "2025-03-26" (:protocolVersion result)))
-        (is (= {:tools {:listChanged true} :resources {}} (:capabilities result)))
+        (is (= {:tools {:listChanged true} :resources {} :prompts {}} (:capabilities result)))
         (is (= {:name "metabase" :version "0.1.0"} (:serverInfo result)))))))
 
 (deftest notifications-initialized-test
@@ -1337,6 +1337,24 @@
       (is (=? {:error {:code    -32602
                        :message #(str/starts-with? % "Missing required parameter")}}
               (:body response))))))
+
+(deftest resources-templates-list-test
+  (testing "resources/templates/list returns an empty list of resource templates"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/templates/list")
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= {:resourceTemplates []}
+             (get-in response [:body :result]))))))
+
+(deftest prompts-list-test
+  (testing "prompts/list returns an empty list of prompts"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "prompts/list")
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= {:prompts []}
+             (get-in response [:body :result]))))))
 
 (def ^:private scoped-test-uri "test://mcp/api-test/scoped")
 
