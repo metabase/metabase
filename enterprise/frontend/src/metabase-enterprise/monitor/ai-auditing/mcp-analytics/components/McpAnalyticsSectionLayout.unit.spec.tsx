@@ -299,7 +299,7 @@ describe("McpAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
     // Tabs appear only after the initial count query resolves (the page shows a loader first).
     expect(
-      await screen.findByRole("tab", { name: "Usage" }),
+      await screen.findByRole("link", { name: "Usage" }),
     ).toBeInTheDocument();
 
     // Charts run ad-hoc dataset queries through /api/dataset.
@@ -316,7 +316,7 @@ describe("McpAnalyticsSectionLayout", () => {
 
     await screen.findByRole("heading", { name: "MCP analytics" });
     await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
+      await screen.findByRole("link", { name: "Tool calls" }),
     );
 
     expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpEvents());
@@ -337,14 +337,14 @@ describe("McpAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
 
     await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
+      await screen.findByRole("link", { name: "Tool calls" }),
     );
     await screen.findByRole("treegrid", { name: "Tool calls" });
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
     expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
@@ -358,7 +358,7 @@ describe("McpAnalyticsSectionLayout", () => {
 
     await screen.findByRole("heading", { name: "MCP analytics" });
     await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
+      await screen.findByRole("link", { name: "Tool calls" }),
     );
 
     // Tab links are plain route links, so they have to carry the filters themselves — otherwise
@@ -370,7 +370,7 @@ describe("McpAnalyticsSectionLayout", () => {
     expect(search).toContain("date=past7days~");
     expect(search).toContain("user=1");
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
 
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpUsage());
@@ -486,8 +486,10 @@ describe("McpAnalyticsSectionLayout", () => {
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
     // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
-    expect(screen.getByRole("tab", { name: "Usage" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Usage" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Tool calls" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();

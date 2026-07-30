@@ -292,7 +292,7 @@ describe("CliAnalyticsSectionLayout", () => {
     });
 
     await screen.findByRole("heading", { name: "CLI analytics" });
-    await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
 
     // Tab links are plain route links, so they have to carry the filters themselves — otherwise
     // the address bar (and anything shared or reloaded from it) loses the scoped view.
@@ -303,7 +303,7 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(search).toContain("date=past7days~");
     expect(search).toContain("user=1");
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
 
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliUsage());
@@ -324,7 +324,7 @@ describe("CliAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
     // Tabs appear only after the initial count query resolves (the page shows a loader first).
     expect(
-      await screen.findByRole("tab", { name: "Usage" }),
+      await screen.findByRole("link", { name: "Usage" }),
     ).toBeInTheDocument();
 
     // Charts run ad-hoc dataset queries through /api/dataset.
@@ -340,7 +340,7 @@ describe("CliAnalyticsSectionLayout", () => {
     const { router } = setup();
 
     await screen.findByRole("heading", { name: "CLI analytics" });
-    await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
 
     expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliCalls());
     expect(
@@ -454,13 +454,13 @@ describe("CliAnalyticsSectionLayout", () => {
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
     await screen.findByRole("treegrid", { name: "Calls" });
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
     expect(await screen.findByText("Calls by operation")).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
@@ -476,8 +476,8 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
 
     // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
-    expect(screen.getByRole("tab", { name: "Usage" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Calls" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Usage" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Calls" })).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
