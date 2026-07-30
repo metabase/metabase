@@ -28799,9 +28799,18 @@
                             }, {
                               "type" : "null"
                             } ]
+                          },
+                          "forked_from_conversation_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be a valid UUID.",
+                              "type" : "string",
+                              "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                            }, {
+                              "type" : "null"
+                            } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
+                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "user" ]
                       }
                     },
                     "limit" : {
@@ -28946,6 +28955,13 @@
                       } ]
                     },
                     "slack_permalink" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "fork_boundary_message_id" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -29161,9 +29177,18 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "forked_from_conversation_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "fork_boundary_message_id", "feedback" ]
                 }
               }
             }
@@ -29227,6 +29252,122 @@
           }
         },
         "tags" : [ "/api/ee/metabot" ]
+      }
+    },
+    "/api/ee/mfa/admin/enrolled-users" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-enrolled-users",
+        "summary" : "GET /api/ee/mfa/admin/enrolled-users",
+        "description" : "Admin: users who have a confirmed second factor. Never feature-gated, for the same reason\n  `/admin/remove` isn't — after a licence lapse an admin must still be able to find and unlock a\n  locked-out user.\n\n  Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "sso_source" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "is_active" : {
+                            "type" : "boolean"
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "is_superuser" : {
+                            "type" : "boolean"
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "enrolled_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "common_name" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "email", "first_name", "last_name", "common_name", "sso_source", "is_active", "is_superuser", "enrolled_at" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
       }
     },
     "/api/ee/mfa/admin/overview" : {
@@ -29300,6 +29441,114 @@
                 "required" : [ "user_id" ]
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/admin/unenrolled-users" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-unenrolled-users",
+        "summary" : "GET /api/ee/mfa/admin/unenrolled-users",
+        "description" : "Admin: active users who have not set up a second factor. Matches `unenrolled_count` from\n  `/admin/overview`, so people who sign in through SSO are included even though the login gate never\n  challenges them — their identity provider owns MFA. Never feature-gated, as above.\n\n  Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "type" : "string"
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "is_active" : {
+                            "type" : "boolean"
+                          },
+                          "is_superuser" : {
+                            "type" : "boolean"
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "sso_source" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "email", "first_name", "last_name", "common_name", "sso_source", "is_active", "is_superuser" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/mfa" ]
@@ -36896,6 +37145,15 @@
                             "type" : "string",
                             "format" : "date-time"
                           },
+                          "forked_from_conversation_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be a valid UUID.",
+                              "type" : "string",
+                              "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "last_message_at" : {
                             "oneOf" : [ {
                               "type" : "string",
@@ -36933,7 +37191,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "title", "user_id", "profile_id", "message_count", "last_message_at" ]
+                        "required" : [ "conversation_id", "created_at", "title", "user_id", "profile_id", "message_count", "last_message_at", "forked_from_conversation_id" ]
                       }
                     },
                     "limit" : {
@@ -36999,6 +37257,15 @@
                       "type" : "string",
                       "format" : "date-time"
                     },
+                    "forked_from_conversation_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "messages" : {
                       "type" : "array",
                       "items" : {
@@ -37051,7 +37318,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "title", "user_id", "saved_entities", "messages" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user_id", "forked_from_conversation_id", "saved_entities", "messages" ]
                 }
               }
             }
@@ -37061,6 +37328,131 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}/fork" : {
+      "post" : {
+        "operationId" : "post-api-metabot-conversations-id-fork",
+        "summary" : "POST /api/metabot/conversations/{id}/fork",
+        "description" : "Fork a conversation at an assistant message, returning a brand-new conversation\n  that copies the thread from the start up to and including that message.\n\n  Only the conversation's originator may fork it, for now. `message_id` is the\n  `external_id` of the message to fork at, which must be a live, finished,\n  non-errored assistant message. The clone gets fresh conversation/message ids,\n  fresh timestamps, the current user as owner, and zeroed token usage so the fork\n  does not double-count tokens in the analytics views.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
+                    "forked_from_conversation_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "saved_entities" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "card_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "chart_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "card_id", "chart_id" ]
+                      }
+                    },
+                    "state" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "title", "user_id", "forked_from_conversation_id", "saved_entities", "messages" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "message_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "message_id" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/metabot/conversations" ]
@@ -38796,7 +39188,7 @@
       "post" : {
         "operationId" : "post-api-metric-id-dimension-dimension-key",
         "summary" : "POST /api/metric/{id}/dimension/{dimension-key}",
-        "description" : "Update a metric dimension's `display_name`, `description`, and/or source column.\n\n  `source` is a `{type, field-id}`; the new column must have the same effective type.",
+        "description" : "Update a metric dimension's `display_name`, `description`, `default_temporal_unit`, and/or source\n  column.\n\n  `source` is a `{type, field-id}`; the new column must have the same effective type.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -38841,6 +39233,10 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "default_temporal_unit" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string"
