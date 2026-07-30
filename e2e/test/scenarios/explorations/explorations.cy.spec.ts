@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 const { H } = cy;
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -128,12 +128,10 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
           // The first picked timeline shows as a pill next to the Events
           // button; the rest collapse into a "+N" overflow pill.
-          cy.findByTestId("research-content")
-            .findByText("Marketing campaigns")
-            .should("be.visible");
-          cy.findByTestId("research-content")
-            .findByText("+1")
-            .should("be.visible");
+          cy.findByTestId("selected-timelines-container").within(() => {
+            cy.findByText("Marketing campaigns").should("be.visible");
+            cy.findByText("+1").should("be.visible");
+          });
 
           H.beginResearch().then((id) => {
             // `beginResearch` consumed the create request; re-read it off its
@@ -855,6 +853,30 @@ describe("scenarios > explorations > chart click-through", () => {
   it("clicking a cartesian point opens Explore further + Add comment, posts explore-further filters, and navigates from the new-thread toast", () => {
     createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
       cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+        // manual typecast for BE data
+        const seeded = body as GetExplorationDataResponse;
+        const seededMetric = seeded.metrics.find(
+          (metric) => metric.name === ORDERS_COUNT_METRIC_NAME,
+        );
+        expect(
+          seededMetric,
+          `"${ORDERS_COUNT_METRIC_NAME}" metric is exposed by /api/exploration/dimensions`,
+        ).to.exist;
+        cy.request("POST", `/api/metric/${seededMetric!.id}/dimension/add`, {
+          dimensions: [
+            {
+              id: "e2e00000-cafe-4bb8-9d8a-0123456789ab",
+              mapping_target: [
+                "field",
+                { "source-field": ORDERS.PRODUCT_ID },
+                PRODUCTS.CATEGORY,
+              ],
+            },
+          ],
+        });
+      });
+
+      cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
         // Unjustified type cast. FIXME
         const data = body as GetExplorationDataResponse;
         const ordersMetric = data.metrics.find(
@@ -874,7 +896,7 @@ describe("scenarios > explorations > chart click-through", () => {
           .find((dim) => dim != null && dim.display_name === "Category");
         expect(
           dimension,
-          "orders metric exposes at least one non-temporal dimension",
+          'orders metric exposes the curated "Category" dimension',
         ).to.exist;
 
         H.createExplorationViaApi({

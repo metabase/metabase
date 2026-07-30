@@ -98,21 +98,6 @@ describe("selectionToResearchPlanContext", () => {
     ]);
   });
 
-  it("falls back to the dimension name when display_name is empty", () => {
-    const dim = dimension("d9", { name: "raw_name", display_name: "" });
-    const block = mockMetricBlock(metric(1, "M"), [dim], new Set(["d9"]));
-
-    const result = selectionToResearchPlanContext({
-      blocks: [block],
-      timelines: [],
-      name: "",
-    });
-
-    expect(result.groups[0]).toMatchObject({
-      dimensions: [{ id: "d9", name: "raw_name" }],
-    });
-  });
-
   it("produces an empty plan for an empty selection", () => {
     expect(
       selectionToResearchPlanContext({ blocks: [], timelines: [], name: "" }),

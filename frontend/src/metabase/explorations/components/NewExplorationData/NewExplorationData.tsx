@@ -241,7 +241,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         </Group>
       </Group>
 
-      <Group gap="xs">
+      <Group gap="xs" data-testid="selected-timelines-container">
         {timelines.length > 0 && (
           <SelectedTimelinePills
             timelines={timelines}
@@ -275,7 +275,13 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         </Button>
       </Group>
 
-      <Box className={S.blocksContainer} flex={1} mih={0} mt="md">
+      <Box
+        className={S.blocksContainer}
+        data-testid="selected-data-blocks-container"
+        flex={1}
+        mih={0}
+        mt="md"
+      >
         {blocks.length === 0 ? (
           <Center h="100%" mt="-3rem">
             <ResearchModeIntro />

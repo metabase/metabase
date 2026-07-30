@@ -209,7 +209,7 @@ describe(
               expect(total).to.equal(800);
             },
           );
-          H.echartsContainer().should("be.visible");
+          cy.findByTestId("scalar-value").should("be.visible");
         });
       });
 
