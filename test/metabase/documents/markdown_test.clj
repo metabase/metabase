@@ -480,6 +480,58 @@
 
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
 
+(defn- splice-replacing
+  "Splice `old-text` -> `new-text` in the serialization of `markdown-src`, returning the resulting
+   top-level node types and re-serialized body."
+  [markdown-src old-text new-text]
+  (let [ast (md/parse markdown-src)
+        ser (md/serialize ast)
+        i   (str/index-of (:markdown ser) old-text)
+        out (md/splice ast ser i (+ i (count old-text)) new-text)]
+    [(mapv :type (:content out)) (reserialize out)]))
+
+(deftest ^:parallel splice-can-convert-a-block-to-another-type-test
+  (testing "an edit that turns a block into a different type must work. `convertible-block-types`
+           deliberately lets a paragraph pair with a bulletList or blockquote so the block keeps its
+           `:_id` and its comment anchors, but a paragraph's `:content` is inline while a list's is
+           blocks — reconciling ids down both at once fed text nodes to a block renderer and blew up
+           with `Cannot serialize unknown block node type \"text\"`. \"Turn this into a bulleted
+           list\" is an everyday edit, and it failed for every target type whose content is blocks."
+    (doseq [[label src old-text new-text expected-types]
+            [["paragraph to bullet list, following an existing list"
+              "- a\n- b\n\nplain para\n\ntail" "plain para" "- converted" ["bulletList" "bulletList" "paragraph"]]
+             ["paragraph to bullet list on its own"
+              "intro\n\nplain para\n\ntail" "plain para" "- converted" ["paragraph" "bulletList" "paragraph"]]
+             ["paragraph to blockquote"
+              "intro\n\nplain para\n\ntail" "plain para" "> quoted" ["paragraph" "blockquote" "paragraph"]]
+             ;; This direction always worked — heading content is inline, like a paragraph's — so it
+             ;; pins that the fix did not narrow what already converted.
+             ["paragraph to heading"
+              "intro\n\nplain para\n\ntail" "plain para" "## Heading" ["paragraph" "heading" "paragraph"]]
+             ["blockquote back to a paragraph"
+              "intro\n\n> quoted\n\ntail" "> quoted" "now plain" ["paragraph" "paragraph" "paragraph"]]
+             ["list back to a paragraph"
+              "- a\n- b\n\ntail" "- a\n- b" "now plain" ["paragraph" "paragraph"]]]]
+      (testing label
+        (is (= expected-types (first (splice-replacing src old-text new-text))))))))
+
+(deftest ^:parallel splice-leaves-earlier-siblings-byte-identical-test
+  (testing "splicing a block cannot disturb the serialized text before it — untouched siblings are
+           reused by identity and serialization is deterministic. Worth pinning because the
+           same-type-list separator (`<!-- -->`) is emitted between blocks, so a converted block can
+           change a separator; that stays safe only because the longer separator extends \"\\n\\n\"
+           rather than replacing it."
+    (doseq [[label src old-text new-text]
+            [["plain edit"            "alpha\n\nbeta\n\ngamma" "gamma" "GAMMA"]
+             ["separator-changing"    "- a\n- b\n\nplain para\n\ntail" "plain para" "- converted"]
+             ["inside a blockquote"   "intro\n\n> quoted text\n\ntail" "quoted text" "changed text"]
+             ["block removed"         "one\n\ntwo\n\nthree" "two" ""]]]
+      (testing label
+        (let [before (:markdown (md/serialize (md/parse src)))
+              i      (str/index-of before old-text)
+              after  (second (splice-replacing src old-text new-text))]
+          (is (= (subs before 0 i) (subs after 0 (min i (count after))))))))))
+
 (deftest ^:parallel splice-preserves-untouched-siblings-test
   (let [ast {:type "doc" :content [(para "block one") (para "block two") (para "block three")]}
         ser (md/serialize ast)

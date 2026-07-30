@@ -1180,7 +1180,13 @@
                   acc
                   (assoc acc ni
                          (cond-> (carry-id n o)
-                           (and (block-content-types (:type n)) (seq (:content n)))
+                           ;; Both sides must hold block content. `convertible-block-types` lets a
+                           ;; paragraph pair with a bulletList or blockquote, but a paragraph's
+                           ;; `:content` is inline — recursing on the new node's type alone hands
+                           ;; text nodes to [[node-key]], which can only render blocks.
+                           (and (block-content-types (:type n))
+                                (block-content-types (:type o))
+                                (seq (:content n)))
                            (update :content #(reconcile-ids (:content o) %)))))))
             new
             (align old new))))
