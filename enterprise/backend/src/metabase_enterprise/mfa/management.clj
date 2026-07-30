@@ -282,11 +282,11 @@
      :offset (request/offset)}))
 
 (def ^:private admin-mfa-user-entries
-  [[:id          ms/PositiveInt]
-   [:email       ms/NonBlankString]
-   [:first_name  [:maybe :string]]
-   [:last_name   [:maybe :string]]
-   [:common_name :string]
+  [[:id           ms/PositiveInt]
+   [:email        ms/NonBlankString]
+   [:first_name   [:maybe :string]]
+   [:last_name    [:maybe :string]]
+   [:common_name  :string]
    [:sso_source   [:maybe :keyword]]
    [:is_active    :boolean]
    [:is_superuser :boolean]])
@@ -300,8 +300,10 @@
 
 ;; closed so the secret-bearing `credentials` column can never be added to these responses by accident
 (def ^:private EnrolledUsersResponse
-  (paged-schema (into [:map {:closed true}]
-                      (conj admin-mfa-user-entries [:enrolled_at [:maybe ms/TemporalInstant]]))))
+  (-> (into [:map {:closed true}]
+            admin-mfa-user-entries)
+      (conj [:enrolled_at [:maybe ms/TemporalInstant]])
+      paged-schema))
 
 (def ^:private UnenrolledUsersResponse
   (paged-schema (into [:map {:closed true}] admin-mfa-user-entries)))
