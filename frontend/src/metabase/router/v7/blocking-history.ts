@@ -2,7 +2,6 @@ import {
   type HistoryRouterProps,
   type To,
   type Location as V7Location,
-  UNSAFE_createBrowserHistory as createBrowserHistory,
   parsePath,
 } from "react-router";
 
@@ -35,20 +34,6 @@ interface Registration {
 }
 
 const registrations = new Set<Registration>();
-
-let rawBrowserHistory: History | null = null;
-
-/**
- * A plain browser history for imperative navigation outside the app's router
- * tree, replacing v3's global `browserHistory` singleton. The SDK data-app bundle
- * mounts no router, so it drives its iframe URL through this instead. Created
- * lazily on first use, so it never exists in the main app, where a second history
- * would fight the mounted router over `popstate`.
- */
-export function getRawBrowserHistory(): History {
-  rawBrowserHistory ??= createBrowserHistory({ v5Compat: true });
-  return rawBrowserHistory;
-}
 
 /**
  * Register a leave hook, so the leave-confirm modals block navigation the way

@@ -14,7 +14,6 @@ export * from "./use-navigation-type";
 export * from "./use-params";
 export * from "./use-route-leave-hook";
 export * from "./use-search-params";
-export { getRawBrowserHistory } from "./v7/blocking-history";
 export { queryToSearch, toFacadeLocation } from "./v7/location";
 export {
   createLocationMirror,
@@ -25,6 +24,7 @@ export {
   subscribeLocation,
   toNavigateArgs,
 } from "./v7/navigator";
+export { getRawBrowserHistory } from "./v7/raw-history";
 // The memory-history engine is test-only. It reaches the barrel rather than a
 // deep import because `sideEffects: false` lets rspack drop it from the app
 // bundles, where nothing references it.
