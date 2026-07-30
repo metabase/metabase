@@ -7,7 +7,7 @@ redirect_from:
 
 # Embedding introduction
 
-You can embed Metabase tables, charts, dashboards, AI chat—even Metabase's query builder—in your website or application.
+You can embed Metabase tables, charts, dashboards, AI chat---even Metabase's query builder---in your website or application.
 
 There are two ways to embed Metabase.
 
@@ -41,7 +41,7 @@ With SSO, Metabase can know who's viewing what, which unlocks a lot of power. Yo
 
 If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
 
-Creating accounts for these embedded users in your Metabase counts toward the accounts billed in your Metabase plan. But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
+Accounts for these embedded users in your Metabase count toward the accounts billed in your Metabase plan. But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
 
 ### Guest embedding
 
@@ -97,7 +97,6 @@ All SSO options require a Pro or Enterprise plan.
 | Customize behavior with [plugins](./sdk/plugins.md)                                                          | ✅                                   | ❌                                    | ❌                                    | ❌                                  | ❌                                     |
 | [Custom visualizations](../questions/visualizations/custom.md)                                               | ✅                                   | ❌                                    | ❌                                    | ❌                                  | ❌                                     |
 | AI chat                                                                                                      | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
->>>>>>> master
 
 \* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
@@ -117,7 +116,6 @@ For information about the anonymous usage data Metabase collects from embedded c
 
 ## Embedding limitations
 
-<<<<<<< HEAD
 Currently, you can't embed [documents](../documents/introduction.md) (though you can create [public documents](./public-links.md)).
 
 ## Full app embedding
@@ -129,7 +127,6 @@ Currently, you can't embed [documents](../documents/introduction.md) (though you
 If you'd like to share your data with the good people of the internet, admins can create a [public link](./public-links.md) or embed a question or dashboard directly in your website. Public links aren't really an embedding setup—there's no authentication, and anyone with the link can see the data.
 
 **When to use public links and embeds**: one-off charts and dashboards. Admins can use public links when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make the item available to everyone.
-=======
 - Currently, you can't embed [documents](../documents/introduction.md) (though you can create [public documents](./public-links.md)).
 - Only the [Modular embedding SDK](./sdk/introduction.md) renders [custom visualizations](../questions/visualizations/custom.md), and only ones you allowlist with the [`allowedCustomVisualizations` prop](./sdk/config.md#custom-visualizations). In other embedding types, any card that uses a custom visualization falls back to the default visualization for the query's results.
 >>>>>>> master
