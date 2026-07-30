@@ -174,20 +174,7 @@ Reference an existing question by ID. [Drill-through](../questions/visualization
 
 You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
 
-To control what people can do with the chart, set these attributes:
-
-| Attribute                                     | What it controls                                                                                                                                      |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `drills`                                      | Drill-through. On by default. Turning it off also takes away people's ability to add filters and summaries.                                           |
-| `is-save-enabled`                             | Whether people can save their changes. Off by default — the opposite of the SDK. See [Let people save their changes](#let-people-save-their-changes). |
-| `target-collection`                           | Which collection saved questions land in.                                                                                                             |
-| `entity-types`                                | Which entity types show up in the data picker, like `['model', 'table']`.                                                                             |
-| `hidden-parameters`                           | Parameters to hide from the chart's UI. See [Hide a parameter](#hide-a-parameter).                                                                    |
-| `initial-sql-parameters` and `sql-parameters` | Values for a SQL question's parameters. See [Use your app to control parameters](#use-your-app-to-control-parameters).                                |
-| `with-alerts`                                 | The alerts button. See [Let people set up alerts on a question](#let-people-set-up-alerts-on-a-question).                                             |
-| `with-title` and `with-downloads`             | The question title and the download buttons. See [Customize chart appearance](#customize-chart-appearance).                                           |
-
-For every attribute, including defaults and which plans they need, check out [web component attributes](#web-component-attributes).
+To control what people can do with the chart, check out [web component attributes](#web-component-attributes).
 
 ### Interactive charts using the React SDK
 
