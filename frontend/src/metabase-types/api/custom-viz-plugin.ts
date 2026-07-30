@@ -49,8 +49,8 @@ export type CustomVizPluginWarning =
     }
   | {
       type: "metabase-version-mismatch";
-      metabase_version: string | null;
-      current_version: string | null;
+      metabase_version: string;
+      current_version: string;
     };
 
 export interface CreateCustomVizPluginRequest {
