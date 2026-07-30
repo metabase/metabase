@@ -1,0 +1,12 @@
+{
+  "description": "A :text-tag parameter :target applies to parameterized text cards in viz settings",
+  "prefixItems": [
+    {
+      "const": "text-tag"
+    },
+    {
+      "type": "string"
+    }
+  ],
+  "type": "array"
+}

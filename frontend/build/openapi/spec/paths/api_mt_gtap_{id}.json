@@ -1,0 +1,121 @@
+{
+  "delete": {
+    "description": "Delete a GTAP entry.",
+    "operationId": "delete-api-mt-gtap-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/mt/gtap/{id}",
+    "tags": [
+      "/api/mt/gtap"
+    ]
+  },
+  "get": {
+    "description": "Fetch GTAP by `id`",
+    "operationId": "get-api-mt-gtap-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/mt/gtap/{id}",
+    "tags": [
+      "/api/mt/gtap"
+    ]
+  },
+  "put": {
+    "description": "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicitly with appropriate calls to the `DELETE` and `POST` endpoints.",
+    "operationId": "put-api-mt-gtap-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "attribute_remappings": {
+                "$ref": "../components/schemas/metabase-enterprise.sandbox.schema.attribute-remappings.json"
+              },
+              "card_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/mt/gtap/{id}",
+    "tags": [
+      "/api/mt/gtap"
+    ]
+  }
+}

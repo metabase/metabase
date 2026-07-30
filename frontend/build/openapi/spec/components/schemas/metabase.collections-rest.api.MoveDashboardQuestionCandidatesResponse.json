@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "moved": {
+      "items": {
+        "description": "value must be an integer greater than zero.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "moved"
+  ],
+  "type": "object"
+}

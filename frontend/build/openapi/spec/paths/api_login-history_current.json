@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch recent logins for the current user.",
+    "operationId": "get-api-login-history-current",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/login-history/current",
+    "tags": [
+      "/api/login-history"
+    ]
+  }
+}

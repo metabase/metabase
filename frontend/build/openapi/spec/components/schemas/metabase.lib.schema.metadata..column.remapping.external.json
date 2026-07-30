@@ -1,0 +1,24 @@
+{
+  "description": "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =\n  external` associated with a `Field` in the application database.\n  See [[metabase.query-processor.middleware.add-remaps]] for what this means.",
+  "properties": {
+    "field-id": {
+      "$ref": "./metabase.lib.schema.id.field.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.id.dimension.json"
+    },
+    "lib/type": {
+      "const": "metadata.column.remapping/external"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  },
+  "required": [
+    "lib/type",
+    "id",
+    "name",
+    "field-id"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Schema for valid source_options within a Parameter",
+  "properties": {
+    "card_id": {
+      "$ref": "./metabase.lib.schema.id.card.json"
+    },
+    "label_field": {
+      "$ref": "./metabase.parameters.schema.legacy-ref.json"
+    },
+    "value_field": {
+      "$ref": "./metabase.parameters.schema.legacy-ref.json"
+    },
+    "values": {}
+  },
+  "type": "object"
+}

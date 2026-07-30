@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "const": "nocache"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,53 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "body": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "headers": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "method": {
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH"
+      ],
+      "type": "string"
+    },
+    "parameters": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.parameters.schema.parameters.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "method",
+    "url"
+  ],
+  "type": "object"
+}

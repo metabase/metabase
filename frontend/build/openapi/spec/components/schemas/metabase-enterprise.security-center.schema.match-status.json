@@ -1,0 +1,10 @@
+{
+  "enum": [
+    "unknown",
+    "active",
+    "resolved",
+    "not_affected",
+    "error"
+  ],
+  "type": "string"
+}

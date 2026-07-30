@@ -1,0 +1,20 @@
+{
+  "prefixItems": [
+    {
+      "const": "datetime-diff"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.temporal.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.temporal.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.temporal.datetime-diff-unit.json"
+    }
+  ],
+  "type": "array"
+}

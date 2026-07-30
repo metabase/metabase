@@ -1,0 +1,49 @@
+{
+  "post": {
+    "description": "Allow non-users to undo an unsubscribe from notifications, with the hash given through email.",
+    "operationId": "post-api-notification-unsubscribe-undo",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "email": {
+                "type": "string"
+              },
+              "hash": {
+                "type": "string"
+              },
+              "notification-handler-id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "notification-handler-id",
+              "email",
+              "hash"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/notification/unsubscribe/undo",
+    "tags": [
+      "/api/notification/unsubscribe"
+    ]
+  }
+}

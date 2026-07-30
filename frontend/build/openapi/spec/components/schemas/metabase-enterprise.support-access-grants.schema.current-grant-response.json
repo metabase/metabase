@@ -1,0 +1,11 @@
+{
+  "description": "Schema for GET /api/ee/support-access-grants/current response.",
+  "oneOf": [
+    {
+      "$ref": "./metabase-enterprise.support-access-grants.schema.grant-response.json"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "body": {
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "count",
+        "message"
+      ],
+      "type": "object"
+    },
+    "status": {
+      "const": 200
+    }
+  },
+  "required": [
+    "status",
+    "body"
+  ],
+  "type": "object"
+}

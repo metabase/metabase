@@ -1,0 +1,33 @@
+{
+  "description": "Statistics for a field from fingerprints.",
+  "properties": {
+    "avg": {
+      "type": "number"
+    },
+    "distinct_count": {
+      "type": "integer"
+    },
+    "earliest": {
+      "type": "string"
+    },
+    "latest": {
+      "type": "string"
+    },
+    "max": {
+      "type": "number"
+    },
+    "min": {
+      "type": "number"
+    },
+    "nil_percent": {
+      "type": "number"
+    },
+    "q1": {
+      "type": "number"
+    },
+    "q3": {
+      "type": "number"
+    }
+  },
+  "type": "object"
+}

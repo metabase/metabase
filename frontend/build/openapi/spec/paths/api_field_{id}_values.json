@@ -1,0 +1,101 @@
+{
+  "get": {
+    "description": "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or\n  remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not\n  `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them.",
+    "operationId": "get-api-field-id-values",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/field/{id}/values",
+    "tags": [
+      "/api/field"
+    ]
+  },
+  "post": {
+    "description": "Update the fields values and human-readable values for a `Field` whose semantic type is\n  `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional.",
+    "operationId": "post-api-field-id-values",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "values": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "prefixItems": [
+                        {}
+                      ],
+                      "type": "array"
+                    },
+                    {
+                      "prefixItems": [
+                        {},
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      ],
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "values"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/field/{id}/values",
+    "tags": [
+      "/api/field"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "enum": [
+    "instance-analytics",
+    "trash",
+    "remote-synced",
+    "library",
+    "library-models",
+    "library-metrics"
+  ],
+  "type": "string"
+}

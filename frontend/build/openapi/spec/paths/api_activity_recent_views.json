@@ -1,0 +1,23 @@
+{
+  "get": {
+    "deprecated": true,
+    "description": "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most\n  recently. Return a maximum of 20 model of each, if they've looked at at least 20.",
+    "operationId": "get-api-activity-recent_views",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/activity/recent_views",
+    "tags": [
+      "/api/activity"
+    ]
+  }
+}

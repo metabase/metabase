@@ -1,0 +1,40 @@
+{
+  "post": {
+    "description": "Login with Google Auth.",
+    "operationId": "post-api-session-google_auth",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "token": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "token"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/session/google_auth",
+    "tags": [
+      "/api/session"
+    ]
+  }
+}

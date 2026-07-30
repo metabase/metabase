@@ -1,0 +1,8 @@
+{
+  "description": "Layout hints for sections.\n   - :flat - cards displayed in a grid\n   - :comparison - cards grouped for side-by-side comparison",
+  "enum": [
+    "flat",
+    "comparison"
+  ],
+  "type": "string"
+}

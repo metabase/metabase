@@ -1,0 +1,10 @@
+{
+  "enum": [
+    "retired",
+    "sensitive",
+    "normal",
+    "hidden",
+    "details-only"
+  ],
+  "type": "string"
+}

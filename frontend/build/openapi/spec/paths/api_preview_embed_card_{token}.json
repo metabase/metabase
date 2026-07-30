@@ -1,0 +1,31 @@
+{
+  "get": {
+    "description": "Fetch a Card you're considering embedding by passing a JWT `token`.",
+    "operationId": "get-api-preview_embed-card-token",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/preview_embed/card/{token}",
+    "tags": [
+      "/api/preview_embed"
+    ]
+  }
+}

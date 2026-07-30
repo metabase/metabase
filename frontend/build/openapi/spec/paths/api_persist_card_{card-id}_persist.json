@@ -1,0 +1,33 @@
+{
+  "post": {
+    "description": "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this\n  query in place of the model's query.",
+    "operationId": "post-api-persist-card-card-id-persist",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/persist/card/{card-id}/persist",
+    "tags": [
+      "/api/persist"
+    ]
+  }
+}

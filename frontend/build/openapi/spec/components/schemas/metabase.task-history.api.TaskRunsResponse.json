@@ -1,0 +1,46 @@
+{
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "./metabase.task-history.api.TaskRun.json"
+      },
+      "type": "array"
+    },
+    "limit": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "offset": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater or equal to than zero.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "total": {
+      "description": "value must be an integer greater or equal to than zero.",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "total",
+    "limit",
+    "offset",
+    "data"
+  ],
+  "type": "object"
+}

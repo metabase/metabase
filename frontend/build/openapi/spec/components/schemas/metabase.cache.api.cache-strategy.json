@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.ee.json"
+    },
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.oss.json"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase-enterprise.action-v2.api.api-action-id.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.action-v2.api.api-action-expression.json"
+    }
+  ],
+  "description": "All the various ways of referring to an action with the v2 APIs."
+}

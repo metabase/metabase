@@ -1,0 +1,33 @@
+{
+  "post": {
+    "description": "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's\n  query rather than the saved version of the query.",
+    "operationId": "post-api-persist-card-card-id-unpersist",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/persist/card/{card-id}/unpersist",
+    "tags": [
+      "/api/persist"
+    ]
+  }
+}

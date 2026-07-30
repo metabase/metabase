@@ -1,0 +1,16 @@
+{
+  "description": "A downloadable JAR for a given fixed version.",
+  "properties": {
+    "url": {
+      "type": "string"
+    },
+    "version": {
+      "$ref": "./metabase-enterprise.security-center.schema.semver.json"
+    }
+  },
+  "required": [
+    "version",
+    "url"
+  ],
+  "type": "object"
+}

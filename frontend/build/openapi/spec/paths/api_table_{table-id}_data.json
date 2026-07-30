@@ -1,0 +1,33 @@
+{
+  "get": {
+    "description": "Get the data for the given table",
+    "operationId": "get-api-table-table-id-data",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "table-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/table/{table-id}/data",
+    "tags": [
+      "/api/table"
+    ]
+  }
+}

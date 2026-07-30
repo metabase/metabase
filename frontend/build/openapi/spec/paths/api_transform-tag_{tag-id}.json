@@ -1,0 +1,148 @@
+{
+  "delete": {
+    "description": "Delete a transform tag. Removes it from all transforms and jobs.",
+    "operationId": "delete-api-transform-tag-tag-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "tag-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "null"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/transform-tag/{tag-id}",
+    "tags": [
+      "/api/transform-tag"
+    ]
+  },
+  "put": {
+    "description": "Update a transform tag.",
+    "operationId": "put-api-transform-tag-tag-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "tag-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "built_in_type": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "can_run": {
+                  "type": "boolean"
+                },
+                "created_at": {},
+                "entity_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "anyOf": [
+                        {},
+                        {}
+                      ]
+                    }
+                  ]
+                },
+                "updated_at": {}
+              },
+              "required": [
+                "id",
+                "name",
+                "entity_id",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/transform-tag/{tag-id}",
+    "tags": [
+      "/api/transform-tag"
+    ]
+  }
+}

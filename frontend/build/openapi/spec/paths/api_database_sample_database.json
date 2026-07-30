@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Add the sample database as a new `Database`.",
+    "operationId": "post-api-database-sample_database",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/database/sample_database",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

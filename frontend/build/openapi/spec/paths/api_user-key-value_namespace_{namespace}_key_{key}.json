@@ -1,0 +1,141 @@
+{
+  "delete": {
+    "description": "Deletes a KV-pair for the user",
+    "operationId": "delete-api-user-key-value-namespace-namespace-key-key",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "namespace",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/user-key-value/namespace/{namespace}/key/{key}",
+    "tags": [
+      "/api/user-key-value"
+    ]
+  },
+  "get": {
+    "description": "Get a value for the user",
+    "operationId": "get-api-user-key-value-namespace-namespace-key-key",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "namespace",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/user-key-value/namespace/{namespace}/key/{key}",
+    "tags": [
+      "/api/user-key-value"
+    ]
+  },
+  "put": {
+    "description": "Upsert a KV-pair for the user",
+    "operationId": "put-api-user-key-value-namespace-namespace-key-key",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "namespace",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "expires_at": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.lib.schema.literal..string.datetime.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "value": {}
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/user-key-value/namespace/{namespace}/key/{key}",
+    "tags": [
+      "/api/user-key-value"
+    ]
+  }
+}

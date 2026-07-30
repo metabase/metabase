@@ -1,0 +1,13 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.lib.schema.parameter..parameter.value.scalar.json"
+    },
+    {
+      "items": {
+        "$ref": "./metabase.lib.schema.parameter..parameter.value.scalar.json"
+      },
+      "type": "array"
+    }
+  ]
+}

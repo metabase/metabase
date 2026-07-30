@@ -1,0 +1,58 @@
+{
+  "put": {
+    "description": "Regenerate an API Key",
+    "operationId": "put-api-api-key-id-regenerate",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.api-keys.schema.id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "id": {
+                  "$ref": "../components/schemas/metabase.api-keys.schema.id.json"
+                },
+                "masked_key": {
+                  "$ref": "../components/schemas/metabase.api-keys.schema..key.masked.json"
+                },
+                "prefix": {
+                  "$ref": "../components/schemas/metabase.api-keys.schema.prefix.json"
+                },
+                "unmasked_key": {
+                  "$ref": "../components/schemas/metabase.api-keys.schema..key.raw.json"
+                }
+              },
+              "required": [
+                "id",
+                "unmasked_key",
+                "masked_key",
+                "prefix"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/api-key/{id}/regenerate",
+    "tags": [
+      "/api/api-key"
+    ]
+  }
+}

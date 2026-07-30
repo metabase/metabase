@@ -1,0 +1,31 @@
+{
+  "description": "One fetched resource. Either `:content` (success) or `:error` (failure) is present.",
+  "properties": {
+    "content": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "uri": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "uri"
+  ],
+  "type": "object"
+}

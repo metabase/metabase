@@ -1,0 +1,41 @@
+{
+  "oneOf": [
+    {
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "first_name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "integer"
+        },
+        "last_name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "type": "object"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

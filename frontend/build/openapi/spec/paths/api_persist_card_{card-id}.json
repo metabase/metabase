@@ -1,0 +1,33 @@
+{
+  "get": {
+    "description": "Fetch a particular [[PersistedInfo]] by card-id.",
+    "operationId": "get-api-persist-card-card-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/persist/card/{card-id}",
+    "tags": [
+      "/api/persist"
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "get": {
+    "description": "Get the Library. If no library exists, it doesn't fail but returns an empty response",
+    "operationId": "get-api-ee-library",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "../components/schemas/metabase.collections.schema.CollectionItem.json"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/library",
+    "tags": [
+      "/api/ee/library"
+    ]
+  },
+  "post": {
+    "description": "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires data analyst or superuser permissions.",
+    "operationId": "post-api-ee-library",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/library",
+    "tags": [
+      "/api/ee/library"
+    ]
+  }
+}

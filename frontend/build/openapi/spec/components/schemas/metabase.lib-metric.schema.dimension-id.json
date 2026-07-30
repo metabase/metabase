@@ -1,0 +1,8 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.common.uuid.json"
+    }
+  ],
+  "description": "UUID string identifying a dimension."
+}

@@ -1,0 +1,30 @@
+{
+  "description": "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =\n  internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application\n  database. See [[metabase.query-processor.middleware.add-remaps]] for what this means.",
+  "properties": {
+    "human-readable-values": {
+      "items": {},
+      "type": "array"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.id.dimension.json"
+    },
+    "lib/type": {
+      "const": "metadata.column.remapping/internal"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "values": {
+      "items": {},
+      "type": "array"
+    }
+  },
+  "required": [
+    "lib/type",
+    "id",
+    "name",
+    "values",
+    "human-readable-values"
+  ],
+  "type": "object"
+}

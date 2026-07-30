@@ -1,0 +1,56 @@
+{
+  "post": {
+    "description": "Move candidate cards to the dashboards they appear in (for the root collection)",
+    "operationId": "post-api-collection-root-move-dashboard-question-candidates",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "oneOf": [
+              {
+                "properties": {
+                  "card_ids": {
+                    "items": {
+                      "description": "value must be an integer greater than zero.",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/collection/root/move-dashboard-question-candidates",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

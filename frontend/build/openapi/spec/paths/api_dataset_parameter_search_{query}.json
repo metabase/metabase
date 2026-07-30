@@ -1,0 +1,62 @@
+{
+  "post": {
+    "description": "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`.",
+    "operationId": "post-api-dataset-parameter-search-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "query",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "field_ids": {
+                "oneOf": [
+                  {
+                    "items": {
+                      "$ref": "../components/schemas/metabase.lib.schema.id.field.json"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parameter": {
+                "$ref": "../components/schemas/metabase.parameters.schema.parameter.json"
+              }
+            },
+            "required": [
+              "parameter"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/dataset/parameter/search/{query}",
+    "tags": [
+      "/api/dataset"
+    ]
+  }
+}

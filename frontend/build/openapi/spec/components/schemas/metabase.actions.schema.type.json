@@ -1,0 +1,9 @@
+{
+  "description": "Unsupported action type",
+  "enum": [
+    "http",
+    "implicit",
+    "query"
+  ],
+  "type": "string"
+}

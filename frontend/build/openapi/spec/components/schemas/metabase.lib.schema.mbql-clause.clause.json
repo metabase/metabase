@@ -1,0 +1,332 @@
+{
+  "oneOf": [
+    {},
+    {
+      "$ref": "./mbql.clause._BANG__EQ_.json"
+    },
+    {
+      "$ref": "./mbql.clause._STAR_.json"
+    },
+    {
+      "$ref": "./mbql.clause._PLUS_.json"
+    },
+    {
+      "$ref": "./mbql.clause.-.json"
+    },
+    {
+      "$ref": "./mbql.clause._SLASH_.json"
+    },
+    {
+      "$ref": "./mbql.clause._LT_.json"
+    },
+    {
+      "$ref": "./mbql.clause._LT__EQ_.json"
+    },
+    {
+      "$ref": "./mbql.clause._EQ_.json"
+    },
+    {
+      "$ref": "./mbql.clause._GT_.json"
+    },
+    {
+      "$ref": "./mbql.clause._GT__EQ_.json"
+    },
+    {
+      "$ref": "./mbql.clause.abs.json"
+    },
+    {
+      "$ref": "./mbql.clause.absolute-datetime.json"
+    },
+    {
+      "$ref": "./mbql.clause.aggregation.json"
+    },
+    {
+      "$ref": "./mbql.clause.and.json"
+    },
+    {
+      "$ref": "./mbql.clause.asc.json"
+    },
+    {
+      "$ref": "./mbql.clause.avg.json"
+    },
+    {
+      "$ref": "./mbql.clause.between.json"
+    },
+    {
+      "$ref": "./mbql.clause.case.json"
+    },
+    {
+      "$ref": "./mbql.clause.ceil.json"
+    },
+    {
+      "$ref": "./mbql.clause.coalesce.json"
+    },
+    {
+      "$ref": "./mbql.clause.collate.json"
+    },
+    {
+      "$ref": "./mbql.clause.concat.json"
+    },
+    {
+      "$ref": "./mbql.clause.contains.json"
+    },
+    {
+      "$ref": "./mbql.clause.convert-timezone.json"
+    },
+    {
+      "$ref": "./mbql.clause.count.json"
+    },
+    {
+      "$ref": "./mbql.clause.count-where.json"
+    },
+    {
+      "$ref": "./mbql.clause.cum-count.json"
+    },
+    {
+      "$ref": "./mbql.clause.cum-sum.json"
+    },
+    {
+      "$ref": "./mbql.clause.date.json"
+    },
+    {
+      "$ref": "./mbql.clause.datetime.json"
+    },
+    {
+      "$ref": "./mbql.clause.datetime-add.json"
+    },
+    {
+      "$ref": "./mbql.clause.datetime-diff.json"
+    },
+    {
+      "$ref": "./mbql.clause.datetime-subtract.json"
+    },
+    {
+      "$ref": "./mbql.clause.day-name.json"
+    },
+    {
+      "$ref": "./mbql.clause.desc.json"
+    },
+    {
+      "$ref": "./mbql.clause.distinct.json"
+    },
+    {
+      "$ref": "./mbql.clause.distinct-where.json"
+    },
+    {
+      "$ref": "./mbql.clause.does-not-contain.json"
+    },
+    {
+      "$ref": "./mbql.clause.domain.json"
+    },
+    {
+      "$ref": "./mbql.clause.during.json"
+    },
+    {
+      "$ref": "./mbql.clause.ends-with.json"
+    },
+    {
+      "$ref": "./mbql.clause.exp.json"
+    },
+    {
+      "$ref": "./mbql.clause.expression.json"
+    },
+    {
+      "$ref": "./mbql.clause.field.json"
+    },
+    {
+      "$ref": "./mbql.clause.float.json"
+    },
+    {
+      "$ref": "./mbql.clause.floor.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-day.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-day-of-week.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-hour.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-minute.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-month.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-quarter.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-second.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-week.json"
+    },
+    {
+      "$ref": "./mbql.clause.get-year.json"
+    },
+    {
+      "$ref": "./mbql.clause.host.json"
+    },
+    {
+      "$ref": "./mbql.clause.if.json"
+    },
+    {
+      "$ref": "./mbql.clause.in.json"
+    },
+    {
+      "$ref": "./mbql.clause.inside.json"
+    },
+    {
+      "$ref": "./mbql.clause.integer.json"
+    },
+    {
+      "$ref": "./mbql.clause.interval.json"
+    },
+    {
+      "$ref": "./mbql.clause.is-empty.json"
+    },
+    {
+      "$ref": "./mbql.clause.is-null.json"
+    },
+    {
+      "$ref": "./mbql.clause.length.json"
+    },
+    {
+      "$ref": "./mbql.clause.log.json"
+    },
+    {
+      "$ref": "./mbql.clause.lower.json"
+    },
+    {
+      "$ref": "./mbql.clause.ltrim.json"
+    },
+    {
+      "$ref": "./mbql.clause.max.json"
+    },
+    {
+      "$ref": "./mbql.clause.measure.json"
+    },
+    {
+      "$ref": "./mbql.clause.median.json"
+    },
+    {
+      "$ref": "./mbql.clause.metric.json"
+    },
+    {
+      "$ref": "./mbql.clause.min.json"
+    },
+    {
+      "$ref": "./mbql.clause.month-name.json"
+    },
+    {
+      "$ref": "./mbql.clause.not.json"
+    },
+    {
+      "$ref": "./mbql.clause.not-empty.json"
+    },
+    {
+      "$ref": "./mbql.clause.not-in.json"
+    },
+    {
+      "$ref": "./mbql.clause.not-null.json"
+    },
+    {
+      "$ref": "./mbql.clause.now.json"
+    },
+    {
+      "$ref": "./mbql.clause.offset.json"
+    },
+    {
+      "$ref": "./mbql.clause.or.json"
+    },
+    {
+      "$ref": "./mbql.clause.path.json"
+    },
+    {
+      "$ref": "./mbql.clause.percentile.json"
+    },
+    {
+      "$ref": "./mbql.clause.power.json"
+    },
+    {
+      "$ref": "./mbql.clause.quarter-name.json"
+    },
+    {
+      "$ref": "./mbql.clause.regex-match-first.json"
+    },
+    {
+      "$ref": "./mbql.clause.relative-datetime.json"
+    },
+    {
+      "$ref": "./mbql.clause.relative-time-interval.json"
+    },
+    {
+      "$ref": "./mbql.clause.replace.json"
+    },
+    {
+      "$ref": "./mbql.clause.round.json"
+    },
+    {
+      "$ref": "./mbql.clause.rtrim.json"
+    },
+    {
+      "$ref": "./mbql.clause.segment.json"
+    },
+    {
+      "$ref": "./mbql.clause.share.json"
+    },
+    {
+      "$ref": "./mbql.clause.split-part.json"
+    },
+    {
+      "$ref": "./mbql.clause.sqrt.json"
+    },
+    {
+      "$ref": "./mbql.clause.starts-with.json"
+    },
+    {
+      "$ref": "./mbql.clause.stddev.json"
+    },
+    {
+      "$ref": "./mbql.clause.subdomain.json"
+    },
+    {
+      "$ref": "./mbql.clause.substring.json"
+    },
+    {
+      "$ref": "./mbql.clause.sum.json"
+    },
+    {
+      "$ref": "./mbql.clause.sum-where.json"
+    },
+    {
+      "$ref": "./mbql.clause.temporal-extract.json"
+    },
+    {
+      "$ref": "./mbql.clause.text.json"
+    },
+    {
+      "$ref": "./mbql.clause.time.json"
+    },
+    {
+      "$ref": "./mbql.clause.time-interval.json"
+    },
+    {
+      "$ref": "./mbql.clause.today.json"
+    },
+    {
+      "$ref": "./mbql.clause.trim.json"
+    },
+    {
+      "$ref": "./mbql.clause.upper.json"
+    },
+    {
+      "$ref": "./mbql.clause.value.json"
+    },
+    {
+      "$ref": "./mbql.clause.var.json"
+    }
+  ]
+}

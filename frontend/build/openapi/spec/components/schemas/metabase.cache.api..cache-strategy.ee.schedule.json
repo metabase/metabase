@@ -1,0 +1,26 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "refresh_automatically": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schedule": {
+      "$ref": "./metabase.util.cron.CronScheduleString.json"
+    },
+    "type": {
+      "const": "schedule"
+    }
+  },
+  "required": [
+    "type",
+    "schedule"
+  ],
+  "type": "object"
+}

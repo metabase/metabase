@@ -1,0 +1,17 @@
+{
+  "description": "native permissions",
+  "oneOf": [
+    {
+      "enum": [
+        "write",
+        "none",
+        "full",
+        "limited"
+      ],
+      "type": "string"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

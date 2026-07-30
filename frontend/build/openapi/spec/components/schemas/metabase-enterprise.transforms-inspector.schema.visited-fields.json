@@ -1,0 +1,14 @@
+{
+  "description": "Field IDs used in semantically important query clauses.\n   Used for interestingness scoring and preselection.",
+  "properties": {
+    "all": {
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "type": "object"
+}

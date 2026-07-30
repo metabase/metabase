@@ -1,0 +1,29 @@
+{
+  "get": {
+    "description": "List task runs with optional filters. Returns runs with hydrated entity names and task counts.",
+    "operationId": "get-api-task-runs",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.task-history.api.TaskRunsResponse.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/task/runs",
+    "tags": [
+      "/api/task"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "oneOf": [
+    {
+      "properties": {
+        "id": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  ]
+}

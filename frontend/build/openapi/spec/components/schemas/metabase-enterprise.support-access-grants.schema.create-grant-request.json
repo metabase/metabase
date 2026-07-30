@@ -1,0 +1,38 @@
+{
+  "description": "Schema for POST /api/ee/support-access-grants request body.",
+  "properties": {
+    "grant_duration_minutes": {
+      "maximum": 10080,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "notes": {
+      "oneOf": [
+        {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ticket_number": {
+      "oneOf": [
+        {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "grant_duration_minutes"
+  ],
+  "type": "object"
+}

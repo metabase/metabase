@@ -1,0 +1,56 @@
+{
+  "get": {
+    "description": "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker.",
+    "operationId": "get-api-task-runs-entities",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "run-type",
+        "required": true,
+        "schema": {
+          "enum": [
+            "alert",
+            "sync",
+            "fingerprint",
+            "subscription"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "started-at",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "$ref": "../components/schemas/metabase.task-history.api.RunEntity.json"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/task/runs/entities",
+    "tags": [
+      "/api/task"
+    ]
+  }
+}

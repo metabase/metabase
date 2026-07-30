@@ -1,0 +1,95 @@
+{
+  "delete": {
+    "description": "Delete an ApiKey",
+    "operationId": "delete-api-api-key-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.api-keys.schema.id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/api-key/{id}",
+    "tags": [
+      "/api/api-key"
+    ]
+  },
+  "put": {
+    "description": "Update an API key by changing its group and/or its name",
+    "operationId": "put-api-api-key-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "group_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.api-keys.schema.name.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/api-key/{id}",
+    "tags": [
+      "/api/api-key"
+    ]
+  }
+}

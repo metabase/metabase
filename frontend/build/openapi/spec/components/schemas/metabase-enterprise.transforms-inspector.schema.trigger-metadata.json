@@ -1,0 +1,15 @@
+{
+  "description": "Common metadata for join-related cards and triggers.",
+  "properties": {
+    "join_alias": {
+      "type": "string"
+    },
+    "join_step": {
+      "type": "integer"
+    },
+    "join_strategy": {
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

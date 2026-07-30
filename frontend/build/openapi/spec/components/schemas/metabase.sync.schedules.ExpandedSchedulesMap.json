@@ -1,0 +1,19 @@
+{
+  "description": "value must be a valid map of schedule maps for a DB.",
+  "properties": {
+    "cache_field_values": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.util.cron.ScheduleMap.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metadata_sync": {
+      "$ref": "./metabase.util.cron.ScheduleMap.json"
+    }
+  },
+  "type": "object"
+}

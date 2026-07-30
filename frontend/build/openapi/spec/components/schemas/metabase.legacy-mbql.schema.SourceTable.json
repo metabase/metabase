@@ -1,0 +1,13 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.lib.schema.id.table.json"
+    },
+    {
+      "description": "`card__<id>` string Table ID",
+      "pattern": "^card__[1-9]\\d*$",
+      "type": "string"
+    }
+  ],
+  "description": "Schema for a valid value for the `:source-table` clause of an MBQL query."
+}

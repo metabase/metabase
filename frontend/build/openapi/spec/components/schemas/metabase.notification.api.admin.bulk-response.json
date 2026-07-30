@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "updated": {
+      "description": "value must be an integer greater or equal to than zero.",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "updated"
+  ],
+  "type": "object"
+}

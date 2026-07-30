@@ -1,0 +1,17 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "./metabase.lib.schema.literal..string.zone-offset.json"
+        }
+      ]
+    }
+  ]
+}

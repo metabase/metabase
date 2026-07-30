@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "critical",
+    "high",
+    "medium",
+    "low"
+  ],
+  "type": "string"
+}

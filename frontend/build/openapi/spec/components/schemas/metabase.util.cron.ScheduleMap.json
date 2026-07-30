@@ -1,0 +1,72 @@
+{
+  "description": "value must be a valid schedule map. See schema in metabase.util.cron for details.",
+  "properties": {
+    "schedule_day": {
+      "oneOf": [
+        {
+          "enum": [
+            "sun",
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schedule_frame": {
+      "oneOf": [
+        {
+          "enum": [
+            "first",
+            "mid",
+            "last"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schedule_hour": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.util.cron.CronHour.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schedule_minute": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.util.cron.CronMinute.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schedule_type": {
+      "enum": [
+        "hourly",
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "schedule_type"
+  ],
+  "type": "object"
+}

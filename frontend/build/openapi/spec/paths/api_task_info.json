@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).",
+    "operationId": "get-api-task-info",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/task/info",
+    "tags": [
+      "/api/task"
+    ]
+  }
+}

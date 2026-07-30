@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "column_mappings": {
+      "items": {
+        "$ref": "./metabase-enterprise.replacement.schema.column-mapping.json"
+      },
+      "type": "array"
+    },
+    "errors": {
+      "items": {
+        "$ref": "./metabase-enterprise.replacement.schema.error-type.json"
+      },
+      "type": "array"
+    },
+    "success": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "success"
+  ],
+  "type": "object"
+}

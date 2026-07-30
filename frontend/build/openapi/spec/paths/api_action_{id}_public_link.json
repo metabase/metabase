@@ -1,0 +1,60 @@
+{
+  "delete": {
+    "description": "Delete the publicly-accessible link to this Dashboard.",
+    "operationId": "delete-api-action-id-public_link",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.actions.schema.id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/action/{id}/public_link",
+    "tags": [
+      "/api/action"
+    ]
+  },
+  "post": {
+    "description": "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this\n  Action has already been shared, it will return the existing public link rather than creating a new one.) Public\n  sharing must be enabled.",
+    "operationId": "post-api-action-id-public_link",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.actions.schema.id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/action/{id}/public_link",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

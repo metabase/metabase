@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Get the count of API keys in the DB with the default scope.",
+    "operationId": "get-api-api-key-count",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/api-key/count",
+    "tags": [
+      "/api/api-key"
+    ]
+  }
+}

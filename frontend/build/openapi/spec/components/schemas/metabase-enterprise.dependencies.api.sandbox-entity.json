@@ -1,0 +1,42 @@
+{
+  "properties": {
+    "data": {
+      "properties": {
+        "table": {},
+        "table_id": {}
+      },
+      "type": "object"
+    },
+    "dependents_count": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.dependencies.api.usages.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dependents_errors": {
+      "items": {
+        "$ref": "./metabase-enterprise.dependencies.models.analysis-finding-error.analysis-finding-error.json"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "type": {
+      "const": "sandbox"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "data",
+    "dependents_count"
+  ],
+  "type": "object"
+}

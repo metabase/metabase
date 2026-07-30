@@ -1,0 +1,4 @@
+{
+  "description": "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1.",
+  "type": "number"
+}

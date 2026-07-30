@@ -1,0 +1,65 @@
+{
+  "delete": {
+    "description": "Logout.",
+    "operationId": "delete-api-session",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/session",
+    "tags": [
+      "/api/session"
+    ]
+  },
+  "post": {
+    "description": "Login.",
+    "operationId": "post-api-session",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "password": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "username": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "username",
+              "password"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/session",
+    "tags": [
+      "/api/session"
+    ]
+  }
+}

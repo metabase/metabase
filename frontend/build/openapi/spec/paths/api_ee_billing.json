@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,\n   using the embedding token and signed in user's email to fetch the billing information.",
+    "operationId": "get-api-ee-billing",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/billing",
+    "tags": [
+      "/api/ee/billing"
+    ]
+  }
+}

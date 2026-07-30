@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is\n  enabled.",
+    "operationId": "get-api-dashboard-public",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard/public",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

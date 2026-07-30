@@ -1,0 +1,25 @@
+{
+  "description": "value must be a valid attribute remappings map (attribute name -> remapped name)",
+  "oneOf": [
+    {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "$ref": "./metabase.lib.schema.id.field.json"
+          },
+          {
+            "$ref": "./metabase.lib.schema.parameter.target.json"
+          }
+        ]
+      },
+      "type": "object"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

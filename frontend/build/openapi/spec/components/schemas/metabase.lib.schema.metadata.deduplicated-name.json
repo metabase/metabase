@@ -1,0 +1,11 @@
+{
+  "description": "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.",
+  "oneOf": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

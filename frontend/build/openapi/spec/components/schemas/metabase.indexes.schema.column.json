@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "direction": {
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "$ref": "./metabase.indexes.schema.column-name.json"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "type": "object"
+}

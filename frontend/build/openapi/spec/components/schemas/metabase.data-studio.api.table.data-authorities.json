@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "computed",
+    "authoritative",
+    "unconfigured",
+    "ingested"
+  ],
+  "type": "string"
+}

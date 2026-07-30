@@ -1,0 +1,17 @@
+{
+  "prefixItems": [
+    {
+      "const": "percentile"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.number.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.aggregation..percentile.percentile.json"
+    }
+  ],
+  "type": "array"
+}

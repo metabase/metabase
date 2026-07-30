@@ -1,0 +1,39 @@
+{
+  "post": {
+    "description": "Send diagnostic information to the configured Slack channels.",
+    "operationId": "post-api-slack-bug-report",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "diagnosticInfo": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "diagnosticInfo"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/slack/bug-report",
+    "tags": [
+      "/api/slack"
+    ]
+  }
+}

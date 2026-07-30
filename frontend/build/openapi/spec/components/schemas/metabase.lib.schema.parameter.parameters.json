@@ -1,0 +1,7 @@
+{
+  "description": "Schema for a list of `:parameters` as passed in to a query.",
+  "items": {
+    "$ref": "./metabase.lib.schema.parameter.parameter.json"
+  },
+  "type": "array"
+}

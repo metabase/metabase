@@ -1,0 +1,69 @@
+{
+  "post": {
+    "description": "Stashes changes to a new branch, and changes the current branch to it.\n  Requires superuser permissions.",
+    "operationId": "post-api-ee-remote-sync-stash",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "new_branch": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "new_branch",
+              "message"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "task_id": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "status",
+                "message",
+                "task_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/remote-sync/stash",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

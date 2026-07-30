@@ -1,0 +1,57 @@
+{
+  "get": {
+    "description": "Fetch a list of all Impersonation policies currently in effect, or a single policy if both `group_id` and `db_id`\n  are provided.",
+    "operationId": "get-api-ee-advanced-permissions-impersonation",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "group_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "db_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/advanced-permissions/impersonation",
+    "tags": [
+      "/api/ee/advanced-permissions/impersonation"
+    ]
+  }
+}

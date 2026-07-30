@@ -1,0 +1,16 @@
+{
+  "description": "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'\n   sub-stage of analysis. Stored as the `fingerprint` column of Field.",
+  "properties": {
+    "experimental": {
+      "additionalProperties": {},
+      "type": "object"
+    },
+    "global": {
+      "$ref": "./metabase.lib.schema.metadata.fingerprint..fingerprint.global.json"
+    },
+    "type": {
+      "$ref": "./metabase.lib.schema.metadata.fingerprint..fingerprint.type-specific.json"
+    }
+  },
+  "type": "object"
+}

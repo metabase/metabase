@@ -1,0 +1,80 @@
+{
+  "properties": {
+    "duration": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ended_at": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "logs": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "started_at": {},
+    "status": {
+      "enum": [
+        "started",
+        "success",
+        "failed",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "task": {
+      "type": "string"
+    },
+    "task_details": {
+      "oneOf": [
+        {
+          "properties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "task",
+    "started_at",
+    "ended_at",
+    "duration",
+    "status"
+  ],
+  "type": "object"
+}

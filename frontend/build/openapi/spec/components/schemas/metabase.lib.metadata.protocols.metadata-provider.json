@@ -1,0 +1,3 @@
+{
+  "description": "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
+}

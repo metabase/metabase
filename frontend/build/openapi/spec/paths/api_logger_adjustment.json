@@ -1,0 +1,65 @@
+{
+  "delete": {
+    "description": "Undo any log level adjustments.",
+    "operationId": "delete-api-logger-adjustment",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/logger/adjustment",
+    "tags": [
+      "/api/logger"
+    ]
+  },
+  "post": {
+    "description": "Temporarily adjust the log levels.",
+    "operationId": "post-api-logger-adjustment",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "duration": {
+                "type": "integer"
+              },
+              "duration_unit": {
+                "$ref": "../components/schemas/metabase.logger.api.time-unit.json"
+              },
+              "log_levels": {}
+            },
+            "required": [
+              "duration",
+              "duration_unit",
+              "log_levels"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/logger/adjustment",
+    "tags": [
+      "/api/logger"
+    ]
+  }
+}

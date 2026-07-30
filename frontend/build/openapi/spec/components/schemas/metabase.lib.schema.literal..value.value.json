@@ -1,0 +1,3 @@
+{
+  "description": "The value slot of a `:value` clause: a single literal that is not a Clojure collection."
+}

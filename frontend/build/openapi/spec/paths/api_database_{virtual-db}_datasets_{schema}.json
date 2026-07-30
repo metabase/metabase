@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Returns a list of Tables for the datasets virtual database.",
+    "operationId": "get-api-database-virtual-db-datasets-schema",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{virtual-db}/datasets/{schema}",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

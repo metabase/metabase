@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are\n  public if no user is logged in.",
+    "operationId": "get-api-session-properties",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/session/properties",
+    "tags": [
+      "/api/session"
+    ]
+  }
+}

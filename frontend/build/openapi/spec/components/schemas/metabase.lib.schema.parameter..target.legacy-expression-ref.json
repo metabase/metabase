@@ -1,0 +1,7 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.expression.json"
+    }
+  ]
+}

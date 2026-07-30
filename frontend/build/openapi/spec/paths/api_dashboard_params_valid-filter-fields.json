@@ -1,0 +1,52 @@
+{
+  "get": {
+    "description": "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in\n  parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each\n  `filtered` Field ID return the subset of `filtering` Field IDs that would actually be used in a chain filter query\n  with these Fields.\n\n  e.g. in a chain filter query like\n\n  GET /api/dashboard/10/params/PARAM_1/values?PARAM_2=100\n\n  Assume `PARAM_1` maps to Field 1 and `PARAM_2` maps to Fields 2 and 3. The underlying MBQL query may or may not\n  filter against Fields 2 and 3, depending on whether an FK relationship that lets us create a join against Field 1\n  can be found. You can use this endpoint to determine which of those Fields is actually used:\n\n  GET /api/dashboard/params/valid-filter-fields?filtered=1&filtering=2&filtering=3\n  ;; ->\n  {1 [2 3]}\n\n  Results are returned as a map of\n\n  `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query",
+    "operationId": "get-api-dashboard-params-valid-filter-fields",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "filtered",
+        "required": true,
+        "schema": {
+          "items": {
+            "$ref": "../components/schemas/metabase.lib.schema.id.field.json"
+          },
+          "type": "array"
+        }
+      },
+      {
+        "in": "query",
+        "name": "filtering",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "../components/schemas/metabase.lib.schema.id.field.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard/params/valid-filter-fields",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

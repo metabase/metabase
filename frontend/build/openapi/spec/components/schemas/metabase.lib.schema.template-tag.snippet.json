@@ -1,0 +1,39 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "database": {
+          "$ref": "./metabase.lib.schema.id.database.json"
+        },
+        "display-name": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "id": {
+          "$ref": "./metabase.lib.schema.template-tag.id.json"
+        },
+        "name": {
+          "$ref": "./metabase.lib.schema.template-tag.name.json"
+        },
+        "snippet-id": {
+          "$ref": "./metabase.lib.schema.id.snippet.json"
+        },
+        "snippet-name": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "type": {
+          "const": "snippet"
+        }
+      },
+      "required": [
+        "name",
+        "display-name",
+        "type",
+        "snippet-name"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.template-tag.disallow-dimension.json"
+    }
+  ]
+}

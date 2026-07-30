@@ -1,0 +1,50 @@
+{
+  "get": {
+    "description": "Fetch the remapped value for a given value of the parameter with ID `:param-key`.\n\n    ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100\n    GET /api/dashboard/1/params/abc/remapping?value=100",
+    "operationId": "get-api-dashboard-id-params-param-key-remapping",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "param-key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "value",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard/{id}/params/{param-key}/remapping",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

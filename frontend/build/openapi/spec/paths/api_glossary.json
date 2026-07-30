@@ -1,0 +1,65 @@
+{
+  "get": {
+    "description": "Fetch all glossary entries, optionally filtered by search term.",
+    "operationId": "get-api-glossary",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/glossary",
+    "tags": [
+      "/api/glossary"
+    ]
+  },
+  "post": {
+    "description": "Create a new glossary entry.",
+    "operationId": "post-api-glossary",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "definition": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "term": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "term",
+              "definition"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/glossary",
+    "tags": [
+      "/api/glossary"
+    ]
+  }
+}

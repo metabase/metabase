@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything\n  archived, deleted, etc it can usually still get 5. ",
+    "operationId": "get-api-activity-popular_items",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/activity/popular_items",
+    "tags": [
+      "/api/activity"
+    ]
+  }
+}

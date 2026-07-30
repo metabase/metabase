@@ -1,0 +1,48 @@
+{
+  "get": {
+    "description": "Embedded version of api.card filter values endpoint.",
+    "operationId": "get-api-embed-card-token-params-param-key-remapping",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "param-key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "value",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/embed/card/{token}/params/{param-key}/remapping",
+    "tags": [
+      "/api/embed"
+    ]
+  }
+}

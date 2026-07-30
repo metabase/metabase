@@ -1,0 +1,11 @@
+{
+  "prefixItems": [
+    {
+      "const": "today"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    }
+  ],
+  "type": "array"
+}

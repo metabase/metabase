@@ -1,0 +1,14 @@
+{
+  "allOf": [
+    {
+      "items": {
+        "$ref": "./metabase.lib.schema.order-by.order-by.json"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    {
+      "$ref": "./metabase.lib.schema.util.distinct-mbql-clauses.json"
+    }
+  ]
+}

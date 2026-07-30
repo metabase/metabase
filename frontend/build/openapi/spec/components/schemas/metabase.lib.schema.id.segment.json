@@ -1,0 +1,5 @@
+{
+  "description": "Valid legacy Segment ID",
+  "minimum": 1,
+  "type": "integer"
+}

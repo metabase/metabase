@@ -1,0 +1,200 @@
+{
+  "post": {
+    "description": "Generate SQL from a natural language prompt.\n\n   Requires:\n   - LLM to be configured (Anthropic API key set in admin settings)\n   - At least one table reference (explicit @mention or implicit from source_sql)\n   - A database_id parameter\n\n   Returns generated SQL and the list of tables used for context.",
+    "operationId": "post-api-llm-generate-sql",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database_id": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "referenced_entities": {
+                "items": {
+                  "properties": {
+                    "id": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "model": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "model",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "source_sql": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "prompt",
+              "database_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "referenced_entities": {
+                  "items": {
+                    "properties": {
+                      "columns": {
+                        "items": {
+                          "properties": {
+                            "database_type": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "description": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "fk_target": {
+                              "properties": {
+                                "field_name": {
+                                  "type": "string"
+                                },
+                                "table_name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "table_name",
+                                "field_name"
+                              ],
+                              "type": "object"
+                            },
+                            "id": {
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "semantic_type": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "description": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "display_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "schema": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "model",
+                      "id",
+                      "name",
+                      "columns"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "sql": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sql",
+                "referenced_entities"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/llm/generate-sql",
+    "tags": [
+      "/api/llm"
+    ]
+  }
+}

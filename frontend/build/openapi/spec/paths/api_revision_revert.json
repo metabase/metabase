@@ -1,0 +1,59 @@
+{
+  "post": {
+    "description": "Revert an object to a prior revision.",
+    "operationId": "post-api-revision-revert",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "entity": {
+                "enum": [
+                  "card",
+                  "dashboard",
+                  "document",
+                  "measure",
+                  "segment",
+                  "transform"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "revision_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "entity",
+              "revision_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/revision/revert",
+    "tags": [
+      "/api/revision"
+    ]
+  }
+}

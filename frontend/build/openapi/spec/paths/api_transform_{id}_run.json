@@ -1,0 +1,71 @@
+{
+  "post": {
+    "description": "Run a transform.",
+    "operationId": "post-api-transform-id-run",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "body": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "message": {},
+                    "run_id": {
+                      "oneOf": [
+                        {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "run_id"
+                  ],
+                  "type": "object"
+                },
+                "status": {
+                  "const": 202
+                }
+              },
+              "required": [
+                "status",
+                "body"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/transform/{id}/run",
+    "tags": [
+      "/api/transform"
+    ]
+  }
+}

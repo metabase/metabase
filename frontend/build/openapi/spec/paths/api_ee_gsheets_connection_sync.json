@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Force a sync of the connection now.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
+    "operationId": "post-api-ee-gsheets-connection-sync",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/gsheets/connection/sync",
+    "tags": [
+      "/api/ee/gsheets"
+    ]
+  }
+}

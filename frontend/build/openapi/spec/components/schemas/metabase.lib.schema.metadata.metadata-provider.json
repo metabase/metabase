@@ -1,0 +1,8 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.metadata.protocols.metadata-provider.json"
+    }
+  ],
+  "description": "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
+}

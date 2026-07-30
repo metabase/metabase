@@ -1,0 +1,17 @@
+{
+  "prefixItems": [
+    {
+      "const": "power"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.number.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.number.json"
+    }
+  ],
+  "type": "array"
+}

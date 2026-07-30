@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "distinct"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.aggregation..distinct.arg.json"
+    }
+  ],
+  "type": "array"
+}

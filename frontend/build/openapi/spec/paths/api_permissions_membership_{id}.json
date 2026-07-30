@@ -1,0 +1,81 @@
+{
+  "delete": {
+    "description": "Remove a User from a PermissionsGroup (delete their membership).",
+    "operationId": "delete-api-permissions-membership-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/permissions/membership/{id}",
+    "tags": [
+      "/api/permissions"
+    ]
+  },
+  "put": {
+    "description": "Update a Permission Group membership. Returns the updated record.",
+    "operationId": "put-api-permissions-membership-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "is_group_manager": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "is_group_manager"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/permissions/membership/{id}",
+    "tags": [
+      "/api/permissions"
+    ]
+  }
+}
