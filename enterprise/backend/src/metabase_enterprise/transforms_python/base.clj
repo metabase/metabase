@@ -313,7 +313,7 @@
                   (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size rows-written)
                   ;; Persist the sync state only after the data is durably in the target table,
                   ;; so a failed transfer re-runs from the previous state.
-                  (when-some [new-state (:sync_state output-manifest)]
+                  (when-some [new-state (:state output-manifest)]
                     (when-let [transform-id (:id transform)]
                       (t2/update! :model/Transform transform-id
                                   {:incremental_state (json/encode new-state)})))
