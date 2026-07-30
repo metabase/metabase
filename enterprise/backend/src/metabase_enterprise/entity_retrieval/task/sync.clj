@@ -32,7 +32,7 @@
       (entity-retrieval.core/reconcile-full-coalesced!)
       (catch Throwable e
         ;; Log and move on: the next periodic run retries from the authoritative appdb table.
-        (log/error e "entity-retrieval mirror reconciliation failed")))))
+        (log/errorf "entity-retrieval mirror reconciliation failed: %s" (ex-message e))))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 ;; Slow: this is the backstop, not the freshness mechanism — the targeted write path keeps the index live.

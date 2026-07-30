@@ -166,7 +166,7 @@
              (keep (fn [param]
                      (let [key-val (str/split param #"=")]
                        (if-not (= 2 (count key-val))
-                         (log/warnf "Invalid Snowflake connection URI parameter: '%s'" param)
+                         (log/warn "Invalid Snowflake connection URI parameter")
                          (let [[k v] key-val]
                            [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
                             (URLDecoder/decode ^String v "UTF-8")])))))
@@ -816,7 +816,7 @@
         ;; The Snowflake JDBC driver may throw for unsupported column types (e.g. UUID) during
         ;; DatabaseMetaData.getColumns() iteration. Fall back to SELECT * metadata which doesn't
         ;; hit the same code path. See #71595.
-        (log/warnf e "Error reading JDBC metadata for table %s, falling back to SELECT * metadata" (:name table))
+        (log/warnf "Error reading JDBC metadata for table %s, falling back to SELECT * metadata: %s" (:name table) (ex-message e))
         (mapv fix-base-type
               (fallback-fields-metadata driver conn table database))))))
 
@@ -840,8 +840,15 @@
   [_ entity-name]
   (escape-name-for-metadata entity-name))
 
+(defn- show-dynamic-tables-sql
+  "Takes raw, unescaped names. Only the LIKE argument is a pattern, where `_` is a wildcard; the IN SCHEMA
+  names are plain identifiers and must not be escaped (#78541)."
+  [db-name schema-name table-name]
+  (format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA %s.%s;"
+          (escape-name-for-metadata table-name) (quote-schema db-name) (quote-schema schema-name)))
+
 (mu/defn- dynamic-table?
-  "Check if the table is a dynamic table.
+  "Check if the table is a dynamic table. Takes raw, unescaped names.
 
   You can't rely on :table_type from INFORMATION_SCHEMA.TABLES or :type from getTables because in
   both cases it returns `Table` for dynamic tables."
@@ -853,15 +860,13 @@
     ;; there is another way of checking this by using SHOW TABLES command and check `is_dynamic` column.
     ;; But this column is not documented on https://docs.snowflake.com/en/sql-reference/sql/show-tables (2024/05/07),
     ;; So we avoid using it here.
-    (-> (jdbc/query
-         {:connection conn}
-         [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA %s.%s;"
-                  table-name (quote-schema db-name) (quote-schema schema-name))])
+    (-> (jdbc/query {:connection conn} [(show-dynamic-tables-sql db-name schema-name table-name)])
         first
         some?)
     (catch SnowflakeSQLException e
-      (log/warn e "Failed to check if table is dynamic")
-      ;; query will fail if schema doesn't exist
+      ;; query will fail if schema doesn't exist. This runs once per table, so skip the stack trace.
+      (log/warnf "Failed to check if table %s.%s.%s is dynamic: %s"
+                 db-name schema-name table-name (ex-message e))
       false)))
 
 (defn- table->db-name
@@ -901,11 +906,11 @@
    ^String           db-name    :- [:maybe :string]
    ^String           schema     :- [:maybe :string]
    ^String           table-name :- :string]
-  ;; Snowflake bug: schema and table name are interpreted as patterns
-  (let [schema     (escape-name-for-metadata schema)
-        table-name (escape-name-for-metadata table-name)]
-    (when-not (dynamic-table? conn db-name schema table-name)
-      (sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata metadata db-name schema table-name))))
+  (when-not (dynamic-table? conn db-name schema table-name)
+    ;; Snowflake bug: schema and table name are interpreted as patterns
+    (sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata metadata db-name
+                                                          (escape-name-for-metadata schema)
+                                                          (escape-name-for-metadata table-name))))
 
 (mu/defmethod driver/describe-fks :snowflake :- ::driver/describe-fks.result
   [driver          :- :keyword

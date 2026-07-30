@@ -137,7 +137,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/error e "Exception caught in :bigquery-cloud-sdk can-connect?")
+                                   (log/errorf "Exception caught in :bigquery-cloud-sdk can-connect?: %s" (ex-message e))
                                    [false nil]))]
     (cond
       (not success?)
@@ -473,7 +473,7 @@
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e
-                 (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))]
+                 (log/warnf "error in describe-fields for dataset %s: %s" dataset-id (ex-message e))))]
     (eduction
      (partition-by :table_name)
      (mapcat #(describe-dataset-table dataset-id %))
@@ -493,7 +493,7 @@
                                :from [[(information-schema-table project-id dataset-id "TABLES") :t]]
                                :order-by [:table_name]}))
     (catch Throwable e
-      (log/warnf e "error in list-table-names for dataset: %s" dataset-id))))
+      (log/warnf "error in list-table-names for dataset %s: %s" dataset-id (ex-message e)))))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
@@ -722,6 +722,30 @@
   page, then adaptive sizing) by default, but override for testing."
   nil)
 
+(def ^:private max-sql-query-length-chars
+  "BigQuery's maximum standard SQL query length, in characters — counting comments and whitespace exactly as
+  BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...').
+  See
+  https://cloud.google.com/bigquery/quotas#query_limits ('Maximum query length: 1 MB')."
+  (* 1024 1024))
+
+(defn- validate-query-length!
+  "Throw a localized `invalid-query` error if `sql` exceeds [[max-sql-query-length-chars]], before the request
+  reaches BigQuery. `sql` is the final payload — Metabase's `-- remark` comment, appended in
+  [[driver/execute-reducible-query]], is already included — so it is counted exactly as BigQuery will count it. The
+  raw 400 from BigQuery remains a fallback if this limit ever drifts from BigQuery's own."
+  [^String sql parameters]
+  (let [len (count sql)]
+    (when (> len max-sql-query-length-chars)
+      (throw
+       (ex-info
+        (tru (str "This query is too large for BigQuery ({0} characters; the maximum is {1}). "
+                  "Try reducing the number of selected fields, filter values, or rewriting the query to make it shorter.")
+             len max-sql-query-length-chars)
+        {:type       driver-api/qp.error-type.invalid-query
+         :sql        sql
+         :parameters parameters})))))
+
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                   {:type driver-api/qp.error-type.invalid-query, :sql sql, :parameters parameters}
@@ -833,7 +857,7 @@
              (let [acc' (try
                           (rf acc (.next it))
                           (catch Throwable e
-                            (log/errorf e "error in reducible-bigquery-results! %d rows" n)
+                            (log/errorf "error in reducible-bigquery-results! %d rows: %s" n (ex-message e))
                             (throw e)))]
                (recur page it acc' (inc n)))
 
@@ -861,7 +885,7 @@
                                  (.cancel client job-id)
                                  (catch Throwable e
                                    ;; Just log exception if it can't be cancelled.
-                                   (log/debugf e "Could not cancel job-id: %s" job-id)))
+                                   (log/debugf "Could not cancel job-id %s: %s" job-id (ex-message e))))
         ^Schema schema (some-> page .getSchema)
         parsers (some-> schema get-field-parsers)
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
@@ -878,6 +902,7 @@
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
   {:pre [(not (str/blank? sql))]}
+  (validate-query-length! sql parameters)
   ;; Kicking off two async jobs:
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
@@ -919,7 +944,7 @@
         :cancel (try
                   (.cancel client job-id)
                   (catch Throwable t
-                    (log/warnf t "Couldn't cancel job %s" job-id))
+                    (log/warnf "Couldn't cancel job %s: %s" job-id (ex-message t)))
                   (finally
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
@@ -1263,7 +1288,7 @@
       (doall
        (for [query queries]
          (let [[sql params] (if (string? query) [query] query)
-               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               _ (log/debug "Executing BigQuery DDL")
                job-config (-> (QueryJobConfiguration/newBuilder sql)
                               (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
@@ -1272,7 +1297,7 @@
            {:rows-affected (or (and table-result (.getTotalRows table-result))
                                0)})))
       (catch Exception e
-        (log/error e "Error executing BigQuery DDL")
+        (log/errorf "Error executing BigQuery DDL: %s" (ex-message e))
         (throw e)))))
 
 (defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]

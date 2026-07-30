@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import type { Location } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Stack } from "metabase/ui";
 import { getSchemaViewerParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
@@ -14,17 +14,8 @@ import { useSchemaPreferencesStore } from "../../components/SchemaViewer/hooks/u
 
 import { useRedirectToLastDatabase } from "./useRedirectToLastDatabase";
 
-type SchemaViewerPageQuery = {
-  "database-id"?: string;
-  "table-ids"?: string | string[];
-  schema?: string;
-};
-
-type SchemaViewerPageProps = {
-  location?: Location<SchemaViewerPageQuery>;
-};
-
-export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
+export function SchemaViewerPage() {
+  const { location } = useRouter();
   usePageTitle(t`Schema viewer`);
 
   const rawDatabaseId = location?.query?.["database-id"];

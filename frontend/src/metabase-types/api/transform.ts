@@ -15,6 +15,8 @@ export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
 
+export const PENDING_RUN_ID = -1;
+
 export type InspectorLensId = string;
 export type InspectorCardId = string;
 export type InspectorSectionId = string;

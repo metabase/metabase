@@ -260,6 +260,7 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
+    query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     queue-backend: null

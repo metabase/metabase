@@ -589,7 +589,6 @@
       (encode-mongo parsed))
     (catch Throwable e
       (log/errorf "Unexpected error while prettifying Mongo BSON query: %s" (ex-message e))
-      (log/debugf e "Query:\n%s" native-form)
       native-form)))
 
 (defmethod driver/create-table! :mongo

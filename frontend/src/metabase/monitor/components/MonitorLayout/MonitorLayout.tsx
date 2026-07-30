@@ -18,8 +18,7 @@ import {
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
-import { Outlet } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { Outlet, useLocation } from "metabase/router";
 import { FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -58,7 +57,7 @@ export function MonitorLayout() {
   });
   const isNavbarOpened = _isNavbarOpened !== false;
 
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);

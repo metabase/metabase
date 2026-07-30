@@ -79,7 +79,7 @@
       (catch InterruptedException e
         (throw e))
       (catch Exception e
-        (log/debug e "The application database user cannot host the library retrieval schema")
+        (log/debugf "The application database user cannot host the library retrieval schema: %s" (ex-message e))
         false))))
 
 (defonce ^{:doc "Set once [[app-db-schema-usable?*]] has answered yes. Rebound by tests."}
@@ -170,7 +170,7 @@
         {:status :missing}
         ;; DEBUG: entity-retrieval-available? probes per tool-offering request, so a pgvector outage would
         ;; WARN-flood the logs; the :unreachable status and the health check already carry the signal.
-        (do (log/debug e "entity-retrieval index probe failed")
+        (do (log/debugf "entity-retrieval index probe failed: %s" (ex-message e))
             {:status :unreachable, :error (ex-message e)})))))
 
 (defn retrieval-status
@@ -299,8 +299,8 @@
               diff    (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
-          (log/error e "library entity index: targeted reconcile failed; re-queuing"
-                     entity-type entity-local-id)
+          (log/error "library entity index: targeted reconcile failed; re-queuing"
+                     entity-type entity-local-id (ex-message e))
           (locking run-lock (swap! dirty-entities conj entity-key)))))))
 
 (defn reconcile-full-coalesced!
@@ -373,12 +373,15 @@
                               (format "WHEN doc_type = '%s' THEN %s" (name k) w)))]
     (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
 
-(defenterprise search
+(defenterprise search-unfiltered
   "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
   blended score (cosine similarity plus a slight doc_type bump).
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
   dedupes the (many-per-entity) docs down to distinct entities.
-  Returns [] when the pgvector store is unconfigured."
+  Returns [] when the pgvector store is unconfigured.
+
+  Hits are not permission-filtered — see [[metabase.entity-retrieval.mirror/search-unfiltered]] for what a
+  caller owes the current user."
   :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)
@@ -412,7 +415,7 @@
                         ;; reports the search as unavailable rather than as an empty library.
                         (case (.getSQLState e)
                           "42P01" []
-                          "22000" (do (log/warn e "library entity index incompatible with the query vector; returning no results")
+                          "22000" (do (log/warnf "library entity index incompatible with the query vector; returning no results: %s" (ex-message e))
                                       [])
                           (do (analytics/inc! :metabase-entity-retrieval/search-failed)
                               (throw e)))))]

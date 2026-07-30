@@ -1,5 +1,11 @@
 import { Global } from "@emotion/react";
-import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
+import type {
+  AnyAction,
+  Middleware,
+  Reducer,
+  Store,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
@@ -31,26 +37,24 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import {
   type Action,
   type History,
   type LocationDescriptor,
-  Route,
-  createLocationMirror,
-  routerMiddleware,
-  routing as routingReducer,
-} from "metabase/router";
-import {
   type MemoryTestHistory,
+  Route,
   RouterProviderV7Memory,
+  createLocationMirror,
   createMemoryTestHistory,
-} from "metabase/router/v7/RouterProviderV7";
-import { toV3Location } from "metabase/router/v7/location";
-import {
   createV7Navigator,
+  routerMiddleware,
   toNavigateArgs,
-} from "metabase/router/v7/navigator";
+  toV3Location,
+} from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -72,7 +76,7 @@ export interface RenderWithProvidersOptions {
   // public or sdk-specific tests
   mode?: "default" | "public";
   initialRoute?: string;
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   withRouter?: boolean;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
@@ -186,8 +190,10 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let {
+    settings, // pull settings out because they aren't in the store
+    ...initialState
+  }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -209,10 +215,6 @@ export function getTestStoreAndWrapper({
     reducers = makeMainReducers();
   }
 
-  if (withRouter) {
-    Object.assign(reducers, { routing: routingReducer });
-    Object.assign(initialState, { routing });
-  }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
@@ -229,7 +231,9 @@ export function getTestStoreAndWrapper({
     initialState,
     // Unjustified type cast. FIXME
     storeMiddleware as Middleware[],
-  ) as unknown as Store<State>;
+  ) as unknown as Store<State> & {
+    dispatch: ThunkDispatch<State, void, AnyAction>;
+  };
 
   const wrapper = (props: any) => {
     return (

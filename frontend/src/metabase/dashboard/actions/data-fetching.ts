@@ -393,6 +393,7 @@ export const fetchCardDataAction = createAsyncThunk<
         result = (await fetchDataOrError(
           runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
             cardId: card.id,
+            dashboardId: dashcard.dashboard_id,
             ignore_cache: ignoreCache,
           }),
         )) as Dataset | { error: unknown };

@@ -1,10 +1,15 @@
 (ns metabase.metabot.tools.entity-details-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.entity-details-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -395,6 +400,20 @@
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
 
+(deftest get-field-values-has-stable-shape-test
+  (let [field-id   (mt/id :categories :name)
+        raw-values ["African" "American"]]
+    (testing "cache hits return raw values"
+      (is (= raw-values
+             (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))
+    (testing "cache misses return the same raw-value shape"
+      (with-redefs [params.field-values/current-user-can-fetch-field-values?        (constantly true)
+                    params.field-values/get-or-create-field-values!                 (constantly {:values raw-values})
+                    params.field-values/get-or-create-field-values-for-current-user!
+                    (constantly {:values (mapv vector raw-values)})]
+        (is (= raw-values
+               (#'entity-details/get-field-values {} field-id)))))))
+
 ;;; ============================================================
 ;;; Base-table surfacing on get-metric-details (regression)
 ;;; ============================================================
@@ -425,6 +444,79 @@
             (is (= [db-name (:schema orders) (:name orders)]
                    (:base_table_portable_fk output))
                 "portable FK should be `[database_name, schema, table_name]`")))))))
+
+(deftest get-metric-details-hides-unreadable-base-table-test
+  (testing "metric details do not reveal metadata for a base table the user cannot read"
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Restricted base-table metric"
+                                                  :type          :metric}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (with-redefs [params.field-values/field-id->field-values-for-current-user
+                          (fn [_]
+                            (throw (ex-info "field values must not be fetched" {})))]
+              (let [output (:structured-output
+                            (entity-details/get-metric-details {:metric-id     metric-id
+                                                                :with-segments? true}))]
+                (is (= metric-id (:id output)) "collection access still makes the metric readable")
+                (is (not-any? #(contains? output %)
+                              [:base_table_id
+                               :base_table_name
+                               :base_table_portable_fk
+                               :default_time_dimension_field_id
+                               :queryable-dimensions
+                               :segments]))))))))))
+
+(deftest get-metric-details-hides-unreadable-fk-target-test
+  (testing "metric dimensions do not reveal metadata for an unreadable FK target table"
+    (mt/with-temp [:model/Database db         {}
+                   :model/Table    target     {:db_id              (:id db)
+                                               :name               "secret_table"
+                                               :schema             "private"}
+                   :model/Field    target-id  {:table_id           (:id target)
+                                               :name               "secret_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Table    source     {:db_id              (:id db)
+                                               :name               "orders"
+                                               :schema             "public"}
+                   :model/Field    _source-id {:table_id           (:id source)
+                                               :name               "id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Field    _source-fk {:table_id           (:id source)
+                                               :name               "user_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (:id target-id)}]
+      (let [mp           (lib-be/application-database-metadata-provider (:id db))
+            metric-query (-> (lib/query mp (lib.metadata/table mp (:id source)))
+                             (lib/aggregate (lib/count)))]
+        (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                    :database_id   (:id db)
+                                                    :table_id      (:id source)
+                                                    :name          "Readable source metric"
+                                                    :type          :metric}]
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) source
+                                         :perms/create-queries :query-builder-and-native)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [output     (:structured-output
+                                (entity-details/get-metric-details {:metric-id          metric-id
+                                                                    :with-field-values? false}))
+                    dimensions (:queryable-dimensions output)
+                    source-fk  (some #(when (= "user_id" (:name %)) %) dimensions)]
+                (is (= "orders" (:base_table_name output)))
+                (is (some? source-fk) "the readable source FK column is returned")
+                (is (not (contains? source-fk :fk_target_portable_fk)))
+                (is (not (str/includes? (pr-str output) "secret_table")))
+                (is (not (str/includes? (pr-str output) "secret_id")))))))))))
 
 ;;; ============================================================
 ;;; Portable entity_id in card details (step 11.2)

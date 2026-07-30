@@ -37,8 +37,7 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
       <Tabs
         listBorder={false}
         value={tab}
-        // Unjustified type cast. FIXME
-        onChange={(value) => value && onChangeTab(value as PermissionsPageTab)}
+        onChange={(value) => value && onChangeTab(value)}
       >
         <Tabs.List pl="xl">
           {tabs.map((tabOption) => (
