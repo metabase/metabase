@@ -749,6 +749,30 @@
   page, then adaptive sizing) by default, but override for testing."
   nil)
 
+(def ^:private max-sql-query-length-chars
+  "BigQuery's maximum standard SQL query length, in characters — counting comments and whitespace exactly as
+  BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...').
+  See
+  https://cloud.google.com/bigquery/quotas#query_limits ('Maximum query length: 1 MB')."
+  (* 1024 1024))
+
+(defn- validate-query-length!
+  "Throw a localized `invalid-query` error if `sql` exceeds [[max-sql-query-length-chars]], before the request
+  reaches BigQuery. `sql` is the final payload — Metabase's `-- remark` comment, appended in
+  [[driver/execute-reducible-query]], is already included — so it is counted exactly as BigQuery will count it. The
+  raw 400 from BigQuery remains a fallback if this limit ever drifts from BigQuery's own."
+  [^String sql parameters]
+  (let [len (count sql)]
+    (when (> len max-sql-query-length-chars)
+      (throw
+       (ex-info
+        (tru (str "This query is too large for BigQuery ({0} characters; the maximum is {1}). "
+                  "Try reducing the number of selected fields, filter values, or rewriting the query to make it shorter.")
+             len max-sql-query-length-chars)
+        {:type       driver-api/qp.error-type.invalid-query
+         :sql        sql
+         :parameters parameters})))))
+
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                   {:type driver-api/qp.error-type.invalid-query, :sql sql, :parameters parameters}
@@ -905,6 +929,7 @@
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
   {:pre [(not (str/blank? sql))]}
+  (validate-query-length! sql parameters)
   ;; Kicking off two async jobs:
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
