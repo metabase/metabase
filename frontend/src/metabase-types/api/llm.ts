@@ -34,6 +34,14 @@ export interface ExtractSourcesResponse {
   card_ids: number[];
 }
 
+export type LlmProviderTypeName =
+  | "anthropic"
+  | "openai"
+  | "openrouter"
+  | "azure"
+  | "bedrock"
+  | "metabase";
+
 export type LlmProviderFieldType = "text" | "password" | "select";
 
 export interface LlmProviderField {
@@ -50,7 +58,7 @@ export interface LlmProviderField {
 }
 
 export interface LlmProviderType {
-  type: string;
+  type: LlmProviderTypeName;
   label: string;
   icon: IconName;
   managed: boolean;
@@ -66,7 +74,7 @@ export type LlmProviderSource = "db" | "env";
 
 export interface LlmProviderConnection {
   key: string;
-  type: string;
+  type: LlmProviderTypeName;
   name: string;
   source: LlmProviderSource;
   usable: boolean;
@@ -83,7 +91,7 @@ export interface LlmModel {
 export interface LlmConnectionModels {
   key: string;
   name: string;
-  type: string;
+  type: LlmProviderTypeName;
   models: LlmModel[];
   error?: string | null;
 }
