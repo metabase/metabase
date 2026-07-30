@@ -23,8 +23,7 @@
       nil              [:perms/view-data #{}])))
 
 (defn- rows->table-perms [rows]
-  (-> (reduce (partial #'data-perms/fold-table-perm-row identity) {} rows)
-      (#'data-perms/finalize-table-perms identity)))
+  (reduce #'data-perms/fold-table-perm-row (java.util.HashMap.) rows))
 
 (deftest ^:parallel fold-table-perm-rows-test
   (testing "returns an empty map when there are no rows"
@@ -76,7 +75,7 @@
           {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
                 {:group-id 1, :schema "public", :value :no,            :table-level? true}}}}
          (reduce #'data-perms/fold-schema-perm-row
-                 {}
+                 (java.util.HashMap.)
                  [{:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name nil,
                    :perm_value :query-builder, :table_level 0}
                   {:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name "public",
@@ -92,7 +91,7 @@
               data-perms/*table-perms-cache*  table-cache
               data-perms/*schema-perms-cache* schema-cache]
       (mt/with-dynamic-fn-redefs [data-perms/load-table-perms
-                                  (fn [_interner _user-id db-ids]
+                                  (fn [_user-id db-ids]
                                     (swap! table-loads conj db-ids)
                                     {:perms/view-data (zipmap db-ids (repeat {:groups {} :tables {}}))})
                                   data-perms/load-schema-perms
