@@ -214,7 +214,15 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
       cy.log("formatting");
-      TablePicker.getDatabase("Sample Database").click();
+      // The in-test DB switch via picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the Sample Database tables list is interactive, so the
+      // click never propagates to a URL change and we stay on Many Data Types
+      // (which has no "Quantity" field, so clickField times out). The sibling
+      // "Undos" test's formatting step hit the same flake and was fixed by
+      // using visit({ databaseId: SAMPLE_DB_ID }) (which waits for picker
+      // bootstrap). Same pattern here.
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
       if (area === "data studio") {
         TableSection.clickFieldsTab();
