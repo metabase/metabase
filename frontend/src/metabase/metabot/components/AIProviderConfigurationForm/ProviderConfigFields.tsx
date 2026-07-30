@@ -15,6 +15,10 @@ export function ProviderConfigFields({
   onChange: (key: string, value: string) => void;
   disabled?: boolean;
 }) {
+  if (fields.length === 0) {
+    return null;
+  }
+
   return (
     <Stack gap="md">
       {fields.map((field) => (
