@@ -268,7 +268,9 @@ describe("AIProviderSettingsSection", () => {
     expect(
       within(modal).queryByRole("button", { name: "Connect" }),
     ).not.toBeInTheDocument();
-    expect(within(modal).getByText("Choose a provider")).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: /Anthropic/ }),
+    ).toBeInTheDocument();
 
     await userEvent.click(
       within(modal).getByRole("button", { name: "Anthropic" }),
@@ -353,7 +355,9 @@ describe("AIProviderSettingsSection", () => {
 
     await userEvent.click(within(modal).getByRole("button", { name: "Back" }));
 
-    expect(within(modal).getByText("Choose a provider")).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: /Anthropic/ }),
+    ).toBeInTheDocument();
     expect(within(modal).queryByLabelText(/API key/)).not.toBeInTheDocument();
   });
 

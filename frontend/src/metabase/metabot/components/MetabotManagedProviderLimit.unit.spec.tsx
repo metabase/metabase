@@ -5,13 +5,18 @@ import {
   setupLlmProvidersEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockLlmProviderType,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { getMetabotManagedProviderLimitToastProps } from "./MetabotManagedProviderLimit";
 
 describe("getMetabotManagedProviderLimitToastProps", () => {
   beforeEach(() => {
-    setupLlmProviderTypesEndpoint();
+    setupLlmProviderTypesEndpoint([
+      createMockLlmProviderType({ type: "anthropic", label: "Anthropic" }),
+    ]);
     setupLlmProvidersEndpoint();
   });
 
@@ -35,7 +40,9 @@ describe("getMetabotManagedProviderLimitToastProps", () => {
       screen.getByRole("button", { name: "Use a different AI provider" }),
     );
 
-    expect(await screen.findByText("Choose a provider")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Anthropic/ }),
+    ).toBeInTheDocument();
     expect(store.getState().undo).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
