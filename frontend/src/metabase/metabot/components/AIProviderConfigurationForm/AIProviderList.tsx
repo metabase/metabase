@@ -140,7 +140,10 @@ function ProviderConnectionCard({
     <Card p="md" withBorder>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          <ProviderTypeIcon icon={providerType?.icon ?? "ai"} />
+          <ProviderTypeIcon
+            type={connection.type}
+            icon={providerType?.icon ?? "ai"}
+          />
           <Stack gap={0}>
             <Group gap="xs" wrap="nowrap">
               <Text fw="bold">{connection.name}</Text>

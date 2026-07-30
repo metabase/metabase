@@ -37,7 +37,10 @@ export function ProviderTypePicker({
               wrap="nowrap"
             >
               <Group gap="sm" wrap="nowrap">
-                <ProviderTypeIcon icon={providerType.icon} />
+                <ProviderTypeIcon
+                  type={providerType.type}
+                  icon={providerType.icon}
+                />
                 <Text fw="bold">{providerType.label}</Text>
               </Group>
               {!providerType.available && (

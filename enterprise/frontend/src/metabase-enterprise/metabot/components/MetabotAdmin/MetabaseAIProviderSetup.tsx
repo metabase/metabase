@@ -55,6 +55,7 @@ import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 export function MetabaseAIProviderSetup({
   onConnect,
   onCancel,
+  isConnected,
 }: MetabaseAIProviderSetupProps) {
   const offerMetabaseManagedAi = !!hasPremiumFeature(
     OFFER_METABASE_MANAGED_AI_FEATURE,
@@ -64,7 +65,8 @@ export function MetabaseAIProviderSetup({
   );
   const hasDeprecatedMetabaseAiProvider =
     !!hasPremiumFeature(METABOT_V3_FEATURE);
-  const isConfigured = !!useSetting("llm-metabot-configured?");
+  const isMetabotConfigured = !!useSetting("llm-metabot-configured?");
+  const isConfigured = isConnected ?? isMetabotConfigured;
 
   const isAdmin = useSelector(getUserIsAdmin);
 

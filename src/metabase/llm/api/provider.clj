@@ -275,12 +275,20 @@
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
+(defn- offer-managed-first
+  "Lead with the Metabase-managed provider on instances that can actually use it — it is the option we want admins
+  to reach for before bringing their own key. `sort-by` is stable, so everything else keeps its registry order."
+  [provider-types]
+  (sort-by (fn [{:keys [type managed?]}]
+             (if (and managed? (llm.provider/type-available? type)) 0 1))
+           provider-types))
+
 (api.macros/defendpoint :get "/provider-types"
   :- [:sequential provider-type-response-schema]
   "List the provider types a connection can be created for, with the credential fields each one needs."
   []
   (perms/check-has-application-permission :setting)
-  (mapv provider-type-response (llm.provider/provider-types)))
+  (mapv provider-type-response (offer-managed-first (llm.provider/provider-types))))
 
 (api.macros/defendpoint :get "/providers"
   :- [:sequential connection-response-schema]
