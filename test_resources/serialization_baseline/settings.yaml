@@ -23,8 +23,14 @@ custom-geojson-enabled: null
 custom-homepage: null
 custom-homepage-dashboard: null
 custom-viz-enabled: null
+content-diagnostics-crowded-collection-threshold-items: null
+content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab: null
+content-diagnostics-crowded-dashboard-threshold-tabs: null
+content-diagnostics-crowded-document-threshold-cards: null
 content-diagnostics-slow-card-threshold-seconds: null
 content-diagnostics-slow-transform-threshold-seconds: null
+content-diagnostics-sparse-collection-threshold-items: null
+content-diagnostics-sparse-dashboard-threshold-dashcards: null
 content-diagnostics-stale-threshold-days: null
 default-maps-enabled: null
 disable-cors-on-localhost: null

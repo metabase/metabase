@@ -293,6 +293,7 @@
   "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"claude-fable-5"             "Claude Fable 5"
+   "claude-opus-5"              "Claude Opus 5"
    "claude-opus-4-8"            "Claude Opus 4.8"
    "claude-opus-4-7"            "Claude Opus 4.7"
    "claude-opus-4-6"            "Claude Opus 4.6"

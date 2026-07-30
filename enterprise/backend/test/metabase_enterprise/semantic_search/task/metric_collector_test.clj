@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.search.index-health :as search.index-health]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -65,6 +66,24 @@
   (jdbc/execute!
    pgvector
    (sql/format {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
+
+(deftest shared-index-metrics-survive-semantic-collector-failure-test
+  (let [refreshes (atom 0)]
+    (mt/with-dynamic-fn-redefs
+      [semantic.u/semantic-search-active?               (constantly true)
+       semantic.env/get-pgvector-datasource!            #(throw (ex-info "pgvector unavailable" {}))
+       search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
+      (@#'semantic.task.collector/collect-metrics!)
+      (is (= 1 @refreshes)))))
+
+(deftest interrupted-semantic-collector-skips-shared-refresh-test
+  (let [refreshes (atom 0)]
+    (mt/with-dynamic-fn-redefs
+      [semantic.u/semantic-search-active?               (constantly true)
+       semantic.env/get-pgvector-datasource!            #(throw (InterruptedException.))
+       search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
+      (is (thrown? InterruptedException (@#'semantic.task.collector/collect-metrics!)))
+      (is (zero? @refreshes)))))
 
 (deftest metric-collector-test
   (mt/with-premium-features #{:semantic-search}

@@ -237,15 +237,11 @@ const StepAlert = ({
   message: string;
 }) => (
   <Alert
-    icon={<Icon size={14} name={type === "success" ? "check" : "info"} />}
+    size="compact"
+    icon={<Icon name={type === "success" ? "check" : "info"} />}
     mt="xl"
     color={type === "info" ? "core-brand" : type}
-    lh="lg"
-    classNames={{
-      wrapper: S.infoAlertWrapper,
-      icon: S.infoAlertIcon,
-      message: S.infoAlertMessage,
-    }}
+    classNames={{ message: S.infoAlertMessage }}
   >
     {message}
   </Alert>

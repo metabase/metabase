@@ -30,8 +30,8 @@
   "Lightweight non-archived `(id, name)` rows for one entity type, for name clustering. card/dashboard/document
   (`::collection-item`) filter on their `archived` column and add any `common/candidate-cols` (card carries
   `:card_schema`, required by its after-select hook); transform has no `archived` column (hard-deleted), so
-  every row counts. Scan-time and instance-wide - deliberately un-permissioned, unlike the serve layer's
-  `read-entity-rows`."
+  every row counts; collection narrows to the shared collection-subject set. Scan-time and instance-wide -
+  deliberately un-permissioned, unlike the serve layer's `read-entity-rows`."
   {:arglists '([entity-type])}
   identity
   :hierarchy #'common/hierarchy)
@@ -45,6 +45,11 @@
 (defmethod candidate-rows :transform
   [_]
   (t2/select [:model/Transform :id :name]))
+
+(defmethod candidate-rows :collection
+  [_]
+  ;; the shared collection-subject definition, so no two checkers can scan divergent collection sets
+  (t2/select [:model/Collection :id :name] {:where common/eligible-collection-where}))
 
 (defn- cluster-findings
   "One `:duplicated` finding per member of a name cluster; peers are the other members (symmetric: in
@@ -63,7 +68,7 @@
 (defn- findings-for-type
   "Group one entity type's rows by normalized name and emit findings for every cluster of ≥ 2 (cards cluster
   across all sub-kinds - grouping is by name alone). Clusters with a blank normalized name are skipped:
-  `name` is NOT NULL on all four models but can be whitespace-only, and unknown is not duplicate."
+  `name` is NOT NULL on every covered model but can be whitespace-only, and unknown is not duplicate."
   [entity-type]
   (for [[norm-name rows] (group-by (comp normalize-name :name) (candidate-rows entity-type))
         :when   (and (not (str/blank? norm-name)) (>= (count rows) 2))

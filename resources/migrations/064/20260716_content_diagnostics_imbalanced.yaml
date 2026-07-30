@@ -1,0 +1,31 @@
+## Content Diagnostics - imbalanced (empty/sparse/crowded) finding types.
+## Adds the per-type verdict magnitude column + composite index the imbalanced checker/serve path needs.
+## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.ifl5xv
+      author: yb
+      comment: Content Diagnostics - content_count verdict magnitude for imbalanced findings
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: content_count
+                  type: bigint
+                  remarks: Verdict magnitude for imbalanced (empty/sparse/crowded) findings - items (collection) / dashcards or tabs (dashboard) / cards (document) / rows (card, transform); 0 on every empty finding, null on all other finding types (per-type named magnitude column). bigint - house choice for magnitude columns.
+
+  - changeSet:
+      id: v64.8hufrs
+      author: yb
+      comment: Content Diagnostics - index findings by finding_type + content_count
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_content_count
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: content_count

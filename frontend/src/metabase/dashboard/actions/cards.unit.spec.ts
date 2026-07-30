@@ -19,6 +19,7 @@ import type {
   DashCardId,
   Dashboard,
   DashboardTabId,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -48,6 +49,7 @@ import type { AddCardToDashboardOpts } from "./cards-typed";
 import {
   addCardToDashboard,
   addSectionToDashboard,
+  duplicateCard,
   replaceCard,
 } from "./cards-typed";
 
@@ -293,6 +295,92 @@ describe("dashboard/actions/cards", () => {
       });
 
       expect(nextDashCard.parameter_mappings).toEqual([]);
+    });
+  });
+
+  describe("duplicateCard", () => {
+    it("should duplicate inline parameters including settings like default and required", async () => {
+      const cardParameter = createMockParameter({
+        id: "card-filter",
+        name: "Card Filter",
+        type: "number/=",
+        sectionId: "number",
+        default: [10],
+        required: true,
+        isMultiSelect: false,
+      });
+      const questionDashcard = createMockDashboardCard({
+        id: 10,
+        card_id: ORDERS_TABLE_CARD.id,
+        card: ORDERS_TABLE_CARD,
+        inline_parameters: [cardParameter.id],
+        parameter_mappings: [
+          {
+            card_id: ORDERS_TABLE_CARD.id,
+            parameter_id: cardParameter.id,
+            target: [
+              "dimension",
+              ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+            ],
+          },
+        ],
+      });
+      const dashboard = createMockDashboard({
+        id: 1,
+        dashcards: [questionDashcard],
+        parameters: [cardParameter],
+      });
+
+      const { store } = setup({
+        dashboard,
+        dashcards: [questionDashcard],
+      });
+
+      await duplicateCard({ id: questionDashcard.id })(
+        store.dispatch,
+        store.getState,
+      );
+
+      const nextState = store.getState();
+      const nextDashboard = getDashboardById(nextState, dashboard.id);
+      const duplicatedDashcardId = nextDashboard.dashcards.find(
+        (dashcardId) => dashcardId !== questionDashcard.id,
+      );
+      expect(duplicatedDashcardId).toBeDefined();
+
+      // question is a QuestionDashboardCard
+      const duplicatedDashcard = getDashCardById(
+        nextState,
+        duplicatedDashcardId!,
+      ) as QuestionDashboardCard;
+      expect(duplicatedDashcard.inline_parameters).toHaveLength(1);
+
+      const newParameterId = duplicatedDashcard.inline_parameters![0];
+      expect(newParameterId).not.toBe(cardParameter.id);
+      expect(duplicatedDashcard.parameter_mappings).toEqual([
+        expect.objectContaining({ parameter_id: newParameterId }),
+      ]);
+
+      const newParameter = nextDashboard.parameters?.find(
+        (parameter) => parameter.id === newParameterId,
+      );
+      expect(newParameter).toMatchObject({
+        name: "Card Filter 1",
+        default: [10],
+        required: true,
+        isMultiSelect: false,
+      });
+
+      // Original card still references the original parameter
+      expect(
+        // question is a QuestionDashboardCard
+        (
+          getDashCardById(
+            nextState,
+            questionDashcard.id,
+          ) as QuestionDashboardCard
+        ).inline_parameters,
+      ).toEqual([cardParameter.id]);
     });
   });
 });

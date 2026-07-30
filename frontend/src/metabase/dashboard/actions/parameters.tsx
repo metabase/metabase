@@ -139,7 +139,10 @@ export function duplicateParameters(
   getState: GetState,
   parameterIds: ParameterId[],
 ) {
-  const parameters = getParameters(getState());
+  // getParameters returns UiParameters, which are not serializable
+  // so the duplicated parameter will throw on save. we need dashboard.parameters instead
+  const dashboard = getDashboard(getState());
+  const parameters = dashboard?.parameters ?? [];
 
   const newParameters = parameterIds.map((parameterId) => {
     const parameter = parameters.find((p) => p.id === parameterId);

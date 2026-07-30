@@ -4,31 +4,43 @@
   display hydration, and the schema/sort fragments every per-finding-type endpoint composes.
 
   All per-caller concerns resolve **live at read time** against each finding's *current* collection (never
-  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator) are denormalized at scan
-  time; description, the collection breadcrumb, the transform owner, and slow roll-up culprits hydrate live."
+  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator/card_type) are denormalized
+  at scan time; description, the collection breadcrumb, the transform owner, and slow roll-up culprits
+  hydrate live."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def covered-entity-types
-  "Entity types the Content Diagnostics finding types cover - every covered type can emit today (see
-  `common/entity-type->model`). Shared by every per-finding-type endpoint's `entity-types` param."
+  "Entity types the stale/slow finding types can emit - deliberately a hardcoded set, NOT derived from
+  `common/entity-type->model` (which also covers `:collection`, a subject only the imbalanced and
+  duplicated finding types span). Shared by the stale/slow endpoints' `entity-types` param; endpoints
+  spanning other subjects pin their own enum."
   #{:card :dashboard :document :transform})
 
+(defn filter-types
+  "The `entity-types` filter vocabulary for an endpoint whose findings span `entity-types`: one flat enum
+  of the entity types plus the card sub-kinds. `card` stays valid and means any card type."
+  [entity-types]
+  (into entity-types queries.schema/card-types))
+
 (defn valid-clause
-  "Result set for one `finding-type`: its latest finding per entity, excluding entities whose latest row
-  is invalidated (an older valid row does not resurface)."
-  [finding-type]
+  "Result set for one **or many** `finding-types` (an umbrella endpoint spans several): the latest
+  finding per entity, excluding entities whose latest row is invalidated (an older valid row does not
+  resurface)."
+  [finding-types]
   [:and
    [:= :invalidated_at nil]
-   [:= :finding_type finding-type]
+   [:in :finding_type (u/one-or-many finding-types)]
    ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
    ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
    ;; partial scan hasn't re-written yet still shows its last finding.
@@ -41,22 +53,24 @@
 ;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
 
 (defn entity-collection-clauses
-  "Per entity-type, a clause keeping findings whose entity's current `collection_id` satisfies `coll-pred`.
-  Resolved live against the entity's own table (`common/entity-type->model`); entity-types with no model
-  contribute nothing. Callers combine the seq with `:or`/`:and`."
-  [coll-pred]
+  "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
+  built by `coll-pred-fn` - a fn of the column holding the entity's collection id. Resolved live against
+  the entity's own table (`common/entity-type->model`); entity-types with no model contribute nothing.
+  For every containable type that column is `:collection_id`; a `:collection` subject *is* the collection,
+  so its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
+  [coll-pred-fn]
   (for [[etype model] common/entity-type->model]
     [:and
      [:= :entity_type (name etype)]
      [:in :entity_id {:select [:id]
                       :from   [(t2/table-name model)]
-                      :where  coll-pred}]]))
+                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
 
 (defn visible-findings-clause
-  "Keep only findings whose entity is in a collection the current user can read - always applied.
-  Fail-closed: an entity-type with no collection model is dropped."
+  "Keep only findings whose entity is in a collection the current user can read (a collection subject must
+  itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped."
   []
-  (into [:or] (entity-collection-clauses (collection/visible-collection-filter-clause :collection_id))))
+  (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
 
 (defn- personal-collection-ids
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
@@ -76,6 +90,25 @@
   (when-let [q (some-> query str/trim not-empty u/lower-case-en)]
     [:like [:lower :entity_name] (str "%" q "%")]))
 
+(defn entity-types-clause
+  "WHERE fragment for the flat `entity-types` vocabulary (see [[filter-types]]); nil when nothing was
+  requested. `card` means any card type, so it subsumes the sub-kinds. The arms are kept positive `=`/`IN`
+  so `idx_cd_finding_ftype_etype_card_type` can serve them - a negated `entity_type` arm would force a
+  scan."
+  [entity-types]
+  (when-let [types (not-empty (set (u/one-or-many entity-types)))]
+    (let [sub-kinds (set/intersection types queries.schema/card-types)
+          non-card  (set/difference types (conj queries.schema/card-types :card))
+          card-arm  (cond
+                      (contains? types :card) [:= :entity_type "card"]
+                      (seq sub-kinds)         [:and
+                                               [:= :entity_type "card"]
+                                               [:in :card_type (mapv name sub-kinds)]])
+          other-arm (when (seq non-card) [:in :entity_type (mapv name non-card)])]
+      (if (and card-arm other-arm)
+        [:or card-arm other-arm]
+        (or card-arm other-arm)))))
+
 (defn excluded-personal-collection-ids
   "The live personal-collection id set (roots + descendants) to exclude for this request - nil when
   `include-personal-collections`, or when none exist. Endpoints resolve this once and thread it to both
@@ -86,26 +119,27 @@
 
 (defn exclude-personal-collections-clause
   "WHERE fragment dropping findings whose entity currently lives in one of `excluded-personal-ids`
-  (see `excluded-personal-collection-ids`; root and regular-collection entities are kept). Nil when
-  there is nothing to exclude."
+  (see `excluded-personal-collection-ids`) - or, for a collection subject, *is* one (the set already
+  includes descendants). Root and regular-collection entities are kept. Nil when there is nothing to
+  exclude."
   [excluded-personal-ids]
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses [:in :collection_id excluded-personal-ids]))))
+          (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
-  "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
-  endpoint shares - personal-collection exclusion (when `:excluded-personal-collection-ids` is provided;
-  see `excluded-personal-collection-ids`), `entity-types`, and `query` name search - plus any
-  finding-type-specific `extra-filters`. Each filter is precomputed so a nil (no-op) is skipped, not
-  conjoined as a null AND-term."
-  [finding-type {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
+  "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
+  caller-visible base narrowed by the filters every endpoint shares - personal-collection exclusion
+  (when `:excluded-personal-collection-ids` is provided; see `excluded-personal-collection-ids`),
+  `entity-types` (see [[entity-types-clause]]), and `query` name search - plus any finding-type-specific
+  `extra-filters`. Each filter is precomputed so a nil (no-op) is skipped, not conjoined as a null
+  AND-term."
+  [finding-types {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
   (let [personal-filter    (exclude-personal-collections-clause excluded-personal-collection-ids)
-        entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
-                             [:in :entity_type (mapv name types)])
+        entity-type-filter (entity-types-clause entity-types)
         name-search-filter (name-search-clause query)]
-    (into (cond-> [:and (valid-clause finding-type) (visible-findings-clause)]
+    (into (cond-> [:and (valid-clause finding-types) (visible-findings-clause)]
             personal-filter    (conj personal-filter)
             entity-type-filter (conj entity-type-filter)
             name-search-filter (conj name-search-filter))
@@ -119,7 +153,7 @@
 (defmulti ^:private hydrate-owner
   "Batch-hydrate the per-type `owner` onto already-selected rows. card/dashboard/document have no owner, so
   `::collection-item` returns rows unchanged; transform hydrates its `:owner` (a user row, or an `{:email …}`
-  external stand-in)."
+  external stand-in). Collection sets its owner in [[collection-context]], not here."
   {:arglists '([entity-type rows])}
   (fn [entity-type _rows] entity-type)
   :hierarchy #'common/hierarchy)
@@ -142,7 +176,8 @@
 (defmulti ^:private entity-context
   "For one entity-type's id set → `{entity-id → row}` of the live display fields (description, collection_id,
   view_count, transform owner). card/dashboard/document (`::collection-item`) and transform share the
-  column-based [[context-rows]]; a non-column-resident type (e.g. collection) would get its own method."
+  column-based [[context-rows]]; collection is not column-resident, so it derives its breadcrumb anchor from
+  `location` via [[collection-context]]. An unregistered type throws - fail-closed, no `:default`."
   {:arglists '([entity-type ids])}
   (fn [entity-type _ids] entity-type)
   :hierarchy #'common/hierarchy)
@@ -150,13 +185,45 @@
 (defmethod entity-context ::common/collection-item [entity-type ids] (context-rows entity-type ids))
 (defmethod entity-context :transform [entity-type ids] (context-rows entity-type ids))
 
+(defn- collection-context
+  "The `entity-context` arm for `:collection` subjects, which have no `collection_id`/`creator_id`
+  columns: `collection_id` (the breadcrumb anchor) is the **parent** parsed from `location` - consistent
+  \"where it lives\" semantics; the subject itself is already the finding's identity - and `owner` is the
+  owning user when the collection is personal (api-design: collection carries `owner` only when personal,
+  `creator` always null). Nil at root / for regular collections respectively. Empty `ids` → nil (skips a
+  degenerate `IN ()`; callers use `get-in`, so nil is fine)."
+  [ids]
+  (when (seq ids)
+    (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
+                            :id [:in (set ids)])
+          owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
+                   (t2/select-pk->fn #(select-keys % [:id :common_name :email])
+                                     [:model/User :id :email :first_name :last_name]
+                                     :id [:in owner-ids]))]
+      (m/index-by :id
+                  (for [{:keys [location personal_owner_id] :as row} rows]
+                    (assoc row
+                           :collection_id (collection/location-path->parent-id location)
+                           ;; same {:id :common_name :email} shape the transform :owner hydrate returns,
+                           ;; so normalized-owner serves both
+                           :owner (get owners personal_owner_id)))))))
+
+(defmethod entity-context :collection [_ ids] (collection-context ids))
+
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
   Hydrates the permission-filtered `:effective_ancestors` breadcrumb. Selects the full row (the hydrate
-  needs `:location`). No entry for root/nil collections."
+  needs `:location`). No entry for root/nil collections.
+
+  A breadcrumb can be a collection the primary gate never checked (a `:collection` subject's breadcrumb
+  is its **parent**), so caller visibility is re-applied here - an unreadable breadcrumb collection gets
+  no entry and the finding's `collection` degrades to null, same as root."
   [coll-ids]
   (when (seq coll-ids)
-    (let [colls (t2/hydrate (t2/select :model/Collection :id [:in (set coll-ids)])
+    (let [colls (t2/hydrate (t2/select :model/Collection
+                                       {:where [:and
+                                                [:in :id (set coll-ids)]
+                                                (collection/visible-collection-filter-clause :id)]})
                             :effective_ancestors)]
       (into {}
             (map (fn [c]
@@ -211,9 +278,9 @@
   link/icon; `view_count` is the card's live usage counter. Batched.
 
   Culprit cards can live outside their container's collection, so the per-caller read-time filters are
-  re-applied here: caller visibility (the same gate as `visible-findings-clause`) always, and the
-  personal-collection exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops
-  out of `slow_entities` exactly like a deleted one."
+  re-applied here via [[readable-entities-where]]: caller visibility always, and the personal-collection
+  exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops out of `slow_entities`
+  exactly like a deleted one."
   [card-ids excluded-personal-ids]
   (when (seq card-ids)
     ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
@@ -236,6 +303,16 @@
   ;; :card_schema (a peer-select-col for cards) is required on any Card select - its after-select hook reads it.
   (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
              {:where (readable-entities-where ids excluded-personal-ids)}))
+
+(defmethod read-entity-rows :collection
+  [_ ids excluded-personal-ids]
+  ;; a `:collection` subject *is* the read-permission unit, so it gates on its own `:id` rather than a
+  ;; parent `:collection_id`, and has no root row to preserve.
+  (t2/select [:model/Collection :id :name]
+             {:where [:and
+                      [:in :id ids]
+                      (collection/visible-collection-filter-clause :id)
+                      (when excluded-personal-ids [:not [:in :id excluded-personal-ids]])]}))
 
 (defmethod read-entity-rows :transform
   [_ ids excluded-personal-ids]
@@ -261,12 +338,14 @@
               row   (read-entity-rows etype ids excluded-personal-ids)]
           [[etype (:id row)]
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
-             (not= etype :transform) (assoc :view_count (:view_count row))
-             (= etype :card)         (assoc :card_type (:type row)))])))
+             ;; only card/dashboard/document carry view_count (transform + collection have none)
+             (contains? #{:card :dashboard :document} etype) (assoc :view_count (:view_count row))
+             (= etype :card)                                 (assoc :card_type (:type row)))])))
 
 (defn- normalized-owner
-  "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
-  email-only owner, `{email,type:external}`. Nil for entity types with no owner (card/dashboard/document)."
+  "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
+  `{id,name,email,type:user}` or, for an external email-only transform owner, `{email,type:external}`.
+  Nil for entity types with no owner (card/dashboard/document, non-personal collections)."
   [{:keys [owner]}]
   (when owner
     (let [{:keys [id common_name email]} owner]
@@ -301,8 +380,8 @@
 (defmulti ^:private finalize-finding
   "Apply the finding-type-specific tail to one assembled finding `base`: hoist the type's native top-level
   column(s) from `row`, and rewrite `details` from the batch-hydrated `ctx` (`{:culprits _ :entities _}`).
-  Dispatches per row on `finding_type`, so a page may mix finding types (an umbrella endpoint); an
-  unregistered type throws - fail-closed, no `:default`."
+  Dispatches per row on `finding_type`, so a page may mix finding types (an umbrella endpoint; the imbalanced
+  umbrella spans three); an unregistered type throws - fail-closed, no `:default`."
   {:arglists '([finding-type base row ctx])}
   (fn [finding-type _base _row _ctx] finding-type))
 
@@ -317,17 +396,23 @@
   (-> (merge base (select-keys row [:duplicate_count]))
       (update :details with-duplicate-peers (:entity_type row) entities)))
 
+;; the imbalanced umbrella - all three types hoist the same measured magnitude, no details rewrite
+(defmethod finalize-finding :empty   [_ base row _ctx] (merge base (select-keys row [:content_count])))
+(defmethod finalize-finding :sparse  [_ base row _ctx] (merge base (select-keys row [:content_count])))
+(defmethod finalize-finding :crowded [_ base row _ctx] (merge base (select-keys row [:content_count])))
+
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
   is the entity's live usage counter, present only for types that have the column (all but transform).
-  A card finding also carries a top-level `card_type` (question/model/metric). Batched,
-  page-size-independent.
+  A card finding also carries a top-level `card_type` (question/model/metric) - served from the stored
+  column, not hydrated live. Batched, page-size-independent.
 
   The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
   duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
-  page may mix finding types. `excluded-personal-ids` (the request's resolved exclusion set) gates the
-  culprit/peer hydration so it matches the findings filter without re-querying."
+  page may mix finding types (an umbrella endpoint; the imbalanced umbrella spans three).
+  `excluded-personal-ids` (the request's resolved exclusion set) gates the culprit/peer hydration so it
+  matches the findings filter without re-querying."
   [findings excluded-personal-ids]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
@@ -342,7 +427,7 @@
         entities    (hydrate-duplicate-entities findings excluded-personal-ids)
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
-                       entity_name entity_creator_id entity_creator_name details] :as row}]
+                       entity_name entity_creator_id entity_creator_name card_type details] :as row}]
             (let [entity    (get-in ctx-by-type [entity_type entity_id])
                   details*  (merge details
                                    {:collection  (entity-breadcrumb entity_type entity breadcrumbs)
@@ -354,7 +439,6 @@
                                                    {:id entity_creator_id :name entity_creator_name :type :user})}
                                    (when-some [view-count (:view_count entity)]
                                      {:view_count view-count}))
-                  card-type (when (= entity_type :card) (:type entity))
                   base      (cond-> {:id                  id
                                      :finding_type        finding_type
                                      :entity_type         entity_type
@@ -363,7 +447,9 @@
                                      :entity_display_name entity_name
                                      :created_at          entity_created_at
                                      :details             details*}
-                              card-type (assoc :card_type card-type))]
+                              ;; keyed on entity type so a card row with NULL card_type still serves
+                              ;; the key, as null
+                              (= entity_type :card) (assoc :card_type card_type))]
               (finalize-finding finding_type base row ctx)))
           findings)))
 

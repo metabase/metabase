@@ -10,7 +10,7 @@ import { is403Error } from "metabase/utils/errors";
 import type { Card } from "metabase-types/api";
 
 interface MetricPageCardProps {
-  cardId: string;
+  cardId: string | undefined;
   children: (card: Card) => ReactNode;
 }
 

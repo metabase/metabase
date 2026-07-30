@@ -1231,7 +1231,7 @@
           "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception"))))
 
 (deftest rethrow-api-error!-warn-log-test
-  (testing "the full upstream body is emitted at warn level alongside provider and status"
+  (testing "provider and status are emitted at warn level; the body is never logged"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
                              :headers {"content-type" "text/plain"}
@@ -1246,9 +1246,11 @@
       (is (nil? more) "exactly one warn line at the failure boundary")
       (is (=? {:level :warn :namespace 'metabase.metabot.self.core}
               entry))
-      (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
-                   (:message entry)))))
-  (testing "an oversized body is capped in the warn log, but preserved in full on ex-data"
+      (is (re-find #"provider=openrouter status=502"
+                   (:message entry)))
+      (is (not (str/includes? (:message entry) "upstream gateway timeout"))
+          "the response body is not logged")))
+  (testing "the body never reaches the warn log, but is preserved in full on ex-data"
     (let [cap      @#'self.core/max-body-log-chars
           big-body (apply str (repeat (+ cap 1000) \x))
           upstream (ex-info "clj-http error"
@@ -1265,11 +1267,9 @@
                   "the full, untruncated body still survives on ex-data"))
             (msgs))]
       (is (nil? more) "exactly one warn line at the failure boundary")
-      (is (str/ends-with? (:message entry)
-                          (str "body=" (subs (pr-str big-body) 0 cap) "…"))
-          "the warn line's body segment is capped at max-body-log-chars with a trailing ellipsis")
-      (is (not (str/includes? (:message entry) big-body))
-          "the full oversized body is not spliced into the warn line"))))
+      (is (re-find #"provider=openrouter status=502" (:message entry)))
+      (is (not (str/includes? (:message entry) "xxx"))
+          "no fragment of the body is spliced into the warn line"))))
 
 (deftest rethrow-api-error!-auth-status-body-not-leaked-test
   (testing "401/403 bodies are not appended to the user-facing message (may carry sensitive auth/account detail)"
@@ -1294,5 +1294,8 @@
                     "the full decoded body is still preserved on ex-data for debugging"))
               (msgs))]
         (is (nil? more) "exactly one warn line at the failure boundary")
-        (is (str/includes? (:message entry) secret)
-            "the full body is still emitted at warn level for server-side debugging")))))
+        (is (str/includes? (:message entry)
+                           (str "provider=anthropic status=" status))
+            "a warn with provider and status is still emitted for server-side debugging")
+        (is (not (str/includes? (:message entry) secret))
+            "the secret-bearing body never appears in the warn log")))))

@@ -17,7 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import type {
   TransformJobRun,
@@ -32,8 +32,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { JobRunListPage } from "./JobRunListPage";
-
-const RoutedJobRunListPage = withRouteProps(JobRunListPage);
 
 const JOB_ID = 3;
 
@@ -68,13 +66,10 @@ function setup({
 
   const path = "/data-studio/transforms/jobs/:jobId/runs";
 
-  renderWithProviders(
-    <Route path={path} element={<RoutedJobRunListPage />} />,
-    {
-      withRouter: true,
-      initialRoute,
-    },
-  );
+  renderWithProviders(<Route path={path} element={<JobRunListPage />} />, {
+    withRouter: true,
+    initialRoute,
+  });
 
   return {
     setRuns(nextRuns: TransformJobRun[]) {

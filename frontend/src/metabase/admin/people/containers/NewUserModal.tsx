@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { useCreateUserMutation } from "metabase/api";
+import {
+  useCreateUserMutation,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { trackUserInvited } from "metabase/common/analytics";
 import { UserForm } from "metabase/common/components/UserForm";
@@ -27,6 +30,9 @@ export const NewUserModal = ({
   const dispatch = useDispatch();
 
   const [createUser] = useCreateUserMutation();
+  const { data: groups } = useListPermissionsGroupsQuery({
+    tenancy: external ? "external" : "internal",
+  });
 
   const handleSubmit = async (vals: Partial<UserType>) => {
     const password = MetabaseSettings.isEmailConfigured()
@@ -75,6 +81,7 @@ export const NewUserModal = ({
     <Modal opened title={title} padding="xl" onClose={onClose}>
       <UserForm
         external={external}
+        groups={groups}
         initialValues={{}}
         submitText={t`Create`}
         onCancel={onClose}

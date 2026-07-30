@@ -40,6 +40,20 @@
   (testing "the slow-transform run-time threshold defaults to 60 seconds"
     (is (= 60 (cd.settings/content-diagnostics-slow-transform-threshold-seconds)))))
 
+(deftest imbalanced-threshold-setting-defaults-test
+  (testing "crowded: collection >100 direct items"
+    (is (= 100 (cd.settings/content-diagnostics-crowded-collection-threshold-items))))
+  (testing "crowded: dashboard >20 dashcards on any one tab"
+    (is (= 20 (cd.settings/content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab))))
+  (testing "crowded: dashboard >5 tabs"
+    (is (= 5 (cd.settings/content-diagnostics-crowded-dashboard-threshold-tabs))))
+  (testing "crowded: document >20 embedded cards"
+    (is (= 20 (cd.settings/content-diagnostics-crowded-document-threshold-cards))))
+  (testing "sparse: non-empty collection <5 direct items"
+    (is (= 5 (cd.settings/content-diagnostics-sparse-collection-threshold-items))))
+  (testing "sparse: non-empty dashboard <4 dashcards total"
+    (is (= 4 (cd.settings/content-diagnostics-sparse-dashboard-threshold-dashcards)))))
+
 ;; `duplicated` has no settings-defaults test: a duplicate is definitionally a cluster of >= 2, so there
 ;; is no threshold to configure.
 

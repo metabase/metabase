@@ -8,7 +8,6 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -365,10 +364,6 @@
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
 (t2.default-fields/define-default-fields :model/User default-user-columns)
-
-(defmethod serdes/hash-fields :model/User
-  [_user]
-  [:email])
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."

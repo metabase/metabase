@@ -21,6 +21,26 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
+(deftest ^:parallel rows->cache-entry-test
+  (testing "returns nil when there are no rows"
+    (is (nil? (#'data-perms/rows->cache-entry identity []))))
+  (testing "duplicate rows keep every distinct value visible to coalescing, and each table-level row keeps its own
+            schema_name (data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and
+            schema_name is denormalized so rows for one table can disagree)"
+    (let [entry (#'data-perms/rows->cache-entry
+                 identity
+                 [{:group_id 1 :table_id nil :schema_name nil      :perm_value :query-builder}
+                  {:group_id 1 :table_id nil :schema_name nil      :perm_value :no}
+                  {:group_id 1 :table_id 10  :schema_name "public" :perm_value :query-builder}
+                  {:group_id 1 :table_id 10  :schema_name "public" :perm_value :no}
+                  {:group_id 2 :table_id 10  :schema_name "legacy" :perm_value :query-builder}])]
+      (is (= {1 #{:query-builder :no}}
+             (:groups entry)))
+      (is (= {10 {1 #{{:schema "public" :value :query-builder}
+                      {:schema "public" :value :no}}
+                  2 #{{:schema "legacy" :value :query-builder}}}}
+             (:tables entry))))))
+
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))

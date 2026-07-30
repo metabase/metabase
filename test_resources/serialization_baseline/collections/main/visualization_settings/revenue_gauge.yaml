@@ -1,6 +1,7 @@
 name: Revenue Gauge
 entity_id: GWrIQqjbzxysSCm8PLU5j
 created_at: '2026-04-02T02:59:02.778668Z'
+last_used_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: gauge
 collection_id: cOlViZsEtTiNgS0ExAmP1

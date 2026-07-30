@@ -22,7 +22,7 @@
     (try
       (driver/notify-database-updated driver database)
       (catch Throwable e
-        (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
+        (log/errorf "Failed to notify %s Database %s updated: %s" driver id (ex-message e))))))
 
 (methodical/defmethod driver-api/publish-event! ::event
   "When the report-timezone Setting is updated, call [[metabase.driver/notify-database-updated]] for all Databases."

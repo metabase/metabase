@@ -26,7 +26,7 @@
     (deps.dependency-status/mark-stale! entity-type [entity-id])
     (task.backfill/trigger-backfill-job!)
     (catch Throwable e
-      (log/error e "Failed to mark entity stale" {:entity-type entity-type :entity-id entity-id}))))
+      (log/error "Failed to mark entity stale" {:entity-type entity-type :entity-id entity-id :error (ex-message e)}))))
 
 ;; ### Cards
 (derive ::card-deps :metabase/event)

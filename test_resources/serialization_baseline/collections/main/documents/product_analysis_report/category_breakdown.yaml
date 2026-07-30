@@ -1,6 +1,7 @@
 name: Category Breakdown
 entity_id: cRdCaTbReAkDoWn0ExMp1
 created_at: '2025-01-15T10:00:00Z'
+last_used_at: '2025-01-15T10:00:00Z'
 creator_id: internal@metabase.com
 display: bar
 collection_id: cOlDoCuMeNtS0ExAmPlx2

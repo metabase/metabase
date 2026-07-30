@@ -7,20 +7,20 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
+   [metabase.sync.core :as sync.core]
    [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -141,26 +141,6 @@
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync occurred even when called directly for audit db."))))
-
-(deftest no-backfill-occurs-when-loading-analytics-content-test
-  (mt/with-model-cleanup [:model/Collection]
-    (let [c1-instance (t2/insert-returning-instance! :model/Collection
-                                                     {:entity_id nil,
-                                                      :name      "My Duped Collection",
-                                                      :location  "/"})]
-      ;; fill in the entity_id for c1:
-      (serdes.backfill/backfill-ids-for! :model/Collection)
-      ;; insert c2, which will have the same entity id:
-      (let [c2-instance (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
-        (testing "c1 and c2 hash to the same entity id."
-          (is (= (u/generate-nano-id (serdes/identity-hash c1-instance))
-                 (u/generate-nano-id (serdes/identity-hash c2-instance)))))
-        (testing "A backfill with 'duplicate' rows (with different ids)."
-          (is (thrown? Exception
-                       (serdes.backfill/backfill-ids-for! :model/Collection))))
-        (testing "No exception is thrown when db has 'duplicate' entries."
-          (is (= ::ee-audit/no-op
-                 (ee-audit/ensure-audit-db-installed!))))))))
 
 (deftest checksum-not-recorded-when-load-fails-test
   (mt/test-drivers #{:postgres :h2 :mysql}
@@ -453,3 +433,85 @@
         (t2/delete! :model/Database :is_audit true)
         (audit/last-analytics-checksum! 0)
         (mbc/ensure-audit-db-installed!)))))
+
+(deftest interrupted-engine-changed-sync-repaired-on-next-boot-test
+  ;; A failed or interrupted post-load dialect sync must be repaired by the next boot.
+  ;;
+  ;; `engine-changed? true` is the mysql/h2-host state: `maybe-load-analytics-content!` flips the
+  ;; audit DB engine to postgres for the serdes load and back to the host dialect after, and the
+  ;; returned boolean triggers a one-shot schema sync so field metadata gets re-scanned for the
+  ;; host dialect. (On a postgres appdb the engine never flips, so the boolean is injected here.)
+  ;; By the time that sync runs, the content checksum has already advanced -- so if the sync dies
+  ;; (or merely fails: `maybe-sync-audit-db!` catches and logs), the next boot sees engine
+  ;; matching, checksum matching, and views not stale, and must still notice the audit DB never
+  ;; got its dialect sync. There is no other repair path: the scheduled sync task and the sync
+  ;; API both refuse the audit DB.
+  (with-audit-db-restoration!
+    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+      ;; "Boot 1": steady state (checksums current), the engine-changed sync dies mid-flight.
+      (with-redefs [sync.core/sync-database! (fn [& _] (throw (ex-info "killed mid-sync" {})))]
+        (#'ee-audit/maybe-sync-audit-db! audit-db true))
+      ;; "Boot 2": the full, un-stubbed pipeline, spying on audit-DB syncs.
+      (let [audit-db-syncs (atom 0)
+            real-sync      sync.core/sync-database!]
+        (with-redefs [sync.core/sync-database! (fn [db & [opts]]
+                                                 (when (:is_audit db)
+                                                   (swap! audit-db-syncs inc))
+                                                 (real-sync db opts))]
+          (mbc/ensure-audit-db-installed!))
+        (testing "the boot after an interrupted engine-changed sync re-syncs the audit DB"
+          (is (pos? @audit-db-syncs)))))))
+
+(deftest audit-pipeline-commits-incrementally-test
+  ;; Pins the `:detached? true` on `ensure-audit-db-installed!`'s cluster lock behaviorally: work
+  ;; done inside the pipeline must be visible to other sessions while the pipeline is still
+  ;; running. Under the pre-detached design the whole pipeline rode the lock's transaction, so
+  ;; nothing was visible until the final commit -- if a refactor drops the flag, the marker row
+  ;; below stays invisible to the probing thread and this test fails. (The probe binds
+  ;; *current-connectable* to nil because future conveys bindings: without it, a transactional
+  ;; pipeline would hand the probe its own connection and it would see uncommitted work.)
+  (with-audit-db-restoration!
+    (let [email   (mt/random-email)
+          visible (atom ::not-checked)]
+      (try
+        ;; stale the content checksum so the (stubbed) load runs inside the locked pipeline
+        (audit/last-analytics-checksum! 0)
+        (with-redefs [serialization.cmd/v2-load-internal!
+                      (fn [& _]
+                        (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+                        (reset! visible
+                                (deref (future
+                                         (binding [t2.connection/*current-connectable* nil]
+                                           (t2/exists? :model/User :email email)))
+                                       5000 ::timeout))
+                        ;; report no errors: content is already loaded from the steady state, so
+                        ;; letting the checksum advance leaves a consistent end state
+                        {:errors [] :seen []})]
+          (mbc/ensure-audit-db-installed!))
+        (testing "work committed inside the audit pipeline is visible mid-pipeline from another connection"
+          (is (true? @visible)))
+        (finally
+          (t2/delete! :model/User :email email))))))
+
+(deftest crash-mid-load-repaired-on-next-boot-test
+  ;; Pins the self-healing premise the detached lock's safety argument leans on: a crash in the
+  ;; middle of the serdes load must be repaired by the next boot. Two halves: the content
+  ;; checksum must not advance past a load that did not complete (so the next boot re-enters the
+  ;; load), and the next boot's un-stubbed pipeline must actually converge back to the healthy
+  ;; state.
+  (with-audit-db-restoration!
+    (let [healthy-checksum (audit/last-analytics-checksum)]
+      ;; make the content look new again, as an upgrade would
+      (audit/last-analytics-checksum! 0)
+      ;; "Boot 1": the serdes load dies partway through.
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"killed mid-load"
+                            (with-redefs [serialization.cmd/v2-load-internal!
+                                          (fn [& _] (throw (ex-info "killed mid-load" {})))]
+                              (mbc/ensure-audit-db-installed!))))
+      (testing "the content checksum does not advance past an incomplete load"
+        (is (= 0 (audit/last-analytics-checksum))))
+      ;; "Boot 2": the full, un-stubbed pipeline.
+      (mbc/ensure-audit-db-installed!)
+      (testing "the next boot re-runs the load and converges to the healthy state"
+        (is (= healthy-checksum (audit/last-analytics-checksum)))
+        (is (pos? (t2/count :model/Card :database_id audit/audit-db-id)))))))

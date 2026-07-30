@@ -150,9 +150,6 @@
       :model/Tenant
       :model/ConnectionImpersonation
       :model/CustomVizPlugin
-      :model/Workspace
-      :model/WorkspaceDatabase
-      :model/TableRemapping
       :model/ContentDiagnosticsFinding])))
 
 (defn- objects->columns+values
@@ -180,7 +177,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
 (def ^:dynamic *copy-h2-database-details*
@@ -358,7 +355,6 @@
         (let [save-point (.setSavepoint conn)]
           (try
             (letfn [(add-batch! [^String sql]
-                      (log/debug (u/colorize :yellow sql))
                       (.addBatch stmt sql))]
               ;; do these in reverse order so child rows get deleted before parents
               (doseq [table-name (map t2/table-name (reverse entities))]

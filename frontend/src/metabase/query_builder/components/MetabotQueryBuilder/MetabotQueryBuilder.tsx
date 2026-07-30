@@ -12,9 +12,7 @@ import { getSettingsLoading } from "metabase/selectors/settings";
 /**
  * Routes /question/ask to either the Metabot NLQ prompt view or the regular QueryBuilder, depending on NLQ access.
  */
-export const MetabotQueryBuilder = (
-  props: React.ComponentProps<typeof QueryBuilder>,
-) => {
+export const MetabotQueryBuilder = () => {
   const { hasNlqAccess, isLoading } = useUserMetabotPermissions();
   const areSettingsLoading = useSelector(getSettingsLoading);
   const { createNewConversation } = useMetabotAgent("ask");
@@ -29,7 +27,7 @@ export const MetabotQueryBuilder = (
   }
 
   if (!hasNlqAccess) {
-    return <QueryBuilder {...props} />;
+    return <QueryBuilder />;
   }
 
   return <MetabotAsk />;

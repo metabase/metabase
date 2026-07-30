@@ -22,7 +22,7 @@
     (when-let [next-fire (.getNextValidTimeAfter (CronExpression. ^String cron) last-success)]
       (not (.after next-fire now)))
     (catch Exception e
-      (log/warnf e "Ignoring unparseable transform job schedule %s" (pr-str cron))
+      (log/warnf "Ignoring unparseable transform job schedule %s: %s" (pr-str cron) (ex-message e))
       false)))
 
 (defn- fresh-ids

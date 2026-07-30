@@ -68,8 +68,11 @@
               ;; recover this run's scan_id from a guaranteed-flagged temp entity — pins that the
               ;; persisted rows (not just scan!'s returned topline) carry the batch's scan_id
               scan-id    (t2/select-one-fn :scan_id :model/ContentDiagnosticsFinding
-                                           :entity_type :card :entity_id stale-card-1)
-              rows       (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id)
+                                           :entity_type :card :entity_id stale-card-1
+                                           :finding_type :stale)
+              ;; :stale rows only - the same batch also carries the other checkers' findings (e.g. the
+              ;; dashcardless fresh dashboard is legitimately imbalanced-empty)
+              rows       (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :stale)
               found-keys (set (map (juxt :entity_type :entity_id) rows))]
           (testing "the run persisted one scan_id batch of findings"
             (is (string? scan-id))
@@ -110,6 +113,37 @@
                        :entity_creator_id   some?
                        :entity_creator_name some?}
                       row)))))))))
+
+(deftest scan-denormalizes-card-type-test
+  (testing "scan! stamps each card finding's card_type column from report_card.type; non-card rows stay NULL"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {question-id :id} {:collection_id coll-id :type :question
+                                                      :last_used_at  (stale-instant)}
+                       :model/Card {model-id :id}    {:collection_id coll-id :type :model
+                                                      :last_used_at  (stale-instant)}
+                       :model/Card {metric-id :id}   {:collection_id coll-id :type :metric
+                                                      :last_used_at  (stale-instant)}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id :last_viewed_at (stale-instant)}]
+          (let [card-id-by-type {:question question-id :model model-id :metric metric-id}]
+            (testing "the card fixtures cover every card type the app defines"
+              ;; drives the per-type assertions below - a newly added card type fails here rather
+              ;; than silently going uncovered
+              (is (= queries.schema/card-types (set (keys card-id-by-type)))))
+            (scan/scan!)
+            (let [row-for (fn [etype eid]
+                            (t2/select-one :model/ContentDiagnosticsFinding
+                                           :entity_type etype :entity_id eid
+                                           :finding_type :stale :invalidated_at nil))]
+              (testing "each card finding stores its card's type verbatim"
+                (doseq [[card-type card-id] card-id-by-type]
+                  (is (= card-type (:card_type (row-for :card card-id)))
+                      (str card-type " card finding should store its card_type"))))
+              (testing "a non-card finding stores NULL card_type"
+                (let [row (row-for :dashboard dash-id)]
+                  (is (some? row))
+                  (is (nil? (:card_type row))))))))))))
 
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"
@@ -430,7 +464,7 @@
                 (is (= #{card-fid dash-fid} (ids :entity-types ["card" "dashboard"])))))))))))
 
 (deftest api-card-type-test
-  (testing "GET /stale exposes each card's type as a top-level card_type - on card findings only"
+  (testing "GET /stale serves each card finding's stored card_type as a top-level field - card findings only"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -444,20 +478,22 @@
                        :model/Transform {xform-id :id} {:collection_id tcoll-id}]
           (let [prefix          (scope-prefix)
                 card-id-by-type {:question question-id :model model-id :metric metric-id}
-                insert!         (fn [etype eid]
+                insert!         (fn [etype eid & [card-type]]
                                   (t2/insert! :model/ContentDiagnosticsFinding
                                               {:scan_id      "ct"
                                                :entity_type  etype
                                                :entity_id    eid
                                                :entity_name  (str prefix "-" (name etype) "-" eid)
                                                :finding_type :stale
+                                               ;; what scan-time denormalization stamps (nil for non-cards)
+                                               :card_type    card-type
                                                :details      {}}))]
             (testing "the card fixtures cover every card type the app defines"
               ;; drives the per-type assertions below - a newly added card type fails here rather
               ;; than silently going uncovered
               (is (= queries.schema/card-types (set (keys card-id-by-type)))))
-            (doseq [card-id (vals card-id-by-type)]
-              (insert! :card card-id))
+            (doseq [[card-type card-id] card-id-by-type]
+              (insert! :card card-id card-type))
             (doseq [[etype eid] [[:dashboard dash-id] [:document doc-id] [:transform xform-id]]]
               (insert! etype eid))
             (let [by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity))
@@ -472,6 +508,49 @@
                   (let [finding (get by-id k)]
                     (is (some? finding) (str k " should be served"))
                     (is (not (contains? finding :card_type)))))))))))))
+
+(deftest api-entity-types-card-sub-kinds-test
+  (testing "GET /stale entity-types takes the card sub-kinds as peers of the other entity types"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {question-id :id} {:collection_id coll-id :type :question}
+                       :model/Card {model-id :id}    {:collection_id coll-id :type :model}
+                       :model/Card {metric-id :id}   {:collection_id coll-id :type :metric}
+                       ;; stands in for a pre-migration finding row (NULL card_type)
+                       :model/Card {legacy-id :id}   {:collection_id coll-id :type :question}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+          (let [prefix       (scope-prefix)
+                insert!      (fn [etype eid card-type]
+                               (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                {:scan_id     "ctf" :entity_type etype
+                                                                 :entity_id   eid
+                                                                 :entity_name (str prefix "-" eid)
+                                                                 :card_type   card-type
+                                                                 :finding_type :stale :details {}})))
+                question-fid (insert! :card question-id :question)
+                model-fid    (insert! :card model-id :model)
+                metric-fid   (insert! :card metric-id :metric)
+                legacy-fid   (insert! :card legacy-id nil)
+                dash-fid     (insert! :dashboard dash-id nil)
+                ids          (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :crowberto :get 200
+                                                                     "ee/content-diagnostics/stale"
+                                                                     :query prefix kvs)))))]
+            (testing "omitted → all findings, including the NULL-card_type legacy row"
+              (is (= #{question-fid model-fid metric-fid legacy-fid dash-fid} (ids))))
+            (testing "a sub-kind selects only cards of that type - no other entity type rides along"
+              (is (= #{model-fid} (ids :entity-types "model"))))
+            (testing "sub-kinds and plain entity types compose as peers in one list"
+              (is (= #{model-fid dash-fid} (ids :entity-types ["model" "dashboard"]))))
+            (testing "several sub-kinds union"
+              (is (= #{question-fid metric-fid} (ids :entity-types ["question" "metric"]))))
+            (testing "`card` means any card type, keeping a NULL card_type row that a sub-kind drops"
+              (is (= #{question-fid model-fid metric-fid legacy-fid} (ids :entity-types "card")))
+              ;; the canonical all-types list, so a newly added card type can't silently weaken this
+              (is (not (contains? (ids :entity-types (mapv name queries.schema/card-types)) legacy-fid))))
+            (testing "`card` subsumes a sub-kind listed alongside it"
+              (is (= #{question-fid model-fid metric-fid legacy-fid}
+                     (ids :entity-types ["card" "model"]))))))))))
 
 (deftest api-transform-owner-hydration-test
   (testing "GET /stale hydrates the transform owner - a Metabase user or an external email, exclusively"

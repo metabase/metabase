@@ -18,12 +18,11 @@ export interface MetricUrls {
   table?: (databaseId: DatabaseId, tableId: TableId) => string;
 }
 
-export interface MetricPageParams {
+export type MetricPageParams = {
   cardId: string;
-}
+};
 
 export interface MetricPageProps {
-  params: MetricPageParams;
   urls?: MetricUrls;
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;

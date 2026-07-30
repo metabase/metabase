@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -22,11 +23,12 @@
 
 (defn- snapshot
   "Build a snapshot (as the remote-sync import passes one) from a path->content
-   map. `read-file` returns file text (a string) or nil."
+   map. `read-file` returns file text (a string) or nil; `list-dir` reuses the
+   derivation the real non-git snapshots use, so the fake can't drift from it."
   [path->content & {:keys [sha] :or {sha fake-sha}}]
-  {:sha        sha
-   :list-files (fn [] (vec (keys path->content)))
-   :read-file  (fn [p] (get path->content p))})
+  {:sha       sha
+   :list-dir  (fn [dir] (source/paths->children (keys path->content) dir))
+   :read-file (fn [p] (get path->content p))})
 
 (defn- app-config
   "Render a per-app data_app.yaml from `{:name :path :allowed_hosts}`. No slug: an

@@ -87,6 +87,7 @@
   collection-based-visibility-search-models
   collection-id-only-read-method
   collection-id-only-read-models
+  collection-read-access-group-ids
   current-user-has-application-permissions?
   define-collection-based-visibility!
   grant-application-permissions!

@@ -9,8 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import type { Location } from "metabase/router";
-import { Outlet } from "metabase/router";
+import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -32,12 +31,9 @@ import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
-interface Props {
-  location: Location;
-  params: RouteParams;
-}
-
-export const DataModelV1 = ({ location, params }: Props) => {
+export const DataModelV1 = () => {
+  const location = useLocation();
+  const params = useParams<RouteParams>();
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =

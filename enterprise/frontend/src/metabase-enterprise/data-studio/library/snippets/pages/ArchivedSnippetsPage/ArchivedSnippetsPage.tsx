@@ -116,15 +116,17 @@ export function ArchivedSnippetsPage() {
                   return;
                 }
               }}
-              getRowHref={(row) => {
+              renderRowLink={(row, props) => {
                 const { data } = row.original;
 
                 if (data.model === "snippet") {
                   const snippetId = Number(data.id);
-                  return Urls.dataStudioSnippet(snippetId);
+                  return (
+                    <Link to={Urls.dataStudioSnippet(snippetId)} {...props} />
+                  );
                 }
 
-                return null;
+                return props.children;
               }}
             />
           )}

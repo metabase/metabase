@@ -439,8 +439,7 @@
              {:query        (query a-query card)
               :stage-number -1}
              (do
-               (log/warn "Failed to wrap native query with MBQL; card not found" {:query   a-query
-                                                                                  :card-id card-id})
+               (log/warn "Failed to wrap native query with MBQL; card not found" {:card-id card-id})
                nil)))
       {:query        a-query
        :stage-number stage-number}))

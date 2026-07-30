@@ -11,7 +11,7 @@ import { LogsViewer } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
-import { Link } from "metabase/router";
+import { Link, useParams } from "metabase/router";
 import {
   Anchor,
   Box,
@@ -34,12 +34,9 @@ import { TaskStatusBadge } from "../TaskStatusBadge";
 
 import S from "./TaskDetailsPage.module.css";
 
-type TaskDetailsPageProps = {
-  params: { taskId: number };
-};
-
-export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
-  const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
+export const TaskDetailsPage = () => {
+  const { taskId } = useParams();
+  const { data: task, error, isLoading } = useGetTaskQuery(Number(taskId));
   const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
   const { data: databasesData, isLoading: isLoadingDatabases } =

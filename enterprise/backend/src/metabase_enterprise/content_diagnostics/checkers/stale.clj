@@ -21,7 +21,9 @@
         cutoff    (t/minus (t/local-date) (t/days threshold))
         {:keys [rows]} (stale.impl/find-candidates
                         {:collection-ids  :all
-                         :models          (set (vals common/entity-type->model))
+                         ;; explicit, NOT (vals common/entity-type->model): find-candidates throws on
+                         ;; models with no find-stale-query method, and :model/Collection has none
+                         :models          #{:model/Card :model/Dashboard :model/Document :model/Transform}
                          ;; name + recency come from the stale query - the per-model recency source
                          ;; stays single-sourced in the `find-stale-query` arms.
                          :include-columns #{:name :last_used_at}

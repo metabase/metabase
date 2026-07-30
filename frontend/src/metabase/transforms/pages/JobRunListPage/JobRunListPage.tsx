@@ -12,8 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { replace, useParams, useRouter } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
@@ -41,12 +40,9 @@ import { getParsedParams, getSortOptions } from "./utils";
 
 const EMPTY_RUNS: TransformJobRun[] = [];
 
-type JobRunListPageProps = {
-  params: { jobId: string };
-  location: Location;
-};
-
-export function JobRunListPage({ params, location }: JobRunListPageProps) {
+export function JobRunListPage() {
+  const { location } = useRouter();
+  const params = useParams<{ jobId: string }>();
   usePageTitle(t`Run history`);
   const jobId = Urls.extractEntityId(params.jobId);
   const parsedParams = getParsedParams(location);

@@ -67,12 +67,11 @@ export const SegmentForm = ({
       <FormBody>
         {isReadOnly && (
           <Alert
+            size="compact"
             color="warning"
             display="inline-flex"
             mb="md"
-            p="0.75rem"
             title={t`This segment can't be edited because this table is published and Remote Sync is in read-only mode.`}
-            variant="outline"
             w="auto"
           />
         )}

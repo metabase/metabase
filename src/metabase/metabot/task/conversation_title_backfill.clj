@@ -95,8 +95,8 @@
       (.interrupt (Thread/currentThread))
       :failed)
     (catch Throwable e
-      (log/warn e "Failed to backfill Metabot conversation title"
-                {:conversation-id conversation-id})
+      (log/warn "Failed to backfill Metabot conversation title"
+                {:conversation-id conversation-id :error (ex-message e)})
       :failed)))
 
 (defn- finish-result

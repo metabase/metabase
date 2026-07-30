@@ -24,8 +24,7 @@
   - :structured-output - The question and options for the LLM
   - :instructions - Instructions for the LLM"
   [{:keys [question options]}]
-  (log/info "Asking for SQL clarification" {:question question
-                                            :option-count (count options)})
+  (log/info "Asking for SQL clarification" {:option-count (count options)})
   {:structured-output {:question question
                        :options (or options [])}
    :instructions "The clarification question has been presented to the user. Stop and wait for their response before continuing."})

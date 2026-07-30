@@ -339,11 +339,13 @@
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
+                                                    {:id "anthropic/claude-opus-5"     :name "Anthropic: Claude Opus 5"     :created 26}
                                                     {:id "anthropic/claude-sonnet-4.6"                                      :created 25}
                                                     {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
                                                     {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}
                                                     {:id "openai/gpt-5"                :name "OpenAI: GPT-5"                :created 5}]}})]
         (is (= [{:id "anthropic/claude-haiku-4.5"  :display_name "Anthropic: Claude Haiku 4.5"}
+                {:id "anthropic/claude-opus-5"     :display_name "Anthropic: Claude Opus 5"}
                 {:id "anthropic/claude-sonnet-4.6" :display_name "Claude Sonnet 4.6"}
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
