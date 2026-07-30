@@ -248,14 +248,15 @@
              (.lastIndexOf path (int \/) (dec i))))))
 
 (mu/defn set-has-full-permissions? :- :boolean
-  "Does `permissions-set` grant *full* access to object with `path`?"
-  [permissions-set :- [:set :string]
+  "Does `permissions-set` grant *full* access to object with `path`? A `nil` `permissions-set` grants nothing."
+  [permissions-set :- [:maybe [:set :string]]
    path            :- :string]
-  (boolean (some permissions-set (granting-paths path))))
+  (boolean (and permissions-set
+                (some permissions-set (granting-paths path)))))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set :- [:set :string]
+  [permissions-set :- [:maybe [:set :string]]
    paths-set       :- [:set :string]]
   (every? #(set-has-full-permissions? permissions-set %) paths-set))
 
