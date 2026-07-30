@@ -100,13 +100,12 @@
                              nil))))))))
 
 (defn parts->storable-content
-  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest
-  format. Stream metadata (`:usage`/`:finish`/`:error`) and `state` data parts
-  (the turn's state is persisted separately into the row's `state` column) carry
-  no history value."
+  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest format.
+  Stream metadata (`:usage`/`:finish`/`:error`), `:reasoning`, and `state` data parts
+  (persisted separately into the row's `state` column) carry no history value."
   [parts]
   (->> parts
-       (remove #(#{:usage :finish :error} (:type %)))
+       (remove #(#{:usage :finish :error :reasoning} (:type %)))
        (filter streaming/persistable-data-part?)
        internal-parts->storable
        (schema.v2/check-message-data "metabot_message.data")))
@@ -506,11 +505,15 @@
     (when (replayable-assistant-row? reply)
       {:rows rows :reply reply})))
 
-(defn first-valid-user-message
+(defn first-non-forked-user-message
   "Return the first non-blank user message from a live replayable turn.
 
-  `messages` must be in reader order. Soft-deleted rows are ignored. Returns
-  `{:content <text> :profile-id <profile-id>}`, or nil when no turn qualifies."
+  `messages` must be in reader order. Soft-deleted rows are ignored, as are
+  messages cloned from a source conversation when this one was forked
+  (`forked_from_message_id` set), so a fork's title is generated from the first
+  message the user actually sends after forking rather than the inherited prefix.
+  Returns `{:content <text> :profile-id <profile-id>}`, or nil when no turn
+  qualifies."
   [messages]
   (some (fn [turn-rows]
           (when-let [{:keys [rows]} (replayable-turn turn-rows)]
@@ -518,7 +521,7 @@
               (let [content (message-text user-row)]
                 (when-not (str/blank? content)
                   {:content content :profile-id (:profile_id user-row)})))))
-        (rows->turns messages)))
+        (rows->turns (remove :forked_from_message_id messages))))
 
 (defn- turn->llm-messages
   [turn-rows]
@@ -797,16 +800,72 @@
   [conversation-id]
   (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
     (let [messages (live-messages conversation-id)]
-      {:conversation_id (:id conv)
-       :created_at      (:created_at conv)
-       :title           (:title conv)
-       :user_id         (:user_id conv)
-       :state           (conversation-state messages)
-       :saved_entities  (mapv (fn [{:keys [id metabot_chart_id]}]
-                                {:card_id  id
-                                 :chart_id metabot_chart_id})
-                              (t2/select [:model/Card :id :metabot_chart_id]
-                                         :metabot_conversation_id conversation-id
-                                         :archived false
-                                         {:order-by [[:id :asc]]}))
-       :messages        (messages->chat-messages messages)})))
+      {:conversation_id             (:id conv)
+       :created_at                  (:created_at conv)
+       :title                       (:title conv)
+       :user_id                     (:user_id conv)
+       :forked_from_conversation_id (:forked_from_conversation_id conv)
+       :state                       (conversation-state messages)
+       :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
+                                            {:card_id  id
+                                             :chart_id metabot_chart_id})
+                                          (t2/select [:model/Card :id :metabot_chart_id]
+                                                     :metabot_conversation_id conversation-id
+                                                     :archived false
+                                                     {:order-by [[:id :asc]]}))
+       :messages                    (messages->chat-messages messages)})))
+
+;;; ---------------------------------------- Forking ----------------------------------------
+
+(defn- forked-message-row
+  "Build the insert map for a cloned message: a fresh `external_id`, `user-id`
+  attribution, and no timestamps so `created_at` is stamped anew by the DB
+  default. Token usage is zeroed (`total_tokens` 0, `usage` nil) so a fork never
+  double-counts tokens in the analytics views. `forked_from_message_id` records
+  the source row so the copied prefix can be told apart from messages added after
+  the fork."
+  [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state]}]
+  (cond-> {:conversation_id        new-conversation-id
+           :data                   data
+           :data_version           data_version
+           :role                   role
+           :profile_id             profile_id
+           :external_id            (str (random-uuid))
+           :total_tokens           0
+           :usage                  nil
+           :ai_proxied             (boolean ai_proxied)
+           :user_id                user-id
+           :forked_from_message_id id}
+    (some? finished) (assoc :finished finished)
+    (some? error)    (assoc :error error)
+    (some? state)    (assoc :state state)))
+
+(mu/defn fork-conversation!
+  "Fork `conversation-id` at the assistant message identified by `fork-external-id`,
+  cloning the live messages from the thread start up through that message into a
+  brand-new conversation owned by `user-id`.
+
+  The fork target must be a live, finished, non-errored assistant message —
+  returns nil otherwise, creating nothing. Cloned rows share the conversation and
+  message insert shapes used by [[start-turn!]] but with fresh `id`/`external_id`s,
+  `user-id` attribution, DB-stamped `created_at`, and zeroed token usage. Returns
+  the new conversation id."
+  [conversation-id  :- :string
+   fork-external-id :- :string
+   user-id          :- pos-int?]
+  (let [messages          (live-messages conversation-id)
+        [before [target]] (split-with #(not= fork-external-id (:external_id %)) messages)]
+    (when (and target
+               (assistant-row? target)
+               (nil? (:error target))
+               (true? (:finished target)))
+      (let [to-clone            (conj (vec before) target)
+            new-conversation-id (str (random-uuid))]
+        (t2/with-transaction [_conn]
+          (t2/insert! :model/MetabotConversation
+                      {:id                          new-conversation-id
+                       :user_id                     user-id
+                       :forked_from_conversation_id conversation-id})
+          (t2/insert! :model/MetabotMessage
+                      (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
+        new-conversation-id))))

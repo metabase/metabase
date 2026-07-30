@@ -9,7 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
@@ -27,8 +27,6 @@ import {
 import { AUDIT_DB_ID } from "../constants";
 
 import { CliAnalyticsPage } from "./CliAnalyticsPage";
-
-const RoutedCliAnalyticsPage = withRouteProps(CliAnalyticsPage);
 
 registerVisualizations();
 
@@ -153,7 +151,7 @@ function setup({ dataset }: { dataset?: Dataset } = {}) {
   return renderWithProviders(
     <Route
       path="/admin/metabot/usage-auditing/cli"
-      element={<RoutedCliAnalyticsPage />}
+      element={<CliAnalyticsPage />}
     />,
     {
       initialRoute: "/admin/metabot/usage-auditing/cli",

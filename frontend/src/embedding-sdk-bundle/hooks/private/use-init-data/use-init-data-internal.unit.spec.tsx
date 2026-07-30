@@ -2,8 +2,8 @@ import { renderHook } from "@testing-library/react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
 
 import { useInitData } from "./use-init-data-internal";
 

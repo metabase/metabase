@@ -5,6 +5,9 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatEmail } from "./email";
+import { registerJsxFormatting } from "./ui";
+
+registerJsxFormatting();
 
 describe("formatEmail", () => {
   describe("email link generation", () => {

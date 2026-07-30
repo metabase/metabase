@@ -3,7 +3,7 @@ import { useContext } from "react";
 import { skipToken } from "metabase/api";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import type { Location } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
@@ -19,12 +19,9 @@ export type DependencyGraphPageQuery = {
   type?: string;
 };
 
-type DependencyGraphPageProps = {
-  location?: Location<DependencyGraphPageQuery>;
-};
-
-export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
-  const entry = parseDependencyEntry(location?.query?.id, location?.query.type);
+export function DependencyGraphPage() {
+  const { location } = useRouter();
+  const entry = parseDependencyEntry(location.query?.id, location.query.type);
   const { defaultEntry, baseUrl } = useContext(
     PLUGIN_DEPENDENCIES.DependencyGraphPageContext,
   );

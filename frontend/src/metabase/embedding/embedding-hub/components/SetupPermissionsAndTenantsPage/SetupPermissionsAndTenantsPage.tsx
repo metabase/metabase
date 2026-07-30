@@ -3,13 +3,13 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
+import { Link } from "metabase/common/components/Link";
 import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
 import {
   type CreatedTenantData,
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
-import { Link } from "metabase/router";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 import type { DataSegregationStrategy } from "metabase-types/api";
 

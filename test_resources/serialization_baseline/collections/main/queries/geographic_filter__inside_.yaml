@@ -431,7 +431,7 @@ result_metadata:
   qp/implicit-field?: true
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: bK64P6yr9_Nx-A8S3PqOZ
   label: geographic_filter__inside_
