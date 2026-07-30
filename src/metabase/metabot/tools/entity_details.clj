@@ -178,10 +178,7 @@
                                       (filter pos-int?)
                                       (concat (keep :table-id columns)
                                               (keep :table_id referenced-fields)))
-        readable-table-ids      (->> (t2/select :model/Table :id [:in table-ids])
-                                     (filter mi/can-read?)
-                                     (map :id)
-                                     set)
+        readable-table-ids      (table-utils/readable-table-ids table-ids)
         sandbox-restricted-ids  (metrics/sandbox-restricted-fields table-ids)
         field-readable?         (fn [table-id field]
                                   (and (contains? readable-table-ids table-id)
