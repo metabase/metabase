@@ -92,7 +92,8 @@
      default-breakout-dimensions
      dimension-breakout
      project-dimension
-     projectable-dimensions])
+     projectable-dimensions
+     valid-temporal-unit-for-type?])
    :cljs
    (do
      (def remove-clause "See [[lib-metric.clause/remove-clause]]." lib-metric.clause/remove-clause)
@@ -126,4 +127,5 @@
      (def default-breakout-dimensions "See [[lib-metric.projection/default-breakout-dimensions]]." lib-metric.projection/default-breakout-dimensions)
      (def dimension-breakout "See [[lib-metric.projection/dimension-breakout]]." lib-metric.projection/dimension-breakout)
      (def project-dimension "See [[lib-metric.projection/project-dimension]]." lib-metric.projection/project-dimension)
-     (def projectable-dimensions "See [[lib-metric.projection/projectable-dimensions]]." lib-metric.projection/projectable-dimensions)))
+     (def projectable-dimensions "See [[lib-metric.projection/projectable-dimensions]]." lib-metric.projection/projectable-dimensions)
+     (def valid-temporal-unit-for-type? "See [[lib-metric.projection/valid-temporal-unit-for-type?]]." lib-metric.projection/valid-temporal-unit-for-type?)))

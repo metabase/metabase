@@ -1,6 +1,6 @@
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
-import { Link } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 

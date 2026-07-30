@@ -64,7 +64,8 @@
   (cond-> dim
     (seq (:sources dim)) (update :sources #(perf/mapv normalize-dimension-source %))
     (string? (:status dim)) (update :status keyword)
-    (string? (:has-field-values dim)) (update :has-field-values keyword)))
+    (string? (:has-field-values dim)) (update :has-field-values keyword)
+    (string? (:default-temporal-unit dim)) (update :default-temporal-unit keyword)))
 
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
@@ -86,7 +87,9 @@
   [computed-dim persisted-dim]
   (if persisted-dim
     (-> computed-dim
-        (merge (into {} (remove (comp nil? val)) (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type])))
+        (merge (into {} (remove (comp nil? val))
+                     (perf/select-keys persisted-dim
+                                       [:display-name :semantic-type :effective-type :default-temporal-unit])))
         (dissoc :status-message))
     computed-dim))
 
@@ -238,6 +241,8 @@
   (cond-> dim
     (some? display-name)             (assoc :display-name display-name)
     (contains? updates :description) (assoc :description (:description updates))
+    (contains? updates :default-temporal-unit)
+    (assoc :default-temporal-unit (:default-temporal-unit updates))
     source-pair                      (merge (perf/select-keys (:dimension source-pair)
                                                               [:name :sources :effective-type
                                                                :semantic-type :has-field-values :group]))))
@@ -253,6 +258,7 @@
   "Update a single persisted dimension by `id`. `updates` may contain:
    - `:display-name` — set the display name
    - `:description`  — set the description (key present, even when nil, clears it)
+   - `:default-temporal-unit` — set the temporal bucket used when projecting this dimension
    - `:source-pair`  — a computed `{:dimension ... :mapping ...}` for a new source column; copies the
      column-derived fields onto the dimension and repoints its mapping target.
    Returns `{:dimensions ... :dimension-mappings ...}`."
@@ -314,7 +320,8 @@
     (vec (sort-by #(get position (:id %) missing) persisted-dims))))
 
 (def ^:private persisted-dimension-keys
-  [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group :default])
+  [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group
+   :default-temporal-unit :default])
 
 (defn- dimensions-set [dims]
   (into #{} (map #(perf/select-keys % persisted-dimension-keys)) dims))

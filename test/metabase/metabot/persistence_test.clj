@@ -30,11 +30,11 @@
      (mt/with-current-user (mt/user->id :rasta)
        ~@body)))
 
-(deftest ^:parallel first-valid-user-message-test
+(deftest ^:parallel first-non-forked-user-message-test
   (testing "returns the first non-blank user message from a replayable, live turn"
     (let [deleted-at (t/offset-date-time)]
       (is (= {:content "keep this prompt" :profile-id "internal"}
-             (metabot-persistence/first-valid-user-message
+             (metabot-persistence/first-non-forked-user-message
               [{:id 1 :role :user :profile_id "default"
                 :data [{:type "text" :text "errored prompt"}]}
                {:id 2 :role :assistant :finished true :error "boom" :data []}
@@ -51,9 +51,23 @@
                 :data [{:type "text" :text "keep this prompt"}]}
                {:id 10 :role :assistant :finished false :data []}])))))
   (testing "returns nil when no live replayable turn has a non-blank user message"
-    (is (nil? (metabot-persistence/first-valid-user-message
+    (is (nil? (metabot-persistence/first-non-forked-user-message
                [{:id 1 :role :user :data [{:type "text" :text "failed"}]}
-                {:id 2 :role :assistant :finished true :error "boom" :data []}])))))
+                {:id 2 :role :assistant :finished true :error "boom" :data []}]))))
+  (testing "skips messages cloned from the source conversation on a fork"
+    (is (= {:content "the new direction" :profile-id "default"}
+           (metabot-persistence/first-non-forked-user-message
+            [{:id 1 :role :user :profile_id "default" :forked_from_message_id 100
+              :data [{:type "text" :text "inherited prompt"}]}
+             {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}
+             {:id 3 :role :user :profile_id "default"
+              :data [{:type "text" :text "the new direction"}]}
+             {:id 4 :role :assistant :finished true :data []}]))))
+  (testing "returns nil for a fork with no post-fork user message yet"
+    (is (nil? (metabot-persistence/first-non-forked-user-message
+               [{:id 1 :role :user :profile_id "default" :forked_from_message_id 100
+                 :data [{:type "text" :text "inherited prompt"}]}
+                {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}])))))
 
 (deftest ^:parallel message->chat-messages-test
   (testing "text part on a user row renders as a user message"

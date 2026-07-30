@@ -146,6 +146,7 @@
            config
            events
            models
+           permissions
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1215,6 +1216,7 @@
            premium-features
            request
            settings
+           setup
            sql-tools
            sync
            util
@@ -2519,6 +2521,7 @@
            metabot
            metrics
            models
+           permissions
            system
            types
            util}
@@ -3406,6 +3409,7 @@
            config
            events
            premium-features
+           request
            settings
            sso
            util}

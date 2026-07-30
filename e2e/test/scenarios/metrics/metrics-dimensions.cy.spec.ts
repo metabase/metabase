@@ -46,6 +46,7 @@ describe("scenarios > metrics > dimensions", () => {
       "setDefaultDimension",
     );
     cy.intercept("GET", "/api/metric/*/dimension*").as("listDimensions");
+    cy.intercept("GET", /\/api\/metric\/\d+$/).as("getMetric");
 
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body }) => {
       metricId = body.id;
@@ -184,5 +185,61 @@ describe("scenarios > metrics > dimensions", () => {
     )
       .its("body.added.0.display_name")
       .should("equal", "Quantity");
+  });
+
+  it("uses a time dimension's configured bucket on the About page", () => {
+    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
+    cy.visit(`/metric/${metricId}/dimensions`);
+    cy.wait("@listDimensions");
+
+    cy.log("make another dimension the default so Created At can be selected");
+    dimensionRow("Quantity").findByText("Quantity").click();
+    cy.wait("@getMetric");
+    settingsPanel().findByRole("button", { name: "Set as default" }).click();
+    cy.wait("@setDefaultDimension");
+    cy.wait("@listDimensions");
+    cy.wait("@getMetric");
+
+    cy.log("configure Created At to use weekly buckets");
+    dimensionRow("Created At").findByText("Created At").click();
+    settingsPanel()
+      .findByLabelText("Time grouping")
+      .should("have.value", "")
+      .click();
+    cy.findByRole("option", { name: "Week" }).click();
+    cy.wait("@updateDimension").then(({ request }) => {
+      expect(request.body).to.deep.equal({
+        default_temporal_unit: "week",
+      });
+    });
+    cy.wait("@listDimensions");
+    cy.wait("@getMetric");
+    settingsPanel()
+      .findByLabelText("Time grouping")
+      .should("have.value", "Week");
+
+    cy.log("make Created At the default and verify About uses its bucket");
+    settingsPanel().findByRole("button", { name: "Set as default" }).click();
+    cy.wait("@setDefaultDimension");
+    cy.wait("@listDimensions");
+    cy.wait("@getMetric");
+    H.MetricPage.aboutTab().click();
+    cy.wait("@metricDataset").then(({ request }) => {
+      expect(
+        request.body.definition.projections[0].projection[0][1],
+      ).to.include({
+        "temporal-unit": "week",
+      });
+    });
+    H.MetricPage.aboutPage()
+      .findByRole("button", {
+        name: "Select dimension: Created At: Week",
+      })
+      .should("be.visible")
+      .and("contain.text", "Created At: Week");
+    H.MetricPage.aboutPage()
+      .findByTestId("visualization-root")
+      .should("be.visible")
+      .and("have.attr", "data-viz-ui-name", "Line");
   });
 });

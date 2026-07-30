@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
@@ -24,6 +25,12 @@
 (defn- orders-metric-query []
   (let [mp (mt/metadata-provider)
         table-metadata (lib.metadata/table mp (mt/id :orders))]
+    (-> (lib/query mp table-metadata)
+        (lib/aggregate (lib/count)))))
+
+(defn- people-metric-query []
+  (let [mp (mt/metadata-provider)
+        table-metadata (lib.metadata/table mp (mt/id :people))]
     (-> (lib/query mp table-metadata)
         (lib/aggregate (lib/count)))))
 
@@ -426,6 +433,62 @@
         (is (= "Cost" (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
                            :added (m/find-first #(= price-id (:id %))) :display_name))
             "the rename is persisted")))))
+
+(deftest update-dimension-default-temporal-unit-test
+  (testing "POST /api/metric/:id/dimension/:id persists and returns a temporal default"
+    (mt/with-temp [:model/Card metric {:name          "Orders CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query (orders-metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
+            path          (str "metric/" (:id metric) "/dimension/" created-at-id)
+            topics        (atom [])
+            resp          (with-redefs [events/publish-event! (fn [topic _event]
+                                                                (swap! topics conj topic))]
+                            (mt/user-http-request :crowberto :post 200 path
+                                                  {:default_temporal_unit "week"}))
+            stored        (->> (t2/select-one :model/Card :id (:id metric))
+                               :dimensions
+                               (m/find-first #(= created-at-id (:id %))))
+            fetched       (->> (mt/user-http-request :crowberto :get 200
+                                                     (str "metric/" (:id metric) "/dimension"))
+                               :added
+                               (m/find-first #(= created-at-id (:id %))))]
+        (is (= "week" (:default_temporal_unit resp)))
+        (is (= :week (:default-temporal-unit stored)))
+        (is (= "week" (:default_temporal_unit fetched)))
+        (is (not-any? #{:event/metric-dimensions-update} @topics)
+            "changing presentation metadata does not invalidate the dependency graph")))))
+
+(deftest update-dimension-default-temporal-unit-validation-test
+  (testing "default_temporal_unit must be visible and compatible with the dimension type"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            path     (str "metric/" (:id metric) "/dimension/" price-id)]
+        (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit "week"})))
+    (mt/with-temp [:model/Card metric {:name          "Orders CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query (orders-metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
+            path          (str "metric/" (:id metric) "/dimension/" created-at-id)]
+        (doseq [unit ["default" "millisecond" "not-a-unit"]]
+          (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit unit}))
+        (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit nil})))
+    (mt/with-temp [:model/Card metric {:name          "People CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :people)
+                                       :dataset_query (people-metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [birth-date-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "BIRTH_DATE")
+            path          (str "metric/" (:id metric) "/dimension/" birth-date-id)]
+        (doseq [unit ["hour" "year-of-era"]]
+          (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit unit}))))))
 
 (deftest update-dimension-validation-test
   (testing "POST /api/metric/:id/dimension/:id validates names and descriptions"

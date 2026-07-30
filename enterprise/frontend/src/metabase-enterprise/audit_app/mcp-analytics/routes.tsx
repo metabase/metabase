@@ -1,8 +1,6 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { McpAnalyticsPage } from "./components/McpAnalyticsPage";
-
-const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
 
 /**
  * The `/admin/metabot/usage-auditing/mcp` route — nested under the `usage-auditing` namespace so
@@ -15,7 +13,7 @@ export function getMcpAnalyticsRoutes() {
     <Route
       key="mcp-analytics"
       path="usage-auditing/mcp"
-      element={<RoutedMcpAnalyticsPage />}
+      element={<McpAnalyticsPage />}
     />
   );
 }

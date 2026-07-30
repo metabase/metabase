@@ -74,7 +74,7 @@
 
 (defn- title-source
   [conversation-id]
-  (metabot.persistence/first-valid-user-message
+  (metabot.persistence/first-non-forked-user-message
    (metabot.persistence/opening-messages conversation-id)))
 
 (defn- generate-title!

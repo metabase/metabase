@@ -6,7 +6,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
@@ -18,7 +18,6 @@ import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_AGENT_API_CALLS, VIEW_GROUP_MEMBERS } from "../constants";
 import { useCliHasData } from "../hooks/useCliHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { CliTab } from "../url-state";
 import { cliUrlStateConfig } from "../url-state";
 
 import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
@@ -32,7 +31,8 @@ import { CliEventsTable } from "./CliEventsTable";
  * across two tabs (Charts and a row-level Calls table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function CliAnalyticsPage({ location }: WithRouterProps) {
+export function CliAnalyticsPage() {
+  const { location } = useRouter();
   const [
     { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
@@ -123,8 +123,7 @@ export function CliAnalyticsPage({ location }: WithRouterProps) {
           .otherwise(() => (
             <Tabs
               value={tab}
-              // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
-              onChange={(val) => patchUrlState({ tab: val as CliTab })}
+              onChange={(value) => patchUrlState({ tab: value ?? undefined })}
               keepMounted={false}
             >
               <Tabs.List mb="lg">
