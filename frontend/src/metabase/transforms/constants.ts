@@ -47,8 +47,9 @@ def transform():
     return pd.DataFrame([{"message": "Hello from Python transform!"}])`;
 
 export const INGESTION_PYTHON_BODY = `# Fetch data from an external service and load it into the target table
-import dlt
+import common
 import pandas as pd
+import dlt
 
 def transform(secrets=None, state=None):
     """
