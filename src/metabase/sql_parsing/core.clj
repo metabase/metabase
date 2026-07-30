@@ -41,18 +41,18 @@
 
 ;;; ------------------------------------- Large literal-list stripping -----------------------------------------
 
-;; Large literal lists — VALUES clauses with thousands of tuples and IN lists with thousands of
-;; items — cause GraalPy OOM/timeouts due to ~114KB per AST node (vs ~1-2KB on CPython). We strip
-;; them on the JVM side before passing SQL to Python, because GraalPy is too slow at
-;; character-by-character string scanning over multi-MB inputs.
+;; Large literal lists — VALUES clauses, IN lists (flat or tuple), and ARRAY literals with
+;; thousands of items — cause GraalPy OOM/timeouts due to ~114KB per AST node (vs ~1-2KB on
+;; CPython). We strip them on the JVM side before passing SQL to Python, because GraalPy is too
+;; slow at character-by-character string scanning over multi-MB inputs.
 
 (def ^:private ^:const strip-threshold
   "Only strip VALUES clauses / IN lists with more than this many tuples/items."
   100)
 
 (def ^:private literal-list-keyword-pattern
-  "Pattern to find a VALUES or IN keyword followed by an opening paren."
-  (re-pattern "(?i)\\b(?:VALUES|IN)\\s*\\("))
+  "Pattern to find a VALUES, IN, or ARRAY keyword followed by its opening delimiter."
+  (re-pattern "(?i)\\b(?:VALUES\\s*\\(|IN\\s*\\(|ARRAY\\s*\\[)"))
 
 (defn- skip-whitespace
   "Return the first non-whitespace position at or after `pos`."
@@ -128,11 +128,11 @@
     (str original-keyword " (" nulls ")")))
 
 (defn- extract-keyword
-  "Extract just the keyword text from a regex match like `VALUES (` or `IN (`."
+  "Extract just the keyword text from a regex match like `VALUES (`, `IN (`, or `ARRAY [`."
   ^String [^String sql ^long match-start ^long match-end]
   (-> (.substring sql match-start match-end)
       str/trimr
-      (str/replace #"\($" "")
+      (str/replace #"[\(\[]$" "")
       str/trimr))
 
 (defn- strip-values-at
@@ -162,19 +162,19 @@
       (recur (inc i))
       i)))
 
-(defn- large-literal-in-list-end
-  "If the parenthesized list opening at `open-pos` is literal-only — numbers, quoted strings,
-   NULL/TRUE/FALSE, signs, commas and whitespace — and has more than `strip-threshold` items,
-   return the position just after its closing paren; otherwise nil. Anything else — column
-   references, function calls, subqueries, bind parameters, nested parens — disqualifies the list,
-   since stripping those would change analysis results or parameter counts. Single pass over `sql`
-   in place, bailing at the first disqualifying character."
-  [^String sql ^long open-pos ^long n]
+(defn- literal-list-end
+  "Scan the flat list opening at `open-pos` and terminated by `close-ch`. If it is literal-only —
+   numbers, quoted strings, NULL/TRUE/FALSE, signs, commas and whitespace — return
+   [item-count end-pos] with end-pos just after the closing delimiter; otherwise nil. Anything
+   else — column references, function calls, subqueries, bind parameters, nested brackets —
+   disqualifies the list, since stripping those would change analysis results or parameter counts.
+   Single pass over `sql` in place, bailing at the first disqualifying character."
+  [^String sql ^long open-pos ^long n close-ch]
   (loop [i (inc open-pos), items 1]
     (when (< i n)
       (let [ch (.charAt sql i)]
         (cond
-          (= ch \))                (when (> items strip-threshold) (inc i))
+          (= ch close-ch)          [items (inc i)]
           (or (= ch \') (= ch \")) (recur (skip-string-literal sql i n) items)
           (= ch \,)                (recur (inc i) (inc items))
           (Character/isLetter ch)  (let [end (word-end sql i n)]
@@ -188,15 +188,57 @@
 
           :else nil)))))
 
+(defn- literal-tuple-list-end
+  "Scan a list of literal-only tuples `((1, 'a'), (2, 'b'), ...)` whose outer paren opens at
+   `open-pos`. Every tuple must be a flat literal-only list. Returns
+   [tuple-count first-tuple-arity end-pos] with end-pos just after the outer closing paren, or nil
+   if the content is not a pure tuple list."
+  [^String sql ^long open-pos ^long n]
+  (loop [i (inc open-pos), tuples 0, arity 0, expect-comma? false]
+    (let [i (skip-whitespace sql i n)]
+      (when (< i n)
+        (let [ch (.charAt sql i)]
+          (cond
+            (= ch \))
+            (when (pos? tuples) [tuples arity (inc i)])
+
+            (and expect-comma? (= ch \,))
+            (recur (inc i) tuples arity false)
+
+            (and (not expect-comma?) (= ch \())
+            (when-let [[items end] (literal-list-end sql i n \))]
+              (recur (long end) (inc tuples) (if (zero? tuples) (long items) arity) true))
+
+            :else nil))))))
+
 (defn- strip-in-at
   "Decide whether to strip the IN list whose `IN (` match spans [match-start, match-end).
-   Returns [replacement resume-pos]: `IN (NULL)` covering the whole list, or [nil match-end] to
-   leave it untouched (resuming just inside the paren, so a large list nested in a subquery —
+   Handles flat literal lists — `IN (1, 2, ...)` → `IN (NULL)` — and lists of literal-only
+   tuples — `(a, b) IN ((1, 1), (2, 2), ...)` → `IN ((NULL, NULL))`, preserving the first tuple's
+   arity. Returns [replacement resume-pos], or [nil match-end] to leave the list untouched
+   (resuming just inside the paren, so a large list nested in a subquery —
    `IN (SELECT ... WHERE x IN (...))` — is still found)."
   [^String sql ^long match-start ^long match-end ^long n]
-  (if-let [end-pos (large-literal-in-list-end sql (dec match-end) n)]
-    [(str (extract-keyword sql match-start match-end) " (NULL)") end-pos]
-    [nil match-end]))
+  (let [open-pos (dec match-end)]
+    (or (when-let [[items end-pos] (literal-list-end sql open-pos n \))]
+          (when (> (long items) strip-threshold)
+            [(str (extract-keyword sql match-start match-end) " (NULL)") end-pos]))
+        (when-let [[tuples arity end-pos] (literal-tuple-list-end sql open-pos n)]
+          (when (> (long tuples) strip-threshold)
+            [(str (extract-keyword sql match-start match-end)
+                  " ((" (str/join ", " (repeat arity "NULL")) "))")
+             end-pos]))
+        [nil match-end])))
+
+(defn- strip-array-at
+  "Decide whether to strip the array literal whose `ARRAY [` match spans [match-start, match-end).
+   Returns [replacement resume-pos]: `ARRAY[NULL]` covering the whole literal-only list, or
+   [nil match-end] to leave it untouched."
+  [^String sql ^long match-start ^long match-end ^long n]
+  (or (when-let [[items end-pos] (literal-list-end sql (dec match-end) n \])]
+        (when (> (long items) strip-threshold)
+          [(str (extract-keyword sql match-start match-end) "[NULL]") end-pos]))
+      [nil match-end]))
 
 (defn- strip-large-literal-lists*
   "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
@@ -214,11 +256,11 @@
               sql)
             (let [match-start (.start matcher)
                   match-end   (.end matcher)
-                  values?     (let [ch (.charAt sql match-start)]
-                                (or (= ch \V) (= ch \v)))
-                  [replacement resume] (if values?
-                                         (strip-values-at sql match-start match-end n)
-                                         (strip-in-at sql match-start match-end n))]
+                  [replacement resume] (let [ch (.charAt sql match-start)]
+                                         (cond
+                                           (or (= ch \V) (= ch \v)) (strip-values-at sql match-start match-end n)
+                                           (or (= ch \A) (= ch \a)) (strip-array-at sql match-start match-end n)
+                                           :else                    (strip-in-at sql match-start match-end n)))]
               (if replacement
                 (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
                 (.append sb sql (int i) (int resume)))
@@ -229,8 +271,9 @@
 (defn strip-large-literal-lists
   "Replace large literal lists with NULL placeholders: VALUES clauses with more than
    `strip-threshold` tuples become a single-row NULL tuple (preserving the column count from the
-   first tuple), and literal-only IN lists with more than `strip-threshold` items become `IN (NULL)`.
-   All surrounding SQL structure is preserved.
+   first tuple), literal-only IN lists with more than `strip-threshold` items become `IN (NULL)`
+   (tuple lists become `IN ((NULL, ...))`, preserving the first tuple's arity), and literal-only
+   ARRAY literals become `ARRAY[NULL]`. All surrounding SQL structure is preserved.
 
    This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
    On any error, returns the original SQL unchanged so parsing can proceed normally."

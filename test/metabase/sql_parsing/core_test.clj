@@ -682,6 +682,66 @@
                  "SELECT t.values FROM t WHERE t.values > 10"]]
       (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) sql))))
 
+(deftest ^:parallel strip-tuple-in-list-test
+  (testing "Tuple IN lists at or below the threshold are preserved, above it stripped with arity kept"
+    (doseq [[n stripped?] {1 false, 100 false, 101 true, 1000 true}]
+      (let [tuples (str/join ", " (map #(format "(%d, %d)" % (* % 2)) (range n)))
+            sql    (str "SELECT * FROM t WHERE (a, b) IN (" tuples ")")
+            result (sql-parsing/strip-large-literal-lists sql)]
+        (if stripped?
+          (is (= "SELECT * FROM t WHERE (a, b) IN ((NULL, NULL))" result)
+              (str n " tuples should be stripped"))
+          (is (identical? sql result)
+              (str n " tuples should not be stripped"))))))
+  (testing "Arity comes from the first tuple"
+    (let [tuples (str/join ", " (map #(format "(%d, '%d', %d)" % % %) (range 150)))
+          sql    (str "SELECT * FROM t WHERE (a, b, c) NOT IN (" tuples ")")]
+      (is (= "SELECT * FROM t WHERE (a, b, c) NOT IN ((NULL, NULL, NULL))"
+             (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Tuple lists containing non-literal tuples are not stripped"
+    (doseq [bad ["(SELECT 1, 2)" "(x, 1)" "(foo(1), 2)" "((1, 2), 3)" "(?, ?)"]]
+      (let [tuples (str/join ", " (concat (map #(format "(%d, %d)" % %) (range 150)) [bad]))
+            sql    (str "SELECT * FROM t WHERE (a, b) IN (" tuples ")")]
+        (is (identical? sql (sql-parsing/strip-large-literal-lists sql))
+            (str "tuple list containing " (pr-str bad) " should not be stripped")))))
+  (testing "Malformed tuple lists are not stripped"
+    (doseq [sql [(str "SELECT * FROM t WHERE (a, b) IN ((1, 2) (3, 4), " (str/join ", " (map #(format "(%d, %d)" % %) (range 150))) ")")
+                 "SELECT * FROM t WHERE (a, b) IN ()"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) sql))))
+
+(defn- array-literal
+  "Build `ARRAY[0, 1, ..., n-1]` with `n` items."
+  [n]
+  (str "ARRAY[" (str/join ", " (range n)) "]"))
+
+(deftest ^:parallel strip-array-literal-test
+  (testing "ARRAY literals at or below the threshold are preserved, above it stripped"
+    (doseq [n [1 100]]
+      (let [sql (str "SELECT * FROM t WHERE id = ANY(" (array-literal n) ")")]
+        (is (identical? sql (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should not be stripped"))))
+    (doseq [n [101 1000]]
+      (let [sql (str "SELECT * FROM t WHERE id = ANY(" (array-literal n) ")")]
+        (is (= "SELECT * FROM t WHERE id = ANY(ARRAY[NULL])" (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should be stripped")))))
+  (testing "Casing and string arrays"
+    (let [sql (str "SELECT array['" (str/join "', '" (range 150)) "'] AS a FROM t")]
+      (is (= "SELECT array[NULL] AS a FROM t" (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Array literals containing non-literals are not stripped"
+    (doseq [bad ["col_ref" "foo(1)" "ARRAY[1]" "1:5"]]
+      (let [sql (str "SELECT ARRAY[" (str/join ", " (concat (range 150) [bad])) "] FROM t")]
+        (is (identical? sql (sql-parsing/strip-large-literal-lists sql))
+            (str "array containing " (pr-str bad) " should not be stripped")))))
+  (testing "Array subscript access on a column named array is untouched"
+    (doseq [sql ["SELECT array[1] FROM t"
+                 "SELECT arr[1] FROM t"
+                 "SELECT arr[1:5] FROM t"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) sql)))
+  (testing "A large ARRAY nested inside an unstripped IN subquery is still stripped"
+    (let [sql (str "SELECT * FROM t WHERE id IN (SELECT id FROM u WHERE tags && " (array-literal 150) ")")]
+      (is (= "SELECT * FROM t WHERE id IN (SELECT id FROM u WHERE tags && ARRAY[NULL])"
+             (sql-parsing/strip-large-literal-lists sql))))))
+
 (deftest ^:parallel stripped-sql-parses-e2e-test
   (testing "every analysis entry point tolerates SQL whose lists were stripped"
     (let [sql (str "SELECT a.name FROM accounts a WHERE a.id " (in-list 150))]
@@ -689,7 +749,13 @@
       (is (= {:is_simple true} (sql-parsing/simple-query? "postgres" sql)))
       (is (=? {:status "ok"} (sql-parsing/validate-query "postgres" sql nil)))
       (is (=? {:used-fields set? :returned-fields vector? :errors #{}}
-              (sql-parsing/field-references "postgres" sql))))))
+              (sql-parsing/field-references "postgres" sql)))))
+  (testing "tuple IN lists and ARRAY literals also parse after stripping"
+    (doseq [sql [(str "SELECT a.name FROM accounts a WHERE (a.id, a.org_id) IN ("
+                      (str/join ", " (map #(format "(%d, %d)" % %) (range 20000))) ")")
+                 (str "SELECT a.name FROM accounts a WHERE a.id = ANY(" (array-literal 20000) ")")]]
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (=? {:errors #{}} (sql-parsing/field-references "postgres" sql))))))
 
 (deftest ^:parallel large-values-referenced-tables-test
   (testing "referenced-tables works on queries with massive VALUES clauses"
