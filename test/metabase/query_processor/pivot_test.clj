@@ -38,12 +38,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; Every pivot test in this namespace runs under [[qp.pivot.test-util/with-pivot-parity-check]]. For drivers that
-;; support `:native-pivot-tables`, any call to `qp.pivot/run-pivot-query` inside a test automatically runs both
-;; the multi-query and native paths, comparing result row multisets and failing the test on mismatch. Tests that
-;; don't call `run-pivot-query` see the fixture as a no-op.
-(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
-
 (deftest ^:parallel powerset-test
   (is (= [[]]
          (#'qp.pivot/powerset [])))

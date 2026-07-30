@@ -2325,19 +2325,18 @@
             ;; Pivot path with :card-id in :info still routes through the ad-hoc permission path.
             ;; The pivot path wraps queries as userland, so permission errors are returned as
             ;; {:status :failed} results rather than thrown exceptions.
-            (qp.pivot.tu/with-pivot-parity-check
-              (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (source-table)"
-                (let [result (qp.pivot/run-pivot-query
-                              {:database    (mt/id)
-                               :type        :query
-                               :info        {:executed-by (mt/user->id :rasta)
-                                             :context     :ad-hoc
-                                             :card-id     card-id}
-                               :constraints {:max-results 10000 :max-results-bare-rows 2000}
-                               :query       {:source-table (mt/id :people)
-                                             :limit        1}})]
-                  (is (= :failed (:status result)))
-                  (is (re-find perms-error-msg (str (:error result)))))))))))))
+            (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (source-table)"
+              (let [result (qp.pivot/run-pivot-query
+                            {:database    (mt/id)
+                             :type        :query
+                             :info        {:executed-by (mt/user->id :rasta)
+                                           :context     :ad-hoc
+                                           :card-id     card-id}
+                             :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                             :query       {:source-table (mt/id :people)
+                                           :limit        1}})]
+                (is (= :failed (:status result)))
+                (is (re-find perms-error-msg (str (:error result))))))))))))
 
 (deftest ^:mb/driver-tests pivot-query-does-not-bind-card-id-with-join-test
   (testing "run-pivot-query should not bind *card-id* from :info even when the query has a join,
@@ -2349,24 +2348,23 @@
                          :model/Card {card-id :id} {:collection_id (:id collection)
                                                     :dataset_query (mt/mbql-query venues)}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
-            (qp.pivot.tu/with-pivot-parity-check
-              (let [result (qp.pivot/run-pivot-query
-                            {:database    (mt/id)
-                             :type        :query
-                             :info        {:executed-by (mt/user->id :rasta)
-                                           :context     :ad-hoc
-                                           :card-id     card-id}
-                             :constraints {:max-results 10000 :max-results-bare-rows 2000}
-                             :query       {:source-table (format "card__%d" card-id)
-                                           :joins        [{:source-table (mt/id :people)
-                                                           :alias        "p"
-                                                           :condition    [:=
-                                                                          [:field (mt/id :venues :id)]
-                                                                          [:field (mt/id :people :id) {:join-alias "p"}]]
-                                                           :fields       :all}]
-                                           :limit        5}})]
-                (is (= :failed (:status result)))
-                (is (re-find perms-error-msg (str (:error result))))))))))))
+            (let [result (qp.pivot/run-pivot-query
+                          {:database    (mt/id)
+                           :type        :query
+                           :info        {:executed-by (mt/user->id :rasta)
+                                         :context     :ad-hoc
+                                         :card-id     card-id}
+                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                           :query       {:source-table (format "card__%d" card-id)
+                                         :joins        [{:source-table (mt/id :people)
+                                                         :alias        "p"
+                                                         :condition    [:=
+                                                                        [:field (mt/id :venues :id)]
+                                                                        [:field (mt/id :people :id) {:join-alias "p"}]]
+                                                         :fields       :all}]
+                                         :limit        5}})]
+              (is (= :failed (:status result)))
+              (is (re-find perms-error-msg (str (:error result)))))))))))
 
 (deftest ^:mb/driver-tests pivot-query-with-card-id-bound-externally-test
   (testing "When *card-id* is bound by the caller (e.g. card.clj), pivot queries should

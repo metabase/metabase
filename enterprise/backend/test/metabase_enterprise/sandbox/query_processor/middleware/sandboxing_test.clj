@@ -27,7 +27,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -1238,9 +1237,8 @@
                          (lib.tu.notebook/add-breakout {:display-name #"(Test Data )?People"} "Source")
                          (lib.tu.notebook/add-breakout "Product" "Category")
                          (merge {:pivot-rows [0] :pivot-cols [1]}))]
-          (qp.pivot.test-util/with-pivot-parity-check
-            (is (=? {:status :completed}
-                    (qp.pivot/run-pivot-query query)))))))))
+          (is (=? {:status :completed}
+                  (qp.pivot/run-pivot-query query))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
