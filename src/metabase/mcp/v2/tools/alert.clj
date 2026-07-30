@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
@@ -285,6 +286,29 @@
       (common/throw-not-found :alert id))
     (notification.api/get-notification id)))
 
+(defn- delivery-targets
+  "Where the alert's handlers deliver: recipient email addresses, plus slack channel names."
+  [notification]
+  (into #{}
+        (comp (mapcat :recipients)
+              (keep #(or (-> % :user :email) (-> % :details :value))))
+        (:handlers notification)))
+
+(defn- notify-creator-of-delivery-change!
+  "The create-side confirmation tells the creator an alert exists, and recipient-diff emails go to
+   the people added or removed — nobody tells the creator when an existing alert's delivery
+   changes. In the UI that's fine: they made the change themselves. Through this tool the recipient
+   list may be the agent's choice, so when the updated delivery reaches anyone besides the caller,
+   send the caller the added-to-an-alert notice."
+  [notification]
+  (when (channel.settings/email-configured?)
+    (let [caller-email (:email @api/*current-user*)]
+      (when (seq (disj (delivery-targets notification) caller-email))
+        (messages/send-you-were-added-card-notification-email!
+         (update notification :payload t2/hydrate :card)
+         [caller-email]
+         @api/*current-user*)))))
+
 (defn- update!
   [id {:keys [condition schedule active] :as args}]
   (when (contains? args :card_id)
@@ -304,13 +328,15 @@
       (common/throw-teaching-error
        (str "This alert delivers over more than one channel, and alert_write writes a single one — "
             "editing its delivery here would silently drop the others. Edit it in Metabase instead.")))
-    (alert-response
-     (notification.api/update-notification!
-      id
-      (cond-> (assoc existing :payload payload)
-        (some? active) (assoc :active (boolean active))
-        schedule       (assoc :subscriptions (cron-subscription schedule))
-        delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))]))))))
+    (let [updated (notification.api/update-notification!
+                   id
+                   (cond-> (assoc existing :payload payload)
+                     (some? active) (assoc :active (boolean active))
+                     schedule       (assoc :subscriptions (cron-subscription schedule))
+                     delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))])))]
+      (when delivery?
+        (notify-creator-of-delivery-change! updated))
+      (alert-response updated))))
 
 ;;; ----------------------------------------------------- tool -----------------------------------------------------
 

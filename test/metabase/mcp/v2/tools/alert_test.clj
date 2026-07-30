@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.registry :as registry]
@@ -434,6 +435,44 @@
             (is (= ["channel/slack"] (mapv :channel_type (:handlers updated))))
             (is (= ["#data-team"] (map :email (-> updated :handlers first :recipients))))
             (is (= 1 (t2/count :model/NotificationHandler :notification_id (:id created))))))))))
+
+(defn- captured-emails-during!
+  "Run `thunk` with the messages layer sending synchronously and the outgoing inbox mocked,
+   returning the emails it would have sent. The messages layer sends on a future by default, so
+   without the sync redef the capture window closes before the send runs."
+  [thunk]
+  (notification.tu/with-mock-inbox-email!
+    (mt/with-dynamic-fn-redefs [messages/send-email! (fn [& args]
+                                                       (apply @#'messages/send-email-sync! args))]
+      (thunk))))
+
+(deftest update-delivery-notifies-creator-test
+  (testing "an update that points delivery at anyone besides the caller emails the caller. In the
+            UI nobody tells the creator about a delivery change because they made it themselves;
+            through this tool the recipient list may be the agent's choice, and the creator is the
+            one person positioned to notice an address they never picked."
+    (notification.tu/with-channel-fixtures [:channel/email]
+      (notification.tu/with-card-notification
+        [notification {:card         {}
+                       :notification {:creator_id (mt/user->id :crowberto)}
+                       :handlers     [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}]}]}]
+        (let [update! (fn [args]
+                        (captured-emails-during!
+                         #(tool-result (call-tool! :crowberto nil
+                                                   (wire (merge {:method "update" :id (:id notification)}
+                                                                args))))))
+              notice? (fn [emails]
+                        (boolean (some #(and (= "Crowberto Corv added you to an alert" (:subject %))
+                                             (contains? (set (:bcc %)) "crowberto@metabase.com"))
+                                       emails)))]
+          (testing "delivery kept at just the caller sends nothing"
+            (is (empty? (update! {:recipients [(mt/user->id :crowberto)]}))))
+          (testing "delivery pointed at an outside address notifies the caller"
+            (is (true? (notice? (update! {:recipients ["someone@example.com"]})))))
+          (testing "a non-delivery update sends the caller no notice"
+            (is (false? (notice? (update! {:active false}))))))))))
 
 (deftest active-round-trip-test
   (testing "GHY-4155: alerts pause and resume through `active` — there is no archived flag for them"
