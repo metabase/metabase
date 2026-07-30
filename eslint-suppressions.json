@@ -1,0 +1,387 @@
+{
+  "frontend/src/metabase/api/analytics.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/api.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/automagic-dashboards.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/client/client.unit.spec.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/database.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/dataset.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/field.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/geojson.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/metabot.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/query-endpoints.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/session.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/subscription.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/table.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/utils/hydrate-metadata-store.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/api/utils/settings.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/api/utils/use-token-refresh.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/common/components/upsells/StoragePurchaseModal/StorageSetupErrorView.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/detail-view/components/DetailViewPage/DetailViewPage.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/detail-view/components/DetailViewSidesheet/utils.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/hooks/use-icon.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/hooks/use-icon.unit.spec.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/metabot/components/Metabot.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/metadata/components/EntityTypeInput.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/metadata/components/PreviewSection/ObjectDetailPreview.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/nav/components/AppBar/AppBarLarge.tsx": {
+    "boundaries/element-types": {
+      "count": 4
+    }
+  },
+  "frontend/src/metabase/nav/components/AppBar/AppBarSmall.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/notifications/pulse/actions.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/plugins/oss/audit.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/plugins/oss/collections.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/plugins/oss/content-translation.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/plugins/oss/content-verification.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/plugins/oss/library.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/plugins/oss/permissions.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/plugins/oss/upload-management.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRoot.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/components/QueryVisualization/VisualizationError/VisualizationError.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/querying/components/SyncedParametersList.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx": {
+    "boundaries/element-types": {
+      "count": 3
+    }
+  },
+  "frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TagEditorParam.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/notebook/components/NotebookDataPicker/NotebookDataPicker.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/redux/app.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/redux/auth.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/redux/downloads.ts": {
+    "boundaries/element-types": {
+      "count": 4
+    }
+  },
+  "frontend/src/metabase/redux/settings-cache.unit.spec.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/redux/store/modal.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/redux/store/qb.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/redux/tables.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/redux/tables.unit.spec.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/schema.js": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/selectors/data.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/store.js": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/styled-components/selectors.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/transforms/hooks/use-register-transform-metabot-context.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/transforms/hooks/use-source-state.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.unit.spec.tsx": {
+    "boundaries/element-types": {
+      "count": 3
+    }
+  },
+  "frontend/src/metabase/urls/metabot.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/urls/metrics.ts": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/visualizations/click-actions/Mode/Mode.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/visualizations/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/click-actions/lib/dashboard-click-drill.js": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/click-actions/lib/question-url.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/components/ObjectDetail/DeleteObjectModal.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailPanel.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/components/Visualization/Visualization.tsx": {
+    "boundaries/element-types": {
+      "count": 2
+    }
+  },
+  "frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/ChartSettingTableColumns.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  },
+  "frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx": {
+    "boundaries/element-types": {
+      "count": 1
+    }
+  }
+}

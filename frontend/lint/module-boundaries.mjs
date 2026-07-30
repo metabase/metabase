@@ -1,3 +1,5 @@
+import { sharedRules } from "./shared-tiers.mjs";
+
 const createElement = ({
   type,
   name,
@@ -69,6 +71,29 @@ const elements = [
   createElement({ type: "feature", name: "browse" }),
   createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
+  // Modules carved out of shared/common by config only — the folders still
+  // live under common/ and will be git-mv'ed once their graph stabilizes.
+  // They must precede shared/common: the first matching element wins, and
+  // their patterns are subsets of common's.
+  ...[
+    "frontend/src/metabase/common/metrics/**",
+    "frontend/src/metabase/common/metrics-viewer/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "metrics-ui", pattern }),
+  ),
+  createElement({
+    type: "shared",
+    name: "upsells",
+    pattern: "frontend/src/metabase/common/components/upsells/**",
+  }),
+  ...[
+    "frontend/src/metabase/common/search/**",
+    "frontend/src/metabase/common/components/SearchResult/**",
+    "frontend/src/metabase/common/components/SearchResultLink/**",
+    "frontend/src/metabase/common/components/InfoText/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "search-ui", pattern }),
+  ),
   createElement({ type: "shared", name: "common" }),
   createElement({
     type: "shared",
@@ -406,6 +431,8 @@ const rules = [
     from: ["feature/admin"],
     allow: ["feature/admin-theme-preview"],
   },
+  // Intra-shared rules, see shared-tiers.mjs.
+  ...sharedRules,
 ];
 
 /**
