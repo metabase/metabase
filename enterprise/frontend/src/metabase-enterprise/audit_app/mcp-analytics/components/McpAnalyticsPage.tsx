@@ -129,7 +129,7 @@ export function McpAnalyticsPage() {
           .otherwise(() => (
             <Tabs
               value={tab}
-              onChange={(val) => val && patchUrlState({ tab: val })}
+              onChange={(value) => patchUrlState({ tab: value ?? undefined })}
               keepMounted={false}
             >
               <Tabs.List mb="lg">

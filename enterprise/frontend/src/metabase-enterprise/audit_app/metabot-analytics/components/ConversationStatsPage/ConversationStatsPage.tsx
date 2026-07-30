@@ -296,7 +296,7 @@ export function ConversationStatsPage() {
         <Tabs
           variant="pills"
           value={metric}
-          onChange={(val) => val && patchUrlState({ metric: val })}
+          onChange={(value) => patchUrlState({ metric: value ?? undefined })}
         >
           <Tabs.List className={S.metricTabs}>
             <Tabs.Tab
