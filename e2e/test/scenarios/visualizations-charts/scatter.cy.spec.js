@@ -199,6 +199,7 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
+    stabilizeScatterChart();
     H.cartesianChartCircle().first().realHover();
     H.assertEChartsTooltip({
       header: "15.69",
@@ -223,6 +224,7 @@ select 10 as size, 2 as x, 5 as y`,
       });
     });
 
+    stabilizeScatterChart();
     H.cartesianChartCircle().first().realHover();
 
     H.assertEChartsTooltipNotContain(columnsToRemove);
@@ -233,13 +235,19 @@ select 10 as size, 2 as x, 5 as y`,
   });
 });
 
-function triggerPopoverForBubble(index = 13, force = false) {
-  // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
-  // See: https://github.com/metabase/metabase/pull/15235
+// Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component.
+// Switching to the tabular view and back forces the scatter chart to re-render against an
+// already-measured container, so its bubbles stop shifting under a hover before the tooltip fires.
+// See: https://github.com/metabase/metabase/pull/15235
+function stabilizeScatterChart() {
   cy.findByTestId("view-footer").within(() => {
     cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
+}
+
+function triggerPopoverForBubble(index = 13, force = false) {
+  stabilizeScatterChart();
 
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.cartesianChartCircle()
