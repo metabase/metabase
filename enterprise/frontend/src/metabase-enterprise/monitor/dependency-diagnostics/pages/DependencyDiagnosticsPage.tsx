@@ -18,13 +18,11 @@ import {
   parseUserParams,
 } from "./utils";
 
-type DependencyDiagnosticsPageOwnProps = {
+type DependencyDiagnosticsPageProps = {
   mode: DependencyDiagnosticsMode;
 };
 
-function DependencyDiagnosticsPage({
-  mode,
-}: DependencyDiagnosticsPageOwnProps) {
+function DependencyDiagnosticsPage({ mode }: DependencyDiagnosticsPageProps) {
   const { location } = useRouter();
   const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
