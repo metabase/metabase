@@ -196,8 +196,31 @@ const sharedSubtiers = [
 ];
 const SHARED_FALLBACK_SUBTIER = sharedSubtiers[sharedSubtiers.length - 1].id;
 
+/**
+ * Same row-splitting for the feature tier, which has grown too wide for one
+ * row. Big product surfaces on top, smaller pages below (closest to shared).
+ * Any feature module not listed falls into the last sub-tier.
+ */
+const featureSubtiers = [
+  {
+    id: "feature_core",
+    modules: [
+      "dashboard", "query_builder", "admin", "admin-theme-preview",
+      "collections", "data-studio", "documents", "models", "public", "reference",
+    ],
+  },
+  {
+    id: "feature_pages",
+    modules: [
+      "home", "account", "auth", "browse", "data-app-sandbox",
+      "metrics", "metrics-viewer", "search", "setup",
+    ],
+  },
+];
+const FEATURE_FALLBACK_SUBTIER = featureSubtiers[featureSubtiers.length - 1].id;
+
 const moduleToSubtier = {};
-for (const st of sharedSubtiers) {
+for (const st of [...sharedSubtiers, ...featureSubtiers]) {
   for (const m of st.modules) {
     moduleToSubtier[m] = st.id;
   }
@@ -208,6 +231,9 @@ function tierForElement(el) {
   const baseTier = getTier(el.type);
   if (baseTier === "shared") {
     return moduleToSubtier[moduleNameForElement(el)] ?? SHARED_FALLBACK_SUBTIER;
+  }
+  if (baseTier === "feature") {
+    return moduleToSubtier[moduleNameForElement(el)] ?? FEATURE_FALLBACK_SUBTIER;
   }
   return baseTier;
 }
@@ -224,7 +250,11 @@ if (featureIdx >= 0) {
   tierOrder.splice(featureIdx, 0, "meta_feature");
 }
 
-// Expand "shared" into its sub-tiers
+// Expand "feature" and "shared" into their sub-tiers
+const featureSplitIdx = tierOrder.indexOf("feature");
+if (featureSplitIdx >= 0) {
+  tierOrder.splice(featureSplitIdx, 1, ...featureSubtiers.map((s) => s.id));
+}
 const sharedIdx = tierOrder.indexOf("shared");
 if (sharedIdx >= 0) {
   tierOrder.splice(sharedIdx, 1, ...sharedSubtiers.map((s) => s.id));
@@ -241,6 +271,7 @@ for (const el of graphElements) {
     tiers[tier] = {
       label:
         tier === "meta_feature" ? "feature"
+        : tier.startsWith("feature") ? "feature"
         : tier.startsWith("shared") ? "shared"
         : tier,
       color: tierColors[baseTier] || "#ffffff",
@@ -279,7 +310,8 @@ const spines = [
   [
     "misc",            // app
     "enterprise",      // meta_feature
-    "dashboard",       // feature
+    "dashboard",       // feature_core
+    "home",            // feature_pages
     "embedding",       // shared_embedding
     "metabot",         // shared_apps
     "common",          // shared_domain
