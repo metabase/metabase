@@ -1,7 +1,5 @@
 (ns metabase-enterprise.transforms-verification.api
-  "Chained test-run endpoints: `/api/ee/transform-test/:target-type/:id/…`, where
-  `target-type` is `transform` or `card`. The multipart contract, response shape,
-  and error→HTTP-status mapping are the same for both target types."
+  "Chained test-run endpoints."
   (:require
    [metabase-enterprise.transforms-verification.api.util :as api-util]
    [metabase-enterprise.transforms-verification.chain :as chain]
