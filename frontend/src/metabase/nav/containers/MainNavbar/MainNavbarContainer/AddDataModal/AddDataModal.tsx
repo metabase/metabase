@@ -14,7 +14,7 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataState } from "./use-add-data-state";
-import { type AddDataTab, isValidTab } from "./utils";
+import type { AddDataTab } from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
@@ -88,8 +88,8 @@ const AddDataModalContent = ({
     return result;
   }, [isHosted]);
 
-  const handleTabChange = (tabValue: string | null) => {
-    if (tabValue === activeTab || !isValidTab(tabValue)) {
+  const handleTabChange = (tabValue: AddDataTab | null) => {
+    if (tabValue === null || tabValue === activeTab) {
       return;
     }
 

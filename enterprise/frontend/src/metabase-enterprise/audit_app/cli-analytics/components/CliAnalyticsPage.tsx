@@ -18,7 +18,6 @@ import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_AGENT_API_CALLS, VIEW_GROUP_MEMBERS } from "../constants";
 import { useCliHasData } from "../hooks/useCliHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { CliTab } from "../url-state";
 import { cliUrlStateConfig } from "../url-state";
 
 import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
@@ -124,8 +123,7 @@ export function CliAnalyticsPage() {
           .otherwise(() => (
             <Tabs
               value={tab}
-              // tab/val _is_ a CliTab, but Mantine's Tab only deals with strings ¯\_(ツ)_/¯
-              onChange={(val) => patchUrlState({ tab: val as CliTab })}
+              onChange={(value) => patchUrlState({ tab: value ?? undefined })}
               keepMounted={false}
             >
               <Tabs.List mb="lg">
