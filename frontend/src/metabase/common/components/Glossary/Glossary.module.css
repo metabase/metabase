@@ -54,6 +54,10 @@
   visibility: hidden;
 }
 
+.emptyState {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
 .input {
   border: none;
   padding-inline: 0 !important;
