@@ -164,5 +164,5 @@
           (track-event-impl! tracker event)
           true)
         (catch Throwable e
-          (log/errorf e "Error sending Snowplow analytics event for schema %s" schema)
+          (log/errorf "Error sending Snowplow analytics event for schema %s: %s" schema (ex-message e))
           false))))))

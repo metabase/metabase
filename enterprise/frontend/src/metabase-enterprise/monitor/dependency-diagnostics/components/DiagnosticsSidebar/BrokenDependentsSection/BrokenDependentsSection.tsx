@@ -1,8 +1,9 @@
 import { useState } from "react";
 
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { Badge, Group, Loader, Stack, Title } from "metabase/ui";
-import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
+import { useLazyListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import { DependencyList } from "metabase-enterprise/dependencies/components/DependencyList";
 import { FilterOptionsPicker } from "metabase-enterprise/dependencies/components/FilterOptionsPicker";
 import { SortOptionsPicker } from "metabase-enterprise/dependencies/components/SortOptionsPicker";
@@ -48,7 +49,8 @@ export function BrokenDependentsSection({
     getDefaultFilterOptions(),
   );
 
-  const { data: dependents = [], isFetching } = useListBrokenGraphNodesQuery(
+  const { data: dependents = [], isFetching } = useAbortableQuery(
+    useLazyListBrokenGraphNodesQuery,
     getListRequest(node, filterOptions, sortOptions),
     {
       skip: count === 0,

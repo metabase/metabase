@@ -41,12 +41,12 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Making a question or dashboard embeddable
 
-![Sharing button to embed dashboard](./images/sharing-embed.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 To create a static embed:
 
 1. Go to the question or dashboard that you want to embed in your website.
-2. Click on the **sharing icon**.
+2. Click the **Share** icon.
 3. Select **Embed**.
 4. Select **Static embedding**.
 5. Optional: [customize the appearance of the embed](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed)
@@ -63,7 +63,7 @@ metabase_site_url/embed/question/your_jwt_token?parameter_name=value
 
 Once you've made a question or dashboard [embeddable](#making-a-question-or-dashboard-embeddable), you'll need to put the embedding URL for that question or dashboard on your website:
 
-1. Go to the question or dashboard > **sharing icon** > **Embed**.
+1. Go to the question or dashboard > **Share** icon > **Embed**.
 2. Make any changes and copy the code.
 3. [Preview the code](#previewing-the-code-for-an-embed)
 4. Add the code to the server code that builds your website.
@@ -73,7 +73,7 @@ For more examples, see our [reference apps repo](https://github.com/metabase/emb
 
 ## Previewing the code for an embed
 
-1. Go to the question or dashboard > **sharing icon** > **Embed this item in an application**.
+1. Go to the question or dashboard > **Share** icon > **Embed**.
 2. Click **Code**.
 3. In the top code block, you'll find the sample code for your web server. You'll also find the iframe snippet to plug into your HTML template or single page app.
 
@@ -124,7 +124,7 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 You can find a list of all static embeds of questions and dashboards from **Admin settings** > **Embedding** > **Static**.
 
 1. Visit the embeddable question or dashboard.
-2. Click on the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **Share** icon (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Static embedding**
 5. Click **Unpublish**.

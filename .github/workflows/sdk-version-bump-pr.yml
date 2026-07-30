@@ -1,0 +1,180 @@
+# Step 1 of the SDK release process: bump the version (and the sdkRelease
+# metadata that controls the npm dist-tag / `latest` promotion) in
+# package.template.json, then open a PR labeled `sdk-release-trigger`.
+# Merging that PR is what actually triggers a release, via the
+# `pull_request` trigger on release-embedding-sdk.yml.
+name: SDK Version Bump PR
+run-name: Bump Embedding SDK version (${{ inputs.release_type }}) on ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      read_first:
+        description: "Bumps the version on the branch chosen in 'Use workflow from' above."
+        type: choice
+        required: false
+        options:
+          - Pick the branch in "Use workflow from" above
+      release_type:
+        description: |
+          Before gold:
+          • beta — release branch: publish a beta
+
+          At gold:
+          • patch — release branch: graduate the beta to 0.N.0
+          • preminor — master: move master to the next major
+
+          After gold:
+          • patch — release branch: ship a patch (0.N.1, 0.N.2, ...)
+
+          Any time:
+          • alpha — master: bump the development version
+          • custom — one-off branch (esbuild, data-apps): publish under its own prerelease id
+        type: choice
+        required: true
+        options:
+          - alpha
+          - beta
+          - preminor
+          - patch
+          - custom
+      prerelease_id:
+        description: "release_type=custom only, and only on the FIRST cut of a one-off branch (e.g. data-apps). Becomes the prerelease id in the version (0.62.5-data-apps.0) and the npm dist-tag (62-data-apps). Leave empty on later bumps - the id is reused from the current version."
+        type: string
+        required: false
+
+concurrency:
+  # one version-bump in flight per branch at a time, to avoid racing PRs
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  bump-version:
+    name: Bump SDK version and open review PR
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      package_template: enterprise/frontend/src/embedding-sdk-package/package.template.json
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Setup git user
+        run: |
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Compute version and sdkRelease metadata
+        id: metadata
+        uses: actions/github-script@v9
+        # Pass inputs via env, not inlined `${{ }}` in the script: github-script
+        # interpolates expressions into the JS source before running it, so a
+        # free-form input like prerelease_id could inject code. env values are
+        # read at runtime and can't escape into the code.
+        env:
+          BRANCH: ${{ github.ref_name }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          PRERELEASE_ID: ${{ inputs.prerelease_id }}
+          LATEST_MAJOR_VERSION: ${{ vars.LATEST_MAJOR_VERSION }}
+          PACKAGE_TEMPLATE: ${{ env.package_template }}
+        with:
+          script: | # js
+            const { applySdkVersionBump } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            let result;
+            try {
+              result = applySdkVersionBump({
+                packageTemplatePath: process.env.PACKAGE_TEMPLATE,
+                branch: process.env.BRANCH,
+                releaseType: process.env.RELEASE_TYPE,
+                prereleaseId: process.env.PRERELEASE_ID,
+                latestMajorVersion: process.env.LATEST_MAJOR_VERSION,
+              });
+            } catch (error) {
+              core.setFailed(error.message);
+              return;
+            }
+
+            core.setOutput("previous_version", result.previousVersion);
+            core.setOutput("new_version", result.newVersion);
+            core.setOutput("major_version", result.majorVersion);
+            core.setOutput("dist_tag", result.distTag);
+            core.setOutput("tag_as_latest", String(result.tagAsLatest));
+
+      - name: Append workflow summary
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
+          **SDK version bump:**
+
+          - \`branch\`: $BRANCH
+          - \`release_type\`: ${{ inputs.release_type }}
+          - \`previous_version\`: ${{ steps.metadata.outputs.previous_version }}
+          - \`new_version\`: ${{ steps.metadata.outputs.new_version }}
+          - \`distTag\` (default, review before merging): ${{ steps.metadata.outputs.dist_tag }}
+          - \`tagAsLatest\` (auto-computed from \`vars.LATEST_MAJOR_VERSION\`, review before merging): ${{ steps.metadata.outputs.tag_as_latest }}
+
+          triggered by: @${{ github.event.sender.login }}
+          EOF
+
+      - name: Commit version bump
+        env:
+          BUMP_BRANCH: sdk-version-bump-${{ steps.metadata.outputs.new_version }}
+        run: |
+          # A leftover branch means an earlier bump to this same version was
+          # abandoned. Say so, rather than pushing a near-duplicate alongside it.
+          if git ls-remote --exit-code --heads origin "$BUMP_BRANCH" >/dev/null 2>&1; then
+            echo "::error::'$BUMP_BRANCH' already exists on origin - an earlier bump to this version was never merged. Close its PR, delete the branch, then re-run."
+            exit 1
+          fi
+
+          git checkout -b "$BUMP_BRANCH"
+          git add "$package_template"
+          git commit -m "chore(sdk): bump SDK version to ${{ steps.metadata.outputs.new_version }} (${{ inputs.release_type }})"
+          git push origin HEAD
+
+      - name: Open version-bump PR (using GitHub Metabase Automation account)
+        id: open-pr
+        env:
+          BRANCH: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          # TODO (EMB-2095) auto-approve and auto-merge this PR once the computed
+          # version/distTag/tagAsLatest have proven out over a few real releases.
+          # Nothing gates on review today - merging is only manual as a seatbelt.
+          #
+          # --reviewer tags the team so a release is visible, not because anything
+          # waits on a review. It needs the automation PAT: GITHUB_TOKEN cannot
+          # resolve an org team.
+          gh pr create --base "$BRANCH" \
+                       --assignee "${GITHUB_ACTOR}" \
+                       --reviewer metabase/embedding \
+                       --label sdk-release-trigger \
+                       --title "chore(sdk): bump SDK version on $BRANCH to ${{ steps.metadata.outputs.new_version }}" \
+                       --body "$(cat <<'BODY'
+          Bumps the Embedding SDK version in `package.template.json` and updates its `sdkRelease` metadata.
+
+          | | |
+          |---|---|
+          | Branch | `${{ github.ref_name }}` |
+          | Release type | `${{ inputs.release_type }}` |
+          | Version | `${{ steps.metadata.outputs.previous_version }}` → `${{ steps.metadata.outputs.new_version }}` |
+          | npm dist-tag | `${{ steps.metadata.outputs.dist_tag }}` |
+          | Tag as `latest` | `${{ steps.metadata.outputs.tag_as_latest }}` |
+
+          `distTag` and `tagAsLatest` are computed from the branch and release type. `tagAsLatest` is `true` only when patching the current gold major (`vars.LATEST_MAJOR_VERSION`).
+
+          Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
+
+          _Opened by the [SDK Version Bump PR workflow](../actions/workflows/sdk-version-bump-pr.yml), triggered by @${{ github.event.sender.login }}._
+          BODY
+          )"

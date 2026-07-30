@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.openai :as openai]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -335,6 +337,39 @@
   :export?    false
   :getter     #(llm-provider-configured? (llm-metabot-provider))
   :doc        false)
+
+(defn- llm-provider-streams-reasoning?
+  "Whether a provider-and-model string names a model that streams its reasoning back to us."
+  [provider-and-model]
+  (let [model (provider-util/provider-and-model->model provider-and-model)]
+    (case (provider-util/provider-and-model->provider provider-and-model)
+      "anthropic" (claude/reasoning-model? model)
+      "openai"    (openai/reasoning-model? model)
+      false)))
+
+(defsetting llm-metabot-supports-reasoning?
+  "Whether the selected Metabot model streams its reasoning."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
+  :doc        false)
+
+(def ^:private metabot-llm-setting-keys
+  #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})
+
+(defn llm-configuration-setting?
+  "True when changing `setting-key` could change whether Metabot can reach an LLM — i.e. it
+  feeds [[llm-metabot-configured?]] or one of the Metabot enable settings.
+
+  Matches all of [[metabase.llm.settings]] rather than a hand-listed key set: being broad
+  costs a redundant re-check, while missing a key silently strands callers that wake on it."
+  [setting-key]
+  (boolean
+   (or (contains? metabot-llm-setting-keys setting-key)
+       (= 'metabase.llm.settings
+          (:namespace (get @setting/registered-settings setting-key))))))
 
 ;;; ------------------------------------------------- AI Data Retention ------------------------------------------------
 

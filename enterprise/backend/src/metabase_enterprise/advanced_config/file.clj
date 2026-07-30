@@ -96,12 +96,12 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
-   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -119,9 +119,7 @@
   ;; for `users:` section code
   metabase-enterprise.advanced-config.file.users/keep-me
   ;; for `api-keys:` section code
-  metabase-enterprise.advanced-config.file.api-keys/keep-me
-  ;; for `workspace:` section code
-  advanced-config.file.workspace/keep-me)
+  metabase-enterprise.advanced-config.file.api-keys/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -158,23 +156,24 @@
   env/env)
 
 (defn- path
-  "Path for the YAML config file Metabase should use for initialization and Settings values.
-
-  A blank `MB_CONFIG_FILE_PATH` counts as unset, consistent with [[metabase.config.core/config-str]]. (On JDK 25+ an
-  empty path \"exists\" — it resolves to the current directory — so without this we would try to parse the current
-  directory as YAML and fail to boot.)"
+  "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [env-path (get *env* :mb-config-file-path)
-        path*    (or (when-not (str/blank? env-path)
-                       (u.files/get-path env-path))
-                     (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
-    (if (u.files/exists? path*)
-      (log/info (u/format-color :magenta
-                                "Found config file at path %s; Metabase will be initialized with values from this file"
-                                (pr-str (str path*)))
-                (u/emoji "🗄️"))
-      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
-    path*))
+  (let [configured-path     (get *env* :mb-config-file-path)
+        default-config-yml  (u.files/get-path (System/getProperty "user.dir") "config.yml")
+        default-config-yaml (u.files/get-path (System/getProperty "user.dir") "config.yaml")
+        paths-to-try       (if-not (str/blank? configured-path)
+                             [(u.files/get-path configured-path)]
+                             [default-config-yml
+                              default-config-yaml])]
+    (if-let [path* (m/find-first u.files/exists? paths-to-try)]
+      (u/prog1 path*
+        (log/info (u/format-color :magenta
+                                  "Found config file at path %s; Metabase will be initialized with values from this file"
+                                  (pr-str (str path*)))
+                  (u/emoji "🗄️")))
+      (log/info (u/format-color :yellow "No config file found at path %s" (str/join " or "
+                                                                                    (map #(pr-str (str %))
+                                                                                         paths-to-try)))))))
 
 (defmulti ^:private expand-parsed-template-form
   {:arglists '([form])}
@@ -239,7 +238,8 @@
 (defn- config-from-disk
   "Read the config file from disk."
   []
-  (yaml/from-file (str (path))))
+  (when-let [yaml-path (path)]
+    (yaml/from-file (str yaml-path))))
 
 (defn- config
   "Spec-validate `parsed-config` and (optionally) expand `{{env VAR}}` templates.
@@ -284,8 +284,6 @@
          (when-not (premium-features/enable-config-text-file?)
            (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                            {}))))
-       (when (= section-name :workspace)
-         (premium-features/assert-has-feature :workspaces (tru "Workspaces")))
        (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
        (advanced-config.file.i/initialize-section! section-name section-config))
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))

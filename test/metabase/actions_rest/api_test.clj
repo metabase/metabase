@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -678,7 +677,7 @@
                                              :visualization_settings {:fields {"name" {:id     "name"
                                                                                        :hidden true}}}}]
         (testing "Hidden parameter should fail gracefully"
-          (testing "GET /api/action/:id/execute"
+          (testing "POST /api/action/:id/execute"
             (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
                           (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
                                                 {:parameters {:name "Darth Vader"}})))))))))
@@ -690,8 +689,8 @@
         (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query users)}
                           {action-id :action-id} {:type :implicit :kind "row/update"}]
           (testing "a prefetched temporal value round-trips unchanged through an update execution (#32840)"
-            (let [fetch!      #(mt/user-http-request :crowberto :get 200 (format "action/%d/execute" action-id)
-                                                     :parameters (json/encode {:id 1}))
+            (let [fetch!      #(mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" action-id)
+                                                     {:parameters {"id" 1}})
                   {:keys [last_login] :as fetched} (fetch!)
                   local-value (.format ^java.time.OffsetDateTime last_login
                                        (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss"))]
@@ -711,26 +710,26 @@
                         {query-action-id :action-id}  {:type :query}]
         (testing "403 if user does not have permission to view the action"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :rasta :post 403 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "404 if id does not exist"
           (is (= "Not found."
-                 (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :rasta :post 404 (format "action/%d/execute/values" Integer/MAX_VALUE) {:parameters {"id" 1}}))))
         (testing "returns empty map for query actions (not implicit)"
           (is (= {}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" query-action-id) {:parameters {"id" 1}}))))
         (testing "Can't fetch for create action"
           (is (= "Values can only be fetched for actions that require a Primary Key."
-                 (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" create-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for update action return name and id"
           (is (= {:id 1 :name "Red Medicine"}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
-                   (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+                   (:message (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))))))))
 
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]

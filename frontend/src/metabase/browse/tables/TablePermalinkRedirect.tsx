@@ -5,7 +5,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { replace, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DatabaseId, Table } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
@@ -23,11 +23,13 @@ const findTable = (
       (table.schema || null) === (schemaName || null),
   );
 
-export const TablePermalinkRedirect = ({
-  params: { dbName, schemaName, tableName },
-}: {
-  params: { dbName: string; schemaName?: string; tableName: string };
-}) => {
+export const TablePermalinkRedirect = () => {
+  const {
+    dbName = "",
+    schemaName,
+    tableName = "",
+  } = useParams<{ dbName: string; schemaName: string; tableName: string }>();
+
   const dispatch = useDispatch();
   const {
     data: databasesData,

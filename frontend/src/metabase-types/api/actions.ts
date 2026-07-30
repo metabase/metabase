@@ -6,9 +6,9 @@ import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
-export interface ListActionsRequest {
+export type ListActionsRequest = {
   "model-id"?: CardId;
-}
+};
 
 export interface CreateActionRequest {
   database_id?: DatabaseId;
@@ -230,6 +230,12 @@ export interface ExecuteDashcardActionRequest {
 }
 
 export interface PrefetchDashcardValuesRequest {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  parameters: ParametersForActionExecution;
+}
+
+export interface PrefetchPublicDashcardValuesRequest {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
   parameters: ParametersForActionExecution;

@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { RouterLink } from "metabase/router/react-router";
+import { RouterLink } from "metabase/router/router-link";
 import { Tooltip } from "metabase/ui";
 
 import S from "./Link.module.css";

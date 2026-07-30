@@ -15,7 +15,6 @@
   (or (mr/registered-schema topic)
       :map))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- with-hydrate
   "Given a malli entry schema of a map, return a new entry schema with an additional option
   to hydrate information when sending system event notifications.

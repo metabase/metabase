@@ -126,20 +126,13 @@ export const LicenseAndBillingSettings = () => {
   return (
     <SettingsPageWrapper title={t`License`}>
       <SettingsSection>
-        <Stack
-          data-testid="license-and-billing-content"
-          maw="36rem"
-          px="lg"
-          gap="lg"
-        >
-          <Box>
-            <BillingInfo
-              isStoreManagedBilling={isStoreManagedBilling}
-              hasToken={hasToken}
-              billingInfo={billingInfo}
-              error={!!billingError}
-            />
-          </Box>
+        <Stack data-testid="license-and-billing-content" gap="xl" maw="40rem">
+          <BillingInfo
+            isStoreManagedBilling={isStoreManagedBilling}
+            hasToken={hasToken}
+            billingInfo={billingInfo}
+            error={!!billingError}
+          />
 
           {shouldShowLicenseInput && (
             <Box>
@@ -176,7 +169,7 @@ function UpsellSection() {
   );
 
   return (
-    <Box mt="xl">
+    <Box>
       <SettingHeader
         id="upsell"
         title={t`Looking for more?`}
@@ -186,7 +179,7 @@ function UpsellSection() {
           </ExternalLink>
         )}`}
       />
-      <Flex mt="md" justify="flex-end">
+      <Flex mt="lg" justify="center">
         <ExplorePlansIllustration />
       </Flex>
       <Divider />

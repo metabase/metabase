@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.queries.metadata :as queries.metadata]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
@@ -13,6 +14,15 @@
   (mu/disable-enforcement
     (is (= {:databases [], :fields [], :snippets [], :tables []}
            (queries.metadata/batch-fetch-card-metadata [{}])))))
+
+(deftest ^:parallel batch-fetch-query-metadata-skips-unnormalizable-queries-test
+  (testing "A query that can't be normalized should be skipped (metabase#78037)"
+    (let [unnormalizable {:type   :native
+                          :native {:query "SELECT 1"}}]
+      (testing "sanity check: this query is degraded to {} by normalize-query"
+        (is (= {} (lib-be/normalize-query unnormalizable))))
+      (is (= {:databases [], :fields [], :snippets [], :tables []}
+             (queries.metadata/batch-fetch-query-metadata [unnormalizable]))))))
 
 (deftest only-models-trust-fk-semantic-types-test
   (testing "FK semantic types set by user should be preserved for models but stripped for questions"

@@ -39,6 +39,13 @@
     "transforms_codegen"
     "document-generate-content"})
 
+(defenterprise valid-usage-profile-id
+  "Return `profile-id` when it can be persisted to `ai_usage_log`, otherwise nil."
+  :feature :none
+  [profile-id]
+  (when (contains? known-profile-ids (some-> profile-id name))
+    profile-id))
+
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."
   :feature :none
@@ -71,7 +78,7 @@
                      :request_id             request-id
                      :ai_proxied             ai-proxied}))
       (catch Exception e
-        (log/warn e "Failed to log LLM usage to ai_usage_log")))))
+        (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 
 (defn- period-start
   "Return the start of the current billing period as an Instant, based on the reset rate setting."

@@ -1631,7 +1631,6 @@
         (migrate!)
         (is (= users-before (get-users)))))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:mb/old-migrations-test data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"
     (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-19T21:32:04"] [migrate!]
@@ -2791,68 +2790,6 @@
         (is (= [{:first_name "SAML" :provider "saml"}
                 {:first_name "JWT" :provider "jwt"}]
                results))))))
-
-(deftest workspace-input-normalization-migration-test
-  (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
-            Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
-    (impl/test-migrations ["v60.2026-02-09T12:00:00" "v60.2026-02-09T12:00:14"] [migrate!]
-      ;; Create workspace
-      (let [ws-id (first (t2/insert-returning-pks! :workspace
-                                                   {:name           "Test Workspace"
-                                                    :creator_id     1
-                                                    :api_key_id     1
-                                                    :execution_user 1
-                                                    :database_id    1
-                                                    :db_status      "ready"
-                                                    :base_status    "active"
-                                                    :graph_version  1
-                                                    :created_at     :%now
-                                                    :updated_at     :%now}))]
-        ;; Insert workspace_input rows with OLD schema (includes ref_id and transform_version).
-        (t2/insert-returning-pks! :workspace_input
-                                  {:workspace_id      ws-id
-                                   :db_id             1
-                                   :schema            "public"
-                                   :table             "orders"
-                                   :ref_id            (str (random-uuid))
-                                   :access_granted    true
-                                   :transform_version 1
-                                   :created_at        :%now
-                                   :updated_at        :%now})
-        (migrate!)
-        ;; 1. Old workspace_input data is dropped (table recreated with new schema)
-        (testing "workspace_input table is empty after drop/recreate"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input]})))))
-        ;; 2. ref_id and transform_version columns no longer exist
-        (testing "ref_id column removed"
-          (is (thrown? Exception
-                       (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
-        (testing "transform_version column removed"
-          (is (thrown? Exception
-                       (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
-        ;; 3. workspace_input_transform table exists
-        (testing "workspace_input_transform table created"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input_transform]})))))
-        ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
-        (testing "can insert into new schema"
-          (t2/insert-returning-pks! :workspace_input
-                                    {:workspace_id   ws-id
-                                     :db_id          1
-                                     :schema         "public"
-                                     :table          "orders"
-                                     :access_granted false
-                                     :created_at     :%now
-                                     :updated_at     :%now}))
-        (testing "unique constraint prevents duplicate table entries"
-          (is (thrown? Exception
-                       (t2/insert-returning-pks! :workspace_input
-                                                 {:workspace_id   ws-id
-                                                  :db_id          1
-                                                  :schema         "public"
-                                                  :table          "orders"
-                                                  :access_granted false
-                                                  :created_at     :%now
-                                                  :updated_at     :%now}))))))))
 
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing

@@ -8,6 +8,7 @@
   (:require
    [metabase-enterprise.action-v2.init]
    [metabase-enterprise.advanced-config.init]
+   [metabase-enterprise.agent-api.init]
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
    [metabase-enterprise.custom-viz-plugin.init]
@@ -25,9 +26,8 @@
    [metabase-enterprise.scim.init]
    [metabase-enterprise.security-center.init]
    [metabase-enterprise.semantic-search.init]
-   [metabase-enterprise.serialization.init]
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
    [metabase-enterprise.support-access-grants.init]
-   [metabase-enterprise.transforms-python.init]
-   [metabase-enterprise.workspaces.init]))
+   [metabase-enterprise.tenants.init]
+   [metabase-enterprise.transforms-python.init]))

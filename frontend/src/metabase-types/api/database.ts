@@ -10,7 +10,6 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
-  "database-enable-workspaces"?: boolean;
 };
 
 export type DatabaseFeature =
@@ -58,8 +57,7 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table"
-  | "workspace";
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -156,7 +154,7 @@ export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
 
-export interface ListDatabasesRequest {
+export type ListDatabasesRequest = {
   include?: "tables" | "schemas";
   saved?: boolean;
   include_editable_data_model?: boolean;
@@ -166,7 +164,7 @@ export interface ListDatabasesRequest {
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
   "can-write-metadata"?: boolean;
-}
+};
 
 export interface ListDatabasesResponse {
   data: Database[];

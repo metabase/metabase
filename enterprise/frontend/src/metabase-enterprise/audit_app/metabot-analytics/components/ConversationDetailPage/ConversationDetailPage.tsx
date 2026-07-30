@@ -19,7 +19,7 @@ import type {
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import type { WithRouterProps } from "metabase/router";
+import { useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -38,22 +38,24 @@ import {
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
-import { useGetMetabotConversationQuery } from "../../api";
+import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { ForkBoundary } from "./ForkBoundary";
 
-export function ConversationDetailPage({ params }: WithRouterProps) {
-  const convoId = params.convoId;
+export function ConversationDetailPage() {
+  const { convoId = "" } = useParams();
 
   const {
     data: conversation,
     isLoading,
     error,
-  } = useGetMetabotConversationQuery(convoId, {
+  } = useGetMetabotAnalyticsConversationQuery(convoId, {
     refetchOnMountOrArgChange: true,
   });
 
@@ -95,7 +97,23 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     query_count,
     queries,
     feedback,
+    fork_boundary_message_id,
+    forked_from_conversation_id,
   } = conversation;
+
+  const forkBoundaryHref = forked_from_conversation_id
+    ? EnterpriseUrls.adminMetabotUsageAuditingConversation(
+        forked_from_conversation_id,
+      )
+    : undefined;
+
+  const forkBoundaryMessage = fork_boundary_message_id
+    ? messages.findLast(
+        (message) =>
+          "externalId" in message &&
+          message.externalId === fork_boundary_message_id,
+      )
+    : undefined;
 
   return (
     <MetabotAdminLayout>
@@ -121,6 +139,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   key={item.id}
                   feedback={item}
                   chatMessages={feedbackChatMessages}
+                  conversationId={convoId}
                 />
               ))}
             </Stack>
@@ -143,6 +162,12 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               isDoingScience={false}
               debug
               readonly
+              conversationId={convoId}
+              renderAfterMessage={(message) =>
+                message === forkBoundaryMessage ? (
+                  <ForkBoundary href={forkBoundaryHref} />
+                ) : null
+              }
             />
           </Card>
         </Stack>
@@ -179,9 +204,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FeedbackCard({
   feedback,
   chatMessages,
+  conversationId,
 }: {
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
+  conversationId: string;
 }) {
   const agentResponse = feedback.external_id
     ? chatMessages.find(
@@ -222,6 +249,7 @@ function FeedbackCard({
             message={agentResponse}
             debug
             readonly
+            conversationId={conversationId}
             hideActions
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}

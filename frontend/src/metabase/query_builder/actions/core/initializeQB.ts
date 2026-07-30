@@ -1,5 +1,3 @@
-import type { LocationDescriptorObject } from "history";
-
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -22,6 +20,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase/redux/store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import type { Location } from "metabase/router";
 import { replace } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -281,7 +280,7 @@ async function handleQBInit(
     params,
     isStale,
   }: {
-    location: LocationDescriptorObject;
+    location: Location;
     params: QueryParams;
     isStale: () => boolean;
   },
@@ -508,7 +507,7 @@ async function handleQBInit(
 }
 
 export const initializeQB =
-  (location: LocationDescriptorObject, params: QueryParams) =>
+  (location: Location, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const version = ++latestInitializeQBVersion;
     const isStale = () => version !== latestInitializeQBVersion;

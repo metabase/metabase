@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -7,6 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
+import type { Location } from "metabase/router";
 import { Flex, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";

@@ -1,4 +1,4 @@
-import type { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "metabase/router";
 
 import type { PaletteActionImpl } from "./types";
 import {
@@ -264,10 +264,10 @@ describe("command palette utils", () => {
       expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
     });
 
-    it("should return the correct URL when query is provided", () => {
+    it("should return the correct URL when search is provided", () => {
       const locationDescriptor = {
         pathname: "/a/b/c",
-        query: { en: "hello", es: "hola" },
+        search: "?en=hello&es=hola",
       };
       expect(locationDescriptorToURL(locationDescriptor)).toBe(
         `/a/b/c?en=hello&es=hola`,
@@ -279,10 +279,10 @@ describe("command palette utils", () => {
       expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c#top`);
     });
 
-    it("should return the correct URL with pathname, query, and hash", () => {
+    it("should return the correct URL with pathname, search, and hash", () => {
       const locationDescriptor = {
         pathname: "/a/b/c",
-        query: { en: "hello", es: "hola" },
+        search: "?en=hello&es=hola",
         hash: "top",
       };
       expect(locationDescriptorToURL(locationDescriptor)).toBe(
@@ -293,7 +293,7 @@ describe("command palette utils", () => {
     it("should handle empty values appropriately", () => {
       const locationDescriptor: LocationDescriptor = {
         pathname: "/a/b/c",
-        query: undefined,
+        search: undefined,
         hash: undefined,
       };
       expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);

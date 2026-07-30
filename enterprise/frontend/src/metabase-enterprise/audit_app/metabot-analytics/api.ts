@@ -10,7 +10,7 @@ import type {
 
 export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listMetabotConversations: builder.query<
+    listMetabotAnalyticsConversations: builder.query<
       ConversationsResponse,
       ConversationsRequest
     >({
@@ -20,7 +20,7 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
         params,
       }),
     }),
-    getMetabotConversation: builder.query<ConversationDetail, string>({
+    getMetabotAnalyticsConversation: builder.query<ConversationDetail, string>({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/metabot-analytics/conversations/${id}`,
@@ -49,8 +49,8 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useListMetabotConversationsQuery,
-  useGetMetabotConversationQuery,
+  useListMetabotAnalyticsConversationsQuery,
+  useGetMetabotAnalyticsConversationQuery,
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
 } = metabotAnalyticsApi;

@@ -18,7 +18,7 @@ export type ConversationSummary = {
   conversation_id: string;
   created_at: string;
   user_id: number;
-  summary: string | null;
+  title: string | null;
   message_count: number;
   user_message_count: number;
   assistant_message_count: number;
@@ -33,6 +33,7 @@ export type ConversationSummary = {
   embedding_path: string | null;
   user_agent: string | null;
   sanitized_user_agent: string | null;
+  forked_from_conversation_id: string | null;
   user: MetabotUserInfo | null;
 };
 
@@ -89,7 +90,7 @@ export type ConversationFeedback = MetabotFeedback & {
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
-  summary: string | null;
+  title: string | null;
   user: MetabotUserInfo | null;
   message_count: number;
   total_tokens: number;
@@ -104,6 +105,8 @@ export type ConversationDetail = {
   embedding_path: string | null;
   user_agent: string | null;
   sanitized_user_agent: string | null;
+  forked_from_conversation_id: string | null;
+  fork_boundary_message_id: string | null;
   feedback: ConversationFeedback[];
 };
 

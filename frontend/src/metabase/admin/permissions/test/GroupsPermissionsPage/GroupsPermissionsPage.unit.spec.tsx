@@ -56,12 +56,21 @@ const setup = async ({
       path="/admin/permissions/data"
       element={<RoutedDataPermissionsPage />}
     >
-      <Route
-        path="group(/:groupId)(/database/:databaseId)(/schema/:schemaName)"
-        element={<RoutedGroupsPermissionsPage />}
-      >
-        {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
-      </Route>
+      {/*
+       * v7 cannot parse v3 optional groups, so the app spells each depth out as
+       * its own route (see GROUPS_PERMISSIONS_PATHS in permissions/routes.tsx).
+       * Mirror that here.
+       */}
+      {[
+        "group",
+        "group/:groupId",
+        "group/:groupId/database/:databaseId",
+        "group/:groupId/database/:databaseId/schema/:schemaName",
+      ].map((path) => (
+        <Route key={path} path={path} element={<RoutedGroupsPermissionsPage />}>
+          {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
+        </Route>
+      ))}
     </Route>,
     {
       withRouter: true,
@@ -92,6 +101,14 @@ describe("GroupsPermissionsPage", () => {
   });
 
   describe("rendering", () => {
+    it("should prompt to pick a group when none is selected", async () => {
+      await setup({ initialRoute: "/admin/permissions/data/group" });
+
+      expect(
+        await screen.findByText("Select a group to see its data permissions"),
+      ).toBeVisible();
+    });
+
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();
 

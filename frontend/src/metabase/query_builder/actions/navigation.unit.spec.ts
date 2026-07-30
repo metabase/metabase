@@ -2,7 +2,7 @@
 // produces the pushes. locationChanged decides between re-running initializeQB
 // and dispatching popState based on location.action plus location.state. The
 // router migration re-plumbs this read seam, so this locks the current matrix.
-import type { Location } from "history";
+import type { Location } from "metabase/router";
 
 import * as initializeQBModule from "./core/initializeQB";
 import { locationChanged } from "./navigation";

@@ -7,7 +7,9 @@
    [mage.color :as c]
    [mage.shell :as shell]))
 
-(pods/load-pod 'org.babashka/postgresql "0.1.0")
+;; 0.1.0-0.1.4 ship an x86_64 Mac build, 0.1.5+ ship arm64, and no release ships both.
+;; Pinning 0.1.6 is a deliberate choice to support Apple Silicon and drop Intel Macs.
+(pods/load-pod 'org.babashka/postgresql "0.1.6")
 (require '[pod.babashka.postgresql :as pg])
 
 (set! *warn-on-reflection* true)

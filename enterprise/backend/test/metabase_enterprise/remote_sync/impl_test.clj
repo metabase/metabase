@@ -23,7 +23,6 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
                         (test-helpers/clean-remote-sync-state f))))
@@ -1786,6 +1785,7 @@ serdes/meta:
    (reify source.p/SourceSnapshot
      (version [_] version)
      (list-files [_] [])
+     (list-dir [_ _] [])
      (read-file [_ _] nil)
      (open-commit [_]
        (reify source.p/CommitBuilder
@@ -1803,7 +1803,6 @@ serdes/meta:
   (reify source.p/Source
     (branches [_] ["main"])
     (create-branch [_ _ _] nil)
-    (delete-branch [_ _] nil)
     (default-branch [_] "main")
     (snapshot [_] (export-test-snapshot "remote-R"))
     (snapshot-at [_ v] (export-test-snapshot v))))
@@ -1888,7 +1887,6 @@ serdes/meta:
             no-resolve-source (reify source.p/Source
                                 (branches [_] ["main"])
                                 (create-branch [_ _ _] nil)
-                                (delete-branch [_ _] nil)
                                 (default-branch [_] "main")
                                 (snapshot [_] (export-test-snapshot "remote-R"))
                                 (snapshot-at [_ _] nil))]
@@ -2006,7 +2004,6 @@ serdes/meta:
     (let [no-base-source (reify source.p/Source
                            (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
-                           (delete-branch [_ _] nil)
                            (default-branch [_] "main")
                            (snapshot [_] (export-test-snapshot "remote-R"))
                            (snapshot-at [_ _] nil))]

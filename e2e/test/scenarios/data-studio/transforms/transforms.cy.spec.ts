@@ -1919,7 +1919,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getCancelButton().click();
-      H.modal().button("Yes").click();
+      H.modal().button("Cancel run").click();
 
       getRunButton().should("have.text", "Canceling…");
       getRunStatus().should("have.text", "Canceling…");
@@ -1938,6 +1938,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getRunsNavLink().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().findByText("In progress").click();
       cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
@@ -1956,7 +1957,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getCancelButton().click();
-      H.modal().button("Yes").click();
+      H.modal().button("Cancel run").click();
 
       getRunButton().should("have.text", "Canceling…");
       getRunStatus().should("have.text", "Canceling…");
@@ -2669,6 +2670,13 @@ LIMIT
         .blur();
       cy.wait("@updateTransform");
 
+      cy.log(
+        "Dismiss the success toast so it can't outlive the later error toast",
+      );
+      H.undoToast().findByText("Transform name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+      H.undoToast().should("not.exist");
+
       cy.log("Make another change");
       H.DataStudio.Transforms.header()
         .findByPlaceholderText("Name")
@@ -2676,6 +2684,13 @@ LIMIT
         .type("Another Updated Name")
         .blur();
       cy.wait("@updateTransform");
+
+      cy.log(
+        "Dismiss the success toast so it can't outlive the later error toast",
+      );
+      H.undoToast().findByText("Transform name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+      H.undoToast().should("not.exist");
 
       cy.log("Open revision history");
       H.DataStudio.Transforms.header().icon("ellipsis").click();
@@ -3110,6 +3125,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("be.visible");
 
       getRunsNavLink().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -3651,6 +3667,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
+    getDetailedViewSwitch().click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
@@ -3700,6 +3717,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
+    getDetailedViewSwitch().click();
 
     // ascending: "MBQL transform" < "SQL transform"
     testSorting({
@@ -4033,7 +4051,11 @@ function openBulkActionsMenu() {
 }
 
 function visitRunListPage() {
-  return cy.visit("/data-studio/transforms/runs");
+  return cy.visit("/data-studio/transforms/runs/individual");
+}
+
+function getDetailedViewSwitch() {
+  return cy.findByTestId("detailed-view-switch");
 }
 
 function runTransformAndWaitForSuccess() {

@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useParams } from "metabase/router";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
@@ -32,11 +33,8 @@ type JobPageParsedParams = {
   jobId?: TransformJobId;
 };
 
-type JobPageProps = {
-  params: JobPageParams;
-};
-
-export function JobPage({ params }: JobPageProps) {
+export function JobPage() {
+  const params = useParams<JobPageParams>();
   const { jobId } = getParsedParams(params);
   const [isPolling, setIsPolling] = useState(false);
   const {
@@ -149,7 +147,9 @@ function JobPageBody({
   );
 }
 
-function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
+function getParsedParams({
+  jobId,
+}: Partial<JobPageParams>): JobPageParsedParams {
   return {
     jobId: Urls.extractEntityId(jobId),
   };

@@ -18,7 +18,7 @@ import type {
 } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
-import { type Route, useRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
@@ -41,7 +41,6 @@ export const DatabaseEditConnectionForm = ({
   onSubmitted,
   onCancel,
   onEngineChange,
-  route,
   config,
   formLocation,
   ...props
@@ -53,7 +52,6 @@ export const DatabaseEditConnectionForm = ({
   onSubmitted: (savedDB: { id: DatabaseId }) => void;
   onCancel: () => void;
   onEngineChange?: (engineKey: string | undefined) => void;
-  route: Route;
   autofocusFieldName?: string;
   config?: Omit<DatabaseFormConfig, "isAdvanced">;
   formLocation: Extract<FormLocation, "admin" | "full-page">;
@@ -112,10 +110,7 @@ export const DatabaseEditConnectionForm = ({
           <Text my="md">{getDbNotModifiableMessage(database)}</Text>
         )}
       </LoadingAndErrorWrapper>
-      <LeaveRouteConfirmModal
-        isEnabled={isDirty && !isCallbackScheduled}
-        route={route}
-      />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isCallbackScheduled} />
     </ErrorBoundary>
   );
 };

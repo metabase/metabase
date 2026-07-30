@@ -78,7 +78,7 @@
 
       :else
       (do
-        (log/errorf "Don't know how to alias %s, expected an h2x/identifier" (pr-str col))
+        (log/errorf "Don't know how to alias %s, expected an h2x/identifier" (class col))
         [col col]))))
 
 (defn select-clause-deduplicate-aliases
@@ -130,20 +130,16 @@
                        (str/replace "'" "\\'")))))
 
 (defn quote-literal
-  "Escape `s` with [[escape-sql]] and wrap it in single quotes, yielding a SQL string literal.
+  "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style`.
 
-    (quote-literal \"Tito's Tacos\")              ; -> \"'Tito''s Tacos'\"
+    (quote-literal \"Tito's Tacos\" :ansi)        ; -> \"'Tito''s Tacos'\"
     (quote-literal \"Tito's Tacos\" :backslashes) ; -> \"'Tito\\'s Tacos'\"
 
-  `escape-style` defaults to `:ansi`. Same trust caveat as [[escape-sql]]: not safe for
-  sanitizing user input — pass parameters separately where supported.
-
-  nil `s` yields `\"''\"` (the empty SQL string literal), diverging from
-  [[escape-sql]]'s nil passthrough — nil is indistinguishable from an empty string."
-  (^String [^String s]
-   (quote-literal s :ansi))
-  (^String [^String s escape-style]
-   (str \' (escape-sql s escape-style) \')))
+  For trusted strings only -- pass user input as a query parameter where the driver supports it."
+  ^String [^String s escape-style]
+  (when s
+    (case escape-style
+      (:ansi :backslashes) (str \' (escape-sql s escape-style) \'))))
 
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.

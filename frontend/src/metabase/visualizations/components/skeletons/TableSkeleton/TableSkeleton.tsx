@@ -1,19 +1,76 @@
+import { useId } from "react";
+
 import { SkeletonImage } from "./TableSkeleton.styled";
 
+const COLUMN_WIDTHS = [110, 150, 96, 176, 132];
+const TILE_WIDTH = COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
+const COLUMNS = COLUMN_WIDTHS.map((width, index) => ({
+  width,
+  x: COLUMN_WIDTHS.slice(0, index).reduce((sum, w) => sum + w, 0),
+}));
+
+const ROW_HEIGHT = 27;
+const HEADER_PILL_HEIGHT = 11;
+const HEADER_PILL_RADIUS = 5.5;
+const CELL_HEIGHT = 10;
+const HEADER_PILL_PADDING = 65;
+const CELL_PADDING = 35;
+
 const TableSkeleton = (): JSX.Element => {
+  const id = useId();
+  const headerPatternId = `table-skeleton-header-${id}`;
+  const bodyPatternId = `table-skeleton-body-${id}`;
+
   return (
-    <SkeletonImage
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 369 144"
-      preserveAspectRatio="none"
-    >
-      <path fill="currentColor" d="M0 27h94v10H0z" />
-      <rect width="58" height="11" rx="5.5" fill="currentColor" />
-      <rect x="138" width="58" height="11" rx="5.5" fill="currentColor" />
-      <rect x="275" width="58" height="11" rx="5.5" fill="currentColor" />
-      <path
-        fill="currentColor"
-        d="M0 53h94v10H0zM0 80h94v10H0zM0 107h94v10H0zM0 134h94v10H0zM138 27h93v10h-93zM138 53h93v10h-93zM138 80h93v10h-93zM138 107h93v10h-93zM138 134h93v10h-93zM275 27h94v10h-94zM275 53h94v10h-94zM275 80h94v10h-94zM275 107h94v10h-94zM275 134h94v10h-94z"
+    <SkeletonImage xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern
+          id={headerPatternId}
+          width={TILE_WIDTH}
+          height={ROW_HEIGHT}
+          patternUnits="userSpaceOnUse"
+        >
+          {COLUMNS.map(({ x, width }, index) => (
+            <rect
+              key={index}
+              x={x}
+              width={width - HEADER_PILL_PADDING}
+              height={HEADER_PILL_HEIGHT}
+              rx={HEADER_PILL_RADIUS}
+              fill="currentColor"
+            />
+          ))}
+        </pattern>
+        <pattern
+          id={bodyPatternId}
+          width={TILE_WIDTH}
+          height={ROW_HEIGHT}
+          patternUnits="userSpaceOnUse"
+        >
+          {COLUMNS.map(({ x, width }, index) => (
+            <rect
+              key={index}
+              x={x}
+              width={width - CELL_PADDING}
+              height={CELL_HEIGHT}
+              fill="currentColor"
+            />
+          ))}
+        </pattern>
+      </defs>
+      <rect
+        x="0"
+        y="0"
+        width="100%"
+        height={ROW_HEIGHT}
+        fill={`url(#${headerPatternId})`}
+      />
+      <rect
+        x="0"
+        y={ROW_HEIGHT}
+        width="100%"
+        height="100%"
+        fill={`url(#${bodyPatternId})`}
       />
     </SkeletonImage>
   );

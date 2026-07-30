@@ -205,7 +205,6 @@
                                    (start-run! [_])
                                    (succeed-run! [_])
                                    (fail-run! [_ _]))]
-                #_{:clj-kondo/ignore [:unresolved-var]}
                 (replacement.runner/run-swap-source! [:card old-id] [:card new-id] progress)
                 (testing "child card's source-card is updated to new model"
                   (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)

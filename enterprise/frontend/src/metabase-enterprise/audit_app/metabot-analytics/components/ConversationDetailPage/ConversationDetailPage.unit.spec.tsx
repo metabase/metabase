@@ -1,23 +1,20 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupMetabotConversationEndpoint } from "__support__/server-mocks";
+import {
+  setupGroupsEndpoint,
+  setupMetabotConversationEndpoint,
+  setupPermissionMembershipEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { ConversationDetail, ConversationFeedback } from "../../types";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
-const RoutedConversationDetailPage = withRouteProps(ConversationDetailPage);
-
 jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
   MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-// Avoid unrelated permission and tenant requests.
-jest.mock("./ConversationHeader", () => ({
-  ConversationHeader: () => null,
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];
@@ -68,7 +65,7 @@ function createConversation(
   return {
     conversation_id: "convo-1",
     created_at: "2026-01-01T00:00:00Z",
-    summary: "A conversation",
+    title: "A conversation",
     user: null,
     message_count: 2,
     total_tokens: 30,
@@ -83,16 +80,20 @@ function createConversation(
     embedding_path: null,
     user_agent: null,
     sanitized_user_agent: null,
+    forked_from_conversation_id: null,
+    fork_boundary_message_id: null,
     feedback,
   };
 }
 
 function setup(conversation: ConversationDetail) {
   setupMetabotConversationEndpoint(conversation);
+  setupGroupsEndpoint([]);
+  setupPermissionMembershipEndpoint({});
   return renderWithProviders(
     <Route
       path="/conversations/:convoId"
-      element={<RoutedConversationDetailPage />}
+      element={<ConversationDetailPage />}
     />,
     {
       withRouter: true,
@@ -105,6 +106,100 @@ function setup(conversation: ConversationDetail) {
 }
 
 describe("ConversationDetailPage", () => {
+  it("shows the conversation title in the header", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
+      ]),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "A conversation" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks the fork boundary and links to the original conversation", async () => {
+    setupMetabotConversationEndpoint({
+      ...createConversation([]),
+      conversation_id: "convo-0",
+      title: "Original chat",
+    });
+    setup({
+      ...createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "inherited answer"),
+        userMessage("u2", "a1", "follow up"),
+        agentMessage("a2", "u2", "new answer"),
+      ]),
+      forked_from_conversation_id: "convo-0",
+      fork_boundary_message_id: "a1",
+    });
+
+    expect(await screen.findByText("inherited answer")).toBeInTheDocument();
+    const forkBoundary = screen.getByTestId("metabot-fork-boundary");
+    expect(forkBoundary).toBeInTheDocument();
+
+    const forkBoundaryLink = within(forkBoundary).getByRole("link", {
+      name: "a previous conversation",
+    });
+    expect(forkBoundaryLink).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing/conversations/convo-0",
+    );
+
+    const forkedLink = await screen.findByRole("link", {
+      name: "Forked from Original chat",
+    });
+    expect(forkedLink).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing/conversations/convo-0",
+    );
+  });
+
+  it("shows the fork boundary only on the inherited attempt of a regenerated boundary turn", async () => {
+    setupMetabotConversationEndpoint({
+      ...createConversation([]),
+      conversation_id: "convo-0",
+      title: "Original chat",
+    });
+    setup({
+      ...createConversation([
+        userMessage("u1", null, "count orders"),
+        agentMessage("a1", "u1", "inherited answer"),
+        agentMessage("a2", "u1", "regenerated answer"),
+      ]),
+      forked_from_conversation_id: "convo-0",
+      fork_boundary_message_id: "a1",
+    });
+
+    expect(await screen.findByText("regenerated answer")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-fork-boundary"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Previous version" }),
+    );
+
+    expect(screen.getByText("inherited answer")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-fork-boundary")).toBeInTheDocument();
+  });
+
+  it("does not render a fork boundary for a non-forked conversation", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
+      ]),
+    );
+
+    expect(await screen.findByText("an answer")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-fork-boundary"),
+    ).not.toBeInTheDocument();
+  });
+
   it("defaults a regenerated turn to the latest attempt and pages between attempts", async () => {
     setup(
       createConversation([
@@ -140,7 +235,7 @@ describe("ConversationDetailPage", () => {
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
 
-  it("shows an in-progress row with a reachable pager while a regeneration streams", async () => {
+  it("shows the loading state with a reachable pager while a regeneration streams", async () => {
     setup(
       createConversation([
         userMessage("u1", null, "count orders"),
@@ -150,9 +245,8 @@ describe("ConversationDetailPage", () => {
     );
 
     expect(
-      await screen.findByTestId("metabot-response-in-progress"),
+      await screen.findByTestId("metabot-response-loader"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Response in progress/)).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
     const [, inProgressElement] = screen.getAllByTestId("metabot-chat-message");
@@ -166,7 +260,7 @@ describe("ConversationDetailPage", () => {
 
     expect(screen.getByText("first try")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("metabot-response-in-progress"),
+      screen.queryByTestId("metabot-response-loader"),
     ).not.toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });

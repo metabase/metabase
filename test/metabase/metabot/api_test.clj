@@ -16,9 +16,11 @@
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
@@ -46,7 +48,9 @@
                                                                [{:type :start :id "msg-1"}
                                                                 {:type :text :text "Hello from native agent!"}
                                                                 {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
-                                                                 :model "test-model" :id    "msg-1"}]))]
+                                                                 :model "test-model" :id    "msg-1"}]))
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
             (testing "Native agent streaming request"
               (mt/with-model-cleanup [:model/MetabotMessage
                                       [:model/MetabotConversation :created_at]]
@@ -64,13 +68,15 @@
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                   (testing "response is an SSE stream of typed events ending with [DONE]"
                     (is (= "data: [DONE]" (last lines)))
-                    (is (= ["start" "start-step"] (mapv :type (take 2 events))))
+                    (is (= ["start" "data-conversation-title" "start-step"] (mapv :type (take 3 events))))
                     (is (= ["finish-step" "finish"] (mapv :type (take-last 2 events))))
+                    (is (=? {:type "data-conversation-title" :data "Orders by Month"}
+                            (second events)))
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
                              (apply str (map :delta text-deltas)))))
                     (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
-                            (last events))
+                            (u/seek #(= "finish" (:type %)) events))
                         "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
@@ -85,6 +91,86 @@
                                            {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version 2}]
                           messages)))))))))))
+
+(deftest emits-title-event-inline-when-ready-during-stream-test
+  (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"
+    (let [conversation-id (str (random-uuid))
+          title-future    (java.util.concurrent.CompletableFuture.)
+          start-line      (self.core/format-sse-event {:type "start" :messageId "msg-1"})
+          text-line       (self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta "Hello"})
+          finish-line     (self.core/format-sse-event {:type "finish"})
+          title-line      (self.core/format-sse-event {:type "data-conversation-title" :data "Orders by Month"})
+          lines           (reify clojure.lang.IReduceInit
+                            (reduce [_ rf init]
+                              (let [result (rf init start-line)]
+                                (if (reduced? result)
+                                  @result
+                                  (do
+                                    (.complete title-future "Orders by Month")
+                                    (reduce rf result [text-line finish-line self.core/done-sse-line]))))))]
+      (is (= [start-line text-line title-line finish-line self.core/done-sse-line]
+             (into [] (#'api/inject-title-events-xf
+                       {:status :pending :future title-future}
+                       conversation-id)
+                   lines))))))
+
+(deftest stops-looking-up-the-title-once-the-job-settles-without-one-test
+  (testing "a title job that finishes without a title is looked up once, not once per streamed line"
+    (let [conversation-id (str (random-uuid))
+          title-future    (doto (java.util.concurrent.CompletableFuture.) (.complete nil))
+          lookups         (atom 0)
+          lines           (mapv #(self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta %})
+                                ["a" "b" "c" "d"])]
+      (with-redefs [metabot.persistence/conversation-title (fn [_] (swap! lookups inc) nil)]
+        (is (= lines
+               (into [] (#'api/inject-title-events-xf
+                         {:status :pending :future title-future}
+                         conversation-id)
+                     lines)))
+        (is (= 1 @lookups))))))
+
+(deftest conversation-title-generation-persists-title-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
+          stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
+      (with-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
+        (is (= "Orders by Month" (generate-title!)))
+        (is (= "Orders by Month" (stored-title))))
+      (with-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
+        (is (nil? (generate-title!)))
+        (is (= "Orders by Month" (stored-title)))))))
+
+(deftest conversation-title-generation-skips-existing-title-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)
+                                                                   :title   "Existing Title"}]
+    (with-redefs [metabot.self/call-llm-structured (fn [& _]
+                                                     (throw (ex-info "should not generate" {})))]
+      (is (= {:status :ready :title "Existing Title"}
+             (conversation-title/ensure-title! conversation-id "default" "Show orders by month")))
+      (is (= {:status "ready" :title "Existing Title"}
+             (conversation-title/title-status conversation-id))))))
+
+(deftest conversation-title-generation-tracks-one-in-flight-job-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (let [gate       (promise)
+          call-count (atom 0)]
+      (with-redefs [metabot.self/call-llm-structured (fn [& _]
+                                                       (swap! call-count inc)
+                                                       @gate
+                                                       {:title "Recovered Title"})]
+        (let [future-1 (conversation-title/submit! conversation-id "default" "Show orders by month")
+              future-2 (conversation-title/submit! conversation-id "default" "Use a different prompt")]
+          (is (some? future-1))
+          (is (identical? future-1 future-2))
+          (is (= {:status "pending" :title nil}
+                 (conversation-title/title-status conversation-id)))
+          (deliver gate :continue)
+          (is (= "Recovered Title"
+                 (.get ^java.util.concurrent.Future future-1
+                       5 java.util.concurrent.TimeUnit/SECONDS)))
+          (is (= 1 @call-count))
+          (is (= {:status "ready" :title "Recovered Title"}
+                 (conversation-title/title-status conversation-id))))))))
 
 (defn ^:private sse-event
   "Format an SSE event as a string for a mock LLM server."
@@ -897,7 +983,8 @@
          (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                      (fn [_]
                                        (let [[[parts]] (swap-vals! queue (comp vec rest))]
-                                         (mut/mock-llm-response (or parts default-mock-parts))))]
+                                         (mut/mock-llm-response (or parts default-mock-parts))))
+                                     conversation-title/submit! (constantly nil)]
            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
              (thunk)
              (is (empty? @queue) "unconsumed mock LLM responses"))))))))
@@ -1124,7 +1211,8 @@
                                      [{:type :start :id "msg-1"}
                                       {:type :text :text reply-text}
                                       {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
-                                       :model "test-model" :id "msg-1"}]))]
+                                       :model "test-model" :id "msg-1"}]))
+                                  conversation-title/submit! (constantly nil)]
         (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
           (thunk))))))
 
@@ -1152,6 +1240,27 @@
               (is (= :user (first (nth msgs 2))))
               (is (str/includes? (second (nth msgs 2)) "follow-up-prompt")
                   "the new prompt is the final user message"))))))))
+
+(deftest agent-streaming-retries-missing-title-on-follow-up-test
+  (testing "a follow-up turn still attempts title generation from the first stored user prompt when the DB title is missing"
+    (let [title-requests (atom [])]
+      (with-mock-streaming-provider!
+        (fn []
+          (with-redefs [conversation-title/ensure-title! (fn [& args]
+                                                           (swap! title-requests conj args)
+                                                           {:status :missing})]
+            (let [conversation-id (str (random-uuid))
+                  first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                        (agent-request conversation-id "first prompt"))
+                  parent-id       (streamed-message-id first-response)]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (agent-request conversation-id "follow-up prompt"
+                                                   :parent_message_id parent-id))
+              (is (= [[conversation-id "first prompt"]
+                      [conversation-id "first prompt"]]
+                     (mapv (fn [[conversation-id _profile-id message]]
+                             [conversation-id message])
+                           @title-requests))))))))))
 
 (deftest agent-streaming-retry-excludes-superseded-reply-from-llm-test
   (testing "after a retry the regenerated call does not replay the superseded reply"
@@ -1326,7 +1435,7 @@
                assistant-msg-id
                [{:type :start :id "msg-1"}
                 {:type :text :text "Hi"}
-                {:type :data :data-type "navigate_to" :data "/question/1"}
+                {:type :data :data-type "generated_entity" :version 1 :data {:type "card" :id "c1" :title "Q" :query {:id "q1" :query {}}}}
                 {:type :data :data-type "todo_list" :version 1 :data [{:id "1" :content "x" :status "pending" :priority "low"}]}
                 {:type :data :data-type "code_edit" :version 1 :data {:buffer_id "b" :value "v"}}
                 {:type :data :data-type "transform_suggestion" :version 1 :data {}}
@@ -1341,7 +1450,7 @@
                     data-types (into #{}
                                      (keep #(when (str/starts-with? % "data-") (subs % 5)))
                                      part-types)]
-                (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
+                (is (= #{"generated_entity" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
                        data-types)
                     "all persistable data parts (not state) should be in :data")
                 (is (contains? part-types "text")
@@ -1368,7 +1477,7 @@
               :result {:output            "<result>XML</result>"
                        :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                        :structured-output {:result-type :search :data [{:id 1}]}
-                       :data-parts        [{:type :data :data-type "navigate_to"}]}}])))))
+                       :data-parts        [{:type :data :data-type "generated_entity"}]}}])))))
 
 (deftest parts->storable-content-structured-output-subset-test
   (testing "keeps the query-related subset of structured output, canonicalized to :structured_output"
@@ -1511,6 +1620,7 @@
                                     metabot.persistence/start-turn!       (fn [& _]
                                                                             {:assistant-msg-id 1
                                                                              :assistant-external-id "ext-id"})
+                                    conversation-title/ensure-title!      (constantly {:status :missing})
                                     api/native-agent-streaming-request    (fn [args]
                                                                             (reset! captured-args args)
                                                                             ;; Return a minimal streaming response
@@ -1545,6 +1655,7 @@
                          (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))
           info-with-ip (fn [ip] {:origin nil :referer nil :user-agent nil :ip-address ip})]
       (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                  conversation-title/ensure-title!      (constantly {:status :missing})
                                   api/native-agent-streaming-request    (constantly nil)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-test-user :rasta
@@ -1588,6 +1699,7 @@
           convo-for    (fn [conversation-id]
                          (t2/select-one :model/MetabotConversation :id conversation-id))]
       (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                  conversation-title/ensure-title!      (constantly {:status :missing})
                                   api/native-agent-streaming-request    (constantly nil)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-test-user :rasta
@@ -1634,7 +1746,8 @@
                                                                [{:type :start :id "msg-1"}
                                                                 {:type :text :text "hi"}
                                                                 {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
-                                                                 :model "test-model" :id    "msg-1"}]))]
+                                                                 :model "test-model" :id    "msg-1"}]))
+                                      conversation-title/ensure-title! (constantly {:status :missing})]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (testing "flag on: hostname AND path are recorded"

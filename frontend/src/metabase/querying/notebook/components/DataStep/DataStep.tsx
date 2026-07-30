@@ -66,6 +66,7 @@ export const DataStep = ({
           title={t`Pick your starting data`}
           canChangeDatabase
           hasMetrics
+          hasMetricsInMiniPicker={!isMetric}
           isOpened={isOpened}
           setIsOpened={setIsOpened}
           isDisabled={readOnly}

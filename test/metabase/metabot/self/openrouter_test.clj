@@ -30,6 +30,16 @@
              [{:role :user :content "Hello"}
               {:type :text :text "Hi there!"}])))))
 
+(deftest ^:parallel parts->cc-messages-drops-reasoning-test
+  (testing "reasoning parts are dropped, not turned into empty user messages"
+    (is (=? [{:role "user" :content "Hello"}
+             {:role "assistant" :content "Hi there!"}]
+            (openrouter/parts->cc-messages
+             [{:role :user :content "Hello"}
+              {:type :reasoning :id "r1" :text "thinking"}
+              {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "abc"}}}
+              {:type :text :text "Hi there!"}])))))
+
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
     (is (=? [{:role       "assistant"
@@ -339,11 +349,13 @@
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
+                                                    {:id "anthropic/claude-opus-5"     :name "Anthropic: Claude Opus 5"     :created 26}
                                                     {:id "anthropic/claude-sonnet-4.6"                                      :created 25}
                                                     {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
                                                     {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}
                                                     {:id "openai/gpt-5"                :name "OpenAI: GPT-5"                :created 5}]}})]
         (is (= [{:id "anthropic/claude-haiku-4.5"  :display_name "Anthropic: Claude Haiku 4.5"}
+                {:id "anthropic/claude-opus-5"     :display_name "Anthropic: Claude Opus 5"}
                 {:id "anthropic/claude-sonnet-4.6" :display_name "Claude Sonnet 4.6"}
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}

@@ -1,5 +1,4 @@
-import type { Location } from "history";
-
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import {

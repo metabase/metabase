@@ -71,7 +71,7 @@
                          (= (.getHost redirect) our-host)))
       redirect-url)
     (catch Exception e
-      (log/error e "Invalid redirect URL")
+      (log/errorf "Invalid redirect URL: %s" (ex-message e))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
@@ -98,7 +98,7 @@
        (keep (fn [[key value]]
                (cond
                  (or (map? value) (nil? value))
-                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 (log/warnf "Dropping attribute '%s' with non-stringable value" (name key))
 
                  (str/starts-with? (name key) "@")
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))

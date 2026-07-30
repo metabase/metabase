@@ -107,10 +107,13 @@
 
 (deftest ^:parallel variable-value-test-10
   (testing "BigInteger value"
-    (is (= 9223372036854775808
-           (value-for-tag
-            {:name "id", :id test-uuid, :display-name "ID", :type :number}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
+    (let [v (value-for-tag
+             {:name "id", :id test-uuid, :display-name "ID", :type :number}
+             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])]
+      (is (= 9223372036854775808 v))
+      ;; `=` does not distinguish BigInteger from BigInt; drivers dispatch parameter binding on class.
+      ;; Unimportant to the product that it's a BigInteger, but if not this test isn't testing what was intended:
+      (is (instance? java.math.BigInteger v)))))
 
 (deftest ^:parallel variable-multiple-values-test
   (testing "Allows multiple bindings of the same tag"
@@ -431,6 +434,7 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
         ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from

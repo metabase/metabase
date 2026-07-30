@@ -23,10 +23,7 @@ import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
+import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
   CustomVizPluginId,
@@ -36,7 +33,6 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import { SandboxedPluginContainer } from "./components/SandboxedPluginContainer";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
@@ -414,16 +410,17 @@ export async function loadCustomVizPlugin(
     );
 
     // Attach the required static properties onto the component function
-    const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
-      Wrapper,
-    ) as Visualization;
-    applyDefaultVisualizationProps(Component, vizDef, {
-      identifier,
-      pluginId: plugin.id,
-      getUiName: () => plugin.display_name,
-      iconUrl: resolvedIconUrl,
-      isDev: Boolean(plugin.dev_bundle_url),
-    });
+    const Component = applyDefaultVisualizationProps(
+      ExplicitSize<VisualizationProps>({ wrapped: true })(Wrapper),
+      vizDef,
+      {
+        identifier,
+        pluginId: plugin.id,
+        getUiName: () => plugin.display_name,
+        iconUrl: resolvedIconUrl,
+        isDev: Boolean(plugin.dev_bundle_url),
+      },
+    );
 
     if (!isLatest()) {
       return identifier;
@@ -537,10 +534,10 @@ function createCustomVizWrapper(
     );
 
     return (
-      <SandboxedPluginContainer
-        containerRef={containerRef}
-        fill
-        pluginId={pluginId}
+      <div
+        ref={containerRef}
+        data-plugin-sandbox={pluginId}
+        style={{ width: "100%", height: "100%" }}
       />
     );
   };

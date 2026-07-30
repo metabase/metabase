@@ -258,7 +258,17 @@
         (str "SELECT 1; " values-query) false false
         (str "SET ROLE none; " values-query) false false
         (str values-query "; SELECT 1") false false
-        (str values-query "; SET ROLE none") false false))))
+        (str values-query "; SET ROLE none") false false)))
+  (testing "we don't remove large IN lists, tuple lists, or arrays when validating impersonated queries"
+    (doseq [query [(str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
+                   (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
+                   (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")]]
+      (are [sql is-single-stmt? allowed-stmt-type?]
+           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
+              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+        query true true
+        (str "SELECT 1; " query) false false
+        (str query "; SELECT 1") false false))))
 
 ;;; ---------------------------------------------- rewrite-table-refs ----------------------------------------------
 
@@ -311,8 +321,7 @@
   (testing "an Error (a Throwable that is not an Exception) propagates raw"
     ;; :on-parse-error is a parse-failure translator, not a catch-all — it must not
     ;; swallow the Error band (StackOverflow/OOM/…) into a parse-failure label.
-    ;; Production callers (e.g. workspaces table remapping) rely on those fatal
-    ;; signals surfacing unwrapped.
+    ;; Production callers rely on those fatal signals surfacing unwrapped.
     (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (StackOverflowError. "boom")))]
       (is (thrown? StackOverflowError
                    (sql-tools/rewrite-table-refs

@@ -188,6 +188,13 @@
                        before
                        changes)))))))))
 
+(deftest card-revision-excludes-metabot-origin-test
+  (testing "the Metabot origin columns are not captured in revisions, so reverting can never write back a stale conversation id"
+    (mt/with-temp [:model/Card card {:metabot_chart_id "chart-1"}]
+      (let [serialized (revision/serialize-instance :model/Card (:id card) card)]
+        (is (not (contains? serialized :metabot_chart_id)))
+        (is (not (contains? serialized :metabot_conversation_id)))))))
+
 (deftest load-old-revision-without-card-schema-test
   (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"

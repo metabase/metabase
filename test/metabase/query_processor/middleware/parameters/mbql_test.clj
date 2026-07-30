@@ -196,6 +196,7 @@
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
       ;; results
       ;; TODO: Verify we still need the following expression in place. PR #36858 may have addressed that.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (when (= :snowflake driver/*driver*)
         (driver/notify-database-updated driver/*driver* (mt/id)))
