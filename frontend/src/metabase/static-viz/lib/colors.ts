@@ -13,7 +13,14 @@ export const createColorGetter = (
     const value = color(colorName, palette);
 
     // Ensure that hex values are given for static viz
-    return Color(value).hex();
+    try {
+      return Color(value).hex();
+    } catch {
+      // Some theme tokens are CSS expressions (e.g. color-mix()) that cannot
+      // be statically parsed. Fall back to a parseable color instead of
+      // crashing the whole card render in dashboard subscriptions.
+      return Color(palette["text-primary"] ?? "#000000").hex();
+    }
   };
 };
 

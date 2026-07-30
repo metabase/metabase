@@ -34,4 +34,9 @@ export const staticVizOverrides = {
   "text-primary": baseColors.orion[80],
   "text-secondary": baseColors.orion[60],
   "text-disabled": baseColors.orion[40],
+  // The theme defines this as a CSS color-mix() expression, which the color
+  // parser used for static viz cannot parse, crashing gauge charts in
+  // dashboard subscriptions. This is the static equivalent of
+  // `color-mix(in srgb, ${baseColors.orion[100]}, black 50%)`.
+  "background_page-tertiary-inverse": "#030C11",
 };
