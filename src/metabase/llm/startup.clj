@@ -48,28 +48,31 @@
       (or (nil? legacy-result) (nil? managed-result))   nil
       (and legacy-result (not managed-result))          (sync-managed-metabot-provider!))))
 
-(defn- migrate-legacy-provider-connections!
-  "Move an instance off the per-provider credential settings and onto `llm-providers`.
+(defn- adopt-db-stored-single-provider-settings!
+  "Fold per-provider credentials that were saved into the app DB onto `llm-providers`.
 
   Runs only when `llm-providers` has never been written, so it is a one-shot that a later edit cannot undo. Each
-  legacy provider whose credentials are stored in the app DB becomes a connection keyed by its provider type, which
-  is the key the existing `llm-metabot-provider` value already refers to. Credentials that come from an env var are
-  left alone — those are synthesized into read-only connections on every read instead.
+  provider whose credentials are stored in the app DB becomes a connection keyed by its provider type, which is the
+  key the existing `llm-metabot-provider` value already refers to.
 
-  An instance already pointed at the managed provider gets a `metabase` connection too: it carries no credentials to
-  migrate, but the model reference naming it has to resolve to something."
+  Credentials that come from a `MB_LLM_*` env var are deliberately not copied here. Configuring a provider that way
+  stays supported, and those connections are resolved from the environment on every read, so an admin who edits one
+  of those variables gets the new value rather than a stale copy taken at whichever startup ran this first.
+
+  An instance already pointed at the managed provider gets a `metabase` connection too: it carries no credentials of
+  its own, but the model reference naming it has to resolve to something."
   []
   (when (nil? (setting/db-stored-value :llm-providers))
     (when-let [conns (not-empty
-                      (cond-> (llm.provider/db-stored-legacy-connections)
+                      (cond-> (llm.provider/db-stored-single-provider-connections)
                         (llm.provider/managed-model-ref? (setting/db-stored-value :llm-metabot-provider))
                         (conj (managed-connection))))]
-      (log/infof "Migrating %d LLM provider credential setting(s) to llm-providers: %s"
+      (log/infof "Adopting %d app-DB LLM provider credential setting(s) into llm-providers: %s"
                  (count conns) (str/join ", " (map :key conns)))
       (llm.provider/set-connections! conns))))
 
 (defn check-and-sync-settings-on-startup!
-  "Reconcile LLM provider configuration at startup: migrate legacy per-provider credential settings onto the
+  "Reconcile LLM provider configuration at startup: adopt app-DB per-provider credential settings onto the
   `llm-providers` connection list, and — for legacy `:metabot-v3` customers that do not have
   `:metabase-ai-managed` — switch the default unmanaged Metabot provider to the managed `metabase/...` provider.
 
@@ -81,5 +84,5 @@
   []
   (when (setup/has-user-setup)
     (when-not (setting/env-var-value :llm-providers)
-      (migrate-legacy-provider-connections!))
+      (adopt-db-stored-single-provider-settings!))
     (maybe-sync-managed-metabot-provider!)))

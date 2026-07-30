@@ -224,13 +224,13 @@
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
 
-(def ^:private legacy-env-connections
-  "The per-type credential settings that predate [[llm-providers]], keyed by the connection they configure.
+(def ^:private single-provider-settings
+  "The per-type credential settings, keyed by the connection they configure.
 
-  These stay supported so that an instance that sets `MB_LLM_ANTHROPIC_API_KEY` keeps working, and so that
-  configuring a single provider by environment variable does not require writing JSON. `:settings` maps a
-  `:config` key to the setting that supplies it; a connection is synthesized only when at least one of the
-  settings marked `:credential?` is set by an env var."
+  Pointing one of these at an environment variable is a supported way to configure a provider: it sets up a single
+  connection without writing JSON into [[llm-providers]]. `:settings` maps a `:config` key to the setting that
+  supplies it; a connection is configured only when at least one of the settings marked `:credential?` is set by an
+  env var."
   {"anthropic"  {:type     "anthropic"
                  :settings {:api-key  {:setting :llm-anthropic-api-key :credential? true}
                             :base-url {:setting :llm-anthropic-api-base-url}}}
@@ -249,7 +249,7 @@
                             :session-token     {:setting :llm-bedrock-session-token}
                             :region            {:setting :llm-bedrock-region}}}})
 
-(defn- legacy-setting-values
+(defn- single-provider-setting-values
   [settings value-fn]
   (into {}
         (keep (fn [[config-key {:keys [setting]}]]
@@ -273,28 +273,32 @@
                                (when (env-set? config-key)
                                  (setting/env-var-name setting))))
                        settings)
-       :config   (legacy-setting-values settings #(setting/get-value-of-type :string %))})))
+       :config   (single-provider-setting-values settings #(setting/get-value-of-type :string %))})))
 
 (defn- env-connections
-  "Connections synthesized from the single-provider `MB_LLM_*` environment variables."
+  "Connections configured by the single-provider `MB_LLM_*` environment variables.
+
+  Resolved on every read, so editing one of those variables takes effect on the next restart without anything
+  having to be migrated or re-saved."
   []
   (into []
         (keep (fn [[conn-key spec]] (env-configured-connection conn-key spec)))
-        legacy-env-connections))
+        single-provider-settings))
 
-(defn db-stored-legacy-connections
-  "Connections implied by legacy credential settings that are stored in the application database rather than set by
-  an env var. Used once, at startup, to migrate an instance onto [[llm-providers]]."
+(defn db-stored-single-provider-connections
+  "Connections implied by per-provider credential settings whose values live in the application database rather than
+  coming from an env var. Used once, at startup, to fold those app-DB values into [[llm-providers]]; values that come
+  from an env var need no such move, because [[env-connections]] resolves them on every read."
   []
   (into []
         (keep (fn [[conn-key {:keys [type settings]}]]
-                (let [config (legacy-setting-values settings #(setting/db-stored-value %))]
+                (let [config (single-provider-setting-values settings #(setting/db-stored-value %))]
                   (when (config-complete? type config)
                     {:key    conn-key
                      :type   type
                      :name   (str (:label (provider-type type)))
                      :config config}))))
-        legacy-env-connections))
+        single-provider-settings))
 
 ;;; --------------------------------------------------- Connections -------------------------------------------------
 

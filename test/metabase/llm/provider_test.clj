@@ -286,8 +286,8 @@
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "gemini")))))
 
-(deftest db-stored-legacy-connections-test
-  (testing "a legacy credential setting stored in the app DB implies a connection keyed by its provider type"
+(deftest db-stored-single-provider-connections-test
+  (testing "a per-provider credential setting stored in the app DB implies a connection keyed by its provider type"
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil
                                   mb-llm-openai-api-key    nil]
       (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-stored"
@@ -296,11 +296,11 @@
                  :type   "anthropic"
                  :name   "Anthropic"
                  :config {:api-key "sk-ant-stored"}}]
-               (llm.provider/db-stored-legacy-connections))))))
-  (testing "an incomplete legacy credential set does not imply a connection"
+               (llm.provider/db-stored-single-provider-connections))))))
+  (testing "an incomplete per-provider credential set does not imply a connection"
     (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     nil
                                   mb-llm-bedrock-secret-access-key nil]
       (mt/with-temporary-setting-values [llm-anthropic-api-key         nil
                                          llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                          llm-bedrock-secret-access-key nil]
-        (is (= [] (llm.provider/db-stored-legacy-connections)))))))
+        (is (= [] (llm.provider/db-stored-single-provider-connections)))))))
