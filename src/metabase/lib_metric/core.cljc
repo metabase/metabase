@@ -94,7 +94,8 @@
      default-breakout-dimensions
      dimension-breakout
      project-dimension
-     projectable-dimensions]
+     projectable-dimensions
+     valid-temporal-unit-for-type?]
     [lib-metric.types.isa
      type-isa?])
    :cljs
@@ -133,4 +134,5 @@
      (def dimension-breakout "See [[lib-metric.projection/dimension-breakout]]." lib-metric.projection/dimension-breakout)
      (def project-dimension "See [[lib-metric.projection/project-dimension]]." lib-metric.projection/project-dimension)
      (def projectable-dimensions "See [[lib-metric.projection/projectable-dimensions]]." lib-metric.projection/projectable-dimensions)
+     (def valid-temporal-unit-for-type? "See [[lib-metric.projection/valid-temporal-unit-for-type?]]." lib-metric.projection/valid-temporal-unit-for-type?)
      (def type-isa? "See [[lib-metric.types.isa/type-isa?]]." lib-metric.types.isa/type-isa?)))

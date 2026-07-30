@@ -16,11 +16,12 @@
   See [[lib-metric.schema/persisted-dimension]]."
   [dim :- :map]
   (cond-> dim
-    (:status dim)           (update :status keyword)
-    (:effective-type dim)   (update :effective-type keyword)
-    (:semantic-type dim)    (update :semantic-type keyword)
-    (:has-field-values dim) (update :has-field-values keyword)
-    (:sources dim)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
+    (:status dim)                (update :status keyword)
+    (:effective-type dim)        (update :effective-type keyword)
+    (:semantic-type dim)         (update :semantic-type keyword)
+    (:has-field-values dim)      (update :has-field-values keyword)
+    (:default-temporal-unit dim) (update :default-temporal-unit keyword)
+    (:sources dim)               (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
 
 (defn normalize-target-ref
   "Normalize a target ref after JSON parsing, e.g. [\"field\" {...} id] to a well-formed

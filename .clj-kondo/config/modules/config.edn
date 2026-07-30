@@ -1269,6 +1269,7 @@
            premium-features
            request
            settings
+           setup
            sql-tools
            sync
            util
@@ -3467,6 +3468,7 @@
            config
            events
            premium-features
+           request
            settings
            sso
            util}

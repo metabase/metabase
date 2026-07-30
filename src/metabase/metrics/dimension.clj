@@ -57,7 +57,8 @@
   [dim]
   (-> (merge {:id nil :name nil :effective-type nil :semantic-type nil} dim)
       (as-> dim (update dim :display-name #(or % (:name dim))))
-      (drop-nil-keys [:has-field-values :status :status-message :dimension-interestingness :group :sources])))
+      (drop-nil-keys [:has-field-values :status :status-message :dimension-interestingness :group
+                      :sources :default-temporal-unit])))
 
 (defn- encode-mapping-map
   "Encode-time defaulting policy for a dimension mapping: `:dimension-id` and `:target` are always
@@ -112,6 +113,7 @@
     [:effective-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
     [:semantic-type {:optional true} [:maybe {:encode/api kw->str} :keyword]]
     [:has-field-values {:optional true} [:maybe {:encode/api kw->str} :keyword]]
+    [:default-temporal-unit {:optional true} [:maybe {:encode/api kw->str} :keyword]]
     [:dimension-interestingness {:optional true} [:maybe number?]]
     [:group {:optional true} [:maybe ::group]]
     [:sources {:optional true} [:maybe [:sequential ::source]]]]

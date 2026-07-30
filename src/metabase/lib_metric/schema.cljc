@@ -328,6 +328,7 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    ;; At most one dimension per entity may be the default.
    [:default          {:optional true} [:maybe :boolean]]])
 
@@ -377,6 +378,7 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
