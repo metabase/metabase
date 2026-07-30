@@ -9,11 +9,13 @@ export function ProviderConfigFields({
   values,
   onChange,
   disabled,
+  autoFocusFirstField,
 }: {
   fields: LlmProviderField[];
   values: LlmProviderConfig;
   onChange: (key: string, value: string) => void;
   disabled?: boolean;
+  autoFocusFirstField?: boolean;
 }) {
   if (fields.length === 0) {
     return null;
@@ -21,13 +23,14 @@ export function ProviderConfigFields({
 
   return (
     <Stack gap="md">
-      {fields.map((field) => (
+      {fields.map((field, index) => (
         <ProviderConfigField
           key={field.key}
           field={field}
           value={values[field.key] ?? ""}
           onChange={(value) => onChange(field.key, value)}
           disabled={disabled}
+          autoFocus={autoFocusFirstField && index === 0}
         />
       ))}
     </Stack>
@@ -39,12 +42,15 @@ function ProviderConfigField({
   value,
   onChange,
   disabled,
+  autoFocus,
 }: {
   field: LlmProviderField;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  autoFocus?: boolean;
 }) {
+  const focusProps = autoFocus ? { autoFocus, "data-autofocus": true } : {};
   const externalDocsUrl = field.docs_url;
   const description = externalDocsUrl ? (
     <ExternalLink href={externalDocsUrl}>
@@ -64,6 +70,7 @@ function ProviderConfigField({
         onChange={(next) => onChange(next ?? "")}
         disabled={disabled}
         searchable
+        {...focusProps}
       />
     );
   }
@@ -78,6 +85,7 @@ function ProviderConfigField({
       onChange={(event) => onChange(event.currentTarget.value)}
       disabled={disabled}
       required={field.required}
+      {...focusProps}
     />
   );
 }

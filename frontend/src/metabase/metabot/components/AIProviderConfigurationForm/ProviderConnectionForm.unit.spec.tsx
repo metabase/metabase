@@ -38,6 +38,14 @@ const selectProviderAndFillKey = async (apiKey: string) => {
 };
 
 describe("ProviderConnectionForm", () => {
+  it("focuses the first field after picking a provider", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("button", { name: /Anthropic/ }));
+
+    expect(await screen.findByLabelText(/API key/)).toHaveFocus();
+  });
+
   it("connects when pressing enter in a field", async () => {
     const { onSaved } = setup();
 

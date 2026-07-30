@@ -154,6 +154,7 @@ export function ProviderConnectionForm({
                   setConfig((current) => ({ ...current, [key]: value }))
                 }
                 disabled={isSaving}
+                autoFocusFirstField
               />
               <AdvancedSettings
                 isOpened={isAdvancedOpen}
