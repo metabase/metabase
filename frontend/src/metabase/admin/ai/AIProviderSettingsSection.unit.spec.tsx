@@ -40,6 +40,7 @@ import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 const ANTHROPIC_TYPE = createMockLlmProviderType({
   type: "anthropic",
   label: "Anthropic",
+  icon: "ai",
   fields: [
     createMockLlmProviderField({
       key: "api-key",
@@ -53,6 +54,7 @@ const ANTHROPIC_TYPE = createMockLlmProviderType({
 const AZURE_TYPE = createMockLlmProviderType({
   type: "azure",
   label: "Azure",
+  icon: "cloud",
   fields: [
     createMockLlmProviderField({
       key: "api-key",
@@ -266,9 +268,11 @@ describe("AIProviderSettingsSection", () => {
     expect(
       within(modal).queryByRole("button", { name: "Connect" }),
     ).not.toBeInTheDocument();
+    expect(within(modal).getByText("Choose a provider")).toBeInTheDocument();
 
-    await userEvent.click(within(modal).getByLabelText("Provider"));
-    await selectOption("Anthropic");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    );
 
     expect(within(modal).getByLabelText("Display name")).toHaveValue(
       "Anthropic",
@@ -305,8 +309,7 @@ describe("AIProviderSettingsSection", () => {
 
     const modal = await openAddProviderModal();
 
-    await userEvent.click(within(modal).getByLabelText("Provider"));
-    await selectOption("Azure");
+    await userEvent.click(within(modal).getByRole("button", { name: "Azure" }));
 
     await userEvent.type(within(modal).getByLabelText(/API key/), "azure-new");
     await userEvent.type(
@@ -336,6 +339,22 @@ describe("AIProviderSettingsSection", () => {
         }),
       ).toBe(true);
     });
+  });
+
+  it("returns to provider selection from the configuration step", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    );
+
+    expect(within(modal).getByLabelText(/API key/)).toBeInTheDocument();
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Back" }));
+
+    expect(within(modal).getByText("Choose a provider")).toBeInTheDocument();
+    expect(within(modal).queryByLabelText(/API key/)).not.toBeInTheDocument();
   });
 
   it("edits an existing connection", async () => {
@@ -412,12 +431,13 @@ describe("AIProviderSettingsSection", () => {
           type: "openai",
           name: "OpenAI",
           source: "env",
+          env_vars: ["MB_LLM_OPENAI_API_KEY"],
         }),
       ],
     });
 
     expect(
-      screen.getByText("Set by environment variables"),
+      screen.getByText("MB_LLM_OPENAI_API_KEY", { exact: false }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Provider options" }),
@@ -535,8 +555,9 @@ describe("AIProviderSetup (ad-hoc connect modal)", () => {
   it("shows the model picker after connecting rather than closing", async () => {
     const { onDone } = await setupModal();
 
-    await userEvent.click(await screen.findByLabelText("Provider"));
-    await selectOption("Anthropic");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Anthropic" }),
+    );
     await userEvent.type(screen.getByLabelText(/API key/), "sk-ant-test");
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
@@ -547,12 +568,14 @@ describe("AIProviderSetup (ad-hoc connect modal)", () => {
     expect(onDone).toHaveBeenCalled();
   });
 
-  it("does not offer a way to add a second provider", async () => {
+  it("starts with provider selection and does not offer a provider list action", async () => {
     await setupModal();
 
     expect(
       screen.queryByRole("button", { name: /Add a provider/ }),
     ).not.toBeInTheDocument();
-    expect(await screen.findByLabelText("Provider")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Anthropic" }),
+    ).toBeInTheDocument();
   });
 });

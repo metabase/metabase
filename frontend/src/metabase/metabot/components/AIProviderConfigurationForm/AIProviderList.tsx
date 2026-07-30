@@ -7,7 +7,10 @@ import {
   useListLlmProviderTypesQuery,
   useListLlmProvidersQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useToast } from "metabase/common/hooks";
 import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type {
   LlmProviderConnection,
@@ -17,6 +20,7 @@ import type {
 import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
 import { ProviderListSkeleton } from "./ProviderListSkeleton";
+import { ProviderTypeIcon } from "./ProviderTypeIcon";
 
 export function AIProviderList() {
   const { data: connections = [], isLoading: isLoadingConnections } =
@@ -29,6 +33,7 @@ export function AIProviderList() {
     useDisclosure(false);
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
+  const [sendToast] = useToast();
 
   const handleModalClose = () => {
     stopAdding();
@@ -36,10 +41,19 @@ export function AIProviderList() {
   };
 
   const handleConfirmDelete = async () => {
-    if (deleting) {
-      await deleteProvider(deleting.key);
-      setDeleting(undefined);
+    if (!deleting) {
+      return;
     }
+    const { error } = await deleteProvider(deleting.key);
+    if (error) {
+      sendToast({
+        message: getErrorMessage(error, t`Unable to remove this provider.`),
+        icon: "warning",
+        toastColor: "feedback-negative",
+      });
+      return;
+    }
+    setDeleting(undefined);
   };
 
   if (isLoadingConnections || isLoadingProviderTypes) {
@@ -121,23 +135,30 @@ function ProviderConnectionCard({
     providerType && providerType.label !== connection.name
       ? providerType.label
       : undefined;
-  const subtitle = isEnvManaged ? t`Set by environment variables` : typeLabel;
 
   return (
     <Card p="md" withBorder>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          <Icon
-            name={connection.usable ? "check" : "warning"}
-            c={connection.usable ? "success" : "error"}
-          />
+          <ProviderTypeIcon icon={providerType?.icon ?? "ai"} />
           <Stack gap={0}>
-            <Text fw="bold">{connection.name}</Text>
-            {subtitle && (
+            <Group gap="xs" wrap="nowrap">
+              <Text fw="bold">{connection.name}</Text>
+              <Icon
+                name={connection.usable ? "check" : "warning"}
+                c={connection.usable ? "success" : "error"}
+                size={14}
+              />
+            </Group>
+            {typeLabel && (
               <Text size="sm" c="text-secondary">
-                {subtitle}
+                {typeLabel}
               </Text>
             )}
+            {isEnvManaged &&
+              connection.env_vars.map((varName) => (
+                <SetByEnvVar key={varName} varName={varName} />
+              ))}
           </Stack>
         </Group>
 

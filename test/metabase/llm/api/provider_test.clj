@@ -33,6 +33,7 @@
              (map :type types)))
       (is (=? {:type          "anthropic"
                :label         "Anthropic"
+               :icon          "ai"
                :managed       false
                :available     true
                :default_model "claude-sonnet-4-6"
@@ -72,30 +73,33 @@
                                                                  :base-url "https://api.anthropic.com"})
                                                     (connection "openai" "openai" {:api-key ""})]]
     (testing "secrets come back masked and non-secret fields come back as they are"
-      (is (= [{:key    "anthropic"
-               :type   "anthropic"
-               :name   "anthropic"
-               :source "db"
-               :usable true
-               :config {:api-key "**********et" :base-url "https://api.anthropic.com"}}
-              {:key    "openai"
-               :type   "openai"
-               :name   "openai"
-               :source "db"
-               :usable false
-               :config {:api-key ""}}]
+      (is (= [{:key      "anthropic"
+               :type     "anthropic"
+               :name     "anthropic"
+               :source   "db"
+               :usable   true
+               :env_vars []
+               :config   {:api-key "**********et" :base-url "https://api.anthropic.com"}}
+              {:key      "openai"
+               :type     "openai"
+               :name     "openai"
+               :source   "db"
+               :usable   false
+               :env_vars []
+               :config   {:api-key ""}}]
              (mt/user-http-request :crowberto :get 200 "llm/providers"))))))
 
 (deftest list-providers-marks-env-connections-test
   (testing "a connection synthesized from the single-provider environment variables is reported as read-only"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key    "anthropic"
-                 :type   "anthropic"
-                 :name   "Anthropic"
-                 :source "env"
-                 :usable true
-                 :config {:api-key "**********nv" :base-url "https://api.anthropic.com"}}]
+        (is (= [{:key      "anthropic"
+                 :type     "anthropic"
+                 :name     "Anthropic"
+                 :source   "env"
+                 :usable   true
+                 :env_vars ["MB_LLM_ANTHROPIC_API_KEY"]
+                 :config   {:api-key "**********nv" :base-url "https://api.anthropic.com"}}]
                (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
 
 (deftest create-verifies-credentials-before-saving-test
@@ -108,12 +112,13 @@
                                         "credentials are verified before the connection is saved")
                                     {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
         (testing "a created connection defaults its key and name to its provider type"
-          (is (= {:key    "anthropic"
-                  :type   "anthropic"
-                  :name   "Anthropic"
-                  :source "db"
-                  :usable true
-                  :config {:api-key "**********id"}}
+          (is (= {:key      "anthropic"
+                  :type     "anthropic"
+                  :name     "Anthropic"
+                  :source   "db"
+                  :usable   true
+                  :env_vars []
+                  :config   {:api-key "**********id"}}
                  (mt/user-http-request :crowberto :post 200 "llm/providers"
                                        {:type "anthropic" :config {:api-key "sk-ant-valid"}}))))
         (testing "the credentials are verified against the provider exactly once, unmasked"
@@ -210,12 +215,13 @@
                                   (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} credentials)
                                       "the stored secret is what gets verified, not the mask")
                                   {:models []})]
-      (is (= {:key    "anthropic"
-              :type   "anthropic"
-              :name   "Anthropic (prod)"
-              :source "db"
-              :usable true
-              :config {:api-key "**********ed" :base-url "https://new.example.com"}}
+      (is (= {:key      "anthropic"
+              :type     "anthropic"
+              :name     "Anthropic (prod)"
+              :source   "db"
+              :usable   true
+              :env_vars []
+              :config   {:api-key "**********ed" :base-url "https://new.example.com"}}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
                                     :config {:api-key  "**********ed"

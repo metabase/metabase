@@ -21,6 +21,7 @@ export const createMockLlmProviderType = (
 ): LlmProviderType => ({
   type: "anthropic",
   label: "Anthropic",
+  icon: "ai",
   managed: false,
   singleton: false,
   available: true,
@@ -37,6 +38,7 @@ export const createMockLlmProviderConnection = (
   name: "Anthropic",
   source: "db",
   usable: true,
+  env_vars: [],
   config: {},
   ...opts,
 });

@@ -162,11 +162,12 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      "sk-ant-env"
                                     mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (= [{:key    "anthropic"
-                 :type   "anthropic"
-                 :name   "Anthropic"
-                 :source :env
-                 :config {:api-key "sk-ant-env" :base-url "https://env.example.com"}}]
+        (is (= [{:key      "anthropic"
+                 :type     "anthropic"
+                 :name     "Anthropic"
+                 :source   :env
+                 :env-vars #{"MB_LLM_ANTHROPIC_API_KEY" "MB_LLM_ANTHROPIC_API_BASE_URL"}
+                 :config   {:api-key "sk-ant-env" :base-url "https://env.example.com"}}]
                (llm.provider/connections))))))
   (testing "stored and env-derived connections are merged, stored first"
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
@@ -176,11 +177,12 @@
   (testing "the environment wins over a stored connection with the same key, replacing it in place rather than adding a duplicate"
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key    "anthropic"
-                 :type   "anthropic"
-                 :name   "Anthropic"
-                 :config {:api-key "sk-ant-env" :base-url "https://api.anthropic.com"}
-                 :source :env}]
+        (is (= [{:key      "anthropic"
+                 :type     "anthropic"
+                 :name     "Anthropic"
+                 :config   {:api-key "sk-ant-env" :base-url "https://api.anthropic.com"}
+                 :env-vars #{"MB_LLM_ANTHROPIC_API_KEY"}
+                 :source   :env}]
                (llm.provider/connections))))))
   (testing "the whole stored list is read-only when it comes from the environment"
     (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]

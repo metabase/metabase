@@ -46,6 +46,7 @@ type SetupOptions = {
   purchaseCloudAddOnResponse?: RouteResponse;
   metabotUsageQuota?: MetabotUsageQuota | null;
   onConnect?: () => void;
+  onCancel?: () => void;
 };
 
 function setup({
@@ -59,6 +60,7 @@ function setup({
   purchaseCloudAddOnResponse = 200,
   metabotUsageQuota = null,
   onConnect,
+  onCancel,
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -132,7 +134,7 @@ function setup({
   setupEnterpriseOnlyPlugin("metabot");
 
   return renderWithProviders(
-    <MetabaseAIProviderSetup onConnect={onConnect} />,
+    <MetabaseAIProviderSetup onConnect={onConnect} onCancel={onCancel} />,
     {
       storeInitialState,
     },
@@ -284,6 +286,17 @@ describe("MetabaseAIProviderSetup", () => {
       await waitFor(() => {
         expect(onConnect).toHaveBeenCalledTimes(1);
       });
+    });
+
+    it("returns to provider selection when requested by the connection flow", async () => {
+      const onCancel = jest.fn();
+      setup({ hasManagedAi: true, onCancel });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Back" }),
+      );
+
+      expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
     it("waits for the add-on purchase to finish before creating the connection", async () => {

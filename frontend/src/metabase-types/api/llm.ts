@@ -1,5 +1,6 @@
 import type { DatabaseId } from "./database";
 import type { TemplateTags } from "./dataset";
+import type { IconName } from "./icon";
 
 export interface ExtractSourcesRequest {
   database_id: DatabaseId;
@@ -50,6 +51,7 @@ export interface LlmProviderField {
 export interface LlmProviderType {
   type: string;
   label: string;
+  icon: IconName;
   managed: boolean;
   singleton: boolean;
   available: boolean;
@@ -67,6 +69,7 @@ export interface LlmProviderConnection {
   name: string;
   source: LlmProviderSource;
   usable: boolean;
+  env_vars: string[];
   config: LlmProviderConfig;
 }
 
