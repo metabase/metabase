@@ -1,14 +1,5 @@
 (ns metabase-enterprise.transforms-python.microvm
-  "Running one transform in one AWS Lambda MicroVM.
-
-  A MicroVM is a Firecracker VM with its own HTTPS endpoint, launched from a snapshot of our
-  image and living up to 8 hours. We launch one per run and terminate it afterwards, so the VM
-  is the run's isolation boundary: nothing survives into another run, and cancellation is
-  termination rather than something user code has to cooperate with.
-
-  The AWS control-plane calls are isolated behind [[control-plane]] so the wire protocol with
-  the VM can be exercised without an AWS account — see the `:local` implementation, which points
-  at a stand-in container (`docker compose up microvm` in the runner repo)."
+  "Running one transform in one AWS Lambda MicroVM: launched for the job, terminated after it."
   (:require
    [clj-http.client :as http]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -18,10 +9,11 @@
   (:import
    (java.net URI)
    (java.util.function Consumer)
+   (software.amazon.awssdk.auth.credentials AwsSessionCredentials DefaultCredentialsProvider)
    (software.amazon.awssdk.http ContentStreamProvider SdkHttpMethod SdkHttpRequest SdkHttpRequest$Builder)
    (software.amazon.awssdk.http.auth.aws.signer AwsV4HttpSigner)
    (software.amazon.awssdk.http.auth.spi.signer SignRequest$Builder SignedRequest)
-   (software.amazon.awssdk.identity.spi AwsCredentialsIdentity)))
+   (software.amazon.awssdk.identity.spi AwsCredentialsIdentity AwsSessionCredentialsIdentity)))
 
 (set! *warn-on-reflection* true)
 
@@ -29,13 +21,9 @@
 
 ;;; ------------------------------------------------- The VM's HTTP protocol -------------------------------------------------
 
-;; This half is independent of how the VM was created, so it is exercised in full against the
-;; local stand-in.
-
 (defn- vm-request
-  "Call the VM's HTTP surface. `:auth-headers` is the map `CreateMicrovmAuthToken` returns — a
-  map rather than a single value because some token schemes need several headers — and AWS
-  checks it before traffic ever reaches our server."
+  "Call the VM's HTTP surface. `:auth-headers` is the map from `CreateMicrovmAuthToken`, checked
+  by AWS before traffic reaches the VM."
   [endpoint method path {:keys [auth-headers] :as opts}]
   (http/request (merge {:method           method
                         :url              (str endpoint "/v1" path)
@@ -54,13 +42,11 @@
    (vm-request endpoint :get "/logs" {:auth-headers auth-headers})))
 
 (defn run-job!
-  "Submit `payload` to the VM at `endpoint` and block until the job finishes.
+  "Submit `payload` to the VM at `endpoint` and block until the job finishes, returning the
+  runner-shaped `{:status <int> :body {:exit_code ..., :timeout ...}}`.
 
-  `/execute` returns 202 immediately and we poll `/status`: the MicroVM endpoint proxy has no
-  documented request timeout, and holding one connection open for the length of a multi-hour
-  ingestion run would be betting on an undocumented limit.
-
-  Returns the runner-shaped `{:status <int> :body {:exit_code ..., :timeout ...}}`."
+  `/execute` returns 202 and the result is polled from `/status`; the endpoint proxy has no
+  documented request timeout to hold a connection open against."
   ([endpoint payload timeout-secs] (run-job! endpoint payload timeout-secs nil))
   ([endpoint payload timeout-secs auth-headers]
    (let [{:keys [status body]} (vm-request endpoint :post "/execute"
@@ -68,7 +54,7 @@
      (if-not (= 202 status)
        {:status (if (= 200 status) 500 status)
         :body   (if (map? body) body {:error (str body)})}
-       ;; grace beyond the job's own timeout: the VM still has to upload its events log
+       ;; grace beyond the job timeout: the VM still has to upload its events log
        (let [deadline-ms (* 1000 (+ timeout-secs 60))
              result      (u/poll {:thunk       (fn []
                                                  (let [{:keys [body]} (vm-request endpoint :get "/status"
@@ -117,46 +103,52 @@
 
 (defmethod terminate! :local
   [_vm]
-  ;; Nothing to destroy: the stand-in is a plain container whose lifecycle is the developer's.
-  ;; It still admits only one job, so it must be restarted between runs.
   nil)
 
-;;; --- aws: the real thing
-;;;
-;;; The paths, field names and signing name below were checked against botocore's
-;;; `lambda-microvms/2025-09-09` service model, but nothing here has been *executed* against a
-;;; real account: no emulator covers this service (LocalStack does not list it, and neither moto
-;;; nor SAM CLI implement it), so the first real run is the first test. The endpoint host is a
-;;; setting so it can be pointed elsewhere without a code change.
+;;; --- aws
+
+(defn- signing-identity
+  "Credentials for signing control-plane calls: the configured static keys, else the AWS default
+  chain. Temporary credentials must keep their session token or the signature is rejected."
+  ^AwsCredentialsIdentity []
+  (let [access-key (transforms-python.settings/python-microvm-access-key)
+        secret-key (transforms-python.settings/python-microvm-secret-key)]
+    (if (and access-key secret-key)
+      (AwsCredentialsIdentity/create access-key secret-key)
+      (let [creds (.resolveCredentials (DefaultCredentialsProvider/create))]
+        (if (instance? AwsSessionCredentials creds)
+          (AwsSessionCredentialsIdentity/create (.accessKeyId creds)
+                                                (.secretAccessKey creds)
+                                                (.sessionToken ^AwsSessionCredentials creds))
+          (AwsCredentialsIdentity/create (.accessKeyId creds) (.secretAccessKey creds)))))))
 
 (defn- sigv4-headers
   [{:keys [method url body region]}]
-  (let [access-key (transforms-python.settings/python-storage-s-3-access-key)
-        secret-key (transforms-python.settings/python-storage-s-3-secret-key)]
-    (when-not (and access-key secret-key)
-      (throw (ex-info "MicroVM control plane requires AWS credentials for request signing"
-                      {:error-type :configuration-error})))
-    (let [^SdkHttpRequest$Builder builder (-> (SdkHttpRequest/builder)
-                                              (.method (SdkHttpMethod/fromValue (u/upper-case-en (name method))))
-                                              (.uri (URI/create url)))
-          _       (.putHeader builder "Content-Type" "application/json")
-          request (.build builder)
-          payload (some-> ^String body ContentStreamProvider/fromUtf8String)
-          ^SignedRequest signed
-          (.sign (AwsV4HttpSigner/create)
-                 (reify Consumer
-                   (accept [_ b]
-                     (let [^SignRequest$Builder b b]
-                       (.identity b (AwsCredentialsIdentity/create access-key secret-key))
-                       (.request b request)
-                       (when payload (.payload b payload))
-                       (.putProperty b AwsV4HttpSigner/SERVICE_SIGNING_NAME "lambda")
-                       (.putProperty b AwsV4HttpSigner/REGION_NAME region)))))]
-      (into {} (map (fn [[k vs]] [k (first vs)])) (.headers (.request signed))))))
+  (let [identity (signing-identity)
+        ^SdkHttpRequest$Builder builder (-> (SdkHttpRequest/builder)
+                                            (.method (SdkHttpMethod/fromValue (u/upper-case-en (name method))))
+                                            (.uri (URI/create url)))
+        _        (.putHeader builder "Content-Type" "application/json")
+        request  (.build builder)
+        payload  (some-> ^String body ContentStreamProvider/fromUtf8String)
+        ^SignedRequest signed
+        (.sign (AwsV4HttpSigner/create)
+               (reify Consumer
+                 (accept [_ b]
+                   (let [^SignRequest$Builder b b]
+                     (.identity b identity)
+                     (.request b request)
+                     (when payload (.payload b payload))
+                     (.putProperty b AwsV4HttpSigner/SERVICE_SIGNING_NAME "lambda")
+                     (.putProperty b AwsV4HttpSigner/REGION_NAME region)))))]
+    ;; keep every value of a multi-valued header: the signature was computed over all of them
+    (into {} (map (fn [[k vs]] [k (if (= 1 (count vs)) (first vs) (vec vs))])) (.headers (.request signed)))))
 
 (defn- control-plane-call!
   [method path body]
-  (let [region   (or (transforms-python.settings/python-storage-s-3-region) "us-east-1")
+  (let [region   (or (transforms-python.settings/python-microvm-region)
+                     (throw (ex-info "python-microvm-region must be set to use the MicroVM backend"
+                                     {:error-type :configuration-error})))
         base-url (or (transforms-python.settings/python-microvm-control-plane-endpoint)
                      (str "https://lambda." region ".amazonaws.com"))
         url      (str base-url path)
@@ -179,8 +171,8 @@
         _     (when-not image
                 (throw (ex-info "python-microvm-image must be set to use the lambda MicroVM backend"
                                 {:error-type :configuration-error})))
-        ;; No execution role: everything the VM touches is presigned, so it needs no AWS access
-        ;; — and credentials it does not have cannot be read out of it by user code.
+        ;; No execution role: the VM reaches everything by presigned URL, and user code inside it
+        ;; can read whatever role it is given.
         vm    (control-plane-call! :post "/2025-09-09/microvms"
                                    (cond-> {:imageIdentifier          image
                                             :maximumDurationInSeconds (transforms-python.settings/python-runner-timeout-seconds)}
@@ -188,7 +180,7 @@
                                      (assoc :egressNetworkConnectors
                                             [(transforms-python.settings/python-microvm-egress-connector)])))
         vm-id (:microvmId vm)
-        ;; `authToken` is a map of header name -> value: some token schemes need more than one
+        ;; a map of header name -> value
         token (:authToken (control-plane-call! :post (str "/2025-09-09/microvms/" vm-id "/auth-token")
                                                {:expirationInMinutes 60
                                                 :allowedPorts        [{:port 8080}]}))]
@@ -202,14 +194,12 @@
       (control-plane-call! :delete (str "/2025-09-09/microvms/" id) nil)
       (log/infof "Terminated MicroVM %s" id)
       (catch Exception e
-        ;; a VM we cannot destroy keeps billing until its maximum duration, so this is loud
+        ;; an undestroyed VM bills until its maximum duration
         (log/errorf e "Failed to terminate MicroVM %s" id)))))
 
 (defn with-microvm
-  "Launch a MicroVM, call `f` with it, and terminate it no matter how `f` ends.
-
-  `f` receives `{:endpoint :auth-headers :terminate!}`, where `terminate!` is idempotent and
-  zero-arg so the caller can also destroy the VM early — that is how cancellation works."
+  "Launch a MicroVM, call `f` with `{:endpoint :auth-headers :terminate!}`, and terminate it no
+  matter how `f` ends. `terminate!` is idempotent, so the caller may also end the VM early."
   [opts f]
   (let [vm          (launch! opts)
         terminated? (atom false)

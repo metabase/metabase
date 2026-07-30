@@ -1,19 +1,8 @@
 (ns metabase-enterprise.transforms-python.executor
-  "Where a python transform runs.
+  "Where a python transform runs: the shared `:http-runner` container, or a per-run `:microvm`.
 
-  Two execution backends, chosen per transform rather than globally:
-
-  - `:http-runner` — the long-lived python-runner container, shared across runs. Fine for
-    transforms that only read source tables: warehouse data in, warehouse data out, no
-    credentials and no egress.
-  - `:microvm` — one AWS Lambda MicroVM per run, launched and terminated around the job. Used
-    for ingestion transforms, which materialize their own input over the network and therefore
-    hold API credentials and reach the internet; a shared process is not an acceptable boundary
-    for that.
-
-  Both speak the same HTTP protocol, so the difference is lifecycle, not wire format. The data
-  plane is S3 with presigned URLs in every case, and everything around the execution step
-  (input materialization, reading results back, the DWH transfer) is backend-agnostic."
+  Both speak the same HTTP protocol over the same presigned-S3 data plane; they differ in
+  lifecycle and isolation."
   (:require
    [clojure.core.async :as a]
    [clojure.java.io :as io]
@@ -45,8 +34,7 @@
   #'backend-for)
 
 (def ^:private known-backends
-  "Backends a setting may name. Stated rather than derived from the method table so that stubbing
-  [[run-python-code!]] in a test cannot invalidate the check."
+  "Backends a setting may name."
   #{:http-runner :microvm})
 
 (defn- validated-backend [backend setting-name]
@@ -56,14 +44,12 @@
         :http-runner)))
 
 (defn ingestion-run?
-  "Whether this run is an ingestion transform: python with no source tables, so it fetches its
-  own input rather than reading the warehouse."
+  "Whether this run fetches its own input rather than reading source tables."
   [{:keys [source-tables]}]
   (empty? source-tables))
 
 (defn backend-for
-  "The execution backend for a run. Ingestion runs are routed separately because they carry
-  credentials and reach the internet."
+  "The execution backend for a run; ingestion runs are routed separately."
   [ctx]
   (if (ingestion-run? ctx)
     (validated-backend (transforms-python.settings/python-ingestion-execution-backend)
@@ -73,10 +59,7 @@
 
 ;;; ------------------------------------------------- Live log polling -------------------------------------------------
 
-;; Logs are surfaced to the UI while a run is in flight (see
-;; `metabase-enterprise.transforms-python.execute`), but the poller only has a run id and the
-;; endpoint it should ask depends on the backend — and, for a MicroVM, on that run's VM. Runs
-;; register what the poller needs for their duration.
+;; The log poller has only a run id, so each run registers where its logs can be read from.
 (defonce ^:private live-runs (atom {}))
 
 (defn- register-run! [run-id info]
@@ -133,8 +116,6 @@
   [{:keys [run-id cancel-chan timeout-secs] :as ctx}]
   (let [timeout-secs (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
         payload      (python-runner/execute-payload ctx)]
-    ;; The VM is the run: launched here, terminated in the finally regardless of outcome, and
-    ;; never reused. Cancellation is that termination — user code cannot decline it.
     (microvm/with-microvm
       {:run-id run-id}
       (fn [{:keys [endpoint auth-headers terminate!]}]

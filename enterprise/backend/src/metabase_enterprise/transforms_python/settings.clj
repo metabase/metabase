@@ -140,10 +140,9 @@
   :audit      :getter)
 
 (setting/defsetting python-ingestion-execution-backend
-  (deferred-tru "Backend used to execute ingestion python transforms — those with no source tables, which fetch their own data over the network. These carry credentials and reach the internet, so they warrant stronger isolation than transforms that only read the warehouse.")
+  (deferred-tru "Backend used to execute ingestion python transforms: those with no source tables, which fetch their own data over the network.")
   :type       :keyword
   :visibility :admin
-  ;; conservative default: an instance with no MicroVM configured keeps working
   :default    :http-runner
   :feature    :transforms-python
   :doc        false
@@ -192,6 +191,38 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+(setting/defsetting python-microvm-region
+  (deferred-tru "AWS region MicroVMs run in. Independent of where object storage lives: MicroVMs are only offered in a few regions, so the bucket may well be elsewhere.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-access-key
+  (deferred-tru "AWS access key ID for the MicroVM control plane. Leave empty to use ambient credentials (instance profile, IRSA, environment), which is the recommended setup.")
+  :type       :string
+  :visibility :admin
+  :sensitive? true
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-secret-key
+  (deferred-tru "AWS secret access key for the MicroVM control plane. Leave empty to use ambient credentials.")
+  :type       :string
+  :visibility :admin
+  :sensitive? true
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
 
 (setting/defsetting python-microvm-egress-connector
   (deferred-tru "ARN of the network connector governing MicroVM outbound traffic. Leave empty to accept the AWS default, which permits unrestricted internet access.")
