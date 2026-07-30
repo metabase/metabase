@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { MEASUREMENT_ROOT_CLASSNAME } from "metabase/utils/measure-container";
 
 import { EmotionCacheProvider } from "./EmotionCacheProvider";
 import { ThemeProvider } from "./ThemeProvider";
@@ -38,7 +39,13 @@ export function MeasurementProviders({ children }: MeasurementProvidersProps) {
   const resolvedColorScheme = readCurrentColorScheme();
   return (
     <EmotionCacheProvider>
-      <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
+      {/* Scope variable creation to the measurement container to prevent overriding
+       * main app vars
+       */}
+      <ThemeProvider
+        resolvedColorScheme={resolvedColorScheme}
+        cssVariablesSelector={`.${MEASUREMENT_ROOT_CLASSNAME}`}
+      >
         {children}
       </ThemeProvider>
     </EmotionCacheProvider>

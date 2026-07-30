@@ -227,10 +227,10 @@
           (log/warn
            (case error-type
              ::invalid-input  (format "Invalid input - Please report this as an issue on Github: %s"
-                                      (pr-str humanized))
+                                      (pr-str (me/humanize error)))
              ::invalid-output (format "Invalid output - Please report this as an issue on Github: %s"
-                                      (pr-str humanized)))
-           details))))))
+                                      (pr-str (me/humanize error))))
+           (dissoc details :value :error :humanized)))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached

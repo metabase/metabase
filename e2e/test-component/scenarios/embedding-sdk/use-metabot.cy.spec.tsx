@@ -11,50 +11,57 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const buildAdHocPath = (query: Record<string, unknown>) =>
-  `/question#${btoa(
-    JSON.stringify({
-      dataset_query: { database: SAMPLE_DB_ID, type: "query", query },
-      display: "table",
-      displayIsLocked: true,
-      visualization_settings: {},
-    }),
-  )}`;
-
-const adHocQuestionPathOrders = buildAdHocPath({
+const ordersQuery = {
   "source-table": ORDERS_ID,
   aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
   breakout: [["field", ORDERS.PRODUCT_ID, null]],
   limit: 2,
-});
+};
 
-const adHocQuestionPathProducts = buildAdHocPath({
+const productsQuery = {
   "source-table": PRODUCTS_ID,
   aggregation: [["count"]],
   breakout: [["field", PRODUCTS.CATEGORY, null]],
   limit: 2,
-});
+};
 
-// A native card with no numeric slug — the shape Metabot emits when it opens
-// the SQL editor. `CurrentChart drills` must render the editor, not just the
-// result window. Regression coverage for EMB-2042.
-const nativeQuestionPath = `/question#${btoa(
-  JSON.stringify({
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "native",
-      native: { query: "" },
-    },
-    display: "table",
-    visualization_settings: {},
-  }),
-)}`;
+// Metabot surfaces a chart to the SDK via a `generated_entity` card data part.
+const buildGeneratedCardResponse = (query: Record<string, unknown>) =>
+  H.createMetabotSSEBody([
+    ...H.metabotTextPart("Here are the results"),
+    H.metabotDataPart("generated_entity", {
+      type: "card",
+      id: "card-1",
+      title: "Question",
+      query: {
+        id: "query-1",
+        query: { database: SAMPLE_DB_ID, type: "query", query },
+      },
+      display: "table",
+    }),
+  ]);
 
-const buildNavigateToResponse = (path: string) =>
-  H.createMetabotSSEBody(
-    H.metabotTextPart(`Here is the [question link](${path})`),
-    H.metabotDataPart("navigate_to", path),
-  );
+// A native card produces a path with no numeric slug — the shape Metabot emits
+// when it opens the SQL editor. `CurrentChart drills` must render the editor,
+// not just the result window. Regression coverage for EMB-2042.
+const buildNativeCardResponse = () =>
+  H.createMetabotSSEBody([
+    ...H.metabotTextPart("Opening the SQL editor"),
+    H.metabotDataPart("generated_entity", {
+      type: "card",
+      id: "card-native",
+      title: "Native question",
+      query: {
+        id: "query-native",
+        query: {
+          database: SAMPLE_DB_ID,
+          type: "native",
+          native: { query: "" },
+        },
+      },
+      display: "table",
+    }),
+  ]);
 
 type MetabotConsumerProps = {
   prompts: string[];
@@ -111,10 +118,10 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("exposes Metabot and renders CurrentChart after navigate_to", () => {
+  it("exposes Metabot and renders CurrentChart after a chart is generated", () => {
     H.mockMetabotResponse({
       statusCode: 200,
-      body: buildNavigateToResponse(adHocQuestionPathOrders),
+      body: buildGeneratedCardResponse(ordersQuery),
     });
 
     mountSdkContent(<MetabotConsumer prompts={["Show me orders"]} />);
@@ -136,10 +143,10 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     });
   });
 
-  it("opens the SQL editor when Metabot navigates to a native question (EMB-2042)", () => {
+  it("opens the SQL editor when Metabot generates a native question (EMB-2042)", () => {
     H.mockMetabotResponse({
       statusCode: 200,
-      body: buildNavigateToResponse(nativeQuestionPath),
+      body: buildNativeCardResponse(),
     });
 
     mountSdkContent(
@@ -163,15 +170,15 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     });
   });
 
-  it("swaps CurrentChart when a second navigate_to reaction arrives with a new path", () => {
+  it("swaps CurrentChart when a second chart arrives with a new query", () => {
     cy.intercept("POST", "/api/metabot/agent-streaming", (request) => {
-      const path =
+      const query =
         request.body.message === "Show me products"
-          ? adHocQuestionPathProducts
-          : adHocQuestionPathOrders;
+          ? productsQuery
+          : ordersQuery;
       request.reply({
         statusCode: 200,
-        body: buildNavigateToResponse(path),
+        body: buildGeneratedCardResponse(query),
         headers: { "content-type": "text/event-stream; charset=utf-8" },
       });
     }).as("metabotAgent");

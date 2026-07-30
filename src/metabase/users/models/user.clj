@@ -8,7 +8,6 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -366,10 +365,6 @@
 
 (t2.default-fields/define-default-fields :model/User default-user-columns)
 
-(defmethod serdes/hash-fields :model/User
-  [_user]
-  [:email])
-
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
@@ -550,6 +545,18 @@
    [:like :%lower.last_name  (wildcard-query query)]
    [:like :%lower.email      (wildcard-query query)]])
 
+(defn- table-metadata-perms-exist-clause
+  "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
+  manage-table-metadata."
+  []
+  [:exists {:select [1]
+            :from   [[:permissions_group_membership :pgm]]
+            :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+            :where  [:and
+                     [:= :pgm.user_id :core_user.id]
+                     [:= :p.perm_type "perms/manage-table-metadata"]
+                     [:= :p.perm_value "yes"]]}])
+
 (defn filter-clauses
   "Honeysql clauses for filtering on users.
 
@@ -576,23 +583,11 @@
                                                                  [:or
                                                                   :core_user.is_data_analyst
                                                                   :core_user.is_superuser
-                                                                  [:in :core_user.id
-                                                                   {:select-distinct [:pgm.user_id]
-                                                                    :from [[:permissions_group_membership :pgm]]
-                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                                                                    :where [:and
-                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
-                                                                            [:= :p.perm_value "yes"]]}]]
+                                                                  (table-metadata-perms-exist-clause)]
                                                                  [:and
                                                                   [:not :core_user.is_data_analyst]
                                                                   [:not :core_user.is_superuser]
-                                                                  [:not-in :core_user.id
-                                                                   {:select-distinct [:pgm.user_id]
-                                                                    :from [[:permissions_group_membership :pgm]]
-                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                                                                    :where [:and
-                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
-                                                                            [:= :p.perm_value "yes"]]}]]))
+                                                                  [:not (table-metadata-perms-exist-clause)]]))
     (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])

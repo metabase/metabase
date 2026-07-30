@@ -111,7 +111,10 @@
       mi/json-out-without-keywordization
       (update-keys keyword)
       (m/update-existing :query (fn [q] (if (orphan-query? q) q (lib-be/normalize-query q))))
-      (m/update-existing :source-incremental-strategy #(update-keys % keyword))
+      (m/update-existing :source-incremental-strategy
+                         (fn [strategy]
+                           (-> (update-keys strategy keyword)
+                               (m/update-existing :lookback #(some-> % (update-keys keyword))))))
       (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
       (m/update-existing :type keyword)))
 
@@ -148,7 +151,7 @@
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.
     (when (and target-db-id (not valid-db-id?))
-      (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
+      (log/warnf "Invalid target database id (%s) ignored for new transform" target-db-id))
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
@@ -434,10 +437,6 @@
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
 
-(defmethod serdes/hash-fields :model/Transform
-  [_transform]
-  [:name :created_at])
-
 (defn- import-maybe-int-database-fk
   "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports
   where source-tables database_id values were serialized without conversion."
@@ -449,6 +448,24 @@
   where source-tables table_id values were serialized without conversion."
   [v]
   (if (pos-int? v) v (serdes/*import-table-fk* v)))
+
+(defn- import-maybe-int-field-fk [v]
+  (if (pos-int? v) v (some-> v serdes/*import-field-fk*)))
+
+(defn- export-checkpoint-field-fk
+  "Portable ref for the checkpoint field. A dangling id (field since deleted) is exported as-is:
+  the importer passes numbers through, so one stale config can't fail the whole import."
+  [field-id]
+  (if (t2/exists? :model/Field :id field-id)
+    (serdes/*export-field-fk* field-id)
+    field-id))
+
+(defn- update-checkpoint-field
+  "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
+  [source f]
+  (m/update-existing source :source-incremental-strategy
+                     (fn [strategy]
+                       (m/update-existing strategy :checkpoint-filter-field-id f))))
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
@@ -470,7 +487,8 @@
                                                                  (->> (transforms-base.u/normalize-source-tables entries)
                                                                       (mapv #(-> %
                                                                                  (m/update-existing :table_id serdes/*export-table-fk*)
-                                                                                 (m/update-existing :database_id serdes/*export-database-fk*)))))))
+                                                                                 (m/update-existing :database_id serdes/*export-database-fk*))))))
+                                            (update-checkpoint-field export-checkpoint-field-fk))
                                         ;; Orphan: source DB has been deleted, so table/field rows it referenced
                                         ;; are gone too. Null the dead numeric refs and flag the body so
                                         ;; the importer skips ref resolution.
@@ -479,7 +497,8 @@
                                             (m/update-existing :query assoc :database nil)
                                             (m/update-existing :source-database (constantly nil))
                                             (m/update-existing :source-tables
-                                                               #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %)))))
+                                                               #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %))
+                                            (update-checkpoint-field (constantly nil)))))
                                     :import
                                     (fn [source]
                                       (if (:serdes/unresolved source)
@@ -493,7 +512,8 @@
                                                                       (mapv (fn [entry]
                                                                               (-> entry
                                                                                   (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                  (m/update-existing :database_id import-maybe-int-database-fk))))))))))}
+                                                                                  (m/update-existing :database_id import-maybe-int-database-fk)))))))
+                                            (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))
@@ -501,15 +521,18 @@
 
 (defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
-  (set
-   (concat
-    (when collection_id
-      [[{:model "Collection" :id collection_id}]])
-    (when source_database_id
-      [[{:model "Database" :id source_database_id}]])
-    (for [{tag-id :tag_id} tags]
-      [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps false source))))
+  (let [checkpoint-field-ref (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
+    (set
+     (concat
+      (when collection_id
+        [[{:model "Collection" :id collection_id}]])
+      (when source_database_id
+        [[{:model "Database" :id source_database_id}]])
+      (for [{tag-id :tag_id} tags]
+        [{:model "TransformTag" :id tag-id}])
+      (when (some-> checkpoint-field-ref pos-int? not)
+        [(serdes/field->path checkpoint-field-ref)])
+      (serdes/mbql-deps false source)))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))

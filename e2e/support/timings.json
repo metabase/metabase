@@ -137,12 +137,12 @@
       "duration": 2679
     },
     {
-      "spec": "../test/scenarios/admin/tools/help.cy.spec.ts",
-      "duration": 13763
+      "spec": "../test/scenarios/admin/help.cy.spec.ts",
+      "duration": 13587
     },
     {
-      "spec": "../test/scenarios/admin/tools/tools.cy.spec.ts",
-      "duration": 47236
+      "spec": "../test/scenarios/monitor/tools/tools.cy.spec.ts",
+      "duration": 47954
     },
     {
       "spec": "../test/scenarios/binning/binning-options.cy.spec.js",

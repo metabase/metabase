@@ -166,8 +166,9 @@
            :from [:metabase_field]
            :where [:and
                    [:= :fk_target_field_id (:id field)]
-                   [:not [:in :id {:select [:field_id]
-                                   :from [:metabase_field_user_settings]}]]]}
+                   [:not [:exists {:select [1]
+                                   :from   [:metabase_field_user_settings]
+                                   :where  [:= :metabase_field_user_settings.field_id :metabase_field.id]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
@@ -268,10 +269,6 @@
      #(u/index-by :id mi/can-write? fields-with-collection)
      :id
      {:default false})))
-
-(defmethod serdes/hash-fields :model/Field
-  [_field]
-  [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

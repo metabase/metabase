@@ -331,28 +331,32 @@
                              "tag"           "embedding_generation"}}]
                     events))))))))
 
-(deftest token-tracking-write-test
+(deftest ^:sequential token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))
       (doseq [provider ["openai" "ai-service"]]
         (semantic.tu/with-test-db! {:mode :blank}
-          (let [mock-embedding (repeat 1024 1.0)
-                mock-response {:data [{:object "embedding"
-                                       :embedding (encode-floats-to-base64 mock-embedding)
-                                       :index 0}]
-                               :model "some-model"
-                               :usage {:prompt_tokens 1
-                                       :total_tokens 13}}]
+          (let [encoded-embedding (encode-floats-to-base64 (repeat 1024 1.0))]
             (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
                           semantic.settings/ee-embedding-model              (constantly "mock-model")
                           semantic.settings/openai-api-key                  (constantly "xyz")
                           semantic.settings/openai-api-base-url             (constantly "xyz")
                           semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
                           semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
-                          http/post (fn post-mock [_url & _options]
-                                      {:status 200
-                                       :headers {"Content-Type" "application/json"}
-                                       :body (json/encode mock-response)})]
+                          http/post (fn post-mock [_url {:keys [body]}]
+                                      (let [inputs (:input (json/decode body true))]
+                                        {:status 200
+                                         :headers {"Content-Type" "application/json"}
+                                         :body (json/encode
+                                                {:data (map-indexed
+                                                        (fn [index _]
+                                                          {:object    "embedding"
+                                                           :embedding encoded-embedding
+                                                           :index     index})
+                                                        inputs)
+                                                 :model "some-model"
+                                                 :usage {:prompt_tokens 1
+                                                         :total_tokens 13}})}))]
               (let [pgvector (semantic.env/get-pgvector-datasource!)
                     index-metadata (semantic.env/get-index-metadata)
                     embedding-model (semantic.env/get-configured-embedding-model)

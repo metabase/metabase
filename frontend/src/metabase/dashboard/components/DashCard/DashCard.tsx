@@ -47,6 +47,7 @@ import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -135,11 +136,12 @@ function DashCardInner({
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
+  });
 
-    if (autoScroll) {
-      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
-      reportAutoScrolledToDashcard?.();
-    }
+  useAutoScrollIntoView({
+    ref: cardRootRef,
+    enabled: Boolean(autoScroll),
+    onScrolled: () => reportAutoScrolledToDashcard?.(),
   });
 
   useUpdateEffect(() => {

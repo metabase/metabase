@@ -9,7 +9,6 @@ import {
 
 import { getInitialStateForMultipleSeries } from "./get-initial-state-for-multiple-series";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
 
 describe("getInitialVisualizerStateForMultipleSeries", () => {

@@ -1,7 +1,10 @@
+import dayjs from "dayjs";
 import type { EChartsCoreOption } from "echarts/core";
 
 import { isNotNull } from "metabase/utils/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
+  ChartDataset,
   DataKey,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -40,4 +43,49 @@ export const getHoveredEChartsSeriesDataKeyAndIndex = (
   );
 
   return { hoveredSeriesDataKey, hoveredEChartsSeriesIndex };
+};
+
+export const getDataSeriesEChartsIndices = (
+  seriesModels: SeriesModel[],
+  option: EChartsCoreOption,
+): number[] => {
+  const seriesOptions = Array.isArray(option?.series)
+    ? option.series
+    : [option?.series].filter(isNotNull);
+
+  const visibleDataKeys = new Set(
+    seriesModels.filter((series) => series.visible).map((s) => s.dataKey),
+  );
+
+  return seriesOptions.flatMap((series, index) =>
+    visibleDataKeys.has(series.id) ? [index] : [],
+  );
+};
+
+export const getClosestDatumIndex = (
+  dataset: ChartDataset,
+  date: string,
+): number => {
+  const target = dayjs.utc(date).valueOf();
+  if (Number.isNaN(target)) {
+    return -1;
+  }
+
+  return dataset.reduce(
+    (best, datum, index) => {
+      const value = datum[X_AXIS_DATA_KEY];
+      const canParse =
+        typeof value === "string" ||
+        typeof value === "number" ||
+        value instanceof Date;
+      const timestamp = canParse ? dayjs.utc(value).valueOf() : NaN;
+
+      if (Number.isNaN(timestamp)) {
+        return best;
+      }
+      const diff = Math.abs(timestamp - target);
+      return diff < best.diff ? { index, diff } : best;
+    },
+    { index: -1, diff: Infinity },
+  ).index;
 };

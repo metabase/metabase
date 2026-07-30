@@ -6,8 +6,6 @@ driver:
   name: bigquery-cloud-sdk
   display-name: BigQuery
   lazy-load: true
-  parent:
-    - sql
   connection-properties:
     - name: project-id
       display-name: Project ID (override)

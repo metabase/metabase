@@ -2,7 +2,7 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 
 import { makeDistortionCallback } from "./distortions";
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
-import type { DataAppFactory } from "./types";
+import type { DataAppFactory, SandboxBlockedListener } from "./types";
 
 /**
  * The realm objects the sandbox exposes to the bundle as globals.
@@ -46,6 +46,11 @@ export interface CreateDataAppSandboxOptions {
   allowedHosts?: string[];
   /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
   endowments: DataAppSandboxEndowments;
+  /**
+   * Structured listener for sandbox blocks (dev toolbar). When absent the
+   * sandbox keeps its default reporting (`console.error` / reject).
+   */
+  onBlocked?: SandboxBlockedListener;
 }
 
 function isLiveTarget(target: object): boolean {
@@ -61,6 +66,7 @@ export function createDataAppSandbox({
   targetWindow = window,
   allowedHosts = [],
   endowments,
+  onBlocked,
 }: CreateDataAppSandboxOptions) {
   let captured: unknown;
 
@@ -69,6 +75,7 @@ export function createDataAppSandbox({
       label,
       targetWindow,
       allowedHosts,
+      onBlocked,
     ),
     liveTargetCallback: isLiveTarget,
     // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's

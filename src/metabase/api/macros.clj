@@ -636,7 +636,7 @@
 
     {:multipart true}                         — wraps with multipart-params middleware
     {:multipart {:max-file-size N, ...}}      — same, passing options to wrap-multipart-params
-    {:scope \"agent:workspaces\"}               — wraps with scope enforcement middleware
+    {:scope \"agent:query\"}                    — wraps with scope enforcement middleware
     {:scope :unchecked}                       — skips both enforce-scope and ensure-scopes-checked
 
    Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
@@ -703,7 +703,7 @@
 (mr/def ::ns-endpoints [:map-of ::unique-key ::info])
 
 (mr/def ::route-metadata
-  "Metadata declared on a route via defendpoint, e.g. `{:access :workspace}`."
+  "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
   :map)
 
 (mr/def ::handler-map
@@ -794,7 +794,7 @@
                                {:api.docs/request-rebuild
                                 (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
         (catch Throwable e
-          (log/debug e "Failed to publish api-handler-update event"))))))
+          (log/debugf "Failed to publish api-handler-update event: %s" (ex-message e)))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

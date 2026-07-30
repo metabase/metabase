@@ -6,9 +6,6 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
-  TaskRunDateFilterOption,
-  TaskRunEntityType,
-  TaskRunType,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: Pick<BaseUser, "tenant_id">) =>
@@ -167,76 +164,10 @@ export function customVizDev() {
   return `${customViz()}/development`;
 }
 
-export function adminToolsHelp() {
-  return "/admin/tools/help";
+export function adminHelp() {
+  return "/admin/help";
 }
 
-export function adminToolsTasks() {
-  return "/admin/tools/tasks";
-}
-export function adminToolsTasksList() {
-  return `${adminToolsTasks()}/list`;
-}
-
-export function adminToolsTaskDetails(taskId: number) {
-  return `${adminToolsTasksList()}/${taskId}`;
-}
-
-export function adminToolsTasksRuns() {
-  return `${adminToolsTasks()}/runs`;
-}
-
-export function adminToolsTaskRunDetails(runId: number) {
-  return `${adminToolsTasksRuns()}/${runId}`;
-}
-
-export function adminToolsTasksRunsFor(opts: {
-  runType: TaskRunType;
-  entityType: TaskRunEntityType;
-  entityId?: number;
-  startedAt?: TaskRunDateFilterOption;
-  includeToday?: boolean;
-}) {
-  const params: Record<string, string> = {
-    "run-type": opts.runType,
-    "entity-type": opts.entityType,
-  };
-  if (opts.entityId) {
-    params["entity-id"] = String(opts.entityId);
-  }
-  if (opts.startedAt) {
-    params["started-at"] = opts.startedAt;
-  }
-  if (opts.includeToday) {
-    params["include-today"] = "true";
-  }
-  return `${adminToolsTasksRuns()}?${new URLSearchParams(params).toString()}`;
-}
-
-export function adminToolsJobs() {
-  return "/admin/tools/jobs";
-}
-
-export function adminToolsLogs() {
-  return "/admin/tools/logs";
-}
-
-export function adminToolsErrors() {
-  return "/admin/tools/errors";
-}
-
-export function adminToolsModelCaching() {
-  return "/admin/tools/model-caching";
-}
-
-export function adminToolsGrantAccess() {
-  return "/admin/tools/help/grant-access";
-}
-
-export function adminToolsNotifications() {
-  return "/admin/tools/notifications";
-}
-
-export function adminToolsNotificationDetail(id: number) {
-  return `/admin/tools/notifications/${id}`;
+export function adminHelpGrantAccess() {
+  return `${adminHelp()}/grant-access`;
 }

@@ -210,12 +210,13 @@
                        :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
                        :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
                        :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
+                       :model/FieldUserSettings _ {:field_id (:id field) :description "curated"}
                        :model/Measure measure {:name "M" :table_id (:id table)}]
           (mt/with-model-cleanup [:model/RemoteSyncTask]
             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                   rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
                                 [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                                 ["Field" (:id field)] ["Measure" (:id measure)]])]
+                                 ["FieldUserSettings" (:id field)] ["Measure" (:id measure)]])]
               (t2/delete! :model/RemoteSyncObject)
               (doseq [row rows]
                 (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"

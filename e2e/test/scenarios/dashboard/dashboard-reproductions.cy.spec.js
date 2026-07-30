@@ -47,7 +47,7 @@ describe("issue 12578", () => {
 
     // Without tick the dashboard header will not load
     cy.tick();
-    cy.findByLabelText("Auto Refresh").click();
+    H.openDashboardMenu("Auto-refresh");
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request

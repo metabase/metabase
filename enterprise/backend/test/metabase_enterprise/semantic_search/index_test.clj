@@ -13,6 +13,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -270,17 +271,32 @@
               "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
 
 (deftest query-index-hnsw-without-index-throws-test
-  (testing "a query under any HNSW-index-backed strategy fails fast when no HNSW index exists, rather than silently scanning"
-    (mt/with-premium-features #{:semantic-search}
-      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+      (testing "a query under any HNSW-index-backed strategy fails fast when no usable HNSW index exists"
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (doseq [strategy [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
           (testing strategy
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"no HNSW index exists"
+                 clojure.lang.ExceptionInfo #"no usable HNSW index exists"
                  (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
                                              @index-ref
-                                             {:search-string "puppy" :vector-search-strategy strategy})))))))))
+                                             {:search-string "puppy" :vector-search-strategy strategy}))))))
+      (testing "an active concurrent build temporarily uses the exact-scan path"
+        (let [query (atom nil)]
+          (mt/with-dynamic-fn-redefs
+            [semantic.util/index-state       (constantly :building)
+             semantic.index/reducible-search-query (fn [_ q]
+                                                     (reset! query q)
+                                                     [])]
+            (is (map? (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                                  @index-ref
+                                                  {:search-string "puppy" :vector-search-strategy :hnsw}))))
+          (let [query-sql (first (sql/format @query :quoted true))]
+            (is (str/includes? query-sql "AS MATERIALIZED")
+                "a building HNSW index must use the materialized exact-scan query")
+            (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" query-sql))
+                "a building HNSW index must not use the approximate HNSW scan")))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -415,13 +431,19 @@
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
             (testing "upsert-index!"
-              (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
-                (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
+              (let [original-upsert-index-pooled! (mt/original-fn #'semantic.index/upsert-index-pooled!)]
+                (mt/with-dynamic-fn-redefs
+                  [semantic.index/upsert-index-pooled!
+                   (only-first-call realized original-upsert-index-pooled!)]
+                  (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs)))))
               (semantic.tu/check-index-has-mock-card))
             (reset! realized 0)
             (testing "delete-from-index!"
-              (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
-                (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs)))))
+              (let [original-delete-from-index-batch-sql (mt/original-fn #'semantic.index/delete-from-index-batch-sql)]
+                (mt/with-dynamic-fn-redefs
+                  [semantic.index/delete-from-index-batch-sql
+                   (only-first-call realized original-delete-from-index-batch-sql)]
+                  (is (= {"card" 2} (semantic.tu/delete-from-index! "card" (eduction (map :id) mock-docs))))))
               (semantic.tu/check-index-has-no-mock-docs))))))))
 
 (defn- track-concurrency
@@ -444,6 +466,8 @@
                 update-fn      @#'semantic.index/upsert-index-batch!
                 docs          (take 100 (map-indexed (fn [i doc] (assoc doc :id (str i)))
                                                      (cycle (semantic.tu/mock-documents))))]
+            ;; This function is invoked by multiple index worker threads; dynamic redefs would not propagate to them.
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [semantic.index/upsert-index-batch! (track-concurrency
                                                               max-concurrent
                                                               (fn [& args] (apply update-fn args)))]
@@ -526,6 +550,8 @@
     (binding [semantic.index/*batch-size* batch-size]
       (let [{:keys [calls proxy]} (semantic.tu/spy semantic.embedding/process-embeddings-streaming)
             inter-batch-cache-hit? (atom false)]
+        ;; These functions are invoked by the embedding worker; dynamic redefs would not propagate to it.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [semantic.embedding/process-embeddings-streaming proxy
                       semantic.index/partition-existing-embeddings
                       (let [orig @#'semantic.index/partition-existing-embeddings]

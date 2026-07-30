@@ -81,14 +81,13 @@ describe("modalRoute", () => {
     expect(pathname()).toBe("/account/notifications");
   });
 
-  // The admin permissions pages hang modal routes off a parent whose path uses
-  // v3 optional groups, so the parent matches a variable number of segments.
-  it("closes to the right parent under a route with optional groups", async () => {
+  // The admin permissions pages hang modal routes off a parent that matches a
+  // variable number of segments. v3 spelled that with optional groups
+  // (`database(/:databaseId)`); v7 cannot parse those, so the app expands each
+  // depth into its own route. Closing has to land on the depth that matched.
+  it("closes to the right parent under a variable-depth parent route", async () => {
     const { pathname } = setup(
-      <Route
-        path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
-        element={<CollectionPage />}
-      >
+      <Route path="database/:databaseId" element={<CollectionPage />}>
         {modalRoute("impersonated/group/:groupId", TestModal, { modalProps })}
       </Route>,
       "/database/1/impersonated/group/2",

@@ -22,6 +22,17 @@ import type {
 export type RenderSubRow<TData> = (row: Row<TData>) => ReactNode;
 
 /**
+ * Wraps a row's content in a link. `props` carries the styling and content the
+ * row expects, so a call site only has to supply the destination:
+ * `(row, props) => <Link to={getHref(row)} {...props} />`. Return
+ * `props.children` for rows that should not be links.
+ */
+export type RenderRowLink<TData> = (
+  row: Row<TData>,
+  props: { className: string; children: ReactNode },
+) => ReactNode;
+
+/**
  * Base interface that all tree node data must extend.
  * IDs can be strings or numbers - getNodeId converts them to strings for TanStack Table.
  */
@@ -257,17 +268,23 @@ export interface TreeTableProps<
   isRowDisabled?: (row: Row<TData>) => boolean;
 
   /**
+   * Callback to determine if a row has an operation in progress. When true,
+   * the row's selection checkbox is replaced by a loading spinner.
+   */
+  isRowLoading?: (row: Row<TData>) => boolean;
+
+  /**
    * Callback to get additional props for each row element.
    * Useful for adding test IDs or custom data attributes.
    */
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;
 
   /**
-   * Callback to get the href for a row. When provided and returns a non-null value,
-   * the row will be rendered as a link, enabling Cmd+Click to open in new tab.
-   * Return null for rows that shouldn't be links (e.g., expandable parent nodes).
+   * Renders a row's content inside a link, enabling Cmd+Click to open in a new tab.
+   * The tree table has no router of its own, so the call site supplies the link
+   * component.
    */
-  getRowHref?: (row: Row<TData>) => string | null;
+  renderRowLink?: RenderRowLink<TData>;
 
   renderSubRow?: RenderSubRow<TData>;
 
@@ -303,11 +320,12 @@ export interface TreeTableRowProps<
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
   isDisabled?: boolean;
   isChildrenLoading?: boolean;
+  isLoading?: boolean;
   getSelectionState?: (row: Row<TData>) => SelectionState;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;
   /** When provided, renders the row as a link for Cmd+Click support */
-  href?: string | null;
+  renderRowLink?: RenderRowLink<TData>;
   renderSubRow?: RenderSubRow<TData>;
   hierarchical?: boolean;
 }

@@ -62,7 +62,12 @@
         (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
                                                (swap! logged-messages conj {:level level :message message}))
                                     transform-run/running-run-for-transform-id (constantly nil)]
-          (#'jobs/run-transform! run-id :scheduled nil (promise) python-transform)
+          (#'jobs/run-transform! {:parent-run       [:job run-id]
+                                  :run-method       :scheduled
+                                  :user-id          nil
+                                  :add-run-activity! (constantly nil)}
+                                 (promise)
+                                 python-transform)
           (is (= 1 (count @logged-messages))
               "Should log exactly one warning")
           (is (= :warn (:level (first @logged-messages)))

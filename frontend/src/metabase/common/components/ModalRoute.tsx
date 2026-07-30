@@ -1,6 +1,6 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
+import type { Location } from "metabase/router";
 import {
   Route,
   useNavigate,

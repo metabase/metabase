@@ -19,7 +19,6 @@ import {
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
 import { push } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -32,11 +31,7 @@ import S from "./NewSnippetPage.module.css";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
-type NewSnippetPageProps = {
-  route: Route;
-};
-
-export function NewSnippetPage({ route }: NewSnippetPageProps) {
+export function NewSnippetPage() {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [name, setName] = useState(t`New SQL snippet`);
@@ -167,10 +162,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           </Stack>
         </Flex>
       </PageContainer>
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={!savedSnippet && !isSaving}
-      />
+      <LeaveRouteConfirmModal isEnabled={!savedSnippet && !isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}
         onSelect={handleCollectionSelected}

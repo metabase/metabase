@@ -6,7 +6,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import type { WithRouterProps } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
@@ -18,7 +18,6 @@ import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
 import { VIEW_GROUP_MEMBERS, VIEW_MCP_TOOL_CALLS } from "../constants";
 import { useMcpHasData } from "../hooks/useMcpHasData";
 import { buildCallsByDayByStatusQuery } from "../query-utils";
-import type { McpTab } from "../url-state";
 import { mcpUrlStateConfig } from "../url-state";
 
 import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
@@ -31,9 +30,10 @@ import { McpEventsTable } from "./McpEventsTable";
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function McpAnalyticsPage({ location, router }: WithRouterProps) {
+export function McpAnalyticsPage() {
+  const { location, router } = useRouter();
   const [
-    { date, user, group, tenant, tab, page, sortColumn, sortDirection },
+    { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
   ] = useUrlState(location, mcpUrlStateConfig);
 
@@ -129,8 +129,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
           .otherwise(() => (
             <Tabs
               value={tab}
-              // Unjustified type cast. FIXME
-              onChange={(val) => patchUrlState({ tab: val as McpTab })}
+              onChange={(value) => patchUrlState({ tab: value ?? undefined })}
               keepMounted={false}
             >
               <Tabs.List mb="lg">
@@ -207,14 +206,11 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
                   page={page}
                   total={count}
                   onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                  sortingOptions={{
-                    sort_column: sortColumn,
-                    sort_direction: sortDirection,
-                  }}
+                  sortingOptions={{ sort_column, sort_direction }}
                   onSortingOptionsChange={(newSorting) =>
                     patchUrlState({
-                      sortColumn: newSorting.sort_column,
-                      sortDirection: newSorting.sort_direction,
+                      sort_column: newSorting.sort_column,
+                      sort_direction: newSorting.sort_direction,
                       page: 0,
                     })
                   }

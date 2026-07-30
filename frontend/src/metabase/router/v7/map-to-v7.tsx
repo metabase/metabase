@@ -5,11 +5,10 @@ import {
   type ReactNode,
   isValidElement,
 } from "react";
-import { Route as V7Route } from "react-router-v7";
+import { Route as V7Route } from "react-router";
 
 import type { RouteElementProps } from "../route";
 import { Route } from "../route";
-import { translatePatternToV3 } from "../translate-pattern";
 
 import { RouterBridge } from "./RouterBridge";
 
@@ -54,8 +53,9 @@ function toV7Route(element: ReactElement<RouteElementProps>): ReactElement {
       <RouterBridge v3Element={routeElement} />
     ) : undefined;
 
-  const handle =
-    path != null ? { v3Path: translatePatternToV3(path) } : undefined;
+  // Keep the route `path` on `handle`: the matched-route branch the facade
+  // republishes exposes it, and consumers read it (`redirect` reads `route.path`).
+  const handle = path != null ? { path } : undefined;
 
   if (index) {
     return <V7Route index element={bridged} handle={handle} />;
