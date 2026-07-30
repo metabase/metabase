@@ -18,7 +18,9 @@ export type ContentDiagnosticsEntityType =
   (typeof CONTENT_DIAGNOSTICS_ENTITY_TYPES)[number];
 
 export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
-  "card",
+  "question",
+  "model",
+  "metric",
   "dashboard",
   "document",
   "transform",

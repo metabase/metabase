@@ -149,7 +149,9 @@ export function getUserName(user: ContentDiagnosticsUser | null): string {
 
 export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
   return match(type)
-    .with("card", () => t`Cards`)
+    .with("question", () => t`Questions`)
+    .with("model", () => t`Models`)
+    .with("metric", () => t`Metrics`)
     .with("dashboard", () => t`Dashboards`)
     .with("document", () => t`Documents`)
     .with("transform", () => t`Transforms`)

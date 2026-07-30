@@ -338,11 +338,19 @@ describe("StaleContentPage", () => {
 
     await waitFor(() => {
       expect(history?.getCurrentLocation().query).toEqual({
-        "entity-types": ["card", "document", "transform"],
+        "entity-types": [
+          "question",
+          "model",
+          "metric",
+          "document",
+          "transform",
+        ],
       });
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
-      "card",
+      "question",
+      "model",
+      "metric",
       "document",
       "transform",
     ]);
@@ -380,16 +388,16 @@ describe("StaleContentPage", () => {
     const { history } = setup({
       findings: FINDINGS,
       urlParams: {},
-      lastUsedParams: { entity_types: ["card"] },
+      lastUsedParams: { entity_types: ["model"] },
     });
 
     await waitForListToLoad();
 
     expect(history?.getCurrentLocation().query).toEqual({
-      "entity-types": "card",
+      "entity-types": "model",
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
-      "card",
+      "model",
     ]);
   });
 
@@ -397,7 +405,7 @@ describe("StaleContentPage", () => {
     const { history } = setup({
       findings: FINDINGS,
       urlParams: { entityTypes: ["dashboard"] },
-      lastUsedParams: { entity_types: ["card"] },
+      lastUsedParams: { entity_types: ["model"] },
     });
 
     await waitForListToLoad();

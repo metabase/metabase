@@ -41,21 +41,21 @@ describe("parseUrlParams", () => {
     expect(
       parseUrlParams(
         createLocation({
-          "entity-types": ["card", "transform"],
+          "entity-types": ["model", "transform"],
           "include-personal-collections": "false",
         }),
       ),
     ).toEqual({
-      entityTypes: ["card", "transform"],
+      entityTypes: ["model", "transform"],
       includePersonalCollections: false,
     });
   });
 
   it("drops entity-types values that are not covered types", () => {
     expect(
-      parseUrlParams(createLocation({ "entity-types": ["card", "bogus"] }))
+      parseUrlParams(createLocation({ "entity-types": ["model", "bogus"] }))
         .entityTypes,
-    ).toEqual(["card"]);
+    ).toEqual(["model"]);
   });
 
   it("parses sort-column and sort-direction", () => {
@@ -88,7 +88,14 @@ describe("isEmptyParams", () => {
       isEmptyParams(
         createLocation({
           page: "0",
-          "entity-types": ["card", "dashboard", "document", "transform"],
+          "entity-types": [
+            "question",
+            "model",
+            "metric",
+            "dashboard",
+            "document",
+            "transform",
+          ],
           "include-personal-collections": "true",
         }),
       ),
