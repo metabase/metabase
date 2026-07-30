@@ -18,8 +18,9 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.memoize :as u.memo]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize])
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentVector)))
 
@@ -175,7 +176,7 @@
                       :tables {table-id {group-id #{{:schema schema-name                 ; table-level rows
                                                      :value  perm-value}}}}}
 
-                 The sets almost always hold exactly one value; see [[rows->table-perms]] for why every distinct
+                 The sets almost always hold exactly one value; see [[fold-table-perm-row]] for why every distinct
                  value of duplicate rows is preserved rather than one row winning.
 
                  On instances with many databases these maps are typically identical across most of them, so
@@ -198,7 +199,7 @@
 
                  Each annotated group prints as N equal maps but is held as ONE shared instance plus N
                  pointers — 1,000 databases with the same profile cost one :groups map, not 1,000. The sharing
-                 is established at construction by [[rows->table-perms]] and is invisible to readers.
+                 is established at construction by [[load-table-perms]] and is invisible to readers.
 
   When checking permissions, if a database has not been fetched, it will be added to the cache before the check
   returns."
@@ -224,7 +225,7 @@
   (atom {:db-ids #{} :perms {}}))
 
 (defn- perm-rows-query-base
-  "The FROM/JOIN/WHERE shared by [[table-perm-rows]] and [[schema-perm-rows]]: one user's groups' rows for every
+  "The FROM/JOIN/WHERE shared by [[table-perm-rows-query]] and [[schema-perm-rows-query]]: one user's groups' rows for every
   permission type, excluding rows for deactivated tables. Both caches must select from this same row set so they can
   never answer the same permission question differently — change the row set here, not in one of the two queries.
   `db-ids` of nil means every database."
@@ -241,22 +242,24 @@
             [:= :p.table_id nil]
             [:= :mt.active true]]]})
 
-(defn- table-perm-rows
-  "Returns a reducible of all relevant permission rows for the user, excluding permissions for deactivated tables, for
-  the given sequence of database IDs. Reducing it folds rows one at a time instead of realizing the full result set.
-  Rows are raw realized maps, not model instances, so `:perm_value` is a string rather than a keyword. The per-row
-  [[t2.realize/realize]] is a performance requirement, not a convenience: key access on unrealized result-set rows
-  goes through toucan2's deferred-row machinery on every lookup, which benchmarked ~15x slower than realizing each
-  row once and reading plain map keys."
+(defn- table-perm-rows-query
+  "The full-rows query behind [[load-table-perms]] for the given user and database IDs."
   [user-id db-ids]
-  (eduction
-   (map t2.realize/realize)
-   (t2/reducible-query
-    (assoc (perm-rows-query-base user-id db-ids)
-           :select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]))))
+  (assoc (perm-rows-query-base user-id db-ids)
+         :select [:p.group_id :p.perm_type :p.db_id :p.table_id :p.schema_name :p.perm_value]))
+
+(defn- plan-perm-rows
+  "Reduces `rf` over the raw JDBC rows of `honeysql-map` via [[jdbc/plan]]: columns are read straight off the
+  `ResultSet` by keyword lookup, with no per-row maps or toucan2 row machinery allocated — that row machinery
+  dominated the allocation profile of these loads (hundreds of MB per request at a few hundred thousand rows). Runs
+  on the current toucan2 connection so writes made inside an open transaction (tests, request scopes) stay visible.
+  Rows are only valid within their reduction step."
+  [honeysql-map acc rf]
+  (t2/with-connection [conn]
+    (reduce rf acc (jdbc/plan conn (mdb/compile honeysql-map) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
 (defn- add-row-to-table-entry
-  "Fold a single data_permissions row into an in-progress cache entry (see [[rows->table-perms]] for the semantics).
+  "Fold a single data_permissions row into an in-progress cache entry (see [[fold-table-perm-row]] for the semantics).
   `perm_value` is a raw result-set string; `keyword` normalizes it."
   [interner entry {:keys [table_id schema_name group_id perm_value]}]
   (let [perm-value (keyword perm_value)]
@@ -271,36 +274,26 @@
   {:groups (interner groups)
    :tables (update-vals tables interner)})
 
-(defn- rows->table-perms
-  "Reduces data_permissions rows into `{perm-type {db-id entry}}`, where each compact `entry` is described
-  on [[*table-perms-cache*]]. (A variant of this fold accumulating into mutable Java maps and sets benchmarked only
-  ~25-30% faster on 200-500k rows — under the JDBC fetch cost of that many rows the difference disappears, so it is
-  not worth the interop complexity.)
+(defn- fold-table-perm-row
+  "Folds one data_permissions row into the in-progress `{perm-type {db-id entry}}` accumulator. Works on anything
+  that supports keyword column lookup — plain row maps and [[jdbc/plan]] rows alike."
+  [interner m row]
+  (update-in m [(keyword (:perm_type row)) (:db_id row)] #(add-row-to-table-entry interner % row)))
 
-  The `interner` calls are a semantic no-op: they never change what any lookup returns, only object identity,
-  collapsing =-equal values to one shared instance so that the same profile repeated across many databases (or the
-  same :schema/:value map across many tables) is stored once — see the example on [[*table-perms-cache*]].
-
-  Values accumulate into sets rather than a single value per key: data_permissions has no unique constraint on
-  (group_id, perm_type, db_id, table_id), and its delete-then-insert write paths take different cluster locks, so
-  racing writers can — and in production data do — leave multiple rows for the same logical key. The raw rows fed
-  every duplicate's value into the consumers' coalescing logic, which resolved conflicts deterministically; a
-  single-value map would instead keep whichever row the unordered SELECT returned last, making permission results
-  flip with JDBC row order (e.g. duplicate download-results rows {:no, :one-million-rows} granting downloads that
-  coalescing would deny)."
-  [interner rows]
-  (-> (reduce (fn [m {:keys [perm_type db_id] :as row}]
-                (update-in m [(keyword perm_type) db_id] #(add-row-to-table-entry interner % row)))
-              {}
-              rows)
-      (update-vals (fn [db-id->entry]
-                     (update-vals db-id->entry #(finalize-table-entry interner %))))))
+(defn- finalize-table-perms
+  [folded interner]
+  (update-vals folded
+               (fn [db-id->entry]
+                 (update-vals db-id->entry #(finalize-table-entry interner %)))))
 
 (defn- load-table-perms
   "Loads full permissions for `user-id` and `db-ids` — every permission type — in one query, nested as
   `{perm-type {db-id entry}}`, using `interner` to dedupe repeated cache entry values."
   [interner user-id db-ids]
-  (rows->table-perms interner (table-perm-rows user-id db-ids)))
+  (-> (plan-perm-rows (table-perm-rows-query user-id db-ids)
+                      {}
+                      (partial fold-table-perm-row interner))
+      (finalize-table-perms interner)))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
@@ -390,35 +383,28 @@
     (table-perms api/*current-user-id* db-ids)
     nil))
 
-(defn- schema-perm-rows
-  "Returns a reducible of the distinct permission rows described on [[*schema-perms-cache*]] for `user-id` — every
-  permission type. `db-ids` of nil covers every database. Rows are realized one at a time before key access, for the
-  same reasons as [[table-perm-rows]]."
+(defn- schema-perm-rows-query
+  "The distinct-rows query behind [[load-schema-perms]] for the given user and database IDs."
   [user-id db-ids]
-  (eduction
-   (map t2.realize/realize)
-   (t2/reducible-query
-    (assoc (perm-rows-query-base user-id db-ids)
-           :select-distinct [:p.perm_type :p.db_id :p.group_id :p.schema_name :p.perm_value
-                             [[:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]] :table_level]]))))
+  (assoc (perm-rows-query-base user-id db-ids)
+         :select-distinct [:p.perm_type :p.db_id :p.group_id :p.schema_name :p.perm_value
+                           [[:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]] :table_level]]))
 
-(defn- rows->schema-perms
-  "Reduces distinct permission rows into `{perm-type {db-id #{tuple}}}` (see [[*schema-perms-cache*]])."
-  [rows]
-  (reduce (fn [m {:keys [perm_type db_id group_id schema_name perm_value table_level]}]
-            (update-in m [(keyword perm_type) db_id] (fnil conj #{})
-                       {:group-id     group_id
-                        :schema       schema_name
-                        :value        (keyword perm_value)
-                        :table-level? (pos? table_level)}))
-          {}
-          rows))
+(defn- fold-schema-perm-row
+  "Folds one distinct permission row into the in-progress `{perm-type {db-id #{tuple}}}` accumulator. Works on
+  anything that supports keyword column lookup — plain row maps and [[jdbc/plan]] rows alike."
+  [m row]
+  (update-in m [(keyword (:perm_type row)) (:db_id row)] (fnil conj #{})
+             {:group-id     (:group_id row)
+              :schema       (:schema_name row)
+              :value        (keyword (:perm_value row))
+              :table-level? (pos? (:table_level row))}))
 
 (defn- load-schema-perms
   "Loads the distinct permission tuples described on [[*schema-perms-cache*]] for one user — every permission type —
   in one query, nested as `{perm-type {db-id #{tuple}}}`. `db-ids` of nil loads every database."
   [user-id db-ids]
-  (rows->schema-perms (schema-perm-rows user-id db-ids)))
+  (plan-perm-rows (schema-perm-rows-query user-id db-ids) {} fold-schema-perm-row))
 
 (defn- schema-perms
   "Returns `{perm-type {db-id #{tuple}}}` (see [[*schema-perms-cache*]]) for the given user and database IDs; the

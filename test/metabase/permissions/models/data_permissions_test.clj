@@ -8,6 +8,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -21,14 +22,17 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
-(deftest ^:parallel rows->table-perms-test
+(defn- rows->table-perms [rows]
+  (-> (reduce (partial #'data-perms/fold-table-perm-row identity) {} rows)
+      (#'data-perms/finalize-table-perms identity)))
+
+(deftest ^:parallel fold-table-perm-rows-test
   (testing "returns an empty map when there are no rows"
-    (is (= {} (#'data-perms/rows->table-perms identity []))))
+    (is (= {} (rows->table-perms []))))
   (testing "duplicate rows keep every distinct value visible to coalescing, and each table-level row keeps its own
             schema_name (data_permissions has no unique constraint on (group_id, perm_type, db_id, table_id), and
             schema_name is denormalized so rows for one table can disagree)"
-    (let [entry (get-in (#'data-perms/rows->table-perms
-                         identity
+    (let [entry (get-in (rows->table-perms
                          [{:perm_type  :perms/create-queries
                            :db_id      20
                            :group_id   1
@@ -67,15 +71,16 @@
                   2 #{{:schema "legacy" :value :query-builder}}}}
              (:tables entry))))))
 
-(deftest ^:parallel rows->schema-perms-test
+(deftest ^:parallel fold-schema-perm-rows-test
   (is (= {:perms/create-queries
           {20 #{{:group-id 1, :schema nil,      :value :query-builder, :table-level? false}
                 {:group-id 1, :schema "public", :value :no,            :table-level? true}}}}
-         (#'data-perms/rows->schema-perms
-          [{:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name nil,
-            :perm_value :query-builder, :table_level 0}
-           {:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name "public",
-            :perm_value :no, :table_level 1}]))))
+         (reduce #'data-perms/fold-schema-perm-row
+                 {}
+                 [{:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name nil,
+                   :perm_value :query-builder, :table_level 0}
+                  {:perm_type :perms/create-queries, :db_id 20, :group_id 1, :schema_name "public",
+                   :perm_value :no, :table_level 1}]))))
 
 (deftest permission-caches-load-on-demand-test
   (let [user-id      1
@@ -340,10 +345,15 @@
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
               (is (zero? (call-count)))))
-          ;; Fetching perms for a different DB is a cache miss
-          (t2/with-call-count [call-count]
-            (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
-            (is (= 1 (call-count)))))))))
+          ;; Fetching perms for a different DB is a cache miss (the load goes through next.jdbc directly, so spy on
+          ;; the load fn rather than the toucan2 call count)
+          (let [loads (atom 0)
+                orig  (dynamic-redefs/original-fn #'data-perms/load-schema-perms)]
+            (mt/with-dynamic-fn-redefs [data-perms/load-schema-perms (fn [user-id db-ids]
+                                                                       (swap! loads inc)
+                                                                       (orig user-id db-ids))]
+              (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
+              (is (= 1 @loads)))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
