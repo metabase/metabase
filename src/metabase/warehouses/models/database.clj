@@ -434,26 +434,32 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (loop []
-    (let [deleted (t2/query-one
-                   {:delete-from (t2/table-name :model/Field)
-                    :where
-                    [:and
-                     [:in :table_id {:from   [(t2/table-name :model/Table)]
-                                     :select [:id]
-                                     :where  [:= :db_id database-id]}]
-                     ;; Double-wrapped subquery to work around MySQL limitation
-                     [:not-in :id {:select [:parent_id]
-                                   :from   [[{:select [:parent_id]
-                                              :from   [(t2/table-name :model/Field)]
-                                              :where  [:and
-                                                       [:not= :parent_id nil]
-                                                       [:in :table_id {:from   [(t2/table-name :model/Table)]
-                                                                       :select [:id]
-                                                                       :where  [:= :db_id database-id]}]]}
-                                             :parent_fields]]}]]})]
-      (when (pos? deleted)
-        (recur)))))
+  (let [no-children-clause
+        (if (= (mdb/db-type) :mysql)
+          ;; double-wrapped subquery to work around the MySQL restriction on selecting from the DELETE target
+          [:not-in :id {:select [:parent_id]
+                        :from   [[{:select [:parent_id]
+                                   :from   [(t2/table-name :model/Field)]
+                                   :where  [:and
+                                            [:not= :parent_id nil]
+                                            [:in :table_id {:from   [(t2/table-name :model/Table)]
+                                                            :select [:id]
+                                                            :where  [:= :db_id database-id]}]]}
+                                  :parent_fields]]}]
+          [:not [:exists {:select [1]
+                          :from   [[(t2/table-name :model/Field) :child_field]]
+                          :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    (loop []
+      (let [deleted (t2/query-one
+                     {:delete-from (t2/table-name :model/Field)
+                      :where
+                      [:and
+                       [:in :table_id {:from   [(t2/table-name :model/Table)]
+                                       :select [:id]
+                                       :where  [:= :db_id database-id]}]
+                       no-children-clause]})]
+        (when (pos? deleted)
+          (recur))))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
