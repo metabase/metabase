@@ -7,12 +7,12 @@ summary: "Embed Metabase's visual query builder or SQL editor in your app, so pe
 
 {% include plans-blockquote.html feature="Embedding the query builder" convert_pro_link_to_embedding=true %}
 
-Instead of embedding a saved chart, you can embed one of Metabase's editors so people can build questions from scratch.
+You can embed one of Metabase's editors so people can build questions from scratch.
 
 - [Visual query builder](#embed-the-visual-query-builder)
 - [SQL editor](#embed-the-sql-editor)
 
-Both editors need an [SSO embed](./modular-embedding.md), which you can set up with web components or the [React SDK](./sdk/introduction.md). Guest embeds can't include either editor: to run a new query, Metabase has to know who's asking, so it can work out which data they're allowed to see.
+Both editors require SSO, because in order to run a new query, Metabase has to know who's asking, so it can work out which data they're allowed to see.
 
 To embed an existing chart instead, check out [Embed a chart](./question.md).
 
@@ -20,7 +20,7 @@ To embed an existing chart instead, check out [Embed a chart](./question.md).
 
 To let people build new questions with the visual query builder, use `new` as the question ID.
 
-![Query builder](./images/query-builder.png)
+![Query builder](./images/embedded-query-builder.png)
 
 As a web component:
 
@@ -38,6 +38,8 @@ To narrow down what people can start from, list the entity types you want in the
 
 ## Embed the SQL editor
 
+![Embedded SQL editor](./images/embedded-sql-editor.png)
+
 To let people write native SQL, use `new-native` as the question ID.
 
 As a web component:
@@ -54,9 +56,9 @@ With the SDK:
 
 Everyone still queries through their own Metabase account, so people can only run SQL against databases their groups have permission to query. See [data permissions](../permissions/data.md).
 
-## Let people save what they build
+## Let people save questions
 
-Saving works the opposite way in each setup: it's off by default in web components, and on by default in the SDK.
+### Saving with web components
 
 With a web component, turn saving on with `is-save-enabled="true"`, and set the collection that new questions land in with `target-collection`:
 
@@ -67,6 +69,7 @@ With a web component, turn saving on with `is-save-enabled="true"`, and set the 
   target-collection="5"
 ></metabase-question>
 ```
+### Saving with the React SDK
 
 With the SDK, saving is already on, so `targetCollection` is all you need. Setting `targetCollection` also hides the collection picker, so nobody has to decide where their question goes.
 
