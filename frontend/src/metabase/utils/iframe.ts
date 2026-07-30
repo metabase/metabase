@@ -1,5 +1,8 @@
 import { isCypressActive, isStorybookActive } from "metabase/env";
 
+// This intentionally duplicates `isWithinIframe` from `metabase/lib/dom`.
+// The standalone `embed.js` bundle cannot import that module because it pulls
+// dependencies that are not available in its Rspack configuration.
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
 // Storybook also uses an iframe to display story content, so we want to ignore it
