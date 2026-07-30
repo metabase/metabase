@@ -543,6 +543,154 @@
       (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
              (sort (sql-parsing/referenced-fields "postgres" sql)))))))
 
+(defn- in-list
+  "Build `IN (0, 1, ..., n-1)` with `n` items."
+  [n]
+  (str "IN (" (str/join ", " (range n)) ")"))
+
+(deftest ^:parallel strip-threshold-boundary-test
+  (testing "IN lists at or below the 100-item threshold are preserved, above it stripped"
+    (doseq [n [1 2 50 99 100]]
+      (let [sql (str "SELECT * FROM t WHERE id " (in-list n))]
+        (is (= sql (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should not be stripped"))))
+    (doseq [n [101 102 150 1000 10000]]
+      (let [sql (str "SELECT * FROM t WHERE id " (in-list n))]
+        (is (= "SELECT * FROM t WHERE id IN (NULL)" (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should be stripped")))))
+  (testing "VALUES at or below the 100-tuple threshold are preserved, above it stripped"
+    (doseq [[n stripped?] {1 false, 100 false, 101 true, 1000 true}]
+      (let [tuples (str/join ", " (map #(format "(%d, %d)" % %) (range n)))
+            sql    (str "SELECT * FROM (VALUES " tuples ") AS t(x, y)")
+            result (sql-parsing/strip-large-literal-lists sql)]
+        (if stripped?
+          (is (= "SELECT * FROM (VALUES (NULL, NULL)) AS t(x, y)" result)
+              (str n " tuples should be stripped"))
+          (is (= sql result)
+              (str n " tuples should not be stripped")))))))
+
+(deftest ^:parallel strip-in-list-literal-shapes-test
+  (testing "Lists of each literal shape are stripped"
+    (doseq [[shape item-fn] {"integers"       str
+                             "decimals"       #(str % ".5")
+                             "negatives"      #(str "-" %)
+                             "plus-signed"    #(str "+" %)
+                             "single-quoted"  #(format "'name %d'" %)
+                             "double-quoted"  #(format "\"name %d\"" %)
+                             "commas-inside-strings"  #(format "'a,%d,b'" %)
+                             "escaped-quotes" #(format "'it''s %d'" %)
+                             "null-mixed"     #(if (even? %) "NULL" (str %))
+                             "booleans-mixed" #(case (mod % 3) 0 "TRUE" 1 "false" (str %))}]
+      (let [sql (str "SELECT * FROM t WHERE x IN (" (str/join ", " (map item-fn (range 150))) ")")]
+        (is (= "SELECT * FROM t WHERE x IN (NULL)" (sql-parsing/strip-large-literal-lists sql))
+            (str shape " should be stripped")))))
+  (testing "Whitespace variants are stripped"
+    (doseq [sql [(str "SELECT * FROM t WHERE x IN(" (str/join "," (range 150)) ")")
+                 (str "SELECT * FROM t WHERE x IN\n  (" (str/join " ,\n" (range 150)) ")")
+                 (str "SELECT * FROM t WHERE x in (" (str/join ",\t" (range 150)) ")")]]
+      (is (str/includes? (sql-parsing/strip-large-literal-lists sql) "(NULL)")
+          (pr-str (subs sql 0 40))))))
+
+(deftest ^:parallel strip-in-list-disqualifiers-test
+  (testing "One non-literal item anywhere in a large list prevents stripping"
+    (doseq [bad ["col_ref" "some_column" "foo(1)" "(1 + 2)" "?" "$1" "{{param}}" "%(name)s"
+                 "1e5" "1.5e3" "DATE '2024-01-01'" "TIMESTAMP '2024-01-01 00:00:00'"
+                 "1::int" "x.y" "CURRENT_DATE" "-- comment" "héllo" "N'abc'"]
+            position [:first :middle :last]]
+      (let [items (map str (range 150))
+            items (case position
+                    :first  (cons bad items)
+                    :middle (concat (take 75 items) [bad] (drop 75 items))
+                    :last   (concat items [bad]))
+            sql   (str "SELECT * FROM t WHERE x IN (" (str/join ", " items) ")")]
+        (is (= sql (sql-parsing/strip-large-literal-lists sql))
+            (str (pr-str bad) " at " position " should prevent stripping")))))
+  (testing "Subqueries are never stripped regardless of size"
+    (let [sql "SELECT * FROM t WHERE x IN (SELECT id FROM u WHERE y = 'a' AND z IN ('b', 'c'))"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-preserves-surroundings-test
+  (testing "Everything around a stripped list is preserved byte-for-byte"
+    (let [prefix "WITH cte AS (SELECT 1 AS x) SELECT t.a, cte.x FROM t JOIN cte ON TRUE WHERE t.id "
+          suffix " AND t.status = 'active' ORDER BY t.a LIMIT 5"
+          sql    (str prefix (in-list 150) suffix)]
+      (is (= (str prefix "IN (NULL)" suffix)
+             (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Several lists in one statement are stripped/kept independently"
+    (let [sql (str "SELECT * FROM t WHERE a " (in-list 150)
+                   " OR b " (in-list 3)
+                   " OR c NOT " (in-list 200)
+                   " OR d IN (SELECT x FROM u)")]
+      (is (= (str "SELECT * FROM t WHERE a IN (NULL)"
+                  " OR b " (in-list 3)
+                  " OR c NOT IN (NULL)"
+                  " OR d IN (SELECT x FROM u)")
+             (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-nesting-test
+  (testing "A large IN list inside a small VALUES tuple is stripped"
+    (let [sql (str "SELECT * FROM (VALUES ((SELECT count(*) FROM u WHERE u.id " (in-list 150) "))) t")]
+      (is (= "SELECT * FROM (VALUES ((SELECT count(*) FROM u WHERE u.id IN (NULL)))) t"
+             (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "A large IN list inside a stripped VALUES clause disappears with it"
+    (let [tuples (str/join ", " (map #(format "(%d)" %) (range 150)))
+          sql    (str "SELECT * FROM (VALUES " tuples ", ((SELECT 1 WHERE x " (in-list 150) "))) t")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM (VALUES (NULL)) t" result))))
+  (testing "IN subqueries nest arbitrarily deep and the innermost large list is still found"
+    (let [sql (str "SELECT * FROM a WHERE x IN "
+                   "(SELECT x FROM b WHERE y IN "
+                   "(SELECT y FROM c WHERE z " (in-list 150) "))")]
+      (is (= (str "SELECT * FROM a WHERE x IN "
+                  "(SELECT x FROM b WHERE y IN "
+                  "(SELECT y FROM c WHERE z IN (NULL)))")
+             (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-idempotency-and-identity-test
+  (testing "Stripping is idempotent"
+    (doseq [sql [(str "SELECT * FROM t WHERE id " (in-list 150))
+                 (str "INSERT INTO foo VALUES " (str/join ", " (map #(format "(%d)" %) (range 150))))]]
+      (let [once (sql-parsing/strip-large-literal-lists sql)]
+        (is (= once (sql-parsing/strip-large-literal-lists once))))))
+  (testing "When nothing is stripped the original string instance is returned"
+    (doseq [sql ["SELECT * FROM t"
+                 "SELECT * FROM t WHERE id IN (1, 2, 3)"
+                 "SELECT * FROM t WHERE id IN (SELECT id FROM u)"
+                 "SELECT * FROM (VALUES (1), (2)) AS t(x)"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-malformed-sql-test
+  (testing "Malformed or degenerate input never throws and is left unchanged"
+    (doseq [sql [""
+                 "IN ("
+                 "VALUES ("
+                 (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)))  ; no closing paren
+                 (str "SELECT * FROM t WHERE id IN ('unterminated string, " (str/join ", " (range 150)) ")")
+                 "SELECT * FROM t WHERE id IN ()"
+                 "IN () VALUES ()"
+                 "in(   )"]]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql))
+          (pr-str (subs sql 0 (min 40 (count sql))))))))
+
+(deftest ^:parallel strip-keyword-false-positives-test
+  (testing "Words containing 'in'/'values' and quoted identifiers are not treated as keywords"
+    (doseq [sql ["SELECT margin FROM t WHERE margin > 10"
+                 "SELECT * FROM t JOIN (SELECT * FROM u) v ON t.id = v.id"
+                 "SELECT CAST(x AS INT) FROM t"
+                 "SELECT * FROM logins (1, 2, 3)"
+                 "SELECT \"in\" FROM t"
+                 "SELECT t.values FROM t WHERE t.values > 10"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) sql))))
+
+(deftest ^:parallel stripped-sql-parses-e2e-test
+  (testing "every analysis entry point tolerates SQL whose lists were stripped"
+    (let [sql (str "SELECT a.name FROM accounts a WHERE a.id " (in-list 150))]
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (= {:is_simple true} (sql-parsing/simple-query? "postgres" sql)))
+      (is (=? {:status "ok"} (sql-parsing/validate-query "postgres" sql nil)))
+      (is (=? {:used-fields set? :returned-fields vector? :errors #{}}
+              (sql-parsing/field-references "postgres" sql))))))
+
 (deftest ^:parallel large-values-referenced-tables-test
   (testing "referenced-tables works on queries with massive VALUES clauses"
     (let [tuples (str/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))
