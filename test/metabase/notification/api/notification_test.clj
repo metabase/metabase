@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -610,8 +611,7 @@
         (mt/with-user-in-groups [group {:name "test notification perm"}
                                  user  [group]]
           (mt/with-temp
-            [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
-             :model/Card       {card-id :id}       {:collection_id collection-id}]
+            [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
             (let [create-notification! (fn [user-or-id expected-status]
                                          (mt/user-http-request user-or-id :post expected-status "notification"
                                                                {:payload_type "notification/card"
@@ -723,8 +723,7 @@
       (mt/with-user-in-groups [group {:name "test notification perm"}
                                user  [group]]
         (mt/with-temp
-          [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
-           :model/Card {card-id :id} {:collection_id collection-id}]
+          [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
           (let [create-notification! (fn [user-or-id expected-status]
                                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
                                          (mt/user-http-request user-or-id :post expected-status "notification/send"

@@ -24,6 +24,7 @@
    [metabase.classloader.init]
    [metabase.cloud-migration.init]
    [metabase.collections-rest.init]
+   [metabase.collections.init]
    [metabase.comments.init]
    [metabase.config.core :as config]
    [metabase.content-verification.init]
