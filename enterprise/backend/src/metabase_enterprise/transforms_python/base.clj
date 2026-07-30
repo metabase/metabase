@@ -269,17 +269,19 @@
                                                                :limit               (:limit source)
                                                                :transform-id        (:id transform)
                                                                :source-range-params source-range-params})
+            ingestion?      (transforms-base.u/ingestion-transform? transform)
             {:keys [status body] :as response}
             (executor/run-python-code!
              {:code           (:body source)
               :run-id         run-id
-              :ingestion?     (transforms-base.u/ingestion-transform? transform)
+              :ingestion?     ingestion?
               :source-tables  resolved-source-tables
               :shared-storage @shared-storage-ref
               :cancel-chan    cancel-chan
               ;; secrets are never on the instance; fetched explicitly for the run
               :secrets        (some-> (:id transform) transforms.core/secrets-for-run)
-              :state          (some-> (:incremental_state transform) json/decode)})
+              :state          (when ingestion?
+                                (some-> (:incremental_state transform) json/decode))})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)
             events          (python-runner/read-events @shared-storage-ref)]
@@ -313,7 +315,7 @@
                   (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size rows-written)
                   ;; Persist the sync state only after the data is durably in the target table,
                   ;; so a failed transfer re-runs from the previous state.
-                  (when-some [new-state (:state output-manifest)]
+                  (when-some [new-state (and ingestion? (:state output-manifest))]
                     (when-let [transform-id (:id transform)]
                       (t2/update! :model/Transform transform-id
                                   {:incremental_state (json/encode new-state)})))
