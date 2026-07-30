@@ -938,6 +938,20 @@
         (is (isa? (:effective_type field) :type/DateTime))
         (is (= "minutes" (-> field :settings :time_enabled)))))))
 
+(deftest refingerprint-field-test
+  (testing "POST /api/field/:id/refingerprint"
+    (testing "It should return success and actually call refingerprint-field!"
+      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+        (let [called? (atom false)]
+          (with-redefs [quick-task/submit-task! (fn [task] (task))
+                        sync/refingerprint-field! (fn [_field] (reset! called? true))]
+            (is (= {:status "success"}
+                   (mt/user-http-request :crowberto :post 200 (format "field/%d/refingerprint" field-id))))
+            (is @called? "refingerprint-field! should have been called")))))
+    (testing "It should return 404 for non-existent field"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "field/%d/refingerprint" Integer/MAX_VALUE)))))))
+
 (deftest field-values-requires-query-permission-test
   (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"
     (mt/with-temp-copy-of-db
