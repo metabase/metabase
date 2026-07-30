@@ -126,6 +126,12 @@ export type PythonTransformSourceDraft = {
   body: string;
   "source-database": DatabaseId | undefined;
   "source-tables": PythonTransformTableAliases;
+  /**
+   * Declares that the transform fetches its own data over the network instead of reading source
+   * tables. Such a transform may hold secrets and manages its own incremental cursor. The backend
+   * rejects it when `source-tables` is non-empty.
+   */
+  ingestion?: boolean;
 };
 
 export type PythonTransformSource = {
@@ -133,6 +139,7 @@ export type PythonTransformSource = {
   body: string;
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
+  ingestion?: boolean;
   "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 

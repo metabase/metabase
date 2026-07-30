@@ -99,6 +99,13 @@
             (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
                            (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
 
+(defn validate-ingestion-source!
+  "An ingestion transform materializes its own input, so it must declare no source tables."
+  [{:keys [source] :as transform}]
+  (when (transforms-base.u/ingestion-transform? transform)
+    (api/check-400 (empty? (:source-tables source))
+                   (deferred-tru "An ingestion transform fetches its own data and cannot have source tables."))))
+
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
   the incremental range filter to target.
@@ -164,6 +171,7 @@
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
    (validate-target-schema! body)
+   (validate-ingestion-source! body)
    (validate-incremental-table-tag! body)
    (validate-lookback! body)
    (let [creator-id (or creator-id api/*current-user-id*)
@@ -202,7 +210,8 @@
                       (when (contains? body :target)
                         (validate-target-schema! new))
                       (when (contains? body :source)
-                        (validate-incremental-column-type! new))
+                        (validate-incremental-column-type! new)
+                        (validate-ingestion-source! new))
                       (when (or (contains? body :source) (contains? body :target))
                         (validate-incremental-table-tag! new)
                         (validate-lookback! new))

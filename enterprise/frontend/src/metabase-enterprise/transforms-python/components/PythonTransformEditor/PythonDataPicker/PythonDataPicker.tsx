@@ -3,7 +3,16 @@ import { t } from "ttag";
 
 import { skipToken, useListTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Button, Icon, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Switch,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type {
   DatabaseId,
   PythonTransformTableAliases,
@@ -26,11 +35,13 @@ type PythonDataPickerProps = {
   disabled?: boolean;
   tables: PythonTransformTableAliases;
   readOnly?: boolean;
+  isIngestion: boolean;
   onChange: (
     database: number,
     tables: PythonTransformTableAliases,
     tableInfo: Table[],
   ) => void;
+  onIngestionChange: (isIngestion: boolean) => void;
 };
 
 export function PythonDataPicker({
@@ -38,7 +49,9 @@ export function PythonDataPicker({
   disabled,
   tables,
   readOnly,
+  isIngestion,
   onChange,
+  onIngestionChange,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
@@ -109,10 +122,6 @@ export function PythonDataPicker({
     handleChange(newSelections);
   };
 
-  if (!database) {
-    return null;
-  }
-
   return (
     <Stack
       p="md"
@@ -123,7 +132,24 @@ export function PythonDataPicker({
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
-      {database && (
+      <Group gap="xs" align="center" wrap="nowrap">
+        <Switch
+          checked={isIngestion}
+          disabled={disabled || readOnly}
+          size="sm"
+          label={t`Fetches its own data`}
+          wrapperProps={{ "data-testid": "python-ingestion-switch" }}
+          onChange={(event) => onIngestionChange(event.currentTarget.checked)}
+        />
+        <Tooltip
+          multiline
+          w={260}
+          label={t`Gets its data over the network instead of reading source tables. It can store credentials and keeps its own incremental cursor.`}
+        >
+          <Icon name="info" c="text-secondary" size={14} />
+        </Tooltip>
+      </Group>
+      {database && !isIngestion && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
           <Text size="sm" c="text-disabled" mb="sm">

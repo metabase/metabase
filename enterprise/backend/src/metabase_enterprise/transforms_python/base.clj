@@ -259,7 +259,7 @@
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)
                 _registered        (executor/register-run-closeable!
-                                    run-id {:source-tables resolved-source-tables})]
+                                    run-id {:ingestion? (transforms-base.u/ingestion-transform? transform)})]
       (let [driver          (:engine db)
             _               (python-runner/copy-tables-to-s3! {:run-id              run-id
                                                                :shared-storage      @shared-storage-ref
@@ -272,6 +272,7 @@
             (executor/run-python-code!
              {:code           (:body source)
               :run-id         run-id
+              :ingestion?     (transforms-base.u/ingestion-transform? transform)
               :source-tables  resolved-source-tables
               :shared-storage @shared-storage-ref
               :cancel-chan    cancel-chan

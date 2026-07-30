@@ -191,11 +191,19 @@ export function isSourceEmpty(
   return !nativeQuery?.trim();
 }
 
-/** Python transforms with no source tables manage their own sync cursor in code, not via a checkpoint field. */
+/**
+ * An ingestion transform fetches its own data over the network instead of reading source tables.
+ * It is the only kind that can hold secrets and that manages its own incremental cursor.
+ */
+export function isIngestionSource(source: DraftTransformSource): boolean {
+  return source.type === "python" && source.ingestion === true;
+}
+
+/** Ingestion transforms manage their own sync cursor in code, not via a checkpoint field. */
 export function hasCodeManagedSyncCursor(
   source: DraftTransformSource,
 ): boolean {
-  return source.type === "python" && source["source-tables"].length === 0;
+  return isIngestionSource(source);
 }
 
 export function isCompleteSource(

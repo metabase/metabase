@@ -44,9 +44,9 @@
         :http-runner)))
 
 (defn ingestion-run?
-  "Whether this run fetches its own input rather than reading source tables."
-  [{:keys [source-tables]}]
-  (empty? source-tables))
+  "Whether this run belongs to a transform declared as ingestion."
+  [{:keys [ingestion?]}]
+  (boolean ingestion?))
 
 (defn backend-for
   "The execution backend for a run; ingestion runs are routed separately."

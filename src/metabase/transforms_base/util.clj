@@ -71,6 +71,14 @@
   [transform]
   (type-is? (:source transform) :python))
 
+(defn ingestion-transform?
+  "True if `transform` declares that it fetches its own data over the network, rather than reading
+  source tables. Such a transform may hold secrets, keeps its own incremental cursor, and runs
+  isolated from other transforms."
+  [transform]
+  (boolean (and (python-transform? transform)
+                (get-in transform [:source :ingestion]))))
+
 (defn table-target?
   "True if `transform` writes to a plain table, recreated on every run."
   [transform]
@@ -350,10 +358,8 @@
   selected."
   [{:keys [source] :as transform}]
   (when (and (incremental-target? transform)
-             ;; source-less python transforms manage their own cursor via :sync_state,
-             ;; so no checkpoint field (or source range) is required
-             (not (and (python-transform? transform)
-                       (empty? (:source-tables source)))))
+             ;; an ingestion transform keeps its own cursor, so it needs no checkpoint field
+             (not (ingestion-transform? transform)))
     (when (and (native-query-transform? transform)
                (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))

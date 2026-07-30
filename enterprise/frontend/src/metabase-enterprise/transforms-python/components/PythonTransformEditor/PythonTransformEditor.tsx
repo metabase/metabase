@@ -3,6 +3,10 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
+import {
+  INGESTION_PYTHON_BODY,
+  STARTER_PYTHON_BODY,
+} from "metabase/transforms/constants";
 import { Flex, Stack } from "metabase/ui";
 import type {
   DatabaseId,
@@ -18,7 +22,7 @@ import { PythonEditorResults } from "./PythonEditorResults";
 import S from "./PythonTransformEditor.module.css";
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
 import { useTestPythonTransform } from "./hooks";
-import { updateTransformSignature } from "./utils";
+import { setIngestionSignature, updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
   source,
@@ -84,6 +88,35 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
+  // The backend rejects an ingestion transform that also has source tables, so turning the
+  // toggle on drops the selections (and the parameters they added to the script signature).
+  const handleIngestionChange = (isIngestion: boolean) => {
+    // An untouched template is swapped for the other one; a script the user has written keeps its
+    // body and only has its signature adapted.
+    const isUntouched = (template: string) =>
+      source.body.trim() === template.trim();
+
+    if (!isIngestion) {
+      onChangeSource({
+        ...source,
+        ingestion: false,
+        body: isUntouched(INGESTION_PYTHON_BODY)
+          ? STARTER_PYTHON_BODY
+          : updateTransformSignature(source.body, [], []),
+      });
+      return;
+    }
+
+    onChangeSource({
+      ...source,
+      ingestion: true,
+      "source-tables": [],
+      body: isUntouched(STARTER_PYTHON_BODY)
+        ? INGESTION_PYTHON_BODY
+        : setIngestionSignature(source.body),
+    });
+  };
+
   const handleRun = () => {
     if (onRun) {
       onRun();
@@ -139,7 +172,9 @@ export function PythonTransformEditor({
             disabled={uiOptions?.readOnly}
             database={source["source-database"]}
             tables={source["source-tables"]}
+            isIngestion={source.ingestion ?? false}
             onChange={handleDataChange}
+            onIngestionChange={handleIngestionChange}
           />
         )}
         <Stack w="100%" h="100%" gap={0}>

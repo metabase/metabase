@@ -29,3 +29,43 @@ export const TARGET_STRATEGY_OPTIONS = [
     },
   },
 ];
+
+export const STARTER_PYTHON_BODY = `# Write your Python transformation script here
+import common
+import pandas as pd
+
+def transform():
+    """
+    Your transformation function.
+
+    Select tables above to add them as function parameters.
+
+    Returns:
+        DataFrame to write to the destination table
+    """
+    # Your transformation logic here
+    return pd.DataFrame([{"message": "Hello from Python transform!"}])`;
+
+export const INGESTION_PYTHON_BODY = `# Fetch data from an external service and load it into the target table
+import dlt
+import pandas as pd
+
+def transform(secrets=None, state=None):
+    """
+    Your ingestion function.
+
+    Args:
+        secrets: credentials configured on this transform, keyed by name
+        state:   the cursor you returned last run, or None on the first run
+
+    Returns:
+        (DataFrame to write, cursor to resume from next time)
+    """
+    since = (state or {}).get("since")
+
+    rows = [{"id": 1, "updated_at": "2026-01-01T00:00:00Z"}]
+    df = pd.DataFrame(rows)
+
+    # Returning a cursor makes the next run incremental; pair it with a merge key on the target.
+    next_since = df["updated_at"].max() if len(df) else since
+    return df, {"since": next_since}`;
