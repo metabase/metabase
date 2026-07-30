@@ -402,6 +402,15 @@
         (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)) (str driver))
         (is (= [1 true 2 false] params) (str driver))))))
 
+(deftest ^:parallel dot-qualified-test
+  (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
+    (are [table-name expected] (= expected (#'driver.sql-jdbc/dot-qualified table-name))
+      (keyword "test-data" "some_tbl") :test-data.some_tbl
+      (keyword "test-data" "a.b")      :test-data.a.b
+      (keyword "some_tbl")             :some_tbl
+      "test-data.tbl"                  :test-data.tbl
+      "some_tbl"                       :some_tbl)))
+
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel drop-table-sql-preserves-dashes-test
   (let [drop-sql #'driver.sql-jdbc/drop-table-sql]
