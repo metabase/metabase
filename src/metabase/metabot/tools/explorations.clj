@@ -79,7 +79,8 @@
    in_library — a quality signal). Dimensions are not included; pass metric ids from this index to
    `get_research_candidates` to see their candidate dimensions. Pass `q` to filter by a
    case-insensitive substring of a metric or dimension name — e.g. `q: \"region\"` returns the
-   metrics that have a Region-like dimension."
+   metrics that have a Region-like dimension. More than 500 matches are truncated to the top 500
+   with `truncated: true` — narrow with `q`."
   [{:keys [q]} :- list-research-metrics-schema]
   {:output (json/encode (explorations/research-metric-index {:q q}))})
 

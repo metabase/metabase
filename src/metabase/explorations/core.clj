@@ -10,5 +10,6 @@
   research-candidates
   research-candidates-max-metrics
   research-metric-index
+  research-metric-index-max-metrics
   research-groups
   min-interestingness])

@@ -359,6 +359,13 @@
    to prevent."
   20)
 
+(def research-metric-index-max-metrics
+  "Maximum rows a single `list_research_metrics` response lists. Index rows are slim, but an
+   unfiltered index on an instance with thousands of metrics is still a prompt-straining blob
+   (measured ~130 bytes/row); above this the index is ranked, truncated, and stamped with a
+   marker so the model knows to narrow with `q`."
+  500)
+
 (def ^:private index-description-max-length
   "Character budget for a metric description in the `list_research_metrics` index — enough for
    scent, short enough that descriptions can't dominate the index payload."
@@ -371,36 +378,48 @@
       (str (subs d 0 index-description-max-length) "…")
       d)))
 
-(defn research-metric-index
-  "Slim research catalog index for the `list_research_metrics` Metabot tool: one row per
-   research-eligible metric (`:id`, `:name`, truncated `:description`, `:in_library`), no
-   dimensions. The model shortlists metric ids here, then fetches their dimension detail via
-   [[research-candidates]]. `:q` filters like [[exploration-data]]'s — a case-insensitive
-   substring match on metric names and dimension display names."
-  [opts]
-  (mapv (fn [m]
-          {:id          (:id m)
-           :name        (:name m)
-           :description (truncate-index-description (:description m))
-           :in_library  (:in_library m)})
-        (hydrated-metrics opts)))
-
 (defn- metric-interestingness
   "Ranking score for a hydrated metric: the max interestingness across its candidate dimensions,
    or nil when none scored."
   [m]
   (some->> (keep :dimension-interestingness (:dimensions m)) seq (apply max)))
 
-(defn- rank-and-cap-metrics
-  "Order `metrics` library-first then by interestingness (unscored last) and keep the top
-   [[research-candidates-max-metrics]]."
+(defn- rank-metrics
+  "Order `metrics` library-first then by interestingness (unscored last) — the order both
+   research-tool caps clip in, so the best-curated content survives truncation."
   [metrics]
-  (->> metrics
-       (sort-by (fn [m]
+  (vec (sort-by (fn [m]
                   [(if (:in_library m) 0 1)
-                   (- (or (metric-interestingness m) -1))]))
-       (take research-candidates-max-metrics)
-       vec))
+                   (- (or (metric-interestingness m) -1))])
+                metrics)))
+
+(defn research-metric-index
+  "Slim research catalog index for the `list_research_metrics` Metabot tool:
+   `{:metrics [{:id :name :description :in_library} ...]}` — one row per research-eligible
+   metric, truncated `:description`, no dimensions. The model shortlists metric ids here, then
+   fetches their dimension detail via [[research-candidates]]. `:q` filters like
+   [[exploration-data]]'s — a case-insensitive substring match on metric names and dimension
+   display names.
+
+   More than [[research-metric-index-max-metrics]] matches are ranked (see [[rank-metrics]]),
+   truncated, and stamped `{:truncated true :shown <n> :matched <m>}` so the model knows to
+   narrow with `:q`; under the cap, rows keep their natural library-first-then-name order."
+  [opts]
+  (let [all    (hydrated-metrics opts)
+        capped (if (> (count all) research-metric-index-max-metrics)
+                 (vec (take research-metric-index-max-metrics (rank-metrics all)))
+                 all)
+        rows   (mapv (fn [m]
+                       {:id          (:id m)
+                        :name        (:name m)
+                        :description (truncate-index-description (:description m))
+                        :in_library  (:in_library m)})
+                     capped)]
+    (cond-> {:metrics rows}
+      (> (count all) (count capped))
+      (assoc :truncated true
+             :shown (count capped)
+             :matched (count all)))))
 
 (defn- llm-dimension-groups
   "Dimension groups of `metrics` in the deduped `get_research_candidates` shape. Same-group
@@ -438,7 +457,7 @@
   (let [filtered (mapv with-candidate-dimensions (hydrated-metrics opts))
         capped   (if (seq metric-ids)
                    filtered
-                   (rank-and-cap-metrics filtered))
+                   (vec (take research-candidates-max-metrics (rank-metrics filtered))))
         payload  {:metrics          (mapv #(select-keys % llm-metric-cols) capped)
                   :dimension_groups (llm-dimension-groups capped)}]
     (cond-> payload

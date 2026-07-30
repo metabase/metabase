@@ -133,17 +133,34 @@
 (deftest research-metric-index-test
   (with-synthetic-metrics
     (testing "slim rows only — id/name/description/in_library, no dimensions"
-      (is (= [{:id 1 :name "Revenue" :description "rev" :in_library true}
-              {:id 2 :name "Churn" :description "churn" :in_library false}]
+      (is (= {:metrics [{:id 1 :name "Revenue" :description "rev" :in_library true}
+                        {:id 2 :name "Churn" :description "churn" :in_library false}]}
              (explorations.impl/research-metric-index {}))))))
 
 (deftest research-metric-index-truncates-descriptions-test
   (let [long-desc (apply str (repeat 40 "long desc "))
         stub      [{:id 1 :name "M" :description long-desc :in_library false :dimensions []}]]
     (with-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
-      (let [[{:keys [description]}] (explorations.impl/research-metric-index {})]
+      (let [[{:keys [description]}] (:metrics (explorations.impl/research-metric-index {}))]
         (is (= 151 (count description)))
         (is (str/ends-with? description "…"))))))
+
+(deftest research-metric-index-cap-test
+  ;; 505 matches: ids 0-4 in the library, the rest not.
+  (let [many (vec (for [i (range 505)]
+                    {:id i :name (str "M" i) :description nil
+                     :in_library (< i 5)
+                     :dimensions [(dim (str "d" i) (str "D" i) (+ 0.1 (/ i 1000.0))
+                                       [{:source i}])]}))]
+    (with-redefs [explorations.impl/hydrated-metrics (fn [_] many)]
+      (let [{:keys [metrics truncated shown matched]} (explorations.impl/research-metric-index {})]
+        (testing "an over-cap index is truncated and stamped"
+          (is (true? truncated))
+          (is (= 500 shown))
+          (is (= 505 matched))
+          (is (= 500 (count metrics))))
+        (testing "library metrics survive the cut, ranked first"
+          (is (= [4 3 2 1 0] (mapv :id (take 5 metrics)))))))))
 
 (deftest research-candidates-test
   (with-synthetic-metrics
