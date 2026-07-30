@@ -50,13 +50,9 @@
   "Only strip VALUES clauses / IN lists with more than this many tuples/items."
   100)
 
-(def ^:private values-keyword-pattern
-  "Pattern to find VALUES keyword followed by opening paren."
-  (re-pattern "(?i)\\bVALUES\\s*\\("))
-
-(def ^:private in-keyword-pattern
-  "Pattern to find IN keyword followed by opening paren."
-  (re-pattern "(?i)\\bIN\\b\\s*\\("))
+(def ^:private literal-list-keyword-pattern
+  "Pattern to find a VALUES or IN keyword followed by an opening paren."
+  (re-pattern "(?i)\\b(?:VALUES|IN)\\s*\\("))
 
 (defn- skip-whitespace
   "Return the first non-whitespace position at or after `pos`."
@@ -66,47 +62,51 @@
       (recur (inc p))
       p)))
 
+(defn- skip-string-literal
+  "Starting at an opening quote (single or double), advance past the matching closing quote,
+   treating a doubled quote as an escape. Returns the position immediately after the closing quote."
+  ^long [^String sql ^long pos ^long n]
+  (let [q (.charAt sql pos)]
+    (loop [i (inc pos)]
+      (if (>= i n)
+        i
+        (if (= (.charAt sql i) q)
+          (if (and (< (inc i) n) (= (.charAt sql (inc i)) q))
+            (recur (+ i 2)) ; escaped (doubled) quote
+            (inc i))
+          (recur (inc i)))))))
+
 (defn- skip-balanced-parens
   "Starting at an opening `(`, advance past the matching `)`.
-   Handles nested parens and SQL string literals (single and double quoted, with doubled-quote escaping).
-   Returns the position immediately after the closing `)`."
+   Handles nested parens and SQL string literals. Returns the position immediately after the closing `)`."
   ^long [^String sql ^long pos ^long n]
-  (loop [pos pos, depth (int 0), in-str false, str-ch \space]
+  (loop [pos pos, depth 0]
     (if (>= pos n)
       pos
       (let [ch (.charAt sql pos)]
         (cond
-          ;; Inside a string literal — look for the closing quote
-          in-str
-          (if (= ch str-ch)
-            (if (and (< (inc pos) n) (= (.charAt sql (inc pos)) str-ch))
-              (recur (+ pos 2) depth true str-ch) ; escaped (doubled) quote
-              (recur (inc pos) depth false str-ch))
-            (recur (inc pos) depth true str-ch))
-
-          (or (= ch \') (= ch \"))  (recur (inc pos) depth true ch)
-          (= ch \()                 (recur (inc pos) (inc depth) false str-ch)
-          (= ch \))                 (if (= depth 1)
-                                      (inc pos) ; done
-                                      (recur (inc pos) (dec depth) false str-ch))
-          :else                     (recur (inc pos) depth false str-ch))))))
+          (or (= ch \') (= ch \")) (recur (skip-string-literal sql pos n) depth)
+          (= ch \()                (recur (inc pos) (inc depth))
+          (= ch \))                (if (= depth 1)
+                                     (inc pos) ; done
+                                     (recur (inc pos) (dec depth)))
+          :else                    (recur (inc pos) depth))))))
 
 (defn- count-top-level-commas
   "Count top-level comma-separated items inside a tuple's content string.
    `(1, 'a', 3)` → inner content `1, 'a', 3` → 3 items."
   ^long [^String content]
   (let [n (.length content)]
-    (loop [i 0, depth (int 0), in-str false, str-ch \space, items (int 1)]
+    (loop [i 0, depth 0, items 1]
       (if (>= i n)
         items
         (let [ch (.charAt content i)]
           (cond
-            in-str                      (recur (inc i) depth (not= ch str-ch) str-ch items)
-            (or (= ch \') (= ch \"))    (recur (inc i) depth true ch items)
-            (= ch \()                   (recur (inc i) (inc depth) false str-ch items)
-            (= ch \))                   (recur (inc i) (dec depth) false str-ch items)
-            (and (= ch \,) (= depth 0)) (recur (inc i) depth false str-ch (inc items))
-            :else                       (recur (inc i) depth false str-ch items)))))))
+            (or (= ch \') (= ch \"))    (recur (skip-string-literal content i n) depth items)
+            (= ch \()                   (recur (inc i) (inc depth) items)
+            (= ch \))                   (recur (inc i) (dec depth) items)
+            (and (= ch \,) (= depth 0)) (recur (inc i) depth (inc items))
+            :else                       (recur (inc i) depth items)))))))
 
 (defn- count-and-skip-tuples
   "Starting after the first tuple, count how many more `, (...)` tuples follow.
@@ -135,109 +135,96 @@
       (str/replace #"\($" "")
       str/trimr))
 
-(defn- strip-large-values*
-  "Walk through SQL, replacing any VALUES clause with more than `strip-threshold`
-   tuples with a single-row NULL placeholder. Preserves column count from the first tuple."
-  ^String [^String sql]
-  (let [matcher (re-matcher values-keyword-pattern sql)
-        n       (int (.length sql))]
-    (if-not (.find matcher)
-      sql
-      (let [_ (.reset matcher)
-            sb (StringBuilder.)]
-        (loop [i (int 0)]
-          (if-not (.find matcher i)
-            (-> sb (.append sql i n) .toString)
-            (let [match-start   (.start matcher)
-                  match-end     (.end matcher)
-                  _             (.append sb sql (int i) (int match-start))
-                  ;; Parse the first tuple to learn its column count
-                  paren-start   (dec (int match-end))
-                  first-end     (skip-balanced-parens sql paren-start n)
-                  first-inner   (when (> first-end (inc paren-start))
-                                  (.substring sql (inc paren-start) (dec (int first-end))))
-                  ;; Scan remaining tuples
-                  [tuple-count end-pos] (count-and-skip-tuples sql first-end n)]
-              (if (and (> (int tuple-count) strip-threshold) first-inner)
-                (do (.append sb (make-null-placeholder
-                                 (extract-keyword sql match-start match-end)
-                                 (count-top-level-commas first-inner)))
-                    (recur (int end-pos)))
-                (do (.append sb sql (int match-start) (int end-pos))
-                    (recur (int end-pos)))))))))))
+(defn- strip-values-at
+  "Decide whether to strip the VALUES clause whose `VALUES (` match spans [match-start, match-end).
+   Returns [replacement resume-pos]: a single-row NULL placeholder (column count taken from the
+   first tuple) covering the SQL up to resume-pos, or [nil match-end] to leave the clause untouched."
+  [^String sql ^long match-start ^long match-end ^long n]
+  (let [paren-start (dec match-end)
+        first-end   (skip-balanced-parens sql paren-start n)
+        [tuple-count end-pos] (count-and-skip-tuples sql first-end n)]
+    (if (and (> (long tuple-count) strip-threshold)
+             (> first-end (inc paren-start)))
+      [(make-null-placeholder (extract-keyword sql match-start match-end)
+                              (count-top-level-commas (.substring sql (inc paren-start) (dec first-end))))
+       end-pos]
+      [nil match-end])))
 
 (def ^:private allowed-in-list-words
   "The only bare words allowed inside an IN list for it to count as literal-only."
   #{"null" "true" "false"})
 
-(defn- literal-only-list?
-  "True if `content` (the text between the parens of an `IN (...)`) consists solely of literals:
-   numbers, quoted strings, NULL/TRUE/FALSE, signs, commas and whitespace. Anything else — column
-   references, function calls, subqueries, bind parameters, nested parens — disqualifies it, since
-   stripping those would change analysis results or parameter counts."
-  [^String content]
-  (let [n        (.length content)
-        word-ok? (fn [^long start ^long end]
-                   (or (neg? start)
-                       (contains? allowed-in-list-words (u/lower-case-en (.substring content start end)))))]
-    (loop [i (int 0), in-str false, str-ch \space, word-start (int -1)]
-      (if (>= i n)
-        (boolean (word-ok? word-start i))
-        (let [ch (.charAt content i)]
-          (cond
-            in-str
-            (if (= ch str-ch)
-              (if (and (< (inc i) n) (= (.charAt content (inc i)) str-ch))
-                (recur (+ i 2) true str-ch (int -1)) ; escaped (doubled) quote
-                (recur (inc i) false str-ch (int -1)))
-              (recur (inc i) true str-ch (int -1)))
+(defn- word-end
+  "Return the position after the run of letters starting at `pos`."
+  ^long [^String sql ^long pos ^long n]
+  (loop [i (inc pos)]
+    (if (and (< i n) (Character/isLetter (.charAt sql i)))
+      (recur (inc i))
+      i)))
 
-            (Character/isLetter ch)
-            (recur (inc i) false str-ch (int (if (neg? word-start) i word-start)))
+(defn- large-literal-in-list-end
+  "If the parenthesized list opening at `open-pos` is literal-only — numbers, quoted strings,
+   NULL/TRUE/FALSE, signs, commas and whitespace — and has more than `strip-threshold` items,
+   return the position just after its closing paren; otherwise nil. Anything else — column
+   references, function calls, subqueries, bind parameters, nested parens — disqualifies the list,
+   since stripping those would change analysis results or parameter counts. Single pass over `sql`
+   in place, bailing at the first disqualifying character."
+  [^String sql ^long open-pos ^long n]
+  (loop [i (inc open-pos), items 1]
+    (when (< i n)
+      (let [ch (.charAt sql i)]
+        (cond
+          (= ch \))                (when (> items strip-threshold) (inc i))
+          (or (= ch \') (= ch \")) (recur (skip-string-literal sql i n) items)
+          (= ch \,)                (recur (inc i) (inc items))
+          (Character/isLetter ch)  (let [end (word-end sql i n)]
+                                     (when (contains? allowed-in-list-words
+                                                      (u/lower-case-en (.substring sql i end)))
+                                       (recur end items)))
+          (or (Character/isDigit ch)
+              (Character/isWhitespace ch)
+              (= ch \.) (= ch \-) (= ch \+))
+          (recur (inc i) items)
 
-            (not (word-ok? word-start i))
-            false
+          :else nil)))))
 
-            (or (= ch \') (= ch \"))
-            (recur (inc i) true ch (int -1))
+(defn- strip-in-at
+  "Decide whether to strip the IN list whose `IN (` match spans [match-start, match-end).
+   Returns [replacement resume-pos]: `IN (NULL)` covering the whole list, or [nil match-end] to
+   leave it untouched (resuming just inside the paren, so a large list nested in a subquery —
+   `IN (SELECT ... WHERE x IN (...))` — is still found)."
+  [^String sql ^long match-start ^long match-end ^long n]
+  (if-let [end-pos (large-literal-in-list-end sql (dec match-end) n)]
+    [(str (extract-keyword sql match-start match-end) " (NULL)") end-pos]
+    [nil match-end]))
 
-            (or (Character/isDigit ch)
-                (Character/isWhitespace ch)
-                (contains? #{\, \. \- \+} ch))
-            (recur (inc i) false str-ch (int -1))
-
-            :else
-            false))))))
-
-(defn- strip-large-in-lists*
-  "Walk through SQL, replacing any literal-only `IN (...)` list with more than `strip-threshold`
-   items with `IN (NULL)`. Lists containing anything but literals are left untouched."
+(defn- strip-large-literal-lists*
+  "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
+   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
   ^String [^String sql]
-  (let [matcher (re-matcher in-keyword-pattern sql)
-        n       (int (.length sql))]
+  (let [matcher (re-matcher literal-list-keyword-pattern sql)
+        n       (.length sql)]
     (if-not (.find matcher)
       sql
-      (let [_  (.reset matcher)
-            sb (StringBuilder.)]
-        (loop [i (int 0)]
-          (if-not (.find matcher i)
-            (-> sb (.append sql i n) .toString)
+      (let [sb (StringBuilder.)]
+        (loop [i 0, stripped? false, match? true]
+          (if-not match?
+            (if stripped?
+              (-> sb (.append sql (int i) (int n)) .toString)
+              sql)
             (let [match-start (.start matcher)
                   match-end   (.end matcher)
-                  paren-start (dec (int match-end))
-                  end-pos     (skip-balanced-parens sql paren-start n)
-                  inner       (when (> end-pos (+ paren-start 2))
-                                (.substring sql (inc paren-start) (dec (int end-pos))))]
-              (if (and inner
-                       (> (count-top-level-commas inner) strip-threshold)
-                       (literal-only-list? inner))
-                (do (.append sb sql (int i) (int match-start))
-                    (.append sb (make-null-placeholder (extract-keyword sql match-start match-end) 1))
-                    (recur (int end-pos)))
-                ;; Not stripped: copy through the opening paren and keep scanning inside it, so a
-                ;; large IN list nested in a subquery (`IN (SELECT ... WHERE x IN (...))`) is still found.
-                (do (.append sb sql (int i) (int match-end))
-                    (recur (int match-end)))))))))))
+                  values?     (let [ch (.charAt sql match-start)]
+                                (or (= ch \V) (= ch \v)))
+                  [replacement resume] (if values?
+                                         (strip-values-at sql match-start match-end n)
+                                         (strip-in-at sql match-start match-end n))]
+              (if replacement
+                (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
+                (.append sb sql (int i) (int resume)))
+              (recur (long resume)
+                     (or stripped? (some? replacement))
+                     (.find matcher (int resume))))))))))
 
 (defn strip-large-literal-lists
   "Replace large literal lists with NULL placeholders: VALUES clauses with more than
@@ -249,7 +236,7 @@
    On any error, returns the original SQL unchanged so parsing can proceed normally."
   ^String [^String sql]
   (try
-    (-> sql strip-large-values* strip-large-in-lists*)
+    (strip-large-literal-lists* sql)
     (catch Exception e
       (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
       sql)))
