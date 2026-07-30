@@ -8,15 +8,7 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  Button,
-  Flex,
-  Group,
-  Stack,
-  Stepper,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Button, Flex, Group, Stack, Text, TextInput } from "metabase/ui";
 import type {
   LlmProviderConfig,
   LlmProviderConnection,
@@ -103,17 +95,6 @@ export function ProviderConnectionForm({
 
   return (
     <Stack gap="lg">
-      {!isEditing && (
-        <Stepper
-          active={providerType ? 1 : 0}
-          allowNextStepsSelect={false}
-          size="sm"
-        >
-          <Stepper.Step label={t`Provider`} />
-          <Stepper.Step label={t`Configure`} />
-        </Stepper>
-      )}
-
       {match({ isEditing, providerType })
         .with({ isEditing: false, providerType: P.nullish }, () => (
           <ProviderTypePicker
@@ -127,6 +108,7 @@ export function ProviderConnectionForm({
             <Stack gap="lg">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <MetabaseAIProviderSetup
+                isConnected={isEditing}
                 onConnect={() => onSaved()}
                 onCancel={isEditing ? undefined : handleBack}
               />
@@ -185,7 +167,7 @@ export function ProviderConnectionForm({
 function SelectedProvider({ providerType }: { providerType: LlmProviderType }) {
   return (
     <Group gap="sm" wrap="nowrap">
-      <ProviderTypeIcon icon={providerType.icon} />
+      <ProviderTypeIcon type={providerType.type} icon={providerType.icon} />
       <Stack gap={0}>
         <Text fw="bold">{providerType.label}</Text>
         <Text c="text-secondary" size="sm">{t`Selected provider`}</Text>

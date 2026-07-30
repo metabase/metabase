@@ -5,6 +5,7 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 export type MetabaseAIProviderSetupProps = {
   onConnect?: VoidFunction;
   onCancel?: VoidFunction;
+  isConnected?: boolean;
 };
 
 const getDefaultPluginMetabot = () => ({

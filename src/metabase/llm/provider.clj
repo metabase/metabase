@@ -53,7 +53,7 @@
                      :default "https://api.anthropic.com"}]}
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
-    :icon          "sparkles"
+    :icon          "ai"
     :default-model "gpt-5.4"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -68,7 +68,7 @@
                      :default "https://api.openai.com"}]}
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
-    :icon          "arrow_split"
+    :icon          "ai"
     :default-model "anthropic/claude-sonnet-4.6"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -83,7 +83,7 @@
                      :default "https://openrouter.ai/api"}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
-    :icon          "cloud"
+    :icon          "ai"
     :default-model nil
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -98,7 +98,7 @@
                      :placeholder "https://<resource>.services.ai.azure.com/openai"}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
-    :icon          "database"
+    :icon          "ai"
     :default-model "anthropic.claude-opus-4-8"
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")

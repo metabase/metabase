@@ -29,8 +29,11 @@
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= ["anthropic" "openai" "openrouter" "azure" "bedrock" "metabase"]
-             (map :type types)))
+      (is (= #{"anthropic" "openai" "openrouter" "azure" "bedrock" "metabase"}
+             (set (map :type types))))
+      (is (= ["anthropic" "openai" "openrouter" "azure" "bedrock"]
+             (remove #{"metabase"} (map :type types)))
+          "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
                :label         "Anthropic"
                :icon          "ai"
@@ -47,7 +50,7 @@
                                 :type     "text"
                                 :required false
                                 :default  "https://api.anthropic.com"}]}
-              (first types)))
+              (->> types (filter #(= "anthropic" (:type %))) first)))
       (testing "select fields carry their options"
         (is (some? (->> types
                         (filter #(= "bedrock" (:type %)))
@@ -58,14 +61,19 @@
                         :options)))))))
 
 (deftest provider-types-managed-availability-test
-  (testing "the managed provider is only offered when the LLM proxy is configured"
-    (mt/with-premium-features #{:metabase-ai-managed}
-      (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
-        (is (=? {:type "metabase" :managed true :available true}
-                (last (mt/user-http-request :crowberto :get 200 "llm/provider-types")))))
-      (mt/with-temporary-setting-values [llm-proxy-base-url nil]
-        (is (=? {:type "metabase" :managed true :available false}
-                (last (mt/user-http-request :crowberto :get 200 "llm/provider-types"))))))))
+  (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
+    (testing "the managed provider leads the list when the LLM proxy is configured"
+      (mt/with-premium-features #{:metabase-ai-managed}
+        (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
+          (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
+            (is (=? {:type "metabase" :managed true :available true} (managed types)))
+            (is (= "metabase" (:type (first types))))))))
+    (testing "without a proxy to route through it is unavailable and does not lead"
+      (mt/with-premium-features #{:metabase-ai-managed}
+        (mt/with-temporary-setting-values [llm-proxy-base-url nil]
+          (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
+            (is (=? {:type "metabase" :managed true :available false} (managed types)))
+            (is (not= "metabase" (:type (first types))))))))))
 
 (deftest list-providers-masks-secrets-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
