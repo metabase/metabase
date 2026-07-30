@@ -7,7 +7,7 @@ import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   getLibQuery,
-  hasCodeManagedSyncCursor,
+  hasCodeManagedSyncState,
 } from "metabase/transforms/utils";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
@@ -53,7 +53,7 @@ export function getIncrementalWarning(
 
   // Python transforms without source tables manage the sync state in code,
   // so no checkpoint field is needed.
-  if (hasCodeManagedSyncCursor(transform.source)) {
+  if (hasCodeManagedSyncState(transform.source)) {
     return undefined;
   }
 

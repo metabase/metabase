@@ -12,7 +12,7 @@ import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
 } from "metabase/transforms/components/IncrementalTransform";
-import { hasCodeManagedSyncCursor } from "metabase/transforms/utils";
+import { hasCodeManagedSyncState } from "metabase/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { ResetCheckpointSection } from "./ResetCheckpointSection";
@@ -105,7 +105,7 @@ export function UpdateIncrementalSettings({
 
   const validationContext = useMemo(
     () => ({
-      hasCodeManagedSyncCursor: hasCodeManagedSyncCursor(transform.source),
+      hasCodeManagedSyncState: hasCodeManagedSyncState(transform.source),
     }),
     [transform.source],
   );
@@ -152,7 +152,7 @@ function useCheckpointChangeInterceptor(transform: Transform) {
         values.sourceStrategy === "checkpoint" &&
         values.checkpointFilterFieldId == null &&
         // No checkpoint field is expected when the transform code manages the sync state.
-        !hasCodeManagedSyncCursor(transform.source);
+        !hasCodeManagedSyncState(transform.source);
 
       if (waitingForCheckpointSelection) {
         return false;

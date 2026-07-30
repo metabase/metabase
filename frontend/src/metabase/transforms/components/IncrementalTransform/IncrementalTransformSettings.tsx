@@ -10,7 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
 import {
   getLibQuery,
-  hasCodeManagedSyncCursor,
+  hasCodeManagedSyncState,
 } from "metabase/transforms/utils";
 import {
   Anchor,
@@ -67,7 +67,7 @@ export const IncrementalTransformSettings = ({
 
   const isMultiTablePythonTransform =
     getIsPythonTransformWithMultipleTables(source);
-  const isCodeManagedCursor = hasCodeManagedSyncCursor(source);
+  const isCodeManagedCursor = hasCodeManagedSyncState(source);
   const isNativeWithoutTableTags = getIsNativeWithoutTableVariables(
     libQuery,
     transformType,
@@ -297,7 +297,7 @@ function SourceStrategyFields({
           )}
           {transformType === "python" &&
             "source-tables" in source &&
-            !hasCodeManagedSyncCursor(source) && (
+            !hasCodeManagedSyncState(source) && (
               <PythonKeysetColumnSelect
                 name="checkpointFilterFieldId"
                 label={t`Field to check for new values`}
@@ -308,7 +308,7 @@ function SourceStrategyFields({
                 disabled={readOnly}
               />
             )}
-          {!hasCodeManagedSyncCursor(source) && (
+          {!hasCodeManagedSyncState(source) && (
             <LookbackField readOnly={readOnly} />
           )}
         </>

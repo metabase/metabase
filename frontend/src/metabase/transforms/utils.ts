@@ -208,9 +208,7 @@ export function isValidSecretName(name: string): boolean {
 }
 
 /** Ingestion transforms manage their own sync state in code, not via a checkpoint field. */
-export function hasCodeManagedSyncCursor(
-  source: DraftTransformSource,
-): boolean {
+export function hasCodeManagedSyncState(source: DraftTransformSource): boolean {
   return isIngestionSource(source);
 }
 

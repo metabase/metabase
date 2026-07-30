@@ -30,7 +30,7 @@ export function SecretsSection({ transform, readOnly }: SecretsSectionProps) {
   return (
     <TitleSection
       label={t`Secrets`}
-      description={t`Secrets are passed to this transform's Python code in the \`secrets\` argument, keyed by name. Values can't be viewed after saving.`}
+      description={t`Secrets are passed to this transform's Python code in the secrets argument, keyed by name. Values can't be viewed after saving.`}
       data-testid="transform-secrets-section"
     >
       {secretKeys.length > 0 ? (

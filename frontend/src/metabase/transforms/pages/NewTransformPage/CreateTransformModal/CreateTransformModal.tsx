@@ -20,7 +20,10 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import { hasCodeManagedSyncCursor } from "metabase/transforms/utils";
+import {
+  hasCodeManagedSyncState,
+  isIngestionSource,
+} from "metabase/transforms/utils";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
   SchemaName,
@@ -31,7 +34,8 @@ import type {
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 import { TargetNameInput } from "../../../components/TargetNameInput";
 
-import type { NewTransformValues } from "./form";
+import { SecretsFields } from "./SecretsFields";
+import type { NewTransformSecret, NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 
 export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
@@ -105,7 +109,7 @@ export function CreateTransformModal({
   const validationContext = useMemo(
     () => ({
       supportsSchemas: Boolean(supportsSchemas),
-      hasCodeManagedSyncCursor: hasCodeManagedSyncCursor(source),
+      hasCodeManagedSyncState: hasCodeManagedSyncState(source),
     }),
     [supportsSchemas, source],
   );
@@ -173,6 +177,10 @@ function CreateTransformForm({
     setFieldValue("incremental", value);
   };
 
+  const handleSecretsChange = (secrets: NewTransformSecret[]) => {
+    setFieldValue("secrets", secrets);
+  };
+
   return (
     <Form>
       <Stack gap="lg" mt="sm">
@@ -201,6 +209,12 @@ function CreateTransformForm({
             source={source}
             incremental={values.incremental}
             onIncrementalChange={handleIncrementalChange}
+          />
+        )}
+        {isIngestionSource(source) && (
+          <SecretsFields
+            secrets={values.secrets}
+            onChange={handleSecretsChange}
           />
         )}
         <Group>

@@ -11,7 +11,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
 import {
-  hasCodeManagedSyncCursor,
+  hasCodeManagedSyncState,
   isTransformRunning,
 } from "metabase/transforms/utils";
 import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
@@ -79,7 +79,7 @@ export function ResetCheckpointSection({
   // An ingestion transform has no checkpoint field: its state is whatever its code returned,
   // so show that instead. Resetting it is the same endpoint — it clears both.
   const isCodeManaged =
-    transform.source != null && hasCodeManagedSyncCursor(transform.source);
+    transform.source != null && hasCodeManagedSyncState(transform.source);
   if (isCodeManaged) {
     if (transform.sync_state == null) {
       return null;
