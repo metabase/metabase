@@ -98,21 +98,59 @@
                                         (or (:display-name dimension) (:name dimension))))
     dimension))
 
+(defn- breakout-refs
+  "The breakout refs of `query`, without rebuilding it when it is already MBQL 5.
+
+   [[lib/breakouts]] is a structural read of the stage, so the cost here is entirely in `lib/query`,
+   which re-normalizes and re-resolves metadata. A Card's `:dataset_query` reaches the card-schema
+   upgrade already transformed, and that upgrade runs on every read of every metric below
+   `card_schema` 24 — including bulk reads like collection listings — so the round trip is worth
+   skipping. The `lib/query` fallback remains for callers holding a legacy query."
+  [query]
+  (if (:stages query)
+    (lib/breakouts query)
+    (lib/breakouts (lib/query (lib-metric/metadata-provider) query))))
+
 (defn compute-full-dimension-set
   "Compute the FULL dimension set for a metric's `query` — its own-table columns PLUS every
    implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
    shape (or `nil` when `query` is blank).
 
    Unlike the seeded default (own-table and explicitly-joined columns only), this includes every
-   FK-reachable column."
+   FK-reachable column.
+
+   Such a metric expressed its default dimension as a breakout on its own `query`, so the dimension
+   mapped to that breakout is marked `:default`. A metric with no breakout had no default and gets
+   none: a `:default` makes the dashboard query swap the metric's breakouts for that dimension, which
+   would give a previously breakout-less metric one it never had."
   [query]
   (when (seq query)
-    (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+    (let [mp             (lib-metric/metadata-provider)
+          computed-pairs (lib-metric/compute-dimension-pairs mp query)
           {:keys [dimensions dimension-mappings]}
           (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)
-          dimensions (mapv table-prefixed-dimension dimensions)]
-      {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+          dimensions     (-> (mapv table-prefixed-dimension dimensions)
+                             lib-metric/extract-persisted-dimensions)]
+      {:dimensions         (lib-metric/with-breakout-default dimensions
+                             dimension-mappings
+                             (breakout-refs query))
        :dimension-mappings dimension-mappings})))
+
+(defn add-breakout-default
+  "Add the breakout default to an *already-persisted* dimension set, changing nothing else.
+
+   [[compute-full-dimension-set]] can only be used on a metric whose `:dimensions` are still nil,
+   because it rebuilds the set from the query — re-adding dimensions the user removed and minting
+   fresh ids. A populated set has to be taken as authoritative, so all that can be safely recovered
+   from a pre-curation metric is the default its breakout expressed.
+
+   Returns `dimensions` untouched when they already carry a default or when no breakout maps to one.
+   Idempotent. Runs on every read of a metric card below `card_schema` 24 — including bulk reads —
+   so it stays a pure in-memory walk: no metadata provider, no query rebuild, no DB access."
+  [dimensions dimension-mappings query]
+  (if (or (empty? query) (some :default dimensions))
+    dimensions
+    (lib-metric/with-breakout-default dimensions dimension-mappings (breakout-refs query))))
 
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit

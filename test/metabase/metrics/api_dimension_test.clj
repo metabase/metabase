@@ -8,6 +8,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -561,22 +562,25 @@
 (defn- pre-curation-metric!
   "Insert a metric on ORDERS and stamp it with the previous release's `card_schema` and no persisted
    `:dimensions`, simulating a metric created before curated dimensions shipped. `f` receives the
-   metric id."
-  [f]
-  (let [mp       (mt/metadata-provider)
-        orders-q (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                     (lib/aggregate (lib/count)))]
-    (mt/with-temp [:model/Card metric {:name          "Orders Count"
-                                       :type          :metric
-                                       :database_id   (mt/id)
-                                       :table_id      (mt/id :orders)
-                                       :dataset_query orders-q}]
-      ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
-      ;; bypassing before-update so nothing bumps it back to the current version.
-      (t2/query-one {:update :report_card
-                     :set    {:card_schema 23}
-                     :where  [:= :id (:id metric)]})
-      (f (:id metric)))))
+   metric id. `query` defaults to a plain breakout-less count of ORDERS."
+  ([f]
+   (pre-curation-metric! nil f))
+  ([query f]
+   (let [mp       (mt/metadata-provider)
+         orders-q (or query
+                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib/count))))]
+     (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                        :type          :metric
+                                        :database_id   (mt/id)
+                                        :table_id      (mt/id :orders)
+                                        :dataset_query orders-q}]
+       ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
+       ;; bypassing before-update so nothing bumps it back to the current version.
+       (t2/query-one {:update :report_card
+                      :set    {:card_schema 23}
+                      :where  [:= :id (:id metric)]})
+       (f (:id metric))))))
 
 (deftest pre-curation-metric-modernized-to-full-dimension-set-on-read-test
   (testing (str "UXW-4808: a metric with the previous release's `card_schema` and no persisted "
@@ -648,3 +652,153 @@
                    "the filtered query executes and returns a count")
                (is (< filtered total)
                    "filtering by a single joined product category returns fewer rows than unfiltered")))))))))
+
+(defn- default-dimension-field-ids
+  "The field ids of the `:default` dimensions the metric API reports for `metric-id`."
+  [metric-id]
+  (->> (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id))
+       :dimensions
+       (filter :default)
+       (mapv #(-> % :sources first :field-id))))
+
+(deftest pre-curation-metric-preserves-default-dimension-breakout-test
+  (testing (str "Pre-curation metrics stored their default dimension as the \"Default time dimension\" "
+                "breakout on the metric's own query. Modernizing on read carries that over as the "
+                "curated `:default`, so the metric keeps its default and does not silently acquire a "
+                "different one the first time its dimension list is edited.")
+    (let [mp (mt/metadata-provider)]
+      (pre-curation-metric!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           ;; QUANTITY deliberately is NOT a date column: `pick-default-dimension` would prefer
+           ;; CREATED_AT, so this only passes if the default really comes from the query's breakout.
+           (lib/breakout (lib.metadata/field mp (mt/id :orders :quantity))))
+       (fn [metric-id]
+         (is (= [(mt/id :orders :quantity)]
+                (default-dimension-field-ids metric-id))))))))
+
+(deftest pre-curation-metric-preserves-bucketed-default-dimension-breakout-test
+  (testing (str "A bucketed breakout still identifies its default dimension: the breakout carries a "
+                "`:temporal-unit` that the dimension's mapping target does not, so the match must "
+                "ignore bucketing.")
+    (let [mp (mt/metadata-provider)]
+      (pre-curation-metric!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                           :year)))
+       (fn [metric-id]
+         (is (= [(mt/id :orders :created_at)]
+                (default-dimension-field-ids metric-id))))))))
+
+(deftest pre-curation-metric-without-breakout-has-no-default-dimension-test
+  (testing (str "A pre-curation metric with no breakout had its \"Default time dimension\" slot left "
+                "empty — it had no default. Modernizing must not invent one: a `:default` makes "
+                "`qp.dashboard/card-with-default-metric-dimension` replace the query's breakouts, which "
+                "would turn every existing scalar dashcard into a monthly time series.")
+    (pre-curation-metric!
+     (fn [metric-id]
+       (is (= [] (default-dimension-field-ids metric-id)))))))
+
+(defn- released-metric-with-default-less-dimensions!
+  "Insert a metric shaped like one upgraded from v0.63.x. There, `sync-dimensions!` computed and
+   persisted the full dimension set on *read* (`GET /api/metric/:id` -> `hydrated-metric`) and never
+   set a `:default` — curated defaults did not exist yet. So any metric a customer ever opened
+   arrives with `:dimensions` populated, no default, and a `card_schema` below the curated-dimensions
+   upgrade. `f` receives the metric id."
+  [query f]
+  (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                     :type          :metric
+                                     :database_id   (mt/id)
+                                     :table_id      (mt/id :orders)
+                                     :dataset_query query}]
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set query)
+          ;; Strip both things that release could not produce: a `:default`, and the table-prefixed
+          ;; display name for FK-reachable columns (`table-prefixed-dimension` arrived with curation).
+          old-shaped (mapv (fn [dim]
+                             (cond-> (dissoc dim :default)
+                               (= "connection" (get-in dim [:group :type]))
+                               (assoc :display-name (:name dim))))
+                           dimensions)]
+      (t2/update! :model/Card (:id metric)
+                  {:dimensions         old-shaped
+                   :dimension_mappings dimension-mappings})
+      ;; ...then force the previous release's card_schema back down, bypassing before-update.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema 23}
+                     :where  [:= :id (:id metric)]})
+      (f (:id metric)))))
+
+(deftest released-metric-recovers-default-dimension-on-upgrade-test
+  (testing (str "A customer upgrading from v0.63.x has already-persisted dimensions with no default, "
+                "because that release persisted the set on read. Recovering the breakout default must "
+                "still happen for them — they are the common upgrade case, not metrics nobody opened.")
+    (let [mp (mt/metadata-provider)]
+      (released-metric-with-default-less-dimensions!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                           :year)))
+       (fn [metric-id]
+         (is (= [(mt/id :orders :created_at)]
+                (default-dimension-field-ids metric-id))))))))
+
+(deftest released-metric-without-breakout-gets-no-default-on-upgrade-test
+  (testing "A persisted-but-default-less metric with no breakout still must not acquire a default."
+    (let [mp (mt/metadata-provider)]
+      (released-metric-with-default-less-dimensions!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count)))
+       (fn [metric-id]
+         (is (= [] (default-dimension-field-ids metric-id))))))))
+
+(deftest released-metric-dimension-set-is-annotated-not-rebuilt-test
+  (testing (str "Recovering the default must not rebuild the set. Nothing distinguishes a persisted "
+                "set the previous release wrote from one the user has since curated, and this upgrade "
+                "never retires (card_schema is not actually stamped on write), so a rebuild would undo "
+                "curation on every read. Only `:default` may change; ids and membership must not.")
+    (let [mp (mt/metadata-provider)]
+      (released-metric-with-default-less-dimensions!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
+       (fn [metric-id]
+         ;; Read the column raw, bypassing the model: a `:model/Card` select runs the very upgrade
+         ;; under test, so it cannot show what is actually stored.
+         (let [raw    (:dimensions (t2/query-one {:select [:dimensions]
+                                                  :from   [:report_card]
+                                                  :where  [:= :id metric-id]}))
+               stored (mapv #(select-keys % [:id :name])
+                            (cond-> raw (string? raw) json/decode+kw))
+               after  (:dimensions (t2/select-one :model/Card :id metric-id))]
+           (is (seq stored) "sanity: the fixture persisted a dimension set")
+           (is (= stored (mapv #(select-keys % [:id :name]) after))
+               "every dimension keeps its id and membership through the upgrade")
+           (is (= ["CREATED_AT"] (mapv :name (filter :default after)))
+               "and the only change is the recovered default")))))))
+
+(deftest curation-sticks-on-a-just-upgraded-metric-test
+  (testing (str "Removing a dimension right after upgrading must stay removed. The modernizing "
+                "upgrade runs while `card_schema` is below 24, so it must stop running once the user "
+                "has curated — otherwise a later read silently re-adds what they deleted.")
+    (let [mp (mt/metadata-provider)]
+      (released-metric-with-default-less-dimensions!
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+           (lib/aggregate (lib/count))
+           (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
+       (fn [metric-id]
+         (let [victim-id (get-dimension-id (t2/select-one :model/Card :id metric-id) "QUANTITY")
+               schema-of #(:card_schema (t2/query-one {:select [:card_schema]
+                                                       :from   [:report_card]
+                                                       :where  [:= :id metric-id]}))]
+           (is (some? victim-id) "sanity: the metric exposes a QUANTITY dimension to remove")
+           (is (< (schema-of) 24) "sanity: the upgrade is still live before curating")
+           (mt/user-http-request :crowberto :post 200
+                                 (str "metric/" metric-id "/dimension/remove")
+                                 {:dimension_ids [victim-id]})
+           ;; Check by NAME, not id: the upgrade recomputes the set from scratch and mints fresh
+           ;; uuids, so a re-added dimension comes back under a different id and an id-based
+           ;; assertion would pass while the column is plainly back.
+           (is (not (contains? (set (map :name (:dimensions (t2/select-one :model/Card :id metric-id))))
+                               "QUANTITY"))
+               "so the removal survives a subsequent read")))))))

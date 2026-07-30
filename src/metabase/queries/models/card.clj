@@ -736,15 +736,18 @@
 ;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
 ;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full
 ;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
-;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
-;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
+;;
+;; A populated `:dimensions` is never rebuilt, only annotated with the default.
 (defmethod upgrade-card-schema-to 24
   [card _schema-version]
   (if (and (= :metric (keyword (:type card)))
-           (nil? (:dimensions card))
            (seq (:dataset_query card)))
-    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
-      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
+    (if (nil? (:dimensions card))
+      (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
+        (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
+      (assoc card :dimensions (metrics/add-breakout-default (:dimensions card)
+                                                            (:dimension_mappings card)
+                                                            (:dataset_query card))))
     card))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card

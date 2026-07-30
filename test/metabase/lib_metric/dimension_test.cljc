@@ -102,6 +102,62 @@
     (is (not= (lib-metric.dimension/field-ref->key [:field {:temporal-unit :month} 100])
               (lib-metric.dimension/field-ref->key [:field {:temporal-unit :day} 100])))))
 
+;;; -------------------------------------------------- column-ref->key --------------------------------------------------
+
+(deftest ^:parallel column-ref->key-ignores-bucketing-test
+  (testing "bucketing is NOT part of the key, so a bucketed breakout ref and the unbucketed mapping
+            target for the same column produce the same key"
+    (is (= (lib-metric.dimension/column-ref->key [:field {:temporal-unit :year} 100])
+           (lib-metric.dimension/column-ref->key [:field {} 100])))
+    (is (= (lib-metric.dimension/column-ref->key [:field {:binning {:strategy :default}} 100])
+           (lib-metric.dimension/column-ref->key [:field {} 100]))))
+  (testing "everything else stays identity-relevant"
+    (is (not= (lib-metric.dimension/column-ref->key [:field {:source-field 1} 100])
+              (lib-metric.dimension/column-ref->key [:field {:source-field 2} 100])))
+    (is (not= (lib-metric.dimension/column-ref->key [:field {} 100])
+              (lib-metric.dimension/column-ref->key [:field {} 101])))))
+
+(deftest ^:parallel breakout-default-dimension-id-test
+  (let [mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
+                  {:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]]
+    (testing "returns the id of the dimension mapped to the breakout column"
+      (is (= uuid-2 (lib-metric.dimension/breakout-default-dimension-id [target-2] mappings))))
+    (testing "a bucketed breakout still matches its unbucketed mapping target"
+      (is (= uuid-1 (lib-metric.dimension/breakout-default-dimension-id
+                     [[:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd" :temporal-unit :year} 1]]
+                     mappings))))
+    (testing "the first mapped breakout wins when the query has several"
+      (is (= uuid-2 (lib-metric.dimension/breakout-default-dimension-id [target-2 target-1] mappings))))
+    (testing "nil when there are no breakouts, none is mapped, or there are no mappings"
+      (is (nil? (lib-metric.dimension/breakout-default-dimension-id [] mappings)))
+      (is (nil? (lib-metric.dimension/breakout-default-dimension-id [target-99] mappings)))
+      (is (nil? (lib-metric.dimension/breakout-default-dimension-id [target-1] nil))))))
+
+(deftest ^:parallel with-breakout-default-test
+  (let [mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
+                  {:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
+        dims     [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2"}]]
+    (testing "marks the dimension mapped to the breakout as the sole default"
+      (is (= [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2" :default true}]
+             (lib-metric.dimension/with-breakout-default dims mappings [target-2]))))
+    (testing "a bucketed breakout still matches its unbucketed mapping target"
+      (is (= [uuid-1]
+             (->> (lib-metric.dimension/with-breakout-default
+                    dims mappings [[:field {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"
+                                            :temporal-unit :quarter} 1]])
+                  (filter :default)
+                  (mapv :id)))))
+    (testing "a curated default always wins -- dimensions are returned untouched"
+      (let [curated [{:id uuid-1 :name "col1" :default true} {:id uuid-2 :name "col2"}]]
+        (is (= curated (lib-metric.dimension/with-breakout-default curated mappings [target-2])))))
+    (testing "no breakout, or no breakout that maps to a dimension, leaves the set untouched"
+      (is (= dims (lib-metric.dimension/with-breakout-default dims mappings [])))
+      (is (= dims (lib-metric.dimension/with-breakout-default dims mappings [target-99])))
+      (is (= dims (lib-metric.dimension/with-breakout-default dims nil [target-2]))))
+    (testing "idempotent -- re-running over an already-repaired set is a no-op"
+      (let [once (lib-metric.dimension/with-breakout-default dims mappings [target-2])]
+        (is (= once (lib-metric.dimension/with-breakout-default once mappings [target-2])))))))
+
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 
 (deftest ^:parallel reconcile-new-dimensions-get-random-uuids-test

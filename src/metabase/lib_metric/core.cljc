@@ -78,6 +78,7 @@
      reorder-dimensions
      set-default-dimension
      update-dimension
+     with-breakout-default
      resolve-dimension-to-field-id]
     [lib-metric.dimension.jvm
      compute-dimension-pairs]
