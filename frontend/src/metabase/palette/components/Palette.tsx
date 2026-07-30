@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { type SearchQuery, parseSearchQuery } from "metabase/utils/browser";
@@ -21,8 +21,8 @@ const PALETTE_DISABLED_PATHS = ["/setup"];
 
 /** Command palette */
 export const Palette = () => {
-  const routerProps = useRouter();
-  const { location } = routerProps;
+  const location = useLocation();
+  const params = useParams();
   const isLoggedIn = useSelector((state) => !!getUser(state));
   const locationQuery = useMemo(
     () => parseSearchQuery(location.search),
@@ -33,7 +33,7 @@ export const Palette = () => {
     location.pathname.startsWith(path),
   );
 
-  useCommandPaletteBasicActions({ ...routerProps, isLoggedIn });
+  useCommandPaletteBasicActions({ location, params, isLoggedIn });
 
   const { query } = useKBar();
   const disabled = isWithinIframe() || !isLoggedIn || isDisabledForPath;

@@ -6,7 +6,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useRouter } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
@@ -31,7 +31,8 @@ import { McpEventsTable } from "./McpEventsTable";
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
 export function McpAnalyticsPage() {
-  const { location, router } = useRouter();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [
     { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
@@ -88,9 +89,9 @@ export function McpAnalyticsPage() {
   // is inaccessible — redirect away so it can't be reached by URL (the nav item also greys out).
   useEffect(() => {
     if (!mcpEnabled) {
-      router.replace("/admin/metabot/usage-auditing");
+      navigate("/admin/metabot/usage-auditing", { replace: true });
     }
-  }, [mcpEnabled, router]);
+  }, [mcpEnabled, navigate]);
 
   if (!mcpEnabled) {
     return null;
