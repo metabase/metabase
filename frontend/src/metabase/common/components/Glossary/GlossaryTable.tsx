@@ -7,7 +7,7 @@ import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useMetabotName } from "metabase/metabot/hooks";
+import { useMetabotName } from "metabase/common/hooks";
 import {
   ActionIcon,
   Box,
