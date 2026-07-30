@@ -2091,12 +2091,18 @@ describe("scenarios > metrics > explorer", () => {
     beforeEach(() => {
       H.MetricsViewer.goToViewer();
       addMetricInputSequence([{ nameOrPath: "Count of orders" }]);
+      cy.wait("@dataset");
       addMetricInputSequence([
         ",",
         { nameOrPath: "Count of orders" },
         "+",
         { nameOrPath: testMeasurePath },
       ]);
+      // The second run re-renders the chart once the measure's dataset
+      // arrives; brushing during that re-render is swallowed because ECharts
+      // resets the brush cursor on setOption. Wait for the data first —
+      // ensureChartIsActive alone passes on the still-single-series chart.
+      cy.wait("@dataset");
     });
 
     it("should drill into more granular time dimensions on timeseries chart", () => {
