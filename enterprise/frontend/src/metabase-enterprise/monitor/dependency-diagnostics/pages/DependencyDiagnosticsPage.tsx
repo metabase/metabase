@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { replace, useRouter } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";
 import type {
@@ -20,17 +19,11 @@ import {
 } from "./utils";
 
 type DependencyDiagnosticsPageProps = {
-  location: Location;
-};
-
-type DependencyDiagnosticsPageOwnProps = DependencyDiagnosticsPageProps & {
   mode: DependencyDiagnosticsMode;
 };
 
-function DependencyDiagnosticsPage({
-  mode,
-  location,
-}: DependencyDiagnosticsPageOwnProps) {
+function DependencyDiagnosticsPage({ mode }: DependencyDiagnosticsPageProps) {
+  const { location } = useRouter();
   const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 
@@ -76,14 +69,10 @@ function DependencyDiagnosticsPage({
   );
 }
 
-export function BrokenDependencyDiagnosticsPage({
-  location,
-}: DependencyDiagnosticsPageProps) {
-  return <DependencyDiagnosticsPage mode="broken" location={location} />;
+export function BrokenDependencyDiagnosticsPage() {
+  return <DependencyDiagnosticsPage mode="broken" />;
 }
 
-export function UnreferencedDependencyDiagnosticsPage({
-  location,
-}: DependencyDiagnosticsPageProps) {
-  return <DependencyDiagnosticsPage mode="unreferenced" location={location} />;
+export function UnreferencedDependencyDiagnosticsPage() {
+  return <DependencyDiagnosticsPage mode="unreferenced" />;
 }

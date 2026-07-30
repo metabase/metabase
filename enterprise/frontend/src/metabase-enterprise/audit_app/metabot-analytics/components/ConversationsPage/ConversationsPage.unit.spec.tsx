@@ -11,7 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -29,8 +29,6 @@ import {
 import type { ConversationSummary } from "../../types";
 
 import { ConversationsPage } from "./ConversationsPage";
-
-const RoutedConversationsPage = withRouteProps(ConversationsPage);
 
 jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
   MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
@@ -61,6 +59,7 @@ function createSummary(
     embedding_path: null,
     user_agent: null,
     sanitized_user_agent: null,
+    forked_from_conversation_id: null,
     user: null,
     ...opts,
   };
@@ -115,7 +114,7 @@ function setup({
 
   return renderWithProviders(
     <>
-      <Route path={CONVERSATIONS_PATH} element={<RoutedConversationsPage />} />
+      <Route path={CONVERSATIONS_PATH} element={<ConversationsPage />} />
       <Route
         path={`${CONVERSATIONS_PATH}/:conversationId`}
         element={<div data-testid="conversation-detail-page" />}

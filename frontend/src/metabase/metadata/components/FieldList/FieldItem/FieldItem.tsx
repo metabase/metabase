@@ -4,8 +4,8 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Link } from "metabase/router";
 import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";

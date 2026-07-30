@@ -1,6 +1,7 @@
 import { act } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
@@ -39,7 +40,14 @@ function setup({
     error,
   } as unknown as ReturnType<typeof useGetDataAppQuery>);
 
-  renderWithProviders(<DataAppView params={{ name }} />);
+  renderWithProviders(
+    <>
+      {/* The empty-name case has no `:name` segment to match. */}
+      <Route path="/" element={<DataAppView />} />
+      <Route path=":name" element={<DataAppView />} />
+    </>,
+    { withRouter: true, initialRoute: `/${name}` },
+  );
 }
 
 describe("DataAppView", () => {

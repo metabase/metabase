@@ -29,6 +29,7 @@ import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config"
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { refetchSiteSettings, sessionApi } from "metabase/api";
+import { PLUGIN_API } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
 import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
@@ -39,7 +40,6 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
@@ -116,7 +116,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
       // The session handler emits the X-Metabase-Session header on every API
       // call, renewing the token when it expires.
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+      PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
         sessionTokenHandler;
 
       return;
@@ -147,7 +147,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     // request and refreshes the token when it expires; later API calls pick it
     // up because the handler runs in the request pipeline. Call it once eagerly
     // to verify the session is valid before the app renders.
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
       sessionTokenHandler;
     try {
       // verify that the session is actually valid before proceeding

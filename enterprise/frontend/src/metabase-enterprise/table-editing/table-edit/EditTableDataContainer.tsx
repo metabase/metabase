@@ -10,7 +10,7 @@ import {
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
 import { useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
+import { useParams, useRouter } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
@@ -38,23 +38,21 @@ import {
 import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
 
-type EditTableDataContainerProps = {
-  params: {
-    dbId: string;
-    tableId: string;
-    objectId?: string;
-  };
-  location: Location<{ query?: string }>;
+type EditTableDataContainerParams = {
+  dbId: string;
+  tableId: string;
+  objectId: string;
 };
 
-export const EditTableDataContainer = ({
-  params: { dbId: dbIdParam, tableId: tableIdParam },
-  location,
-}: EditTableDataContainerProps) => {
+export const EditTableDataContainer = () => {
+  const { location } = useRouter();
+  const { dbId: dbIdParam, tableId: tableIdParam } =
+    useParams<EditTableDataContainerParams>();
+
   useCloseNavbarOnMount();
 
-  const databaseId = parseInt(dbIdParam, 10);
-  const tableId = parseInt(tableIdParam, 10);
+  const databaseId = parseInt(dbIdParam ?? "", 10);
+  const tableId = parseInt(tableIdParam ?? "", 10);
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
   const { data: table } = useGetTableQuery({ id: tableId });

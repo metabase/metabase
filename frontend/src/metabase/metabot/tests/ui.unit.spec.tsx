@@ -9,7 +9,6 @@ import {
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -489,6 +488,11 @@ describe("metabot > ui", () => {
             conversation_id: "22222222-2222-2222-2222-222222222222",
             title: null,
           }),
+          createMockMetabotConversation({
+            conversation_id: "33333333-3333-3333-3333-333333333333",
+            title: null,
+            forked_from_conversation_id: "11111111-1111-1111-1111-111111111111",
+          }),
         ],
       });
 
@@ -503,6 +507,7 @@ describe("metabot > ui", () => {
         await within(list).findByText("Orders by month"),
       ).toBeInTheDocument();
       expect(within(list).getByText("Untitled")).toBeInTheDocument();
+      expect(within(list).getByText("Forked conversation")).toBeInTheDocument();
     });
 
     it("shows an empty state when there are no past conversations", async () => {
@@ -676,12 +681,6 @@ describe("metabot > ui", () => {
     it("shows an error toast and keeps the current chat when loading fails", async () => {
       setup({
         conversationTitle: null,
-        ui: (
-          <>
-            <Metabot />
-            <UndoListing />
-          </>
-        ),
         conversations: [
           createMockMetabotConversation({
             conversation_id: PAST_CONVERSATION_ID,
