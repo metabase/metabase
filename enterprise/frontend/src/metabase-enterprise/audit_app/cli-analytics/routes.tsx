@@ -1,8 +1,6 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { CliAnalyticsPage } from "./components/CliAnalyticsPage";
-
-const RoutedCliAnalyticsPage = withRouteProps(CliAnalyticsPage);
 
 /**
  * The `/admin/metabot/usage-auditing/cli` route — nested under the `usage-auditing` namespace so
@@ -15,7 +13,7 @@ export function getCliAnalyticsRoutes() {
     <Route
       key="cli-analytics"
       path="usage-auditing/cli"
-      element={<RoutedCliAnalyticsPage />}
+      element={<CliAnalyticsPage />}
     />
   );
 }

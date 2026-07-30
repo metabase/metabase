@@ -19,6 +19,7 @@ export type MetabotConversationDetail = {
   created_at: string;
   title: string | null;
   user_id: number | null;
+  forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
   messages: FetchedChatMessage[];
 };

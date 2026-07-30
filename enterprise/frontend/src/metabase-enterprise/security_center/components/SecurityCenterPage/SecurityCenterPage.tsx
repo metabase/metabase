@@ -6,7 +6,7 @@ import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import type { Location } from "metabase/router";
+import { useRouter } from "metabase/router";
 import {
   Box,
   Button,
@@ -40,11 +40,8 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 
 const MAX_POLL_COUNT = 30;
 
-type SecurityCenterPageProps = {
-  location?: Location<{ open?: string }>;
-};
-
-export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
+export function SecurityCenterPage() {
+  const { location } = useRouter();
   const [isPolling, setIsPolling] = useState(false);
   const {
     data: advisories,
@@ -57,7 +54,7 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
     useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
   const [settingsOpen, setSettingsOpen] = useState(
-    () => location?.query?.open === "notifications",
+    () => location.query?.open === "notifications",
   );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
