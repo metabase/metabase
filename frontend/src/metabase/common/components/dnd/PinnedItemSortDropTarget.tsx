@@ -6,7 +6,7 @@ import { isPinnable } from "metabase/common/hooks";
 
 import { DropArea } from "./DropArea";
 
-import { type ItemDragPayload, PinnableDragTypes } from ".";
+import { PinnableDragTypes, isItemDragPayload } from ".";
 
 interface PinnedItemSortDropTargetOwnProps {
   isFrontTarget: boolean;
@@ -28,8 +28,11 @@ export const PinnedItemSortDropTarget = DropTarget(
       props: PinnedItemSortDropTargetOwnProps,
       monitor: DropTargetMonitor,
     ) {
-      // react-dnd v4 types the drag payload as `any`.
-      const { items } = monitor.getItem() as ItemDragPayload;
+      const payload = monitor.getItem();
+      if (!isItemDragPayload(payload)) {
+        return false;
+      }
+      const { items } = payload;
       const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
 
       // NOTE: not necessary to check collection permission here since we
@@ -68,5 +71,5 @@ export const PinnedItemSortDropTarget = DropTarget(
     hovered: monitor.isOver() && monitor.canDrop(),
     connectDropTarget: connect.dropTarget(),
   }),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  // react-dnd v4 HOC types can't express the own/collected props split
 )(DropArea as any);

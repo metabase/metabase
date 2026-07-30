@@ -17,7 +17,7 @@ import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
 
-import { type ItemDragPayload, MoveableDragTypes, isItemDragPayload } from ".";
+import { MoveableDragTypes, isItemDragPayload } from ".";
 
 const EMPTY_DRAGGED_ITEMS: CollectionItem[] = [];
 
@@ -84,10 +84,12 @@ const dropTargetSpec = {
       return false;
     }
 
-    // react-dnd v4 types the drag payload as `any`.
-    const { items } = monitor.getItem() as ItemDragPayload;
+    const payload = monitor.getItem();
+    if (!isItemDragPayload(payload)) {
+      return false;
+    }
     return canDropItemsIntoCollection({
-      items,
+      items: payload.items,
       collection: props.collection,
     });
   },

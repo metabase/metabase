@@ -63,5 +63,5 @@ export const ItemsDragLayer = DragLayer((monitor) => ({
   payload: monitor.getItem(),
   currentOffset: monitor.getClientOffset(),
   isDragging: monitor.isDragging(),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  // react-dnd v4 HOC types can't express the own/collected props split
 }))(ItemsDragLayerInner as any);

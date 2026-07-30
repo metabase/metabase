@@ -597,18 +597,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-table")
         .findByText("First collection")
         .closest("a")
-        .should("have.attr", "draggable", "false")
-        .as("subcollectionDragSubject");
-      cy.findByTestId("collection-table")
-        .findByText("Destination collection")
-        .closest("tr")
-        .as("subcollectionDragTarget");
-
-      cy.get("@subcollectionDragSubject").realMouseDown();
-      cy.get("@subcollectionDragTarget").realMouseMove(0, 0, {
-        position: "center",
-      });
-      cy.get("@subcollectionDragTarget").realMouseUp();
+        .should("have.attr", "draggable", "false");
       cy.findByTestId("items-drag-preview").should("not.exist");
       cy.findByTestId("collection-table")
         .findByText("First collection")

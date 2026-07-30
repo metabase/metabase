@@ -146,9 +146,7 @@ export const Columns = {
     ),
   },
   Name: {
-    Col: ({ isInDragLayer }: { isInDragLayer: boolean }) => (
-      <col style={{ width: isInDragLayer ? "10rem" : undefined }} />
-    ),
+    Col: () => <col />,
     Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="name"

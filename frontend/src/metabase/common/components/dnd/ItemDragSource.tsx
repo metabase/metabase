@@ -21,7 +21,7 @@ import {
 } from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
-import { type ItemDragPayload, dragTypeForItem } from ".";
+import { type ItemDragPayload, dragTypeForItem, isItemDragPayload } from ".";
 
 interface ItemDragSourceInnerProps {
   connectDragSource: ConnectDragSource;
@@ -105,8 +105,11 @@ const DragSourceComponent = DragSource(
       if (!monitor.didDrop()) {
         return;
       }
-      // react-dnd v4 types the drag payload as `any`.
-      const { items } = monitor.getItem() as ItemDragPayload;
+      const payload = monitor.getItem();
+      if (!isItemDragPayload(payload)) {
+        return;
+      }
+      const { items } = payload;
       // Unjustified type cast. FIXME
       const { collection, pinIndex } = monitor.getDropResult() as {
         collection?: Collection;
@@ -140,7 +143,7 @@ const DragSourceComponent = DragSource(
     connectDragPreview: connect.dragPreview(),
     isDragging: monitor.isDragging(),
   }),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  // react-dnd v4 HOC types can't express the own/collected props split
 )(ItemDragSourceInner as any);
 
 interface ItemDragSourceProps {
