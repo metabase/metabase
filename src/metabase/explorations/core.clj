@@ -8,5 +8,7 @@
   exploration-data
   exploration-data->api
   research-candidates
+  research-candidates-max-metrics
+  research-metric-index
   research-groups
   min-interestingness])

@@ -1,5 +1,6 @@
 (ns metabase.explorations.impl-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.impl :as explorations.impl]
    [metabase.lib.core :as lib]
@@ -119,29 +120,70 @@
    :dimension-interestingness interestingness :sources sources})
 
 (def ^:private synthetic-metrics
-  [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"
+  [{:id 1 :name "Revenue" :description "rev" :result_column_name "count" :in_library true
     :dimensions [(dim "region-1" "Region" 0.9 [region-source])
                  (dim "plan-1" "Plan" 0.5 [plan-source])]}
-   {:id 2 :name "Churn" :description "churn" :result_column_name "count"
+   {:id 2 :name "Churn" :description "churn" :result_column_name "count" :in_library false
     :dimensions [(dim "region-2" "Region" 0.9 [region-source])]}])
 
 (defmacro ^:private with-synthetic-metrics [& body]
   `(with-redefs [explorations.impl/hydrated-metrics (fn [~'_] synthetic-metrics)]
      ~@body))
 
+(deftest research-metric-index-test
+  (with-synthetic-metrics
+    (testing "slim rows only — id/name/description/in_library, no dimensions"
+      (is (= [{:id 1 :name "Revenue" :description "rev" :in_library true}
+              {:id 2 :name "Churn" :description "churn" :in_library false}]
+             (explorations.impl/research-metric-index {}))))))
+
+(deftest research-metric-index-truncates-descriptions-test
+  (let [long-desc (apply str (repeat 40 "long desc "))
+        stub      [{:id 1 :name "M" :description long-desc :in_library false :dimensions []}]]
+    (with-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
+      (let [[{:keys [description]}] (explorations.impl/research-metric-index {})]
+        (is (= 151 (count description)))
+        (is (str/ends-with? description "…"))))))
+
 (deftest research-candidates-test
   (with-synthetic-metrics
-    (let [{:keys [metrics dimension_groups]} (explorations.impl/research-candidates {})]
-      (testing "each metric inlines its candidate dimensions with ids + interestingness"
-        (is (= [{:id 1 :name "Revenue"} {:id 2 :name "Churn"}]
-               (mapv #(select-keys % [:id :name]) metrics)))
-        (is (= ["region-1" "plan-1"] (mapv :id (:dimensions (first metrics)))))
-        (is (= 0.9 (:dimension-interestingness (first (:dimensions (first metrics)))))))
-      (testing "dimension groups carry their member dimension ids and the metrics they slice"
-        (let [by-name (u/index-by :name dimension_groups)]
-          (is (= #{"region-1" "region-2"} (set (:dimension_ids (get by-name "Region")))))
-          (is (= #{1 2} (set (:metric_ids (get by-name "Region")))))
-          (is (= #{1} (set (:metric_ids (get by-name "Plan"))))))))))
+    (let [{:keys [metrics dimension_groups truncated]} (explorations.impl/research-candidates
+                                                        {:metric-ids [1 2]})]
+      (testing "metrics carry catalog fields only — no inline dimensions"
+        (is (= [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"}
+                {:id 2 :name "Churn" :description "churn" :result_column_name "count"}]
+               metrics)))
+      (testing "groups state descriptive fields once, with per-metric dimension ids and names"
+        (let [by-name (u/index-by :name dimension_groups)
+              region  (get by-name "Region")]
+          (is (= "type/Text" (:effective_type region)))
+          (is (= 0.9 (:interestingness region)))
+          (is (= {1 {:id "region-1" :name "Region"}
+                  2 {:id "region-2" :name "Region"}}
+                 (:dimension_id_and_name_by_metric region)))
+          (is (= {1 {:id "plan-1" :name "Plan"}}
+                 (:dimension_id_and_name_by_metric (get by-name "Plan"))))))
+      (testing "an explicit metric-ids request is not truncated"
+        (is (nil? truncated))))))
+
+(deftest research-candidates-q-truncation-test
+  ;; 25 matches: ids 0-4 in the library, the rest not; interestingness rises with id.
+  (let [many (vec (for [i (range 25)]
+                    {:id i :name (str "M" i) :description nil :result_column_name "count"
+                     :in_library (< i 5)
+                     :dimensions [(dim (str "d" i) (str "D" i) (+ 0.1 (/ i 100.0))
+                                       [{:source i}])]}))]
+    (with-redefs [explorations.impl/hydrated-metrics (fn [_] many)]
+      (let [{:keys [metrics truncated shown matched]} (explorations.impl/research-candidates
+                                                       {:q "m"})]
+        (testing "a q match beyond the cap is truncated and stamped"
+          (is (true? truncated))
+          (is (= 20 shown))
+          (is (= 25 matched))
+          (is (= 20 (count metrics))))
+        (testing "library metrics rank first, then by interestingness"
+          (is (= [4 3 2 1 0] (mapv :id (take 5 metrics))))
+          (is (= 24 (:id (nth metrics 5)))))))))
 
 (deftest research-groups-metric-anchored-test
   (with-synthetic-metrics

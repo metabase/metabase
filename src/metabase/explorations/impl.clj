@@ -352,33 +352,100 @@
   "Metric fields surfaced to Metabot in the research catalog."
   [:id :name :description :result_column_name])
 
-(def ^:private llm-dimension-cols
-  "Dimension fields surfaced to Metabot in the research catalog."
-  [:id :name :display-name :effective-type :semantic-type :dimension-interestingness])
+(def research-candidates-max-metrics
+  "Maximum metrics a single `get_research_candidates` response details. Explicit `:metric-ids`
+   requests are capped to this at the tool layer; `:q` requests matching more are truncated (with
+   a marker) so a broad search term can't recreate the unbounded catalog dump this bound exists
+   to prevent."
+  20)
+
+(def ^:private index-description-max-length
+  "Character budget for a metric description in the `list_research_metrics` index — enough for
+   scent, short enough that descriptions can't dominate the index payload."
+  150)
+
+(defn- truncate-index-description
+  [description]
+  (when-let [d (some-> description str/trim not-empty)]
+    (if (> (count d) index-description-max-length)
+      (str (subs d 0 index-description-max-length) "…")
+      d)))
+
+(defn research-metric-index
+  "Slim research catalog index for the `list_research_metrics` Metabot tool: one row per
+   research-eligible metric (`:id`, `:name`, truncated `:description`, `:in_library`), no
+   dimensions. The model shortlists metric ids here, then fetches their dimension detail via
+   [[research-candidates]]. `:q` filters like [[exploration-data]]'s — a case-insensitive
+   substring match on metric names and dimension display names."
+  [opts]
+  (mapv (fn [m]
+          {:id          (:id m)
+           :name        (:name m)
+           :description (truncate-index-description (:description m))
+           :in_library  (:in_library m)})
+        (hydrated-metrics opts)))
+
+(defn- metric-interestingness
+  "Ranking score for a hydrated metric: the max interestingness across its candidate dimensions,
+   or nil when none scored."
+  [m]
+  (some->> (keep :dimension-interestingness (:dimensions m)) seq (apply max)))
+
+(defn- rank-and-cap-metrics
+  "Order `metrics` library-first then by interestingness (unscored last) and keep the top
+   [[research-candidates-max-metrics]]."
+  [metrics]
+  (->> metrics
+       (sort-by (fn [m]
+                  [(if (:in_library m) 0 1)
+                   (- (or (metric-interestingness m) -1))]))
+       (take research-candidates-max-metrics)
+       vec))
+
+(defn- llm-dimension-groups
+  "Dimension groups of `metrics` in the deduped `get_research_candidates` shape. Same-group
+   dimensions resolve to the same underlying Field, so the descriptive fields are stated once at
+   the group level; only the per-metric dimension id (and its per-metric display name — renames
+   are common) vary by member, carried in `:dimension_id_and_name_by_metric`."
+  [metrics]
+  (let [dim->metrics (dimension-id->metric-ids metrics)]
+    (mapv (fn [g]
+            (let [head (first (:dimensions g))]
+              {:name            (:name g)
+               :effective_type  (:effective-type head)
+               :semantic_type   (:semantic-type head)
+               :interestingness (:dimension_interestingness g)
+               :dimension_id_and_name_by_metric
+               (into {}
+                     (for [d         (:dimensions g)
+                           metric-id (dim->metrics (:id d))]
+                       [metric-id {:id (:id d) :name (dimension-display-name d)}]))}))
+          (group-dimensions metrics))))
 
 (defn research-candidates
-  "Metabot-facing research catalog: each metric with its candidate dimensions inlined
-   (`:id`, `:name`, `:dimension_interestingness`, ...), plus dimension groups annotated with the
-   dimension ids they bundle and the metric ids they can slice. Shaped for the
-   `get_research_candidates` tool so the LLM can pick valid metric/dimension ids before authoring
-   groups; the FE does not consume this. Accepts the same `:metric-ids`/`:q` options as
-   [[exploration-data]]."
-  [opts]
-  (let [filtered     (mapv with-candidate-dimensions (hydrated-metrics opts))
-        dim->metrics (dimension-id->metric-ids filtered)]
-    {:metrics          (mapv (fn [m]
-                               (assoc (select-keys m llm-metric-cols)
-                                      :dimensions (mapv #(select-keys % llm-dimension-cols)
-                                                        (:dimensions m))))
-                             filtered)
-     :dimension_groups (mapv (fn [g]
-                               (let [dim-ids (mapv :id (:dimensions g))]
-                                 {:name                      (:name g)
-                                  :dimension_interestingness (:dimension_interestingness g)
-                                  :dimension_ids             dim-ids
-                                  :metric_ids                (into [] (distinct)
-                                                                   (mapcat dim->metrics dim-ids))}))
-                             (group-dimensions filtered))}))
+  "Metabot-facing research catalog detail for the `get_research_candidates` tool: the requested
+   metrics plus their dimension groups, deduped — descriptive dimension fields live on the group,
+   with the per-metric dimension ids the LLM must echo to `add_research_groups` in each group's
+   `:dimension_id_and_name_by_metric`. The FE does not consume this.
+
+   Accepts the same `:metric-ids`/`:q` options as [[exploration-data]]; callers pass at least one
+   (the tool layer enforces it). An explicit `:metric-ids` request returns exactly those metrics
+   (the tool caps the id count); a `:q` request matching more than
+   [[research-candidates-max-metrics]] metrics is ranked library-first-then-interestingness,
+   truncated, and stamped `{:truncated true :shown <n> :matched <m>}` so the model knows to
+   narrow the search."
+  [{:keys [metric-ids] :as opts}]
+  (let [filtered (mapv with-candidate-dimensions (hydrated-metrics opts))
+        capped   (if (seq metric-ids)
+                   filtered
+                   (rank-and-cap-metrics filtered))
+        payload  {:metrics          (mapv #(select-keys % llm-metric-cols) capped)
+                  :dimension_groups (llm-dimension-groups capped)}]
+    (cond-> payload
+      (> (count filtered) (count capped))
+      (assoc :truncated true
+             :shown (count capped)
+             :matched (count filtered)))))
 
 (defn research-groups
   "Validate Metabot's chosen research groups and return the FE picker payload for them.
