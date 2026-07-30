@@ -73,32 +73,68 @@
   (let [s (str s)]
     (pr-str (if (> (count s) 80) (str (subs s 0 77) "…") s))))
 
+(def ^:private max-replace-all-work
+  "Ceiling on `matches × document-KB` for one `replace_all`, the product that sets its cost: each
+  occurrence is spliced separately and every splice re-serializes the whole document, so the work is
+  quadratic in a document's size once `old_str` is short enough to appear throughout it.
+
+  Measured at roughly 0.03ms per match·KB, so this caps a single call near 600ms. Real edits are
+  orders of magnitude under — renaming a term appearing 30 times in a 50KB document is 1,500 — while
+  the shape this exists to stop, a one-character `old_str` on a 64KB document, prices at ~460,000 and
+  took ~14s before the ceiling existed. Left unbounded it grows with document size: an 85-byte
+  request against a 1MB document buys about an hour of one thread."
+  20000)
+
+(defn- replace-all-work
+  "`matches × document-KB` for `old_str` against `markdown` — the cost estimate
+  [[max-replace-all-work]] bounds. Sub-KB documents price at zero, which is correct: they are cheap
+  however many matches they hold."
+  [^String markdown matches]
+  (long (* (count matches) (/ (count markdown) 1024.0))))
+
 (defn- replace-all
   "Splice every occurrence of `old_str`, right-to-left so a replacement containing `old_str`
   is never re-matched, re-serializing between splices so each offset is taken against the
   AST it applies to. Re-parsing a touched block can shift text before it, so when `new_str`
   cannot reintroduce `old_str` the bound resets and the sweep repeats until no occurrence
   remains; an iteration cap turns any pathological non-convergence into a teaching error
-  rather than a silent miss."
+  rather than a silent miss.
+
+  Refuses up front when the call prices past [[max-replace-all-work]]. Pricing it costs one
+  serialization rather than one per match, so an over-budget call is rejected without doing any of
+  the work being rejected."
   [ast old_str new_str]
   (let [self-matching? (str/includes? new_str old_str)
-        max-iterations (+ 100 (* 2 (count (match-indexes (:markdown (documents/serialize ast)) old_str))))]
-    (loop [ast ast, bound Long/MAX_VALUE, iterations 0]
-      (when (> iterations max-iterations)
+        first-ser      (documents/serialize ast)
+        first-matches  (match-indexes (:markdown first-ser) old_str)
+        work           (replace-all-work (:markdown first-ser) first-matches)]
+    (when (> work max-replace-all-work)
+      (common/throw-teaching-error
+       (format (str "replace_all for old_str %s would rewrite %d matches across a %dKB document, which is more "
+                    "work than one call can do. Extend old_str with surrounding context so it matches fewer "
+                    "places and repeat, or replace the whole body with content_markdown, which rewrites it in "
+                    "a single pass — note that a full rewrite re-creates every block, so comment threads "
+                    "anchored to the body are orphaned.")
+               (snippet old_str)
+               (count first-matches)
+               (quot (count (:markdown first-ser)) 1024))))
+    ;; The pricing serialization above doubles as the first iteration's, so bounding the work costs
+    ;; nothing on an in-budget call. `splice` reuses a serialization only when it is of the very AST
+    ;; being spliced, so each recur re-serializes the AST it produced.
+    (loop [ast ast, ser first-ser, bound Long/MAX_VALUE, iterations 0]
+      (when (> iterations (+ 100 (* 2 (count first-matches))))
         (common/throw-teaching-error
          (format "replace_all could not converge for old_str %s — the replacement keeps re-creating text that matches. Use distinct old_str/new_str pairs or edit the surrounding blocks individually."
                  (snippet old_str))))
-      (let [ser     (documents/serialize ast)
-            matches (match-indexes (:markdown ser) old_str)
+      (let [matches (match-indexes (:markdown ser) old_str)
             idx     (last (filter #(< % bound) matches))]
         (cond
           (some? idx)
-          (recur (documents/splice ast ser idx (+ idx (count old_str)) new_str)
-                 (long idx)
-                 (inc iterations))
+          (let [spliced (documents/splice ast ser idx (+ idx (count old_str)) new_str)]
+            (recur spliced (documents/serialize spliced) (long idx) (inc iterations)))
 
           (and (not self-matching?) (seq matches))
-          (recur ast Long/MAX_VALUE (inc iterations))
+          (recur ast ser Long/MAX_VALUE (inc iterations))
 
           :else ast)))))
 
