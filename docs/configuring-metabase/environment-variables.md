@@ -85,7 +85,7 @@ Whether AI features are enabled.
 - Type: integer
 - Default: `null`
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
-- [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -294,6 +294,7 @@ Range: 1-100. To limit the total number of rows included in the file attachment
 
 - Type: string
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -903,6 +904,7 @@ Number of threads to use for batched index updates, including embedding requests
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
   via environmment variable.
@@ -1451,6 +1453,7 @@ Socket timeout in milliseconds for LLM API requests.
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`,
   which defaults to true, but can be disabled via environment variable.
@@ -1653,6 +1656,7 @@ The size of the thread pool used to send system event notifications.
 
 - Type: integer
 - Default: `10485760`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The maximum file size that will be created when storing notification query results on disk.
   Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
@@ -2124,6 +2128,7 @@ Enable typeahead search in the Metabase navbar?
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Should we send users a notification email the first time they log in from a new device? (Default: true). This is
   currently only configurable via environment variable so users who gain access to an admin's credentials cannot
@@ -2204,7 +2209,7 @@ Whether an introductory modal should be shown after the next database connection
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `show-google-sheets-integration`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not to show the user a button that sets up Google Sheets integration.
 
