@@ -821,9 +821,3 @@
 (defmethod sql.qp/transform-literal-like-pattern-honeysql :oracle
   [_driver like-rhs-honeysql]
   [:escape like-rhs-honeysql [:raw "CHR(92)"]])
-
-(defmethod sql.qp/->honeysql [:oracle :value]
-  [driver [_ {:keys [base-type effective-type]} value]]
-  ((get-method sql.qp/->honeysql [::sql.qp.empty-string-is-null/empty-string-is-null :value])
-   driver
-   [:value value {:base_type base-type :effective_type effective-type}]))
