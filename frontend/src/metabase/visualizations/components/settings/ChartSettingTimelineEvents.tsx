@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
-import { Checkbox, Loader, Stack, Text } from "metabase/ui";
+import { Group, Loader, Stack, Switch, Text } from "metabase/ui";
 import type { Timeline, TimelineId } from "metabase-types/api";
 
 export type ChartSettingTimelineEventsProps = {
@@ -45,17 +45,25 @@ export const ChartSettingTimelineEvents = ({
   };
 
   return (
-    <Stack gap="sm" data-testid="timeline-events-setting">
+    <Stack gap="lg" data-testid="timeline-events-setting">
       {sortedTimelines.map((timeline) => (
-        <Checkbox
-          key={timeline.id}
-          checked={selectedTimelineIds.has(timeline.id)}
-          label={timeline.name}
-          description={getTimelineDescription(timeline)}
-          onChange={(event) =>
-            handleToggle(timeline.id, event.currentTarget.checked)
-          }
-        />
+        <Group key={timeline.id} justify="space-between" wrap="nowrap">
+          <Stack gap={0}>
+            <Text fw="bold">{timeline.name}</Text>
+            <Text size="sm" c="text-secondary">
+              {getTimelineDescription(timeline)}
+            </Text>
+          </Stack>
+          <Switch
+            size="sm"
+            role="switch"
+            aria-label={timeline.name}
+            checked={selectedTimelineIds.has(timeline.id)}
+            onChange={(event) =>
+              handleToggle(timeline.id, event.currentTarget.checked)
+            }
+          />
+        </Group>
       ))}
     </Stack>
   );

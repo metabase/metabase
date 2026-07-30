@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { skipToken, useListTimelinesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListCollectionTimelinesQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
@@ -8,6 +12,7 @@ type UseTimelineEventsProps = Pick<
   VisualizationProps,
   | "timelineEvents"
   | "settings"
+  | "dashboard"
   | "selectedTimelineEventIds"
   | "onSelectTimelineEvents"
   | "onDeselectTimelineEvents"
@@ -29,6 +34,7 @@ const EMPTY_EVENT_IDS: TimelineEventId[] = [];
 export function useTimelineEvents({
   timelineEvents: timelineEventsProp,
   settings,
+  dashboard,
   selectedTimelineEventIds: selectedTimelineEventIdsProp,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
@@ -37,9 +43,13 @@ export function useTimelineEvents({
   const excludedTimelineEventIds =
     settings["timeline.excluded_timeline_event_ids"];
 
-  const shouldFetch =
+  // An absent selection falls back to the dashboard collection's timelines;
+  // an explicitly empty selection hides events on this card.
+  const hasExplicitSelection = selectedTimelineIds != null;
+
+  const shouldFetchSelected =
     !timelineEventsProp &&
-    selectedTimelineIds != null &&
+    hasExplicitSelection &&
     selectedTimelineIds.length > 0;
 
   // Sorted copy so that the same selection always produces the same cache key,
@@ -50,28 +60,38 @@ export function useTimelineEvents({
     [selectedTimelineIds],
   );
 
-  const {
-    data: timelines = [],
-    isLoading,
-    isError,
-  } = useListTimelinesQuery(
-    shouldFetch ? { id: timelineIds, include: "events" } : skipToken,
+  const selectedQuery = useListTimelinesQuery(
+    shouldFetchSelected ? { id: timelineIds, include: "events" } : skipToken,
   );
+
+  const shouldFetchCollection =
+    !timelineEventsProp && !hasExplicitSelection && dashboard != null;
+
+  const collectionQuery = useListCollectionTimelinesQuery(
+    shouldFetchCollection
+      ? { id: dashboard.collection_id ?? "root", include: "events" }
+      : skipToken,
+  );
+
+  const selectedTimelines = selectedQuery.data;
+  const collectionTimelines = collectionQuery.data;
 
   const timelineEvents = useMemo(() => {
     if (timelineEventsProp) {
       return timelineEventsProp;
     }
 
-    if (!selectedTimelineIds || selectedTimelineIds.length === 0) {
+    if (!shouldFetchSelected && !shouldFetchCollection) {
       return EMPTY_EVENTS;
     }
 
-    const selectedSet = new Set(selectedTimelineIds);
+    const timelines =
+      (shouldFetchCollection ? collectionTimelines : selectedTimelines) ?? [];
+    const selectedSet = new Set(selectedTimelineIds ?? []);
     const excludedSet = new Set(excludedTimelineEventIds ?? []);
 
     return timelines.flatMap((timeline) => {
-      if (!selectedSet.has(timeline.id)) {
+      if (shouldFetchSelected && !selectedSet.has(timeline.id)) {
         return [];
       }
       return (timeline.events ?? []).filter(
@@ -80,9 +100,12 @@ export function useTimelineEvents({
     });
   }, [
     timelineEventsProp,
-    timelines,
+    selectedTimelines,
+    collectionTimelines,
     selectedTimelineIds,
     excludedTimelineEventIds,
+    shouldFetchSelected,
+    shouldFetchCollection,
   ]);
 
   // Hosts like the query builder own event selection via props; when a host
@@ -101,6 +124,13 @@ export function useTimelineEvents({
   const handleLocalDeselect = useCallback(() => {
     setLocalSelectedEventIds(EMPTY_EVENT_IDS);
   }, []);
+
+  const isLoading = shouldFetchCollection
+    ? collectionQuery.isLoading
+    : selectedQuery.isLoading;
+  const isError = shouldFetchCollection
+    ? collectionQuery.isError
+    : selectedQuery.isError;
 
   if (hasExternalSelection || timelineEvents.length === 0) {
     return {

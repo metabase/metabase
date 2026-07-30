@@ -70,7 +70,6 @@ import {
   followForeignKey,
   hideTimelineEvents,
   initializeQB,
-  initializeTimelineVisibility,
   insertSnippet,
   loadObjectDetailFKReferences,
   locationChanged,
@@ -106,6 +105,7 @@ import {
   setTemplateTag,
   setTemplateTagConfig,
   showTimelineEvents,
+  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -282,7 +282,6 @@ const mapDispatchToProps = {
   followForeignKey,
   hideTimelineEvents,
   initializeQB,
-  initializeTimelineVisibility,
   insertSnippet,
   loadObjectDetailFKReferences,
   locationChanged,
@@ -318,6 +317,7 @@ const mapDispatchToProps = {
   setTemplateTag,
   setTemplateTagConfig,
   showTimelineEvents,
+  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -364,7 +364,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    initializeTimelineVisibility,
+    showTimelinesForCollection,
     card,
     isAdmin,
     isLoadingComplete,
@@ -508,20 +508,20 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   useEffect(() => {
     // Gate on the timelines actually being loaded (not just bookmarks), and
-    // re-run when they arrive: initializeTimelineVisibility reads the fetched
+    // re-run when they arrive: showTimelinesForCollection reads the fetched
     // timelines from the store at dispatch time, so running it before the
     // `/api/timeline` request resolves dispatches an empty set and the chart
     // never receives its events. This restores the pre-#73674 `allLoaded`
     // guarantee that was lost when the Timelines.loadList HOC was removed.
     if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
-      initializeTimelineVisibility(collectionId);
+      showTimelinesForCollection(collectionId);
     }
   }, [
     areBookmarksLoaded,
     areTimelinesLoaded,
     hasQuestion,
     collectionId,
-    initializeTimelineVisibility,
+    showTimelinesForCollection,
     fetchedTimelines,
   ]);
 

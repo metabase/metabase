@@ -79,9 +79,9 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
       readDependencies: ["waterfall.show_total"],
     },
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
-    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 
