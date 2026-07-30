@@ -742,7 +742,7 @@
       (throw
        (ex-info
         (tru (str "This query is too large for BigQuery ({0} characters; the maximum is {1}). "
-                  "Try reducing the number of selected fields or filter values.")
+                  "Try reducing the number of selected fields, filter values, or rewriting the query to make it shorter.")
              len max-sql-query-length-chars)
         {:type       driver-api/qp.error-type.invalid-query
          :sql        sql
