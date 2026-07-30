@@ -10,12 +10,19 @@ import type { RowValue, TestPythonTransformResponse } from "metabase-types/api";
 
 export type Row = Record<string, RowValue>;
 
+type Output = NonNullable<TestPythonTransformResponse["output"]>;
+
+// Stable identities: useDataGridInstance re-syncs its sorted rows whenever
+// `data` changes identity, so a fresh [] on every render loops (metabase#78557)
+const NO_COLS: Output["cols"] = [];
+const NO_ROWS: Output["rows"] = [];
+
 export function ExecutionOutputTable({
   output,
 }: {
   output?: TestPythonTransformResponse["output"];
 }) {
-  const { cols = [], rows = [] } = output ?? {};
+  const { cols = NO_COLS, rows = NO_ROWS } = output ?? {};
 
   const columnsOptions = useMemo<ColumnOptions<Row, unknown>[]>(
     () =>
