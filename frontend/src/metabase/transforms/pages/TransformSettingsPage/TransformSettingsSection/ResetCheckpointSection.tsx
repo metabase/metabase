@@ -31,7 +31,7 @@ function SyncCursorSection({
   return (
     <Group gap="md" align="center">
       <Box c="text-secondary" role="group" aria-labelledby={labelId}>
-        <span id={labelId}>{t`Sync cursor`}: </span>
+        <span id={labelId}>{t`Sync state`}: </span>
         <Code bg="background_page-tertiary" style={{ whiteSpace: "pre-wrap" }}>
           {JSON.stringify(transform.sync_state)}
         </Code>
@@ -41,7 +41,7 @@ function SyncCursorSection({
         disabled={isTransformRunning(transform) || isResetting}
         onClick={onReset}
       >
-        {t`Reset cursor`}
+        {t`Reset state`}
       </Button>
     </Group>
   );
@@ -76,7 +76,7 @@ export function ResetCheckpointSection({
     }
   };
 
-  // An ingestion transform has no checkpoint field: its cursor is whatever its code returned,
+  // An ingestion transform has no checkpoint field: its state is whatever its code returned,
   // so show that instead. Resetting it is the same endpoint — it clears both.
   const isCodeManaged =
     transform.source != null && hasCodeManagedSyncCursor(transform.source);
@@ -92,12 +92,12 @@ export function ResetCheckpointSection({
           isResetting={isLoading}
         />
         <ConfirmModal
-          title={t`Reset the sync cursor?`}
+          title={t`Reset the sync state?`}
           message={t`The next run will start from scratch instead of continuing from the stored position. Depending on the transform, this may re-fetch everything from the source.`}
           opened={isModalOpen}
           onClose={closeModal}
           onConfirm={handleConfirm}
-          confirmButtonText={t`Reset cursor`}
+          confirmButtonText={t`Reset state`}
         />
       </>
     );

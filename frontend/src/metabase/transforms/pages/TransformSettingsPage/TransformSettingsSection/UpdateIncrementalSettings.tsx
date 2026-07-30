@@ -38,7 +38,7 @@ const IncrementalTransformSettingsWrapper = ({
     }
   };
 
-  // Either kind of watermark is resettable: a checkpoint field's value, or the opaque cursor an
+  // Either kind of watermark is resettable: a checkpoint field's value, or the opaque state an
   // ingestion transform returns from its code.
   const hasResettableCursor =
     transform.last_checkpoint_value != null || transform.sync_state != null;
@@ -151,7 +151,7 @@ function useCheckpointChangeInterceptor(transform: Transform) {
         values.incremental &&
         values.sourceStrategy === "checkpoint" &&
         values.checkpointFilterFieldId == null &&
-        // No checkpoint field is expected when the transform code manages the cursor.
+        // No checkpoint field is expected when the transform code manages the sync state.
         !hasCodeManagedSyncCursor(transform.source);
 
       if (waitingForCheckpointSelection) {

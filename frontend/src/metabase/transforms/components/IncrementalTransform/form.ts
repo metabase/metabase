@@ -38,7 +38,7 @@ export const VALIDATION_SCHEMA = Yup.object({
   incremental: Yup.boolean().required(),
   sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
   // `$hasCodeManagedSyncCursor` is threaded in via `FormProvider`'s `validationContext`;
-  // python transforms without source tables manage the cursor in code, so no
+  // python transforms without source tables manage the sync state in code, so no
   // checkpoint field is required.
   checkpointFilterFieldId: Yup.string()
     .nullable()

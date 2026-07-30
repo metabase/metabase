@@ -193,13 +193,21 @@ export function isSourceEmpty(
 
 /**
  * An ingestion transform fetches its own data over the network instead of reading source tables.
- * It is the only kind that can hold secrets and that manages its own incremental cursor.
+ * It is the only kind that can hold secrets and that manages its own incremental state.
  */
 export function isIngestionSource(source: DraftTransformSource): boolean {
   return source.type === "python" && source.ingestion === true;
 }
 
-/** Ingestion transforms manage their own sync cursor in code, not via a checkpoint field. */
+export const SECRET_NAME_REGEX = /^[A-Z][A-Z0-9_]*$/;
+export const MAX_SECRET_NAME_LENGTH = 64;
+
+/** Secret names follow the usual env var shape: uppercase letters, digits and underscores. */
+export function isValidSecretName(name: string): boolean {
+  return SECRET_NAME_REGEX.test(name) && name.length <= MAX_SECRET_NAME_LENGTH;
+}
+
+/** Ingestion transforms manage their own sync state in code, not via a checkpoint field. */
 export function hasCodeManagedSyncCursor(
   source: DraftTransformSource,
 ): boolean {

@@ -51,7 +51,7 @@ export function getIncrementalWarning(
     }
   }
 
-  // Python transforms without source tables manage the sync cursor in code,
+  // Python transforms without source tables manage the sync state in code,
   // so no checkpoint field is needed.
   if (hasCodeManagedSyncCursor(transform.source)) {
     return undefined;

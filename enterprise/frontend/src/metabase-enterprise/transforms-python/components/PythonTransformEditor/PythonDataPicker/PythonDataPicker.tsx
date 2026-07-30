@@ -144,7 +144,7 @@ export function PythonDataPicker({
         <Tooltip
           multiline
           w={260}
-          label={t`Gets its data over the network instead of reading source tables. It can store credentials and keeps its own incremental cursor.`}
+          label={t`Gets its data over the network instead of reading source tables. It can store credentials and keeps its own incremental state.`}
         >
           <Icon name="info" c="text-secondary" size={14} />
         </Tooltip>

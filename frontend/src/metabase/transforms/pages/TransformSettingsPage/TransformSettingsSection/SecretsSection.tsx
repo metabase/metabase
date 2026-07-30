@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { useUpdateTransformMutation } from "metabase/api";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { SecretNameInput } from "metabase/transforms/components/SecretNameInput";
+import { isValidSecretName } from "metabase/transforms/utils";
 import {
   ActionIcon,
   Button,
@@ -14,16 +16,8 @@ import {
   PasswordInput,
   Stack,
   Text,
-  TextInput,
 } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
-
-const SECRET_NAME_REGEX = /^[A-Z][A-Z0-9_]*$/;
-const MAX_SECRET_NAME_LENGTH = 64;
-
-function isValidSecretName(name: string) {
-  return SECRET_NAME_REGEX.test(name) && name.length <= MAX_SECRET_NAME_LENGTH;
-}
 
 type SecretsSectionProps = {
   transform: Transform;
@@ -36,7 +30,7 @@ export function SecretsSection({ transform, readOnly }: SecretsSectionProps) {
   return (
     <TitleSection
       label={t`Secrets`}
-      description={t`Secrets are exposed to this transform's Python code as environment variables. Values can't be viewed after saving.`}
+      description={t`Secrets are passed to this transform's Python code in the \`secrets\` argument, keyed by name. Values can't be viewed after saving.`}
       data-testid="transform-secrets-section"
     >
       {secretKeys.length > 0 ? (
@@ -125,10 +119,6 @@ function AddSecretForm({ transform, secretKeys }: AddSecretFormProps) {
 
   const trimmedName = name.trim();
   const isNameValid = isValidSecretName(trimmedName);
-  const nameError =
-    trimmedName.length > 0 && !isNameValid
-      ? t`Use uppercase letters, digits, and underscores, starting with a letter (max ${MAX_SECRET_NAME_LENGTH} characters).`
-      : undefined;
   const isReplacing = secretKeys.includes(trimmedName);
   const canSave = isNameValid && value.length > 0 && !isLoading;
 
@@ -148,15 +138,8 @@ function AddSecretForm({ transform, secretKeys }: AddSecretFormProps) {
 
   return (
     <Stack p="lg" gap="md">
-      <Group align="flex-start" wrap="nowrap">
-        <TextInput
-          label={t`Name`}
-          placeholder="MY_API_TOKEN"
-          value={name}
-          error={nameError}
-          maw="16rem"
-          onChange={(event) => setName(event.currentTarget.value)}
-        />
+      <Group align="flex-end" wrap="nowrap">
+        <SecretNameInput maw="16rem" value={name} onChange={setName} />
         <PasswordInput
           label={t`Value`}
           placeholder={t`Secret value`}
@@ -164,18 +147,10 @@ function AddSecretForm({ transform, secretKeys }: AddSecretFormProps) {
           flex={1}
           onChange={(event) => setValue(event.currentTarget.value)}
         />
-        <Button
-          mt="1.5rem"
-          disabled={!canSave}
-          loading={isLoading}
-          onClick={handleSave}
-        >
+        <Button disabled={!canSave} loading={isLoading} onClick={handleSave}>
           {isReplacing ? t`Replace secret` : t`Add secret`}
         </Button>
       </Group>
-      <Text c="text-secondary" fz="sm">
-        {t`Your Python code can read each secret with os.environ, using its name.`}
-      </Text>
     </Stack>
   );
 }

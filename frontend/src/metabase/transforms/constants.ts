@@ -56,16 +56,16 @@ def transform(secrets=None, state=None):
 
     Args:
         secrets: credentials configured on this transform, keyed by name
-        state:   the cursor you returned last run, or None on the first run
+        state:   the state you returned last run, or None on the first run
 
     Returns:
-        (DataFrame to write, cursor to resume from next time)
+        (DataFrame to write, state to resume from next time)
     """
     since = (state or {}).get("since")
 
     rows = [{"id": 1, "updated_at": "2026-01-01T00:00:00Z"}]
     df = pd.DataFrame(rows)
 
-    # Returning a cursor makes the next run incremental; pair it with a merge key on the target.
+    # Returning state makes the next run incremental; pair it with a merge key on the target.
     next_since = df["updated_at"].max() if len(df) else since
     return df, {"since": next_since}`;

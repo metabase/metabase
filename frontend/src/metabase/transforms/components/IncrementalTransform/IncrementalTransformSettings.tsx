@@ -156,15 +156,19 @@ export const IncrementalTransformSettings = ({
         <Group p="lg">{renderIncrementalSwitch()}</Group>
         {incremental && (
           <>
-            <Divider />
-            <Group p="lg">
-              <SourceStrategyFields
-                source={source}
-                query={libQuery}
-                transformType={transformType}
-                readOnly={readOnly}
-              />
-            </Group>
+            {!isCodeManagedCursor && (
+              <>
+                <Divider />
+                <Group p="lg">
+                  <SourceStrategyFields
+                    source={source}
+                    query={libQuery}
+                    transformType={transformType}
+                    readOnly={readOnly}
+                  />
+                </Group>
+              </>
+            )}
             {extraActions && (
               <>
                 <Divider />
@@ -193,11 +197,13 @@ export const IncrementalTransformSettings = ({
       </Box>
       {incremental && (
         <>
-          <SourceStrategyFields
-            source={source}
-            query={libQuery}
-            transformType={transformType}
-          />
+          {!isCodeManagedCursor && (
+            <SourceStrategyFields
+              source={source}
+              query={libQuery}
+              transformType={transformType}
+            />
+          )}
           <TargetStrategyFields
             variant={variant}
             targetTableId={targetTableId}
@@ -288,11 +294,6 @@ function SourceStrategyFields({
               query={query}
               disabled={readOnly}
             />
-          )}
-          {hasCodeManagedSyncCursor(source) && (
-            <Text size="sm" c="text-secondary">
-              {t`Sync cursor managed by the transform code`}
-            </Text>
           )}
           {transformType === "python" &&
             "source-tables" in source &&

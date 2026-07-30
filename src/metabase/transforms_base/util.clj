@@ -73,7 +73,7 @@
 
 (defn ingestion-transform?
   "True if `transform` declares that it fetches its own data over the network, rather than reading
-  source tables. Such a transform may hold secrets, keeps its own incremental cursor, and runs
+  source tables. Such a transform may hold secrets, keeps its own incremental sync state, and runs
   isolated from other transforms."
   [transform]
   (boolean (and (python-transform? transform)
@@ -358,7 +358,7 @@
   selected."
   [{:keys [source] :as transform}]
   (when (and (incremental-target? transform)
-             ;; an ingestion transform keeps its own cursor, so it needs no checkpoint field
+             ;; an ingestion transform keeps its own sync state, so it needs no checkpoint field
              (not (ingestion-transform? transform)))
     (when (and (native-query-transform? transform)
                (not (some (fn [tag] (#{:table "table"} (:type tag)))
