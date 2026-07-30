@@ -3,7 +3,6 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
-import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -25,6 +24,7 @@ import {
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
+  BaseEntityId,
   CacheableDashboard,
   Card,
   CardId,
@@ -33,6 +33,7 @@ import type {
   DashCardDataMap,
   Dashboard,
   DashboardCard,
+  DashboardTabId,
   Database,
   Dataset,
   DatasetQuery,
@@ -43,6 +44,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isBaseEntityID } from "metabase-types/api";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -402,15 +404,6 @@ export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
-export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
-    const id = parseInt(slug, 10);
-    return Number.isSafeInteger(id) ? id : null;
-  }
-  return null;
-}
-
 export function createTabSlug({
   id,
   name,
@@ -422,6 +415,25 @@ export function createTabSlug({
     return "";
   }
   return [id, ...name.toLowerCase().split(" ")].join("-");
+}
+
+/**
+ * Resolves a `?tab=` URL param to a numeric tab ID. The param can be a numeric
+ * ID, an `<id>-<slug>` slug, or a tab `entity_id`. Entity IDs are resolved
+ * client-side against the already-loaded tabs.
+ */
+export function resolveTabId(
+  tabParam: string | null | undefined,
+  tabs: { id: DashboardTabId; entity_id?: BaseEntityId }[] | undefined,
+): DashboardTabId | null {
+  if (!tabParam) {
+    return null;
+  }
+  if (isBaseEntityID(tabParam)) {
+    return tabs?.find((tab) => tab.entity_id === tabParam)?.id ?? null;
+  }
+  const id = parseInt(tabParam, 10);
+  return Number.isSafeInteger(id) ? id : null;
 }
 
 export function canResetFilter(parameter: UiParameter): boolean {
