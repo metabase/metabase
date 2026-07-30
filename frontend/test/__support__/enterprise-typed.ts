@@ -9,6 +9,8 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   sandboxes: "metabase-enterprise/sandboxes",
   clean_up: "metabase-enterprise/clean_up",
   tools: "metabase-enterprise/monitor/tools",
+  monitor_content_diagnostics:
+    "metabase-enterprise/monitor/content-diagnostics",
   monitor_dependency_diagnostics:
     "metabase-enterprise/monitor/dependency-diagnostics",
   advanced_permissions: "metabase-enterprise/advanced_permissions",

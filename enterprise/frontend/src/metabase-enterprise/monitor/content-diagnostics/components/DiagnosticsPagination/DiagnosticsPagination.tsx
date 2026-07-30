@@ -4,15 +4,15 @@ import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
 type DiagnosticsPaginationProps = {
   page: number;
-  pageNodesCount: number;
-  totalNodesCount: number;
+  pageItemCount: number;
+  totalCount: number;
   onPageChange: (page: number) => void;
 };
 
 export function DiagnosticsPagination({
   page,
-  pageNodesCount,
-  totalNodesCount,
+  pageItemCount,
+  totalCount,
   onPageChange,
 }: DiagnosticsPaginationProps) {
   return (
@@ -20,8 +20,8 @@ export function DiagnosticsPagination({
       <PaginationControls
         page={page}
         pageSize={PAGE_SIZE}
-        itemsLength={pageNodesCount}
-        total={totalNodesCount}
+        itemsLength={pageItemCount}
+        total={totalCount}
         showTotal
         onPreviousPage={() => onPageChange(page - 1)}
         onNextPage={() => onPageChange(page + 1)}
