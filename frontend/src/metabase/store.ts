@@ -10,11 +10,7 @@ import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { type RouterNavigator, routerMiddleware } from "metabase/router";
 
-// Each app (main, public, embedding SDK) builds the store from its own reducer
-// map, so slice state and action types can't be known here. `unknown` doesn't
-// compile: a reducer both takes and returns its state, and only `any` works in
-// both directions. Tighten this once the old handleActions reducers move to
-// RTK createSlice.
+// Each app passes its own reducer map, so per-slice types can't be known here.
 type AnySliceReducer = Reducer<any, any>;
 
 export function getStore(
