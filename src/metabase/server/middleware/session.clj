@@ -227,7 +227,7 @@
                                          (and (premium-features/enable-tenants?)
                                               (setting/get :use-tenants))
                                          timeout
-                                         (mfa-required?))
+                                         (session/mfa-required?))
           params  (clojure.core/concat [session-key (session/hash-session-key session-key)]
                                        (when (seq anti-csrf-token)
                                          [anti-csrf-token]))]

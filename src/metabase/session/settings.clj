@@ -60,7 +60,9 @@
   :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32))))
 
 (premium-features/defenterprise mfa-required?
-  "Whether MFA is currently required for all users on the "
+  "Whether MFA is currently required for all users on the instance when using email or LDAP auth.
+
+  Always false in OSS, since that enforcement is an EE feature."
   metabase-enterprise.mfa.core
   []
   false)

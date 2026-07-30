@@ -106,10 +106,10 @@
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
-  (let [result #p (auth-identity/login! :provider/password
-                                        {:email username
-                                         :password password
-                                         :device-info device-info})]
+  (let [result (auth-identity/login! :provider/password
+                                     {:email username
+                                      :password password
+                                      :device-info device-info})]
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
       (:success? result) (if (:mfa/pending? result) result (:session result))
@@ -241,7 +241,7 @@
    request]
   (let [ip-address (request/ip-address request)
         do-login   (fn []
-                     (let [result (login username password #p (request/device-info request))]
+                     (let [result (login username password (request/device-info request))]
                        (cond
                          ;; First factor OK, but this user does not have a second factor enrolled. However the
                          ;; instance is configured to require MFA, so force this user to enroll a second factor.
@@ -271,16 +271,6 @@
         (throttle/with-throttling [(login-throttlers :ip-address) ip-address
                                    (login-throttlers :username)   username]
           (do-login))))))
-
-(comment
-  (let [username "lucky@metabase.com"
-        password "P4ntheon"
-        device   {:device_description "curl/8.7.1",
-                  :device_id "b76be9d4-c629-4f7d-a1d6-2ebbf0200850",
-                  :embedded false,
-                  :ip_address "0:0:0:0:0:0:0:1",
-                  :token_exchange false}]
-    (login username password device)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -556,7 +546,6 @@
      [[(verify-throttlers :ip-address) (request/ip-address request)]
       [(verify-throttlers :user-id) user-id]]
      (fn []
-       (prn "auth attempt" user-id code jti)
        (when-not (verify-second-factor! user-id code jti)
          (events/publish-event! :event/mfa-verification-failed
                                 {:object (t2/select-one :model/User :id user-id)})
@@ -569,10 +558,6 @@
                         {:status-code 401})))
       (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
                         request))))
-
-(comment
-  (t2/select-one :model/User :email "lucky@metabase.com")
-  (t2/select :model/AuthIdentity :user_id 5))
 
 ;; No response schema: the success path returns a full ring response (session cookies must be set),
 ;; which the response-schema machinery would validate as the body. Same constraint as
@@ -631,9 +616,6 @@
     (-> (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
         (session-response request)
         (assoc-in [:body :recovery_codes] recovery-codes))))
-
-(comment
-  (metabase-enterprise.mfa.settings/mfa-enforcement! :required))
 
 (api.macros/defendpoint :post "/mfa/send-email-otp" :- [:map [:success [:= true]]]
   "Email a one-time code as a fallback second factor (for a user who lost their authenticator but

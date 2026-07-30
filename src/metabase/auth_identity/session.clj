@@ -18,7 +18,7 @@
   (let [user-id          (u/the-id user)
         auth-identity    (t2/select-one [:model/AuthIdentity :id :expires_at]
                                         :user_id user-id
-                                        :provider (str provider))
+                                        :provider (name provider))
         auth-identity-id (:id auth-identity)
         session-key      (str (random-uuid))
         session-id       (string/random-string 12)
