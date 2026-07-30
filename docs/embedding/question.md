@@ -7,9 +7,7 @@ redirect_from:
 
 # Embed a chart
 
-A saved chart in Metabase is called a question, so the component that embeds one is called a question component: `<metabase-question>` if you're using web components, or `StaticQuestion` and `InteractiveQuestion` if you're using the [React SDK](./sdk/introduction.md). Whatever you call it, what lands on your page is a single chart, table, or other visualization.
-
-You can embed a chart two ways:
+You can embed a chart (a.k.a. a question) in your app in two ways:
 
 - [View-only chart](#embed-a-view-only-chart): people see the results, and that's it.
 - [Interactive chart](#embed-an-interactive-chart): people can drill through the chart and change the query behind it.
