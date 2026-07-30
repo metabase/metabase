@@ -33,9 +33,8 @@ type RouteStub = PlainRoute & { pathnameBase?: string };
  * Runs as the `element` of every v7 route and republishes v7's location,
  * params, matched-route branch, and an imperative-router shim into the shared
  * `RouterContext` (and the `Route` context). The facade hooks (`useNavigate`,
- * `useRouter`, `withRouteProps`) read that context unchanged, so nothing
- * downstream can tell which engine it runs on. Deleted with the v3 engine in
- * Phase 4.
+ * `useRouter`) read that context unchanged, so nothing downstream can tell
+ * which engine it runs on. Deleted with the v3 engine in Phase 4.
  */
 export function RouterBridge({
   v3Element,
