@@ -1,3 +1,5 @@
+import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -8,7 +10,16 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Button, Flex, Group, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Button,
+  Collapse,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import type {
   LlmProviderConfig,
   LlmProviderConnection,
@@ -47,6 +58,18 @@ export function ProviderConnectionForm({
   const providerType = useMemo(
     () => providerTypes.find((option) => option.type === typeName),
     [providerTypes, typeName],
+  );
+
+  const [requiredFields, optionalFields] = useMemo(() => {
+    const fields = providerType?.fields ?? [];
+    return [
+      fields.filter((field) => field.required),
+      fields.filter((field) => !field.required),
+    ];
+  }, [providerType]);
+
+  const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(
+    hasStoredOptionalValues(providerType, connection),
   );
 
   const handleTypeChange = (nextType: string) => {
@@ -118,21 +141,34 @@ export function ProviderConnectionForm({
         .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
           <Stack gap="lg">
             {!isEditing && <SelectedProvider providerType={selected} />}
-            <TextInput
-              label={t`Display name`}
-              description={t`What this connection is called in the model picker.`}
-              value={name}
-              onChange={(event) => setName(event.currentTarget.value)}
-              disabled={isSaving}
-            />
             <ProviderConfigFields
-              fields={selected.fields}
+              fields={requiredFields}
               values={config}
               onChange={(key, value) =>
                 setConfig((current) => ({ ...current, [key]: value }))
               }
               disabled={isSaving}
             />
+            <AdvancedSettings
+              isOpened={isAdvancedOpen}
+              onToggle={toggleAdvanced}
+            >
+              <TextInput
+                label={t`Display name`}
+                description={t`What this connection is called in the model picker.`}
+                value={name}
+                onChange={(event) => setName(event.currentTarget.value)}
+                disabled={isSaving}
+              />
+              <ProviderConfigFields
+                fields={optionalFields}
+                values={config}
+                onChange={(key, value) =>
+                  setConfig((current) => ({ ...current, [key]: value }))
+                }
+                disabled={isSaving}
+              />
+            </AdvancedSettings>
             {error && <Text c="error">{error}</Text>}
             <Flex justify="end">
               <Group gap="sm">
@@ -160,6 +196,46 @@ export function ProviderConnectionForm({
           </Stack>
         ))
         .otherwise(() => null)}
+    </Stack>
+  );
+}
+
+function hasStoredOptionalValues(
+  providerType: LlmProviderType | undefined,
+  connection: LlmProviderConnection | undefined,
+) {
+  return (providerType?.fields ?? []).some(
+    (field) =>
+      !field.required && (connection?.config[field.key] ?? "").trim() !== "",
+  );
+}
+
+function AdvancedSettings({
+  isOpened,
+  onToggle,
+  children,
+}: {
+  isOpened: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Stack gap="md">
+      <Button
+        variant="subtle"
+        p={0}
+        w="fit-content"
+        aria-expanded={isOpened}
+        onClick={onToggle}
+        leftSection={
+          <Icon name={isOpened ? "chevrondown" : "chevronright"} size={12} />
+        }
+      >
+        {t`Advanced settings`}
+      </Button>
+      <Collapse in={isOpened}>
+        <Stack gap="lg">{children}</Stack>
+      </Collapse>
     </Stack>
   );
 }

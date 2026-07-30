@@ -48,6 +48,13 @@ const ANTHROPIC_TYPE = createMockLlmProviderType({
       type: "password",
       required: true,
     }),
+    createMockLlmProviderField({
+      key: "base-url",
+      label: "API base URL",
+      type: "text",
+      required: false,
+      default: "https://api.anthropic.com",
+    }),
   ],
 });
 
@@ -199,6 +206,12 @@ async function openProviderMenu() {
   );
 }
 
+async function openAdvancedSettings(modal: HTMLElement) {
+  await userEvent.click(
+    within(modal).getByRole("button", { name: /Advanced settings/ }),
+  );
+}
+
 async function openModelPicker() {
   await userEvent.click(screen.getByLabelText("Model"));
   return await screen.findByRole("listbox");
@@ -276,6 +289,7 @@ describe("AIProviderSettingsSection", () => {
       within(modal).getByRole("button", { name: "Anthropic" }),
     );
 
+    await openAdvancedSettings(modal);
     expect(within(modal).getByLabelText("Display name")).toHaveValue(
       "Anthropic",
     );
@@ -318,6 +332,8 @@ describe("AIProviderSettingsSection", () => {
       within(modal).getByLabelText(/Base URL/),
       "https://azure.test",
     );
+
+    await openAdvancedSettings(modal);
     await userEvent.click(within(modal).getByLabelText("Model family"));
     await selectOption("Claude models");
 
@@ -361,6 +377,54 @@ describe("AIProviderSettingsSection", () => {
     expect(within(modal).queryByLabelText(/API key/)).not.toBeInTheDocument();
   });
 
+  it("keeps the optional fields behind advanced settings", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    );
+
+    expect(within(modal).getByLabelText(/API key/)).toBeVisible();
+    expect(within(modal).getByLabelText("Display name")).not.toBeVisible();
+    expect(within(modal).getByLabelText("API base URL")).not.toBeVisible();
+
+    await openAdvancedSettings(modal);
+
+    await waitFor(() =>
+      expect(within(modal).getByLabelText("Display name")).toBeVisible(),
+    );
+    expect(within(modal).getByLabelText("API base URL")).toBeVisible();
+  });
+
+  it("opens advanced settings for a connection that already customized one", async () => {
+    await setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          type: "anthropic",
+          name: "Anthropic",
+          config: {
+            "api-key": "sk-ant-saved",
+            "base-url": "https://proxy.internal",
+          },
+        }),
+      ],
+      models: CONNECTION_MODELS,
+    });
+
+    await openProviderMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Edit/ }),
+    );
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByLabelText("API base URL")).toBeVisible();
+    expect(within(modal).getByLabelText("API base URL")).toHaveValue(
+      "https://proxy.internal",
+    );
+  });
+
   it("edits an existing connection", async () => {
     await setup({
       connections: [ANTHROPIC_CONNECTION],
@@ -375,6 +439,7 @@ describe("AIProviderSettingsSection", () => {
     const modal = await screen.findByRole("dialog");
     expect(within(modal).queryByLabelText("Provider")).not.toBeInTheDocument();
 
+    await openAdvancedSettings(modal);
     const displayName = within(modal).getByLabelText("Display name");
     await userEvent.clear(displayName);
     await userEvent.type(displayName, "Anthropic prod");
