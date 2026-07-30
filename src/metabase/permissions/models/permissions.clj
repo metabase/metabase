@@ -177,7 +177,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -229,22 +228,37 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
-(defn is-permissions-for-object?
-  "Does `permissions-path` grant *full* access for `path`?"
-  [permissions-path path]
-  (str/starts-with? path permissions-path))
+(defn- granting-paths
+  "The permissions paths that grant full access to `path` — `path` itself and each of its ancestors, most specific
+  first:
 
-(defn set-has-full-permissions?
-  "Does `permissions-set` grant *full* access to object with `path`?"
-  ^Boolean [permissions-set path]
-  (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
+    (granting-paths \"/a/b/c/\") ; => [\"/a/b/c/\" \"/a/b/\" \"/a/\" \"/\"]
+
+  Every permissions path ends in a slash (see this namespace's docstring), so a granted path is a prefix of `path`
+  exactly when it is one of these. There is only one per segment of `path`, which is what lets
+  [[set-has-full-permissions?]] answer with a handful of hash lookups instead of a scan of every path the User was
+  granted. A `path` that does not end in a slash can have no descendants, so it only ever matches itself."
+  [^String path]
+  (loop [acc (cond-> (transient [])
+               (not (str/ends-with? path "/")) (conj! path))
+         i   (.lastIndexOf path (int \/))]
+    (if (neg? i)
+      (persistent! acc)
+      (recur (conj! acc (.substring path 0 (inc i)))
+             (.lastIndexOf path (int \/) (dec i))))))
+
+(mu/defn set-has-full-permissions? :- :boolean
+  "Does `permissions-set` grant *full* access to object with `path`? A `nil` `permissions-set` grants nothing."
+  [permissions-set :- [:maybe [:set :string]]
+   path            :- :string]
+  (boolean (and permissions-set
+                (some permissions-set (granting-paths path)))))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set paths-set]
-  (let [permissions (or (:as-vec (meta permissions-set))
-                        permissions-set)]
-    (every? (partial set-has-full-permissions? permissions) paths-set)))
+  [permissions-set :- [:maybe [:set :string]]
+   paths-set       :- [:set :string]]
+  (every? #(set-has-full-permissions? permissions-set %) paths-set))
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
