@@ -164,23 +164,25 @@
 
 (defn- literal-list-end
   "Scan the flat list opening at `open-pos` and terminated by `close-ch`. If it is literal-only —
-   numbers, quoted strings, NULL/TRUE/FALSE, signs, commas and whitespace — return
+   numbers, single-quoted strings, NULL/TRUE/FALSE, signs, commas and whitespace — return
    [item-count end-pos] with end-pos just after the closing delimiter; otherwise nil. Anything
    else — column references, function calls, subqueries, bind parameters, nested brackets —
    disqualifies the list, since stripping those would change analysis results or parameter counts.
-   Single pass over `sql` in place, bailing at the first disqualifying character."
+   Double quotes also disqualify: this scan is dialect-agnostic, and in identifier-quoting dialects
+   `\"x\"` in a list is a column reference, not a string. Single pass over `sql` in place, bailing
+   at the first disqualifying character."
   [^String sql ^long open-pos ^long n close-ch]
   (loop [i (inc open-pos), items 1]
     (when (< i n)
       (let [ch (.charAt sql i)]
         (cond
-          (= ch close-ch)          [items (inc i)]
-          (or (= ch \') (= ch \")) (recur (skip-string-literal sql i n) items)
-          (= ch \,)                (recur (inc i) (inc items))
-          (Character/isLetter ch)  (let [end (word-end sql i n)]
-                                     (when (contains? allowed-in-list-words
-                                                      (u/lower-case-en (.substring sql i end)))
-                                       (recur end items)))
+          (= ch close-ch)         [items (inc i)]
+          (= ch \')               (recur (skip-string-literal sql i n) items)
+          (= ch \,)               (recur (inc i) (inc items))
+          (Character/isLetter ch) (let [end (word-end sql i n)]
+                                    (when (contains? allowed-in-list-words
+                                                     (u/lower-case-en (.substring sql i end)))
+                                      (recur end items)))
           (or (Character/isDigit ch)
               (Character/isWhitespace ch)
               (= ch \.) (= ch \-) (= ch \+))

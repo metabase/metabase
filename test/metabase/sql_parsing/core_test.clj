@@ -576,7 +576,6 @@
                              "negatives"      #(str "-" %)
                              "plus-signed"    #(str "+" %)
                              "single-quoted"  #(format "'name %d'" %)
-                             "double-quoted"  #(format "\"name %d\"" %)
                              "commas-inside-strings"  #(format "'a,%d,b'" %)
                              "escaped-quotes" #(format "'it''s %d'" %)
                              "null-mixed"     #(if (even? %) "NULL" (str %))
@@ -595,7 +594,8 @@
   (testing "One non-literal item anywhere in a large list prevents stripping"
     (doseq [bad ["col_ref" "some_column" "foo(1)" "(1 + 2)" "?" "$1" "{{param}}" "%(name)s"
                  "1e5" "1.5e3" "DATE '2024-01-01'" "TIMESTAMP '2024-01-01 00:00:00'"
-                 "1::int" "x.y" "CURRENT_DATE" "-- comment" "héllo" "N'abc'"]
+                 "1::int" "x.y" "CURRENT_DATE" "-- comment" "héllo" "N'abc'"
+                 "\"quoted_identifier\""]
             position [:first :middle :last]]
       (let [items (map str (range 150))
             items (case position
@@ -607,7 +607,11 @@
             (str (pr-str bad) " at " position " should prevent stripping")))))
   (testing "Subqueries are never stripped regardless of size"
     (let [sql "SELECT * FROM t WHERE x IN (SELECT id FROM u WHERE y = 'a' AND z IN ('b', 'c'))"]
-      (is (= sql (sql-parsing/strip-large-literal-lists sql))))))
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "A large list of double-quoted identifiers is not stripped (they are column references
+            in identifier-quoting dialects, not strings)"
+    (let [sql (str "SELECT * FROM t WHERE x IN (" (str/join ", " (map #(format "\"col_%d\"" %) (range 150))) ")")]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql))))))
 
 (deftest ^:parallel strip-preserves-surroundings-test
   (testing "Everything around a stripped list is preserved byte-for-byte"
