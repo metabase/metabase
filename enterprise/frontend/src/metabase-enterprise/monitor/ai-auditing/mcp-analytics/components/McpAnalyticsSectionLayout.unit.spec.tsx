@@ -15,7 +15,8 @@ import {
   within,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
@@ -31,7 +32,9 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { McpAnalyticsPage } from "./McpAnalyticsPage";
+import { McpAnalyticsSectionLayout } from "./McpAnalyticsSectionLayout";
+import { McpEventsPage } from "./McpEventsPage";
+import { McpUsagePage } from "./McpUsagePage";
 
 registerVisualizations();
 
@@ -196,11 +199,16 @@ function setupEndpoints(
   }
 }
 
-/** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
+/** Render the MCP analytics section (layout + usage/events sub-routes) with EE plugins + `audit_app`. */
 function setup({
   dataset,
   datasetError,
-}: { dataset?: Dataset; datasetError?: boolean } = {}) {
+  initialRoute = Urls.monitorAiAuditingMcpUsage(),
+}: {
+  dataset?: Dataset;
+  datasetError?: boolean;
+  initialRoute?: string;
+} = {}) {
   // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
   // for its virtualized rows to render.
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -208,9 +216,17 @@ function setup({
   setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
-    <Route path="/monitor/ai-auditing/mcp" element={<McpAnalyticsPage />} />,
+    // Mirrors `getMcpAnalyticsRoutes()`: the index redirect sits outside the layout, which only
+    // renders its outlet once the shared count query resolves with rows.
+    <Route path={Urls.monitorAiAuditingMcp()}>
+      <Route index element={redirect("usage")} />
+      <Route element={<McpAnalyticsSectionLayout />}>
+        <Route path="usage" element={<McpUsagePage />} />
+        <Route path="events" element={<McpEventsPage />} />
+      </Route>
+    </Route>,
     {
-      initialRoute: "/monitor/ai-auditing/mcp",
+      initialRoute,
       withRouter: true,
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -247,8 +263,32 @@ const eventsDatasetStages = (): EventsMbqlStage[] =>
     })
     .filter((stage): stage is EventsMbqlStage => stage != null);
 
-describe("McpAnalyticsPage", () => {
-  it("renders the header, filters, and charts tab", async () => {
+describe("McpAnalyticsSectionLayout", () => {
+  it("redirects the bare section route to the usage sub-route", async () => {
+    const { router } = setup({ initialRoute: Urls.monitorAiAuditingMcp() });
+
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpUsage());
+    });
+    expect(
+      await screen.findByRole("heading", { name: "MCP analytics" }),
+    ).toBeInTheDocument();
+  });
+
+  it("redirects the bare section route even when the section has no data", async () => {
+    const { router } = setup({
+      dataset: emptyDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingMcp(),
+    });
+
+    // The layout gates its outlet on the count query, so the redirect must not live inside it.
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpUsage());
+    });
+    expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
+  });
+
+  it("renders the header, filters, and usage route by default", async () => {
     setup();
 
     expect(
@@ -271,32 +311,79 @@ describe("McpAnalyticsPage", () => {
     expect(await screen.findByText("Errors by type")).toBeInTheDocument();
   });
 
-  it("switches to the events tab and renders the row-level table", async () => {
-    setup();
+  it("navigates to the events route and renders the row-level table", async () => {
+    const { router } = setup();
 
     await screen.findByRole("heading", { name: "MCP analytics" });
     await userEvent.click(
       await screen.findByRole("tab", { name: "Tool calls" }),
     );
 
-    const eventsPanel = screen.getByRole("tabpanel");
+    expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpEvents());
     expect(
-      await within(eventsPanel).findByRole("treegrid", { name: "Tool calls" }),
+      await screen.findByRole("treegrid", { name: "Tool calls" }),
     ).toBeInTheDocument();
     // curated column header + a cell value from the mocked dataset row
-    expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
+    expect(screen.getByText("Tool")).toBeInTheDocument();
+    expect(await screen.findByText("search_data")).toBeInTheDocument();
+  });
+
+  it("keeps the shared filters visible after navigating between usage and events", async () => {
+    setup();
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
     expect(
-      await within(eventsPanel).findByText("search_data"),
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+    await screen.findByRole("treegrid", { name: "Tool calls" });
+    expect(
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
+    expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
   });
 
-  it("sorts the events table server-side when a column header is clicked", async () => {
-    setup();
+  it("keeps the URL filter params when navigating between usage and events", async () => {
+    const { router } = setup({
+      initialRoute: `${Urls.monitorAiAuditingMcpUsage()}?date=past7days~&user=1`,
+    });
 
     await screen.findByRole("heading", { name: "MCP analytics" });
     await userEvent.click(
       await screen.findByRole("tab", { name: "Tool calls" }),
     );
+
+    // Tab links are plain route links, so they have to carry the filters themselves — otherwise
+    // the address bar (and anything shared or reloaded from it) loses the scoped view.
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpEvents());
+    });
+    const search = router?.location.search ?? "";
+    expect(search).toContain("date=past7days~");
+    expect(search).toContain("user=1");
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
+
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpUsage());
+    });
+    const backSearch = router?.location.search ?? "";
+    expect(backSearch).toContain("date=past7days~");
+    expect(backSearch).toContain("user=1");
+  });
+
+  it("sorts the events table server-side when a column header is clicked", async () => {
+    setup({ initialRoute: Urls.monitorAiAuditingMcpEvents() });
+
+    await screen.findByRole("treegrid", { name: "Tool calls" });
 
     // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
     await userEvent.click(
@@ -312,12 +399,10 @@ describe("McpAnalyticsPage", () => {
   });
 
   it("paginates the events table when there are more matching rows than one page", async () => {
-    setup({ dataset: multiPageDatasetResponse });
-
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+    setup({
+      dataset: multiPageDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingMcpEvents(),
+    });
 
     const pagination = await screen.findByRole("navigation", {
       name: "pagination",
@@ -339,12 +424,10 @@ describe("McpAnalyticsPage", () => {
   });
 
   it("updates the page URL param immediately when Next is clicked", async () => {
-    const { router } = setup({ dataset: multiPageDatasetResponse });
-
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+    const { router } = setup({
+      dataset: multiPageDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingMcpEvents(),
+    });
 
     const pagination = await screen.findByRole("navigation", {
       name: "pagination",
@@ -355,13 +438,12 @@ describe("McpAnalyticsPage", () => {
   });
 
   it("issues exactly one events query per page change (no redundant refetch)", async () => {
-    const { router } = setup({ dataset: multiPageDatasetResponse });
+    const { router } = setup({
+      dataset: multiPageDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingMcpEvents(),
+    });
 
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
-    await within(screen.getByRole("tabpanel")).findByRole("treegrid");
+    await screen.findByRole("treegrid", { name: "Tool calls" });
 
     // Dataset calls for the events query's second page (MBQL `:page` is 1-indexed, so UI page 1).
     const page2EventsCalls = () =>
@@ -379,12 +461,7 @@ describe("McpAnalyticsPage", () => {
   });
 
   it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
-    setup();
-
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+    setup({ initialRoute: Urls.monitorAiAuditingMcpEvents() });
 
     // The events request is the paginated one (carries a `page` clause); its order-by must be
     // created_at followed by the tool_call_id (PK) tiebreaker, so pages can't skip/duplicate rows
@@ -409,16 +486,11 @@ describe("McpAnalyticsPage", () => {
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
     // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
-    const usageTab = screen.getByRole("tab", { name: "Usage" });
-    expect(usageTab).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Usage" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
-
-    const panel = screen.getByRole("tabpanel");
-    expect(usageTab).toHaveAttribute("aria-controls", panel.id);
-    expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();
   });
 
   it("shows an error instead of spinning forever when the count query fails", async () => {

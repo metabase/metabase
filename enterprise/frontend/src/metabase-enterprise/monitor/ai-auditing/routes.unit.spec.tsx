@@ -21,11 +21,41 @@ jest.mock(
     MetabotAnalyticsUpsellPage: () => <div>Usage stats upsell</div>,
   }),
 );
-jest.mock("./mcp-analytics/components/McpAnalyticsPage", () => ({
-  McpAnalyticsPage: () => <div>MCP analytics page</div>,
+// The section layouts render their sub-route through an outlet, so the mocks do too — otherwise
+// the leaf routes below would never render and a missing/misspelled child route would go unnoticed.
+jest.mock("./mcp-analytics/components/McpAnalyticsSectionLayout", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    McpAnalyticsSectionLayout: () => (
+      <div>
+        MCP analytics page
+        <Outlet />
+      </div>
+    ),
+  };
+});
+jest.mock("./cli-analytics/components/CliAnalyticsSectionLayout", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    CliAnalyticsSectionLayout: () => (
+      <div>
+        CLI analytics page
+        <Outlet />
+      </div>
+    ),
+  };
+});
+jest.mock("./mcp-analytics/components/McpUsagePage", () => ({
+  McpUsagePage: () => <div>MCP usage page</div>,
 }));
-jest.mock("./cli-analytics/components/CliAnalyticsPage", () => ({
-  CliAnalyticsPage: () => <div>CLI analytics page</div>,
+jest.mock("./mcp-analytics/components/McpEventsPage", () => ({
+  McpEventsPage: () => <div>MCP tool calls page</div>,
+}));
+jest.mock("./cli-analytics/components/CliUsagePage", () => ({
+  CliUsagePage: () => <div>CLI usage page</div>,
+}));
+jest.mock("./cli-analytics/components/CliCallsPage", () => ({
+  CliCallsPage: () => <div>CLI calls page</div>,
 }));
 
 type SetupOpts = {
@@ -153,6 +183,42 @@ describe("AI Auditing routes", () => {
       });
 
       expect(screen.getByText("CLI analytics page")).toBeInTheDocument();
+    },
+  );
+
+  describe.each([false, true])(
+    "MCP and CLI sub-routes (upsell %s)",
+    (upsell) => {
+      it.each([
+        [Urls.monitorAiAuditingMcpUsage(), "MCP usage page"],
+        [Urls.monitorAiAuditingMcpEvents(), "MCP tool calls page"],
+        [Urls.monitorAiAuditingCliUsage(), "CLI usage page"],
+        [Urls.monitorAiAuditingCliCalls(), "CLI calls page"],
+      ])("renders %s", async (route, pageText) => {
+        setup({ route, upsell });
+
+        expect(await screen.findByText(pageText)).toBeInTheDocument();
+      });
+
+      it.each([
+        [Urls.monitorAiAuditingMcp(), Urls.monitorAiAuditingMcpUsage()],
+        [Urls.monitorAiAuditingCli(), Urls.monitorAiAuditingCliUsage()],
+      ])(
+        "redirects %s to its usage sub-route, preserving the query",
+        async (route, target) => {
+          const { router } = setup({
+            route: `${route}?date=past7days~`,
+            upsell,
+          });
+
+          await waitFor(() => {
+            expect(router?.location).toMatchObject({
+              pathname: target,
+              search: "?date=past7days~",
+            });
+          });
+        },
+      );
     },
   );
 

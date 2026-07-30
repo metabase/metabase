@@ -1,15 +1,48 @@
 import { Route, redirect } from "metabase/router";
 
-import { CliAnalyticsPage } from "./cli-analytics/components/CliAnalyticsPage";
+import { CliAnalyticsSectionLayout } from "./cli-analytics/components/CliAnalyticsSectionLayout";
+import { CliCallsPage } from "./cli-analytics/components/CliCallsPage";
+import { CliUsagePage } from "./cli-analytics/components/CliUsagePage";
 import {
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
 } from "./components/AvailabilityLayouts";
-import { McpAnalyticsPage } from "./mcp-analytics/components/McpAnalyticsPage";
+import { McpAnalyticsSectionLayout } from "./mcp-analytics/components/McpAnalyticsSectionLayout";
+import { McpEventsPage } from "./mcp-analytics/components/McpEventsPage";
+import { McpUsagePage } from "./mcp-analytics/components/McpUsagePage";
 import { ConversationDetailPage } from "./metabot-analytics/components/ConversationDetailPage";
 import { ConversationStatsPage } from "./metabot-analytics/components/ConversationStatsPage";
 import { ConversationsPage } from "./metabot-analytics/components/ConversationsPage";
 import { MetabotAnalyticsUpsellPage } from "./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage";
+
+// The index redirects sit outside the section layouts: the layouts only render their `<Outlet />`
+// once the shared "has any data" query resolves with rows, so an index route nested inside one
+// would never fire on an empty, still-loading, or errored section and the bare path would stick.
+function getMcpAnalyticsRoutes() {
+  return (
+    <Route element={<McpAnalyticsAvailabilityLayout />}>
+      <Route path="mcp">
+        <Route index element={redirect("usage")} />
+        <Route element={<McpAnalyticsSectionLayout />}>
+          <Route path="usage" element={<McpUsagePage />} />
+          <Route path="events" element={<McpEventsPage />} />
+        </Route>
+      </Route>
+    </Route>
+  );
+}
+
+function getCliAnalyticsRoutes() {
+  return (
+    <Route path="cli">
+      <Route index element={redirect("usage")} />
+      <Route element={<CliAnalyticsSectionLayout />}>
+        <Route path="usage" element={<CliUsagePage />} />
+        <Route path="calls" element={<CliCallsPage />} />
+      </Route>
+    </Route>
+  );
+}
 
 export function getAiAuditingRoutes() {
   return (
@@ -23,10 +56,8 @@ export function getAiAuditingRoutes() {
           element={<ConversationDetailPage />}
         />
       </Route>
-      <Route element={<McpAnalyticsAvailabilityLayout />}>
-        <Route path="mcp" element={<McpAnalyticsPage />} />
-      </Route>
-      <Route path="cli" element={<CliAnalyticsPage />} />
+      {getMcpAnalyticsRoutes()}
+      {getCliAnalyticsRoutes()}
     </>
   );
 }
@@ -36,10 +67,8 @@ export function getAiAuditingUpsellRoutes() {
     <>
       <Route index element={redirect("usage")} />
       <Route path="usage" element={<MetabotAnalyticsUpsellPage />} />
-      <Route element={<McpAnalyticsAvailabilityLayout />}>
-        <Route path="mcp" element={<McpAnalyticsPage />} />
-      </Route>
-      <Route path="cli" element={<CliAnalyticsPage />} />
+      {getMcpAnalyticsRoutes()}
+      {getCliAnalyticsRoutes()}
     </>
   );
 }
