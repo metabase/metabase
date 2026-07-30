@@ -2,7 +2,7 @@ import { Fragment, type MouseEventHandler, type ReactNode } from "react";
 import { t } from "ttag";
 
 import type { Crumb } from "metabase/common/components/Breadcrumbs";
-import { Link } from "metabase/router";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Anchor, Ellipsified, Group, Icon } from "metabase/ui";
 
 type CrumbTuple =
@@ -66,7 +66,7 @@ function MonitorBreadcrumb({
   if (url) {
     return (
       <Anchor
-        component={Link}
+        component={ForwardRefLink}
         to={url}
         fz="sm"
         fw="normal"

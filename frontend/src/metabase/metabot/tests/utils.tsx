@@ -1,3 +1,4 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
@@ -76,9 +77,19 @@ export const conversationTitle = () =>
   screen.findByTestId("metabot-conversation-title");
 export const queryConversationTitle = () =>
   screen.queryByTestId("metabot-conversation-title");
-export const chatMessages = () =>
-  screen.findAllByTestId("metabot-chat-message");
-export const lastChatMessage = async () => (await chatMessages()).at(-1);
+export const chatMessages = async ({
+  includeChainOfThought = false,
+}: { includeChainOfThought?: boolean } = {}) => {
+  const messages = await screen.findAllByTestId("metabot-chat-message");
+  return includeChainOfThought
+    ? messages
+    : messages.filter(
+        (el) => !within(el).queryByTestId("metabot-chain-of-thought"),
+      );
+};
+export const lastChatMessage = async (options?: {
+  includeChainOfThought?: boolean;
+}) => (await chatMessages(options)).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
   return chatInput.querySelector('[contenteditable="true"]')!;
@@ -117,6 +128,24 @@ export const mockFeedbackEndpoint = () => {
   fetchMock.post(path, 204);
   return {
     calls: () => fetchMock.callHistory.calls(path),
+  };
+};
+
+// Fork helpers
+export const forkButton = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-fork");
+export const mockForkEndpoint = (
+  response: Record<string, unknown> = {},
+  status = 200,
+) => {
+  fetchMock.post(
+    "express:/api/metabot/conversations/:id/fork",
+    status === 200 ? { status, body: response } : status,
+    { name: "metabot-fork" },
+  );
+  return {
+    calls: (matcher?: Parameters<typeof fetchMock.callHistory.calls>[1]) =>
+      fetchMock.callHistory.calls("metabot-fork", matcher),
   };
 };
 
@@ -186,6 +215,11 @@ export const whoIsYourFavoriteResponse: SSEEvent[] = [
 ];
 
 export const erroredResponse: SSEEvent[] = [
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
+];
+
+export const startedThenErroredResponse: SSEEvent[] = [
+  { type: "start", messageId: "msg_errored" },
   { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 
@@ -322,6 +356,7 @@ export function setup(
       metabot: metabotReducer,
     },
     withRouter,
+    withUndos: true,
     ...(initialRoute ? { initialRoute } : {}),
   });
 
@@ -330,8 +365,9 @@ export function setup(
     history,
     conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
-    store: store as Omit<typeof store, "getState"> & {
+    store: store as Omit<typeof store, "getState" | "dispatch"> & {
       getState: () => State;
+      dispatch: ThunkDispatch<State, unknown, UnknownAction>;
     },
   };
 }

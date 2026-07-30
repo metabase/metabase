@@ -279,8 +279,7 @@ export function ConversationStatsPage() {
         <Tabs
           variant="pills"
           value={metric}
-          // Unjustified type cast. FIXME
-          onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
+          onChange={(value) => patchUrlState({ metric: value ?? undefined })}
         >
           <Tabs.List>
             <Tabs.Tab value="conversations">{t`Conversations`}</Tabs.Tab>

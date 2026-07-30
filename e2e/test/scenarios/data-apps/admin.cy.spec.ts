@@ -79,28 +79,57 @@ describe("scenarios > data apps > admin management", () => {
   });
 });
 
-describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
+// TODO(v65): data apps launch in v65 — replace the "no token" suite below with
+// these upsell tests once the nav item + page are un-gated.
+// describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
+//   beforeEach(() => {
+//     H.restore();
+//     cy.signInAsAdmin();
+//     // No token: on the OSS build the `data-apps` feature is unavailable, so the
+//     // settings page shows the upsell instead of the management UI.
+//   });
+//
+//   it("shows the data-apps upsell instead of the management UI", () => {
+//     cy.visit("/admin/settings/apps");
+//
+//     H.main().within(() => {
+//       cy.findByText("Build apps on your data").should("be.visible");
+//       cy.findByText("Try for free").should("be.visible");
+//     });
+//   });
+//
+//   it("marks the Data apps settings nav item with an upsell gem", () => {
+//     cy.visit("/admin/settings/apps");
+//
+//     cy.findByRole("link", { name: /Data apps/ }).within(() => {
+//       cy.findByTestId("upsell-gem").should("exist");
+//     });
+//   });
+// });
+
+describe("scenarios > data apps > no token (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // No token: on the OSS build the `data-apps` feature is unavailable, so the
-    // settings page shows the upsell instead of the management UI.
+    // No token: data apps launch in v65, so without the `data-apps` feature the
+    // admin UI must not mention them at all — no nav item, no upsell, no page.
   });
 
-  it("shows the data-apps upsell instead of the management UI", () => {
+  it("hides the Data apps settings nav item", () => {
+    cy.visit("/admin/settings/general");
+
+    cy.findByRole("heading", { name: "General" }).should("be.visible");
+    cy.findByRole("link", { name: /Data apps/ }).should("not.exist");
+  });
+
+  it("404s the data apps settings page instead of showing an upsell", () => {
     cy.visit("/admin/settings/apps");
 
     H.main().within(() => {
-      cy.findByText("Build apps on your data").should("be.visible");
-      cy.findByText("Try for free").should("be.visible");
-    });
-  });
-
-  it("marks the Data apps settings nav item with an upsell gem", () => {
-    cy.visit("/admin/settings/apps");
-
-    cy.findByRole("link", { name: /Data apps/ }).within(() => {
-      cy.findByTestId("upsell-gem").should("exist");
+      cy.findByText("The page you asked for couldn't be found.").should(
+        "be.visible",
+      );
+      cy.findByText("Build apps on your data").should("not.exist");
     });
   });
 });

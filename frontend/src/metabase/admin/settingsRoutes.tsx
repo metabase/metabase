@@ -4,6 +4,7 @@ import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/Admin
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_DATA_APPS,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -102,14 +103,18 @@ export const getSettingsRoutes = (
           />
         )}
       </Route>
-      <Route
-        path={
-          Urls.DATA_APP_URL_SEGMENT
-        } /* do not allow users with "Settings access" permissions to access data apps pages */
-        element={<IsAdmin />}
-      >
-        <Route index element={<DataAppsManagePage />} />
-      </Route>
+      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so the
+          page shows the upsell without the token feature instead of 404ing */}
+      {PLUGIN_DATA_APPS.isEnabled && (
+        <Route
+          path={
+            Urls.DATA_APP_URL_SEGMENT
+          } /* do not allow users with "Settings access" permissions to access data apps pages */
+          element={<IsAdmin />}
+        >
+          <Route index element={<DataAppsManagePage />} />
+        </Route>
+      )}
       <Route path="uploads" element={<UploadSettingsPage />} />
       <Route
         path="python-runner"

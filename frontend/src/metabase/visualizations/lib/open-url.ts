@@ -1,14 +1,11 @@
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type {
-  LocationDescriptor,
-  LocationDescriptorObject,
+import {
+  type LocationDescriptor,
+  type LocationDescriptorObject,
+  queryToSearch,
+  searchToQuery,
 } from "metabase/router";
-// Imported from the module rather than the `metabase/router` barrel on purpose.
-// This file is reachable from the static-viz entry, which runs inside GraalVM,
-// and the barrel pulls react-router and the redux router middleware in with it:
-// ~1MB on a bundle with a 3.5MB budget. `v7/location` has only type imports.
-import { queryToSearch, searchToQuery } from "metabase/router/v7/location";
 import {
   clickLink,
   getPathnameWithoutSubPath,

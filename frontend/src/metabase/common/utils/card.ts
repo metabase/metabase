@@ -11,6 +11,7 @@ import {
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -24,6 +25,7 @@ import type {
   LegacyDatasetQuery,
   Parameter,
   ParameterValuesMap,
+  Series,
   UnsavedCard,
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
@@ -94,6 +96,37 @@ export function isEqualCard(card1?: Card | null, card2?: Card | null) {
   } else {
     return false;
   }
+}
+
+export function getMetricSeriesWithDefaultDisplay(
+  series: Series,
+  metadata: Metadata,
+): Series {
+  if (series.length !== 1) {
+    return series;
+  }
+
+  const [metricSeries] = series;
+  if (metricSeries.card.type !== "metric" || !metricSeries.json_query) {
+    return series;
+  }
+
+  const query = Lib.fromJsQueryAndMetadata(metadata, metricSeries.json_query);
+  const { display, settings = {} } = Lib.defaultDisplay(query);
+
+  return [
+    {
+      ...metricSeries,
+      card: {
+        ...metricSeries.card,
+        display,
+        visualization_settings: {
+          ...metricSeries.card.visualization_settings,
+          ...settings,
+        },
+      },
+    },
+  ];
 }
 
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js

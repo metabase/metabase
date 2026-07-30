@@ -9,8 +9,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
-import { RouterProviderV7Memory } from "metabase/router/v7/RouterProviderV7";
+import { Route, RouterProviderV7Memory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,

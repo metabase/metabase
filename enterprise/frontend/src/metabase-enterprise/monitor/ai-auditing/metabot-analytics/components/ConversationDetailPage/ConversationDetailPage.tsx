@@ -38,6 +38,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
@@ -50,6 +51,7 @@ import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
 export function ConversationDetailPage() {
@@ -125,7 +127,21 @@ export function ConversationDetailPage() {
     query_count,
     queries,
     feedback,
+    fork_boundary_message_id,
+    forked_from_conversation_id,
   } = conversation;
+
+  const forkBoundaryHref = forked_from_conversation_id
+    ? Urls.monitorAiAuditingConversationDetail(forked_from_conversation_id)
+    : undefined;
+
+  const forkBoundaryMessage = fork_boundary_message_id
+    ? messages.findLast(
+        (message) =>
+          "externalId" in message &&
+          message.externalId === fork_boundary_message_id,
+      )
+    : undefined;
 
   return (
     <Flex ref={containerRef} wrap="nowrap">
@@ -187,6 +203,11 @@ export function ConversationDetailPage() {
                   readonly
                   conversationId={convoId}
                   onToolCallSelect={handleToolCallSelect}
+                  renderAfterMessage={(message) =>
+                    message === forkBoundaryMessage ? (
+                      <ForkBoundary href={forkBoundaryHref} />
+                    ) : null
+                  }
                 />
               </Card>
             </Stack>

@@ -1,12 +1,13 @@
 import { type MouseEvent, forwardRef, useState } from "react";
 import { c, t } from "ttag";
 
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
-import { Link, type LinkProps, useRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 
 import {

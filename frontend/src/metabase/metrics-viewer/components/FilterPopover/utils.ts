@@ -52,12 +52,6 @@ export function filterDisplayGroupsBySearch<
     .filter((group) => group.sections.length > 0);
 }
 
-type DimensionBucket = {
-  groupName: string;
-  groupType: "main" | "connection" | undefined;
-  items: DimensionListItem[];
-};
-
 export function getMetricGroups(
   definitionSources: DefinitionSource[],
   metricColors: SourceColorMap,
@@ -65,32 +59,22 @@ export function getMetricGroups(
   return definitionSources.map((definitionSource, definitionIndex) => {
     const definition = definitionSource.definition;
     const segmentItems = buildSegmentItems(definition, definitionIndex);
-    const dimensions = LibMetric.filterableDimensions(definition);
-
-    const byGroupId = new Map<string, DimensionBucket>();
-
-    for (const dimension of dimensions) {
-      const info = LibMetric.displayInfo(definition, dimension);
-      const groupId = info.group?.id ?? "";
-      const groupName = info.group?.displayName ?? "";
-      const groupType = info.group?.type;
-      const item: DimensionListItem = {
-        name: info.displayName,
-        definition,
-        definitionIndex,
-        dimension,
-      };
-
-      const entry = byGroupId.get(groupId);
-      if (entry) {
-        entry.items.push(item);
-      } else {
-        byGroupId.set(groupId, { groupName, groupType, items: [item] });
-      }
-    }
+    const dimensionItems = LibMetric.filterableDimensions(definition).map(
+      (dimension): DimensionListItem => {
+        const info = LibMetric.displayInfo(definition, dimension);
+        return {
+          name: info.displayName,
+          definition,
+          definitionIndex,
+          dimension,
+        };
+      },
+    );
 
     const hasSegments = segmentItems.length > 0;
-    const sections = buildSections(byGroupId, segmentItems);
+    const items = [...segmentItems, ...dimensionItems];
+    const sections: MetricGroupFilterSection[] =
+      items.length > 0 ? [{ items }] : [];
 
     return {
       id: definitionSource.index,
@@ -102,62 +86,6 @@ export function getMetricGroups(
       hasSegments,
     };
   });
-}
-
-function buildSections(
-  byGroupId: Map<string, DimensionBucket>,
-  segmentItems: SegmentListItem[],
-): MetricGroupFilterSection[] {
-  // No dimensions at all — if there are segments, still surface them
-  // inside a single source-table section so they don't disappear.
-  if (byGroupId.size === 0) {
-    if (segmentItems.length > 0) {
-      return [{ isSourceTable: true, items: segmentItems }];
-    }
-    return [];
-  }
-
-  // Single-group fallback: merge every dimension + every segment
-  // into one unnamed section and treat it as the source table.
-  if (byGroupId.size === 1) {
-    const [{ items }] = [...byGroupId.values()];
-    return [
-      {
-        isSourceTable: true,
-        items: [...segmentItems, ...items],
-      },
-    ];
-  }
-
-  // Multiple groups: segments live on the metric's source table, so
-  // attach them to the source-table section. Joined-table segments are
-  // out of scope for this milestone and are not surfaced by
-  // `available-segments` on the backend.
-  const sections: MetricGroupFilterSection[] = [];
-  let mainAttached = false;
-  for (const [, { groupName, groupType, items }] of byGroupId) {
-    const isSourceTable = groupType === "main";
-    sections.push({
-      name: groupName,
-      isSourceTable,
-      items:
-        isSourceTable && segmentItems.length > 0
-          ? [...segmentItems, ...items]
-          : items,
-    });
-    if (isSourceTable) {
-      mainAttached = true;
-    }
-  }
-
-  // Defensive: if no section was flagged as the source table but we
-  // still have segments, surface them in a synthesized source-table
-  // section so they don't disappear.
-  if (!mainAttached && segmentItems.length > 0) {
-    sections.unshift({ isSourceTable: true, items: segmentItems });
-  }
-
-  return sections;
 }
 
 function buildSegmentItems(
