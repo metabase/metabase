@@ -216,22 +216,50 @@
 
 (deftest password-reset-issues-no-session-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enforcement :optional]
-      (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
-        (try
-          (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                           :provider    "totp"
-                                           :confirmed_at (t/instant)
-                                           :credentials  {:secret (totp/generate-secret)}})
+    (doseq [[label enforcement deadline] [["enrolled and :optional"              :optional nil]
+                                          ["enrolled and :required, no deadline" :required nil]
+                                          ["enrolled and :required, deadline past"
+                                           :required (t/minus (t/offset-date-time) (t/days 12))]
+                                          ["enrolled and :required, deadline in the future"
+                                           :required (t/plus  (t/offset-date-time) (t/days 12))]]]
+      (mt/with-temporary-setting-values [mfa-enforcement          enforcement
+                                         mfa-requirement-deadline deadline]
+        (mt/with-model-cleanup [:model/AuthIdentity]
+          (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
+            (t2/insert! :model/AuthIdentity {:user_id      user-id
+                                             :provider     "totp"
+                                             :confirmed_at (t/instant)
+                                             :credentials  {:secret (totp/generate-secret)}})
+            (let [new-password (str "New-" (random-uuid))
+                  resp         (mt/client :post 200 "session/reset_password"
+                                          {:token    (auth-identity/create-password-reset! user-id)
+                                           :password new-password})]
+              (testing label
+                (testing "the password change succeeds but no session is issued — the user logs in through the gate"
+                  (is (true? (:success resp)))
+                  (is (nil? (:session_id resp))))
+                (testing "the new password works through the normal, gated login"
+                  (let [login #p (mt/client :post 200 "session" {:username email :password new-password})]
+                    (is (true? (:mfa_required login)))))))))))))
+
+(deftest password-reset-when-required-and-unenrolled-issues-no-session-test
+  (mt/with-premium-features #{:multi-factor-auth}
+    (doseq [[label enforcement deadline] [["unenrolled and :required, no deadline" :required nil]
+                                          ["unenrolled and :required, deadline past"
+                                           :required (t/minus (t/offset-date-time) (t/days 12))]]]
+      (mt/with-temporary-setting-values [mfa-enforcement          enforcement
+                                         mfa-requirement-deadline deadline]
+        (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
           (let [new-password (str "New-" (random-uuid))
                 resp         (mt/client :post 200 "session/reset_password"
                                         {:token    (auth-identity/create-password-reset! user-id)
                                          :password new-password})]
-            (testing "the password change succeeds but no session is issued — the user logs in through the gate"
-              (is (true? (:success resp)))
-              (is (nil? (:session_id resp))))
-            (testing "the new password works through the normal, gated login"
-              (let [login (mt/client :post 200 "session" {:username email :password new-password})]
-                (is (true? (:mfa_required login))))))
-          (finally
-            (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp")))))))
+            (testing label
+              (testing "the password change succeeds but no session is issued — the user logs in through the gate"
+                (is (true? (:success resp)))
+                (is (nil? (:session_id resp))))
+              (testing "the new password works through the normal, gated login"
+                (let [login #p (mt/client :post 200 "session" {:username email :password new-password})]
+                  (is (true? (:mfa_required login))))))))))))
+
+;; XXX: The above test is failing as expected since I haven't implemented this feature yet!

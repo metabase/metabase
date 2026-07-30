@@ -311,7 +311,7 @@
     (cond-> $
       (and (:user $) (not (:mfa/pending? $))) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key
-                    :mfa/pending? :mfa/methods :mfa/first-factor])))
+                    :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.

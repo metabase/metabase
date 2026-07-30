@@ -111,12 +111,6 @@
     :mysql    [:date_add :%now
                [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
 
-(premium-features/defenterprise mfa-required?
-  "Whether MFA is currently required for all users on the "
-  metabase-enterprise.mfa.core
-  []
-  false)
-
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required]

@@ -4,9 +4,11 @@
   Consumers outside this module must go through this namespace; they must not require mfa.gate,
   or mfa.settings directly."
   (:require
+   [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.gate :as gate]
    [metabase-enterprise.mfa.settings]
    [metabase-enterprise.mfa.verification :as verification]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
@@ -43,6 +45,35 @@
   :feature :none
   [user-id code jti]
   (verification/verify-attempt! user-id code jti))
+
+(defenterprise start-enrollment!
+  "Begin enrollment of a new authenticator for a user who is not currently enrolled, and attempting to log in.
+  Only called when the instance is configured to *require* MFA, but this user is not enrolled.
+
+  Precondition: caller must validate that the correct username and password for this `user-id` have been provided.
+
+  Returns a map intended for the `:body` of a response, containing the plaintext `:secret` and the `:otpauth_uri`
+  used for the QR code. Returns nil if any conditions fail (e.g. if the user is already enrolled).
+
+  OSS always returns nil, since new enrollments are not allowed without the `:multi-factor-auth` feature."
+  :feature :multi-factor-auth
+  [user-id]
+  (enrollment/start-enrollment! user-id))
+
+(defenterprise confirm-enrollment!
+  "Complete enrollment of a new authenticator for a currently pending enrollment. Requires the `user-id` and `code`,
+  plus the single-use `jti` from a [[metabase.session.challenge/issue-enrollment-token]].
+
+  On success, marks the enrollment as confirmed, consumes the OTP's time step (so it can't be reused), generates the
+  recovery codes, and consumes the `jti` so it can't be reused either.
+
+  Returns the plaintext recovery codes, or nil if any conditions fail.
+
+  Note that this actually requires the `:multi-factor-auth` feature. [[verify-second-factor!]] above will still verify
+  existing OTPs after a downgrade, but we won't allow new enrollments. The OSS counterpart always returns nil."
+  :feature :multi-factor-auth
+  [user-id code jti]
+  (enrollment/confirm-enrollment! user-id code jti))
 
 (defenterprise send-mfa-email-otp!
   "Generate + email a one-time fallback code for user-id's confirmed enrollment; rejects a jti that

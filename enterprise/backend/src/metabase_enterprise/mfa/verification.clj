@@ -47,7 +47,10 @@
   [auth-identity]
   (get-in auth-identity [:credentials :secret]))
 
-(defn- jti-used? [credentials jti]
+(defn jti-used?
+  "Given the `:credentials` and a candidate `jti`, return true if that `jti` has been previously used for these
+  credentials. Prevents reuse of a single password entry for multiple challenges or enrollments."
+  [credentials jti]
   (boolean (some #(= (:jti %) jti) (:used_jtis credentials))))
 
 (defn jti-consumed?
@@ -55,7 +58,7 @@
   [user-id jti]
   (boolean (some-> (totp-identity user-id) :credentials (jti-used? jti))))
 
-(defn- consume-jti
+(defn consume-jti
   "Record `jti` as used (nil jti = session re-auth, nothing to record), pruning expired entries."
   [credentials jti]
   (if-not jti

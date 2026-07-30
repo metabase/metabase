@@ -14,7 +14,6 @@
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
-   [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -108,14 +107,11 @@
                  (throw (ex-info (tru "Invalid password.")
                                  {:status-code 400
                                   :errors      {:password (tru "Invalid password.")}})))
-               (let [secret     (or (enrollment/start-enrollment! api/*current-user-id*)
-                                    (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
-                                                    {:status-code 400})))
-                     user-email (t2/select-one-fn :email :model/User api/*current-user-id*)]
-                 {:secret      secret
-                  :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
-                                                  :account user-email
-                                                  :secret  secret})}))))
+               ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
+               ;; re-validated their password.
+               (or (enrollment/start-enrollment! api/*current-user-id*)
+                   (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
+                                   {:status-code 400}))))))
 
 (api.macros/defendpoint :post "/enroll/confirm" :- [:map
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
