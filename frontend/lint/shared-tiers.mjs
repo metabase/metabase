@@ -25,8 +25,8 @@ const SHARED_UTILS_LEVELS = [
   ["shared/api"],
   // U2 — routing facade.
   ["shared/router"],
-  // U3 — the store.
-  ["shared/redux", "shared/redux-store"],
+  // U3 — the store slices and hooks.
+  ["shared/redux"],
   // U4 — the plugin registry.
   ["shared/plugins"],
   // U5 — app services over the store and registry.
@@ -38,8 +38,9 @@ const SHARED_UTILS_LEVELS = [
     "shared/archive",
     "shared/hooks",
   ],
-  // U6 — composition over the levels below.
-  ["shared/hoc", "shared/upsells", "shared/route-guards"],
+  // U6 — composition over the levels below. The store factory composes
+  // reducers, plugin middlewares, and the router, so it sits above them.
+  ["shared/hoc", "shared/upsells", "shared/route-guards", "shared/redux-store"],
 ];
 
 const SHARED_PLATFORM_LEVELS = [

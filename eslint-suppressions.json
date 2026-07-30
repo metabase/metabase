@@ -279,11 +279,6 @@
       "count": 1
     }
   },
-  "frontend/src/metabase/store.js": {
-    "boundaries/element-types": {
-      "count": 1
-    }
-  },
   "frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx": {
     "boundaries/element-types": {
       "count": 2
