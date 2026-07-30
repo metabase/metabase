@@ -12,7 +12,6 @@ const specialTestConfigs = [
     specs: DEFAULT_SPEC_PATTERN,
   },
   { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
-  { name: "python", tags: "@python", specs: DEFAULT_SPEC_PATTERN },
 ];
 
 /**
