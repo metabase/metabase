@@ -10,6 +10,7 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "generate-changelog": "bun generate-changelog.ts",
+    "generate-release-report": "bun generate-release-report.ts",
     "format": "oxfmt --write",
     "release-offline": "tsx release-offline.ts",
     "test:unit": "jest --testPathPattern unit",

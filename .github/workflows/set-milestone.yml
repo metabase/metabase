@@ -85,7 +85,7 @@ jobs:
         if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}
         run: |
           npm i -g tsx
-          tsx release/src/release-branch-commits.ts ${{ steps.version.outputs.major }} > commit-messages.json
+          tsx release/src/release-branch-commits-run.ts ${{ steps.version.outputs.major }} > commit-messages.json
 
       - uses: actions/github-script@v9
         if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}

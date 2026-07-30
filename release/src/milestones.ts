@@ -106,7 +106,7 @@ async function getIssuesWithOlderMilestones({
     }).map((issue) => issue.number));
 }
 
-async function getOriginalIssues({
+export async function getOriginalIssues({
   github,
   repo,
   owner,
