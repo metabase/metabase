@@ -567,6 +567,36 @@
 
 ;;; -------------------------------------------------- scopes ------------------------------------------------------
 
+(deftest query-execute-scope-gates-deferred-execution-test
+  (testing "an alert is a scheduled run of its question with the results delivered, so a token that
+            can't execute queries in-session can't schedule the scheduler to do it either — the
+            send happens later, tokenlessly, under the creator's permissions, and write time is the
+            only moment scopes can bound it"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (let [write-only #{metabot.scope/agent-alert-write}
+            with-exec  #{metabot.scope/agent-alert-write metabot.scope/agent-query-execute}
+            create-args (wire {:method "create" :card_id card-id :schedule (daily-schedule 9)})]
+        (testing "create with only the write scope is refused, naming the missing scope"
+          (is (re-find #"agent:query:execute"
+                       (tool-error (call-tool! :crowberto write-only create-args))))
+          (is (zero? (t2/count :model/NotificationCard :card_id card-id))))
+        (mt/with-model-cleanup [:model/Notification]
+          (testing "create with write + query:execute goes through"
+            (let [created (tool-result (call-tool! :crowberto with-exec create-args))]
+              (is (pos-int? (:id created)))
+              (testing "redirecting delivery with only the write scope is refused"
+                (is (re-find #"agent:query:execute"
+                             (tool-error (call-tool! :crowberto write-only
+                                                     (wire {:method "update" :id (:id created)
+                                                            :recipients ["someone@example.com"]}))))))
+              (testing "but pausing with only the write scope still works — the kill switch must
+                        never need more scope than the thing it kills"
+                (is (false? (:active (tool-result (call-tool! :crowberto write-only
+                                                              (wire {:method "update" :id (:id created)
+                                                                     :active false})))))))))))))
+  (testing "the extra scope is advertised as opt-in, so tokens can request it"
+    (is (contains? (registry/registered-opt-in-scopes) "agent:query:execute"))))
+
 (deftest ^:parallel scope-gating-test
   (let [args (wire {:method "update" :id 13371337 :active false})]
     (testing "GHY-4155: a bearer token without the alert scope is refused before dispatch"

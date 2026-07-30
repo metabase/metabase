@@ -15,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -340,6 +341,19 @@
 
 ;;; ----------------------------------------------------- tool -----------------------------------------------------
 
+(defn- check-query-execute-scope!
+  "An alert is a scheduled run of its question with the results delivered, so establishing one — or
+   redirecting where one delivers — needs the same scope that seeing those results in-session
+   would. The send itself happens later, tokenlessly, under the creator's permissions; this check
+   at write time is the only place the token's scopes can bound that deferred execution. No-op for
+   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+  [token-scopes action]
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-execute)
+    (throw (ex-info (format (str "%s runs its question and delivers the results, which requires the %s scope — "
+                                 "this token can manage alerts but not execute queries.")
+                            action metabot.scope/agent-query-execute)
+                    {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
+
 (def ^:private alert-write-args-schema
   [:map {:closed true}
    [:method [:enum "create" "update"]]
@@ -373,14 +387,20 @@
   mixing user ids and email addresses that defaults to you, or \"slack\" with slack_channel, a channel name like
   \"#data-team\" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the
   alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no
-  archived state, and this tool cannot delete one. An alert's question is fixed at creation. Alerts are for saved
-  questions; use subscription_write to schedule a whole dashboard."
-  {:name        "alert_write"
-   :scope       metabot.scope/agent-alert-write
-   :annotations {:readOnlyHint false :destructiveHint false}
-   :args        alert-write-args-schema}
-  [args _]
+  archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, or
+  changing its delivery, additionally requires the agent:query:execute scope — the alert runs the question and
+  delivers its results. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
+  {:name         "alert_write"
+   :scope        metabot.scope/agent-alert-write
+   :extra-scopes [metabot.scope/agent-query-execute]
+   :annotations  {:readOnlyHint false :destructiveHint false}
+   :args         alert-write-args-schema}
+  [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write {:create-required [:card_id :schedule]} args)]
-    (common/success-content (case op
-                              :create (create! a)
-                              :update (update! a b)))))
+    (common/success-content
+     (case op
+       :create (do (check-query-execute-scope! token-scopes "Creating an alert")
+                   (create! a))
+       :update (do (when (some #(contains? b %) [:channel :slack_channel :recipients])
+                     (check-query-execute-scope! token-scopes "Changing where an alert delivers"))
+                   (update! a b))))))
