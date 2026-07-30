@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
-import { SavedQuestionLoader } from "metabase/common/components/SavedQuestionLoader";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
+import { AdHocQuestionLoader } from "metabase/questions/components/AdHocQuestionLoader";
+import { SavedQuestionLoader } from "metabase/questions/components/SavedQuestionLoader";
 import type Question from "metabase-lib/v1/Question";
 import type { CardId, UnsavedCard } from "metabase-types/api";
 

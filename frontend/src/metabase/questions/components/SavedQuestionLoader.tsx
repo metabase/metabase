@@ -23,7 +23,7 @@ type SavedQuestionLoaderProps = {
  * @example
  *
  * Render prop style
- * import { SavedQuestionLoader } from 'metabase/common/components/SavedQuestionLoader'
+ * import { SavedQuestionLoader } from 'metabase/questions/components/SavedQuestionLoader'
  *
  * function ExampleSavedQuestionFeature({ questionId }) {
  *   return (

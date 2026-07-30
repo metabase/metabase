@@ -41,7 +41,7 @@ type AdHocQuestionLoaderProps = {
  * @example
  *
  * Render prop style
- * import { AdHocQuestionLoader } from 'metabase/common/components/AdHocQuestionLoader'
+ * import { AdHocQuestionLoader } from 'metabase/questions/components/AdHocQuestionLoader'
  *
  * function ExampleAdHocQuestionFeature({ params }) {
  *   return (
