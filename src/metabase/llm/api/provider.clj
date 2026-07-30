@@ -38,6 +38,7 @@
   [:map
    [:type :string]
    [:label :string]
+   [:icon :string]
    [:managed :boolean]
    [:singleton :boolean]
    [:available :boolean]
@@ -51,6 +52,7 @@
    [:name :string]
    [:source [:enum "db" "env"]]
    [:usable :boolean]
+   [:env_vars [:sequential :string]]
    [:config [:map-of :keyword [:maybe :string]]]])
 
 (def ^:private llm-model-response-schema
@@ -89,9 +91,10 @@
     options     (assoc :options options)))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model fields]}]
+  [{:keys [type label icon managed? singleton? default-model fields]}]
   {:type          type
    :label         (str label)
+   :icon          icon
    :managed       (boolean managed?)
    :singleton     (boolean singleton?)
    :available     (llm.provider/type-available? type)
@@ -99,13 +102,14 @@
    :fields        (mapv field-response fields)})
 
 (defn- connection-response
-  [{conn-key :key conn-name :name :keys [type source config] :as conn}]
-  {:key    conn-key
-   :type   type
-   :name   conn-name
-   :source (name (or source :db))
-   :usable (llm.provider/config-complete? type config)
-   :config (or (:config (llm.provider/redact conn)) {})})
+  [{conn-key :key conn-name :name :keys [type source config env-vars] :as conn}]
+  {:key      conn-key
+   :type     type
+   :name     conn-name
+   :source   (name (or source :db))
+   :usable   (llm.provider/config-complete? type config)
+   :env_vars (vec env-vars)
+   :config   (or (:config (llm.provider/redact conn)) {})})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
 

@@ -23,6 +23,7 @@ export function ProviderConnectionModal({
       onClose={() => onClose()}
       title={connection ? t`Edit provider` : t`Add a provider`}
       padding="xl"
+      size="lg"
     >
       <ProviderConnectionForm
         providerTypes={providerTypes}

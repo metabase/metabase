@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -7,7 +8,15 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Button, Flex, Group, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Group,
+  Stack,
+  Stepper,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import type {
   LlmProviderConfig,
   LlmProviderConnection,
@@ -15,7 +24,8 @@ import type {
 } from "metabase-types/api";
 
 import { ProviderConfigFields } from "./ProviderConfigFields";
-import { ProviderTypeSelect } from "./ProviderTypeSelect";
+import { ProviderTypeIcon } from "./ProviderTypeIcon";
+import { ProviderTypePicker } from "./ProviderTypePicker";
 
 export function ProviderConnectionForm({
   providerTypes,
@@ -57,6 +67,13 @@ export function ProviderConnectionForm({
     setConfig({});
   };
 
+  const handleBack = () => {
+    setTypeName(undefined);
+    setName("");
+    setConfig({});
+    setError(undefined);
+  };
+
   const isComplete =
     providerType != null &&
     providerType.fields
@@ -87,18 +104,38 @@ export function ProviderConnectionForm({
   return (
     <Stack gap="lg">
       {!isEditing && (
-        <ProviderTypeSelect
-          providerTypes={providerTypes}
-          value={typeName}
-          onChange={handleTypeChange}
-        />
+        <Stepper
+          active={providerType ? 1 : 0}
+          allowNextStepsSelect={false}
+          size="sm"
+        >
+          <Stepper.Step label={t`Provider`} />
+          <Stepper.Step label={t`Configure`} />
+        </Stepper>
       )}
 
-      {providerType?.managed ? (
-        <MetabaseAIProviderSetup onConnect={() => onSaved()} />
-      ) : (
-        providerType && (
-          <>
+      {match({ isEditing, providerType })
+        .with({ isEditing: false, providerType: P.nullish }, () => (
+          <ProviderTypePicker
+            providerTypes={providerTypes}
+            onSelect={handleTypeChange}
+          />
+        ))
+        .with(
+          { providerType: { managed: true } },
+          ({ providerType: selected }) => (
+            <Stack gap="lg">
+              {!isEditing && <SelectedProvider providerType={selected} />}
+              <MetabaseAIProviderSetup
+                onConnect={() => onSaved()}
+                onCancel={isEditing ? undefined : handleBack}
+              />
+            </Stack>
+          ),
+        )
+        .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
+          <Stack gap="lg">
+            {!isEditing && <SelectedProvider providerType={selected} />}
             <TextInput
               label={t`Display name`}
               description={t`What this connection is called in the model picker.`}
@@ -107,7 +144,7 @@ export function ProviderConnectionForm({
               disabled={isSaving}
             />
             <ProviderConfigFields
-              fields={providerType.fields}
+              fields={selected.fields}
               values={config}
               onChange={(key, value) =>
                 setConfig((current) => ({ ...current, [key]: value }))
@@ -117,9 +154,15 @@ export function ProviderConnectionForm({
             {error && <Text c="error">{error}</Text>}
             <Flex justify="end">
               <Group gap="sm">
-                {onCancel && (
-                  <Button onClick={onCancel} disabled={isSaving}>
-                    {t`Cancel`}
+                {isEditing ? (
+                  onCancel && (
+                    <Button onClick={onCancel} disabled={isSaving}>
+                      {t`Cancel`}
+                    </Button>
+                  )
+                ) : (
+                  <Button onClick={handleBack} disabled={isSaving}>
+                    {t`Back`}
                   </Button>
                 )}
                 <Button
@@ -132,9 +175,21 @@ export function ProviderConnectionForm({
                 </Button>
               </Group>
             </Flex>
-          </>
-        )
-      )}
+          </Stack>
+        ))
+        .otherwise(() => null)}
     </Stack>
+  );
+}
+
+function SelectedProvider({ providerType }: { providerType: LlmProviderType }) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      <ProviderTypeIcon icon={providerType.icon} />
+      <Stack gap={0}>
+        <Text fw="bold">{providerType.label}</Text>
+        <Text c="text-secondary" size="sm">{t`Selected provider`}</Text>
+      </Stack>
+    </Group>
   );
 }

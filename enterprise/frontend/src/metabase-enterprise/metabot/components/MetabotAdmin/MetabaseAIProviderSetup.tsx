@@ -54,6 +54,7 @@ import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
 export function MetabaseAIProviderSetup({
   onConnect,
+  onCancel,
 }: MetabaseAIProviderSetupProps) {
   const offerMetabaseManagedAi = !!hasPremiumFeature(
     OFFER_METABASE_MANAGED_AI_FEATURE,
@@ -269,16 +270,23 @@ export function MetabaseAIProviderSetup({
               />
             ))}
 
-          {connectAction && (
-            <Flex justify="end">
-              <Button
-                variant="filled"
-                loading={isMutating}
-                disabled={isMutating}
-                onClick={connectAction}
-              >
-                {t`Connect`}
-              </Button>
+          {(onCancel || connectAction) && (
+            <Flex justify={onCancel ? "space-between" : "end"}>
+              {onCancel && (
+                <Button disabled={isMutating} onClick={onCancel}>
+                  {t`Back`}
+                </Button>
+              )}
+              {connectAction && (
+                <Button
+                  variant="filled"
+                  loading={isMutating}
+                  disabled={isMutating}
+                  onClick={connectAction}
+                >
+                  {t`Connect`}
+                </Button>
+              )}
             </Flex>
           )}
         </>

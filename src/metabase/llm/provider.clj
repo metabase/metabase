@@ -38,6 +38,7 @@
   secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
+    :icon          "ai"
     :default-model "claude-sonnet-4-6"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -52,6 +53,7 @@
                      :default "https://api.anthropic.com"}]}
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
+    :icon          "sparkles"
     :default-model "gpt-5.4"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -66,6 +68,7 @@
                      :default "https://api.openai.com"}]}
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
+    :icon          "arrow_split"
     :default-model "anthropic/claude-sonnet-4.6"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -80,6 +83,7 @@
                      :default "https://openrouter.ai/api"}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
+    :icon          "cloud"
     :default-model nil
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -94,6 +98,7 @@
                      :placeholder "https://<resource>.services.ai.azure.com/openai"}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
+    :icon          "database"
     :default-model "anthropic.claude-opus-4-8"
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")
@@ -116,6 +121,7 @@
                      :help  (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase")
+    :icon          "metabot"
     :managed?      true
     :singleton?    true
     :default-model "anthropic/claude-sonnet-4-6"
@@ -254,11 +260,16 @@
     (when (some (fn [[config-key {:keys [credential?]}]]
                   (and credential? (env-set? config-key)))
                 settings)
-      {:key    conn-key
-       :type   type
-       :name   (str (:label (provider-type type)))
-       :source :env
-       :config (legacy-setting-values settings #(setting/get-value-of-type :string %))})))
+      {:key      conn-key
+       :type     type
+       :name     (str (:label (provider-type type)))
+       :source   :env
+       :env-vars (into (sorted-set)
+                       (keep (fn [[config-key {:keys [setting]}]]
+                               (when (env-set? config-key)
+                                 (setting/env-var-name setting))))
+                       settings)
+       :config   (legacy-setting-values settings #(setting/get-value-of-type :string %))})))
 
 (defn- env-connections
   "Connections synthesized from the single-provider `MB_LLM_*` environment variables."
@@ -285,8 +296,11 @@
 
 (defn- stored-connections
   []
-  (let [source (if (some? (setting/env-var-value :llm-providers)) :env :db)]
-    (into [] (map #(assoc % :source source)) (llm.settings/llm-providers))))
+  (let [env-managed? (some? (setting/env-var-value :llm-providers))
+        annotate     (fn [conn]
+                       (cond-> (assoc conn :source (if env-managed? :env :db))
+                         env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
+    (into [] (map annotate) (llm.settings/llm-providers))))
 
 (defn connections
   "Every connection this instance can use, in admin-facing order.
