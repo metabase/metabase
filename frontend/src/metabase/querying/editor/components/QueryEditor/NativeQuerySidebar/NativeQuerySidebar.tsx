@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/parameters/components/template_tags/TagEditorSidebar";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";

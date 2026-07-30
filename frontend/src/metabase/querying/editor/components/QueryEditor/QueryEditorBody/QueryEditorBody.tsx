@@ -5,6 +5,7 @@ import { useWindowSize } from "react-use";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSetting } from "metabase/settings";
@@ -209,7 +210,7 @@ export function QueryEditorBody({
         onRejectProposed={onRejectProposed}
       >
         <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
+          <NativeQueryParametersList />
           {topBarInnerContent}
           <NativeQueryEditor.Sidebar
             features={NATIVE_EDITOR_SIDEBAR_FEATURES}

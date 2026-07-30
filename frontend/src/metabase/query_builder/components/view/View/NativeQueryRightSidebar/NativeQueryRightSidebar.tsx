@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { TagEditorSidebar } from "metabase/parameters/components/template_tags/TagEditorSidebar";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { AIQuestionAnalysisSidebar } from "metabase/query_builder/components/AIQuestionAnalysisSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
@@ -9,7 +10,6 @@ import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";

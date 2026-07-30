@@ -1,4 +1,5 @@
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
 import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -105,7 +106,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
       >
         <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
+          <NativeQueryParametersList />
           <NativeQueryEditor.Sidebar />
           <NativeQueryEditor.VisibilityToggler />
         </NativeQueryEditor.TopBar>

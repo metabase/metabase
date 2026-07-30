@@ -1,8 +1,8 @@
 import type { ChangeEvent } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
-import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { NativeQueryEditorCoreProps } from "../NativeQueryEditorRoot";
@@ -78,6 +78,5 @@ export const NativeQueryEditor = ({
 const Noop = () => null;
 NativeQueryEditor.TopBar = Noop;
 NativeQueryEditor.Sidebar = Noop;
-NativeQueryEditor.ParametersList = Noop;
 NativeQueryEditor.VisibilityToggler = Noop;
 NativeQueryEditor.RunButton = Noop;
