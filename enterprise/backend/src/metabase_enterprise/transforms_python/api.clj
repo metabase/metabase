@@ -10,6 +10,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.permissions.core :as perms]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -58,22 +59,35 @@
    _
    {:keys [code
            source_tables
+           ingestion
+           transform_id
            output_row_limit
            per_input_row_limit]
     :or   {output_row_limit    100
            per_input_row_limit 100}}
    :- [:map
        [:code                                 :string]
-       [:source_tables                        [:sequential {:min 1} ::transforms-base.u/source-table-entry]]
+       ;; an ingestion transform has none: it materializes its own input
+       [:source_tables                        [:sequential ::transforms-base.u/source-table-entry]]
+       [:ingestion           {:optional true} [:maybe :boolean]]
+       ;; when the draft belongs to a saved transform, its stored secrets are used for the preview
+       [:transform_id        {:optional true} [:maybe ms/PositiveInt]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
-  (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (map :table_id source_tables)])]
-    (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
-    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
+  (if (empty? source_tables)
+    (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
+    (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (map :table_id source_tables)])]
+      (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
+      (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))))
   ;; NOTE: we do not test database support, as there is no write target.
-  (let [result (executor/execute-and-read-output!
+  (let [secrets (when transform_id
+                  (api/write-check :model/Transform transform_id)
+                  (transforms.core/secrets-for-run transform_id))
+        result (executor/execute-and-read-output!
                 {:code            code
                  :source-tables   source_tables
+                 :ingestion?      (boolean ingestion)
+                 :secrets         secrets
                  :per-input-limit per_input_row_limit
                  :row-limit       output_row_limit
                  :timeout-secs    (transforms-python.settings/python-runner-test-run-timeout-seconds)})

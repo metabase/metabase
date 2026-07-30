@@ -135,6 +135,8 @@
    Args:
      :code          - Python code to execute
      :source-tables - Sequential of source-table entries [{:alias ... :table_id ...} ...]
+     :ingestion?    - Whether the code fetches its own data, which selects the isolated backend
+     :secrets       - Secrets to expose to the code, keyed by name
      :row-limit     - Max rows to return (also limits input rows)
      :timeout-secs  - Optional timeout override
 
@@ -145,7 +147,7 @@
       :logs    [{:message ...} ...]   ; events from Python execution
       :message \"error message\"}     ; on failure
 "
-  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
+  [{:keys [code source-tables ingestion? secrets per-input-limit row-limit timeout-secs]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
     (let [_ (python-runner/copy-tables-to-s3! {:shared-storage @shared-storage-ref
                                                :source         {:source-tables source-tables}
@@ -155,6 +157,8 @@
            {:code           code
             :request-id     (u/generate-nano-id)
             :source-tables  source-tables
+            :ingestion?     ingestion?
+            :secrets        secrets
             :timeout-secs   timeout-secs
             :shared-storage @shared-storage-ref})
           events (python-runner/read-events @shared-storage-ref)]

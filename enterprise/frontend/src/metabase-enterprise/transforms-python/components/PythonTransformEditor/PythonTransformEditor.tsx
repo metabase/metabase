@@ -38,7 +38,7 @@ export function PythonTransformEditor({
   onRun,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
-    useTestPythonTransform(source);
+    useTestPythonTransform(source, transform?.id);
 
   useEffect(() => {
     const errMsg = [executionResult?.error?.message, executionResult?.logs]

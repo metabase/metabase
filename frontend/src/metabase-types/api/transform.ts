@@ -58,7 +58,7 @@ export type Transform = {
 
   last_checkpoint_value?: string | null;
 
-  // opaque cursor an ingestion transform returns from its code to resume the next run
+  // opaque sync state an ingestion transform returns from its code to resume the next run
   sync_state?: unknown;
 
   // names of configured secret env vars (values never leave the server)
@@ -128,7 +128,7 @@ export type PythonTransformSourceDraft = {
   "source-tables": PythonTransformTableAliases;
   /**
    * Declares that the transform fetches its own data over the network instead of reading source
-   * tables. Such a transform may hold secrets and manages its own incremental cursor. The backend
+   * tables. Such a transform may hold secrets and manages its own incremental sync state. The backend
    * rejects it when `source-tables` is non-empty.
    */
   ingestion?: boolean;
@@ -310,6 +310,8 @@ export type CreateTransformRequest = {
   collection_id?: number | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
+  // write-only, map of secret name -> value
+  secrets?: Record<string, string>;
 };
 
 export type UpdateTransformRequest = {
@@ -481,6 +483,9 @@ export type ListTransformGraphRunsResponse = {
 export type TestPythonTransformRequest = {
   code: string;
   source_tables: PythonTransformTableAliases;
+  ingestion?: boolean;
+  // a saved transform lends its stored secrets to the preview run
+  transform_id?: TransformId;
 };
 
 export type TestPythonTransformResponse = {
