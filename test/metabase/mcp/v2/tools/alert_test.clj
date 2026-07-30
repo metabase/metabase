@@ -590,12 +590,55 @@
                                                      (wire {:method "update" :id (:id created)
                                                             :recipients ["someone@example.com"]}))))))
               (testing "but pausing with only the write scope still works — the kill switch must
-                        never need more scope than the thing it kills"
-                (is (false? (:active (tool-result (call-tool! :crowberto write-only
-                                                              (wire {:method "update" :id (:id created)
-                                                                     :active false})))))))))))))
+                        never need more scope than the thing it kills (the response is the
+                        GHY-4217 ack, so the effect is asserted from the database)"
+                (is (= (:id created)
+                       (:id (tool-result (call-tool! :crowberto write-only
+                                                     (wire {:method "update" :id (:id created)
+                                                            :active false}))))))
+                (is (false? (t2/select-one-fn :active :model/Notification :id (:id created)))))))))))
   (testing "the extra scope is advertised as opt-in, so tokens can request it"
     (is (contains? (registry/registered-opt-in-scopes) "agent:query:execute"))))
+
+(deftest write-response-respects-read-scopes-test
+  (testing "GHY-4217: a write scope must not double as a read scope — without the alert read scopes
+            the response is a minimal ack, so a no-op update can't read the recipients back"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [write-only #{metabot.scope/agent-alert-write metabot.scope/agent-query-execute}
+              readable   (conj write-only "agent:resource:read" "agent:notification:read")
+              created    (tool-result (call-tool! :crowberto write-only
+                                                  (wire {:method "create" :card_id card-id
+                                                         :schedule (daily-schedule 9)})))]
+          (testing "create without the read scopes returns the ack, not the alert"
+            (is (pos-int? (:id created)))
+            (is (not (contains? created :handlers)))
+            (is (re-find #"agent:notification:read" (:note created))))
+          (testing "and a no-op update can't read the body back either"
+            (is (not (contains? (tool-result (call-tool! :crowberto write-only
+                                                         (wire {:method "update" :id (:id created)
+                                                                :active true})))
+                                :handlers))))
+          (testing "with the read scopes the full body comes back"
+            (is (contains? (tool-result (call-tool! :crowberto readable
+                                                    (wire {:method "update" :id (:id created)
+                                                           :active true})))
+                           :handlers))))))))
+
+(deftest update-rejections-are-indistinguishable-test
+  (testing "GHY-4217: a recipient can read an alert but not update it; that rejection must match
+            the not-found a stranger gets, or probing ids tells delivery targets apart"
+    (notification.tu/with-card-notification
+      [notification {:card         {}
+                     :notification {:creator_id (mt/user->id :crowberto)}
+                     :handlers     [{:channel_type :channel/email
+                                     :recipients   [{:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :rasta)}]}]}]
+      (let [norm #(str/replace % #"\d+" "N")]
+        (is (= (norm (tool-error (call-tool! :rasta nil (wire {:method "update" :id (:id notification)
+                                                               :active false}))))
+               (norm (tool-error (call-tool! :rasta nil (wire {:method "update" :id 13371337
+                                                               :active false}))))))))))
 
 (deftest ^:parallel scope-gating-test
   (let [args (wire {:method "update" :id 13371337 :active false})]

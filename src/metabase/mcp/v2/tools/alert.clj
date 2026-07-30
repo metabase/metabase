@@ -329,12 +329,20 @@
       (common/throw-teaching-error
        (str "This alert delivers over more than one channel, and alert_write writes a single one — "
             "editing its delivery here would silently drop the others. Edit it in Metabase instead.")))
-    (let [updated (notification.api/update-notification!
-                   id
-                   (cond-> (assoc existing :payload payload)
-                     (some? active) (assoc :active (boolean active))
-                     schedule       (assoc :subscriptions (cron-subscription schedule))
-                     delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))])))]
+    (let [updated (try
+                    (notification.api/update-notification!
+                     id
+                     (cond-> (assoc existing :payload payload)
+                       (some? active) (assoc :active (boolean active))
+                       schedule       (assoc :subscriptions (cron-subscription schedule))
+                       delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))])))
+                    ;; GHY-4217: a recipient can read the alert but not update it, so the API's 403
+                    ;; here would tell targets apart from the collapsed not-found the fetch gives
+                    ;; everyone else — an existence oracle. Rejections must be indistinguishable.
+                    (catch clojure.lang.ExceptionInfo e
+                      (if (= 403 (:status-code (ex-data e)))
+                        (common/throw-not-found "alert" id)
+                        (throw e))))]
       (when delivery?
         (notify-creator-of-delivery-change! updated))
       (alert-response updated))))
@@ -398,9 +406,12 @@
   [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write {:create-required [:card_id :schedule]} args)]
     (common/success-content
-     (case op
-       :create (do (check-query-execute-scope! token-scopes "Creating an alert")
-                   (create! a))
-       :update (do (when (some #(contains? b %) [:channel :slack_channel :recipients])
-                     (check-query-execute-scope! token-scopes "Changing where an alert delivers"))
-                   (update! a b))))))
+     ;; Reading an alert back demands the read tool's base scope plus the notification extra —
+     ;; without them the response is the minimal ack, or a no-op update reads the recipients.
+     (common/readback token-scopes [metabot.scope/agent-resource-read metabot.scope/agent-notification-read]
+                      (case op
+                        :create (do (check-query-execute-scope! token-scopes "Creating an alert")
+                                    (create! a))
+                        :update (do (when (some #(contains? b %) [:channel :slack_channel :recipients])
+                                      (check-query-execute-scope! token-scopes "Changing where an alert delivers"))
+                                    (update! a b)))))))

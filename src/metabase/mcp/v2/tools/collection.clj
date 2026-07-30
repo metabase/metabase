@@ -139,9 +139,10 @@
    ;; additive-only update `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
    :args        collection-write-args-schema}
-  [args _]
+  [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write collection-write-entry args)
-        payload  (case op
-                   :create (create! a)
-                   :update (update! a b))]
+        payload  (common/readback token-scopes [metabot.scope/agent-resource-read]
+                                  (case op
+                                    :create (create! a)
+                                    :update (update! a b)))]
     (common/success-content payload payload)))

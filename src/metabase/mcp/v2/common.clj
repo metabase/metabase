@@ -13,6 +13,7 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.core :as lib]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
    [metabase.metabot.tools.construct :as metabot.construct]
@@ -318,6 +319,22 @@
      (select-tree response-map (paths->tree fields)))))
 
 ;;; ------------------------------------------------ _write dispatch -----------------------------------------------
+
+(defn readback
+  "GHY-4217: `row` when `token-scopes` could read the entity back through the read tools, else a
+   minimal `{id, url?, note}` acknowledgement — a write succeeding must never double as a read,
+   or the write scope becomes a read oracle for content the token's read scopes deny (a no-op
+   update would return the full entity). `read-scopes` is everything the read path would demand:
+   the read tool's own scope plus any per-type extra. Unscoped callers (cookie sessions bind the
+   unrestricted sentinel) always get the row."
+  [token-scopes read-scopes row]
+  (let [missing (remove #(mcp.scope/matches? token-scopes %) read-scopes)]
+    (if (empty? missing)
+      row
+      (assoc (select-keys row [:id :url])
+             :note (format "Written. Reading it back requires the %s scope%s this token doesn't have."
+                           (str/join " and " missing)
+                           (if (next missing) "s" ""))))))
 
 (defn dispatch-write
   "Shared `method` dispatch for `_write` tools. `entry` carries the tool's write contract:

@@ -69,8 +69,9 @@
 
 (def ^:private write-scope
   "The single scope metric_write is gated on, create and update alike — matching segment_write and
-   measure_write rather than question_write's create/update split."
-  #{"agent:metric:write"})
+   measure_write rather than question_write's create/update split. resource:read rides along so
+   these tests get full responses back; without it the tool answers with the GHY-4217 minimal ack."
+  #{"agent:metric:write" "agent:resource:read"})
 
 ;;; ------------------------------------------------ Definitions ---------------------------------------------------
 

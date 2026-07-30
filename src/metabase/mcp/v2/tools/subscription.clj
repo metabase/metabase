@@ -372,4 +372,6 @@
                                  (check-query-execute-scope! token-scopes "Changing where a subscription delivers"))
                                (update! a b)))]
     (common/success-content
-     (projections/project :subscription :concise (projections/subscription-row (pulse/retrieve-pulse id))))))
+     (common/readback token-scopes [metabot.scope/agent-resource-read metabot.scope/agent-notification-read]
+                      (projections/project :subscription :concise
+                                           (projections/subscription-row (pulse/retrieve-pulse id)))))))

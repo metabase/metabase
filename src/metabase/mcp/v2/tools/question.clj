@@ -322,11 +322,12 @@
    ;; `destructiveHint false` would assert.
    :annotations  {:readOnlyHint false :destructiveHint true}
    :args         question-write-args-schema}
-  [args {:keys [session-id]}]
+  [args {:keys [token-scopes session-id]}]
   (let [[op a b] (common/dispatch-write
                   {:create-required [:name]}
                   args)
-        payload (case op
-                  :create (create! a session-id)
-                  :update (update! a b session-id))]
+        payload (common/readback token-scopes [metabot.scope/agent-resource-read]
+                                 (case op
+                                   :create (create! a session-id)
+                                   :update (update! a b session-id)))]
     (common/success-content payload payload)))

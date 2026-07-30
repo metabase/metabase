@@ -348,6 +348,24 @@
           (testing "the card is untouched"
             (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
 
+(deftest write-response-respects-read-scope-test
+  (testing "GHY-4217: without agent:resource:read the response is a minimal ack — the write scope
+            must not double as a read scope"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [args  {:method "create" :name "Ack Q"
+                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
+              acked (:structuredContent (registry/call-tool #{"agent:question:write"}
+                                                            (str (random-uuid)) "question_write" args))]
+          (is (pos-int? (:id acked)))
+          (is (re-find #"agent:resource:read" (:note acked)))
+          (is (not (contains? acked :name)))
+          (testing "with the read scope the full response comes back"
+            (let [full (:structuredContent (registry/call-tool #{"agent:question:write" "agent:resource:read"}
+                                                               (str (random-uuid)) "question_write"
+                                                               (assoc args :name "Full Q")))]
+              (is (= "Full Q" (:name full))))))))))
+
 (deftest question-write-scopes-registered-test
   (testing "the unified write scope flows into the OAuth surface"
     (let [scopes (set (registry/registered-scopes))]

@@ -329,7 +329,7 @@
    ;; `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
    :args        segment-write-args-schema}
-  [args _]
+  [args {:keys [token-scopes]}]
   (let [dispatched (common/dispatch-write segment-write-entry args)]
     (case (first dispatched)
       :create
@@ -342,6 +342,7 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :segment)
+            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
             common/success-content))
 
       :update
@@ -356,6 +357,7 @@
                                               (t2/select-one :model/Table :id (:table_id segment)))))]
         (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
+            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
             common/success-content)))))
 
 ;;; ------------------------------------------------ measure_write -------------------------------------------------
@@ -395,7 +397,7 @@
    ;; `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
    :args        measure-write-args-schema}
-  [args _]
+  [args {:keys [token-scopes]}]
   (let [dispatched (common/dispatch-write measure-write-entry args)]
     (case (first dispatched)
       :create
@@ -408,6 +410,7 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :measure)
+            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
             common/success-content))
 
       :update
@@ -422,4 +425,5 @@
                                               (t2/select-one :model/Table :id (:table_id measure)))))]
         (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
+            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
             common/success-content)))))

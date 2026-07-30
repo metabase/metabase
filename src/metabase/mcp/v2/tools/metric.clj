@@ -230,17 +230,18 @@
    :scope        metabot.scope/agent-metric-write
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         metric-write-args-schema}
-  [args {:keys [session-id]}]
+  [args {:keys [token-scopes session-id]}]
   (let [dispatched (common/dispatch-write metric-write-entry args)
-        payload    (case (first dispatched)
-                     :create
-                     (let [[_ body] dispatched]
-                       (when (contains? body :archived)
-                         (common/throw-teaching-error
-                          "`archived` applies to method \"update\" only — remove it from this create call."))
-                       (create! body session-id))
+        payload    (common/readback token-scopes [metabot.scope/agent-resource-read]
+                                    (case (first dispatched)
+                                      :create
+                                      (let [[_ body] dispatched]
+                                        (when (contains? body :archived)
+                                          (common/throw-teaching-error
+                                           "`archived` applies to method \"update\" only — remove it from this create call."))
+                                        (create! body session-id))
 
-                     :update
-                     (let [[_ id body] dispatched]
-                       (update! id body session-id)))]
+                                      :update
+                                      (let [[_ id body] dispatched]
+                                        (update! id body session-id))))]
     (common/success-content payload payload)))

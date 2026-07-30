@@ -613,10 +613,12 @@
                                                (wire {:method "update" :id pulse-id
                                                       :recipients ["someone@example.com"]}))))))
         (testing "but pausing with only the write scope still works — the kill switch must never
-                  need more scope than the thing it kills"
-          (is (true? (:archived (tool-result (call-tool! :crowberto write-only
-                                                         (wire {:method "update" :id pulse-id
-                                                                :archived true}))))))))))
+                  need more scope than the thing it kills (the response is the GHY-4217 ack, so
+                  the effect is asserted from the database)"
+          (is (= pulse-id (:id (tool-result (call-tool! :crowberto write-only
+                                                        (wire {:method "update" :id pulse-id
+                                                               :archived true}))))))
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))))))
   (testing "the extra scope is advertised as opt-in, so tokens can request it"
     (is (contains? (registry/registered-opt-in-scopes) "agent:query:execute"))))
 
@@ -651,9 +653,11 @@
                                                                :dashboard_id dash-id
                                                                :schedule     {:schedule_type "hourly"}})))))))
           (testing "update"
-            (is (true? (:archived (tool-result (call-tool! :crowberto write-scope
-                                                           (wire {:method "update" :id pulse-id
-                                                                  :archived true})))))))
+            ;; the bare write scope gets the GHY-4217 ack back, so assert the effect from the db
+            (is (= pulse-id (:id (tool-result (call-tool! :crowberto write-scope
+                                                          (wire {:method "update" :id pulse-id
+                                                                 :archived true}))))))
+            (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))
           (testing "the v1 subscribe scope alone is refused, and nothing changes"
             (is (re-find #"Insufficient scope"
                          (tool-error (call-tool! :crowberto #{"agent:dashboard:subscribe"}
