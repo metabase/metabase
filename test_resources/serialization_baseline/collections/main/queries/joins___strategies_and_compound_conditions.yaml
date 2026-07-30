@@ -665,7 +665,7 @@ result_metadata:
   qp/implicit-field?: true
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: wpW9JO5MsHQd0-7WrR7gN
   label: joins___strategies_and_compound_conditions

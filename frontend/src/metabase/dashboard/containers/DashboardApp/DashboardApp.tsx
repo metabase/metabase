@@ -121,8 +121,11 @@ export const DashboardApp = () => {
           }),
         );
       }
-      const hash = stringifyHashOptions(options);
-      await dispatch(replace({ ...location, hash: hash ? "#" + hash : "" }));
+      const hashString = stringifyHashOptions(options);
+      const hash = hashString ? "#" + hashString : "";
+      if (hash !== location.hash) {
+        await dispatch(replace({ ...location, hash }));
+      }
     } catch (error) {
       // 400: provided entity id format is invalid.
       if (

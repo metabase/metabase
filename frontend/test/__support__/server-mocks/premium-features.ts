@@ -1,4 +1,6 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type RouteResponse } from "fetch-mock";
+
+import { createMockTokenStatus } from "metabase-types/api/mocks";
 
 export const setupTokenStatusEndpoint = ({
   valid,
@@ -26,9 +28,18 @@ export const setupTokenStatusEndpointEmpty = () => {
   });
 };
 
-export const setupTokenRefreshEndpoint = () => {
-  fetchMock.post("path:/api/premium-features/token/refresh", 200, {
-    name: "premium-token-refresh",
+/**
+ * Defaults to a plausible `TokenStatus` body, which is what callers of
+ * `useTokenRefreshUntil` read. Pass `response` a status code for failure cases
+ * or a `TokenStatus` carrying the features a test waits on.
+ */
+export const setupTokenRefreshEndpoint = (
+  response: RouteResponse = createMockTokenStatus(),
+) => {
+  const name = "premium-token-refresh";
+  fetchMock.removeRoute(name);
+  fetchMock.post("path:/api/premium-features/token/refresh", response, {
+    name,
   });
 };
 

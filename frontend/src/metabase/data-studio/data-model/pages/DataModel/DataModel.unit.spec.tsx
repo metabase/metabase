@@ -24,7 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link, Route, redirect, withRouteProps } from "metabase/router";
+import { Link, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -60,8 +60,6 @@ import {
 
 import { DataModel } from "./DataModel";
 import type { ParsedRouteParams } from "./types";
-
-const RoutedDataModel = withRouteProps(DataModel);
 
 registerVisualizations();
 
@@ -259,11 +257,11 @@ async function setup({
       <Route path="notData" element={<OtherComponent />} />
       <Route path="data-studio/data">
         <Route index element={redirect("database")} />
-        <Route path="database" element={<RoutedDataModel />} />
-        <Route path="database/:databaseId" element={<RoutedDataModel />} />
+        <Route path="database" element={<DataModel />} />
+        <Route path="database/:databaseId" element={<DataModel />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          element={<RoutedDataModel />}
+          element={<DataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
@@ -273,11 +271,11 @@ async function setup({
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-          element={<RoutedDataModel />}
+          element={<DataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-          element={<RoutedDataModel />}
+          element={<DataModel />}
         />
       </Route>
       <Route path="data-studio/library/segments/new" />

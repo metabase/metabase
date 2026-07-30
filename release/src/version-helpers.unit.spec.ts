@@ -23,6 +23,14 @@ import {
   isValidVersionString,
   versionSort,
 } from "./version-helpers";
+import { isLtsVersion } from "./version-info";
+
+jest.mock("./version-info", () => ({
+  __esModule: true,
+  isLtsVersion: jest.fn().mockResolvedValue(false),
+}));
+
+const mockIsLtsVersion = jest.mocked(isLtsVersion);
 
 describe("version-helpers", () => {
   describe("isValidVersionString", () => {
@@ -750,43 +758,32 @@ describe("version-helpers", () => {
   });
 
   describe("getExtraTagsForVersion", () => {
-    it("should return the correct extra tags for a major version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.0" })).toEqual([
+    beforeEach(() => {
+      mockIsLtsVersion.mockReset();
+      mockIsLtsVersion.mockResolvedValue(false);
+    });
+
+    it("should return the correct extra tags for a major version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.0" })).toEqual([
         "v0.75.x",
         "v1.75.x",
       ]);
 
-      expect(getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
+      expect(await getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
         "v0.75.x",
         "v1.75.x",
       ]);
     });
 
-    it("should return the correct extra tags for a minor version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.1" })).toEqual([
+    it("should return the correct extra tags for a minor version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.1" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
         "v1.75.1.x",
       ]);
 
-      expect(getExtraTagsForVersion({ version: "v0.75.1" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-      ]);
-    });
-
-    it("should return the correct extra tags for a patch version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.1.3" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-      ]);
-
-      expect(getExtraTagsForVersion({ version: "v0.75.1.3" })).toEqual([
+      expect(await getExtraTagsForVersion({ version: "v0.75.1" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
@@ -794,20 +791,15 @@ describe("version-helpers", () => {
       ]);
     });
 
-    it("should return the correct extra tags for a beta version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-      ]);
-
-      expect(getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
+    it("should return the correct extra tags for a patch version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.1.3" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
         "v1.75.1.x",
       ]);
 
-      expect(getExtraTagsForVersion({ version: "v0.75.1.2-beta" })).toEqual([
+      expect(await getExtraTagsForVersion({ version: "v0.75.1.3" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
@@ -815,59 +807,92 @@ describe("version-helpers", () => {
       ]);
     });
 
-    it("should add latest tag when version major matches latestMajorVersion", () => {
+    it("should return the correct extra tags for a beta version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+
+      expect(await getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
       expect(
-        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({ version: "v0.75.1.2-beta" }),
+      ).toEqual(["v0.75.x", "v1.75.x", "v0.75.1.x", "v1.75.1.x"]);
+    });
+
+    it("should add latest tag when version major matches latestMajorVersion", async () => {
+      expect(
+        await getExtraTagsForVersion({
+          version: "v0.58.1",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
 
       expect(
-        getExtraTagsForVersion({ version: "v1.58.2", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v1.58.2",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.2.x", "v1.58.2.x", "latest"]);
     });
 
-    it("should add latest tag for major versions when major matches latestMajorVersion", () => {
+    it("should add latest tag for major versions when major matches latestMajorVersion", async () => {
       expect(
-        getExtraTagsForVersion({ version: "v0.58.0", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v0.58.0",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
     });
 
-    it("should add latest tag for patch versions when major matches latestMajorVersion", () => {
+    it("should add latest tag for patch versions when major matches latestMajorVersion", async () => {
       expect(
-        getExtraTagsForVersion({
+        await getExtraTagsForVersion({
           version: "v0.58.1.3",
           latestMajorVersion: "58",
         }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
     });
 
-    it("should NOT add latest tag when version major does not match latestMajorVersion", () => {
+    it("should NOT add latest tag when version major does not match latestMajorVersion", async () => {
       expect(
-        getExtraTagsForVersion({ version: "v0.57.5", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v0.57.5",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.57.x", "v1.57.x", "v0.57.5.x", "v1.57.5.x"]);
 
       expect(
-        getExtraTagsForVersion({ version: "v0.59.0", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v0.59.0",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.59.x", "v1.59.x"]);
     });
 
-    it("should add latest tag for pre-release versions when major matches", () => {
+    it("should add latest tag for pre-release versions when major matches", async () => {
       expect(
-        getExtraTagsForVersion({
+        await getExtraTagsForVersion({
           version: "v0.58.1-rc1",
           latestMajorVersion: "58",
         }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
 
       expect(
-        getExtraTagsForVersion({
+        await getExtraTagsForVersion({
           version: "v0.58.0-beta",
           latestMajorVersion: "58",
         }),
       ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
     });
 
-    it("should NOT add latest tag when latestMajorVersion is not provided", () => {
-      expect(getExtraTagsForVersion({ version: "v0.58.1" })).toEqual([
+    it("should NOT add latest tag when latestMajorVersion is not provided", async () => {
+      expect(await getExtraTagsForVersion({ version: "v0.58.1" })).toEqual([
         "v0.58.x",
         "v1.58.x",
         "v0.58.1.x",
@@ -875,8 +900,22 @@ describe("version-helpers", () => {
       ]);
 
       expect(
-        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "" }),
+        await getExtraTagsForVersion({
+          version: "v0.58.1",
+          latestMajorVersion: "",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
+    });
+
+    it("should append a <major>-lts tag when isLtsVersion is true", async () => {
+      mockIsLtsVersion.mockResolvedValue(true);
+
+      expect(await getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75-lts",
+        "v1.75-lts",
+      ]);
     });
   });
 

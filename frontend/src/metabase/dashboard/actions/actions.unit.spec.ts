@@ -2,7 +2,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockLocation,
-  createMockRoutingState,
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
@@ -17,6 +16,7 @@ import { SIDEBAR_NAME } from "../constants";
 import {
   CLOSE_SIDEBAR,
   SET_DASHBOARD_ATTRIBUTES,
+  SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
   closeSidebar,
   openAddQuestionSidebar,
@@ -208,35 +208,60 @@ describe("dashboard actions", () => {
   });
 
   describe("setEditingDashboard", () => {
-    const getState: GetState = () =>
-      createMockState({
-        routing: createMockRoutingState({
-          locationBeforeTransitions: createMockLocation({
-            pathname: "/dashboard/1",
-            hash: "#hashparam",
-          }),
-        }),
+    it("should remove any hash parameters from url when not editing", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        hash: "#hashparam",
       });
 
-    it("should remove any hash parameters from url when not editing", () => {
-      setEditingDashboard(null)(dispatch, getState);
+      setEditingDashboard(null, location)(dispatch);
 
       expect(dispatch).toHaveBeenCalledWith({
         payload: {
-          args: [
-            {
-              action: "POP",
-              hash: "",
-              key: "",
-              pathname: "/dashboard/1",
-              query: {},
-              search: "",
-              state: undefined,
-            },
-          ],
+          args: ["/dashboard/1"],
           method: "push",
         },
         type: "@@router/CALL_HISTORY_METHOD",
+      });
+    });
+
+    // The v3 history rebuilds `search` from `query`, so pushing a location
+    // object without a `query` field silently drops params like the open tab.
+    it("should keep query params when leaving edit mode", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        search: "?tab=2-tab-two",
+        hash: "#hashparam",
+      });
+
+      setEditingDashboard(null, location)(dispatch);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        payload: {
+          args: ["/dashboard/1?tab=2-tab-two"],
+          method: "push",
+        },
+        type: "@@router/CALL_HISTORY_METHOD",
+      });
+    });
+
+    // The location is captured when the caller rendered, so navigating with no
+    // hash to strip would clobber query params written since (the dashboard tab
+    // sync writes `?tab=` as edit mode exits).
+    it("should not navigate when there is no hash to strip", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        search: "?tab=2-tab-two",
+      });
+
+      setEditingDashboard(null, location)(dispatch);
+
+      expect(dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "@@router/CALL_HISTORY_METHOD" }),
+      );
+      expect(dispatch).toHaveBeenCalledWith({
+        type: SET_EDITING_DASHBOARD,
+        payload: null,
       });
     });
   });

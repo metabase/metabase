@@ -1,0 +1,229 @@
+.root {
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  color: var(--mb-color-text-tertiary);
+}
+
+.headerLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.chevron {
+  flex-shrink: 0;
+  margin-left: 0.125rem;
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+/* background-clip:text can't reach an SVG, so the caret fakes the shimmer with a
+   color with %'s timed to shimmer animation */
+.chevronShimmer {
+  animation: chevron-pulse 1500ms linear infinite;
+}
+
+@keyframes chevron-pulse {
+  0%,
+  47% {
+    color: var(--mb-color-text-tertiary);
+  }
+
+  57% {
+    color: var(--mb-color-border-neutral);
+  }
+
+  100% {
+    color: var(--mb-color-text-tertiary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevronShimmer {
+    animation: none;
+  }
+}
+
+.shimmer {
+  /* both colors stay in the text family (a lighter highlight over the resting
+     tone) so the sweep reads as a sheen rather than a spotlight */
+  --base-color: var(--mb-color-text-tertiary);
+  --highlight-color: var(--mb-color-border-neutral);
+
+  color: transparent !important;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    135deg,
+    var(--base-color) 15%,
+    var(--highlight-color) 50%,
+    var(--base-color) 85%
+  );
+  background-position: 110% 0;
+  animation: rotate-background 1500ms linear infinite;
+}
+
+/* 200% of travel = one full tile, so the loop is pixel-identical at the seam */
+@keyframes rotate-background {
+  0% {
+    background-position: 110% 0;
+  }
+
+  100% {
+    background-position: -90% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    color: var(--base-color) !important;
+    background-image: none;
+  }
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.57;
+}
+
+.step strong,
+.step b {
+  font-weight: inherit;
+}
+
+.toolStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  line-height: 1.57;
+  color: var(--mb-color-text-tertiary);
+}
+
+.toolRowStatic {
+  cursor: default;
+}
+
+.toolRow a,
+.headerLabel a {
+  color: var(--mb-color-text-tertiary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.toolRow a span,
+.headerLabel a span {
+  border-bottom-color: var(--mb-color-border-subtle);
+}
+
+.toolRow a svg,
+.headerLabel a svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.toolRow a:hover,
+.headerLabel a:hover {
+  color: var(--mb-color-brand);
+  text-decoration: none;
+}
+
+.toolRow a:hover span,
+.headerLabel a:hover span {
+  border-bottom-color: var(--mb-color-brand);
+}
+
+/* carets stay out of the way until the step is hovered/focused */
+.toolRow .chevron {
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.toolStep:hover .chevron,
+.toolRow:focus-visible .chevron {
+  opacity: 1;
+}
+
+.reasoningBody {
+  margin-top: 0.25rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.resultCount {
+  margin-left: 0.375rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  margin-top: 0.375rem;
+  max-height: 7rem;
+  overflow-y: auto;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  color: var(--mb-color-text-secondary);
+  text-decoration: none;
+}
+
+.resultRow:hover {
+  color: var(--mb-color-brand);
+}
+
+.resultIcon {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.resultName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.resultContext {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--mb-color-text-tertiary);
+}
+
+.contextSeparator {
+  margin: 0 0.25rem;
+  color: var(--mb-color-text-tertiary);
+}

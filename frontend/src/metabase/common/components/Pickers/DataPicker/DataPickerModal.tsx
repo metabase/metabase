@@ -18,7 +18,7 @@ import { EntityPickerModal } from "../EntityPicker";
 
 import type { DataPickerValue } from "./types";
 import { isDataPickerValue } from "./types";
-import { shouldDisableItemNotInDb } from "./utils";
+import { getItemNotInDbTooltip, shouldDisableItemNotInDb } from "./utils";
 
 interface Props {
   title: string;
@@ -75,6 +75,12 @@ export const DataPickerModal = ({
       shouldDisableFn(i) || Boolean(shouldDisableItem && shouldDisableItem(i));
   }, [onlyDatabaseId, shouldDisableItem]);
 
+  const getItemTooltip = useMemo(() => {
+    const getNotInDbTooltip = getItemNotInDbTooltip(onlyDatabaseId);
+    return (item: OmniPickerItem): string | undefined =>
+      passedOptions?.getItemTooltip?.(item) ?? getNotInDbTooltip(item);
+  }, [onlyDatabaseId, passedOptions]);
+
   const handleItemSelect = useCallback(
     (item: OmniPickerItem) => {
       if (!isDataPickerValue(item)) {
@@ -102,6 +108,7 @@ export const DataPickerModal = ({
         hasConfirmButtons: false,
         hasPersonalCollections: true,
         ...passedOptions,
+        getItemTooltip,
       }}
       recentsContext={RECENTS_CONTEXT}
       searchParams={searchParams}

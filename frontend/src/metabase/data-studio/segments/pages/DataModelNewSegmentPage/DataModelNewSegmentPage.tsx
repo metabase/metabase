@@ -1,8 +1,6 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
@@ -16,16 +14,8 @@ type DataModelNewSegmentPageParams = {
   tableId: string;
 };
 
-type DataModelNewSegmentPageProps = {
-  params: DataModelNewSegmentPageParams;
-  route: Route;
-  children?: ReactNode;
-};
-
-export function DataModelNewSegmentPage({
-  params,
-  route,
-}: DataModelNewSegmentPageProps) {
+export function DataModelNewSegmentPage() {
+  const params = useParams<DataModelNewSegmentPageParams>();
   const databaseId = Number(params.databaseId);
   const schemaName = getSchemaName(params.schemaId);
   const tableId = Urls.extractEntityId(params.tableId);
@@ -44,7 +34,6 @@ export function DataModelNewSegmentPage({
 
   return (
     <NewSegmentPage
-      route={route}
       table={table}
       breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
       getSuccessUrl={(segment) =>
