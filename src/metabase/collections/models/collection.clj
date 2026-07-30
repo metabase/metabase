@@ -1275,8 +1275,9 @@
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
+
       ;; Default - most models just need id and collection_id
-      (t2/select [model-key :id :collection_id] :id [:in ids]))))
+      (t2/select [model-key :id :collection_id :name] :id [:in ids]))))
 
 (defn- filter-eligible-dependents
   "Filter a list of dependent info maps to only include those that are eligible for remote sync.
@@ -1362,12 +1363,16 @@
                    :let [key (name m)
                          descendant-ids (set (get descendants key))]
                    :when (seq descendant-ids)]
-               (let [instances (select-for-eligibility-check m descendant-ids)
-                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
-                 (into #{}
-                       (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
-                       eligibility-map)))))
-    #{}))
+               (let [instances       (select-for-eligibility-check m descendant-ids)
+                     instances-by-id (group-by :id instances)
+                     eligibility-map (remote-sync/batch-model-eligible? m instances)
+                     eligible-ids    (sort
+                                      (into #{}
+                                            (keep (fn [[inst-id eligible?]]
+                                                    (when-not eligible? inst-id)))
+                                            eligibility-map))]
+                 (vec (mapcat instances-by-id eligible-ids))))))
+    []))
 
 (defn check-non-remote-synced-dependencies
   "Checks if a model has non-remote-synced-dependencies and throws if it does.
