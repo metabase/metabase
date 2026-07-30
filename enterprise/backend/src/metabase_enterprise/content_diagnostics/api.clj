@@ -154,9 +154,8 @@
     [:details         DuplicatedDetails]]])
 
 (def ^:private ImbalancedDetails
-  "`imbalanced` details: the shared core plus the `threshold` crossed and its `unit`. `as_of` appears on
-  the two evidence-dated empties (card and transform); it lives in the JSON `details` blob, so it
-  round-trips as a string, not a temporal instant."
+  "`imbalanced` details. `as_of` lives in the JSON `details` blob, so it round-trips as a string, not a
+  temporal instant."
   [:merge FindingDetailsBase
    [:map
     [:threshold :int]
@@ -210,9 +209,8 @@
   (conj api.common/covered-entity-types :collection))
 
 (defn- entity-types-param
-  "The `entity-types` param schema for an endpoint whose findings span `entity-types`: one or many values
-  from the flat vocabulary (the entity types plus the card sub-kinds - see `api.common/filter-types`),
-  decoded to keywords."
+  "Param schema for `entity-types` - the flat vocabulary `api.common/filter-types` builds from the
+  endpoint's `entity-types`."
   [entity-types]
   (let [enum (ms/enum-decode-keyword (api.common/filter-types entity-types))]
     [:or enum [:sequential enum]]))
@@ -297,9 +295,8 @@
   `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
-  collection are excluded. `entity-types` (repeatable; `card`|`question`|`model`|`metric`|`dashboard`|
-  `document`|`transform`, omitted = all) - the card sub-kinds are peers of the other types, and `card`
-  means any card type.
+  collection are excluded. `entity-types` (repeatable, omitted = all) narrows by type; the card sub-kinds
+  are valid values, and `card` means any card type.
   `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -
   threshold-days` (never-used always pass). `query` case-insensitively substring-matches the entity name.
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-active-at`, default
@@ -340,9 +337,9 @@
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection culprit cards are omitted from `slow_entities`.
-  `entity-types` (repeatable; `card`|`question`|`model`|`metric`|`dashboard`|`document`|`transform`,
-  omitted = all) - the card sub-kinds are peers of the other types, and `card` means any card type. It
-  narrows the flagged entity only; containers rolled up from slow cards are matched on their own type.
+  `entity-types` (repeatable, omitted = all) narrows the flagged entity by type; the card sub-kinds are
+  valid values, and `card` means any card type. Containers rolled up from slow cards are matched on
+  their own type.
   `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers
   filter on their representative duration). `query` case-insensitively substring-matches the entity name.
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duration-ms`, default
@@ -373,7 +370,7 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **imbalanced** findings - the latest valid finding per (entity, finding-type) across the
   `empty`/`sparse`/`crowded` checkers, permission-filtered for the current user. The checkers run
   independently, so one entity can appear once per finding type (a collection whose items are all empty
@@ -383,9 +380,8 @@
   `empty`) also carry a top-level `card_type`, denormalized at scan time. Paginated via `limit`/`offset`.
 
   Params: `include-personal-collections` (default false) excludes entities in personal collections.
-  `entity-types` and `finding-types` (both repeatable) narrow the results; `entity-types` takes the card
-  sub-kinds (`question`|`model`|`metric`) as peers of the other types, with `card` meaning any card type.
-  `query` substring-matches the entity name.
+  `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid
+  `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.
   `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
@@ -424,13 +420,12 @@
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection peers are omitted from `duplicate_entities`.
-  `entity-types` (repeatable; `card`|`question`|`model`|`metric`|`collection`|`dashboard`|`document`|
-  `transform`, omitted = all; the card sub-kinds are peers of the other types and `card` means any card
-  type; `collection` finds same-named collections instance-wide, regardless of parent). It narrows the
-  flagged entity only - peers are not filtered, since cards cluster across sub-kinds, so a model's peers
-  can be questions.
-  `min-duplicate-count` (positive int) keeps findings with at least
-  that many peers. `query` case-insensitively substring-matches the entity name. `sort-column`
+  `entity-types` (repeatable, omitted = all) narrows the flagged entity by type; the card sub-kinds are
+  valid values, `card` means any card type, and `collection` finds same-named collections instance-wide,
+  regardless of parent. Peers are not filtered - cards cluster across sub-kinds, so a model's peers can
+  be questions.
+  `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`
+  case-insensitively substring-matches the entity name. `sort-column`
   (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duplicate-count`, default `detected-at`)
   + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params

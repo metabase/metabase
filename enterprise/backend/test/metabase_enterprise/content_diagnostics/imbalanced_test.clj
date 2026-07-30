@@ -398,9 +398,9 @@
                 (is (= hidden-parent (get-in (row-for :crowberto) [:details :collection :id])))))))))))
 
 (deftest imbalanced-api-as-of-serves-as-a-string-test
-  (testing "an evidence-dated empty serves `details.as_of` as an ISO-8601 string - it round-trips through the
-            JSON details blob, so the response schema types it as a temporal string; a Temporal-typed schema
-            rejects the decoded value"
+  (testing "an evidence-dated empty serves `details.as_of` as an ISO-8601 string"
+    ;; as_of round-trips through the JSON details blob, so the response schema types it ms/TemporalString -
+    ;; a Temporal-typed schema rejects the decoded value
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll :id} {}
@@ -417,6 +417,7 @@
                             (filter #(= fid (:id %)))
                             first)]
             (is (some? row))
+            (is (string? (get-in row [:details :as_of])))
             (testing "the stamped instant survives the round-trip"
               (is (= (-> as-of t/instant (t/truncate-to :millis))
                      (-> (get-in row [:details :as_of]) t/offset-date-time t/instant

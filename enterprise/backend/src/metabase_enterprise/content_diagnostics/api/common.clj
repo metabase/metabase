@@ -28,10 +28,8 @@
   #{:card :dashboard :document :transform})
 
 (defn filter-types
-  "The `entity-types` filter vocabulary for an endpoint whose findings span `entity-types`: the entity types
-  themselves plus the card sub-kinds as peers, one flat enum. Follows the house shape for content-type
-  multi-selects - `search`'s `models`, `/collection/:id/items`' `models`, `recents`' `models` all list
-  question/model/metric alongside dashboard and the rest. `card` stays valid and means any card type."
+  "The `entity-types` filter vocabulary for an endpoint whose findings span `entity-types`: one flat enum
+  of the entity types plus the card sub-kinds. `card` stays valid and means any card type."
   [entity-types]
   (into entity-types queries.schema/card-types))
 
@@ -93,13 +91,12 @@
     [:like [:lower :entity_name] (str "%" q "%")]))
 
 (defn entity-types-clause
-  "WHERE fragment for the flat `entity-types` vocabulary, which mixes entity types with the card sub-kinds
-  (see [[filter-types]]). Splits into a card arm and a non-card arm and ORs them, so every arm is a positive
-  `=`/`IN` that `idx_cd_finding_ftype_etype_card_type` can serve - a negated arm (`entity_type <> 'card'`)
-  would force a scan instead. `card` means any card type, so it subsumes the sub-kinds. Nil when nothing was
-  requested."
+  "WHERE fragment for the flat `entity-types` vocabulary (see [[filter-types]]); nil when nothing was
+  requested. `card` means any card type, so it subsumes the sub-kinds. The arms are kept positive `=`/`IN`
+  so `idx_cd_finding_ftype_etype_card_type` can serve them - a negated `entity_type` arm would force a
+  scan."
   [entity-types]
-  (when-let [types (not-empty (into #{} (map keyword) (u/one-or-many entity-types)))]
+  (when-let [types (not-empty (set (u/one-or-many entity-types)))]
     (let [sub-kinds (set/intersection types queries.schema/card-types)
           non-card  (set/difference types (conj queries.schema/card-types :card))
           card-arm  (cond
