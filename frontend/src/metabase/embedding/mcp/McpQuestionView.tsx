@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { Box, Divider, Flex } from "metabase/ui";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { ChartTypePicker } from "./ChartTypePicker/ChartTypePicker";
 import { McpQuestionTitle } from "./McpQuestionTitle";
@@ -17,11 +18,15 @@ const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-lg)";
 export interface McpQuestionViewProps {
   queryKey: string | null;
   safeAreaPaddingTop: number;
+
+  /** Chart type `visualize_query` asked for, honored once per query. */
+  requestedDisplay?: CardDisplayType | null;
 }
 
 export function McpQuestionView({
   queryKey,
   safeAreaPaddingTop,
+  requestedDisplay = null,
 }: McpQuestionViewProps) {
   const {
     hasChartTypeSelector,
@@ -31,7 +36,7 @@ export function McpQuestionView({
     chartTypes,
     currentChartType,
     onChartTypeChange,
-  } = useMcpQueryControls(queryKey);
+  } = useMcpQueryControls(queryKey, requestedDisplay);
 
   const isTableVisualization = currentChartType === "table";
 

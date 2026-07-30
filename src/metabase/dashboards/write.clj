@@ -15,10 +15,12 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
+   [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -373,3 +375,223 @@
    [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
    [:dashcards               {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]]
    [:tabs                    {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]])
+
+;;; ---------------------------------------------------- Copying -------------------------------------------------------
+
+(mu/defn- cards-to-copy :- [:map
+                            [:discard [:sequential :any]]
+                            [:copy [:map-of ms/PositiveInt :any]]
+                            [:reference [:map-of ms/PositiveInt :any]]]
+  "Returns a map of which cards we need to copy, which cards we need to reference, and which are not to be copied. The
+  `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards left out because
+  the caller cannot read them (or their series' base card), or because they are archived; a card discarded for
+  unreadability is reduced to `{:id id}`.
+
+  If we're making a deep copy, we copy all cards that we have necessary permissions on. Otherwise, we copy Dashboard
+  Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
+  permissions)."
+  [deep-copy? :- ms/MaybeBooleanValue
+   dashcards :- [:sequential :any]]
+  (let [card->cards (fn [{:keys [card series]}] (into [card] series))
+        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        card->decision (fn [parent-card card]
+                         (cond
+                           (or
+                            (not (readable? parent-card))
+                            (not (readable? card))
+                            (:archived card))
+                           :discard
+
+                           (or (:dashboard_id card)
+                               (and deep-copy? (not= :model (:type card))))
+                           :copy
+
+                           :else :reference))
+        ;; `:discard` rides out on the copy response as `:uncopied`, so a card kept out because the
+        ;; caller cannot read it must not be returned in full.
+        redact (fn [card] (if (readable? card) card (select-keys card [:id])))
+        split-cards (fn [{:keys [card] :as db-card}]
+                      (let [cards (card->cards db-card)]
+                        (-> (group-by (partial card->decision card) cards)
+                            (m/update-existing :discard #(mapv redact %)))))]
+    (reduce (fn [acc db-card]
+              (let [{:keys [discard copy reference]} (split-cards db-card)]
+                (-> acc
+                    (update :reference merge (m/index-by :id reference))
+                    (update :copy merge (m/index-by :id copy))
+                    (update :discard concat discard))))
+            {:reference {}
+             :copy {}
+             :discard []}
+            (filter :card_id dashcards))))
+
+(defn- maybe-duplicate-cards
+  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
+
+  Returns `{:copied {old-card-id duplicated-card} :referenced {old-card-id card} :discarded [card]}` so that the new
+  dashboard can adjust accordingly. `:discarded` carries [[cards-to-copy]]'s redaction.
+
+  If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
+  [deep-copy? new-dashboard old-dashboard dest-coll-id]
+  (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+    {:copied     (into {} (for [[id to-copy] copy]
+                            [id (queries/create-card!
+                                 (cond-> to-copy
+                                   true                    (assoc :collection_id dest-coll-id)
+                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                 @api/*current-user*
+                                 ;; creating cards from a transaction. wait until tx complete to signal event
+                                 true
+                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                 false)]))
+     :discarded  discard
+     :referenced reference}))
+
+(defn- duplicate-tabs
+  [new-dashboard existing-tabs]
+  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
+                                              (for [tab existing-tabs]
+                                                (-> tab
+                                                    (assoc :dashboard_id (:id new-dashboard))
+                                                    (dissoc :id :entity_id :created_at :updated_at))))]
+    (zipmap (map :id existing-tabs) new-tab-ids)))
+
+(defn- update-colvalmap-setting
+  "Visualizer dashcards have unique visualization settings which embed column id remapping metadata
+  This function iterates through the `:columnValueMapping` viz setting and updates referenced card ids
+
+  col->val-source can look like:
+  {:COLUMN_2 [{:sourceId 'card:<OLD_CARD_ID>', :originalName 'sum', :name 'COLUMN_2'}], ...}"
+  [col->val-source id->new-card]
+  (let [update-cvm-item (fn [item]
+                          (if-let [source-id (:sourceId item)]
+                            (if-let [[_ card-id] (and (string? source-id)
+                                                      (re-find #"^card:(\d+)$" source-id))]
+                              (if-let [new-card (get id->new-card (Long/parseLong card-id))]
+                                (assoc item :sourceId (str "card:" (:id new-card)))
+                                item)
+                              item)
+                            item))
+        update-cvm      (fn [cvm]
+                          (when (map? cvm)
+                            (update-vals cvm #(mapv update-cvm-item %))))]
+    (update-cvm col->val-source)))
+
+(defn update-cards-for-copy
+  "Update dashcards in a dashboard for copying.
+  If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
+  Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
+  A dashcard whose card was neither copied nor referenced is omitted — [[cards-to-copy]] discarded it as unreadable
+  or archived."
+  [dashcards id->new-card id->referenced-card id->new-tab-id]
+  (let [dashcards (if (seq id->new-tab-id)
+                    (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                         dashcards)
+                    dashcards)]
+    (keep (fn [dashboard-card]
+            (cond
+              (:action_id dashboard-card)
+              nil
+
+              (some-> dashboard-card :visualization_settings :virtual_card :display #{"iframe"})
+              dashboard-card
+
+              ;; text cards need no manipulation
+              (some-> dashboard-card :visualization_settings :virtual_card :display #{"text" "heading"})
+              dashboard-card
+
+              ;; referenced cards need no manipulation
+              (get id->referenced-card (:card_id dashboard-card))
+              dashboard-card
+
+              ;; if we didn't duplicate, it doesn't go in the dashboard
+              (not (get id->new-card (:card_id dashboard-card)))
+              nil
+
+              :else
+              (let [new-id (fn [id]
+                             (-> id id->new-card :id))]
+                (-> dashboard-card
+                    (update :card_id new-id)
+                    (assoc :card (-> dashboard-card :card_id id->new-card))
+                    (m/update-existing :parameter_mappings
+                                       (fn [pms]
+                                         (keep (fn [pm]
+                                                 (m/update-existing pm :card_id new-id))
+                                               pms)))
+                    (m/update-existing :series
+                                       (fn [series]
+                                         (keep (fn [card]
+                                                 (when-let [id' (new-id (:id card))]
+                                                   (assoc card :id id')))
+                                               series)))
+                    (m/update-existing-in [:visualization_settings :visualization :columnValuesMapping]
+                                          update-colvalmap-setting id->new-card)))))
+          dashcards)))
+
+(defn contains-dashboard-questions?
+  "Does the dashboard with `id` hold any live questions saved inside it? Such a dashboard cannot be
+  shallow-copied — the questions would have nowhere to live."
+  [id]
+  (t2/exists? :model/Card :dashboard_id id :archived false))
+
+(defn copy-dashboard!
+  "Copy the dashboard with `from-dashboard-id` into `:collection_id` (nil = root) and return the saved
+  row, carrying `:uncopied` when permissions kept some cards out of the copy. `copy-opts` may override
+  `:name`/`:description` and set `:collection_position`; `:is_deep_copy` also duplicates the dashboard's
+  questions, which is mandatory when it holds Dashboard Questions.
+
+  Requires read permission on the source and create permission on the destination collection. Publishes
+  `:event/dashboard-create` and `:event/card-create` for each duplicated card."
+  [from-dashboard-id {:keys [name description collection_id collection_position is_deep_copy]}]
+  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
+  (api/create-check :model/Dashboard {:collection_id collection_id})
+  (api/check-400 (not (and (not is_deep_copy)
+                           (contains-dashboard-questions? from-dashboard-id)))
+                 (tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
+  (let [existing-dashboard (-> (api/read-check :model/Dashboard from-dashboard-id)
+                               (t2/hydrate [:dashcards :card :series] :tabs))
+        dashboard-data {:name                (or name (:name existing-dashboard))
+                        :description         (or description (:description existing-dashboard))
+                        :parameters          (or (:parameters existing-dashboard) [])
+                        :creator_id          api/*current-user-id*
+                        :collection_id       collection_id
+                        :collection_position collection_position
+                        :width               (:width existing-dashboard)}
+        new-cards      (atom nil)
+        dashboard      (t2/with-transaction [_conn]
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
+                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         ;; Ok, now save the Dashboard
+                         (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
+                               {id->new-card :copied
+                                id->referenced-card :referenced
+                                uncopied :discarded}
+                               (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+
+                               id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
+                                                (duplicate-tabs dash existing-tabs))]
+                           (reset! new-cards (vals id->new-card))
+                           (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
+                                                                            id->new-card
+                                                                            id->referenced-card
+                                                                            id->new-tab-id))]
+                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                           (u/prog1 (cond-> dash
+                                      (seq uncopied)
+                                      (assoc :uncopied uncopied))
+                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
+                                                                           collection_id)
+                               (collections/check-non-remote-synced-dependencies <>)))))]
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dashboard)})
+    ;; must signal event outside of tx so cards are visible from other threads
+    (when-let [newly-created-cards (seq @new-cards)]
+      (doseq [card newly-created-cards]
+        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
+    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    dashboard))

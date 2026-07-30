@@ -31,3 +31,23 @@
 (def ^{:arglists '([handler])} +mcp-enabled
   "Wrap routes so they may only be accessed when the MCP server is enabled."
   (routes.common/wrap-middleware-for-open-api-spec-generation enforce-mcp-enabled))
+
+(defn enforce-any-mcp-surface-enabled
+  "Ring middleware for routes shared by both MCP surfaces — the iframe callbacks under
+   `/api/embed-mcp`, which serve whichever version rendered the iframe. Gating them on v1 alone
+   would break the MCP Apps visualization on an instance running only v2."
+  [handler]
+  (fn [request respond raise]
+    (cond
+      (not (llm.settings/ai-features-enabled?))
+      (raise (ex-info (tru "AI features are not enabled.") {:status-code 403}))
+
+      (or (mcp.settings/mcp-enabled?) (mcp.settings/mcp-v2-enabled))
+      (handler request respond raise)
+
+      :else
+      (raise (ex-info (tru "MCP server is not enabled.") {:status-code 403})))))
+
+(def ^{:arglists '([handler])} +any-mcp-surface-enabled
+  "Wrap routes so they may be accessed when either MCP surface is enabled."
+  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-any-mcp-surface-enabled))

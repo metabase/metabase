@@ -74,6 +74,66 @@
             (client/client-full-response :post 401 "embed-mcp/drills"
                                          {:encodedQuery "ZW5jb2RlZA=="})))))
 
+;;; ------------------------------------------- GET /queries/:handle -----------------------------------------------
+;;;
+;;; How the v2 MCP Apps tools keep query data out of the model's context: the tool returns only a
+;;; handle, and the iframe exchanges it here using the embedding session token it was rendered
+;;; with. The (user, session) pair is the access key — the handle alone must not be one.
+
+(defn- get-query
+  ([user expected-status handle session-id]
+   (client/client-full-response (test.users/username->token user)
+                                :get expected-status (str "embed-mcp/queries/" handle)
+                                {:request-options {:headers {"mcp-session-id" session-id}}})))
+
+(deftest queries-get-resolves-handle-test
+  (testing "GHY-4157: the iframe exchanges a handle for the query and the prompt stored with it"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id)
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
+                (get-query :crowberto 200 handle session-id))))))
+  (testing "GHY-4157: a handle stored without a prompt resolves with a null prompt, not a 404"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id)
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt nil}}
+                (get-query :crowberto 200 handle session-id)))))))
+
+(deftest queries-get-is-user-scoped-test
+  (testing "GHY-4157: another user cannot exchange a handle they did not store — it is not a bearer credential"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [owner      (mt/user->id :crowberto)
+            session-id (mcp.session/create! owner)
+            _          (mcp.session/get-or-create-session-key! session-id owner)
+            handle     (mcp.session/store-handle! session-id owner "ZW5jb2RlZA==")]
+        (is (=? {:status 404} (get-query :rasta 404 handle session-id)))))))
+
+(deftest queries-get-validates-session-header-test
+  (mt/with-model-cleanup [:model/McpQueryHandle]
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
+      (testing "GHY-4157: a missing Mcp-Session-Id header is a 400"
+        (is (=? {:status 400}
+                (client/client-full-response (test.users/username->token :crowberto)
+                                             :get 400 (str "embed-mcp/queries/" handle)))))
+      (testing "GHY-4157: an unknown handle is a 404"
+        (is (=? {:status 404} (get-query :crowberto 404 (str (random-uuid)) session-id))))
+      ;; The route's UUID param never matches, so a malformed handle and an unknown one are
+      ;; indistinguishable from outside — which is what we want from a lookup endpoint.
+      (testing "GHY-4157: a non-UUID handle is a 404, same as an unknown one"
+        (is (=? {:status 404} (get-query :crowberto 404 "not-a-uuid" session-id)))))))
+
+(deftest queries-get-requires-auth-test
+  (testing "GHY-4157: unauthenticated request returns 401"
+    (is (=? {:status 401}
+            (client/client-full-response :get 401 (str "embed-mcp/queries/" (random-uuid)))))))
+
 (deftest feedback-post-persists-mcp-visualization-feedback-test
   (testing "MCP feedback is persisted to mcp_feedback with the visualization context inline"
     (mt/with-model-cleanup [:model/McpFeedback]

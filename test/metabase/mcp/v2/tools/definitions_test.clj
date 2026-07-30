@@ -190,7 +190,7 @@
 (deftest segment-write-lifecycle-test
   (mt/with-model-cleanup [:model/Segment :model/Revision]
     (let [create!  (fn [name definition]
-                     (tool-result (call-tool! :crowberto #{"agent:segment:write"} "segment_write"
+                     (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
                                               {:method "create" :table_id (mt/id :venues)
                                                :name name :definition definition})))
           created  (create! "definitions-test segment A"
@@ -209,7 +209,7 @@
         (is (not (contains? created :description))
             "an unset description is omitted from the response, not null"))
       (testing "GHY-4137: update resolves an entity_id, applies the change, and records the revision message"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:segment:write"} "segment_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
                                                {:method "update" :id (:entity_id created)
                                                 :description "price of three"
                                                 :revision_message "add description"}))]
@@ -217,17 +217,17 @@
           (is (= "price of three" (:description updated)))
           (is (= "add description" (latest-revision-message "Segment" (:id created))))))
       (testing "GHY-4137: a fragment on update is wrapped onto the segment's existing table"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:segment:write"} "segment_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
                                                {:method "update" :id (:id created)
                                                 :definition {:filter ["=" ["field" (mt/id :venues :price) nil] 4]}
                                                 :revision_message "loosen filter"}))]
           (is (= (mt/id :venues) (:table_id updated)))
           (is (= 1 (count (get-in updated [:definition :stages]))))))
       (testing "GHY-4137: archived true trashes and archived false restores — the only removal path"
-        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:segment:write"} "segment_write"
+        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
                                                        {:method "update" :id (:id created)
                                                         :archived true :revision_message "trash"})))))
-        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:segment:write"} "segment_write"
+        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
                                                         {:method "update" :id (:id created)
                                                          :archived false :revision_message "restore"}))))))
       (testing "GHY-4137: MBQL 4 full queries and MBQL 5 queries are accepted on create too"
@@ -259,7 +259,7 @@
 ;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
 (deftest measure-write-lifecycle-test
   (mt/with-model-cleanup [:model/Measure :model/Revision]
-    (let [created (tool-result (call-tool! :crowberto #{"agent:measure:write"} "measure_write"
+    (let [created (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
                                            {:method "create" :table_id (mt/id :venues)
                                             :name "definitions-test measure A"
                                             :definition (venues-count-definition)}))]
@@ -272,23 +272,23 @@
                 created))
         (is (= 1 (count (get-in created [:definition :stages 0 :aggregation])))))
       (testing "GHY-4137: update applies the change and records the revision message"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:measure:write"} "measure_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
                                                {:method "update" :id (:entity_id created)
                                                 :description "how many venues"
                                                 :revision_message "clarify"}))]
           (is (= "how many venues" (:description updated)))
           (is (= "clarify" (latest-revision-message "Measure" (:id created))))))
       (testing "GHY-4137: a definition on a different table moves the measure — table_id is derived, not caller-set"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:measure:write"} "measure_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
                                                {:method "update" :id (:id created)
                                                 :definition (count-definition (mt/id :checkins))
                                                 :revision_message "move to checkins"}))]
           (is (= (mt/id :checkins) (:table_id updated)))))
       (testing "GHY-4137: archived true trashes and archived false restores"
-        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:measure:write"} "measure_write"
+        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
                                                        {:method "update" :id (:id created)
                                                         :archived true :revision_message "trash"})))))
-        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:measure:write"} "measure_write"
+        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
                                                         {:method "update" :id (:id created)
                                                          :archived false :revision_message "restore"})))))))))
 

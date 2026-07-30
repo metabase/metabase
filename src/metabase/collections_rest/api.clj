@@ -16,13 +16,11 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -386,11 +384,11 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
-;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
-;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
-;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
-;; `validate-new-tenant-collection!`, etc.
+;; Create- and update-collection business logic live in `metabase.collections.create` and
+;; `metabase.collections.update` so that non-REST callers (notably the MCP `collection_write`
+;; tool) can use the same entry points without crossing the module-linter's non-rest -> rest
+;; barrier. Both are re-exported through `metabase.collections.core` — `create-collection!`,
+;; `apply-defaults-to-collection`, `validate-new-tenant-collection!`, `update-collection!`.
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -407,65 +405,6 @@
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collections/create-collection! body))
-
-(defn- maybe-send-archived-notifications!
-  "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
-  which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
-  users just as if they had be archived individually via the card API."
-  [& {:keys [collection-before-update collection-updates actor]}]
-  (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (doseq [card (t2/select :model/Card :collection_id (u/the-id collection-before-update))]
-      (notification/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
-
-(defn- move-collection!
-  "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do
-  appropriate permissions checks and move it (and its descendants)."
-  [collection-before-update collection-updates]
-  ;; sanity check: a [new] parent_id update specified in the PUT request?
-  (when (contains? collection-updates :parent_id)
-    (let [orig-location (:location collection-before-update)
-          new-parent-id (:parent_id collection-updates)
-          new-parent    (if new-parent-id
-                          (t2/select-one [:model/Collection :location :id :type] :id new-parent-id)
-                          collection/root-collection)
-          new-location  (collection/children-location new-parent)]
-      ;; check and make sure we're actually supposed to be moving something
-      (when (not= orig-location new-location)
-        ;; Check that we have write perms on the new parent collection
-        (api/write-check new-parent)
-        ;; ok, make sure we have perms to do this operation
-        (api/check-403
-         (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                  (collection/perms-for-moving collection-before-update new-parent)))
-        (api/check
-         (not (collection/shared-tenant-collection? new-parent)))
-        ;; ok, we're good to move!
-        (collection/move-collection! collection-before-update new-location
-                                     (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
-                                                                            new-parent-id))))))
-
-(defn- archive-collection!
-  "If input to the `PUT /api/collection/:id` endpoint specifies that we should archive a collection, do the appropriate
-  permissions checks and then move it to the trash."
-  [collection-before-update collection-updates]
-  ;; sanity check
-  (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (collection/archive-or-unarchive-collection!
-     collection-before-update
-     (select-keys collection-updates [:parent_id :archived]))
-    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
-                                         :collection-updates       collection-updates
-                                         :actor                    @api/*current-user*})))
-
-(defn- move-or-archive-collection-if-needed!
-  "If input to the `PUT /api/collection/:id` endpoint (`collection-updates`) specifies that we should either move or
-  archive the collection (archiving means 'moving to the trash' so it makes sense to deal with them together), do the
-  appropriate permissions checks and changes."
-  [collection-before-update collection-updates]
-  (condp #(api/column-will-change? %1 collection-before-update %2) collection-updates
-    :archived (archive-collection! collection-before-update collection-updates)
-    :parent_id (move-collection! collection-before-update collection-updates)
-    :no-op))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
@@ -573,35 +512,14 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {authority-level :authority_level, :as collection-updates} :- [:map
-                                                                  [:name             {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:description      {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:archived         {:default false} [:maybe ms/BooleanValue]]
-                                                                  [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:type             {:optional true} [:maybe collections.children/CollectionType]]
-                                                                  [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
-  ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
-    ;; tenant-specific-root-collection collections cannot be updated
-    (api/check-400
-     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
-    ;; if authority_level is changing, make sure we're allowed to do that
-    (when (and (contains? collection-updates :authority_level)
-               (not= (keyword authority-level) (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 api/*is-superuser?*))
-    ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
-    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
-      (when (seq updates)
-        (t2/update! :model/Collection id updates)))
-    ;; if we're trying to move or archive the Collection, go ahead and do that
-    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (let [updated-collection (t2/select-one :model/Collection :id id)]
-      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
-      (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
-  ;; finally, return the updated object
-  (collection-detail (t2/select-one :model/Collection :id id)))
+   collection-updates :- [:map
+                          [:name             {:optional true} [:maybe ms/NonBlankString]]
+                          [:description      {:optional true} [:maybe ms/NonBlankString]]
+                          [:archived         {:default false} [:maybe ms/BooleanValue]]
+                          [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
+                          [:type             {:optional true} [:maybe collections.children/CollectionType]]
+                          [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
+  (collection-detail (collections/update-collection! id collection-updates)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

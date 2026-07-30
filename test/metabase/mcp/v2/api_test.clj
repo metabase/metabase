@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.v2.resources :as v2.resources]
    [metabase.oauth-server.api.metadata :as oauth.metadata]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -57,8 +59,8 @@
         (is (some? session-id))
         (is (= "2025-03-26" (get-in response [:body :result :protocolVersion])))
         (is (= {:name "metabase" :version "0.1.0"} (get-in response [:body :result :serverInfo])))
-        (testing "only tools are advertised — v2 answers resources/prompts with method-not-found"
-          (is (= {:tools {:listChanged true}}
+        (testing "GHY-4157: tools and resources are advertised — resources serve the MCP Apps iframe shells; prompts stay unimplemented and so unadvertised"
+          (is (= {:tools {:listChanged true} :resources {}}
                  (get-in response [:body :result :capabilities]))))))))
 
 (deftest tools-list-test
@@ -118,7 +120,7 @@
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true]
     (let [[session-id _] (initialize!)]
       (testing "methods the v2 surface can't serve fall through to JSON-RPC method-not-found"
-        (doseq [method ["resources/list" "prompts/list"]]
+        (doseq [method ["prompts/list"]]
           (testing method
             (let [response (mcp-v2-request (jsonrpc-request method)
                                            {"mcp-session-id" session-id})]
@@ -130,6 +132,35 @@
           (is (= 200 (:status response)))
           (is (nil? (get-in response [:body :error])))
           (is (= {} (get-in response [:body :result]))))))))
+
+(deftest resources-list-and-read-test
+  (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true]
+    (mcp.ui-resource/with-fallback-template
+      (let [[session-id _] (initialize!)
+            listed (-> (mcp-v2-request (jsonrpc-request "resources/list")
+                                       {"mcp-session-id" session-id})
+                       (get-in [:body :result :resources]))]
+        (testing "GHY-4157: resources/list serves the MCP Apps iframe shells"
+          (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
+                 (set (map :uri listed))))
+          (is (every? #(= "text/html;profile=mcp-app" (:mimeType %)) listed)))
+        (testing "GHY-4157: resources/read renders a shell the host can sandbox"
+          (let [content (-> (mcp-v2-request (jsonrpc-request "resources/read"
+                                                             {:uri v2.resources/visualize-query-uri})
+                                            {"mcp-session-id" session-id})
+                            (get-in [:body :result :contents])
+                            first)]
+            (is (= v2.resources/visualize-query-uri (:uri content)))
+            (is (str/includes? (:text content) "metabaseConfig"))
+            (is (contains? (get-in content [:_meta :ui]) :csp))))
+        (testing "GHY-4157: an unknown URI is an invalid-params error, not a rendered shell"
+          (let [response (mcp-v2-request (jsonrpc-request "resources/read" {:uri "ui://metabase/nope.html"})
+                                         {"mcp-session-id" session-id})]
+            (is (= -32602 (get-in response [:body :error :code])))))
+        (testing "GHY-4157: a missing uri parameter is rejected"
+          (let [response (mcp-v2-request (jsonrpc-request "resources/read" {})
+                                         {"mcp-session-id" session-id})]
+            (is (= -32602 (get-in response [:body :error :code])))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true

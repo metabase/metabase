@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.macros.scope :as scope]
+   [metabase.channel.urls :as channel.urls]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.test :as mt]
@@ -188,6 +188,19 @@
   (is (= 99 (common/resolve-collection-id "trash" {:trash-collection-id 99})))
   (is (thrown? Exception (common/resolve-collection-id "trash"))))
 
+(deftest frontend-url-test
+  (testing "a configured site URL is prefixed onto the relative path"
+    (with-redefs [channel.urls/site-url (constantly "http://metabase.example.com")]
+      (is (= "http://metabase.example.com/collection/42"
+             (common/frontend-url (channel.urls/collection-path 42))))))
+  (testing "an unset site URL yields a relative path, never the literal \"null\" host that
+            interpolating site-url directly would produce — site-url is nil both when it has
+            never been configured and when the stored value fails validation"
+    (doseq [unset [nil ""]]
+      (with-redefs [channel.urls/site-url (constantly unset)]
+        (is (= "/collection/42" (common/frontend-url (channel.urls/collection-path 42))))
+        (is (= "/question/42" (common/frontend-url (channel.urls/card-path 42))))))))
+
 (deftest ^:parallel select-fields-test
   (let [row {:id 5 :name "Fin" :description "d" :location "/" :archived false}]
     (testing "narrows to the requested paths"
@@ -219,36 +232,20 @@
       (is (contains? (set (projections/catalog :collection)) "name"))
       (is (contains? (set (projections/catalog :question)) "parameters.name")))))
 
-;; not ^:parallel: the kondo deftest lint treats the `!` suffix as destructive
-(deftest check-update-scope-test
-  (testing "a scoped token without the update scope is rejected with a teaching message"
-    (is (thrown-with-msg? Exception #"method: update"
-                          (common/check-update-scope! #{"agent:question:create"}
-                                                      "agent:question:update"
-                                                      "question_write"))))
-  (testing "cookie sessions (unrestricted sentinel) bypass"
-    (is (nil? (common/check-update-scope! #{::scope/unrestricted}
-                                          "agent:question:update"
-                                          "question_write")))))
-
 (deftest ^:parallel dispatch-write-test
-  (let [entry {:tool-name       "collection_write"
-               :update-scope    "agent:collection:update"
-               :create-required [:name]}]
+  (let [entry {:create-required [:name]}]
     (testing "create enforces (create)-required fields"
-      (is (= [:create {:name "X"}] (common/dispatch-write entry nil {:method "create" :name "X"})))
+      (is (= [:create {:name "X"}] (common/dispatch-write entry {:method "create" :name "X"})))
       (is (thrown-with-msg? Exception #"`name` is required"
-                            (common/dispatch-write entry nil {:method "create"}))))
-    (testing "update requires id and re-checks the update scope at runtime"
+                            (common/dispatch-write entry {:method "create"}))))
+    (testing "update requires id"
       (is (= [:update 3 {:name "Y"}]
-             (common/dispatch-write entry #{::scope/unrestricted} {:method "update" :id 3 :name "Y"})))
+             (common/dispatch-write entry {:method "update" :id 3 :name "Y"})))
       (is (thrown-with-msg? Exception #"`id` is required"
-                            (common/dispatch-write entry #{::scope/unrestricted} {:method "update"})))
-      (is (thrown-with-msg? Exception #"method: update"
-                            (common/dispatch-write entry #{"agent:collection:create"} {:method "update" :id 3}))))
+                            (common/dispatch-write entry {:method "update"}))))
     (testing "an unknown method is a teaching error"
       (is (thrown-with-msg? Exception #"create.*update"
-                            (common/dispatch-write entry nil {:method "delete"}))))))
+                            (common/dispatch-write entry {:method "delete"}))))))
 
 ;;; ------------------------------------------------ Query handles (GHY-4136) -------------------------------------
 

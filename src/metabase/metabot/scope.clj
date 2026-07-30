@@ -41,6 +41,8 @@
   (deferred-tru "Create saved questions"))
 (api-scope/defscope agent-question-update "agent:question:update"
   (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-write "agent:question:write"
+  (deferred-tru "Create and edit saved questions"))
 (api-scope/defscope agent-question-execute "agent:question:execute"
   (deferred-tru "Run saved questions"))
 
@@ -49,6 +51,8 @@
   (deferred-tru "Create metrics"))
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
+(api-scope/defscope agent-metric-write "agent:metric:write"
+  (deferred-tru "Create and edit metrics"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -73,12 +77,18 @@
   (deferred-tru "Create dashboards"))
 (api-scope/defscope agent-dashboard-update "agent:dashboard:update"
   (deferred-tru "Update dashboards"))
+(api-scope/defscope agent-dashboard-write "agent:dashboard:write"
+  (deferred-tru "Create and edit dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
 
 ;; Collection
+;; `create` predates the v2 surface and still gates the v1 `create_collection` endpoint; tokens
+;; carry the literal string, so it can't be folded into `write`. New work takes `write`.
 (api-scope/defscope agent-collection-create "agent:collection:create"
   (deferred-tru "Create collections"))
+(api-scope/defscope agent-collection-write "agent:collection:write"
+  (deferred-tru "Create and edit collections"))
 
 ;; SQL execution (MCP execute_sql tool, distinct from execute_query)
 (api-scope/defscope agent-sql-execute "agent:sql:execute"
@@ -89,8 +99,8 @@
   (deferred-tru "View documents"))
 (api-scope/defscope agent-document-create "agent:document:create"
   (deferred-tru "Create documents"))
-(api-scope/defscope agent-document-update "agent:document:update"
-  (deferred-tru "Update documents"))
+(api-scope/defscope agent-document-write "agent:document:write"
+  (deferred-tru "Create and edit documents"))
 
 ;; Visualization
 (api-scope/defscope agent-viz-read "agent:viz:read"
@@ -107,12 +117,21 @@
   (deferred-tru "Render drill-through visualizations in the MCP UI"))
 
 ;; Alert
+;; agent:alert:create predates agent:alert:write and still gates the v1 create-alert tool; scopes
+;; are never renamed, so it stays. v2's alert_write gates on agent:alert:write.
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
+(api-scope/defscope agent-alert-write "agent:alert:write"
+  (deferred-tru "Create and edit alerts"))
 
 ;; Notification (alerts and dashboard subscriptions)
 (api-scope/defscope agent-notification-read "agent:notification:read"
   (deferred-tru "View alerts and dashboard subscriptions"))
+
+;; Subscription. One write scope per entity type, as with question/dashboard/segment/measure.
+;; `agent:dashboard:subscribe` stays above — MCP v1's subscription tools still use it.
+(api-scope/defscope agent-subscription-write "agent:subscription:write"
+  (deferred-tru "Create and edit dashboard subscriptions"))
 
 ;; Search
 (api-scope/defscope agent-search "agent:search"
@@ -125,6 +144,14 @@
 ;; Resource
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "View resources"))
+
+;; Content (type-generic tools)
+(api-scope/defscope agent-content-duplicate "agent:content:duplicate"
+  (deferred-tru "Duplicate content"))
+
+;; Bookmark
+(api-scope/defscope agent-bookmark-write "agent:bookmark:write"
+  (deferred-tru "Bookmark and un-bookmark content"))
 
 ;; Todo
 (api-scope/defscope agent-todo-read "agent:todo:read"
@@ -193,18 +220,24 @@
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
    ;; segment/measure are MBQL query macros authored while building queries, like metric — the NLQ
    ;; bucket, not the raw-SQL one.
+   ;; `agent:content:*` rides both buckets: the type-generic tools cover question (nlq) and
+   ;; dashboard/document (other-tools), and each call re-checks the type's own create scope.
    :permission/metabot-nlq            #{"agent:notebook:*"
                                         "agent:query:*"
                                         "agent:question:*"
                                         "agent:metric:*"
                                         "agent:segment:*"
-                                        "agent:measure:*"}
+                                        "agent:measure:*"
+                                        "agent:content:*"}
    :permission/metabot-other-tools    #{"agent:viz:*"
                                         "agent:dashboard:*"
                                         "agent:document:*"
                                         "agent:alert:*"
                                         "agent:notification:*"
-                                        "agent:collection:*"}})
+                                        "agent:subscription:*"
+                                        "agent:bookmark:*"
+                                        "agent:collection:*"
+                                        "agent:content:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."

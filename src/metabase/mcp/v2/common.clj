@@ -10,10 +10,13 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.channel.urls :as channel.urls]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.lib.core :as lib]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -229,6 +232,20 @@
          (throw-not-found :model/Collection id-or-sentinel))
        id))))
 
+;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
+
+(defn frontend-url
+  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
+   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
+   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
+   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
+   fails validation."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))
+
 ;;; --------------------------------------------- response_format --------------------------------------------------
 
 (defn response-format
@@ -312,25 +329,31 @@
 
 ;;; ------------------------------------------------ _write dispatch -----------------------------------------------
 
-(defn check-update-scope!
-  "The method-level scope gate for merged `_write` tools: the registry requires the create
-   scope to list/call the tool at all; `method: \"update\"` additionally requires
-   `update-scope` at runtime. No-op for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which [[metabase.mcp.scope/matches?]] always accepts)."
-  [token-scopes update-scope tool-name]
-  (when-not (mcp.scope/matches? token-scopes update-scope)
-    (throw (ex-info (format "Insufficient scope to call %s with method: update — this token can create but not update."
-                            tool-name)
-                    {:status-code 403 ::error-code error-code-invalid-request}))))
+(defn readback
+  "GHY-4217: `row` when `token-scopes` could read the entity back through the read tools, else a
+   minimal `{id, url?, note}` acknowledgement — a write succeeding must never double as a read,
+   or the write scope becomes a read oracle for content the token's read scopes deny (a no-op
+   update would return the full entity). `read-scopes` is everything the read path would demand:
+   the read tool's own scope plus any per-type extra. Unscoped callers (cookie sessions bind the
+   unrestricted sentinel) always get the row."
+  [token-scopes read-scopes row]
+  (let [missing (remove #(mcp.scope/matches? token-scopes %) read-scopes)]
+    (if (empty? missing)
+      row
+      (assoc (select-keys row [:id :url])
+             :note (format "Written. Reading it back requires the %s scope%s this token doesn't have."
+                           (str/join " and " missing)
+                           (if (next missing) "s" ""))))))
 
 (defn dispatch-write
   "Shared `method` dispatch for `_write` tools. `entry` carries the tool's write contract:
-   `:tool-name`, `:update-scope` (re-checked at runtime on update), and `:create-required`
-   (arg keys enforced at create with teaching errors — the \"(create)\" markers in the spec).
+   `:create-required` (arg keys enforced at create with teaching errors — the \"(create)\" markers
+   in the spec). The tool's single write `:scope` is enforced at the registry gate, so dispatch
+   itself does no scope checking.
 
    Returns `[:create args]` or `[:update id args]` (with `:method`/`:id` stripped), or throws
    a teaching error. Does not itself touch the DB — the tool handler consumes the result."
-  [{:keys [tool-name update-scope create-required]} token-scopes {:keys [method id] :as args}]
+  [{:keys [create-required]} {:keys [method id] :as args}]
   (case method
     "create"
     (do
@@ -343,11 +366,62 @@
     (do
       (when (nil? id)
         (throw-teaching-error "`id` is required when method is \"update\"."))
-      (when update-scope
-        (check-update-scope! token-scopes update-scope tool-name))
       [:update id (dissoc args :method :id)])
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
+
+;;; ------------------------------------------------ Shared schemas ------------------------------------------------
+
+(def card-display-values
+  "Visualization types a card (or an MCP Apps visualization) can render as. Shared so the display
+   a tool saves and the display a tool renders can't drift apart. Callers that want a per-field
+   `:description` build their own enum from these — Malli properties can't be added to a built
+   schema without wrapping it in an `:and`, which publishes as JSON Schema `allOf`."
+  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
+
+(def card-display-enum
+  "[[card-display-values]] as an undescribed Malli enum."
+  (into [:enum] card-display-values))
+
+;;; ------------------------------------------------ Portable queries ----------------------------------------------
+
+(defn ellipsize
+  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
+  [s limit]
+  (let [s (str s)]
+    (if (> (count s) limit)
+      (str (subs s 0 limit) "…")
+      s)))
+
+(defn portable-query?
+  "True when `query` is a full query whose first stage names its source the way the portable
+   external dialect does — an FK path `[db schema table]` or a card entity_id — rather than a
+   numeric id. Those forms mean nothing to [[metabase.lib-be.core/normalize-query]]; they need
+   the representations pipeline."
+  [query]
+  (let [stage (first (:stages query))]
+    (or (vector? (:source-table stage))
+        (string? (:source-card stage)))))
+
+(defn resolve-external-query
+  "Resolve a full query in the portable external dialect through the same pipeline `execute_query`
+   runs a fresh `query` through — repair, portable-FK resolution, and the runnable/editor gates —
+   and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
+
+   The pipeline's own agent-facing failures become a teaching error about the `definition`
+   argument, ending in `hint` (a sentence naming the shapes the calling tool accepts); permission
+   failures and anything unrecognized pass through."
+  [external-query hint]
+  (try
+    (-> (metabot.construct/execute-representations-query external-query)
+        (get-in [:structured-output :query])
+        lib/prepare-for-serialization)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:agent-error? (ex-data e))
+        (throw-teaching-error
+         (format "`definition` could not be resolved: %s %s" (ellipsize (ex-message e) 300) hint))
+        (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
 
