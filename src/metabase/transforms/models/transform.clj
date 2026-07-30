@@ -251,10 +251,17 @@
   [_model k transforms]
   (hydrate-permission k transforms transform-writable?))
 
+(defn- transform-executable?
+  "Whether the current user can run `instance`. Running requires write permission, and a transform checked out into
+  a remote-sync worktree is never run: a worktree is a working copy of a branch."
+  [instance & args]
+  (and (nil? (:worktree_id instance))
+       (apply transform-writable? instance args)))
+
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
   "Add can_execute to transforms. Executing a transform requires write permission."
   [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  (hydrate-permission k transforms transform-executable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -477,7 +484,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :worktree_id_helper :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

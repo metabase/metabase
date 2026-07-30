@@ -132,10 +132,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("remote-sync-branches")],
     }),
-    /**
-     * Creates the branch on the remote only — the instance stays on the branch it is on. Use
-     * `stashChanges` to create a branch and continue working on it.
-     */
     createBranch: builder.mutation<void, CreateBranchRequest>({
       query: ({ name }) => ({
         method: "POST",

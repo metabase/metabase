@@ -1944,7 +1944,6 @@
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
-           config
            models
            premium-features
            util}

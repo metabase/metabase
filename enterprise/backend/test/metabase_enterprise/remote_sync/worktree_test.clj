@@ -7,6 +7,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.jobs :as transforms.jobs]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -121,6 +122,36 @@
         (testing "they are when explicitly asked for"
           (is (contains? (visible {:include-worktrees? true}) worktree-collection)))))))
 
+(deftest serdes-ignores-an-ingested-worktree-id-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-i"}]
+    (mt/with-model-cleanup [:model/Collection]
+      (let [load! (fn [name worktree-id-in-yaml]
+                    (:id (serdes/load-insert! "Collection" {:name        name
+                                                            :location    "/"
+                                                            :entity_id   (u/generate-nano-id)
+                                                            :worktree_id worktree-id-in-yaml})))]
+        (testing "a pull puts the content in the worktree it is loading, whatever the incoming data claims"
+          (is (= worktree (binding [mi/*deserializing?*  true
+                                    serdes/*worktree-id* worktree]
+                            (worktree-id :model/Collection (load! "Pulled" 999999))))))
+        (testing "the plain serdes API only ever loads into the main app"
+          (is (nil? (binding [mi/*deserializing?* true]
+                      (worktree-id :model/Collection (load! "Imported" worktree))))))))))
+
+(deftest serdes-extraction-is-scoped-to-the-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-j"}
+                 :model/Collection {main-collection :id} {}
+                 :model/Collection {worktree-collection :id} {:worktree_id worktree}]
+    (let [extracted #(into #{}
+                           (map :id)
+                           (serdes/extract-query "Collection"
+                                                 {:where [:in :id [main-collection worktree-collection]]}))]
+      (testing "the plain serdes API exports main-app content only"
+        (is (= #{main-collection} (extracted))))
+      (testing "a worktree push exports that worktree's content only"
+        (binding [serdes/*worktree-id* worktree]
+          (is (= #{worktree-collection} (extracted))))))))
+
 (deftest worktree-collection-children-match-the-worktree-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-h"}
                  :model/Collection {main-collection :id} {}
@@ -130,6 +161,30 @@
       (is (= #{child} (set (map :id (collection/effective-children parent))))))
     (testing "the children of a main-app collection never include worktree collections"
       (is (empty? (collection/effective-children (t2/select-one :model/Collection :id main-collection)))))))
+
+(deftest worktree-transforms-never-run-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-k"}
+                 :model/Collection {collection :id} {:worktree_id worktree :namespace "transforms"}
+                 :model/Transform {transform :id} {:name          "Worktree transform"
+                                                   :collection_id collection
+                                                   :source        {:type  "query"
+                                                                   :query (mt/mbql-query venues)}
+                                                   :target        {:type   "table"
+                                                                   :schema "public"
+                                                                   :name   "worktree_target"}}
+                 :model/TransformTag {tag :id} {:name "worktree-tag"}
+                 :model/TransformJob {job :id} {:name "worktree-job" :schedule "0 0 0 * * ?"}
+                 :model/TransformJobTransformTag _ {:job_id job :tag_id tag :position 0}
+                 :model/TransformTransformTag _ {:transform_id transform :tag_id tag :position 0}]
+    (mt/with-premium-features #{:remote-sync :transforms-basic}
+      (mt/with-temporary-setting-values [transforms-enabled true]
+        (testing "tags can still be attached, but the transform is left out of the job's run"
+          (is (empty? (transforms.jobs/job-transforms job))))
+        (testing "and it cannot be run by hand"
+          (is (= "Transforms in a remote sync worktree cannot be run."
+                 (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" transform)))))
+        (testing "the UI is told as much"
+          (is (false? (:can_execute (t2/hydrate (t2/select-one :model/Transform :id transform) :can_execute)))))))))
 
 (deftest delete-worktree!-removes-its-content-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-f"}

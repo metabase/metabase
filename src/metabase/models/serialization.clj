@@ -92,8 +92,10 @@
 
 (def ^:dynamic *worktree-id*
   "The remote-sync worktree an import or export is operating on; `nil` is the main app. Bound for the duration of a
-  single pull/push (which is always about exactly one worktree) by the remote-sync code that drives it. This is the
-  only ambient worktree scope in the app -- everywhere else `worktree_id` is passed explicitly."
+  single pull/push (which is always about exactly one worktree) by the remote-sync code that drives it, and left `nil`
+  by the plain serdes API, which only ever sees main-app content. Extraction and entity-id matching are scoped by it,
+  and it is stamped onto every row a load inserts, so a `worktree_id` in the incoming data is never honoured. This is
+  the only ambient worktree scope in the app -- everywhere else `worktree_id` is passed explicitly."
   nil)
 
 (def worktree-scoped-models
@@ -108,6 +110,14 @@
   "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."
   [model]
   (contains? worktree-scoped-models (if (string? model) model (name model))))
+
+(defn worktree-scope-clause
+  "HoneySQL predicate restricting a worktree-scoped `model`'s rows to [[*worktree-id*]], the worktree being
+  exported; `nil` for models that aren't worktree-scoped. Every extraction query for such a model needs it, so an
+  export only ever contains one worktree's content -- the main app's, for the plain serdes API."
+  [model]
+  (when (worktree-scoped? model)
+    [:= :worktree_id *worktree-id*]))
 
 (mr/def ::model-keyword
   [:and
@@ -518,7 +528,12 @@
         ;; Nested fetches (e.g. a Dashboard's DashboardCards) are embedded as lists inside the parent's file
         ;; rather than written to their own files, so they keep their natural order and are left untouched.
         order-by (when-not (::nested-fetch opts)
-                   (stable-storage-order-by spec))]
+                   (stable-storage-order-by spec))
+        scope    (worktree-scope-clause model)
+        where    (cond
+                   (and where scope) [:and where scope]
+                   scope             scope
+                   :else             where)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection

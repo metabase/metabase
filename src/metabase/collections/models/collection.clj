@@ -2100,7 +2100,8 @@
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
-                          [:not= :type trash-collection-type]]]
+                          [:not= :type trash-collection-type]]
+        worktree-clause  (serdes/worktree-scope-clause "Collection")]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
                            {:where
@@ -2110,6 +2111,7 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
+                             worktree-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order})
@@ -2119,6 +2121,7 @@
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
+                             worktree-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
@@ -2214,7 +2217,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:worktree_id :worktree_id_helper]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

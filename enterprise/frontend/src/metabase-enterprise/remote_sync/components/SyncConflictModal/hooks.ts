@@ -167,9 +167,6 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
 
         try {
           setIsStashing(true);
-          // One call: creates the branch, pushes the local state to it, and switches onto it. Creating the
-          // branch separately would leave the instance on the old branch, and the follow-up push would then
-          // be rejected for targeting a branch the instance isn't on.
           await stashChanges({
             new_branch: newBranchName,
             message: message ?? t`Stashed from Metabase`,

@@ -42,20 +42,3 @@
                                :date_joined :last_login :is_superuser :is_qbnewb :is_active]
                               :id [:in ids]))))
    :creator_id))
-
-(defn list-worktrees
-  "Return every worktree with its `:creator` hydrated, ordered by id."
-  []
-  (t2/hydrate (t2/select :model/RemoteSyncWorktree {:order-by [[:id :asc]]}) :creator))
-
-(defn get-worktree
-  "Return the worktree with `id` and its `:creator` hydrated, or nil."
-  [id]
-  (when-let [worktree (t2/select-one :model/RemoteSyncWorktree :id id)]
-    (t2/hydrate worktree :creator)))
-
-(defn worktree-branch
-  "Return the `branch` of the worktree with `id`, or nil."
-  [id]
-  (when id
-    (t2/select-one-fn :branch :model/RemoteSyncWorktree :id id)))

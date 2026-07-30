@@ -6,7 +6,6 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.models.remote-sync-worktree :as worktree]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -55,7 +54,8 @@
   "The branch a remote-sync operation actually targets: `worktree-id`'s own branch when it is inside a worktree,
   else the `remote-sync-branch` setting (the main app)."
   [worktree-id]
-  (or (worktree/worktree-branch worktree-id)
+  (or (when worktree-id
+        (t2/select-one-fn :branch :model/RemoteSyncWorktree :id worktree-id))
       (settings/remote-sync-branch)))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -409,18 +409,18 @@
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
 
-
 (api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
   "List all remote-sync worktrees. Requires superuser permissions."
   []
   (api/check-superuser)
-  (worktree/list-worktrees))
+  (t2/hydrate (t2/select :model/RemoteSyncWorktree {:order-by [[:id :asc]]}) :creator))
 
 (api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
   "Get a single remote-sync worktree by id. Requires superuser permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (worktree/get-worktree id)))
+  (-> (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))
+      (t2/hydrate :creator)))
 
 (api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
   "Create a remote-sync worktree for `branch`. The branch is not created here — it is expected to already exist
@@ -432,9 +432,9 @@
   (api/check-superuser)
   (api/check-400 (not (t2/exists? :model/RemoteSyncWorktree :branch branch))
                  (format "A worktree for branch '%s' already exists." branch))
-  (let [id (t2/insert-returning-pk! :model/RemoteSyncWorktree
-                                    {:branch branch :creator_id api/*current-user-id*})]
-    (worktree/get-worktree id)))
+  (-> (t2/insert-returning-instance! :model/RemoteSyncWorktree
+                                     {:branch branch :creator_id api/*current-user-id*})
+      (t2/hydrate :creator)))
 
 (api.macros/defendpoint :delete "/worktree/:id" :- :nil
   "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser

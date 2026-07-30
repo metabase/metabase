@@ -69,7 +69,7 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

@@ -177,20 +177,22 @@
   ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
-                                                                  (when skip-archived [:not :archived])
-                                                                  [:or
-                                                                   (when-let [collection-ids (not-empty (remove nil? collection-set))]
-                                                                     [:in :collection_id collection-ids])
-                                                                   (when (some nil? collection-set)
-                                                                     [:= :collection_id nil])]]
-                                                          ;; stable filename de-dup suffixes across exports, see GHY-3754
-                                                          :order-by serdes/stable-storage-order}
-                                                   where (sql.helpers/where :or where))))
+  (let [worktree-clause (serdes/worktree-scope-clause "NativeQuerySnippet")]
+    (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
+                                                                    (when skip-archived [:not :archived])
+                                                                    [:or
+                                                                     (when-let [collection-ids (not-empty (remove nil? collection-set))]
+                                                                       [:in :collection_id collection-ids])
+                                                                     (when (some nil? collection-set)
+                                                                       [:= :collection_id nil])]]
+                                                            ;; stable filename de-dup suffixes across exports, see GHY-3754
+                                                            :order-by serdes/stable-storage-order}
+                                                     where           (sql.helpers/where :or where)
+                                                     worktree-clause (sql.helpers/where worktree-clause)))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

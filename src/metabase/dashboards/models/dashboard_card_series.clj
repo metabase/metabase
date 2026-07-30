@@ -34,6 +34,6 @@
   ;; We did not have `position` in serialization before, it was inferred from the order, but we're trying to keep
   ;; code more generic right now - so it's carried over as data rather than implied.
   {:copy      [:position]
-   :skip      []
+   :skip      [:worktree_id]
    :transform {:dashboardcard_id (serdes/parent-ref)
                :card_id          (serdes/fk :model/Card)}})

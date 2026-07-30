@@ -200,8 +200,8 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/read-check :model/Transform id)
-  (let [id->transform (t2/select-pk->fn identity :model/Transform)
+  (let [transform     (api/read-check :model/Transform id)
+        id->transform (t2/select-pk->fn identity :model/Transform :worktree_id (:worktree_id transform))
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
@@ -345,10 +345,13 @@
   nil)
 
 (defn- check-feature-and-lock!
-  "Check that the transform's premium features are enabled and that transforms are not locked by the
-  trial quota."
+  "Check that the transform's premium features are enabled, that transforms are not locked by the
+  trial quota, and that this transform can be run at all -- one checked out into a remote-sync worktree
+  cannot, since a worktree is a working copy of a branch."
   [transform]
   (transforms.core/check-feature-enabled! transform)
+  (api/check-400 (nil? (:worktree_id transform))
+                 (deferred-tru "Transforms in a remote sync worktree cannot be run."))
   (api/check (not (transforms.core/transform-locked? transform))
              [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
                    :error-code "metabase_transforms_locked"}]))
