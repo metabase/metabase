@@ -142,7 +142,7 @@
             (is (= #{"anthropic" "metabase"}
                    (set (map :key (llm.settings/llm-providers)))))))))))
 
-(deftest migrates-legacy-credential-settings-onto-llm-providers-test
+(deftest adopts-db-stored-credential-settings-onto-llm-providers-test
   (testing "credentials stored in the app DB become connections keyed by their provider type"
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      nil
                                   mb-llm-openai-api-key         nil
@@ -160,7 +160,7 @@
               (is (=? {:connection-key "anthropic" :type "anthropic" :model "claude-opus-4-1"}
                       (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider)))))))))))
 
-(deftest legacy-migration-skips-incomplete-and-env-set-credentials-test
+(deftest adoption-skips-incomplete-and-env-set-credentials-test
   (testing "a partial credential set does not become a connection"
     (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     nil
                                   mb-llm-bedrock-secret-access-key nil
@@ -173,7 +173,7 @@
           (with-entitlements nil nil false
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (nil? (setting/db-stored-value :llm-providers))))))))
-  (testing "credentials that come from an env var are left to be synthesized on every read"
+  (testing "credentials that come from an env var stay configured by the environment, resolved on every read"
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
       (mt/with-temporary-raw-setting-values [llm-providers        nil
                                              llm-metabot-provider nil]
@@ -183,8 +183,8 @@
           (is (= [["anthropic" :env]]
                  (map (juxt :key :source) (llm.provider/connections)))))))))
 
-(deftest legacy-migration-is-a-one-shot-test
-  (testing "an instance that already has a connection list is not migrated over again"
+(deftest adoption-is-a-one-shot-test
+  (testing "an instance that already has a connection list is not adopted over again"
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
       (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-stored"
                                          llm-providers         []]
