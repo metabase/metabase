@@ -118,6 +118,11 @@
 (api-scope/defscope agent-todo-write "agent:todo:write"
   (deferred-tru "Create and edit todos"))
 
+(api-scope/defscope agent-admin-settings-read "agent:admin:settings:read"
+  (deferred-tru "Read instance administration settings"))
+(api-scope/defscope agent-admin-settings-write "agent:admin:settings:write"
+  (deferred-tru "Update instance administration settings"))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────

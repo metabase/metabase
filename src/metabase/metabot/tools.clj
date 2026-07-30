@@ -21,6 +21,7 @@
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
+   [metabase.metabot.tools.settings-admin :as tools.settings-admin]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
@@ -92,7 +93,11 @@
  [tools.create-dashboard-subscription
   slackbot-create-dashboard-subscription-tool]
  [tools.skills
-  load-skill-tool])
+  load-skill-tool]
+ [tools.settings-admin
+  list-settings-tool
+  get-setting-tool
+  update-setting-tool])
 
 (def query-generation-tool-names
   "Tool names that produce a runnable query (SQL or notebook). Both the in-app

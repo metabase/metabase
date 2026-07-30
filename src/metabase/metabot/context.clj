@@ -64,7 +64,8 @@
         #{"document"
           "dashboard"
           "transform"
-          "code_editor"}))
+          "code_editor"
+          "admin_settings"}))
 
 (def ^:private item-type-schema
   "Schema for the `:type` key of `:user_is_viewing` item."
