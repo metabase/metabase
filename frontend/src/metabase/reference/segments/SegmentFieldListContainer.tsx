@@ -1,6 +1,6 @@
 import cx from "classnames";
-import { useEffect } from "react";
-import { useMount, usePrevious } from "react-use";
+import { useEffect, useRef } from "react";
+import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
@@ -45,9 +45,16 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
   // `SegmentFieldList` reads `table.db_id` but doesn't select the table itself.
   const table = useSelector((state) => getTable(state, { params }));
 
-  useMount(() => {
+  // Dispatched during render, not from an effect, to reproduce the
+  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
+  // the store, so it has to be true before the child's first render. From an
+  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
+  // reference header lays out wrong — see DEV-2430.
+  const didFetch = useRef(false);
+  if (!didFetch.current) {
+    didFetch.current = true;
     actions.wrappedFetchSegmentFields(props, segmentId);
-  });
+  }
 
   useEffect(() => {
     const pathnameChanged =
