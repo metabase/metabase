@@ -17,7 +17,9 @@ on:
   workflow_dispatch:
     inputs:
       read_first:
-        description: "⚠️ This never bumps the version. To cut a release, use the SDK Version Bump PR workflow instead; merging the PR it opens is what publishes. Use this only to publish a version already committed in package.template.json, when neither the bump PR nor re-running the failed jobs will do it."
+        # Retry guidance deliberately left out - it is in the file header above,
+        # and the label has to stay short enough to read at the panel width.
+        description: "⚠️ Manual override. Publishes whatever version is already committed in package.template.json; it never bumps. Normally you want the SDK Version Bump PR workflow, where merging the PR publishes."
         type: choice
         required: false
         options:

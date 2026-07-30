@@ -46,7 +46,7 @@ on:
           - custom
       prerelease_id:
         # Left empty on later bumps, the id is reused from the current version.
-        description: "For release_type=custom only, and only on the FIRST cut of a one-off branch. Becomes the prerelease id in the version (0.62.5-data-apps.0) and the npm dist-tag (62-data-apps). Leave empty on later bumps."
+        description: "For release_type=custom only, and only on the FIRST cut of a one-off branch. Enter a name like data-apps: the version becomes 0.62.5-data-apps.0 and the dist-tag 62-data-apps. Leave empty on later bumps."
         type: string
         required: false
 
