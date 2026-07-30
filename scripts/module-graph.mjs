@@ -8,6 +8,7 @@
  *
  * Usage:
  *   node scripts/module-graph.mjs > module-boundaries.svg
+ *   node scripts/module-graph.mjs --shared-only > module-boundaries-shared.svg
  */
 
 import { readdirSync, existsSync, readFileSync, unlinkSync } from "fs";
@@ -18,6 +19,10 @@ import { tmpdir } from "os";
 import { elements } from "../frontend/lint/module-boundaries.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// --shared-only: render just the shared tier — its sub-tier rows and the
+// edges between shared modules — with nodes/edges colored by sub-tier.
+const SHARED_ONLY = process.argv.includes("--shared-only");
 
 const tierColors = {
   lib: "#e8f5e9",
@@ -51,6 +56,18 @@ const DEFAULT_EDGE_ALPHA = "80";
  *   "target" — tier colour of the destination module (where it ends)
  */
 const EDGE_COLOR_MODE = "target";
+
+// Per-sub-tier colors for --shared-only mode. In the full graph every shared
+// module shares one amber; a shared-only view needs per-row colors or it
+// reads as a monochrome hairball.
+const sharedSubtierColors = {
+  shared_embedding: { fill: "#fff3e0", edge: "#ef6c00" }, // orange
+  shared_apps:      { fill: "#fce4ec", edge: "#c2185b" }, // pink
+  shared_domain:    { fill: "#e3f2fd", edge: "#0288d1" }, // blue
+  shared_content:   { fill: "#e8f5e9", edge: "#2e7d32" }, // green
+  shared_infra:     { fill: "#ede7f6", edge: "#5e35b1" }, // purple
+  shared_utils:     { fill: "#f5f5f5", edge: "#616161" }, // grey
+};
 
 // ---------------------------------------------------------------------------
 // Derive configuration from boundaries
@@ -260,6 +277,15 @@ if (sharedIdx >= 0) {
   tierOrder.splice(sharedIdx, 1, ...sharedSubtiers.map((s) => s.id));
 }
 
+// Shared-only mode drops every non-shared row
+if (SHARED_ONLY) {
+  const sharedIds = new Set(sharedSubtiers.map((s) => s.id));
+  for (let i = tierOrder.length - 1; i >= 0; i--) {
+    if (!sharedIds.has(tierOrder[i])) tierOrder.splice(i, 1);
+  }
+}
+const tierOrderSet = new Set(tierOrder);
+
 /** Tier definitions: label, color, and module names */
 const tiers = {};
 const moduleToBaseTier = {};
@@ -267,14 +293,20 @@ for (const el of graphElements) {
   const tier = tierForElement(el);
   const baseTier = getTier(el.type);
   moduleToBaseTier[moduleNameForElement(el)] = baseTier;
+  if (!tierOrderSet.has(tier)) continue; // dropped row (shared-only mode)
   if (!tiers[tier]) {
     tiers[tier] = {
       label:
-        tier === "meta_feature" ? "feature"
-        : tier.startsWith("feature") ? "feature"
-        : tier.startsWith("shared") ? "shared"
-        : tier,
-      color: tierColors[baseTier] || "#ffffff",
+        SHARED_ONLY && tier.startsWith("shared_")
+          ? tier.slice("shared_".length)
+          : tier === "meta_feature" ? "feature"
+          : tier.startsWith("feature") ? "feature"
+          : tier.startsWith("shared") ? "shared"
+          : tier,
+      color:
+        SHARED_ONLY && sharedSubtierColors[tier]
+          ? sharedSubtierColors[tier].fill
+          : tierColors[baseTier] || "#ffffff",
       modules: [],
     };
   }
@@ -286,8 +318,10 @@ for (const el of elements) {
 
 // Catch-all bucket for files not claimed by any element (loose entry files,
 // leftovers in partially-claimed dirs). Rendered grey in the app row.
-tiers["app"].modules.push("other");
-moduleToBaseTier["other"] = "app";
+if (!SHARED_ONLY) {
+  tiers["app"].modules.push("other");
+  moduleToBaseTier["other"] = "app";
+}
 
 /** Directories already assigned to a tier */
 const namedDirs = new Set();
@@ -334,6 +368,9 @@ const moduleDirs = [
   ...new Set(
     elements
       .filter((el) => el.type !== "app/misc" && el.type !== "other")
+      // Shared-only mode needs only shared sources cruised — edges from
+      // other tiers are dropped anyway.
+      .filter((el) => !SHARED_ONLY || getTier(el.type) === "shared")
       .map((el) => patternToDir(el.pattern).replace(/\/$/, ""))
       .filter((dir) => !dir.includes("*") && existsSync(dir)),
   ),
@@ -412,8 +449,11 @@ tierOrder.forEach((t, i) => {
 });
 
 // Modules whose outgoing boundary rules are NOT enforced by the linter
+// (only counting modules that are actually displayed)
 const unenforcedModules = new Set(
-  graphElements.filter((e) => !e.enforceOutgoing).map((e) => moduleNameForElement(e)),
+  graphElements
+    .filter((e) => !e.enforceOutgoing && tierOrderSet.has(tierForElement(e)))
+    .map((e) => moduleNameForElement(e)),
 );
 
 // ---------------------------------------------------------------------------
@@ -461,9 +501,20 @@ for (const mod of collapsed.modules) {
 // Build Graphviz dot source
 // ---------------------------------------------------------------------------
 
+// Whether buildDot emitted any red violation edge; postProcessSvg only shows
+// the violation legend entry when it did.
+let hasViolationEdges = false;
+
 function buildDot() {
   const out = [];
   const emit = (line) => out.push(line);
+
+  // Only reference declared modules in spines — a chain mentioning a node
+  // that no tier row declares (e.g. non-shared modules in shared-only mode)
+  // would make Graphviz conjure a default node for it.
+  const activeSpines = spines
+    .map((s) => s.filter((m) => moduleToTier[m] !== undefined))
+    .filter((s) => s.length > 0);
 
   // spineColumn = which spine the module belongs to (anchors its x position).
   // spinePosition = index within that spine; tie-breaker so the in-row chain
@@ -471,10 +522,10 @@ function buildDot() {
   // cycles that blow up the x-layout).
   const spineColumn = {};
   const spinePosition = {};
-  for (let i = 0; i < spines.length; i++) {
-    for (let j = 0; j < spines[i].length; j++) {
-      spineColumn[spines[i][j]] = i;
-      spinePosition[spines[i][j]] = j;
+  for (let i = 0; i < activeSpines.length; i++) {
+    for (let j = 0; j < activeSpines[i].length; j++) {
+      spineColumn[activeSpines[i][j]] = i;
+      spinePosition[activeSpines[i][j]] = j;
     }
   }
   function spineSort(a, b) {
@@ -597,7 +648,7 @@ function buildDot() {
   emit("");
 
   // Invisible spines for horizontal column anchoring
-  for (const spine of spines) {
+  for (const spine of activeSpines) {
     for (let i = 0; i < spine.length - 1; i++) {
       emit(`  "${spine[i]}" -> "${spine[i + 1]}" [style="invis" weight="100"]`);
     }
@@ -616,8 +667,12 @@ function buildDot() {
   }
   emit("");
 
-  // Dependency edges
+  // Dependency edges — only between declared nodes (shared-only mode drops
+  // every edge with a non-shared endpoint).
   for (const { from, to, violations, violationCount } of edges.values()) {
+    if (moduleToTier[from] === undefined || moduleToTier[to] === undefined) {
+      continue;
+    }
     const attrs = [];
     const boundaryViolations = violations.filter((v) => v !== "no-circular");
 
@@ -625,14 +680,21 @@ function buildDot() {
       const tip = `${boundaryViolations.join(", ")} (${violationCount} violations)`;
       attrs.push('color="red"', 'penwidth="2.0"');
       attrs.push(`tooltip="${tip}"`, `edgetooltip="${tip}"`);
+      hasViolationEdges = true;
     } else {
       // Edge stroke per EDGE_COLOR_MODE (configured at the top of this file).
       let stroke;
       if (EDGE_COLOR_MODE === "source" || EDGE_COLOR_MODE === "target") {
-        const tier = moduleToBaseTier[EDGE_COLOR_MODE === "source" ? from : to];
-        const c = tierEdgeColors[tier] ?? "#000000";
-        const a = tierEdgeAlpha[tier] ?? DEFAULT_EDGE_ALPHA;
-        stroke = `${c}${a}`;
+        const endpoint = EDGE_COLOR_MODE === "source" ? from : to;
+        if (SHARED_ONLY) {
+          const c = sharedSubtierColors[moduleToTier[endpoint]]?.edge ?? "#000000";
+          stroke = `${c}${DEFAULT_EDGE_ALPHA}`;
+        } else {
+          const tier = moduleToBaseTier[endpoint];
+          const c = tierEdgeColors[tier] ?? "#000000";
+          const a = tierEdgeAlpha[tier] ?? DEFAULT_EDGE_ALPHA;
+          stroke = `${c}${a}`;
+        }
       } else {
         stroke = "#00000055";
       }
@@ -736,20 +798,25 @@ function postProcessSvg(svg) {
     const arrowX2 = swatchCenterX + 20;
     const arrowY = legendLibY + swatchHalfH + 28;
     const violationLabelY = arrowY + 14;
-    // Bold-bordered sample rect = "unenforced" — only shown while any
-    // module still has enforceOutgoing: false.
+    // Indicators are only shown when the graph actually contains what they
+    // explain: the red arrow when a violation edge was drawn, the bold-border
+    // sample while any module still has enforceOutgoing: false.
+    const showViolation = hasViolationEdges;
     const showUnenforced = unenforcedModules.size > 0;
     const sampleW = 40;
     const sampleH = 14;
     const sampleX = swatchCenterX - sampleW / 2;
-    const sampleY = violationLabelY + 14;
+    const sampleY = (showViolation ? violationLabelY : arrowY - 14) + 14;
     const unenforcedLabelY = sampleY + sampleH + 12;
     // Rounded box around the whole legend column
     const titleH = 22;
     const boxX = swatchCenterX - 50;
     const boxW = 100;
     const boxY = firstY - swatchHalfH - titleH - 6;
-    const boxBottom = (showUnenforced ? unenforcedLabelY : violationLabelY) + 8;
+    const boxBottom =
+      (showUnenforced ? unenforcedLabelY
+      : showViolation ? violationLabelY
+      : legendLibY + swatchHalfH) + 8;
     const boxH = boxBottom - boxY;
 
     bottomExtra = Math.max(0, boxBottom - graphTop - height + minY + 24);
@@ -759,12 +826,16 @@ function postProcessSvg(svg) {
       `  <rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="8" ry="8" fill="none" stroke="#cccccc" stroke-width="1"/>`,
       `  <text x="${swatchCenterX}" y="${boxY + 16}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="12" fill="#666666">Legend</text>`,
       `</g>`,
-      `<g id="legend-violation">`,
-      `  <defs><marker id="arrowhead-red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="red"/></marker></defs>`,
-      `  <line x1="${arrowX1}" y1="${arrowY}" x2="${arrowX2}" y2="${arrowY}" stroke="red" stroke-width="2" marker-end="url(#arrowhead-red)"/>`,
-      `  <text x="${swatchCenterX}" y="${violationLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">violation</text>`,
-      `</g>`,
     );
+    if (showViolation) {
+      injected.push(
+        `<g id="legend-violation">`,
+        `  <defs><marker id="arrowhead-red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="red"/></marker></defs>`,
+        `  <line x1="${arrowX1}" y1="${arrowY}" x2="${arrowX2}" y2="${arrowY}" stroke="red" stroke-width="2" marker-end="url(#arrowhead-red)"/>`,
+        `  <text x="${swatchCenterX}" y="${violationLabelY}" text-anchor="middle" font-family="Helvetica,sans-Serif" font-size="10" fill="#888888">violation</text>`,
+        `</g>`,
+      );
+    }
     if (showUnenforced) {
       injected.push(
         `<g id="legend-unenforced">`,
@@ -775,13 +846,14 @@ function postProcessSvg(svg) {
     }
   }
 
-  // --- "Other modules" sidebar (omitted when every dir is assigned) ---
-  const otherDirs = readdirSync("frontend/src/metabase", {
-    withFileTypes: true,
-  })
-    .filter((d) => d.isDirectory() && !namedDirs.has(d.name))
-    .map((d) => d.name)
-    .sort();
+  // --- "Other modules" sidebar (omitted when every dir is assigned, and in
+  // shared-only mode where unassigned dirs are out of scope) ---
+  const otherDirs = SHARED_ONLY
+    ? []
+    : readdirSync("frontend/src/metabase", { withFileTypes: true })
+        .filter((d) => d.isDirectory() && !namedDirs.has(d.name))
+        .map((d) => d.name)
+        .sort();
 
   const lineHeight = 16;
   const padding = 12;
