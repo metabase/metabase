@@ -438,6 +438,23 @@ const SdkDashboardInner = ({
     ],
   );
 
+  // "Edit question" opens the card via adhocQuestionUrl without going through
+  // onNavigateToNewCardFromDashboard, so it never pushes to the navigation stack
+  // and the back button stays hidden. Push a virtual entry here so the question
+  // view renders a back button to the dashboard, matching the drill-in flow.
+  const onEditQuestionWithNav = useCallback(
+    (question: Parameters<typeof onEditQuestion>[0]) => {
+      sdkNavigation?.push({
+        type: "open-card",
+        virtual: true,
+        name: question.displayName() ?? t`Question`,
+        onPop: () => onNavigateBackToDashboard(),
+      });
+      onEditQuestion(question);
+    },
+    [onEditQuestion, sdkNavigation, onNavigateBackToDashboard],
+  );
+
   if (isLocaleLoading) {
     return (
       <MaybeStyledWrapper
@@ -598,7 +615,7 @@ const SdkDashboardInner = ({
           .with({ finalRenderMode: "dashboard" }, () => (
             <SdkDashboardProvider
               plugins={plugins}
-              onEditQuestion={onEditQuestion}
+              onEditQuestion={onEditQuestionWithNav}
             >
               {children ?? (
                 <MaybeStyledWrapper
