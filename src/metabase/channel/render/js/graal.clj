@@ -122,6 +122,7 @@
   (locking engine-lock
     (let [state (or @shared-untrusted-engine {:engine (new-untrusted-engine), :refs 0})]
       (reset! shared-untrusted-engine (update state :refs inc))
+      (analytics/inc! :metabase-static-viz/isolate-contexts)
       (:engine state))))
 
 (defn- release-untrusted-engine!
@@ -132,7 +133,8 @@
       (if (<= refs 1)
         (do (try (.close engine) (catch Exception _))
             (reset! shared-untrusted-engine nil))
-        (swap! shared-untrusted-engine update :refs dec)))))
+        (swap! shared-untrusted-engine update :refs dec))
+      (analytics/dec-gauge! :metabase-static-viz/isolate-contexts))))
 
 (def ^:private render-max-cpu-time
   "`sandbox.MaxCPUTime` for a *non-pooled* untrusted context (the dev fresh-context path). Covers a cold parse
@@ -284,6 +286,7 @@
           (let [total (swap! used-ms + (long (u/since-ms timer)))]
             (if (>= total pool-cpu-soft-limit-ms)
               (do
+                (analytics/inc! :metabase-static-viz/context-recycles {:tier label})
                 (log/infof "static-viz: %s isolate context spent ~%dms of its cumulative %s CPU budget; recycling it"
                            label total pool-max-cpu-time)
                 (.dispose pool pool-key wrapper))
@@ -294,14 +297,23 @@
   [[render-lock]]. In dev, builds a throwaway context per call so a fresh `bun run build-static-viz` is
   picked up without a REPL restart; in prod, borrows a pooled context from `pool`."
   [^Pool pool bundle-path label f]
-  (locking render-lock
-    (if config/is-dev?
-      (let [context (generate-untrusted-context! bundle-path render-max-cpu-time)]
-        (try
-          (f context)
-          (finally
-            (destroy-untrusted-context! context))))
-      (do-with-pooled-context pool label f))))
+  (analytics/inc! :metabase-static-viz/untrusted-render {:tier label})
+  (let [wait-timer (u/start-timer)]
+    ;; monitor acquisition can't throw, so the matching dec-gauge! inside the lock body cannot be skipped
+    (analytics/inc! :metabase-static-viz/render-queue)
+    (locking render-lock
+      (analytics/dec-gauge! :metabase-static-viz/render-queue)
+      (let [waited-ms (long (u/since-ms wait-timer))]
+        (if (>= waited-ms 1000)
+          (log/infof "static-viz: %s render waited %dms for the render lock" label waited-ms)
+          (log/debugf "static-viz: %s render waited %dms for the render lock" label waited-ms)))
+      (if config/is-dev?
+        (let [context (generate-untrusted-context! bundle-path render-max-cpu-time)]
+          (try
+            (f context)
+            (finally
+              (destroy-untrusted-context! context))))
+        (do-with-pooled-context pool label f)))))
 
 (defn do-with-untrusted-plugin-context
   "Acquire a plugin isolate context (slim custom-viz bundle) — the only kind of context that ever evaluates
