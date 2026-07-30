@@ -64,11 +64,6 @@ const elements = [
   createElement({ type: "shared", name: "data-grid" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({
-    type: "shared",
-    name: "embed",
-    pattern: "frontend/src/embed/**",
-  }),
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
@@ -136,16 +131,10 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
-  createElement({
-    type: "shared",
-    name: "metabase-shared",
-    pattern: "frontend/src/metabase-shared/**",
-  }),
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),

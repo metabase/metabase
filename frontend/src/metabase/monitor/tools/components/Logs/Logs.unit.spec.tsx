@@ -2,10 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockLocation,
-  createMockRoutingState,
-} from "metabase/redux/store/mocks";
+import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import { openSaveDialog } from "metabase/utils/dom";
@@ -48,11 +45,6 @@ function setup({
     <Route path={location.pathname} element={<Logs />} />,
     {
       initialRoute: `${location.pathname}${location.search}`,
-      storeInitialState: {
-        routing: createMockRoutingState({
-          locationBeforeTransitions: location,
-        }),
-      },
       withRouter: true,
     },
   );

@@ -241,7 +241,7 @@
      (catch Throwable e
        (if (and *log-exceptions-and-continue?* (not (transient-exception? e)))
          (do
-           (log/warn e message)
+           (log/warn message (ex-message e))
            e)
          (throw e))))))
 
@@ -262,7 +262,7 @@
        (catch Throwable e
          (if *log-exceptions-and-continue?*
            (do
-             (log/warn e message)
+             (log/warn message (ex-message e))
              {:throwable e})
            (throw e)))))
 

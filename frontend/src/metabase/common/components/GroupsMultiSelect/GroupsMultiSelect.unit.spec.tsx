@@ -10,7 +10,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { GroupsMultiSelect } from "./GroupsMultiSelect";
+import { type GroupSection, GroupsMultiSelect } from "./GroupsMultiSelect";
 
 const ALL_USERS = createMockGroup({
   id: 1,
@@ -50,7 +50,12 @@ function setup(
   {
     managerGroupIds = [],
     groups = GROUPS,
-  }: { managerGroupIds?: GroupId[]; groups?: GroupInfo[] } = {},
+    sections,
+  }: {
+    managerGroupIds?: GroupId[];
+    groups?: GroupInfo[];
+    sections?: GroupSection[];
+  } = {},
 ) {
   const onChange = jest.fn<void, [GroupId[]]>();
   const onToggleManager = jest.fn<void, [GroupId]>();
@@ -75,6 +80,7 @@ function setup(
               : [...prev, id],
           );
         }}
+        sections={sections}
       />
     );
   }
@@ -104,6 +110,10 @@ const expectSingleDividerBetween = (before: string, after: string) => {
     isBefore(separators[0], screen.getByRole("option", { name: after })),
   ).toBe(true);
 };
+
+// The labeled sections carry role="group", so their contents can be scoped.
+const getSection = (name: string) =>
+  within(screen.getByRole("group", { name }));
 
 describe("GroupsMultiSelect", () => {
   it("renders the selected groups as pills", () => {
@@ -191,6 +201,116 @@ describe("GroupsMultiSelect", () => {
     expect(
       screen.queryByRole("button", { name: /Turn into (Manager|Member)/ }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("with sections", () => {
+    const SECTIONS = [
+      {
+        label: "Can view this dashboard",
+        groupIds: [ADMINISTRATORS.id, MARKETING.id],
+      },
+    ];
+
+    it("splits the dropdown into the given and other sections instead of the pinned divider", async () => {
+      setup([ALL_USERS.id], { sections: SECTIONS });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      // Administrators and Marketing sit in the listed section...
+      const accessSection = "Can view this dashboard";
+      expect(
+        getSection(accessSection).getByRole("option", {
+          name: "Administrators",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        getSection(accessSection).getByRole("option", { name: "Marketing" }),
+      ).toBeInTheDocument();
+
+      // ...while All Users and Sales fall under "Other groups".
+      expect(
+        getSection("Other groups").getByRole("option", { name: "All Users" }),
+      ).toBeInTheDocument();
+      expect(
+        getSection("Other groups").getByRole("option", { name: "Sales" }),
+      ).toBeInTheDocument();
+
+      // The sections replace the flat layout's pinned divider.
+      expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+    });
+
+    it("omits a section none of whose groups are visible", async () => {
+      setup([ALL_USERS.id], {
+        groups: [ALL_USERS, MARKETING],
+        sections: [{ label: "Can view this dashboard", groupIds: [SALES.id] }],
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      expect(
+        screen.queryByRole("group", { name: "Can view this dashboard" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("group", { name: "Other groups" }),
+      ).toBeInTheDocument();
+    });
+
+    it("omits the other-groups section when every group is claimed", async () => {
+      setup([ALL_USERS.id], {
+        sections: [
+          {
+            label: "Can view this dashboard",
+            groupIds: GROUPS.map((group) => group.id),
+          },
+        ],
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      expect(
+        screen.getByRole("group", { name: "Can view this dashboard" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("group", { name: "Other groups" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders multiple sections in order, each group counting toward the first that lists it", async () => {
+      setup([ALL_USERS.id], {
+        sections: [
+          { label: "First", groupIds: [MARKETING.id] },
+          // Marketing is already claimed by "First", so only Sales lands here.
+          { label: "Second", groupIds: [MARKETING.id, SALES.id] },
+        ],
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      // getAllByRole returns DOM order, pinning the section sequence.
+      expect(
+        screen
+          .getAllByRole("group")
+          .map((section) => section.getAttribute("aria-label")),
+      ).toEqual(["First", "Second", "Other groups"]);
+
+      // Marketing renders once, in "First"; "Second" only gets Sales.
+      expect(screen.getAllByRole("option", { name: "Marketing" })).toHaveLength(
+        1,
+      );
+      expect(
+        getSection("First").getByRole("option", { name: "Marketing" }),
+      ).toBeInTheDocument();
+      expect(
+        getSection("Second").getByRole("option", { name: "Sales" }),
+      ).toBeInTheDocument();
+      expect(
+        getSection("Other groups").getByRole("option", { name: "All Users" }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("with the group-managers feature (EE)", () => {

@@ -111,12 +111,20 @@ export const getIsColumnTruncated = ({
 export const getDataColumn = <TRow, TValue>(
   columnOptions: ColumnOptions<TRow, TValue>,
 ): DataColumnDef<TRow, TValue> => {
-  const { id, accessorFn, wrap, cell, header, headerClickTargetSelector } =
-    columnOptions;
+  const {
+    id,
+    accessorFn,
+    wrap,
+    cell,
+    header,
+    headerClickTargetSelector,
+    sortingFn,
+  } = columnOptions;
 
   const columnDefinition: DataColumnDef<TRow, TValue> = {
     accessorFn,
     id,
+    ...(sortingFn != null ? { sortingFn } : {}),
     header:
       typeof header !== "string"
         ? memo(header ?? getDefaultHeaderTemplate(columnOptions))

@@ -6,53 +6,7 @@ import { type ActionIconProps, Box, Popover } from "metabase/ui";
 
 import { RefreshOption } from "./RefreshOption";
 import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
-
-const toSeconds = (minutes: number) => minutes * 60;
-
-const OPTIONS = [
-  {
-    get name() {
-      return t`Off`;
-    },
-    period: null,
-  },
-  {
-    get name() {
-      return t`1 minute`;
-    },
-    period: toSeconds(1),
-  },
-  {
-    get name() {
-      return t`5 minutes`;
-    },
-    period: toSeconds(5),
-  },
-  {
-    get name() {
-      return t`10 minutes`;
-    },
-    period: toSeconds(10),
-  },
-  {
-    get name() {
-      return t`15 minutes`;
-    },
-    period: toSeconds(15),
-  },
-  {
-    get name() {
-      return t`30 minutes`;
-    },
-    period: toSeconds(30),
-  },
-  {
-    get name() {
-      return t`60 minutes`;
-    },
-    period: toSeconds(60),
-  },
-];
+import { AUTO_REFRESH_OPTIONS } from "./options";
 
 export const RefreshWidget = (
   props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
@@ -94,7 +48,7 @@ export const RefreshWidget = (
             c="text-secondary"
           >{t`Auto Refresh`}</Box>
           <ul>
-            {OPTIONS.map((option) => (
+            {AUTO_REFRESH_OPTIONS.map((option) => (
               <RefreshOption
                 key={option.period}
                 name={option.name}

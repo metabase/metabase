@@ -3,6 +3,8 @@ import { useCallback } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useMaybeLocation } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { trackMetabotRequestSent } from "../analytics";
 import type { MetabotProfileId } from "../constants";
@@ -16,6 +18,7 @@ import {
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
+  getMetabotConversationForkedFrom,
   getMetabotConversationId,
   getMetabotConversationTitle,
   getMetabotId,
@@ -35,6 +38,13 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   const dispatch = useDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
+
+  // `null` when rendered outside the app router (e.g. the SDK), where there is
+  // no transforms page. Drives the transforms-codegen profile auto-selection
+  // that used to read the retired routing slice.
+  const location = useMaybeLocation();
+  const isTransformsPage =
+    location?.pathname.startsWith(Urls.transformList()) ?? false;
 
   const metabotRequestId = useSelector((state) =>
     getMetabotRequestId(state, agentId),
@@ -91,6 +101,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           agentId,
           metabot_id: metabotRequestId,
           profile: options?.profile,
+          isTransformsPage,
         }),
       );
 
@@ -112,6 +123,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       agentId,
       promptInputRef,
       setPrompt,
+      isTransformsPage,
     ],
   );
 
@@ -124,6 +136,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           context,
           metabot_id: metabotRequestId,
           agentId,
+          isTransformsPage,
         }),
       );
       if (isFulfilled(action)) {
@@ -136,6 +149,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       metabotRequestId,
       prepareRetryIfUnsuccesful,
       agentId,
+      isTransformsPage,
     ],
   );
 
@@ -166,11 +180,16 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     retryMessage,
     cancelRequest,
     metabotId: useSelector(getMetabotId),
-    profile: useSelector((state) => getProfile(state, agentId)),
+    profile: useSelector((state) =>
+      getProfile(state, agentId, isTransformsPage),
+    ),
     conversationId: useSelector((state) =>
       getMetabotConversationId(state, agentId),
     ),
     title: useSelector((state) => getMetabotConversationTitle(state, agentId)),
+    forkedFromConversationId: useSelector((state) =>
+      getMetabotConversationForkedFrom(state, agentId),
+    ),
     messages: useSelector((state) => getMessages(state, agentId)),
     isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
     isLongConversation: useSelector((state) =>

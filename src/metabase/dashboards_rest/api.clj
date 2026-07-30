@@ -233,7 +233,7 @@
       [(qp.util/query-hash query)
        (qp.util/query-hash (assoc query :constraints (qp.constraints/default-query-constraints)))]
       (catch Throwable e
-        (log/errorf e "Error hashing query %s: %s" (pr-str query) (ex-message e))
+        (log/errorf "Error hashing query: %s" (ex-message e))
         nil))))
 
 (defn- dashcard->query-hashes

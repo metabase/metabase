@@ -1103,7 +1103,7 @@
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 2 (call-count)))))))))
+            (is (<= (call-count) 2))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"

@@ -81,11 +81,13 @@ jest.mock("metabase/monitor/tools/components/Logs", () => {
 jest.mock("metabase/monitor/tools/components/JobInfoApp", () => ({
   JobInfoApp: () => <div data-testid="jobs-page">{"Jobs"}</div>,
 }));
-jest.mock("metabase/monitor/tools/components/ModelCacheRefreshJobs", () => ({
-  ModelCachePage: () => (
-    <div data-testid="model-caching-page">{"Model caching log"}</div>
+jest.mock("metabase/monitor/tools/components/ModelPersistenceLogJobs", () => ({
+  ModelPersistenceLogPage: () => (
+    <div data-testid="model-persistence-log-page">
+      {"Model persistence log"}
+    </div>
   ),
-  ModelCacheRefreshJobModal: () => null,
+  ModelPersistenceLogJobModal: () => null,
 }));
 jest.mock("metabase/monitor/tools/components/LogLevelsModal", () => ({
   LogLevelsModal: () => null,
@@ -285,11 +287,11 @@ describe("monitor routes", () => {
       expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
     });
 
-    it("renders the Model caching log section at /monitor/model-caching", async () => {
-      setup({ initialRoute: "/monitor/model-caching" });
+    it("renders the Model persistence log section at /monitor/model-persistence-log", async () => {
+      setup({ initialRoute: "/monitor/model-persistence-log" });
 
       expect(
-        await screen.findByTestId("model-caching-page"),
+        await screen.findByTestId("model-persistence-log-page"),
       ).toBeInTheDocument();
     });
 
@@ -339,8 +341,8 @@ describe("monitor routes", () => {
       ["/admin/tools/logs", "logs-page"],
       ["/admin/tools/logs/levels", "logs-page"],
       ["/admin/tools/errors", "errors-upsell"],
-      ["/admin/tools/model-caching", "model-caching-page"],
-      ["/admin/tools/model-caching/9", "model-caching-page"],
+      ["/admin/tools/model-caching", "model-persistence-log-page"],
+      ["/admin/tools/model-caching/9", "model-persistence-log-page"],
       ["/admin/tools/notifications", "notifications-page"],
       ["/admin/tools/notifications/13", "notifications-page"],
     ])("redirects %s into the Monitor space", async (route, testId) => {

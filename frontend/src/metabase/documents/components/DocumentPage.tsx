@@ -479,6 +479,9 @@ export const DocumentPage = () => {
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
+  // A "New document" click from `/document/new` targets the URL we are already
+  // on, so nothing unmounts. v7 mints a fresh `location.key` for it (the click
+  // resolves as a replace), and that key is what marks the re-entry.
   const isLeaveConfirmModalOpen = useMemo(
     () =>
       hasUnsavedChanges() &&

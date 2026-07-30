@@ -43,12 +43,6 @@ describe("scenarios > data studio > library > metrics", () => {
     H.miniPickerBrowseAll().click();
     H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-
-    H.popover().findByText("Created At").click();
-
     H.DataStudio.Metrics.saveButton().should("be.enabled").click();
 
     H.modal().within(() => {
@@ -101,9 +95,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.log("Verify notebook state");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
-    H.getNotebookStep("summarize")
-      .findByText("Created At: Month")
-      .should("be.visible");
+    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
 
     H.runButtonInOverlay().click();
     cy.log("Ensure chart is visible");
