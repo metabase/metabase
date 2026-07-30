@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -167,8 +169,9 @@
                  :model/Collection {collection :id} {:worktree_id worktree :namespace "transforms"}
                  :model/Transform {transform :id} {:name          "Worktree transform"
                                                    :collection_id collection
-                                                   :source        {:type  "query"
-                                                                   :query (mt/mbql-query venues)}
+                                                   :source        {:type  :query
+                                                                   :query (let [mp (mt/metadata-provider)]
+                                                                            (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
                                                    :target        {:type   "table"
                                                                    :schema "public"
                                                                    :name   "worktree_target"}}
