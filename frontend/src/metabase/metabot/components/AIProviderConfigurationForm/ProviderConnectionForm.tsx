@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -60,16 +60,16 @@ export function ProviderConnectionForm({
     [providerTypes, typeName],
   );
 
-  const [requiredFields, optionalFields] = useMemo(() => {
+  const [primaryFields, advancedFields] = useMemo(() => {
     const fields = providerType?.fields ?? [];
     return [
-      fields.filter((field) => field.required),
-      fields.filter((field) => !field.required),
+      fields.filter((field) => !field.advanced),
+      fields.filter((field) => field.advanced),
     ];
   }, [providerType]);
 
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(
-    hasStoredOptionalValues(providerType, connection),
+    hasStoredAdvancedValues(providerType, connection),
   );
 
   const handleTypeChange = (nextType: string) => {
@@ -114,6 +114,11 @@ export function ProviderConnectionForm({
     }
   };
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleSave();
+  };
+
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
 
   return (
@@ -139,74 +144,84 @@ export function ProviderConnectionForm({
           ),
         )
         .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
-          <Stack gap="lg">
-            {!isEditing && <SelectedProvider providerType={selected} />}
-            <ProviderConfigFields
-              fields={requiredFields}
-              values={config}
-              onChange={(key, value) =>
-                setConfig((current) => ({ ...current, [key]: value }))
-              }
-              disabled={isSaving}
-            />
-            <AdvancedSettings
-              isOpened={isAdvancedOpen}
-              onToggle={toggleAdvanced}
-            >
-              <TextInput
-                label={t`Display name`}
-                description={t`What this connection is called in the model picker.`}
-                value={name}
-                onChange={(event) => setName(event.currentTarget.value)}
-                disabled={isSaving}
-              />
+          <form onSubmit={handleSubmit}>
+            <Stack gap="lg">
+              {!isEditing && <SelectedProvider providerType={selected} />}
               <ProviderConfigFields
-                fields={optionalFields}
+                fields={primaryFields}
                 values={config}
                 onChange={(key, value) =>
                   setConfig((current) => ({ ...current, [key]: value }))
                 }
                 disabled={isSaving}
               />
-            </AdvancedSettings>
-            {error && <Text c="error">{error}</Text>}
-            <Flex justify="end">
-              <Group gap="sm">
-                {isEditing ? (
-                  onCancel && (
-                    <Button onClick={onCancel} disabled={isSaving}>
-                      {t`Cancel`}
+              <AdvancedSettings
+                isOpened={isAdvancedOpen}
+                onToggle={toggleAdvanced}
+              >
+                <TextInput
+                  label={t`Display name`}
+                  description={t`What this connection is called in the model picker.`}
+                  value={name}
+                  onChange={(event) => setName(event.currentTarget.value)}
+                  disabled={isSaving}
+                />
+                <ProviderConfigFields
+                  fields={advancedFields}
+                  values={config}
+                  onChange={(key, value) =>
+                    setConfig((current) => ({ ...current, [key]: value }))
+                  }
+                  disabled={isSaving}
+                />
+              </AdvancedSettings>
+              {error && <Text c="error">{error}</Text>}
+              <Flex justify="end">
+                <Group gap="sm">
+                  {isEditing ? (
+                    onCancel && (
+                      <Button
+                        type="button"
+                        onClick={onCancel}
+                        disabled={isSaving}
+                      >
+                        {t`Cancel`}
+                      </Button>
+                    )
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={handleBack}
+                      disabled={isSaving}
+                    >
+                      {t`Back`}
                     </Button>
-                  )
-                ) : (
-                  <Button onClick={handleBack} disabled={isSaving}>
-                    {t`Back`}
+                  )}
+                  <Button
+                    type="submit"
+                    variant="filled"
+                    loading={isSaving}
+                    disabled={isSaving || !isComplete}
+                  >
+                    {isEditing ? t`Save` : t`Connect`}
                   </Button>
-                )}
-                <Button
-                  variant="filled"
-                  loading={isSaving}
-                  disabled={isSaving || !isComplete}
-                  onClick={handleSave}
-                >
-                  {isEditing ? t`Save` : t`Connect`}
-                </Button>
-              </Group>
-            </Flex>
-          </Stack>
+                </Group>
+              </Flex>
+            </Stack>
+          </form>
         ))
         .otherwise(() => null)}
     </Stack>
   );
 }
 
-function hasStoredOptionalValues(
+function hasStoredAdvancedValues(
   providerType: LlmProviderType | undefined,
   connection: LlmProviderConnection | undefined,
 ) {
   return (providerType?.fields ?? []).some(
     (field) =>
-      !field.required && (connection?.config[field.key] ?? "").trim() !== "",
+      field.advanced && (connection?.config[field.key] ?? "").trim() !== "",
   );
 }
 
@@ -222,6 +237,7 @@ function AdvancedSettings({
   return (
     <Stack gap="md">
       <Button
+        type="button"
         variant="subtle"
         p={0}
         w="fit-content"

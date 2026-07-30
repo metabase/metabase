@@ -44,11 +44,13 @@
                                 :label    "API key"
                                 :type     "password"
                                 :required true
+                                :advanced false
                                 :docs_url "https://console.anthropic.com/settings/keys"}
                                {:key      "base-url"
                                 :label    "API base URL"
                                 :type     "text"
                                 :required false
+                                :advanced true
                                 :default  "https://api.anthropic.com"}]}
               (->> types (filter #(= "anthropic" (:type %))) first)))
       (testing "select fields carry their options"
@@ -58,7 +60,19 @@
                         :fields
                         (filter #(= "select" (:type %)))
                         first
-                        :options)))))))
+                        :options))))
+      (testing "`advanced` marks the fields an admin can ignore, which is not the same as the optional ones:
+                Bedrock's region has a default but still decides model availability and data residency, so it
+                stays up front while the session token — only used for temporary credentials — does not"
+        (is (= {"access-key-id"     false
+                "secret-access-key" false
+                "region"            false
+                "session-token"     true}
+               (->> types
+                    (filter #(= "bedrock" (:type %)))
+                    first
+                    :fields
+                    (into {} (map (juxt :key :advanced))))))))))
 
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]

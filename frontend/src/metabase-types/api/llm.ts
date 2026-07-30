@@ -41,6 +41,7 @@ export interface LlmProviderField {
   label: string;
   type: LlmProviderFieldType;
   required: boolean;
+  advanced: boolean;
   placeholder?: string | null;
   default?: string | null;
   help?: string | null;

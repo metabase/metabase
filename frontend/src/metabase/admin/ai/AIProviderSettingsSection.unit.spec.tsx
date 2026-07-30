@@ -53,6 +53,7 @@ const ANTHROPIC_TYPE = createMockLlmProviderType({
       label: "API base URL",
       type: "text",
       required: false,
+      advanced: true,
       default: "https://api.anthropic.com",
     }),
   ],
@@ -80,10 +81,50 @@ const AZURE_TYPE = createMockLlmProviderType({
       label: "Model family",
       type: "select",
       required: false,
+      advanced: true,
       options: [
         { value: "claude", label: "Claude models" },
         { value: "gpt", label: "GPT models" },
       ],
+    }),
+  ],
+});
+
+const BEDROCK_TYPE = createMockLlmProviderType({
+  type: "bedrock",
+  label: "Amazon Bedrock",
+  icon: "ai",
+  fields: [
+    createMockLlmProviderField({
+      key: "access-key-id",
+      label: "Access key ID",
+      type: "password",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "secret-access-key",
+      label: "Secret access key",
+      type: "password",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "region",
+      label: "Region",
+      type: "select",
+      required: false,
+      advanced: false,
+      default: "us-east-1",
+      options: [
+        { value: "us-east-1", label: "us-east-1" },
+        { value: "eu-central-1", label: "eu-central-1" },
+      ],
+    }),
+    createMockLlmProviderField({
+      key: "session-token",
+      label: "Session token",
+      type: "password",
+      required: false,
+      advanced: true,
     }),
   ],
 });
@@ -138,7 +179,7 @@ type SetupOpts = {
 
 async function setup({
   connections = [],
-  providerTypes = [ANTHROPIC_TYPE, AZURE_TYPE],
+  providerTypes = [ANTHROPIC_TYPE, AZURE_TYPE, BEDROCK_TYPE],
   models = [],
   modelRef = null,
   modelRefEnvVar,
@@ -395,6 +436,20 @@ describe("AIProviderSettingsSection", () => {
       expect(within(modal).getByLabelText("Display name")).toBeVisible(),
     );
     expect(within(modal).getByLabelText("API base URL")).toBeVisible();
+  });
+
+  it("keeps an optional field up front unless it is marked advanced", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Amazon Bedrock" }),
+    );
+
+    expect(within(modal).getByLabelText(/Access key ID/)).toBeVisible();
+    expect(within(modal).getByLabelText(/Secret access key/)).toBeVisible();
+    expect(within(modal).getByLabelText("Region")).toBeVisible();
+    expect(within(modal).getByLabelText("Session token")).not.toBeVisible();
   });
 
   it("opens advanced settings for a connection that already customized one", async () => {
