@@ -2,8 +2,8 @@ import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { useMetabotName } from "metabase/common/hooks";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
-import { useMetabotName } from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Avatar, Group, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";

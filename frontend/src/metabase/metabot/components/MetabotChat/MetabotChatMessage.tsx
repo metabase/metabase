@@ -6,9 +6,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
-import { useToast } from "metabase/common/hooks";
+import { useMetabotName, useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
-import { useMetabotName } from "metabase/metabot/hooks";
 import {
   type MetabotAgentChatMessage,
   type MetabotAgentDataPartMessage,

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { useMetabotName } from "metabase/common/hooks";
 import {
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useLocation } from "metabase/router";

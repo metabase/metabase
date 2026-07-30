@@ -11,10 +11,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import {
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
+import { useMetabotName } from "metabase/common/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {

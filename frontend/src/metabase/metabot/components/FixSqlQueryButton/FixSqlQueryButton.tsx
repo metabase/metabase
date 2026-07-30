@@ -1,12 +1,11 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
+import { useMetabotName, useToast } from "metabase/common/hooks";
 import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";

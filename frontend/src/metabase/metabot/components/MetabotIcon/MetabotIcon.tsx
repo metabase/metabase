@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
 
-import { useSetting } from "metabase/common/hooks";
-import { useMetabotName } from "metabase/metabot/hooks";
+import { useMetabotName, useSetting } from "metabase/common/hooks";
 import { Box, type BoxProps, Icon } from "metabase/ui";
 
 export interface MetabotIconProps extends BoxProps {

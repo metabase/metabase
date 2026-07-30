@@ -2,10 +2,10 @@ import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
+import { useMetabotName } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
-import { useMetabotName } from "metabase/metabot/hooks";
 import { getMetabotId } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
