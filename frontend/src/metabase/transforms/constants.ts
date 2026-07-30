@@ -56,16 +56,19 @@ def transform(secrets=None, state=None):
 
     Args:
         secrets: credentials configured on this transform, keyed by name
-        state:   the state you returned last run, or None on the first run
+        state:   only used to sync incrementally -- whatever you returned last
+                 run, or None on the first run. Ignore it to refetch everything.
 
     Returns:
-        (DataFrame to write, state to resume from next time)
+        the DataFrame to write, or (DataFrame, state) to sync incrementally
     """
     since = (state or {}).get("since")
 
     rows = [{"id": 1, "updated_at": "2026-01-01T00:00:00Z"}]
     df = pd.DataFrame(rows)
 
-    # Returning state makes the next run incremental; pair it with a merge key on the target.
+    # Return just df to refetch everything on every run. Returning state as well
+    # resumes from where this run left off; pair that with a merge key on the
+    # target so re-fetched rows update in place.
     next_since = df["updated_at"].max() if len(df) else since
     return df, {"since": next_since}`;
