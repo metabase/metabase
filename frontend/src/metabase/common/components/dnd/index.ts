@@ -1,6 +1,21 @@
 // NOTE: we currently use object's `model` property for the drag type
 import type { CollectionItem } from "metabase-types/api";
 
+export interface ItemDragPayload {
+  items: CollectionItem[];
+}
+
+export function isItemDragPayload(
+  payload: unknown,
+): payload is ItemDragPayload {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "items" in payload &&
+    Array.isArray(payload.items)
+  );
+}
+
 export function dragTypeForItem(item: CollectionItem) {
   return item.model;
 }

@@ -583,6 +583,56 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-table").findByText("Count of orders");
     });
 
+    it("should reject dragging a subcollection directly or in a mixed selection (metabase#37329)", () => {
+      H.createCollection({ name: "Destination collection" });
+      visitRootCollection();
+
+      cy.intercept(
+        "PUT",
+        /\/api\/(card|collection)\/\d+$/,
+        cy.spy().as("moveRequest"),
+      );
+
+      cy.log("Subcollections cannot initiate a drag");
+      cy.findByTestId("collection-table")
+        .findByText("First collection")
+        .closest("a")
+        .should("have.attr", "draggable", "false")
+        .as("subcollectionDragSubject");
+      cy.findByTestId("collection-table")
+        .findByText("Destination collection")
+        .closest("tr")
+        .as("subcollectionDragTarget");
+
+      cy.get("@subcollectionDragSubject").realMouseDown();
+      cy.get("@subcollectionDragTarget").realMouseMove(0, 0, {
+        position: "center",
+      });
+      cy.get("@subcollectionDragTarget").realMouseUp();
+      cy.findByTestId("items-drag-preview").should("not.exist");
+      cy.findByTestId("collection-table")
+        .findByText("First collection")
+        .should("be.visible");
+      cy.get("@moveRequest").should("not.have.been.called");
+
+      cy.log("A mixed selection is rejected as one operation");
+      cy.findByTestId("collection-table").within(() => {
+        selectItemUsingCheckbox("Orders");
+        selectItemUsingCheckbox("First collection");
+        cy.findByText("Orders").as("dragSubject");
+        cy.findByText("Destination collection").as("dropTarget");
+      });
+
+      H.dragAndDrop("dragSubject", "dropTarget");
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText("First collection").should("be.visible");
+        cy.findByText("Destination collection").should("be.visible");
+      });
+      cy.get("@moveRequest").should("not.have.been.called");
+    });
+
     describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;

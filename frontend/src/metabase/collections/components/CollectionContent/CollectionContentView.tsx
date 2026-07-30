@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
@@ -15,10 +15,6 @@ import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { useSetArchive } from "metabase/archive/hooks";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
-import {
-  type CollectionContentTableColumn,
-  DEFAULT_VISIBLE_COLUMNS_LIST,
-} from "metabase/collections/components/CollectionContent/constants";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import { trackCollectionBookmarked } from "metabase/common/collections/analytics";
@@ -34,7 +30,6 @@ import {
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
-import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
@@ -70,7 +65,6 @@ export const CollectionContentView = ({
   uploadFile,
   uploadsEnabled,
   canCreateUploadInDb,
-  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
 }: {
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -82,7 +76,6 @@ export const CollectionContentView = ({
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canCreateUploadInDb: boolean;
-  visibleColumns?: CollectionContentTableColumn[];
 }) => {
   const dispatch = useDispatch();
   const [deleteCollection] = useDeleteCollectionMutation();
@@ -153,11 +146,6 @@ export const CollectionContentView = ({
   const archive = useSetArchive();
   const setCollection = useSetCollection();
   const [sendToast] = useToast();
-
-  const visibleColumnsMap = useMemo(
-    () => getVisibleColumnsMap(visibleColumns),
-    [visibleColumns],
-  );
 
   const handleFileRejections = useCallback(
     (rejected: FileRejection[]) => {
@@ -350,12 +338,7 @@ export const CollectionContentView = ({
           />
         </ErrorBoundary>
       </CollectionMain>
-      <ItemsDragLayer
-        selectedItems={selected}
-        pinnedItems={pinnedItems}
-        collection={collection}
-        visibleColumnsMap={visibleColumnsMap}
-      />
+      <ItemsDragLayer />
     </CollectionRoot>
   );
 };

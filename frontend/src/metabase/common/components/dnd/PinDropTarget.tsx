@@ -2,11 +2,11 @@ import type { DropTargetMonitor } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
 import { isItemPinned } from "metabase/common/collections/utils";
-import type { CollectionItem } from "metabase-types/api";
+import { isPinnable } from "metabase/common/hooks";
 
 import { DropArea } from "./DropArea";
 
-import { PinnableDragTypes } from ".";
+import { type ItemDragPayload, PinnableDragTypes } from ".";
 
 interface PinDropTargetOwnProps {
   variant: "pin" | "unpin";
@@ -23,15 +23,15 @@ export const PinDropTarget = DropTarget(
       }
     },
     canDrop(props: PinDropTargetOwnProps, monitor: DropTargetMonitor) {
-      // Unjustified type cast. FIXME
-      const { item } = monitor.getItem() as { item: CollectionItem };
+      // react-dnd v4 types the drag payload as `any`.
+      const { items } = monitor.getItem() as ItemDragPayload;
       const { variant } = props;
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
       if (variant === "pin") {
-        return !isItemPinned(item);
+        return items.every((item) => isPinnable(item) && !isItemPinned(item));
       } else if (variant === "unpin") {
-        return isItemPinned(item);
+        return items.every((item) => isPinnable(item) && isItemPinned(item));
       }
 
       return false;

@@ -1,115 +1,195 @@
-import { createMockCollectionItem } from "metabase-types/api/mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import {
+  createMockCollectionItem,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
-import { canDropItemIntoCollection } from "./CollectionDropTarget";
+import { canDropItemsIntoCollection } from "./CollectionDropTarget";
 
-describe("canDropItemIntoCollection", () => {
-  it("should allow dropping an item into another writable collection (metabase#37329)", () => {
-    const item = createMockCollectionItem({ id: 1, collection_id: null });
+describe("canDropItemsIntoCollection", () => {
+  beforeEach(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+    setupEnterpriseOnlyPlugin("library");
+  });
+
+  it("should allow dropping movable items into another writable collection (metabase#37329)", () => {
+    const items = [
+      createMockCollectionItem({
+        id: 1,
+        model: "card",
+        collection_id: null,
+      }),
+      createMockCollectionItem({
+        id: 2,
+        model: "document",
+        collection_id: null,
+      }),
+      createMockCollectionItem({
+        id: 3,
+        model: "metric",
+        collection_id: null,
+      }),
+    ];
     const collection = createMockCollectionItem({
-      id: 2,
+      id: 4,
       model: "collection",
       can_write: true,
     });
 
-    expect(canDropItemIntoCollection({ item, collection })).toBe(true);
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(true);
   });
 
-  it("should not allow dropping an item into a read-only collection", () => {
-    const item = createMockCollectionItem({ id: 1, collection_id: null });
+  it("should not allow dropping into a read-only collection", () => {
+    const items = [createMockCollectionItem({ id: 1, collection_id: null })];
     const collection = createMockCollectionItem({
       id: 2,
       model: "collection",
       can_write: false,
     });
 
-    expect(canDropItemIntoCollection({ item, collection })).toBe(false);
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(false);
   });
 
-  it("should not allow dropping an item into the collection it is already in", () => {
-    const item = createMockCollectionItem({ id: 1, collection_id: 2 });
+  it("should not allow dropping when any item is already in the target collection", () => {
+    const items = [
+      createMockCollectionItem({ id: 1, collection_id: null }),
+      createMockCollectionItem({ id: 2, collection_id: 3 }),
+    ];
+    const collection = createMockCollectionItem({
+      id: 3,
+      model: "collection",
+      can_write: true,
+    });
+
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(false);
+  });
+
+  it("should not allow dropping when any dragged item is a collection", () => {
+    const items = [
+      createMockCollectionItem({ id: 1, collection_id: null }),
+      createMockCollectionItem({
+        id: 2,
+        model: "collection",
+        collection_id: null,
+      }),
+    ];
+    const collection = createMockCollectionItem({
+      id: 3,
+      model: "collection",
+      can_write: true,
+    });
+
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(false);
+  });
+
+  it("should not allow dropping into a collection in the dragged set (metabase#37329)", () => {
     const collection = createMockCollectionItem({
       id: 2,
       model: "collection",
       can_write: true,
     });
-
-    expect(canDropItemIntoCollection({ item, collection })).toBe(false);
-  });
-
-  it("should not allow dropping a dragged collection", () => {
-    const item = createMockCollectionItem({
-      id: 1,
-      model: "collection",
-      collection_id: null,
-    });
-    const collection = createMockCollectionItem({
-      id: 2,
-      model: "collection",
-      can_write: true,
-    });
-
-    expect(canDropItemIntoCollection({ item, collection })).toBe(false);
-  });
-
-  it("should not allow dropping into a collection that is part of the dragged selection (metabase#37329)", () => {
-    const item = createMockCollectionItem({ id: 1, collection_id: null });
-    const collection = createMockCollectionItem({
-      id: 2,
-      model: "collection",
-      can_write: true,
-    });
-    const selectedItems = [
-      item,
-      createMockCollectionItem({ id: 2, model: "collection" }),
+    const items = [
+      createMockCollectionItem({ id: 1, collection_id: null }),
+      collection,
     ];
 
-    expect(canDropItemIntoCollection({ item, collection, selectedItems })).toBe(
-      false,
-    );
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(false);
   });
 
-  it("should allow dropping into a collection when the selection does not include it", () => {
-    const item = createMockCollectionItem({ id: 1, collection_id: null });
+  it("should not allow dropping when any selected item is not movable", () => {
+    const items = [
+      createMockCollectionItem({ id: 1, collection_id: null }),
+      createMockCollectionItem({
+        id: 2,
+        model: "indexed-entity",
+        collection_id: null,
+      }),
+    ];
     const collection = createMockCollectionItem({
-      id: 2,
+      id: 3,
       model: "collection",
       can_write: true,
     });
-    const selectedItems = [
-      item,
-      createMockCollectionItem({ id: 2, model: "dashboard" }),
-    ];
 
-    expect(canDropItemIntoCollection({ item, collection, selectedItems })).toBe(
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(false);
+  });
+
+  it("should require every item to be valid for the collection type", () => {
+    const items = [
+      createMockCollectionItem({
+        id: 1,
+        model: "metric",
+        collection_id: null,
+      }),
+      createMockCollectionItem({
+        id: 2,
+        model: "card",
+        collection_id: null,
+      }),
+    ];
+    const collection = createMockCollectionItem({
+      id: 3,
+      model: "collection",
+      type: "library-metrics",
+      can_write: true,
+    });
+
+    expect(canDropItemsIntoCollection({ items, collection })).toBe(false);
+    expect(canDropItemsIntoCollection({ items: [items[0]], collection })).toBe(
       true,
     );
   });
 
-  it("should allow moving an unarchived item to the trash even without write access to it", () => {
-    const item = createMockCollectionItem({ id: 1, collection_id: null });
+  it("should allow moving unarchived items to the trash without write access", () => {
+    const items = [
+      createMockCollectionItem({ id: 1, collection_id: null }),
+      createMockCollectionItem({
+        id: 2,
+        model: "document",
+        collection_id: null,
+      }),
+    ];
     const trash = createMockCollectionItem({
-      id: 2,
+      id: 3,
       model: "collection",
       type: "trash",
       can_write: false,
     });
 
-    expect(canDropItemIntoCollection({ item, collection: trash })).toBe(true);
+    expect(canDropItemsIntoCollection({ items, collection: trash })).toBe(true);
   });
 
-  it("should not allow moving an archived item to the trash again", () => {
-    const item = createMockCollectionItem({
-      id: 1,
-      collection_id: null,
-      archived: true,
-    });
+  it("should not allow moving any already archived item to the trash again", () => {
+    const items = [
+      createMockCollectionItem({ id: 1, collection_id: null }),
+      createMockCollectionItem({
+        id: 2,
+        collection_id: null,
+        archived: true,
+      }),
+    ];
     const trash = createMockCollectionItem({
-      id: 2,
+      id: 3,
       model: "collection",
       type: "trash",
       can_write: true,
     });
 
-    expect(canDropItemIntoCollection({ item, collection: trash })).toBe(false);
+    expect(canDropItemsIntoCollection({ items, collection: trash })).toBe(
+      false,
+    );
+  });
+
+  it("should not allow an empty drag payload", () => {
+    const collection = createMockCollectionItem({
+      id: 1,
+      model: "collection",
+      can_write: true,
+    });
+
+    expect(canDropItemsIntoCollection({ items: [], collection })).toBe(false);
   });
 });

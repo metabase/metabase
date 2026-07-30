@@ -12,6 +12,36 @@ import type { CollectionItem } from "metabase-types/api";
 
 import S from "./BaseItemTableRow.module.css";
 
+export type ItemTableRowDndState =
+  | "idle"
+  | "dragged"
+  | "disabled"
+  | "drop-target"
+  | "drop-target-hovered";
+
+export function getItemTableRowDndState({
+  isDragActive,
+  isDragged,
+  highlighted,
+  hovered,
+}: Omit<
+  CollectionDropTargetRenderProps,
+  "connectDropTarget"
+>): ItemTableRowDndState {
+  switch (true) {
+    case !isDragActive:
+      return "idle";
+    case isDragged:
+      return "dragged";
+    case hovered:
+      return "drop-target-hovered";
+    case highlighted:
+      return "drop-target";
+    default:
+      return "disabled";
+  }
+}
+
 type BaseItemTableRowProps = PropsWithChildren<
   {
     testIdPrefix: string;
@@ -98,15 +128,21 @@ export const ItemDragSourceTableRow = ({
   visibleColumnsMap,
 }: BaseItemTableRowProps) => {
   const renderDraggableRow = (
-    dropTargetProps?: CollectionDropTargetRenderProps,
+    dropTargetProps: CollectionDropTargetRenderProps,
   ) => {
+    const dndState = getItemTableRowDndState(dropTargetProps);
     const row = (
       // We can't use <TableRow> due to React DnD throwing an error: Only native element nodes can now be passed to React DnD connectors.
       <tr
         key={itemKey}
+        data-dnd-state={dndState}
         data-testid={testIdPrefix}
         style={{ height: 48 }}
-        className={cx({ [S.dropTargetRow]: dropTargetProps?.hovered })}
+        className={cx({
+          [S.draggedRow]: dndState === "dragged",
+          [S.disabledRow]: dndState === "disabled",
+          [S.dropTargetRow]: dndState === "drop-target-hovered",
+        })}
       >
         <ItemComponent
           testIdPrefix={testIdPrefix}
@@ -126,6 +162,11 @@ export const ItemDragSourceTableRow = ({
         />
       </tr>
     );
+    const dropTargetRow = dropTargetProps.connectDropTarget(row);
+
+    if (item.model === "collection") {
+      return dropTargetRow;
+    }
 
     return (
       <ItemDragSource
@@ -136,7 +177,7 @@ export const ItemDragSourceTableRow = ({
         onDrop={onDrop}
         key={`item-drag-source-${itemKey}`}
       >
-        {dropTargetProps ? dropTargetProps.connectDropTarget(row) : row}
+        {dropTargetRow}
       </ItemDragSource>
     );
   };
@@ -144,12 +185,12 @@ export const ItemDragSourceTableRow = ({
   const isDroppableCollectionRow =
     item.model === "collection" && !item.archived;
 
-  if (!isDroppableCollectionRow) {
-    return renderDraggableRow();
-  }
-
   return (
-    <CollectionRowDropTarget collection={item} selectedItems={selectedItems}>
+    <CollectionRowDropTarget
+      collection={item}
+      isDropTarget={isDroppableCollectionRow}
+      item={item}
+    >
       {renderDraggableRow}
     </CollectionRowDropTarget>
   );

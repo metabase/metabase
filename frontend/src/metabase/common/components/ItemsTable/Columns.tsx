@@ -53,7 +53,11 @@ const ItemLinkComponent = ({
   }
 
   return (
-    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
+    <ItemLink
+      draggable={item.model !== "collection"}
+      to={modelToUrl(item)}
+      onClick={() => onClick?.(item)}
+    >
       {children}
     </ItemLink>
   );

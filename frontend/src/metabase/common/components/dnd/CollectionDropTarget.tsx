@@ -8,50 +8,71 @@ import type {
 import { DropTarget } from "react-dnd";
 
 import {
+  canPlaceEntityInCollection,
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
+import { isMovable } from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
 
-import { MoveableDragTypes } from ".";
+import { type ItemDragPayload, MoveableDragTypes, isItemDragPayload } from ".";
+
+const EMPTY_DRAGGED_ITEMS: CollectionItem[] = [];
 
 export type DropTargetCollection = Pick<Collection, "id"> &
   Partial<Pick<CollectionItem, "type" | "can_write">>;
 
 interface CollectionDropTargetOwnProps {
   collection: DropTargetCollection;
-  selectedItems?: CollectionItem[];
+  isDropTarget?: boolean;
 }
 
-export function canDropItemIntoCollection({
-  item,
+/** Strips card subtypes from the overloaded `CollectionItem.type` field. */
+function getDropTargetCollectionType(
+  collection: DropTargetCollection,
+): Collection["type"] {
+  if (
+    collection.type === "metric" ||
+    collection.type === "model" ||
+    collection.type === "question"
+  ) {
+    return undefined;
+  }
+  return collection.type;
+}
+
+export function canDropItemsIntoCollection({
+  items,
   collection,
-  selectedItems,
-}: CollectionDropTargetOwnProps & { item: CollectionItem }): boolean {
+}: CollectionDropTargetOwnProps & { items: CollectionItem[] }): boolean {
+  if (items.length === 0) {
+    return false;
+  }
+
   const isTrashCollection = isRootTrashCollection(collection);
   if (!isTrashCollection && collection.can_write === false) {
     return false;
   }
-  const droppingToTrashFromTrash = isTrashCollection && item.archived;
-  const droppingToSameCollection =
-    canonicalCollectionId(item.collection_id) ===
-    canonicalCollectionId(collection.id);
-  // every selected item gets moved on drop, so the target must not be among them
-  const droppingIntoDraggedCollection = Boolean(
-    selectedItems?.some(
-      (selectedItem) =>
-        selectedItem.model === "collection" &&
-        selectedItem.id === collection.id,
-    ),
-  );
-  return (
-    item.model !== "collection" &&
-    !droppingToSameCollection &&
-    !droppingToTrashFromTrash &&
-    !droppingIntoDraggedCollection
-  );
+
+  return items.every((item) => {
+    const droppingToTrashFromTrash = isTrashCollection && item.archived;
+    const droppingToSameCollection =
+      canonicalCollectionId(item.collection_id) ===
+      canonicalCollectionId(collection.id);
+
+    return (
+      isMovable(item) &&
+      item.model !== "collection" &&
+      canPlaceEntityInCollection(
+        item.model,
+        getDropTargetCollectionType(collection),
+      ) &&
+      !droppingToSameCollection &&
+      !droppingToTrashFromTrash
+    );
+  });
 }
 
 const dropTargetSpec = {
@@ -59,12 +80,15 @@ const dropTargetSpec = {
     return { collection: props.collection };
   },
   canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
-    // react-dnd v4 types the drag payload as `any`; beginDrag provides `{ item }`
-    const { item } = monitor.getItem() as { item: CollectionItem };
-    return canDropItemIntoCollection({
-      item,
+    if (props.isDropTarget === false) {
+      return false;
+    }
+
+    // react-dnd v4 types the drag payload as `any`.
+    const { items } = monitor.getItem() as ItemDragPayload;
+    return canDropItemsIntoCollection({
+      items,
       collection: props.collection,
-      selectedItems: props.selectedItems,
     });
   },
 };
@@ -78,6 +102,20 @@ const collectDropTarget = (
   connectDropTarget: connect.dropTarget(),
 });
 
+const collectCollectionRowDropTarget = (
+  connect: DropTargetConnector,
+  monitor: DropTargetMonitor,
+) => {
+  const payload = monitor.getItem();
+  const isDragActive = isItemDragPayload(payload);
+
+  return {
+    ...collectDropTarget(connect, monitor),
+    draggedItems: isDragActive ? payload.items : EMPTY_DRAGGED_ITEMS,
+    isDragActive,
+  };
+};
+
 export const CollectionDropTarget = DropTarget(
   MoveableDragTypes,
   dropTargetSpec,
@@ -89,18 +127,47 @@ export interface CollectionDropTargetRenderProps {
   connectDropTarget: ConnectDropTarget;
   hovered: boolean;
   highlighted: boolean;
+  isDragged: boolean;
+  isDragActive: boolean;
 }
 
 interface CollectionRowDropTargetProps extends CollectionDropTargetOwnProps {
+  item: CollectionItem;
   children: (props: CollectionDropTargetRenderProps) => ReactElement;
 }
 
+interface CollectionRowDropTargetCollectedProps extends Omit<
+  CollectionDropTargetRenderProps,
+  "isDragged"
+> {
+  draggedItems: CollectionItem[];
+}
+
 class CollectionRowDropTargetInner extends Component<
-  CollectionRowDropTargetProps & CollectionDropTargetRenderProps
+  CollectionRowDropTargetProps & CollectionRowDropTargetCollectedProps
 > {
   render() {
-    const { children, connectDropTarget, hovered, highlighted } = this.props;
-    return children({ connectDropTarget, hovered, highlighted });
+    const {
+      children,
+      connectDropTarget,
+      draggedItems,
+      hovered,
+      highlighted,
+      isDragActive,
+      item,
+    } = this.props;
+    const isDragged = draggedItems.some(
+      (draggedItem) =>
+        draggedItem.model === item.model && draggedItem.id === item.id,
+    );
+
+    return children({
+      connectDropTarget,
+      hovered,
+      highlighted,
+      isDragged,
+      isDragActive,
+    });
   }
 }
 
@@ -113,6 +180,6 @@ export const CollectionRowDropTarget: ComponentType<CollectionRowDropTargetProps
   DropTarget(
     MoveableDragTypes,
     dropTargetSpec,
-    collectDropTarget,
+    collectCollectionRowDropTarget,
     // react-dnd v4 HOC types can't express the own/collected props split
   )(CollectionRowDropTargetInner as any);
