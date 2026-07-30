@@ -176,7 +176,6 @@ function visit({
 } = {}) {
   const normalizedBasePath = getNormalizedBasePath(basePath);
   cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
-  cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
   );
@@ -198,7 +197,6 @@ function visit({
     if (!skipWaiting) {
       cy.wait([
         "@datamodel/visit/databases",
-        "@datamodel/visit/database",
         "@datamodel/visit/schemas",
         "@datamodel/visit/schema",
         "@datamodel/visit/metadata",
@@ -805,7 +803,16 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      // Trigger the hovercard with retryable, deterministic events instead of
+      // realHover(): a single real-mouse hover can be lost when the preview
+      // re-renders, leaving the description hovercard closed (metabase flake).
+      const headerCell = () =>
+        cy
+          .findByTestId("header-cell")
+          .findByTestId("cell-data")
+          .should("be.visible");
+      headerCell().trigger("mouseenter", { force: true });
+      headerCell().trigger("mouseover", { force: true });
     }
   });
 
