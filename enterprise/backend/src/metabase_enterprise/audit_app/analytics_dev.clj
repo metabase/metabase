@@ -234,6 +234,7 @@
           :when (and (.isFile file)
                      (.endsWith (.getName file) ".yaml")
                      (not (.endsWith (.getName file) "___fieldusersettings.yaml"))
+                     (not (.endsWith (.getName file) "___tableusersettings.yaml"))
                      (not (.contains (.getPath file) "/channels/"))
                      (or (not (.contains (.getPath file) "/databases/"))
                          (and (.contains (.getPath file) (str "/databases/" canonical-db-filename "/"))

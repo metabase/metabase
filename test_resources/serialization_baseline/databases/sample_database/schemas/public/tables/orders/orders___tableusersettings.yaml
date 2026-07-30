@@ -1,0 +1,11 @@
+created_at: '2026-07-23T12:00:00Z'
+description: Hand-written description of the Orders table
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: ORDERS
+  model: Table
+- id: '1'
+  model: TableUserSettings

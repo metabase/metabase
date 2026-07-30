@@ -346,6 +346,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.query
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
@@ -2693,6 +2694,7 @@
            metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.models.table-user-settings
            metabase.warehouse-schema.table}
    :uses #{analyze
            api
@@ -2715,7 +2717,8 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
-                    :model/Table}
+                    :model/Table
+                    :model/TableUserSettings}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3137,7 +3140,8 @@
            models
            permissions
            premium-features
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Collection
                     :model/Dimension
                     :model/Field
@@ -3463,6 +3467,7 @@
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
