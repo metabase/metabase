@@ -110,6 +110,7 @@
     :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata

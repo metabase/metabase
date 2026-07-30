@@ -173,7 +173,7 @@
                             transform     (t2/insert-returning-instance!
                                            :model/Transform
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
+                                                                     :collection_id :worktree_id :owner_email])
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided

@@ -176,6 +176,7 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (transforms.core/check-feature-enabled! body)

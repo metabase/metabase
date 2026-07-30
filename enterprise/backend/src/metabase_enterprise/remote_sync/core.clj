@@ -27,11 +27,13 @@
 
   Takes a collection to check for editability.
 
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  Returns true if the collection is editable, false otherwise. Worktree collections are always editable (a worktree
+  is a working copy of its branch); otherwise true when remote-sync-type is :read-write, or when the collection is
+  not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
+  (or (some? (:worktree_id collection))
+      (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
 (defenterprise table-editable?
@@ -68,16 +70,23 @@
       (= (settings/remote-sync-type) :read-write)))
 
 (defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration."
+  "Determines if a model instance is editable based on remote sync configuration. Worktree content is always
+  editable: a worktree is a working copy of its branch."
   :feature :none
   [model-key instance]
-  (spec/model-editable? model-key instance))
+  (or (some? (:worktree_id instance))
+      (spec/model-editable? model-key instance)))
 
 (defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean. Worktree content is always
+  editable: a worktree is a working copy of its branch."
   :feature :none
   [model-key instances]
-  (spec/batch-model-editable? model-key instances))
+  (let [editable (spec/batch-model-editable? model-key (remove :worktree_id instances))]
+    (into editable
+          (comp (filter :worktree_id)
+                (map (fn [inst] [(:id inst) true])))
+          instances)))
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.

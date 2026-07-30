@@ -8,6 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.queries.models.query :as query]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -89,11 +90,17 @@
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
-  (u/prog1 action
+  (u/prog1 (remote-sync/inherit-worktree-id action :model/Card :model_id)
     (check-model-is-not-a-saved-question model-id)))
+
+(t2/define-after-select :model/Action
+  [action]
+  (remote-sync/remove-worktree-id-helper action))
 
 (t2/define-before-update :model/Action
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
+  (remote-sync/check-worktree-id-unchanged changes)
+  (remote-sync/check-parent-same-worktree changes :model/Card :model_id)
   (u/prog1 changes
     (if archived?
       (t2/delete! :model/DashboardCard :action_id id)
@@ -103,12 +110,14 @@
   [instance      :- [:map
                      [:model_id pos-int?]]
    read-or-write :- [:enum :read :write]]
-  (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
+  (if (remote-sync/worktree-accessible? instance)
+    (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write)
+    #{"___no-worktree-access"}))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :type :updated_at :visualization_settings])
+   :parameters :public_uuid :type :updated_at :visualization_settings :worktree_id])
 
 (mu/defn- type->model
   "Returns the model from an action type.

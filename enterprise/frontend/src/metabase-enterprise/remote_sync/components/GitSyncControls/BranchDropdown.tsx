@@ -16,8 +16,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import {
-  useCreateBranchMutation,
   useGetBranchesQuery,
+  useStashChangesMutation,
 } from "metabase-enterprise/api";
 
 import { trackBranchCreated } from "../../analytics";
@@ -44,7 +44,10 @@ export const BranchDropdown = ({
     isLoading: branchesLoading,
     isError: branchesError,
   } = useGetBranchesQuery();
-  const [createBranch, { isLoading: isCreating }] = useCreateBranchMutation();
+  // Creating a branch from the picker means "carry on working here", so it goes through stash: the branch is
+  // created, the current state is pushed to it, and the instance moves onto it. `POST /branch` on its own
+  // only creates the branch on the remote and would leave the instance behind on the old one.
+  const [stashChanges, { isLoading: isCreating }] = useStashChangesMutation();
 
   const branches = useMemo(() => branchesData?.items || [], [branchesData]);
 
@@ -79,8 +82,9 @@ export const BranchDropdown = ({
     setSearchValue("");
 
     try {
-      await createBranch({
-        name: branchName,
+      await stashChanges({
+        new_branch: branchName,
+        message: t`Created branch ${branchName} from Metabase`,
       }).unwrap();
 
       trackBranchCreated({

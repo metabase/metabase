@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -8,6 +9,20 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model))
+
+(t2/define-before-insert :model/DashboardCardSeries
+  [series]
+  (remote-sync/inherit-worktree-id series :model/DashboardCard :dashboardcard_id))
+
+(t2/define-before-update :model/DashboardCardSeries
+  [series]
+  (remote-sync/check-worktree-id-unchanged series)
+  (remote-sync/check-parent-same-worktree series :model/DashboardCard :dashboardcard_id)
+  series)
+
+(t2/define-after-select :model/DashboardCardSeries
+  [series]
+  (remote-sync/remove-worktree-id-helper series))
 
 ;; Serialization
 

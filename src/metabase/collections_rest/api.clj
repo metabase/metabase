@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -84,8 +85,12 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  Likewise, remote-sync worktree collections -- a checked-out copy of a whole collection tree -- are excluded
+  unless `include-worktrees?` is `true`. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           include-worktrees?]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -108,6 +113,8 @@
                           [:not-in :type [collection/library-collection-type
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
+                       (when-not include-worktrees?
+                         (remote-sync/exclude-worktrees-clause))
                        [:or
                         (when (contains? namespaces nil)
                           [:= :namespace nil])
@@ -246,12 +253,13 @@
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
   [_route-params
-   {:keys [exclude-archived exclude-other-user-collections include-library
+   {:keys [exclude-archived exclude-other-user-collections include-library include-worktrees
            namespace namespaces shallow collection-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
+       [:include-worktrees              {:default false} [:maybe :boolean]]
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
@@ -269,7 +277,8 @@
                                              :namespaces                     namespaces
                                              :shallow                        shallow
                                              :collection-id                  collection-id
-                                             :include-library?               include-library})
+                                             :include-library?               include-library
+                                             :include-worktrees?             include-worktrees})
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)

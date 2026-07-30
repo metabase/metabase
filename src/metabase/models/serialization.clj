@@ -90,6 +90,25 @@
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
   1000)
 
+(def ^:dynamic *worktree-id*
+  "The remote-sync worktree an import or export is operating on; `nil` is the main app. Bound for the duration of a
+  single pull/push (which is always about exactly one worktree) by the remote-sync code that drives it. This is the
+  only ambient worktree scope in the app -- everywhere else `worktree_id` is passed explicitly."
+  nil)
+
+(def worktree-scoped-models
+  "Serdes model names whose table carries a `worktree_id` column and enforces entity_id uniqueness per worktree
+  (`UNIQUE (entity_id, worktree_id_helper)`). Entity-id matching for these is scoped by [[*worktree-id*]], so a
+  worktree pull matches and creates rows inside its own checkout instead of colliding with the main app's copy of
+  the same entity."
+  #{"Action" "Card" "Collection" "Dashboard" "DashboardCard" "DashboardTab" "Document" "NativeQuerySnippet"
+    "ParameterCard" "Timeline" "Transform" "TransformTransformTag"})
+
+(defn worktree-scoped?
+  "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."
+  [model]
+  (contains? worktree-scoped-models (if (string? model) model (name model))))
+
 (mr/def ::model-keyword
   [:and
    qualified-keyword?
@@ -173,7 +192,9 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+    (if (worktree-scoped? model-name)
+      (t2/select-one-fn pk [model pk] :entity_id eid :worktree_id *worktree-id*)
+      (t2/select-one-fn pk [model pk] :entity_id eid))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -705,7 +726,9 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
+  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name))
+                                         (cond-> ingested
+                                           (worktree-scoped? model-name) (assoc :worktree_id *worktree-id*)))))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -789,7 +812,9 @@
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (if (worktree-scoped? model)
+    (t2/select-one model :entity_id id-str :worktree_id *worktree-id*)
+    (t2/select-one model :entity_id id-str)))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].

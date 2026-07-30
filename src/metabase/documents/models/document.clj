@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -106,7 +107,9 @@
 
 (t2/define-after-select :model/Document
   [document]
-  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
+  (-> document
+      remote-sync/remove-worktree-id-helper
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -282,8 +285,10 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (remote-sync/inherit-worktree-id model :model/Collection :collection_id))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
+  (remote-sync/check-worktree-id-unchanged model)
+  (remote-sync/check-parent-same-worktree model :model/Collection :collection_id)
   model)

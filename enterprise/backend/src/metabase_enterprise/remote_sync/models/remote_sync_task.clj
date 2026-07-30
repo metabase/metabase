@@ -35,7 +35,7 @@
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
 (mu/defn create-sync-task!
-  "Creates a new remote sync task.
+  "Creates a new remote sync task. Pass `:worktree_id` in `additional-fields` to attach it to a worktree.
 
   Takes a sync-task-type (either 'import' or 'export'), an optional user-id (ID of the user who initiated the task),
   and optional additional-fields (map of additional fields to include in the task record).
@@ -197,32 +197,36 @@
                         [:< :last_progress_report_at cutoff]]})))
 
 (defn most-recent-task
-  "Gets the most recently run task, including currently running tasks.
+  "Gets the most recently run task, including currently running tasks, within `worktree-id` (nil is the main app).
 
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
-  []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  ([] (most-recent-task nil))
+  ([worktree-id]
+   (t2/select-one :model/RemoteSyncTask
+                  {:where [:and
+                           [:<> :started_at nil]
+                           [:= :worktree_id worktree-id]]
+                   :limit 1
+                   :order-by [[:started_at :desc]
+                              [:id :desc]]})))
 
 (defn last-version
-  "Gets the version that any changes are built off of.
+  "Gets the version that any changes are built off of, within `worktree-id` (nil is the main app).
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
   tasks exist."
-  []
-  (:version (t2/select-one :model/RemoteSyncTask
-                           {:where [:and
-                                    [:<> nil :ended_at]
-                                    [:= false :cancelled]
-                                    [:= nil :error_message]
-                                    [:<> nil :version]]
-                            :limit 1
-                            :order-by [[:started_at :desc]
-                                       [:id :desc]]})))
+  ([] (last-version nil))
+  ([worktree-id]
+   (:version (t2/select-one :model/RemoteSyncTask
+                            {:where [:and
+                                     [:<> nil :ended_at]
+                                     [:= false :cancelled]
+                                     [:= nil :error_message]
+                                     [:<> nil :version]
+                                     [:= :worktree_id worktree-id]]
+                             :limit 1
+                             :order-by [[:started_at :desc]
+                                        [:id :desc]]}))))
 
 (defn running?
   "Checks if a task is currently running.

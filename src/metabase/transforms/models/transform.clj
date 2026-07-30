@@ -37,6 +37,7 @@
   passed through to `transforms.u/source-tables-readable?`."
   [instance & args]
   (and (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
@@ -54,6 +55,7 @@
   [instance & args]
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
@@ -87,6 +89,7 @@
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
@@ -157,7 +160,8 @@
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
-         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
+         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+        (remote-sync/inherit-worktree-id :model/Collection :collection_id))))
 
 (defn- resolve-merge-key-field-ids
   "Fill `:field-id` on a merge target's unique-key columns from the synced target table's fields, once
@@ -181,6 +185,8 @@
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
+  (remote-sync/check-worktree-id-unchanged transform)
+  (remote-sync/check-parent-same-worktree transform :model/Collection :collection_id)
   ;; The target db is recomputed when source changes because for MBQL transforms,
   ;; the source query's :database is the source of truth for the target database.
   (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))
@@ -215,9 +221,10 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
-  (if source
-    (assoc transform :source_type (transforms-base.u/transform-source-type source))
-    transform))
+  (let [transform (remote-sync/remove-worktree-id-helper transform)]
+    (if source
+      (assoc transform :source_type (transforms-base.u/transform-source-type source))
+      transform)))
 
 (defn- hydrate-permission
   "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`

@@ -3,6 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -21,15 +22,17 @@
   [timeline]
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
-  (update timeline :icon (fn [icon]
+  (update (remote-sync/remove-worktree-id-helper timeline) :icon (fn [icon]
                            (if (= icon "balloons") timeline-event/default-icon icon))))
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
+  (remote-sync/inherit-worktree-id model :model/Collection :collection_id))
 
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
+  (remote-sync/check-worktree-id-unchanged model)
+  (remote-sync/check-parent-same-worktree model :model/Collection :collection_id)
   model)
 
 ;;;; functions

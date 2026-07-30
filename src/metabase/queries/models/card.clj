@@ -40,6 +40,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -821,6 +822,7 @@
   ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
   (-> card
+      remote-sync/remove-worktree-id-helper
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
@@ -841,7 +843,8 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert
-        populate-query-fields)
+        populate-query-fields
+        (remote-sync/inherit-worktree-id :model/Collection :collection_id))
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
@@ -887,6 +890,8 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
+  (remote-sync/check-worktree-id-unchanged card)
+  (remote-sync/check-parent-same-worktree card :model/Collection :collection_id)
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))

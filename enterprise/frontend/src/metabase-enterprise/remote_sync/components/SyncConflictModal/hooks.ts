@@ -3,9 +3,9 @@ import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import {
-  useCreateBranchMutation,
   useExportChangesMutation,
   useImportChangesMutation,
+  useStashChangesMutation,
 } from "metabase-enterprise/api";
 import {
   type SyncError,
@@ -138,8 +138,7 @@ export const useMergeImportAction = () => {
 };
 
 export const useStashToNewBranchAction = (existingBranches: string[]) => {
-  const [exportChanges] = useExportChangesMutation();
-  const [createBranch] = useCreateBranchMutation();
+  const [stashChanges] = useStashChangesMutation();
   const [isStashing, setIsStashing] = useState<boolean>(false);
   const [sendToast] = useToast();
 
@@ -168,16 +167,17 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
 
         try {
           setIsStashing(true);
-          await createBranch({ name: newBranchName }).unwrap();
+          // One call: creates the branch, pushes the local state to it, and switches onto it. Creating the
+          // branch separately would leave the instance on the old branch, and the follow-up push would then
+          // be rejected for targeting a branch the instance isn't on.
+          await stashChanges({
+            new_branch: newBranchName,
+            message: message ?? t`Stashed from Metabase`,
+          }).unwrap();
 
           trackBranchCreated({
             triggeredFrom: "conflict-modal",
           });
-
-          await exportChanges({
-            branch: newBranchName,
-            message,
-          }).unwrap();
           sendToast({
             message: c("{0} is the GitHub branch name")
               .t`Changes pushed to new branch ${newBranchName}`,
@@ -193,7 +193,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
           setIsStashing(false);
         }
       },
-      [createBranch, existingBranches, exportChanges, sendToast],
+      [existingBranches, sendToast, stashChanges],
     ),
     isStashing,
   };

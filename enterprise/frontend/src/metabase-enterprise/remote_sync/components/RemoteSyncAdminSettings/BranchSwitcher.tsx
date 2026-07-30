@@ -102,9 +102,9 @@ export const BranchSwitcher = ({
     if (branch === currentBranch) {
       return;
     }
-    // Creating a branch forks the current one server-side (identical content, already switched to), so no
-    // reconcile runs and unsaved changes are preserved on the new branch. The branch picker already
-    // reports the creation, so don't also report a switch.
+    // Creating a branch from the picker stashes: it forks the current branch, pushes the local state to the
+    // fork, and switches onto it, so no reconcile runs and unsaved changes are preserved on the new branch.
+    // The branch picker already reports the creation, so don't also report a switch.
     if (isNewBranch) {
       return;
     }

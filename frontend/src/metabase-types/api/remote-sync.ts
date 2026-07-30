@@ -190,6 +190,22 @@ export type CreateBranchResponse = {
   message: string;
 };
 
+/**
+ * Push the current state to a brand new branch and move the instance onto it. Creating a branch
+ * (`CreateBranchRequest`) never switches by itself, so this is the endpoint to use when the intent is
+ * "continue my work on a new branch".
+ */
+export type StashChangesRequest = {
+  new_branch: string;
+  message: string;
+};
+
+export type StashChangesResponse = {
+  status: string;
+  message: string;
+  task_id?: number;
+};
+
 export type TestRemoteSyncConnectionRequest = {
   "remote-sync-url"?: string | null;
   "remote-sync-token"?: string | null;
