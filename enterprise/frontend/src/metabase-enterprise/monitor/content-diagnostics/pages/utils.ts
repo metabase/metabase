@@ -2,16 +2,16 @@ import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
-  CONTENT_DIAGNOSTICS_SORT_COLUMNS,
-  type ContentDiagnosticsUserParams,
+  CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
+  type ContentDiagnosticsStaleUserParams,
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
-import { getParamsWithoutDefaults } from "../components/utils";
+import { getStaleParamsWithoutDefaults } from "../components/stale-utils";
 
-export function parseUrlParams(
+export function parseStaleUrlParams(
   location: Location,
-): Urls.ContentDiagnosticsParams {
+): Urls.StaleContentParams {
   const {
     page,
     query,
@@ -32,15 +32,15 @@ export function parseUrlParams(
     ),
     sortColumn: Urls.parseEnumParam(
       sortColumn,
-      CONTENT_DIAGNOSTICS_SORT_COLUMNS,
+      CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
     ),
     sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
   };
 }
 
-export function getUserParams(
-  params: Urls.ContentDiagnosticsParams,
-): ContentDiagnosticsUserParams {
+export function getStaleUserParams(
+  params: Urls.StaleContentParams,
+): ContentDiagnosticsStaleUserParams {
   return {
     entity_types: params.entityTypes,
     include_personal_collections: params.includePersonalCollections,
@@ -49,9 +49,9 @@ export function getUserParams(
   };
 }
 
-export function parseUserParams(
-  params: ContentDiagnosticsUserParams | undefined | "",
-): Urls.ContentDiagnosticsParams {
+export function parseStaleUserParams(
+  params: ContentDiagnosticsStaleUserParams | undefined | "",
+): Urls.StaleContentParams {
   if (typeof params !== "object" || params == null) {
     return {};
   }
@@ -64,8 +64,8 @@ export function parseUserParams(
   };
 }
 
-export function isEmptyParams(location: Location): boolean {
+export function isEmptyStaleParams(location: Location): boolean {
   return Object.values(
-    getParamsWithoutDefaults(parseUrlParams(location)),
+    getStaleParamsWithoutDefaults(parseStaleUrlParams(location)),
   ).every((value) => value == null);
 }

@@ -1,2 +1,1 @@
-export * from "./StaleContentDiagnostics";
 export * from "./StaleContentDiagnosticsSidebar";

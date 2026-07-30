@@ -14,26 +14,24 @@ import {
 } from "metabase/ui";
 import type { ContentDiagnosticsFilterType } from "metabase-types/api";
 
-import type { ContentDiagnosticsFilterOptions } from "../types";
+import type { StaleContentFilterOptions } from "../types";
 import { getFilterTypeLabel } from "../utils";
 
-type DiagnosticsFilterPickerProps = {
-  filterOptions: ContentDiagnosticsFilterOptions;
+type StaleDiagnosticsFilterPickerProps = {
+  filterOptions: StaleContentFilterOptions;
   availableTypes: ContentDiagnosticsFilterType[];
   isDisabled?: boolean;
   hasDefaultOptions?: boolean;
-  onFilterOptionsChange: (
-    filterOptions: ContentDiagnosticsFilterOptions,
-  ) => void;
+  onFilterOptionsChange: (filterOptions: StaleContentFilterOptions) => void;
 };
 
-export function DiagnosticsFilterPicker({
+export function StaleDiagnosticsFilterPicker({
   filterOptions,
   availableTypes,
   isDisabled = false,
   hasDefaultOptions = false,
   onFilterOptionsChange,
-}: DiagnosticsFilterPickerProps) {
+}: StaleDiagnosticsFilterPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   const handleTypesChange = (newValue: string[]) => {

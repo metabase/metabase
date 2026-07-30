@@ -5,15 +5,15 @@ import { useDispatch } from "metabase/redux";
 import { replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { ContentDiagnostics } from "../components";
+import { StaleContentDiagnostics } from "../components";
+import { getStaleParamsWithoutDefaults } from "../components/stale-utils";
 import type { ContentDiagnosticsParamsOptions } from "../components/types";
-import { getParamsWithoutDefaults } from "../components/utils";
 
 import {
-  getUserParams,
-  isEmptyParams,
-  parseUrlParams,
-  parseUserParams,
+  getStaleUserParams,
+  isEmptyStaleParams,
+  parseStaleUrlParams,
+  parseStaleUserParams,
 } from "./utils";
 
 export function StaleContentPage() {
@@ -31,19 +31,19 @@ export function StaleContentPage() {
   });
 
   const params = useMemo(() => {
-    return isEmptyParams(location)
-      ? parseUserParams(rawLastUsedParams)
-      : parseUrlParams(location);
+    return isEmptyStaleParams(location)
+      ? parseStaleUserParams(rawLastUsedParams)
+      : parseStaleUrlParams(location);
   }, [location, rawLastUsedParams]);
 
   const handleParamsChange = (
-    params: Urls.ContentDiagnosticsParams,
+    params: Urls.StaleContentParams,
     { withSetLastUsedParams = false }: ContentDiagnosticsParamsOptions = {},
   ) => {
-    const paramsWithoutDefaults = getParamsWithoutDefaults(params);
+    const paramsWithoutDefaults = getStaleParamsWithoutDefaults(params);
 
     if (withSetLastUsedParams) {
-      setLastUsedParams(getUserParams(paramsWithoutDefaults));
+      setLastUsedParams(getStaleUserParams(paramsWithoutDefaults));
     }
     dispatch(replace(Urls.staleContent(paramsWithoutDefaults)));
   };
@@ -51,12 +51,14 @@ export function StaleContentPage() {
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
-      dispatch(replace(Urls.staleContent(getParamsWithoutDefaults(params))));
+      dispatch(
+        replace(Urls.staleContent(getStaleParamsWithoutDefaults(params))),
+      );
     }
   }, [params, isLoadingParams, dispatch]);
 
   return (
-    <ContentDiagnostics
+    <StaleContentDiagnostics
       params={params}
       isLoadingParams={isLoadingParams}
       onParamsChange={handleParamsChange}

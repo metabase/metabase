@@ -1,6 +1,6 @@
 import type { ContentDiagnosticsFilterType } from "metabase-types/api";
 
-export type ContentDiagnosticsFilterOptions = {
+export type StaleContentFilterOptions = {
   entityTypes: ContentDiagnosticsFilterType[];
   includePersonalCollections: boolean;
 };
