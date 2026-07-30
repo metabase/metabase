@@ -729,7 +729,7 @@
   [[validate-query-length!]] surfaces the same failure client-side, with an actionable message, before the request
   is sent. Plain `def` (not `^:const`) so tests can reference/redef it. See
   https://cloud.google.com/bigquery/quotas#query_limits ('Maximum query length: 1 MB')."
-  1048576)
+  (* 1024 1024))
 
 (defn- validate-query-length!
   "Throw a localized `invalid-query` error if `sql` exceeds [[max-sql-query-length-chars]], before the request
