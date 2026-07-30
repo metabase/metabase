@@ -86,6 +86,14 @@ describe("GroupsPermissionsPage", () => {
   });
 
   describe("rendering", () => {
+    it("should prompt to pick a group when none is selected", async () => {
+      await setup({ initialRoute: "/admin/permissions/data/group" });
+
+      expect(
+        await screen.findByText("Select a group to see its data permissions"),
+      ).toBeVisible();
+    });
+
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();
 
