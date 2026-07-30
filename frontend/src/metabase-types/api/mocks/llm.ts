@@ -13,6 +13,7 @@ export const createMockLlmProviderField = (
   label: "API key",
   type: "password",
   required: true,
+  advanced: false,
   ...opts,
 });
 

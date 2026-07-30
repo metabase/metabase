@@ -47,10 +47,11 @@
                      :placeholder "sk-ant-api03-..."
                      :prefix      "sk-ant-"
                      :docs-url    "https://console.anthropic.com/settings/keys"}
-                    {:key     :base-url
-                     :label   (deferred-tru "API base URL")
-                     :type    :text
-                     :default "https://api.anthropic.com"}]}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.anthropic.com"}]}
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
     :icon          "ai"
@@ -62,10 +63,11 @@
                      :placeholder "sk-proj-..."
                      :prefix      "sk-"
                      :docs-url    "https://platform.openai.com/api-keys"}
-                    {:key     :base-url
-                     :label   (deferred-tru "API base URL")
-                     :type    :text
-                     :default "https://api.openai.com"}]}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.openai.com"}]}
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
     :icon          "ai"
@@ -77,10 +79,11 @@
                      :placeholder "sk-or-v1-..."
                      :prefix      "sk-or-v1-"
                      :docs-url    "https://openrouter.ai/keys"}
-                    {:key     :base-url
-                     :label   (deferred-tru "API base URL")
-                     :type    :text
-                     :default "https://openrouter.ai/api"}]}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://openrouter.ai/api"}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
     :icon          "ai"
@@ -115,10 +118,11 @@
                      :type    :select
                      :options aws-region-options
                      :default "us-east-1"}
-                    {:key   :session-token
-                     :label (deferred-tru "Session token")
-                     :type  :password
-                     :help  (deferred-tru "Only needed for temporary credentials.")}]}
+                    {:key       :session-token
+                     :label     (deferred-tru "Session token")
+                     :type      :password
+                     :advanced? true
+                     :help      (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase")
     :icon          "metabot"

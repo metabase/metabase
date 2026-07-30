@@ -28,6 +28,7 @@
    [:label :string]
    [:type [:enum "text" "password" "select"]]
    [:required :boolean]
+   [:advanced :boolean]
    [:placeholder {:optional true} [:maybe :string]]
    [:default {:optional true} [:maybe :string]]
    [:help {:optional true} [:maybe :string]]
@@ -79,11 +80,12 @@
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- field-response
-  [{:keys [key label type required? placeholder default help docs-url options]}]
+  [{:keys [key label type required? advanced? placeholder default help docs-url options]}]
   (cond-> {:key      (name key)
            :label    (str label)
            :type     (name type)
-           :required (boolean required?)}
+           :required (boolean required?)
+           :advanced (boolean advanced?)}
     placeholder (assoc :placeholder (str placeholder))
     default     (assoc :default default)
     help        (assoc :help (str help))
