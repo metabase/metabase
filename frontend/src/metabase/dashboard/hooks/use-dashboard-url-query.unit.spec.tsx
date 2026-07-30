@@ -11,15 +11,15 @@ import {
 } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { push, replace } from "metabase/router";
+import { notifyLocationListeners } from "metabase/router/v7/navigator";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { useDashboardUrlQuery } from "./use-dashboard-url-query";
 
 // Pins the dashboard URL-query sync seam: how dashboard parameter and tab state
-// gets pushed or replaced into the location query string, plus the router.listen
-// tab subscription. The react-router migration re-plumbs both of these, and
-// router.listen has no direct v7 equivalent, so this locks current behavior.
+// gets pushed or replaced into the location query string, plus the location
+// subscription that selects a tab. The react-router migration re-plumbs both.
 
 jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
@@ -56,16 +56,8 @@ function setup({
   pathname = `/dashboard/${DASHBOARD_ID}`,
   search = "",
 }: SetupOptions = {}) {
-  const listeners: ((location: Location) => void)[] = [];
-  const unsubscribe = jest.fn();
-  const router = {
-    listen: jest.fn((cb: (location: Location) => void) => {
-      listeners.push(cb);
-      return unsubscribe;
-    }),
-  };
-
-  // Unjustified type cast. FIXME
+  // Cast because the test only drives the URL parts the hook reads; `key` is
+  // supplied by the router at runtime and nothing here depends on it.
   const location = {
     pathname,
     search,
@@ -96,12 +88,11 @@ function setup({
   });
 
   const { store, unmount } = renderHookWithProviders(
-    // Unjustified type cast. FIXME
-    () => useDashboardUrlQuery(router as any, location),
+    () => useDashboardUrlQuery(location),
     { storeInitialState },
   );
 
-  return { store, unmount, router, listeners, unsubscribe, location };
+  return { store, unmount, location };
 }
 
 describe("useDashboardUrlQuery", () => {
@@ -176,17 +167,14 @@ describe("useDashboardUrlQuery", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  describe("router.listen tab subscription", () => {
+  describe("location tab subscription", () => {
     it("selects the tab when a same-pathname navigation changes the tab query id", () => {
-      const { store, listeners, location } = setup();
+      const { store, location } = setup();
 
       expect(store.getState().dashboard.selectedTabId).toBe(null);
 
       act(() => {
-        listeners[0]({
-          ...location,
-          search: "?tab=5-tab-5",
-        });
+        notifyLocationListeners({ ...location, search: "?tab=5-tab-5" });
       });
 
       // selectTab is the only reducer that sets selectedTabId, so this pins that
@@ -195,10 +183,10 @@ describe("useDashboardUrlQuery", () => {
     });
 
     it("does nothing when the pathname changes", () => {
-      const { store, listeners, location } = setup();
+      const { store, location } = setup();
 
       act(() => {
-        listeners[0]({
+        notifyLocationListeners({
           ...location,
           pathname: "/dashboard/999",
           search: "?tab=5-tab-5",
@@ -208,12 +196,16 @@ describe("useDashboardUrlQuery", () => {
       expect(store.getState().dashboard.selectedTabId).toBe(null);
     });
 
-    it("unsubscribes on unmount", () => {
-      const { unmount, unsubscribe } = setup();
+    it("stops listening on unmount", () => {
+      const { store, unmount, location } = setup();
 
-      expect(unsubscribe).not.toHaveBeenCalled();
       unmount();
-      expect(unsubscribe).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        notifyLocationListeners({ ...location, search: "?tab=5-tab-5" });
+      });
+
+      expect(store.getState().dashboard.selectedTabId).toBe(null);
     });
   });
 

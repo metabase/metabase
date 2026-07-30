@@ -7,11 +7,11 @@ import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import {
-  type InjectedRouter,
   type Location,
   push,
   queryToSearch,
   replace,
+  subscribeLocation,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
@@ -25,10 +25,7 @@ import {
 } from "../selectors";
 import { createTabSlug, parseTabSlug } from "../utils";
 
-export function useDashboardUrlQuery(
-  router: InjectedRouter,
-  location: Location,
-) {
+export function useDashboardUrlQuery(location: Location) {
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
@@ -108,8 +105,7 @@ export function useDashboardUrlQuery(
   ]);
 
   useEffect(() => {
-    // @ts-expect-error missing type declaration
-    const unsubscribe = router.listen((nextLocation) => {
+    return subscribeLocation((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {
         return;
@@ -122,9 +118,7 @@ export function useDashboardUrlQuery(
         dispatch(selectTab({ tabId: nextTabId }));
       }
     });
-
-    return () => unsubscribe();
-  }, [router, location, selectedTab, dispatch]);
+  }, [location, selectedTab, dispatch]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
