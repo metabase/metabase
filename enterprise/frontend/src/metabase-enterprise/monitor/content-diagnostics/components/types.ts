@@ -5,6 +5,12 @@ export type StaleContentFilterOptions = {
   includePersonalCollections: boolean;
 };
 
+export type SlowContentFilterOptions = {
+  entityTypes: ContentDiagnosticsFilterType[];
+  includePersonalCollections: boolean;
+  minDurationMs?: number;
+};
+
 export type ContentDiagnosticsParamsOptions = {
   withSetLastUsedParams?: boolean;
 };

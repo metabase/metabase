@@ -1,5 +1,7 @@
 import type {
   ContentDiagnosticsScanResult,
+  ListSlowFindingsRequest,
+  ListSlowFindingsResponse,
   ListStaleFindingsRequest,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
@@ -20,6 +22,17 @@ export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [listTag("content-diagnostics-finding")],
     }),
+    listSlowFindings: builder.query<
+      ListSlowFindingsResponse,
+      ListSlowFindingsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/content-diagnostics/slow",
+        params,
+      }),
+      providesTags: () => [listTag("content-diagnostics-finding")],
+    }),
     runContentDiagnosticsScan: builder.mutation<
       ContentDiagnosticsScanResult,
       void
@@ -36,5 +49,6 @@ export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListStaleFindingsQuery,
+  useListSlowFindingsQuery,
   useRunContentDiagnosticsScanMutation,
 } = contentDiagnosticsApi;
