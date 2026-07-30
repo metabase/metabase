@@ -90,6 +90,21 @@
 (def ^:private resize-node-default-height 442)
 (def ^:private resize-node-default-min-height 280)
 
+(def ^:private max-nesting-depth
+  "How deep a parse tree may get before parsing refuses the input. Conversion recurses once per
+  level — `scan-segments` per container fence, `convert-block`/`convert-inline` per block and
+  inline node — so unbounded input depth is a stack overflow, and an 8KB body is enough to reach
+  one.
+
+  This counts tree levels, not visually nested blocks, and inline nodes are levels too: `> > hi`
+  is four deep (two quotes, a paragraph, a text node), so the allowance in blockquotes or list
+  levels is somewhat lower than the number itself. It is a safety bound, not a contract — no real
+  document comes near it, since the layout content model bottoms out at three
+  (`resize` > `flex` > `supporting`) and prose nested past a handful of levels is already
+  unreadable. The stack gives out somewhere around 2000 and the app DB's own JSON nesting limit
+  refuses to store a body past roughly 600, so this sits well clear of both."
+  100)
+
 (defn- mint-id
   []
   (str (random-uuid)))
@@ -307,9 +322,14 @@
 
 (defn- scan-segments
   "Scan `lines` from index `i` into segments. `open-fence` names the container fence being
-  filled, or nil at the top level. Lines inside a fenced code block are opaque: token syntax
-  there is content, not structure. Returns [segments next-index]."
-  [lines i open-fence]
+  filled, or nil at the top level, and `depth` how many fences are open above this one — bounded,
+  because each open fence costs a stack frame and the content-model check that would reject absurd
+  nesting does not run until the whole scan has already returned. Lines inside a fenced code block
+  are opaque: token syntax there is content, not structure. Returns [segments next-index]."
+  [lines i open-fence depth]
+  (when (> (long depth) max-nesting-depth)
+    (throw (teaching-error (format "Layout containers are nested more than %d deep — flatten the layout."
+                                   max-nesting-depth))))
   (loop [i          i
          md-lines   []
          segments   []
@@ -329,7 +349,7 @@
 
           (re-matches fence-open-re line)
           (let [[_ fence-name attrs-str] (re-matches fence-open-re line)
-                [children next-i] (scan-segments lines (inc i) fence-name)]
+                [children next-i] (scan-segments lines (inc i) fence-name (inc (long depth)))]
             (recur next-i
                    []
                    (conj (flush-markdown segments md-lines)
@@ -543,11 +563,31 @@
   [nodes]
   (into [] (mapcat convert-block) nodes))
 
+(defn- check-nesting-depth!
+  "Refuse a flexmark tree nested past [[max-nesting-depth]] before converting it. flexmark itself
+  builds deep trees happily — 8000 nested blockquotes parse fine — and it is
+  `convert-block`/`convert-inline`, one frame per level, that then runs out of stack. Checking the
+  tree instead of threading a depth argument through four mutually recursive converters keeps the
+  bound in one place.
+
+  The walk holds its own stack: measuring depth recursively would overflow on exactly the trees
+  this exists to reject."
+  [root]
+  (loop [stack [[root 0]]]
+    (when (seq stack)
+      (let [[^Node node depth] (peek stack)]
+        (when (> (long depth) max-nesting-depth)
+          (throw (teaching-error (format "Markdown is nested more than %d levels deep — flatten it."
+                                         max-nesting-depth))))
+        (recur (into (pop stack)
+                     (map #(vector % (inc (long depth))))
+                     (fm-children node)))))))
+
 (defn- markdown-chunk->nodes
   [text]
-  (-> (.parse flexmark-parser ^String text)
-      fm-children
-      convert-blocks))
+  (let [root (.parse flexmark-parser ^String text)]
+    (check-nesting-depth! root)
+    (-> root fm-children convert-blocks)))
 
 ;;; ------------------------------------------------ Parse: containers ---------------------------------------------
 
@@ -626,7 +666,7 @@
 
 (defn- parse-content
   [markdown-string]
-  (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil)]
+  (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
     (resolve-smart-links (into [] (mapcat segment->nodes) segments))))
 
 (defn- wrap-loose-embeds
@@ -664,12 +704,21 @@
   Document's `:document` column: `{:type \"doc\" :content [...]}`. Mints a fresh `:_id` on
   every node type that carries one, wraps a bare top-level card embed or flex container in
   the `resizeNode` that gives it a height, and closes the body with a paragraph. Malformed
-  structure (unclosed fences, invalid container content, bad card tokens) throws a 400 `ex-info`
-  whose message names the fix; a smart-link id that doesn't resolve keeps the node and logs a
-  warning instead."
+  structure (unclosed fences, invalid container content, bad card tokens, nesting past
+  [[max-nesting-depth]]) throws a 400 `ex-info` whose message names the fix; a smart-link id that
+  doesn't resolve keeps the node and logs a warning instead."
   [markdown-string]
-  {:type    "doc"
-   :content (-> (parse-content markdown-string) wrap-loose-embeds ensure-trailing-paragraph)})
+  (try
+    {:type    "doc"
+     :content (-> (parse-content markdown-string) wrap-loose-embeds ensure-trailing-paragraph)}
+    ;; [[check-nesting-depth!]] catches deep structure that flexmark hands back, but flexmark can
+    ;; also run out of stack inside its own inline parser (a long `***…` delimiter run does it)
+    ;; before there is a tree to measure. Left alone that escapes as an Error, slipping past the
+    ;; `catch Exception` that sanitizes tool failures and surfacing as an unhandled 500. Safe to
+    ;; convert here because parsing is pure up to this point — the smart-link lookup runs after all
+    ;; the recursion, so nothing is half-written when the stack unwinds.
+    (catch StackOverflowError _
+      (throw (teaching-error "Markdown is nested too deeply to parse — flatten it.")))))
 
 ;;; ------------------------------------------------ Serialize: inline ---------------------------------------------
 

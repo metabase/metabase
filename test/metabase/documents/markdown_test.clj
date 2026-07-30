@@ -181,6 +181,66 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"height must be a number"
                           (md/parse "::: resize {height=99999999999999999999}\n{% card id=1 %}\n:::")))))
 
+;;; ------------------------------------------------ Nesting depth -------------------------------------------------
+
+(defn- deeply-nested-markdown
+  "Markdown nested `n` levels deep by each structure whose conversion recurses. Every one of these
+   overflowed the stack before a depth bound existed, at inputs as small as 8KB. Deep bullet lists
+   are deliberately absent: past four columns CommonMark reads the indentation as a code block
+   rather than a deeper list, so they cannot actually nest — and blockquotes already exercise the
+   same `convert-block` recursion a list would."
+  [n]
+  {"container fences" (str (apply str (repeat n "::: flex\n")) (apply str (repeat n ":::\n")))
+   "blockquotes"      (str (apply str (repeat n "> ")) "hi")
+   ;; This one overflows inside flexmark itself, before any of our conversion runs, so only a
+   ;; StackOverflowError backstop can turn it into an error response.
+   "emphasis runs"    (str (apply str (repeat n "*")) "x" (apply str (repeat n "*")))})
+
+(defn- parse-outcome
+  "`:parsed`, or the ex-data of the teaching error, or `:stack-overflow`. Deliberately not
+   `thrown-with-msg?`: a StackOverflowError is an Error rather than an ExceptionInfo, so it would
+   sail straight through that assertion — the distinction between the two is the whole point here."
+  [markdown]
+  (try (md/parse markdown)
+       :parsed
+       (catch clojure.lang.ExceptionInfo e (assoc (ex-data e) ::message (ex-message e)))
+       (catch StackOverflowError _ :stack-overflow)))
+
+(deftest ^:parallel deep-nesting-is-a-teaching-error-not-a-stack-overflow-test
+  (testing "input nested far past anything a document can express is refused with a 400 naming the
+           problem. A StackOverflowError would be worse than a poor message: it is an Error, so it
+           slips past the `catch Exception` that sanitizes every MCP tool failure and reaches the
+           client as an unhandled 500. Note the exact depth at which the stack gives out shifts with
+           the caller's own frame depth, so the bound — not the overflow — has to be what rejects
+           these."
+    (doseq [[label markdown] (deeply-nested-markdown 4000)]
+      (testing label
+        (let [outcome (parse-outcome markdown)]
+          (is (= 400 (:status-code outcome))
+              (format "%s should be a 400 teaching error, got %s" label (pr-str outcome)))
+          ;; Without this the container case would pass on its content-model error alone, which
+          ;; says nothing about whether a depth bound exists.
+          (is (re-find #"(?i)nest|deep" (str (::message outcome)))
+              (format "%s should name nesting depth as the problem, got %s"
+                      label (pr-str (::message outcome)))))))))
+
+(deftest ^:parallel legitimate-nesting-still-round-trips-test
+  (testing "the bound sits far above anything a real document holds, so ordinary nesting is
+           untouched. Layout containers are checked at their true maximum — resize > flex >
+           supporting is as deep as the content model allows — rather than at an arbitrary depth,
+           which would be rejected for violating the content model and prove nothing."
+    (doseq [[label markdown] {"blockquotes"     (str (apply str (repeat 20 "> ")) "hi")
+                              "emphasis runs"   (str (apply str (repeat 20 "*")) "x" (apply str (repeat 20 "*")))
+                              "container stack" (str "::: resize {height=442 minHeight=280}\n"
+                                                     "::: flex {columns=[60,40]}\n"
+                                                     "::: supporting\nProse.\n:::\n"
+                                                     "{% card id=1 %}\n:::\n:::")}]
+      (testing label
+        (let [ast (md/parse markdown)
+              m1  (:markdown (md/serialize ast))]
+          (is (seq (:content ast)))
+          (is (= m1 (reserialize (md/parse m1)))))))))
+
 ;;; ------------------------------------------------ Inline conversion ---------------------------------------------
 
 (deftest ^:parallel bare-url-autolink-test

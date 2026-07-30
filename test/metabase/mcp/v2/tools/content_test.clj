@@ -431,6 +431,40 @@
                        (:comments row))))
           (is (nil? (:orphaned_comments row))))))))
 
+(defn- deeply-nested-ast
+  "A prose-mirror body nested `n` levels deep."
+  [n]
+  {:type    "doc"
+   :content [(reduce (fn [inner i]
+                       {:type    "blockquote"
+                        :attrs   {:_id (str "bq-" i)}
+                        :content [inner]})
+                     {:type    "paragraph"
+                      :attrs   {:_id "leaf"}
+                      :content [{:type "text" :text "buried"}]}
+                     (range n))]})
+
+(deftest get-content-deepest-storable-document-still-serializes-test
+  (testing "the app DB's JSON nesting ceiling sits below the serializer's, so any document that can
+            be read back is shallow enough to render as Markdown. This is why a deeply nested body
+            is a write-path concern only: the storage layer refuses a document around 600 levels
+            deep, while serializing does not run out of stack until roughly 2000. The margin is
+            load-bearing — if the JSON limit were ever raised, reads could start hitting a
+            StackOverflowError, which is an Error and so escapes the per-item `catch Exception`
+            that keeps one bad document from sinking a whole batch."
+    (mt/with-temp [:model/Document {doc-id :id} {:document     (deeply-nested-ast 400)
+                                                 :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}]})]
+          (is (nil? (:error row)))
+          (testing "rendered as real Markdown, not the flattened-text fallback"
+            (is (str/includes? (str (:markdown row)) "> buried"))))))
+    (testing "past that ceiling the write is refused outright, so no such document exists to read"
+      (is (thrown? Exception
+                   (mt/with-temp [:model/Document _ {:document     (deeply-nested-ast 600)
+                                                     :content_type "application/json+vnd.prose-mirror"}]
+                     nil))))))
+
 (defn- migrate-notification-to-dashboard!
   "Repoint a payload-less notification row to :notification/dashboard via raw SQL, bypassing the
    model lifecycle — which validates a schema (and a create fn) that has no branch for dashboard
