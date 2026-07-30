@@ -15,6 +15,8 @@
 (t2/deftransforms :model/ContentDiagnosticsFinding
   {:entity_type  mi/transform-keyword
    :finding_type mi/transform-keyword
+   ;; nullable - card findings only
+   :card_type    mi/transform-keyword
    :details      mi/transform-json})
 
 (defn invalidate-superseded!

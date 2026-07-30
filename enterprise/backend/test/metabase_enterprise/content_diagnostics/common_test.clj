@@ -90,10 +90,11 @@
                    (@#'api.common/finalize-finding :not-a-finding-type {} {} {}))))))
 
 (deftest hydrate-findings-tolerates-a-deleted-card-test
-  (testing "a card finding whose entity is gone hydrates without card_type, rather than throwing"
+  (testing "a card finding whose entity is gone still hydrates - and keeps its stored card_type"
     ;; Not reachable over HTTP - `visible-findings-clause` already drops a finding whose entity row is gone -
     ;; so the hydrator's guard is pinned directly here. It still fires in the wild: a card can be deleted
-    ;; between the findings query and the hydration query.
+    ;; between the findings query and the hydration query. card_type is denormalized on the finding row,
+    ;; so unlike the live-hydrated fields (description/collection) it survives the entity's deletion.
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Card {card-id :id} {:collection_id coll-id :type :model}]
       (t2/delete! :model/Card :id card-id)
@@ -101,16 +102,21 @@
                                                  :finding_type :stale
                                                  :entity_type  :card
                                                  :entity_id    card-id
+                                                 :card_type    :model
                                                  :details      {}}]
                                                nil)]
         (is (some? row))
-        (is (not (contains? row :card_type)))))))
+        (is (= :model (:card_type row)))
+        (testing "the live-hydrated fields degrade to nil"
+          (is (nil? (get-in row [:details :description])))
+          (is (nil? (get-in row [:details :collection]))))))))
 
 (deftest attach-entity-attrs-stamps-denormalized-columns-test
   (testing "each finding is stamped with its entity's name/created_at/creator across multiple entity types"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Card      {card-id :id} {:collection_id coll-id
                                                    :name          "Revenue"
+                                                   :type          :model
                                                    :creator_id    (mt/user->id :rasta)}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id
                                                    :name          "Ops"
@@ -120,17 +126,19 @@
                          (common/attach-entity-attrs
                           [{:entity-type :card :entity-id card-id :finding-type :slow}
                            {:entity-type :dashboard :entity-id dash-id :finding-type :slow}]))]
-        (testing "card: name + created_at + creator id and resolved common_name"
+        (testing "card: name + created_at + creator id and resolved common_name + card-type"
           (let [f (by-key [:card card-id])]
             (is (= "Revenue" (:entity-name f)))
             (is (some? (:entity-created-at f)))
             (is (= (mt/user->id :rasta) (:entity-creator-id f)))
-            (is (= "Rasta Toucan" (:entity-creator-name f)))))
-        (testing "dashboard: resolves its own creator, distinct from the card's"
+            (is (= "Rasta Toucan" (:entity-creator-name f)))
+            (is (= :model (:card-type f)))))
+        (testing "dashboard: resolves its own creator, distinct from the card's; no card-type"
           (let [f (by-key [:dashboard dash-id])]
             (is (= "Ops" (:entity-name f)))
             (is (= (mt/user->id :crowberto) (:entity-creator-id f)))
-            (is (= "Crowberto Corv" (:entity-creator-name f)))))))))
+            (is (= "Crowberto Corv" (:entity-creator-name f)))
+            (is (nil? (:card-type f)))))))))
 
 (deftest attach-entity-attrs-collection-has-no-creator-test
   (testing "a collection finding gets name/created_at but NULL creator columns - collections have no

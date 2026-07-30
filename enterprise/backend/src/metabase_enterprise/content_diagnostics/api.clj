@@ -45,12 +45,15 @@
 (def ^:private FindingBase
   "The flat identity every finding response shares: stable id/type columns, the per-finding `detected_at`
   freshness stamp, the display name, and the denormalized `created_at`. Each finding `:merge`s its own
-  top-level column (`last_active_at` / `duration_ms` / `duplicate_count`) and its typed `details` onto this."
+  top-level column (`last_active_at` / `duration_ms` / `duplicate_count` / `content_count`) and its typed
+  `details` onto this."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
    [:entity_type         :keyword]
-   ;; card findings only; live from `report_card.type` (question/model/metric), not denormalized
+   ;; card findings only - report_card.type denormalized at scan time; the column `entity-types` filters
+   ;; on when given a card sub-kind (question/model/metric);
+   ;; nullable (rows can predate the column, and a card deleted mid-scan stamps nil)
    [:card_type           {:optional true} [:maybe :keyword]]
    [:entity_id           :int]
    [:detected_at         ms/TemporalInstant]
@@ -150,33 +153,24 @@
     [:duplicate_count :int]
     [:details         DuplicatedDetails]]])
 
+(def ^:private ImbalancedDetails
+  "`imbalanced` details. `as_of` lives in the JSON `details` blob, so it round-trips as a string, not a
+  temporal instant."
+  [:merge FindingDetailsBase
+   [:map
+    [:threshold :int]
+    [:unit      :string]
+    [:as_of     {:optional true} ms/TemporalString]]])
+
 (def ^:private ImbalancedFinding
   "Response item for the `/imbalanced` endpoint. `empty`/`sparse`/`crowded` share one count-vs-threshold
   shape, discriminated by the top-level `finding_type`: `content_count` is the measured amount (0 for
-  `empty`), `details.threshold` the bound it crossed, `details.unit` what was counted. `details.as_of`
-  appears on the two evidence-dated empties (card and transform); `details.view_count` on the subjects
-  that track usage (card/dashboard/document)."
-  [:map
-   [:id                  :int]
-   [:finding_type        :keyword]
-   [:entity_type         :keyword]
-   [:entity_id           :int]
-   [:detected_at         some?]
-   [:entity_display_name [:maybe :string]]
-   ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe some?]]
-   ;; measured magnitude (top-level, SQL-filterable/sortable); always present on imbalanced findings
-   [:content_count       :int]
-   [:details
-    [:map
-     [:collection  [:maybe :map]]
-     [:description [:maybe :string]]
-     [:owner       NormalizedUser]
-     [:creator     Creator]
-     [:view_count  {:optional true} :int]
-     [:threshold   :int]
-     [:unit        :string]
-     [:as_of       {:optional true} some?]]]])
+  `empty`), `details.threshold` the bound it crossed, `details.unit` what was counted."
+  [:merge FindingBase
+   [:map
+    ;; measured magnitude (top-level, SQL-filterable/sortable); always present on imbalanced findings
+    [:content_count :int]
+    [:details       ImbalancedDetails]]])
 
 (def ^:private stale-sort-column->field
   "Sortable stale-list params → their native `content_diagnostics_finding` column. The shared base plus
@@ -213,6 +207,13 @@
   `:collection` (its own endpoint enum, not the shared set, so the stale/slow endpoints stay
   collection-free)."
   (conj api.common/covered-entity-types :collection))
+
+(defn- entity-types-param
+  "Param schema for `entity-types` - the flat vocabulary `api.common/filter-types` builds from the
+  endpoint's `entity-types`."
+  [entity-types]
+  (let [enum (ms/enum-decode-keyword (api.common/filter-types entity-types))]
+    [:or enum [:sequential enum]]))
 
 (defn- stale-where-clause
   "The shared finding-list WHERE plus the stale-specific `threshold-days` filter - keeps findings whose
@@ -290,12 +291,13 @@
   "List **stale** findings - the latest valid `stale` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a nested `details` (collection, `description`, `owner`,
   `creator`, `threshold_days`). Card items also carry a top-level `card_type`
-  (`question`|`model`|`metric`) - card findings only, live-hydrated. Paginated via `limit`/`offset`;
-  `total` is the full valid count.
+  (`question`|`model`|`metric`) - card findings only, denormalized at scan time. Paginated via
+  `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
-  collection are excluded. `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted =
-  all). `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -
+  collection are excluded. `entity-types` (repeatable, omitted = all) narrows by type; the card sub-kinds
+  are valid values, and `card` means any card type.
+  `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -
   threshold-days` (never-used always pass). `query` case-insensitively substring-matches the entity name.
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-active-at`, default
   `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
@@ -308,9 +310,7 @@
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column    {:optional true} (ms/enum-decode-keyword (keys stale-sort-column->field))]
        [:sort-direction {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
-       [:entity-types   {:optional true} [:or
-                                          (ms/enum-decode-keyword api.common/covered-entity-types)
-                                          [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
+       [:entity-types   {:optional true} (entity-types-param api.common/covered-entity-types)]
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
   (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
@@ -332,13 +332,15 @@
   current user. Each item is a flat identity + a top-level `duration_ms` + a nested `details`. `details`
   varies by `entity_type`: leaves (card/transform) freeze `threshold_ms`; containers (dashboard/document)
   carry the hydrated `slow_entities` culprit cards. Card items also carry a top-level `card_type`
-  (`question`|`model`|`metric`) - card findings only, live-hydrated. Paginated via `limit`/`offset`;
-  `total` is the full valid count.
+  (`question`|`model`|`metric`) - card findings only, denormalized at scan time. Paginated via
+  `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection culprit cards are omitted from `slow_entities`.
-  `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted =
-  all). `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers
+  `entity-types` (repeatable, omitted = all) narrows the flagged entity by type; the card sub-kinds are
+  valid values, and `card` means any card type. Containers rolled up from slow cards are matched on
+  their own type.
+  `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers
   filter on their representative duration). `query` case-insensitively substring-matches the entity name.
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duration-ms`, default
   `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
@@ -351,9 +353,7 @@
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column     {:optional true} (ms/enum-decode-keyword (keys slow-sort-column->field))]
        [:sort-direction  {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
-       [:entity-types    {:optional true} [:or
-                                           (ms/enum-decode-keyword api.common/covered-entity-types)
-                                           [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
+       [:entity-types    {:optional true} (entity-types-param api.common/covered-entity-types)]
        [:min-duration-ms {:optional true} ms/PositiveInt]
        [:query           {:optional true} :string]]]
   (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
@@ -370,17 +370,19 @@
       [:total        :int]
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
-      [:last_scan_at [:maybe some?]]]
+      [:last_scan_at [:maybe ms/TemporalInstant]]]
   "List **imbalanced** findings - the latest valid finding per (entity, finding-type) across the
   `empty`/`sparse`/`crowded` checkers, permission-filtered for the current user. The checkers run
   independently, so one entity can appear once per finding type (a collection whose items are all empty
   is both `crowded` and `empty`) - rows are findings, not entities, and `total` counts findings. Each
   item is a flat identity plus a top-level `content_count` and a nested `details` (collection breadcrumb,
-  description, owner, creator, the `threshold` crossed, and its `unit`). Paginated via `limit`/`offset`.
+  description, owner, creator, the `threshold` crossed, and its `unit`). Card items (card only ever emits
+  `empty`) also carry a top-level `card_type`, denormalized at scan time. Paginated via `limit`/`offset`.
 
   Params: `include-personal-collections` (default false) excludes entities in personal collections.
-  `entity-types` and `finding-types` (both repeatable) narrow the results. `query` substring-matches the
-  entity name. `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
+  `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid
+  `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.
+  `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false
@@ -390,9 +392,7 @@
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column       {:optional true} (ms/enum-decode-keyword (keys imbalanced-sort-column->field))]
        [:sort-direction    {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
-       [:entity-types      {:optional true} [:or
-                                             (ms/enum-decode-keyword imbalanced-entity-types)
-                                             [:sequential (ms/enum-decode-keyword imbalanced-entity-types)]]]
+       [:entity-types      {:optional true} (entity-types-param imbalanced-entity-types)]
        [:finding-types     {:optional true} [:or
                                              (ms/enum-decode-keyword imbalanced-finding-types)
                                              [:sequential (ms/enum-decode-keyword imbalanced-finding-types)]]]
@@ -416,18 +416,21 @@
   same-type entities sharing the normalized name) + a nested `details` (collection, `description`,
   `owner`, `creator`, `normalized_name`, and the hydrated same-type `duplicate_entities` peers). Card
   items also carry a top-level `card_type` (`question`|`model`|`metric`) - card findings only,
-  live-hydrated. Paginated via `limit`/`offset`; `total` is the full valid count.
+  denormalized at scan time. Paginated via `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection peers are omitted from `duplicate_entities`.
-  `entity-types` (repeatable; `card`|`collection`|`dashboard`|`document`|`transform`, omitted = all;
-  `collection` finds same-named collections instance-wide, regardless of parent).
+  `entity-types` (repeatable, omitted = all) narrows the flagged entity by type; the card sub-kinds are
+  valid values, `card` means any card type, and `collection` finds same-named collections instance-wide,
+  regardless of parent. Peers are not filtered - cards cluster across sub-kinds, so a model's peers can
+  be questions.
   `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`
   case-insensitively substring-matches the entity name. `sort-column`
   (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duplicate-count`, default `detected-at`)
   + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params
-   {:keys [include-personal-collections sort-column sort-direction entity-types min-duplicate-count query]
+   {:keys [include-personal-collections sort-column sort-direction entity-types
+           min-duplicate-count query]
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
@@ -435,9 +438,7 @@
        [:include-personal-collections {:optional true} :boolean]
        [:sort-column         {:optional true} (ms/enum-decode-keyword (keys duplicated-sort-column->field))]
        [:sort-direction      {:optional true} (ms/enum-decode-keyword api.common/sort-directions)]
-       [:entity-types        {:optional true} [:or
-                                               (ms/enum-decode-keyword duplicated-entity-types)
-                                               [:sequential (ms/enum-decode-keyword duplicated-entity-types)]]]
+       [:entity-types        {:optional true} (entity-types-param duplicated-entity-types)]
        [:min-duplicate-count {:optional true} ms/PositiveInt]
        [:query               {:optional true} :string]]]
   (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]

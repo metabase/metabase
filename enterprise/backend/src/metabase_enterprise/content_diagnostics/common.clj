@@ -71,7 +71,9 @@
   are explicit methods). `collection` is absent - it is not
   column-resident (its breadcrumb anchor is parsed from `location`), so it carries its own `entity-context`
   method rather than going through the shared column path; its peer/candidate reads are explicit methods too."
-  {:card      {:context   [:description :view_count :type :card_schema]
+  ;; card :context has no :type - the finding's own card_type is served from the finding row;
+  ;; :peer keeps :type (+ the :card_schema it forces) for live peer hydration.
+  {:card      {:context   [:description :view_count]
                :peer      [:view_count :type :card_schema]
                :candidate [:card_schema]}
    :dashboard {:context   [:description :view_count]
@@ -100,22 +102,26 @@
   (get-in entity-spec [entity-type :candidate]))
 
 (defn attach-entity-attrs
-  "Stamp each finding with the denormalized display/sort columns - `:entity-name`, `:entity-created-at`,
-  `:entity-creator-id`, `:entity-creator-name` - batch-resolved from each entity's own model (F ≪ N: one
-  query per entity-type over just the flagged ids, plus one `creator_id → common_name` lookup over the
-  distinct creators). Values a checker has already set win (e.g. the stale checker's `:entity-name` from
-  its own query), so this only fills what the checker left unset. Every covered model exposes
-  `name`/`created_at`; `creator_id` is selected only where the model has it - collections have none
-  (a personal collection's owner is NOT a creator proxy), so their creator columns stay NULL."
+  "Stamp each finding with the denormalized display/sort/filter columns - `:entity-name`,
+  `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, and (cards only) `:card-type` -
+  batch-resolved from each entity's own model (F ≪ N: one query per entity-type over just the flagged
+  ids, plus one `creator_id → common_name` lookup over the distinct creators). Values a checker has
+  already set win (e.g. the stale checker's `:entity-name` from its own query), so this only fills what
+  the checker left unset. Every covered model exposes `name`/`created_at`; `creator_id` is selected only
+  where the model has it - collections have none (a personal collection's owner is NOT a creator proxy),
+  so their creator columns stay NULL."
   [findings]
   (let [attrs-by-key     (into {}
                                (for [[entity-type findings-for-type] (group-by :entity-type findings)
                                      :let  [model (entity-type->model entity-type)]
                                      :when model
                                      :let  [cols      (cond-> [:id :name :created_at]
-                                                        (not= entity-type :collection) (conj :creator_id))
+                                                        (not= entity-type :collection) (conj :creator_id)
+                                                        ;; :type makes the select "plausible" to the Card
+                                                        ;; after-select hook, which then requires :card_schema
+                                                        (= entity-type :card)          (conj :type :card_schema))
                                             id->attrs (t2/select-pk->fn
-                                                       #(select-keys % [:name :created_at :creator_id])
+                                                       #(select-keys % [:name :created_at :creator_id :type])
                                                        (into [model] cols)
                                                        :id [:in (into #{} (map :entity-id) findings-for-type)])]
                                      [id attrs] id->attrs]
@@ -124,10 +130,13 @@
                            (t2/select-pk->fn :common_name :model/User :id [:in ids])
                            {})]
     (mapv (fn [{:keys [entity-type entity-id] :as finding}]
-            (let [{:keys [name created_at creator_id]} (get attrs-by-key [entity-type entity-id])]
+            (let [{:keys [name created_at creator_id] card-type :type} (get attrs-by-key [entity-type entity-id])]
               (merge {:entity-name         name
                       :entity-created-at   created_at
                       :entity-creator-id   creator_id
-                      :entity-creator-name (get creator-id->name creator_id)}
+                      :entity-creator-name (get creator-id->name creator_id)
+                      ;; report_card.type at scan time (nil for non-cards) - what `entity-types` filters
+                      ;; on when given a card sub-kind
+                      :card-type           card-type}
                      finding)))
           findings)))
