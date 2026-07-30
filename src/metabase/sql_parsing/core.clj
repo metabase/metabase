@@ -272,8 +272,8 @@
 
 (defn strip-large-literal-lists
   "Replace large literal lists with NULL placeholders: VALUES clauses with more than
-   `strip-threshold` tuples become a single-row NULL tuple (preserving the column count from the
-   first tuple), literal-only IN lists with more than `strip-threshold` items become `IN (NULL)`
+   [[strip-threshold]] tuples become a single-row NULL tuple (preserving the column count from the
+   first tuple), literal-only IN lists with more than [[strip-threshold]] items become `IN (NULL)`
    (tuple lists become `IN ((NULL, ...))`, preserving the first tuple's arity), and literal-only
    ARRAY literals become `ARRAY[NULL]`. All surrounding SQL structure is preserved.
 
