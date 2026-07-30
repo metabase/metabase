@@ -1,6 +1,7 @@
 (ns metabase.sql-parsing.core-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]))
@@ -351,7 +352,6 @@
           "Nonexistent table reference is parsed and will fail at execution time"))))
 
 (comment
-  (require '[clojure.string :as str])
   (def query-corpus-path "/Users/bcm/dv/mb/query_corpus/")
 
   (def sentinel (re-pattern "\n-----end-query-----\n"))
@@ -437,56 +437,115 @@
                      "\n  Expected: " (pr-str (normalize-fields expected))
                      "\n  Actual:   " (pr-str (normalize-fields actual))))))))))
 
-;;; ----------------------------------------- Large VALUES stripping tests -----------------------------------------
+;;; -------------------------------------- Large literal-list stripping tests --------------------------------------
 
 (deftest ^:parallel strip-large-values-test
   (testing "Small VALUES clauses are preserved"
     (let [sql "SELECT * FROM (VALUES (1, 'a'), (2, 'b'), (3, 'c')) AS t(id, name)"]
-      (is (= sql (sql-parsing/strip-large-values sql)))))
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
   (testing "No VALUES keyword returns SQL unchanged"
     (let [sql "SELECT * FROM users WHERE id = 1"]
-      (is (= sql (sql-parsing/strip-large-values sql)))))
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
   (testing "Large VALUES clause is replaced with NULLs preserving column count"
-    (let [tuples (clojure.string/join ", " (map #(format "(%d, '%s', %d)" % (str "name" %) (* % 10))
-                                                (range 200)))
+    (let [tuples (str/join ", " (map #(format "(%d, '%s', %d)" % (str "name" %) (* % 10))
+                                     (range 200)))
           sql    (str "SELECT * FROM (VALUES " tuples ") AS t(id, name, score)")
-          result (sql-parsing/strip-large-values sql)]
-      (is (clojure.string/includes? result "VALUES (NULL, NULL, NULL)"))
-      (is (clojure.string/includes? result "AS t(id, name, score)"))
-      (is (not (clojure.string/includes? result "name0")))))
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "VALUES (NULL, NULL, NULL)"))
+      (is (str/includes? result "AS t(id, name, score)"))
+      (is (not (str/includes? result "name0")))))
   (testing "Multiple large VALUES clauses are all stripped"
-    (let [tuples1 (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
-          tuples2 (clojure.string/join ", " (map #(format "(%d, %d)" % (* % 2)) (range 200)))
+    (let [tuples1 (str/join ", " (map #(format "(%d)" %) (range 200)))
+          tuples2 (str/join ", " (map #(format "(%d, %d)" % (* % 2)) (range 200)))
           sql     (str "WITH a AS (SELECT * FROM (VALUES " tuples1 ") AS t(x)), "
                        "b AS (SELECT * FROM (VALUES " tuples2 ") AS t(y, z)) "
                        "SELECT * FROM a JOIN b ON a.x = b.y")
-          result  (sql-parsing/strip-large-values sql)]
-      (is (clojure.string/includes? result "VALUES (NULL)"))
-      (is (clojure.string/includes? result "VALUES (NULL, NULL)"))))
+          result  (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "VALUES (NULL)"))
+      (is (str/includes? result "VALUES (NULL, NULL)"))))
   (testing "VALUES keyword casing is preserved"
-    (let [tuples (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
+    (let [tuples (str/join ", " (map #(format "(%d)" %) (range 200)))
           sql    (str "select * from (values " tuples ") as t(x)")
-          result (sql-parsing/strip-large-values sql)]
-      (is (clojure.string/includes? result "values (NULL)"))))
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "values (NULL)"))))
   (testing "VALUES inside a string literal is not stripped"
     (let [sql "SELECT 'INSERT INTO foo VALUES (1,2,3)' AS example FROM bar"]
-      (is (= sql (sql-parsing/strip-large-values sql)))))
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
   (testing "Column named values is not stripped"
     (let [sql "SELECT values FROM my_table WHERE values > 10"]
-      (is (= sql (sql-parsing/strip-large-values sql)))))
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
   (testing "VALUES keyword not followed by paren is not stripped"
     (let [sql "SELECT * FROM t WHERE col IN (SELECT values FROM other)"]
-      (is (= sql (sql-parsing/strip-large-values sql)))))
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
   (testing "INSERT INTO ... VALUES is stripped when large"
-    (let [tuples (clojure.string/join ", " (map #(format "(%d, 'x')" %) (range 200)))
+    (let [tuples (str/join ", " (map #(format "(%d, 'x')" %) (range 200)))
           sql    (str "INSERT INTO foo VALUES " tuples)
-          result (sql-parsing/strip-large-values sql)]
-      (is (clojure.string/includes? result "VALUES (NULL, NULL)"))
-      (is (not (clojure.string/includes? result "(0, 'x')"))))))
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "VALUES (NULL, NULL)"))
+      (is (not (str/includes? result "(0, 'x')"))))))
+
+(deftest ^:parallel strip-large-in-lists-test
+  (testing "Small IN lists are preserved"
+    (let [sql "SELECT * FROM t WHERE id IN (1, 2, 3)"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Large literal IN list is replaced with IN (NULL)"
+    (let [sql    (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 200)) ") AND active = true")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE id IN (NULL) AND active = true" result))))
+  (testing "Large IN list of strings, negatives, and NULL/TRUE/FALSE literals is stripped"
+    (let [items  (concat (map #(format "'name %d'" %) (range 100))
+                         (map #(str "-" %) (range 50))
+                         ["NULL" "TRUE" "false" "1.5" "+2"])
+          sql    (str "SELECT * FROM t WHERE name IN (" (str/join ", " items) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE name IN (NULL)" result))))
+  (testing "IN keyword casing is preserved"
+    (let [sql    (str "SELECT * FROM t WHERE id in (" (str/join ", " (range 200)) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "in (NULL)"))))
+  (testing "NOT IN with a large literal list is stripped"
+    (let [sql    (str "SELECT * FROM t WHERE id NOT IN (" (str/join ", " (range 200)) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE id NOT IN (NULL)" result))))
+  (testing "Multiple large IN lists are all stripped"
+    (let [in1    (str/join ", " (range 200))
+          in2    (str/join ", " (map #(format "'x%d'" %) (range 200)))
+          sql    (str "SELECT * FROM t WHERE a IN (" in1 ") OR b IN (" in2 ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE a IN (NULL) OR b IN (NULL)" result))))
+  (testing "IN with a subquery is not stripped"
+    (let [sql "SELECT * FROM t WHERE id IN (SELECT id FROM other)"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "A large IN list nested inside an unstripped IN subquery is still stripped"
+    (let [sql    (str "SELECT * FROM t WHERE id IN (SELECT id FROM other WHERE x IN ("
+                      (str/join ", " (range 200)) "))")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE id IN (SELECT id FROM other WHERE x IN (NULL))" result))))
+  (testing "Large IN lists containing non-literals are not stripped"
+    (doseq [extra-item ["col_ref" "foo(1)" "(1 + 2)" "?" "$1" "{{param}}" "1e5" "DATE '2024-01-01'"]]
+      (let [sql (str "SELECT * FROM t WHERE id IN (" (str/join ", " (concat (range 200) [extra-item])) ")")]
+        (is (= sql (sql-parsing/strip-large-literal-lists sql))
+            (str "list containing " (pr-str extra-item) " should not be stripped")))))
+  (testing "Word boundaries: JOIN ( and INT( do not trigger IN matching"
+    (let [sql "SELECT CAST(x AS INT) FROM a JOIN (SELECT * FROM b) c ON a.id = c.id"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Large VALUES and IN in the same statement are both stripped"
+    (let [tuples (str/join ", " (map #(format "(%d)" %) (range 200)))
+          sql    (str "WITH v AS (SELECT * FROM (VALUES " tuples ") AS t(x)) "
+                      "SELECT * FROM v WHERE x IN (" (str/join ", " (range 200)) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "WITH v AS (SELECT * FROM (VALUES (NULL)) AS t(x)) SELECT * FROM v WHERE x IN (NULL)" result)))))
+
+(deftest ^:parallel large-in-list-referenced-tables-test
+  (testing "referenced-tables and referenced-fields work on queries with massive IN lists"
+    (let [sql (str "SELECT a.name FROM accounts a WHERE a.id IN (" (str/join ", " (range 20000)) ")")]
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
+             (sort (sql-parsing/referenced-fields "postgres" sql)))))))
 
 (deftest ^:parallel large-values-referenced-tables-test
   (testing "referenced-tables works on queries with massive VALUES clauses"
-    (let [tuples (clojure.string/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))
+    (let [tuples (str/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))
           sql    (str "WITH lookup AS (SELECT * FROM (VALUES " tuples
                       ") AS v(id, score)) "
                       "SELECT a.name, l.score FROM accounts a "

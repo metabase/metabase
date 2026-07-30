@@ -39,19 +39,24 @@
     (boolean (and (:sql-parsing/error data)
                   (= "ParseError" (:sql-parsing/python-error-type data))))))
 
-;;; ----------------------------------------- VALUES clause stripping ------------------------------------------
+;;; ------------------------------------- Large literal-list stripping -----------------------------------------
 
-;; Large VALUES clauses (thousands of tuples) cause GraalPy OOM due to ~114KB per AST node
-;; (vs ~1-2KB on CPython). We strip them on the JVM side before passing SQL to Python,
-;; because GraalPy is too slow at character-by-character string scanning over multi-MB inputs.
+;; Large literal lists — VALUES clauses with thousands of tuples and IN lists with thousands of
+;; items — cause GraalPy OOM/timeouts due to ~114KB per AST node (vs ~1-2KB on CPython). We strip
+;; them on the JVM side before passing SQL to Python, because GraalPy is too slow at
+;; character-by-character string scanning over multi-MB inputs.
 
-(def ^:private ^:const values-strip-threshold
-  "Only strip VALUES clauses with more than this many tuples."
+(def ^:private ^:const strip-threshold
+  "Only strip VALUES clauses / IN lists with more than this many tuples/items."
   100)
 
 (def ^:private values-keyword-pattern
   "Pattern to find VALUES keyword followed by opening paren."
   (re-pattern "(?i)\\bVALUES\\s*\\("))
+
+(def ^:private in-keyword-pattern
+  "Pattern to find IN keyword followed by opening paren."
+  (re-pattern "(?i)\\bIN\\b\\s*\\("))
 
 (defn- skip-whitespace
   "Return the first non-whitespace position at or after `pos`."
@@ -122,8 +127,8 @@
   (let [nulls (str/join ", " (repeat col-count "NULL"))]
     (str original-keyword " (" nulls ")")))
 
-(defn- extract-values-keyword
-  "Extract just the VALUES keyword text from a regex match like `VALUES (`."
+(defn- extract-keyword
+  "Extract just the keyword text from a regex match like `VALUES (` or `IN (`."
   ^String [^String sql ^long match-start ^long match-end]
   (-> (.substring sql match-start match-end)
       str/trimr
@@ -131,7 +136,7 @@
       str/trimr))
 
 (defn- strip-large-values*
-  "Walk through SQL, replacing any VALUES clause with more than `values-strip-threshold`
+  "Walk through SQL, replacing any VALUES clause with more than `strip-threshold`
    tuples with a single-row NULL placeholder. Preserves column count from the first tuple."
   ^String [^String sql]
   (let [matcher (re-matcher values-keyword-pattern sql)
@@ -153,27 +158,100 @@
                                   (.substring sql (inc paren-start) (dec (int first-end))))
                   ;; Scan remaining tuples
                   [tuple-count end-pos] (count-and-skip-tuples sql first-end n)]
-              (if (and (> (int tuple-count) values-strip-threshold) first-inner)
+              (if (and (> (int tuple-count) strip-threshold) first-inner)
                 (do (.append sb (make-null-placeholder
-                                 (extract-values-keyword sql match-start match-end)
+                                 (extract-keyword sql match-start match-end)
                                  (count-top-level-commas first-inner)))
                     (recur (int end-pos)))
                 (do (.append sb sql (int match-start) (int end-pos))
                     (recur (int end-pos)))))))))))
 
-(defn strip-large-values
-  "Replace large VALUES clauses with a single-row NULL placeholder.
+(def ^:private allowed-in-list-words
+  "The only bare words allowed inside an IN list for it to count as literal-only."
+  #{"null" "true" "false"})
 
-   Preserves the column count from the first tuple and all surrounding SQL structure.
-   Only triggers when a VALUES clause has more than `values-strip-threshold` tuples.
+(defn- literal-only-list?
+  "True if `content` (the text between the parens of an `IN (...)`) consists solely of literals:
+   numbers, quoted strings, NULL/TRUE/FALSE, signs, commas and whitespace. Anything else — column
+   references, function calls, subqueries, bind parameters, nested parens — disqualifies it, since
+   stripping those would change analysis results or parameter counts."
+  [^String content]
+  (let [n        (.length content)
+        word-ok? (fn [^long start ^long end]
+                   (or (neg? start)
+                       (contains? allowed-in-list-words (u/lower-case-en (.substring content start end)))))]
+    (loop [i (int 0), in-str false, str-ch \space, word-start (int -1)]
+      (if (>= i n)
+        (boolean (word-ok? word-start i))
+        (let [ch (.charAt content i)]
+          (cond
+            in-str
+            (if (= ch str-ch)
+              (if (and (< (inc i) n) (= (.charAt content (inc i)) str-ch))
+                (recur (+ i 2) true str-ch (int -1)) ; escaped (doubled) quote
+                (recur (inc i) false str-ch (int -1)))
+              (recur (inc i) true str-ch (int -1)))
+
+            (Character/isLetter ch)
+            (recur (inc i) false str-ch (int (if (neg? word-start) i word-start)))
+
+            (not (word-ok? word-start i))
+            false
+
+            (or (= ch \') (= ch \"))
+            (recur (inc i) true ch (int -1))
+
+            (or (Character/isDigit ch)
+                (Character/isWhitespace ch)
+                (contains? #{\, \. \- \+} ch))
+            (recur (inc i) false str-ch (int -1))
+
+            :else
+            false))))))
+
+(defn- strip-large-in-lists*
+  "Walk through SQL, replacing any literal-only `IN (...)` list with more than `strip-threshold`
+   items with `IN (NULL)`. Lists containing anything but literals are left untouched."
+  ^String [^String sql]
+  (let [matcher (re-matcher in-keyword-pattern sql)
+        n       (int (.length sql))]
+    (if-not (.find matcher)
+      sql
+      (let [_  (.reset matcher)
+            sb (StringBuilder.)]
+        (loop [i (int 0)]
+          (if-not (.find matcher i)
+            (-> sb (.append sql i n) .toString)
+            (let [match-start (.start matcher)
+                  match-end   (.end matcher)
+                  paren-start (dec (int match-end))
+                  end-pos     (skip-balanced-parens sql paren-start n)
+                  inner       (when (> end-pos (+ paren-start 2))
+                                (.substring sql (inc paren-start) (dec (int end-pos))))]
+              (if (and inner
+                       (> (count-top-level-commas inner) strip-threshold)
+                       (literal-only-list? inner))
+                (do (.append sb sql (int i) (int match-start))
+                    (.append sb (make-null-placeholder (extract-keyword sql match-start match-end) 1))
+                    (recur (int end-pos)))
+                ;; Not stripped: copy through the opening paren and keep scanning inside it, so a
+                ;; large IN list nested in a subquery (`IN (SELECT ... WHERE x IN (...))`) is still found.
+                (do (.append sb sql (int i) (int match-end))
+                    (recur (int match-end)))))))))))
+
+(defn strip-large-literal-lists
+  "Replace large literal lists with NULL placeholders: VALUES clauses with more than
+   `strip-threshold` tuples become a single-row NULL tuple (preserving the column count from the
+   first tuple), and literal-only IN lists with more than `strip-threshold` items become `IN (NULL)`.
+   All surrounding SQL structure is preserved.
 
    This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
    On any error, returns the original SQL unchanged so parsing can proceed normally."
   ^String [^String sql]
   (try
-    (strip-large-values* sql)
+    (-> sql strip-large-values* strip-large-in-lists*)
     (catch Exception e
-      (log/warnf "Error stripping VALUES clauses, passing SQL through unchanged: %s" (ex-message e))
+      (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
       sql)))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
@@ -187,7 +265,7 @@
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
   [dialect sql]
-  (protocol/referenced-tables (parser) dialect (strip-large-values sql)))
+  (protocol/referenced-tables (parser) dialect (strip-large-literal-lists sql)))
 
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
@@ -213,7 +291,7 @@
    (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
-  (protocol/referenced-fields (parser) dialect (strip-large-values sql)))
+  (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
 
 (defn returned-columns-lineage
   "Extract column lineage from SQL query, showing which output columns depend on which source columns.
@@ -233,7 +311,7 @@
    (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
    => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
   [dialect sql default-table-schema sqlglot-schema]
-  (protocol/returned-columns-lineage (parser) dialect (strip-large-values sql) default-table-schema sqlglot-schema))
+  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
@@ -265,7 +343,7 @@
    - \"invalid_expression\": Syntax/parse error
    - \"unhandled\": Other errors"
   [dialect sql default-table-schema & [sqlglot-schema]]
-  (protocol/validate-query (parser) dialect (strip-large-values sql) default-table-schema sqlglot-schema))
+  (protocol/validate-query (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
@@ -285,7 +363,7 @@
    (simple-query? nil \"SELECT * FROM users LIMIT 10\")
    => {:is_simple false :reason \"Contains a LIMIT\"}"
   [dialect sql]
-  (protocol/simple-query (parser) dialect (strip-large-values sql)))
+  (protocol/simple-query (parser) dialect (strip-large-literal-lists sql)))
 
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
@@ -417,7 +495,7 @@
    'fail soft' pattern used for parsing failures."
   [dialect sql]
   (try
-    (let [raw (protocol/field-references (parser) dialect (strip-large-values sql))
+    (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
           errors (or (:errors raw) (get raw "errors") [])]
@@ -456,12 +534,13 @@
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
    and returns the query reconstructed from the parsed AST."
   [dialect sql stmt-type]
-  (let [stripped-sql (strip-large-values sql)
+  (let [stripped-sql (strip-large-literal-lists sql)
         result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
                    (perf/update-keys (comp keyword u/->kebab-case-en)))]
     ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
-    ;; We generally want to use the reconstructed SQL, but if the original SQL had its values stripped (to avoid GraalPy OOM)
-    ;; then we need to return the original SQL to preserve the values. (#74284)
+    ;; We generally want to use the reconstructed SQL, but if the original SQL had its VALUES/IN
+    ;; literal lists stripped (to avoid GraalPy OOM) then we need to return the original SQL to
+    ;; preserve the values. (#74284)
     (cond-> result
       (not= sql stripped-sql) (assoc :sql sql))))
 
