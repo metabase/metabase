@@ -172,23 +172,24 @@
    `\"x\"` in a list is a column reference, not a string. Single pass over `sql` in place, bailing
    at the first disqualifying character."
   [^String sql ^long open-pos ^long n close-ch]
-  (loop [i (inc open-pos), items 1]
-    (when (< i n)
-      (let [ch (.charAt sql i)]
-        (cond
-          (= ch close-ch)         [items (inc i)]
-          (= ch \')               (recur (skip-string-literal sql i n) items)
-          (= ch \,)               (recur (inc i) (inc items))
-          (Character/isLetter ch) (let [end (word-end sql i n)]
-                                    (when (contains? allowed-in-list-words
-                                                     (u/lower-case-en (.substring sql i end)))
-                                      (recur end items)))
-          (or (Character/isDigit ch)
-              (Character/isWhitespace ch)
-              (= ch \.) (= ch \-) (= ch \+))
-          (recur (inc i) items)
+  (let [close-ch (char close-ch)]
+    (loop [i (inc open-pos), items 1]
+      (when (< i n)
+        (let [ch (.charAt sql i)]
+          (cond
+            (= ch close-ch)         [items (inc i)]
+            (= ch \')               (recur (skip-string-literal sql i n) items)
+            (= ch \,)               (recur (inc i) (inc items))
+            (Character/isLetter ch) (let [end (word-end sql i n)]
+                                      (when (contains? allowed-in-list-words
+                                                       (u/lower-case-en (.substring sql i end)))
+                                        (recur end items)))
+            (or (Character/isDigit ch)
+                (Character/isWhitespace ch)
+                (= ch \.) (= ch \-) (= ch \+))
+            (recur (inc i) items)
 
-          :else nil)))))
+            :else nil))))))
 
 (defn- literal-tuple-list-end
   "Scan a list of literal-only tuples `((1, 'a'), (2, 'b'), ...)` whose outer paren opens at
