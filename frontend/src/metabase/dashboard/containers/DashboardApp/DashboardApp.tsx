@@ -32,7 +32,7 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Location } from "metabase/router";
-import { Outlet, replace, useRouter } from "metabase/router";
+import { Outlet, replace, useLocation, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   parseHashOptions,
@@ -78,7 +78,8 @@ export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = () => {
-  const { location, params, router } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
@@ -91,7 +92,7 @@ export const DashboardApp = () => {
   const dashboardId = Urls.extractEntityId(params.slug) as DashboardId;
 
   useRegisterDashboardMetabotContext();
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(location);
 
   const extractHashOption = async (
     key: string,

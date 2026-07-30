@@ -5,7 +5,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Center, Flex, Group } from "metabase/ui";
 
 import { TaskPicker } from "../TaskPicker";
@@ -18,7 +18,7 @@ import { urlStateConfig } from "./utils";
 const PAGE_SIZE = 50;
 
 export const TaskListPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },

@@ -9,7 +9,7 @@ import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
-import { push, queryToSearch, useRouter } from "metabase/router";
+import { push, queryToSearch, useLocation } from "metabase/router";
 import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -135,7 +135,7 @@ const labelUnknownIpAddress = (value: unknown) =>
   value == null ? t`Unknown` : value;
 
 export function ConversationStatsPage() {
-  const { location } = useRouter();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [{ date, user, group, tenant, metric }, { patchUrlState }] =
     useUrlState(location, statsUrlStateConfig);

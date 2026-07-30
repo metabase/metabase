@@ -25,8 +25,8 @@ import type { LocationDescriptorObject } from "metabase/router";
 import {
   push,
   queryToSearch,
+  useLocation,
   useNavigationType,
-  useRouter,
 } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
@@ -56,7 +56,7 @@ function SearchBar({
   onSearchInactive,
   onSearchItemSelect: onSearchItemSelectProp,
 }: Props) {
-  const { location } = useRouter();
+  const location = useLocation();
   const navigationType = useNavigationType();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),

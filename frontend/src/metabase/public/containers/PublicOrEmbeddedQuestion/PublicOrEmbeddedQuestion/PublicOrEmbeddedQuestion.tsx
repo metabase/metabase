@@ -14,7 +14,7 @@ import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { updateMetadata } from "metabase/redux/metadata";
-import { useParams, useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
@@ -33,7 +33,7 @@ import type { EntityToken } from "metabase-types/api/entity";
 import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
 
 export const PublicOrEmbeddedQuestion = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
   const dispatch = useDispatch();

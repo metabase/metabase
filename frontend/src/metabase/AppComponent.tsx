@@ -27,7 +27,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
-import { Outlet, useRouter } from "metabase/router";
+import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
@@ -65,7 +65,7 @@ export function App() {
 
   // These selectors derive the active app section from the URL, so they take
   // the router props rather than reading them from the store.
-  const { location } = useRouter();
+  const location = useLocation();
   const routerProps = { location };
   const errorPage = useSelector(getErrorPage);
   const isAdminApp = useSelector((state) => getIsAdminApp(state, routerProps));

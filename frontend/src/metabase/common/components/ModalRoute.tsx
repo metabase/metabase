@@ -3,10 +3,10 @@ import { useCallback } from "react";
 import type { Location } from "metabase/router";
 import {
   Route,
+  useLocation,
   useNavigate,
   useParams,
   useRoute,
-  useRouter,
 } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 
@@ -52,7 +52,7 @@ export function modalRoute(
 ) {
   function ModalRouteComponent() {
     const params = useParams();
-    const { location } = useRouter();
+    const location = useLocation();
     const route = useRoute() ?? undefined;
     const navigate = useNavigate();
     const onClose = useCallback(

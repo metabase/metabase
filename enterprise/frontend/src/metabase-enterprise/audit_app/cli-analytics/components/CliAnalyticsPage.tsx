@@ -6,7 +6,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
@@ -32,7 +32,7 @@ import { CliEventsTable } from "./CliEventsTable";
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
 export function CliAnalyticsPage() {
-  const { location } = useRouter();
+  const location = useLocation();
   const [
     { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },

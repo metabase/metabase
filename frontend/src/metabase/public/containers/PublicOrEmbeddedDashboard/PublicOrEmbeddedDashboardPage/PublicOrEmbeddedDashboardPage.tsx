@@ -10,7 +10,7 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { useParams, useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
@@ -22,10 +22,10 @@ import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 
 const PublicOrEmbeddedDashboardPageInner = () => {
-  const { location, router } = useRouter();
+  const location = useLocation();
 
   useDashboardLocationSync({ location });
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(location);
 
   return <PublicOrEmbeddedDashboardView />;
 };
@@ -33,7 +33,7 @@ const PublicOrEmbeddedDashboardPageInner = () => {
 export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
 
-  const { location } = useRouter();
+  const location = useLocation();
   const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
   const parameterQueryParams = useMemo(

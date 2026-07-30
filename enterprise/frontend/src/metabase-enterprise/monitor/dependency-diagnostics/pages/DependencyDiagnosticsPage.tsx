@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/redux";
-import { replace, useRouter } from "metabase/router";
+import { replace, useLocation } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";
 import type {
@@ -23,7 +23,7 @@ type DependencyDiagnosticsPageProps = {
 };
 
 function DependencyDiagnosticsPage({ mode }: DependencyDiagnosticsPageProps) {
-  const { location } = useRouter();
+  const location = useLocation();
   const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 

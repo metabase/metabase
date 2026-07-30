@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Flex, Title } from "metabase/ui";
 
 import { useListMetabotAnalyticsConversationsQuery } from "../../api";
@@ -14,7 +14,7 @@ import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
 
 export function ConversationsPage() {
-  const { location } = useRouter();
+  const location = useLocation();
   const [
     { page, sort_column, sort_direction, date, user, group, tenant },
     { patchUrlState },

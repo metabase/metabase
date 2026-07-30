@@ -27,7 +27,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
-import { push, useRouter } from "metabase/router";
+import { push, useLocation, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -58,7 +58,8 @@ export function AppBarContainer() {
 
   // These selectors derive app-bar visibility from the URL, so they take the
   // router props rather than reading them from the store.
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const routerProps = { location };
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;

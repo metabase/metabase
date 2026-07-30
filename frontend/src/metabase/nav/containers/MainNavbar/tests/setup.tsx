@@ -26,7 +26,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route, useRouter } from "metabase/router";
+import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
@@ -48,7 +48,8 @@ import { MainNavbar } from "../MainNavbar";
 function RoutedMainNavbar(
   props: Omit<ComponentProps<typeof MainNavbar>, "location" | "params">,
 ) {
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   return <MainNavbar {...props} location={location} params={params} />;
 }
 

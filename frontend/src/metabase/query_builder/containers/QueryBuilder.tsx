@@ -53,9 +53,10 @@ import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import {
   type Location,
   push,
+  useLocation,
   useNavigationType,
+  useParams,
   useRoute,
-  useRouter,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -346,7 +347,8 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const route = useRoute();
   useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
