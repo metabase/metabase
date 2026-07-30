@@ -31,7 +31,7 @@ describe("Cross-version questions - nested model", () => {
       cy.log("-- Turn question into a model --");
       H.openQuestionActions();
       X.selectFromPopover("Turn into a model");
-      H.modal().button("Turn this into a model").click();
+      cy.findByTestId("modal").button("Turn this into a model").click();
       cy.location("pathname").should("contain", "model");
 
       cy.log("-- Edit model metadata --");
