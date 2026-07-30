@@ -4,6 +4,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -160,11 +161,22 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
 
+(defn- drop-table-entity
+  "Driver-quoted identifier string for `table-name` -- a keyword (optionally
+  schema/catalog-namespaced) or a dot-qualified string. Namespace and name each
+  split on `.` into segments, quoted verbatim: dashes survive."
+  [driver table-name]
+  ;; not (keyword table-name) straight into HoneySQL: its entity formatter munges
+  ;; a keyword namespace's dashes to underscores, so a catalog named `test-data`
+  ;; would render as `test_data` and DROP TABLE IF EXISTS would silently no-op.
+  (let [kw       (keyword table-name)
+        ns-segs  (some-> (namespace kw) (str/split #"\."))
+        segments (into (vec ns-segs) (str/split (name kw) #"\."))]
+    (first (sql.qp/format-honeysql driver (apply h2x/identifier :table segments)))))
+
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (str "DROP TABLE IF EXISTS " (drop-table-entity driver table-name))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 

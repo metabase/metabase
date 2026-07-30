@@ -31,6 +31,7 @@
  [lib.metadata.util
   ->metadata-provider]
  [lib.metadata.transforming-provider
+  table-overriding-metadata-provider
   transforming-metadata-provider])
 
 (mu/defn database :- ::lib.schema.metadata/database

@@ -80,6 +80,19 @@
   []
   (sql-tools.settings/current-parser-backend))
 
+(defn do-with-parser-backend
+  "Impl for [[with-parser-backend]]."
+  [backend thunk]
+  (binding [sql-tools.settings/*parser-backend-override* backend]
+    (thunk)))
+
+(defmacro with-parser-backend
+  "Pin the parser backend to `backend` for every sql-tools call in `body` on this
+   thread, regardless of concurrent changes to the `sql-tools-parser-backend` setting.
+   Pass `(parser-backend)` as `backend` to pin whatever is current at entry."
+  [backend & body]
+  `(do-with-parser-backend ~backend (fn [] ~@body)))
+
 (mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
   [driver :- :keyword
@@ -154,6 +167,32 @@
    (let [parser (sql-tools.settings/current-parser-backend)]
      (metrics/with-operation-timing [parser "replace-names"]
        (interface/replace-names-impl parser driver sql-string replacements opts)))))
+
+(defn rewrite-table-refs
+  "Rewrite table references in `sql` via [[replace-names]], redirecting each
+   `from`-key in `replacements` to its `to`-value. Returns the rewritten SQL.
+
+   `replacements` is a [[replace-names]] map: `{:tables {<from> <to>}}`,
+   each `from`/`to` a `{:schema <s> :table <t>}` (or bare `{:table <t>}`) spec.
+
+   `opts`:
+   - `:allow-unused?`   — forwarded to [[replace-names]] (default false): when true,
+                          replacement entries that don't appear in `sql` are allowed.
+   - `:on-parse-error`  — `(fn [sql cause])` called when [[replace-names]] throws, to
+                          translate the failure into a caller-specific error. If
+                          omitted, the original exception propagates."
+  ([driver sql replacements]
+   (rewrite-table-refs driver sql replacements {}))
+  ([driver sql replacements {:keys [allow-unused? on-parse-error]}]
+   (try
+     (replace-names driver sql replacements {:allow-unused? (boolean allow-unused?)})
+     ;; Exception, not Throwable: the Error band (StackOverflow/OOM/…) must
+     ;; propagate raw. :on-parse-error is a parse-failure translator, not a
+     ;; catch-all — it must not intercept fatal signals.
+     (catch Exception e
+       (if on-parse-error
+         (on-parse-error sql e)
+         (throw e))))))
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."

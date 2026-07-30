@@ -1,7 +1,8 @@
 (ns metabase.transforms-base.ordering
   "Transform dependency ordering and cycle detection.
 
-   Pure functions for computing execution order based on table dependencies."
+   Pure functions over table dependencies: execution order, and resolving which
+   transform produces a given input."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -25,8 +26,7 @@
 ;;; ------------------------------------------------- Query Dependencies -------------------------------------------------
 
 (defn query-table-dependencies
-  "Compute table dependencies for a query transform.
-  This is the base implementation - callers may wrap with additional error handling."
+  "Compute table dependencies for a query transform."
   [{:keys [source]}]
   (let [query (-> (:query source)
                   transforms-base.u/massage-sql-query
@@ -131,6 +131,20 @@
       (when table-ref
         (let [{:keys [database_id schema table]} table-ref]
           (get (:by-triple target-refs) [database_id schema table])))))
+
+(defn dependency-producer-map
+  "Return a function `(raw-dep -> producing-transform-id | nil)` resolved against
+  `all-transforms`.
+
+  `raw-dep` is a `table-dependencies` entry (`{:table id}`, `{:transform id}`, or
+  `{:table-ref {…}}`). The returned fn maps it to the id of the transform that
+  produces that table, or nil when none does (a raw warehouse table)."
+  [all-transforms]
+  (let [output-tables (output-table-map all-transforms)
+        all-ids       (into #{} (map :id) all-transforms)
+        target-refs   (target-ref-map all-transforms)]
+    (fn [raw-dep]
+      (resolve-dependency raw-dep output-tables all-ids target-refs))))
 
 (defn transform-ordering
   "Compute the execution ordering for the dependency closure of `start-ids`.

@@ -53,6 +53,22 @@
                       (re-find #"(?i)CREATE\s+TABLE.*AS" sql)
                       (re-find #"(?i)CREATE\s+.*TABLE" sql))))))))))
 
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel compile-transform-output-db-preserves-dashes-test
+  (testing "a dashed catalog in :output-db compiles verbatim -- on MySQL (schema == database) the CI
+            catalog is named test-data; munged to test_data, the CTAS targets a nonexistent database
+            (error 1049)."
+    (let [[sql] (driver/compile-transform :mysql
+                                          {:query        {:query "SELECT 1"}
+                                           :output-db    "test-data"
+                                           :output-table :some_out_tbl})]
+      (is (re-find #"`test-data`" sql)
+          "dashed catalog must be backtick-quoted verbatim")
+      (is (not (re-find #"test_data" sql))
+          "the dash must not be munged to an underscore")
+      (is (re-find #"`some_out_tbl`" sql)
+          "the bare output-table segment is still quoted"))))
+
 (deftest compile-drop-table-contract-test
   (testing "compile-drop-table should return [sql params] format"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
