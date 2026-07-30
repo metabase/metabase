@@ -352,7 +352,8 @@
                    :error-code "metabase_transforms_locked"}]))
 
 (defn run-transform!
-  "Run a transform. Returns a 202 response with `:run_id`."
+  "Run a transform. Returns a 202 response with run_id.
+   The transform must already be fetched and validated."
   [transform]
   (check-feature-and-lock! transform)
   (transforms-rest.api.u/async-run-response

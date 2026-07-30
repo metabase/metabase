@@ -133,6 +133,7 @@ function EmailOtpForm({ challengeToken }: EmailOtpFormProps) {
             <AuthTextButton
               disabled={isSubmitting}
               onClick={() => submitForm()}
+              ta="center"
             >
               {emailSent ? t`Resend code` : t`Email me a code`}
             </AuthTextButton>

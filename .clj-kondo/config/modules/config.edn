@@ -3408,6 +3408,7 @@
            config
            events
            premium-features
+           request
            settings
            sso
            util}

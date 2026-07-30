@@ -89,7 +89,7 @@
                (sql.u/escape-sql s escape-strategy)))))))
 
 (deftest ^:parallel quote-literal-test
-  (testing "wraps in single quotes and escapes"
+  (testing "wraps in single quotes and escapes, defaulting to :ansi"
     (is (= "'Tito''s Tacos'"
            (sql.u/quote-literal "Tito's Tacos" :ansi))))
   (testing ":backslashes escape style"

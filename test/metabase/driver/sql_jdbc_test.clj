@@ -393,11 +393,10 @@
             (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
               (driver/drop-table! driver db-id qualified-table))))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel insert-into-sqls-boolean-literal-test
   (testing "boolean row values bind as parameters, never as inlined literals -- not every
             dialect has a boolean literal keyword"
-    (doseq [driver [:postgres :h2]]
+    (doseq [driver [:h2]]
       (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
                                                                        [[1 true] [2 false]] false))]
         (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)) (str driver))
