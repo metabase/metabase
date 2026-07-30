@@ -162,29 +162,32 @@ export function useFormulaEditor({
     }
   }, [isFocused, editorRef]);
 
-  // Deferred with setTimeout because coordsAtPos needs the freshly created
-  // editor to be laid out and measured first. Purely visual — no session
-  // invariant depends on it.
+  // Deferred via requestMeasure because coordsAtPos needs the freshly created
+  // editor to be laid out and measured first. A destroyed view (e.g. a
+  // StrictMode remount) cancels its pending measure, so no staleness guards
+  // are needed beyond the session-active check.
   const scheduleDropdownAtCaret = useCallback(
-    (caretPos: number, shouldOpenDropdown: boolean) => {
-      setTimeout(() => {
-        const view = editorRef.current?.view;
-        if (!view || !isEditingSessionActiveRef.current) {
-          return;
-        }
-        const coords = view.coordsAtPos(
-          Math.min(caretPos, view.state.doc.length),
-        );
-        if (coords) {
-          setAnchorRect({ left: coords.left, top: coords.bottom });
-        }
-        if (shouldOpenDropdown) {
-          setCurrentWord("");
-          setIsOpen(true);
-        }
-      }, 0);
+    (view: EditorView, caretPos: number, shouldOpenDropdown: boolean) => {
+      view.requestMeasure({
+        read: (measuredView) =>
+          measuredView.coordsAtPos(
+            Math.min(caretPos, measuredView.state.doc.length),
+          ),
+        write: (coords) => {
+          if (!isEditingSessionActiveRef.current) {
+            return;
+          }
+          if (coords) {
+            setAnchorRect({ left: coords.left, top: coords.bottom });
+          }
+          if (shouldOpenDropdown) {
+            setCurrentWord("");
+            setIsOpen(true);
+          }
+        },
+      });
     },
-    [editorRef],
+    [],
   );
 
   const initializeEditingSession = useCallback(
@@ -206,10 +209,7 @@ export function useFormulaEditor({
 
       const requestedCaret = pendingCaretPositionRef.current;
       const shouldOpenDropdown = requestedCaret === null;
-      const caretPos =
-        requestedCaret !== null
-          ? Math.min(Math.max(requestedCaret, 0), fullText.length)
-          : fullText.length;
+      const caretPos = Math.min(requestedCaret ?? Infinity, fullText.length);
 
       textAtFocusRef.current = fullText;
       editTextRef.current = fullText;
@@ -233,9 +233,8 @@ export function useFormulaEditor({
           ],
         });
         isSyncingDocRef.current = false;
+        scheduleDropdownAtCaret(view, caretPos, shouldOpenDropdown);
       }
-
-      scheduleDropdownAtCaret(caretPos, shouldOpenDropdown);
     },
     [editorRef, metricNamesRef, scheduleDropdownAtCaret],
   );
