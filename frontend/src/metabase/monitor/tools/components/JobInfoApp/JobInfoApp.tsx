@@ -6,7 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import type { WithRouterProps } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center, Code, Flex } from "metabase/ui";
 
 import { JobTriggersSidebar } from "./JobTriggersSidebar";
@@ -16,10 +16,10 @@ type RouteParams = {
   jobKey?: string;
 };
 
-export const JobInfoApp = ({ params }: WithRouterProps<RouteParams>) => {
+export const JobInfoApp = () => {
   const { data, error, isLoading, isFetching } = useGetTasksInfoQuery();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const { jobKey } = params;
+  const { jobKey } = useParams<RouteParams>();
 
   return (
     <Flex ref={containerRef} h="100%" wrap="nowrap">

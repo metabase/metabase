@@ -19,6 +19,8 @@ beforeEach(() => {
 afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
+
+  delete window.MetabaseBootstrap;
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
 

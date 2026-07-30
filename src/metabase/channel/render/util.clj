@@ -235,7 +235,7 @@
             :let [value-str (try
                               (shared.params/value-string param locale)
                               (catch Throwable e
-                                (log/errorf e "Error rendering filter %s; skipping it" name)))]
+                                (log/errorf "Error rendering filter %s; skipping it: %s" (:id param) (ex-message e))))]
             :when value-str]
         [:div
          {:style (style/style {:margin-bottom "4px"})}

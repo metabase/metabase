@@ -206,7 +206,7 @@ result_metadata:
   lib/source-column-alias: percentile
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: x61UtCMCuBNjw0TEFQeWG
   label: cumulative_and_statistical_aggregations

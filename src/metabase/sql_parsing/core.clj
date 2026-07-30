@@ -173,7 +173,7 @@
   (try
     (strip-large-values* sql)
     (catch Exception e
-      (log/warn e "Error stripping VALUES clauses, passing SQL through unchanged")
+      (log/warnf "Error stripping VALUES clauses, passing SQL through unchanged: %s" (ex-message e))
       sql)))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
@@ -269,8 +269,6 @@
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
-
-   Used by Workspaces to determine if automatic checkpoints can be inserted.
 
    Parameters:
    - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default

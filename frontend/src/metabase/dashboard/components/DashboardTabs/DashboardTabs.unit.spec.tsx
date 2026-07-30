@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -9,14 +10,7 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store";
-import {
-  type InjectedRouter,
-  Link,
-  type Location,
-  Route,
-  type WithRouterProps,
-  withRouteProps,
-} from "metabase/router";
+import { type InjectedRouter, Route, useRouter } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
@@ -53,7 +47,8 @@ function setup({
     },
   };
 
-  const RoutedDashboardComponent = ({ location }: { location: Location }) => {
+  const RoutedDashboardComponent = () => {
+    const { location } = useRouter();
     const { selectedTabId } = useDashboardTabs();
     useDashboardUrlQuery(createMockRouter(), location);
     return (
@@ -79,7 +74,7 @@ function setup({
     );
   };
 
-  const DashboardRoute = withRouteProps((props: WithRouterProps) => {
+  const DashboardRoute = () => {
     return (
       <MockDashboardContext
         dashboardId={1}
@@ -95,10 +90,10 @@ function setup({
         navigateToNewCardFromDashboard={null}
         isEditing={isEditing}
       >
-        <RoutedDashboardComponent {...props} />
+        <RoutedDashboardComponent />
       </MockDashboardContext>
     );
-  });
+  };
 
   const { store } = renderWithProviders(
     <>

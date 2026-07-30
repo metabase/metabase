@@ -1,5 +1,4 @@
 import type { NodeViewProps } from "@tiptap/react";
-import { createMemoryHistory } from "history";
 
 import {
   setupCardEndpoints,
@@ -10,7 +9,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, Router, useRouterHistory } from "metabase/router";
+import { Route, RouterProviderV7Memory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -50,7 +49,7 @@ function setup({
   updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
   const props = createProps(model, entity, label, updateAttributes);
-  renderWithProviders(<SmartLinkComponent {...props} />);
+  renderWithProviders(<SmartLinkComponent {...props} />, { withRouter: true });
 }
 
 describe("SmartLink", () => {
@@ -204,16 +203,11 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyWithBasename = useRouterHistory(createMemoryHistory)({
-        basename: "/subpath",
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyWithBasename}>
+        <RouterProviderV7Memory initialRoute="/subpath" basename="/subpath">
           <Route path="*" element={<SmartLinkComponent {...props} />} />
-        </Router>,
+        </RouterProviderV7Memory>,
       );
 
       await waitFor(() => {
@@ -235,15 +229,11 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyNoBasename = useRouterHistory(createMemoryHistory)({
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyNoBasename}>
+        <RouterProviderV7Memory initialRoute="/">
           <Route path="*" element={<SmartLinkComponent {...props} />} />
-        </Router>,
+        </RouterProviderV7Memory>,
       );
 
       await waitFor(() => {

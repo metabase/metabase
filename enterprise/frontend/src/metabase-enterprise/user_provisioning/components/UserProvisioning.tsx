@@ -179,6 +179,7 @@ export const UserProvisioning = () => {
               )}
               {isScimEnabledWithoutToken && !hasTokenGenerationError && (
                 <Alert
+                  size="compact"
                   color="warning"
                   icon={<Icon name="warning" />}
                 >{t`Generate a SCIM token below to complete the setup.`}</Alert>

@@ -50,12 +50,7 @@ import {
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
-import {
-  type Location,
-  type Route,
-  type WithRouterProps,
-  push,
-} from "metabase/router";
+import { type Location, push, useRoute, useRouter } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -342,12 +337,11 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps & {
-    route: Route;
-  };
+type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const { location, params } = useRouter();
+  const route = useRoute();
   useFavicon({ favicon: props.pageFavicon ?? null });
   const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
     useListTimelinesQuery({
@@ -361,8 +355,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const {
     question,
     originalQuestion,
-    location,
-    params,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -377,7 +369,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
@@ -641,7 +632,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
+        route={route ?? undefined}
       />
     </>
   );

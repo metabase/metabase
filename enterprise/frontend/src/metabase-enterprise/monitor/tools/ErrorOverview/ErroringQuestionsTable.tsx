@@ -9,6 +9,7 @@ import { type MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { useDispatch } from "metabase/redux";
@@ -16,6 +17,7 @@ import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,
+  type RenderRowLink,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -39,6 +41,10 @@ import { DEFAULT_SORTING } from "./utils";
 const COLUMN_WIDTHS = [
   0.14, 0.16, 0.1, 0.08, 0.06, 0.08, 0.09, 0.06, 0.06, 0.09, 0.08,
 ];
+
+const renderRowLink: RenderRowLink<ErroringCard> = (row, props) => (
+  <Link to={Urls.card({ id: row.original.id })} {...props} />
+);
 
 type ErroringQuestionsTableProps = {
   cards: ErroringCard[];
@@ -72,11 +78,6 @@ export const ErroringQuestionsTable = ({
   const isRowSelectable = useCallback(
     (row: Row<ErroringCard>) => !rerunningCardIds.has(row.original.id),
     [rerunningCardIds],
-  );
-
-  const getRowHref = useCallback(
-    (row: Row<ErroringCard>) => Urls.card({ id: row.original.id }),
-    [],
   );
 
   const handleRowActivate = useCallback(
@@ -150,7 +151,7 @@ export const ErroringQuestionsTable = ({
           isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
           emptyState={<MonitorEmptyState label={t`No results`} />}
           getRowProps={() => ({ "data-testid": "erroring-question" })}
-          getRowHref={getRowHref}
+          renderRowLink={renderRowLink}
           onRowClick={handleRowClick}
         />
       )}

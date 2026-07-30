@@ -194,7 +194,7 @@
                       (seq info) (qp/userland-query info))]
           (qp/process-query query rff))
         (catch Throwable e
-          (log/error e "Error processing additional pivot table query")
+          (log/errorf "Error processing additional pivot table query: %s" (ex-message e))
           (throw e))))))
 
 (mu/defn- process-queries-append-results
@@ -394,7 +394,7 @@
                                                   legacy-ref
                                                   breakouts))
                                           (catch Throwable e
-                                            (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                            (log/errorf "Error finding matching column for ref %s: %s" (pr-str legacy-ref) (ex-message e))
                                             nil)))
         process-refs                  (fn process-refs [refs]
                                         (when (seq refs)
@@ -697,7 +697,7 @@
 
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
-   (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
+   (log/debug "Running pivot query")
    ;; Do not bind *card-id* here. Callers that run pivot queries for saved cards
    ;; (e.g. card.clj, dashboards) bind *card-id* themselves before calling
    ;; run-pivot-query, so binding it here from the query's :info map would be

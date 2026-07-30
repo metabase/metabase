@@ -6,24 +6,16 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useDispatch } from "metabase/redux";
-import type { Route } from "metabase/router";
-import { push } from "metabase/router";
+import { push, useParams } from "metabase/router";
 import { Flex, Loader, Stack } from "metabase/ui";
 
 import { EditorPanel } from "./EditorPanel";
 import { PreviewPanel } from "./PreviewPanel";
 
-interface EmbeddingThemeEditorAppProps {
-  params: { themeId: string };
-  route: Route;
-}
-
-export function EmbeddingThemeEditorApp({
-  params,
-  route,
-}: EmbeddingThemeEditorAppProps) {
+export function EmbeddingThemeEditorApp() {
+  const { themeId: themeIdParam } = useParams<{ themeId: string }>();
   const themeId =
-    params.themeId === "new" ? "new" : parseInt(params.themeId, 10);
+    themeIdParam === "new" ? "new" : parseInt(themeIdParam ?? "", 10);
   const editor = useEmbeddingThemeEditor(themeId);
   const dispatch = useDispatch();
   // Suppresses the unsaved-changes prompt when we navigate away intentionally
@@ -88,7 +80,7 @@ export function EmbeddingThemeEditorApp({
         }
       />
       <PreviewPanel settings={editor.currentTheme.settings} />
-      <LeaveRouteConfirmModal isEnabled={shouldWarnOnLeave} route={route} />
+      <LeaveRouteConfirmModal isEnabled={shouldWarnOnLeave} />
       {deleteModal}
     </Flex>
   );

@@ -16,7 +16,7 @@ import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import { type Location, type Route, goBack, push } from "metabase/router";
+import { goBack, push, useRouter } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -27,15 +27,9 @@ import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
 import { CreateMetricModal } from "./CreateMetricModal";
-import { getInitialQuery, getQuery } from "./utils";
-
-interface NewMetricPageQuery {
-  collectionId?: string;
-}
+import { ensureDefaultDimension, getInitialQuery, getQuery } from "./utils";
 
 interface NewMetricPageProps {
-  location: Location<NewMetricPageQuery>;
-  route: Route;
   urls?: MetricUrls;
   renderBreadcrumbs?: () => ReactNode;
   showAppSwitcher?: boolean;
@@ -43,13 +37,12 @@ interface NewMetricPageProps {
 }
 
 export function NewMetricPage({
-  location,
-  route,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher = false,
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
+  const { location } = useRouter();
   const metadata = useSelector(getMetadata);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
@@ -93,7 +86,10 @@ export function NewMetricPage({
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
-    setDatasetQuery(Lib.toJsQuery(query));
+    const nextQuery = getValidationResult(query).isValid
+      ? ensureDefaultDimension(query)
+      : query;
+    setDatasetQuery(Lib.toJsQuery(nextQuery));
   };
 
   const handleCancel = () => {
@@ -138,7 +134,7 @@ export function NewMetricPage({
             )
           }
         />
-        <Card withBorder p={0} flex={1}>
+        <Card withBorder shadow="none" p={0} flex={1}>
           <MetricQueryEditor
             query={query}
             uiState={uiState}
@@ -156,7 +152,7 @@ export function NewMetricPage({
           onClose={closeModal}
         />
       )}
-      <LeaveRouteConfirmModal route={route} isEnabled={!isModalOpened} />
+      <LeaveRouteConfirmModal isEnabled={!isModalOpened} />
     </>
   );
 }

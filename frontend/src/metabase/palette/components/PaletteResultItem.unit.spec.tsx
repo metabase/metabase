@@ -106,9 +106,7 @@ describe("Mouse/keyboard interactions", () => {
   describe("The 'View and filter all N results' command palette item", () => {
     const searchLocation = {
       pathname: "/search",
-      query: {
-        q: "hedgehogs",
-      },
+      search: "?q=hedgehogs",
     };
 
     const viewResults: Partial<PaletteActionImpl> = {

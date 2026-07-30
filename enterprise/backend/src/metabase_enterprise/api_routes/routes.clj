@@ -46,7 +46,6 @@
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
-   [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.request.core :as request]
@@ -62,7 +61,7 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
-   :data-apps                  (deferred-tru "Data Apps")
+   :data-apps-preview          (deferred-tru "Data Apps")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
@@ -81,8 +80,7 @@
    :metabot-v3                (deferred-tru "Metabot")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")
-   :workspaces                 (deferred-tru "Workspaces")})
+   :transforms-python          (deferred-tru "Transforms Python")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -99,7 +97,7 @@
    ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
    ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
    ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
-   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
+   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps-preview)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -156,9 +154,7 @@
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
-   "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
-   "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)})
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

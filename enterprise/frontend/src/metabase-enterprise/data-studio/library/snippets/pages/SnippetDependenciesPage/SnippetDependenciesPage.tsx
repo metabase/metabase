@@ -2,7 +2,7 @@ import { skipToken, useGetSnippetQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -12,14 +12,9 @@ export type SnippetDependenciesPageParams = {
   snippetId: string;
 };
 
-type SnippetDependenciesPageProps = {
-  params?: SnippetDependenciesPageParams;
-};
-
-export function SnippetDependenciesPage({
-  params,
-}: SnippetDependenciesPageProps) {
-  const snippetId = Urls.extractEntityId(params?.snippetId);
+export function SnippetDependenciesPage() {
+  const params = useParams<SnippetDependenciesPageParams>();
+  const snippetId = Urls.extractEntityId(params.snippetId);
 
   const {
     data: snippet,

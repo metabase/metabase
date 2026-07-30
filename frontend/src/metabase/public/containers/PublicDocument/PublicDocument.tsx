@@ -23,7 +23,7 @@ import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeN
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
-import type { Location } from "metabase/router";
+import { useParams, useRouter } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
@@ -31,15 +31,9 @@ import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";
 
-interface PublicDocumentProps {
-  location: Location;
-  params: {
-    uuid: string;
-  };
-}
-
-export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
-  const { uuid } = params;
+export const PublicDocument = () => {
+  const { location } = useRouter();
+  const { uuid = "" } = useParams<{ uuid: string }>();
   const dispatch = useDispatch();
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 

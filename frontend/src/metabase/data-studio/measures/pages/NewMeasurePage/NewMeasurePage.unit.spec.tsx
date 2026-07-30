@@ -26,7 +26,6 @@ function setup({ table }: SetupOpts) {
       element={
         <NewMeasurePage
           // Unjustified type cast. FIXME
-          route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<div />}
           getSuccessUrl={() => "/success"}

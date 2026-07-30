@@ -1,4 +1,4 @@
-import type { Location as V7Location } from "react-router-v7";
+import type { Location as V7Location } from "react-router";
 
 import type { Location as HistoryLocation } from "../types";
 
@@ -20,9 +20,9 @@ export function searchToQuery(
 }
 
 /**
- * Serialize v3's `location.query` object back into a search string, the only form
- * v7 understands. Repeated values become repeated keys, mirroring what
- * `searchToQuery` parses. Returns `""` for an empty query.
+ * Serialize a query object into the `search` string a navigation target carries.
+ * Repeated values become repeated keys, mirroring what `searchToQuery` parses.
+ * Returns `""` for an empty query.
  *
  * Keys are sorted, because history@3 stringified the query with `query-string`,
  * which sorts by default. Call sites build the query from an object whose key
@@ -51,8 +51,9 @@ export function queryToSearch(query: Record<string, unknown>): string {
 }
 
 /**
- * Build the v3-shaped `history` location the facade context and `state.routing`
- * expect from a v7 location plus the current navigation type.
+ * Build the v3-shaped `history` location the facade context and the
+ * LOCATION_CHANGE payload expect from a v7 location plus the current navigation
+ * type.
  */
 export function toV3Location(
   location: V7Location,

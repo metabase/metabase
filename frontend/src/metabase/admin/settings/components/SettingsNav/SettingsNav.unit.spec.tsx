@@ -2,11 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockLocation,
-  createMockRoutingState,
-  createMockSettingsState,
-} from "metabase/redux/store/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -51,11 +47,6 @@ const setup = async ({
     initialRoute,
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: true }),
-      routing: createMockRoutingState({
-        locationBeforeTransitions: createMockLocation({
-          pathname: initialRoute,
-        }),
-      }),
       settings: createMockSettingsState(settings),
     },
   });

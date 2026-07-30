@@ -98,7 +98,7 @@ export const ChartSettingsWidgetPopover = ({
                 px="md"
                 pt="xs"
                 value={currentSection}
-                onChange={(section) => setCurrentSection(String(section))}
+                onChange={(section) => setCurrentSection(section ?? undefined)}
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (

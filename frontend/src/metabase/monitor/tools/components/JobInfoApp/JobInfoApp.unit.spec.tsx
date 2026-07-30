@@ -9,7 +9,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskInfo } from "metabase-types/api";
 import {
@@ -20,8 +20,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { JobInfoApp } from "./JobInfoApp";
-
-const RoutedJobInfoApp = withRouteProps(JobInfoApp);
 
 const PATHNAME = Urls.monitorJobs();
 
@@ -49,7 +47,7 @@ const setup = ({
       path={PATHNAME}
       element={
         <MonitorContent>
-          <RoutedJobInfoApp />
+          <JobInfoApp />
         </MonitorContent>
       }
     >

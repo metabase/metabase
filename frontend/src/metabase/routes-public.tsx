@@ -4,29 +4,19 @@ import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicDocument } from "metabase/public/containers/PublicDocument";
 import { PublicOrEmbeddedDashboardPage } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import { Route, withRouteProps } from "metabase/router";
-
-const RoutedPublicAction = withRouteProps(PublicAction);
-const RoutedPublicOrEmbeddedQuestion = withRouteProps(PublicOrEmbeddedQuestion);
-const RoutedPublicOrEmbeddedDashboardPage = withRouteProps(
-  PublicOrEmbeddedDashboardPage,
-);
-const RoutedPublicDocument = withRouteProps(PublicDocument);
+import { Route } from "metabase/router";
 
 export const getRoutes = () => {
   return (
     <Route>
       <Route path="public" element={<PublicApp />}>
-        <Route path="action/:uuid" element={<RoutedPublicAction />} />
-        <Route
-          path="question/:uuid"
-          element={<RoutedPublicOrEmbeddedQuestion />}
-        />
+        <Route path="action/:uuid" element={<PublicAction />} />
+        <Route path="question/:uuid" element={<PublicOrEmbeddedQuestion />} />
         <Route
           path="dashboard/:uuid/:tabSlug?"
-          element={<RoutedPublicOrEmbeddedDashboardPage />}
+          element={<PublicOrEmbeddedDashboardPage />}
         />
-        <Route path="document/:uuid" element={<RoutedPublicDocument />} />
+        <Route path="document/:uuid" element={<PublicDocument />} />
         <Route path="*" element={<PublicNotFound />} />
       </Route>
       <Route path="*" element={<PublicNotFound />} />

@@ -1,5 +1,4 @@
-import type { Location } from "history";
-
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   SORT_DIRECTIONS,

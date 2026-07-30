@@ -6,7 +6,6 @@ import { CollectionPermissionsHelp } from "metabase/admin/permissions/components
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type { Route } from "metabase/router";
 import { push } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -66,7 +65,6 @@ type CollectionPermissionsPageProps = {
   savePermissions: (...args: any[]) => any;
   loadPermissions: (...args: any[]) => any;
   initialize: (...args: any[]) => any;
-  route: Route;
 };
 
 function CollectionsPermissionsPageView({
@@ -79,7 +77,6 @@ function CollectionsPermissionsPageView({
   updateCollectionPermission,
   navigateToItem,
   initialize,
-  route,
 }: CollectionPermissionsPageProps) {
   useListCollectionsTreeQuery(collectionsQuery);
 
@@ -116,7 +113,6 @@ function CollectionsPermissionsPageView({
     <PermissionsPageLayout
       tab="collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}

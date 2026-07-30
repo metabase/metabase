@@ -115,7 +115,7 @@ describe("useDashboardUrlQuery", () => {
     (isEmbedPreview as jest.Mock).mockReturnValue(false);
   });
 
-  it("syncs a parameter-value change with replace (not push), writing the parameter slug values into the query", () => {
+  it("syncs a parameter-value change with replace (not push), writing the parameter slug values into the search string", () => {
     setup({
       parameters: [createMockParameter({ id: "1", slug: "text" })],
       parameterValues: { "1": "bar" },
@@ -123,14 +123,12 @@ describe("useDashboardUrlQuery", () => {
 
     expect(replace).toHaveBeenCalledTimes(1);
     expect(replace).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({ text: "bar" }),
-      }),
+      expect.objectContaining({ search: "?text=bar" }),
     );
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("syncs a tab change with push (not replace), writing the new tab slug into the query", () => {
+  it("syncs a tab change with push (not replace), writing the new tab slug into the search string", () => {
     const { store } = setup({
       tabs: [
         { id: 1, name: "Tab 1" },
@@ -150,9 +148,7 @@ describe("useDashboardUrlQuery", () => {
 
     expect(push).toHaveBeenCalledTimes(1);
     expect(push).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({ tab: "2-tab-2" }),
-      }),
+      expect.objectContaining({ search: "?tab=2-tab-2" }),
     );
     expect(replace).not.toHaveBeenCalled();
   });
@@ -243,9 +239,8 @@ describe("useDashboardUrlQuery", () => {
 
     expect(replace).toHaveBeenCalledTimes(1);
     expect(replace).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({ objectId: "42", text: "bar" }),
-      }),
+      // sorted, as `queryToSearch` writes it
+      expect.objectContaining({ search: "?objectId=42&text=bar" }),
     );
   });
 });

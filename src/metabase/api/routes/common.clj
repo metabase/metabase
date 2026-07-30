@@ -27,7 +27,7 @@
   [handler]
   (fn [request respond _raise]
     (let [raise (fn [e]
-                  (log/warn e "Exception in API call")
+                  (log/warnf "Exception in API call: %s" (ex-message e))
                   (if (= 404 (:status-code (ex-data e)))
                     (respond {:status 404, :body (deferred-tru "Not found.")})
                     (respond {:status 400, :body (deferred-tru "An error occurred.")})))]
@@ -43,7 +43,7 @@
   [handler]
   (fn [request respond _raise]
     (let [raise (fn [^Throwable e]
-                  (log/error e "Exception in API call")
+                  (log/errorf "Exception in API call: %s" (ex-message e))
                   (respond {:status 400, :body (ex-message e)}))]
       (try
         (handler request respond raise)

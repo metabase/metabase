@@ -20,7 +20,7 @@ type PublishedTableSegmentPageParams = {
 };
 
 export function usePublishedTableSegmentPage(
-  params: PublishedTableSegmentPageParams,
+  params: Partial<PublishedTableSegmentPageParams>,
 ) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();

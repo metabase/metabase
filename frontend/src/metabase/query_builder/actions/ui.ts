@@ -1,10 +1,10 @@
+import { settingsApi } from "metabase/api";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import {
   CANCEL_QUERY,
   CANCEL_QUESTION_CHANGES,
   setUIControls,
 } from "metabase/redux/query-builder";
-import { updateSetting, updateUserSetting } from "metabase/redux/settings";
 import type {
   DatasetEditorTab,
   Dispatch,
@@ -50,14 +50,14 @@ export const setQueryBuilderMode =
 
 export const setDidFirstNonTableChartRender = (card: Card) => {
   trackFirstNonTableChartGenerated(card);
-  return updateSetting({
+  return settingsApi.endpoints.updateSetting.initiate({
     key: "non-table-chart-generated",
     value: true,
   });
 };
 
 export const setNotebookNativePreviewSidebarWidth = (width: number) =>
-  updateUserSetting({
+  settingsApi.endpoints.updateSetting.initiate({
     key: "notebook-native-preview-sidebar-width",
     value: width,
   });
