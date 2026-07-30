@@ -59,6 +59,25 @@ nested:
     ]);
   });
 
+  it("accepts every change type dorny does", () => {
+    const yaml = `all:\n  - added|copied|deleted|modified|renamed|unmerged: "*"\n`;
+    expect(parseFilters(yaml).all[0].statuses).toEqual([
+      "added",
+      "copied",
+      "deleted",
+      "modified",
+      "renamed",
+      "unmerged",
+    ]);
+  });
+
+  // `unknown` is the internal fallback for a git letter or API status we do not
+  // model. A filter file naming it would be asking for something dorny has no
+  // concept of, so it is rejected like any other typo.
+  it("rejects the internal unknown status", () => {
+    expect(() => parseFilters(`lint:\n  - unknown: "*.yml"\n`)).toThrow();
+  });
+
   it.each([
     ["an unknown change type", `lint:\n  - creted: "*.yml"\n`],
     ["a non-string glob", `lint:\n  - added: 42\n`],

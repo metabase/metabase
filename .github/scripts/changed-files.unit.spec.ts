@@ -67,15 +67,23 @@ describe("parseNameStatus", () => {
     );
   });
 
+  it("reads an unmerged path", () => {
+    expect(parseNameStatus("U\0conflict.clj\0")).toEqual([
+      { filename: "conflict.clj", status: "unmerged" },
+    ]);
+  });
+
+  // dorny leaves T unmapped; treating it as a modification matches more, not
+  // less, which is the safe direction.
   it("treats a type change as a modification", () => {
     expect(parseNameStatus("T\0link\0")).toEqual([
       { filename: "link", status: "modified" },
     ]);
   });
 
-  it("falls back to unknown for statuses it does not model", () => {
-    expect(parseNameStatus("U\0conflict.clj\0")).toEqual([
-      { filename: "conflict.clj", status: "unknown" },
+  it("falls back to unknown for letters it does not model", () => {
+    expect(parseNameStatus("X\0odd.clj\0")).toEqual([
+      { filename: "odd.clj", status: "unknown" },
     ]);
   });
 

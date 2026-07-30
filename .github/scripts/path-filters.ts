@@ -9,6 +9,10 @@
 //   - globs go through picomatch (via micromatch) with `dot: true`
 //   - a file matches a filter when at least one of the filter's rules matches
 //     (dorny's default `predicate-quantifier: some`)
+//
+// A malformed filter file throws rather than resolving to "everything changed".
+// The other failure paths fail open because the diff is unknowable; a broken
+// gate config is a different problem and should be loud.
 
 import { load } from "js-yaml";
 import micromatch from "micromatch";
@@ -19,10 +23,18 @@ export const CHANGE_STATUSES = [
   "deleted",
   "modified",
   "renamed",
+  "unmerged",
   "unknown",
 ] as const;
 
 export type ChangeStatus = (typeof CHANGE_STATUSES)[number];
+
+// What a filter file is allowed to name, matching dorny's vocabulary.
+// `unknown` is internal: it is what an unrecognised git letter or API status
+// becomes, and no rule can ask for it.
+const FILTER_STATUSES: readonly string[] = CHANGE_STATUSES.filter(
+  (status) => status !== "unknown",
+);
 
 export type ChangedFile = { filename: string; status: ChangeStatus };
 
@@ -48,8 +60,8 @@ export type FilterResult =
   | { kind: "files"; matched: string[]; files: Record<string, ChangedFile[]> }
   | { kind: "all"; matched: string[]; reason: string };
 
-const isChangeStatus = (value: string): value is ChangeStatus =>
-  (CHANGE_STATUSES as readonly string[]).includes(value);
+const isFilterStatus = (value: string): value is ChangeStatus =>
+  FILTER_STATUSES.includes(value);
 
 // `frontend_all` nests anchors three deep, so entries are flattened before any
 // leaf is read as a rule.
@@ -59,7 +71,7 @@ function flatten(value: unknown): unknown[] {
 
 function parseStatuses(spec: string, filterName: string): ChangeStatus[] {
   const statuses = spec.split("|").map((part) => part.trim().toLowerCase());
-  const unrecognised = statuses.filter((status) => !isChangeStatus(status));
+  const unrecognised = statuses.filter((status) => !isFilterStatus(status));
   if (unrecognised.length > 0) {
     throw new Error(
       `Filter "${filterName}": unknown change type(s) ${unrecognised.join(", ")} in "${spec}"`,

@@ -45,6 +45,10 @@ const GIT_STATUS: Record<string, ChangeStatus> = {
   D: "deleted",
   M: "modified",
   R: "renamed",
+  U: "unmerged",
+  // Deliberate divergence: dorny leaves a type change unmapped, so it matches
+  // no change-type rule. A file that turns into a symlink still changed, and
+  // matching more is the safe direction here.
   T: "modified",
 };
 
