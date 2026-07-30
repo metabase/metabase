@@ -137,8 +137,6 @@
    ;; write-only here: after-select drops the column, so there's no point decrypting it on reads
    ;; (see [[secrets-for-run]] for the explicit read path)
    :secrets            {:in mi/encrypted-json-in}
-   ;; opaque blob owned by the transform's python code; keys stay strings for round-trip fidelity
-   :sync_state         {:in #(some-> % mi/json-in), :out mi/json-out-without-keywordization}
    :run_trigger        mi/transform-keyword})
 
 (defmethod collection/allowed-namespaces :model/Transform
@@ -209,13 +207,12 @@
       target-changed?
       (assoc :target_db_id target-db-id)
 
-      ;; Reset checkpoint when the incremental filter field changes. `sync_state` is cleared with it:
-      ;; both are watermarks for [[metabase.transforms-base.util/full-incremental-run?]], so leaving one
-      ;; behind would keep the next run on the append path while the source range restarts from scratch.
+      ;; Reset the resume point when the incremental filter field changes, so the next run rescans
+      ;; the source range from scratch rather than appending from a watermark that no longer applies.
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
             new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
         (and old-field-id (not= old-field-id new-field-id)))
-      (assoc :last_checkpoint_value nil, :sync_state nil)
+      (assoc :incremental_state nil)
 
       true
       resolve-merge-key-field-ids)))
@@ -294,12 +291,12 @@
         (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
               transform (assoc transform :last_run (dissoc last-run :last_heartbeat))]
           (if (and (= status :succeeded) checkpoint_hi_value)
-            ;; ensure consistency of last_checkpoint_value with last_run
-            (if (:last_checkpoint_value transform)
-              (assoc transform :last_checkpoint_value checkpoint_hi_value)
+            ;; ensure consistency of incremental_state with last_run
+            (if (:incremental_state transform)
+              (assoc transform :incremental_state checkpoint_hi_value)
               ;; latest transform value wins, could be reset
-              (assoc transform :last_checkpoint_value
-                     (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id)))
+              (assoc transform :incremental_state
+                     (t2/select-one-fn :incremental_state [:model/Transform :incremental_state] transform-id)))
             transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
@@ -487,8 +484,8 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies
-               :secrets :sync_state]
+   :skip      [:source_type :target_db_id :target_table_id :incremental_state :table_dependencies
+               :secrets]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

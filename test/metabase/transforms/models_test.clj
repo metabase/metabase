@@ -327,10 +327,10 @@
                                :schema "public"
                                :name "test_incr"
                                :db_id db-id}
-                      :last_checkpoint_value "42"}]
+                      :incremental_state "42"}]
         (testing "checkpoint is present before update"
           (let [t (t2/select-one :model/Transform transform-id)]
-            (is (= "42" (:last_checkpoint_value t)))))
+            (is (= "42" (:incremental_state t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
           (t2/update! :model/Transform transform-id
                       {:source {:type "query"
@@ -341,11 +341,11 @@
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
           (let [t (t2/select-one :model/Transform transform-id)]
-            (is (nil? (:last_checkpoint_value t)))))
+            (is (nil? (:incremental_state t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
           (t2/update! :model/Transform transform-id
-                      {:last_checkpoint_value "99"})
+                      {:incremental_state "99"})
           (t2/update! :model/Transform transform-id
                       {:source {:type "query"
                                 :query {:database db-id
@@ -355,7 +355,7 @@
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
           (let [t (t2/select-one :model/Transform transform-id)]
-            (is (= "99" (:last_checkpoint_value t)))))))))
+            (is (= "99" (:incremental_state t)))))))))
 
 (deftest lookback-round-trips-with-keyword-keys-test
   (testing "the nested lookback map comes back from the app DB with keyword keys"

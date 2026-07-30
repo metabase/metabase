@@ -38,10 +38,7 @@ const IncrementalTransformSettingsWrapper = ({
     }
   };
 
-  // Either kind of watermark is resettable: a checkpoint field's value, or the opaque state an
-  // ingestion transform returns from its code.
-  const hasResettableCursor =
-    transform.last_checkpoint_value != null || transform.sync_state != null;
+  const hasResettableState = transform.incremental_state != null;
 
   return (
     <IncrementalTransformSettings
@@ -52,7 +49,7 @@ const IncrementalTransformSettingsWrapper = ({
       readOnly={readOnly}
       targetTableId={transform.table?.id}
       extraActions={
-        !readOnly && hasResettableCursor ? (
+        !readOnly && hasResettableState ? (
           <ResetCheckpointSection transform={transform} />
         ) : undefined
       }
@@ -163,7 +160,7 @@ function useCheckpointChangeInterceptor(transform: Transform) {
         values.checkpointFilterFieldId != null &&
         String(currentFieldId) !== values.checkpointFilterFieldId;
 
-      if (fieldChanged && transform.last_checkpoint_value != null) {
+      if (fieldChanged && transform.incremental_state != null) {
         return new Promise<boolean>((resolve) => {
           pendingResolve.current = resolve;
           openModal();

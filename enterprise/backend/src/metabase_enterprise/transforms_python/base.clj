@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
@@ -278,7 +279,7 @@
               :cancel-chan    cancel-chan
               ;; secrets are never on the instance; fetched explicitly for the run
               :secrets        (some-> (:id transform) transforms.core/secrets-for-run)
-              :state          (:sync_state transform)})
+              :state          (some-> (:incremental_state transform) json/decode)})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)
             events          (python-runner/read-events @shared-storage-ref)]
@@ -314,7 +315,8 @@
                   ;; so a failed transfer re-runs from the previous state.
                   (when-some [new-state (:sync_state output-manifest)]
                     (when-let [transform-id (:id transform)]
-                      (t2/update! :model/Transform transform-id {:sync_state new-state})))
+                      (t2/update! :model/Transform transform-id
+                                  {:incremental_state (json/encode new-state)})))
                   (assoc response :rows-affected rows-written))
                 (finally
                   (.delete temp-file))))

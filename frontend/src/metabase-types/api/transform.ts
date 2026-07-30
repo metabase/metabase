@@ -56,10 +56,9 @@ export type Transform = {
   owner_email?: string | null;
   owner?: TransformOwner | null;
 
-  last_checkpoint_value?: string | null;
-
-  // opaque sync state an ingestion transform returns from its code to resume the next run
-  sync_state?: unknown;
+  // where the last run left off: a checkpoint watermark, or the opaque JSON state an ingestion
+  // transform returned from its own code
+  incremental_state?: string | null;
 
   // names of configured secret env vars (values never leave the server)
   secret_keys?: string[];

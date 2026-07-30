@@ -108,7 +108,7 @@
 
 (defn full-incremental-run?
   "True when an incremental transform should drop-and-recreate the target rather than append.
-  Fires when `last_checkpoint_value` is nil (first run, or after the before-update hook clears the watermark on
+  Fires when `incremental_state` is nil (first run, or after the before-update hook clears the resume point on
   a `checkpoint-filter-field-id` change), or when pending index changes require rebuilding the table to apply
   physical index state.
 
@@ -119,10 +119,7 @@
   (if (contains? transform :full-incremental-run?)
     (:full-incremental-run? transform)
     (and (incremental-target? transform)
-         ;; a present :sync_state plays the same role as a checkpoint watermark for
-         ;; ingestion-style python transforms: its absence means "never synced"
-         (or (and (nil? (:last_checkpoint_value transform))
-                  (nil? (:sync_state transform)))
+         (or (nil? (:incremental_state transform))
              (table-index/pending-changes-for-transform? id)))))
 
 (defn full-create-run?
@@ -282,7 +279,7 @@
   (let [hi-value (:value (:hi source-range-params))]
     (t2/update! :model/Transform
                 transform-id
-                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+                {:incremental_state (some-> hi-value encode-checkpoint-value)})))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -428,15 +425,15 @@
   (let [{:keys [checkpoint-filter-field-id lookback]} (:source-incremental-strategy source)]
     (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
-      (let [{:keys [last_checkpoint_value]} (cond-> transform
-                                              (full-incremental-run? transform)
-                                              (assoc :last_checkpoint_value nil))
+      (let [{:keys [incremental_state]} (cond-> transform
+                                          (full-incremental-run? transform)
+                                          (assoc :incremental_state nil))
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (checkpoint-column metadata-provider checkpoint-filter-field-id)
             base-type         (lib.types.isa/column-type column)
             ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
-            checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
+            checkpoint-lo     (when incremental_state (parse-checkpoint-value base-type incremental_state))
             lo                (cond-> checkpoint-lo
                                 (and checkpoint-lo lookback) (apply-lookback column lookback))
 

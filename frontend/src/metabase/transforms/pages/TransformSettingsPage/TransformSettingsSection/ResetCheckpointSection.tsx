@@ -33,7 +33,7 @@ function SyncCursorSection({
       <Box c="text-secondary" role="group" aria-labelledby={labelId}>
         <span id={labelId}>{t`Sync state`}: </span>
         <Code bg="background_page-tertiary" style={{ whiteSpace: "pre-wrap" }}>
-          {JSON.stringify(transform.sync_state)}
+          {transform.incremental_state}
         </Code>
       </Box>
       <Button
@@ -81,7 +81,7 @@ export function ResetCheckpointSection({
   const isCodeManaged =
     transform.source != null && hasCodeManagedSyncState(transform.source);
   if (isCodeManaged) {
-    if (transform.sync_state == null) {
+    if (transform.incremental_state == null) {
       return null;
     }
     return (
@@ -103,7 +103,7 @@ export function ResetCheckpointSection({
     );
   }
 
-  if (transform.last_checkpoint_value == null) {
+  if (transform.incremental_state == null) {
     return null;
   }
 
@@ -122,7 +122,7 @@ export function ResetCheckpointSection({
         <span id={labelId}>{label}: </span>
         <Text component="span" fw="bold" c="text-primary">
           <CheckpointValue
-            value={transform.last_checkpoint_value}
+            value={transform.incremental_state}
             checkpointField={checkpointField}
           />
         </Text>
