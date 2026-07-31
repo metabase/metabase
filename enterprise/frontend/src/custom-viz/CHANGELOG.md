@@ -7,10 +7,13 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 ### ⚠ BREAKING CHANGES
 
 - `column` and `column_settings` are now reserved setting ids, contributed to every visualization by Metabase to power the built-in per-column formatting popover. Plugins that declared their own settings under these ids must rename them — the `Settings` type now rejects those keys with a type error ([#78128](https://github.com/metabase/metabase/pull/78128)).
+- The top-level `colorScheme` visualization prop moved into the new `renderingContext` prop (see Features below). Read `props.renderingContext.colorScheme` instead of `props.colorScheme` ([#78429](https://github.com/metabase/metabase/pull/78429)).
+- The module-level `measureText`, `measureTextWidth`, and `measureTextHeight` exports are removed. The functions were stubs that always returned zero-size measurements — for real ones, use `measureText` on the new `renderingContext` prop (see Features below) ([#78429](https://github.com/metabase/metabase/pull/78429)).
 
 ### Features
 
 - Per-column formatting: visualization settings now include a `column` function that resolves a column's effective formatting settings — instance-wide defaults, the column's metadata settings, and the card-level settings from the column formatting popover, merged in that order. Pass its result to `formatValue` to render values the way the user configured them ([#78128](https://github.com/metabase/metabase/pull/78128)).
+- New `renderingContext` visualization prop with host rendering helpers: `getColor` resolves a Metabase color name to its current theme value, `measureText` measures text the way Metabase renders it, returning `{ width, height }` from a single measurement (`style.family` defaults to the instance font), `fontFamily` exposes that font for styling your own markup, and `colorScheme` tells you whether Metabase is rendering in light or dark mode ([#78429](https://github.com/metabase/metabase/pull/78429)).
 - New `@metabase/custom-viz pack` command packages a built visualization into an upload-ready `.tgz`. Scaffolded projects call it from their `build` script instead of carrying their own copy of the packaging script, so fixes to packaging and to the bundle size limits now come with a package upgrade. Pass `--dir` to pack a project in another directory.
 
 ### Bug Fixes

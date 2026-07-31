@@ -136,15 +136,26 @@ export default createVisualization;
 
 ### VisualizationComponent props
 
-| Prop          | Type                                     | Description                                                                              |
-| ------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `series`      | `Series[]`                               | Query results (rows + column metadata).                                                  |
-| `settings`    | `CustomVisualizationSettings<TSettings>` | Resolved visualization settings.                                                         |
-| `width`       | `number \| null`                         | Container width in pixels (`null` until first measure — render `null` to avoid a flash). |
-| `height`      | `number \| null`                         | Container height in pixels (`null` until first measure).                                 |
-| `colorScheme` | `"light" \| "dark"`                      | Current Metabase color scheme.                                                           |
-| `onClick`     | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                   |
-| `onHover`     | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                  |
+| Prop               | Type                                     | Description                                                                              |
+| ------------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `series`           | `Series`                                 | Query results (rows + column metadata).                                                  |
+| `settings`         | `CustomVisualizationSettings<TSettings>` | Resolved visualization settings.                                                         |
+| `width`            | `number \| null`                         | Container width in pixels (`null` until first measure — render `null` to avoid a flash). |
+| `height`           | `number \| null`                         | Container height in pixels (`null` until first measure).                                 |
+| `renderingContext` | `RenderingContext`                       | Host helpers for colors and text measurement (see below).                                |
+| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                   |
+| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                  |
+
+#### `renderingContext`
+
+Host-provided helpers, so measurements and colors match what Metabase renders.
+
+| Field         | Type                                 | Description                                                                                          |
+| ------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `getColor`    | `(colorName) => string`              | Resolves a Metabase color name to its current theme value.                                           |
+| `measureText` | `(text, style) => { width, height }` | Measures the rendered size of a text string in pixels. `style.family` defaults to the instance font. |
+| `fontFamily`  | `string`                             | The font family Metabase is rendering with — use it to style your own markup.                        |
+| `colorScheme` | `"light" \| "dark"`                  | The color scheme the visualization is rendered with. `getColor` already resolves against it.         |
 
 ## Visualization Settings
 

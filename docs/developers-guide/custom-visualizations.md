@@ -174,15 +174,15 @@ export default createVisualization;
 
 ### Props passed to your component
 
-| Prop          | Type                                     | Description                                                                                 |
-| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `series`      | `Series`                                 | Query results — an array of series; each has `data.rows` and `data.cols`.                   |
-| `settings`    | `CustomVisualizationSettings<TSettings>` | The resolved visualization settings.                                                        |
-| `width`       | `number \| null`                         | Container width in pixels. `null` until the first measure — render `null` to avoid a flash. |
-| `height`      | `number \| null`                         | Container height in pixels. `null` until the first measure.                                 |
-| `colorScheme` | `"light" \| "dark"`                      | Metabase's current color scheme.                                                            |
-| `onClick`     | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                      |
-| `onHover`     | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                     |
+| Prop               | Type                                     | Description                                                                                                                      |
+| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `series`           | `Series`                                 | Query results — an array of series; each has `data.rows` and `data.cols`.                                                        |
+| `settings`         | `CustomVisualizationSettings<TSettings>` | The resolved visualization settings.                                                                                             |
+| `width`            | `number \| null`                         | Container width in pixels. `null` until the first measure — render `null` to avoid a flash.                                      |
+| `height`           | `number \| null`                         | Container height in pixels. `null` until the first measure.                                                                      |
+| `renderingContext` | `RenderingContext`                       | Host helpers for colors, text measurement, and the current color scheme — see [Formatting and theming](#formatting-and-theming). |
+| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                                                           |
+| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                                                          |
 
 ## Handling query results
 
@@ -355,11 +355,11 @@ formatValue(row[1], settings.column?.(cols[1]));
 
 `formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. If you call them outside of Metabase, like in a unit test, they'll throw `Metabase Viz API not initialized`.
 
-For layout math (like fitting labels or sizing axes), `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels. There's also `measureTextWidth` and `measureTextHeight` if you only need one dimension.
+For layout math (like fitting labels or sizing axes), use the `renderingContext` prop: `renderingContext.measureText(text, style)` returns `{ width, height }` in pixels, where `style` is `{ size, weight, family }`. The optional `style.family` defaults to the font your Metabase is rendering with, so measurements match what people see; pass it explicitly only when you render text in a different font. That font is also available as `renderingContext.fontFamily` for styling your own markup.
 
 To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
+Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 
