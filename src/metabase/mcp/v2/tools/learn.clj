@@ -7,7 +7,10 @@
    every MCP client implements, so it is model-invokable everywhere. The tool's own description
    carries the catalog inline, so even a model that ignores every per-tool pointer sees the
    topics in its tool list. Knowledge is not sensitive — it describes the API, not the
-   instance's data — so the tool sits behind the always-granted resource-read scope."
+   instance's data — so it gates on `agent:resource:read`, which
+   [[metabase.mcp.v2.registry/registered-scopes]] folds into the default grant like any other
+   tool `:scope`. Declaring one is not optional: the v2 gate denies a nil `:scope` outright, so
+   omitting it would hide the tool rather than make it public."
   (:require
    [clojure.string :as str]
    [metabase.mcp.v2.common :as common]
