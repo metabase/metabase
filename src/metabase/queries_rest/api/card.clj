@@ -218,7 +218,10 @@
                     [:moderation_reviews :moderator_details]
                     :param_fields
                     :is_remote_synced)
+        (update :creator select-keys [:id :first_name :last_name :email :common_name])
         (update :param_fields (fn [param-fields]
+                                (perms/prime-table-perms-cache
+                                 {:table-ids (into #{} (comp cat (keep :table_id)) (vals param-fields))})
                                 (let [viewable? (memoize (fn [table-id]
                                                            (perms/user-has-permission-for-table?
                                                             api/*current-user-id*

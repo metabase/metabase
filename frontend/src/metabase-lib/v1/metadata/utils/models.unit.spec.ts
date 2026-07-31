@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
@@ -9,8 +10,18 @@ import {
   getModelCacheSchemaName,
   isAdHocModelOrMetricQuestion,
 } from "metabase-lib/v1/metadata/utils/models";
+import type {
+  Card,
+  ModelCacheState,
+  NativeDatasetQuery,
+  StructuredDatasetQuery,
+  TableId,
+  TemplateTagType,
+  TemplateTags,
+} from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
+  createMockTemplateTag,
   getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import {
@@ -23,17 +34,10 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-function getTemplateTag(tag = {}) {
-  return {
-    id: "_",
-    name: "_",
-    "display-name": "_",
-    type: "card",
-    ...tag,
-  };
-}
-
-function createSavedNativeCard({ tags = {}, ...rest } = {}) {
+function createSavedNativeCard({
+  tags = {},
+  ...rest
+}: Partial<Card<NativeDatasetQuery>> & { tags?: TemplateTags } = {}) {
   return _createSavedNativeCard({
     ...rest,
     dataset_query: {
@@ -47,7 +51,10 @@ function createSavedNativeCard({ tags = {}, ...rest } = {}) {
   });
 }
 
-function createNativeModelCard({ tags = {}, ...rest } = {}) {
+function createNativeModelCard({
+  tags = {},
+  ...rest
+}: Partial<Card<NativeDatasetQuery>> & { tags?: TemplateTags } = {}) {
   return _createNativeModelCard({
     ...rest,
     dataset_query: {
@@ -61,7 +68,10 @@ function createNativeModelCard({ tags = {}, ...rest } = {}) {
   });
 }
 
-function createSavedStructuredCard({ sourceTable = ORDERS_ID, ...rest } = {}) {
+function createSavedStructuredCard({
+  sourceTable = ORDERS_ID,
+  ...rest
+}: Partial<Card<StructuredDatasetQuery>> & { sourceTable?: TableId } = {}) {
   return _createSavedStructuredCard({
     ...rest,
     dataset_query: {
@@ -74,7 +84,10 @@ function createSavedStructuredCard({ sourceTable = ORDERS_ID, ...rest } = {}) {
   });
 }
 
-function createStructuredModelCard({ sourceTable = ORDERS_ID, ...rest } = {}) {
+function createStructuredModelCard({
+  sourceTable = ORDERS_ID,
+  ...rest
+}: Partial<Card<StructuredDatasetQuery>> & { sourceTable?: TableId } = {}) {
   return _createStructuredModelCard({
     ...rest,
     dataset_query: {
@@ -87,24 +100,27 @@ function createStructuredModelCard({ sourceTable = ORDERS_ID, ...rest } = {}) {
   });
 }
 
-function setup({ cards, hasNestedQueriesSupport = true } = {}) {
+function setup({
+  cards = [],
+  hasNestedQueriesSupport = true,
+}: { cards?: Card[]; hasNestedQueriesSupport?: boolean } = {}) {
   const features = hasNestedQueriesSupport
     ? COMMON_DATABASE_FEATURES
     : _.without(COMMON_DATABASE_FEATURES, "nested-queries");
 
   const metadata = createMockMetadata({
     databases: [createSampleDatabase({ features })],
-    questions: cards ? cards : [],
+    questions: cards,
   });
 
-  const ordersTable = metadata.table(ORDERS_ID);
+  const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
   return { metadata, ordersTable };
 }
 
 describe("data model utils", () => {
   describe("checkCanBeModel", () => {
-    const UNSUPPORTED_TEMPLATE_TAG_TYPES = [
+    const UNSUPPORTED_TEMPLATE_TAG_TYPES: TemplateTagType[] = [
       "text",
       "number",
       "date",
@@ -130,7 +146,7 @@ describe("data model utils", () => {
         const card = createSavedNativeCard();
         const { metadata } = setup({ cards: [card] });
 
-        const question = metadata.question(card.id);
+        const question = checkNotNull(metadata.question(card.id));
 
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -142,7 +158,7 @@ describe("data model utils", () => {
           hasNestedQueriesSupport: false,
         });
 
-        const question = metadata.question(card.id);
+        const question = checkNotNull(metadata.question(card.id));
 
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -150,12 +166,12 @@ describe("data model utils", () => {
       it("returns true when 'card' variables are used", () => {
         const card = createSavedNativeCard({
           tags: {
-            "#5": getTemplateTag({ type: "card" }),
+            "#5": createMockTemplateTag({ type: "card" }),
           },
         });
         const { metadata } = setup({ cards: [card] });
 
-        const question = metadata.question(card.id);
+        const question = checkNotNull(metadata.question(card.id));
 
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -164,12 +180,12 @@ describe("data model utils", () => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const card = createSavedNativeCard({
             tags: {
-              foo: getTemplateTag({ type: tagType }),
+              foo: createMockTemplateTag({ type: tagType }),
             },
           });
           const { metadata } = setup({ cards: [card] });
 
-          const question = metadata.question(card.id);
+          const question = checkNotNull(metadata.question(card.id));
 
           expect(checkCanBeModel(question)).toBe(false);
         });
@@ -178,13 +194,13 @@ describe("data model utils", () => {
       it("returns false if at least one unsupported variable type is used", () => {
         const card = createSavedNativeCard({
           tags: {
-            "#5": getTemplateTag({ type: "card" }),
-            foo: getTemplateTag({ type: "dimension" }),
+            "#5": createMockTemplateTag({ type: "card" }),
+            foo: createMockTemplateTag({ type: "dimension" }),
           },
         });
         const { metadata } = setup({ cards: [card] });
 
-        const question = metadata.question(card.id);
+        const question = checkNotNull(metadata.question(card.id));
 
         expect(checkCanBeModel(question)).toBe(false);
       });
@@ -208,7 +224,7 @@ describe("data model utils", () => {
       const card = createNativeModelCard();
       const { metadata } = setup({ cards: [card] });
 
-      const question = metadata.question(card.id);
+      const question = checkNotNull(metadata.question(card.id));
 
       expect(isAdHocModelOrMetricQuestion(question, question)).toBe(false);
     });
@@ -216,7 +232,7 @@ describe("data model utils", () => {
     it("identifies when model goes into ad-hoc exploration mode", () => {
       const modelCard = createStructuredModelCard({ id: 1 });
       const { metadata } = setup({ cards: [modelCard] });
-      const originalQuestion = metadata.question(modelCard.id);
+      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
       const question = originalQuestion.composeQuestion();
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -232,7 +248,7 @@ describe("data model utils", () => {
       });
       const { metadata } = setup({ cards: [modelCard] });
 
-      const originalQuestion = metadata.question(modelCard.id);
+      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -248,7 +264,7 @@ describe("data model utils", () => {
       });
       const { metadata } = setup({ cards: [modelCard] });
 
-      const originalQuestion = metadata.question(modelCard.id);
+      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -264,7 +280,7 @@ describe("data model utils", () => {
       });
       const { metadata } = setup({ cards: [modelCard] });
 
-      const originalQuestion = metadata.question(modelCard.id);
+      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -274,19 +290,16 @@ describe("data model utils", () => {
   });
 
   describe("checkCanRefreshModelCache", () => {
-    const testCases = {
-      creating: true,
-      refreshing: false,
-      persisted: true,
-      error: true,
-      deletable: false,
-      off: false,
-    };
-    const states = Object.keys(testCases);
+    const testCases: { state: ModelCacheState; canRefresh: boolean }[] = [
+      { state: "creating", canRefresh: true },
+      { state: "refreshing", canRefresh: false },
+      { state: "persisted", canRefresh: true },
+      { state: "error", canRefresh: true },
+      { state: "deletable", canRefresh: false },
+      { state: "off", canRefresh: false },
+    ];
 
-    states.forEach((state) => {
-      const canRefresh = testCases[state];
-
+    testCases.forEach(({ state, canRefresh }) => {
       it(`returns '${canRefresh}' for '${state}' caching state`, () => {
         const info = getMockModelCacheInfo({ state });
         expect(checkCanRefreshModelCache(info)).toBe(canRefresh);
@@ -312,8 +325,8 @@ describe("data model utils", () => {
 
     it("returns 0 for completely missing metadata", () => {
       const percent = getDatasetMetadataCompletenessPercentage([
-        { display_name: "Created_At" },
-        { display_name: "Products → Category" },
+        { name: "created_at", display_name: "Created_At" },
+        { name: "category", display_name: "Products → Category" },
       ]);
       expect(percent).toBe(0);
     });
@@ -321,11 +334,13 @@ describe("data model utils", () => {
     it("returns 1 for complete metadata", () => {
       const percent = getDatasetMetadataCompletenessPercentage([
         {
+          name: "created_at",
           display_name: "Created At",
           description: "Date created",
           semantic_type: "DateTime",
         },
         {
+          name: "category",
           display_name: "Product Category",
           description: "The name is pretty self-explaining",
           semantic_type: "String",
@@ -336,8 +351,9 @@ describe("data model utils", () => {
 
     it("returns 0.5 for half-complete metadata", () => {
       const percent = getDatasetMetadataCompletenessPercentage([
-        { display_name: "Created_At" },
+        { name: "created_at", display_name: "Created_At" },
         {
+          name: "category",
           display_name: "Product Category",
           description: "The name is pretty self-explaining",
           semantic_type: "String",
@@ -348,8 +364,9 @@ describe("data model utils", () => {
 
     it("returns percent value for partially complete metadata", () => {
       const percent = getDatasetMetadataCompletenessPercentage([
-        { display_name: "Created_At" },
+        { name: "created_at", display_name: "Created_At" },
         {
+          name: "category",
           display_name: "Product Category",
           semantic_type: "String",
         },

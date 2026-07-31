@@ -345,8 +345,8 @@
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
-(derive ::dimensions-event :metabase/event)
-(derive :event/metric-dimensions-update ::dimensions-event)
+(events/derive! ::dimensions-event :metabase/event)
+(events/derive! :event/metric-dimensions-update ::dimensions-event)
 
 (defn- notify-dimensions-changed!
   "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."

@@ -14,13 +14,12 @@ inputs:
     default: us-east-1
   bucket:
     required: true
-  trunk-api-token:
-    required: true
-  variant:
+  previous-step-outcome:
     required: false
     default: ""
-  previous-step-outcome:
-    required: true
+    description: >-
+      Outcome of the test step. Only read when `driver-status` is "info", to report the
+      real result of a job that was forced green.
   driver-status:
     required: false
     default: ""
@@ -34,10 +33,6 @@ inputs:
     description: >-
       Optional label disambiguating matrix legs of the same job, so the info-driver
       job summary and PR comment stay distinct per leg.
-  run-trunk:
-    required: false
-    default: "true"
-    description: Whether to run the Trunk step at all.
 
 runs:
   using: "composite"
@@ -62,25 +57,6 @@ runs:
       run: | # sh
         DATE=$(date '+%Y-%m-%d')
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
-
-    - name: Upload results to Trunk
-      if: ${{ always() && github.repository_owner == 'metabase' && inputs.run-trunk == 'true' }}
-      # Important!
-      # For "info" drivers off master/release branches, our own status takes precedence: we let this
-      # step pass so the job is reported as passing regardless of the real outcome (still uploaded).
-      # On master and release branches, info status is ignored and the real outcome gates the job.
-      continue-on-error: ${{ inputs.driver-status == 'info' && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
-      uses: trunk-io/analytics-uploader@1198efcc0976501147b10a7e343c3fa069527526 # v2.0.9
-      env:
-        TRUNK_REPO_URL: git@github.com:metabase/metabase.git
-      with:
-        junit-paths: ${{ inputs.input-path }}
-        variant: ${{ inputs.variant || inputs.output-name }}
-        org-slug: metabase
-        dry-run: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || github.repository != 'metabase/metabase' }} # quarantine, but do not upload results
-        token: ${{ inputs.trunk-api-token }}
-        use-cache: true
-        previous-step-outcome: ${{ inputs.previous-step-outcome }}
 
     # For "info" drivers the job is forced green above, so surface the real outcome here —
     # but only when it did NOT pass, to avoid spamming summaries/comments for healthy runs.
