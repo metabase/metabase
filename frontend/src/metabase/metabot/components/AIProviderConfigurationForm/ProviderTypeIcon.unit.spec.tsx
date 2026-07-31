@@ -9,13 +9,22 @@ describe("ProviderTypeIcon", () => {
     expect(screen.getByTestId("main-logo")).toBeInTheDocument();
   });
 
-  it("renders the vendor logo for a provider that ships one", () => {
-    renderWithProviders(<ProviderTypeIcon type="anthropic" icon="ai" />);
+  it.each([
+    ["anthropic", "anthropic.svg"],
+    ["mistral", "mistral.svg"],
+  ] as const)("renders the vendor logo for %s", (type, file) => {
+    renderWithProviders(<ProviderTypeIcon type={type} icon="ai" />);
 
     expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
     expect(screen.getByRole("presentation")).toHaveAttribute(
       "src",
-      "app/assets/img/llm-providers/anthropic.svg",
+      `app/assets/img/llm-providers/${file}`,
     );
+  });
+
+  it("falls back to the registry icon for a provider with no vendor logo", () => {
+    renderWithProviders(<ProviderTypeIcon type="zai" icon="ai" />);
+
+    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
   });
 });

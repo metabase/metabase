@@ -38,6 +38,8 @@ export type LlmProviderTypeName =
   | "anthropic"
   | "openai"
   | "openrouter"
+  | "mistral"
+  | "zai"
   | "azure"
   | "bedrock"
   | "metabase";
