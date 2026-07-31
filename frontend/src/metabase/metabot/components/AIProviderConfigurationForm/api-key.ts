@@ -17,10 +17,6 @@ function getRecognizableFields(providerTypes: LlmProviderType[]) {
     );
 }
 
-export function canRecognizeApiKeys(providerTypes: LlmProviderType[]) {
-  return getRecognizableFields(providerTypes).length > 0;
-}
-
 export function findProviderTypeForApiKey(
   providerTypes: LlmProviderType[],
   apiKey: string,
