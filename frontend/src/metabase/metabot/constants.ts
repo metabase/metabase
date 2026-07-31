@@ -5,7 +5,6 @@ import type { LlmProviderTypeName } from "metabase-types/api";
 
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
-// null means the provider ships no vendor mark, so the registry's own icon is drawn instead
 export const LLM_PROVIDER_LOGOS: Record<LlmProviderTypeName, string | null> = {
   anthropic: "anthropic.svg",
   openai: "openai.svg",

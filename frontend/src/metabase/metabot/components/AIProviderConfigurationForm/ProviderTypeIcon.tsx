@@ -1,3 +1,4 @@
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { getLlmProviderLogo } from "metabase/metabot/utils/llm-provider";
 import { Flex, Icon } from "metabase/ui";
 import type { IconName, LlmProviderTypeName } from "metabase-types/api";
@@ -13,15 +14,31 @@ export function ProviderTypeIcon({
   icon: IconName;
   size?: number;
 }) {
-  const logo = getLlmProviderLogo(type);
-
   return (
     <Flex className={S.icon} w={size} h={size} align="center" justify="center">
-      {logo ? (
-        <img src={logo} alt="" width={size / 2} height={size / 2} />
-      ) : (
-        <Icon name={icon} size={size / 2} aria-hidden />
-      )}
+      <ProviderTypeMark type={type} icon={icon} size={size / 2} />
     </Flex>
+  );
+}
+
+function ProviderTypeMark({
+  type,
+  icon,
+  size,
+}: {
+  type: LlmProviderTypeName;
+  icon: IconName;
+  size: number;
+}) {
+  if (type === "metabase") {
+    return <LogoIcon height={size} />;
+  }
+
+  const logo = getLlmProviderLogo(type);
+
+  return logo ? (
+    <img src={logo} alt="" width={size} height={size} />
+  ) : (
+    <Icon name={icon} size={size} aria-hidden />
   );
 }
