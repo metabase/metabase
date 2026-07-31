@@ -3,8 +3,9 @@ import { useEffect } from "react";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Outlet, useRoute } from "./Outlet";
+import { Outlet } from "./Outlet";
 import { Route } from "./route";
+import { useRoutePathname } from "./use-route-leave-hook";
 
 const Parent = () => (
   <div>
@@ -90,17 +91,16 @@ describe("router/Route element", () => {
 });
 
 function RoutePathProbe({ label }: { label: string }) {
-  // The matched route is a v3 route config; read its `path` for the assertion.
-  const route = useRoute() as { path?: string } | null;
+  const pathname = useRoutePathname();
   return (
     <div>
-      <span>{`${label}:${route?.path ?? "none"}`}</span>
+      <span>{`${label}:${pathname ?? "none"}`}</span>
       <Outlet />
     </div>
   );
 }
 
-describe("router/useRoute", () => {
+describe("router/useRoutePathname", () => {
   function setupNested(initialRoute: string) {
     return renderWithProviders(
       <Route path="/" element={<RoutePathProbe label="parent" />}>
@@ -110,12 +110,12 @@ describe("router/useRoute", () => {
     );
   }
 
-  it("exposes the matched route to an `element` route", () => {
+  it("exposes the matched pathname to an `element` route", () => {
     setupNested("/child");
-    expect(screen.getByText("child:child")).toBeInTheDocument();
+    expect(screen.getByText("child:/child")).toBeInTheDocument();
   });
 
-  it("gives each route its own route, not the deepest match", () => {
+  it("gives each route its own pathname, not the deepest match", () => {
     setupNested("/child");
     // The parent still sees its own route even though a deeper child matched.
     expect(screen.getByText("parent:/")).toBeInTheDocument();

@@ -13,7 +13,7 @@ import type { OpaqueDatasetQuery } from "metabase-types/api";
 type UseAdHocTableQueryProps = {
   tableId: number;
   databaseId: number;
-  location: Location<{ query?: string }>;
+  location: Location;
 };
 
 export const useAdHocTableQuery = ({
@@ -24,13 +24,10 @@ export const useAdHocTableQuery = ({
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
-  const queryParam = useMemo(
-    () =>
-      location.query?.query
-        ? deserializeQueryFromUrl(location.query.query)
-        : null,
-    [location.query.query],
-  );
+  const queryParam = useMemo(() => {
+    const query = new URLSearchParams(location.search).get("query");
+    return query ? deserializeQueryFromUrl(query) : null;
+  }, [location.search]);
 
   const metadataProvider = useMemo(
     () => Lib.metadataProvider(databaseId, metadata),

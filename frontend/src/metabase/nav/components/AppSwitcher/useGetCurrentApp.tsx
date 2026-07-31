@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 
 export type CurrentApp = "main" | "admin" | "data-studio" | "monitor";
 
 export const useGetCurrentApp = (): CurrentApp => {
-  const { location } = useRouter();
+  const location = useLocation();
   return match<string, CurrentApp>(location.pathname)
     .when(
       (path) => path.startsWith("/admin"),

@@ -14,7 +14,7 @@ import { LighthouseIllustration } from "metabase/common/components/LighthouseIll
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { useSearchParams } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import { Button, Center, Stack, Text } from "metabase/ui";
 
@@ -39,15 +39,16 @@ const SUBSCRIPTION = {
 type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
 export const UnsubscribePage = (): JSX.Element => {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
   const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
     SUBSCRIPTION.UNSUBSCRIBE,
   );
 
-  const hash = location.query?.hash;
-  const email = location.query?.email;
-  const pulseId = location.query?.["pulse-id"];
-  const notificationHandlerId = location.query?.["notification-handler-id"];
+  const hash = searchParams.get("hash") ?? undefined;
+  const email = searchParams.get("email") ?? undefined;
+  const pulseId = searchParams.get("pulse-id") ?? undefined;
+  const notificationHandlerId =
+    searchParams.get("notification-handler-id") ?? undefined;
 
   const { data, isLoading, error } = useUnsubscribeRequest({
     hash,

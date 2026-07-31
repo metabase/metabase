@@ -997,8 +997,8 @@
       "duration": 44417
     },
     {
-      "spec": "../test/scenarios/metabot/usage-auditing.cy.spec.ts",
-      "duration": 99790
+      "spec": "../test/scenarios/monitor/ai-auditing/usage-auditing.cy.spec.ts",
+      "duration": 98473
     },
     {
       "spec": "../test/scenarios/metrics/browse.cy.spec.ts",

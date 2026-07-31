@@ -2,8 +2,11 @@ import fetchMock from "fetch-mock";
 
 import type {
   MfaAdminOverview,
+  MfaAdminUser,
   MfaEnrollResponse,
+  MfaEnrolledUser,
   MfaStatus,
+  MfaUserListResponse,
 } from "metabase-types/api";
 
 export function setupMfaStatusEndpoint(status: MfaStatus) {
@@ -42,6 +45,42 @@ export function setupMfaRecoveryCodesEndpointError() {
 
 export function setupMfaAdminOverviewEndpoint(overview: MfaAdminOverview) {
   fetchMock.get("path:/api/ee/mfa/admin/overview", overview);
+}
+
+function userListResponse<T extends MfaAdminUser>(
+  users: T[],
+): MfaUserListResponse<T> {
+  return { data: users, total: users.length, limit: null, offset: null };
+}
+
+export function setupMfaEnrolledUsersEndpoint(users: MfaEnrolledUser[]) {
+  fetchMock.get(
+    "path:/api/ee/mfa/admin/enrolled-users",
+    userListResponse(users),
+  );
+}
+
+export function setupMfaEnrolledUsersEndpointError() {
+  fetchMock.get("path:/api/ee/mfa/admin/enrolled-users", 500);
+}
+
+export function setupMfaUnenrolledUsersEndpoint(users: MfaAdminUser[]) {
+  fetchMock.get(
+    "path:/api/ee/mfa/admin/unenrolled-users",
+    userListResponse(users),
+  );
+}
+
+export function setupMfaUnenrolledUsersEndpointError() {
+  fetchMock.get("path:/api/ee/mfa/admin/unenrolled-users", 500);
+}
+
+export function setupMfaAdminRemoveEndpoint() {
+  fetchMock.post("path:/api/ee/mfa/admin/remove", 204);
+}
+
+export function setupMfaAdminRemoveEndpointError() {
+  fetchMock.post("path:/api/ee/mfa/admin/remove", 500);
 }
 
 export function setupMfaVerifyEndpoint() {

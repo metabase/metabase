@@ -13,20 +13,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment } from "metabase-types/api";
 
-type LocationWithQuery = Location<{
-  table?: string;
-}>;
-
 type FilteredToUrlTableInnerProps = {
-  location: LocationWithQuery;
+  location: Location;
   push: (location: LocationDescriptorObject) => void;
   segments: Segment[];
 };
 
-function getTableIdFromLocation(
-  location: LocationWithQuery,
-): ConcreteTableId | null {
-  const tableId = location.query?.table;
+function getTableIdFromLocation(location: Location): ConcreteTableId | null {
+  const tableId = new URLSearchParams(location.search).get("table");
   return tableId != null ? parseInt(tableId, 10) : null;
 }
 

@@ -924,10 +924,50 @@ export const loadConversation = createAsyncThunk(
         agentId,
         conversationId: detail.conversation_id,
         title: detail.title ?? undefined,
+        forkedFromConversationId:
+          detail.forked_from_conversation_id ?? undefined,
         messages: normalizeFetchedChatMessages(detail.messages),
         state: detail.state,
         activeToolCalls: [],
       }),
     );
+  },
+);
+
+export const forkConversation = createAsyncThunk(
+  "metabase/metabot/forkConversation",
+  async (
+    {
+      agentId,
+      conversationId,
+      messageId,
+    }: { agentId: MetabotAgentId; conversationId: string; messageId: string },
+    { dispatch },
+  ) => {
+    const conversation = await dispatch(
+      metabotApi.endpoints.forkMetabotConversation.initiate({
+        conversation_id: conversationId,
+        message_id: messageId,
+      }),
+    ).unwrap();
+
+    dispatch(
+      setConversationSnapshot({
+        agentId,
+        conversationId: conversation.conversation_id,
+        title: conversation.title ?? undefined,
+        forkedFromConversationId:
+          conversation.forked_from_conversation_id ?? undefined,
+        messages: normalizeFetchedChatMessages(conversation.messages),
+        state: conversation.state,
+        activeToolCalls: [],
+      }),
+    );
+
+    if (agentId === "ask") {
+      dispatch(push(Urls.metabotConversation(conversation.conversation_id)));
+    }
+
+    return conversation;
   },
 );
