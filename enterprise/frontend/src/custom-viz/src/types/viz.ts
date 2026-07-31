@@ -117,19 +117,13 @@ export type CustomVisualizationProps<
   TSettings extends BaseVisualizationSettings,
 > = {
   width: number | null;
-
   height: number | null;
-
   series: Series;
-
   settings: CustomVisualizationSettings<TSettings>;
-
   renderingContext: RenderingContext;
-
   onClick: (
     clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
   ) => void;
-
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
