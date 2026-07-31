@@ -158,6 +158,13 @@
   "Schema for GET /worktree response."
   [:sequential Worktree])
 
+(def WorktreeCollection
+  "Schema for POST /worktree/:id/collection response."
+  [:map
+   [:id pos-int?]
+   [:name :string]
+   [:worktree_id pos-int?]])
+
 (def StashResponse
   "Schema for POST /stash response."
   [:map

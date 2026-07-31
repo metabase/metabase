@@ -27,6 +27,7 @@ export type EntityPickerOptions = {
   hasLibrary?: boolean;
   hasRootCollection?: boolean;
   hasPersonalCollections?: boolean; // other users personal collections
+  hasWorktrees?: boolean; // remote-sync worktrees (admins only; for new-content pickers, since content can't move into a worktree)
   getItemTooltip?: (item: OmniPickerItem) => string | undefined;
   disableSearchScope?: boolean;
 

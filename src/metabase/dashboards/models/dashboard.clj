@@ -533,7 +533,8 @@
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :moderated-status           :mr.status}
-   :where        []
+   ;; remote-sync worktree copies are not indexed; search is the main app's
+   :where        [:= :this.worktree_id nil]
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]
                                             ;; a magical alias, or perhaps this clause can be implicit

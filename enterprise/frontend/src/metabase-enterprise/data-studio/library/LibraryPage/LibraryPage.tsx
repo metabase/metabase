@@ -10,6 +10,7 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   Card,
@@ -21,9 +22,10 @@ import {
   TreeTableSkeleton,
 } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
+import { useGetLibraryCollection } from "../utils";
 
 import { CreateMenu } from "./components/CreateMenu";
 import { LibraryBulkActions } from "./components/LibraryBulkActions";
@@ -46,6 +48,12 @@ export function LibraryPage() {
 function LibraryPageContent() {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const [searchQuery, setSearchQuery] = useState("");
+  // Non-null when an admin is viewing a remote-sync worktree's copy of the
+  // library instead of the main app's.
+  const [worktreeId, setWorktreeId] = useState<RemoteSyncWorktreeId | null>(
+    null,
+  );
+  const isWorktreeView = worktreeId != null;
   const [
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
@@ -55,7 +63,12 @@ function LibraryPageContent() {
       "exclude-other-user-collections": true,
       "exclude-archived": true,
       "include-library": true,
+      ...(isWorktreeView && { "worktree-id": worktreeId }),
     });
+  // A worktree holds a copy of the library only when the main app's library is
+  // remote-synced, so the worktree switcher is pointless otherwise.
+  const { data: mainLibrary } = useGetLibraryCollection();
+  const isLibrarySynced = !!mainLibrary?.is_remote_synced;
   const {
     treeTableInstance,
     allRows,
@@ -68,6 +81,7 @@ function LibraryPageContent() {
     collections,
     isLoadingCollections,
     searchQuery,
+    worktreeId: worktreeId ?? undefined,
     onPublishTableClick: openPublishTableModal,
   });
 
@@ -131,7 +145,7 @@ function LibraryPageContent() {
           px="3.5rem"
           style={{ overflow: "hidden" }}
         >
-          {!libraryCollection && !isLoadingCollections ? (
+          {!libraryCollection && !isLoadingCollections && !isWorktreeView ? (
             <LibraryEmptyState />
           ) : (
             <>
@@ -144,12 +158,20 @@ function LibraryPageContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <CreateMenu
-                  metricCollectionId={writableMetricCollection?.id}
-                  canWriteToMetricCollection={!!writableMetricCollection}
-                  dataCollectionId={tableCollection?.id}
-                  canWriteToDataCollection={!!tableCollection?.can_write}
-                />
+                {isLibrarySynced && (
+                  <PLUGIN_REMOTE_SYNC.WorktreeSwitcher
+                    value={worktreeId}
+                    onChange={setWorktreeId}
+                  />
+                )}
+                {!isWorktreeView && (
+                  <CreateMenu
+                    metricCollectionId={writableMetricCollection?.id}
+                    canWriteToMetricCollection={!!writableMetricCollection}
+                    dataCollectionId={tableCollection?.id}
+                    canWriteToDataCollection={!!tableCollection?.can_write}
+                  />
+                )}
               </Flex>
               <Card withBorder p={0}>
                 {isLoading ? (
@@ -157,7 +179,7 @@ function LibraryPageContent() {
                 ) : (
                   <TreeTable
                     instance={treeTableInstance}
-                    showCheckboxes={!isRemoteSyncReadOnly}
+                    showCheckboxes={!isRemoteSyncReadOnly && !isWorktreeView}
                     getSelectionState={getSelectionState}
                     isRowDisabled={getRowCovered}
                     onCheckboxClick={onCheckboxClick}
@@ -188,7 +210,7 @@ function LibraryPageContent() {
         onClose={closePublishTableModal}
         onPublished={closePublishTableModal}
       />
-      {!isRemoteSyncReadOnly && (
+      {!isRemoteSyncReadOnly && !isWorktreeView && (
         <LibraryBulkActions
           selectedItems={selectedItems}
           selectionSection={selectionSection}

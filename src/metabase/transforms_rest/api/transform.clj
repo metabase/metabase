@@ -160,7 +160,9 @@
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:database-id {:optional true} [:maybe ms/PositiveInt]]
-    [:include-worktrees {:default false} [:maybe ms/BooleanValue]]]]
+    [:include-worktrees {:default false} [:maybe ms/BooleanValue]]
+    ;; return ONLY the given worktree's transforms -- how the FE lazily loads one worktree's list
+    [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -15,6 +15,16 @@ import {
   CollectionSyncStatusBadge,
   SyncedCollectionsSidebarSection,
 } from "./components/SyncedCollectionsSidebarSection";
+import {
+  WorktreeCollectionsItemList,
+  WorktreesItemList,
+  getWorktreePickerBasePath,
+  isWorktreeFolderItem,
+  isWorktreesRootItem,
+  useWorktreesPickerRootItem,
+} from "./components/WorktreePicker";
+import { WorktreeSwitcher } from "./components/WorktreeSwitcher";
+import { WorktreesSidebarSection } from "./components/WorktreesSidebarSection";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
@@ -35,6 +45,8 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;
+    PLUGIN_REMOTE_SYNC.WorktreesSidebarSection = WorktreesSidebarSection;
+    PLUGIN_REMOTE_SYNC.WorktreeSwitcher = WorktreeSwitcher;
     PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = GitSyncControls;
     PLUGIN_REMOTE_SYNC.GitSettingsModal = GitSettingsModal;
     PLUGIN_REMOTE_SYNC.CollectionsNavTree = CollectionsNavTree;
@@ -49,6 +61,13 @@ export function initializePlugin() {
       useHasTransformDirtyChanges;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
     PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState = useRemoteSyncDirtyState;
+    PLUGIN_REMOTE_SYNC.useWorktreesPickerRootItem = useWorktreesPickerRootItem;
+    PLUGIN_REMOTE_SYNC.isWorktreesRootItem = isWorktreesRootItem;
+    PLUGIN_REMOTE_SYNC.isWorktreeFolderItem = isWorktreeFolderItem;
+    PLUGIN_REMOTE_SYNC.WorktreesItemList = WorktreesItemList;
+    PLUGIN_REMOTE_SYNC.WorktreeCollectionsItemList =
+      WorktreeCollectionsItemList;
+    PLUGIN_REMOTE_SYNC.getWorktreePickerBasePath = getWorktreePickerBasePath;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

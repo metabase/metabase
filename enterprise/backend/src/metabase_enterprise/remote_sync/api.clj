@@ -14,6 +14,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
@@ -435,6 +436,22 @@
   (-> (t2/insert-returning-instance! :model/RemoteSyncWorktree
                                      {:branch branch :creator_id api/*current-user-id*})
       (t2/hydrate :creator)))
+
+(api.macros/defendpoint :post "/worktree/:id/collection" :- remote-sync.schema/WorktreeCollection
+  "Create a collection at the root of a remote-sync worktree. Content created inside it belongs to the
+  worktree and is included in its next push. Requires superuser permissions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [name description authority_level]} :- [:map
+                                                  [:name ms/NonBlankString]
+                                                  [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                  [:authority_level {:optional true} [:maybe [:enum "official"]]]]]
+  (api/check-superuser)
+  (api/check-404 (t2/exists? :model/RemoteSyncWorktree :id id))
+  (collections/create-collection! {:name name
+                                   :description description
+                                   :authority_level authority_level
+                                   :worktree_id id}))
 
 (api.macros/defendpoint :delete "/worktree/:id" :- :nil
   "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser

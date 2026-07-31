@@ -47,7 +47,10 @@
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
    [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
+   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+   ;; create the collection at the root of a remote-sync worktree (admin-only, enforced in the model
+   ;; layer). With a `parent_id` the parent's worktree always wins, so pass one or the other.
+   [:worktree_id     {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private NewCollectionArguments
   "What we use internally to actually create a collection — what `t2/insert!` needs."
@@ -80,7 +83,8 @@
           ;; would mis-tag the child (UXW-4520).
           (contains? collection/library-collection-types (:type parent-coll))
           (assoc :type (:type parent-coll)))
-        (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
+        ;; worktree content is remote-synced by definition: the whole worktree is its branch's checkout
+        (assoc :is_remote_synced (boolean (or (:is_remote_synced parent-coll) (:worktree_id coll-data))))
         (select-keys (malli.util/keys NewCollectionArguments)))))
 
 (mu/defn create-collection!

@@ -400,6 +400,15 @@
   (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
                                      (vals (:by-path imported-data)))))
 
+(defn- outcome-branch
+  "The git branch the running operation syncs with, for reporting in a task's `:outcome`: the worktree's own
+  branch when one is in scope ([[serdes/*worktree-id*]]), otherwise the main app's `remote-sync-branch`
+  setting -- a worktree pull/push never involves the setting's branch."
+  []
+  (if-some [worktree-id serdes/*worktree-id*]
+    (t2/select-one-fn :branch :model/RemoteSyncWorktree :id worktree-id)
+    (settings/remote-sync-branch)))
+
 (defn- fold-data-app-changes
   "Fold the count of data apps a pull changed — upserted *or* removed — into its
   `:outcome`. Data apps live under `data_apps/` — outside serdes — and are
@@ -409,7 +418,7 @@
   `count 0`. Caller guarantees `da-changed` is positive."
   [outcome da-changed]
   (case (:kind outcome)
-    "pull-skipped" {:kind "pulled" :count da-changed :branch (settings/remote-sync-branch)}
+    "pull-skipped" {:kind "pulled" :count da-changed :branch (outcome-branch)}
     "pulled"       (update outcome :count (fnil + 0) da-changed)
     "merged"       (update outcome :pulled (fnil + 0) da-changed)
     outcome))
@@ -502,7 +511,7 @@
      :version snapshot-version
      :outcome {:kind "pulled"
                :count (+ (pulled-change-count imported-data) (count deletes))
-               :branch (settings/remote-sync-branch)}}))
+               :branch (outcome-branch)}}))
 
 (defn- capture-dirty-objects
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
@@ -559,7 +568,7 @@
          :merge-summary summary
          :outcome       {:kind "pulled"
                          :count (apply + (vals summary))
-                         :branch (settings/remote-sync-branch)}}))))
+                         :branch (outcome-branch)}}))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -648,7 +657,7 @@
                    :version snapshot-version
                    :outcome {:kind "pulled"
                              :count (pulled-change-count imported-data)
-                             :branch (settings/remote-sync-branch)}}))
+                             :branch (outcome-branch)}}))
 
               ;; --- Normal pull ---
               ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
@@ -686,7 +695,7 @@
                  :version snapshot-version
                  :outcome {:kind "pulled"
                            :count (pulled-change-count imported-data)
-                           :branch (settings/remote-sync-branch)}}))]
+                           :branch (outcome-branch)}}))]
         ;; Data apps ride the pull: re-materialize from the real source snapshot
         ;; (the repo file tree under `data_apps/`), not the synthetic merged
         ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
@@ -790,8 +799,8 @@
              ;; when nothing changed on either side.
              :outcome (cond
                         (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
-                                      :branch (settings/remote-sync-branch)}
-                        (pos? pulled) {:kind "pulled" :count pulled :branch (settings/remote-sync-branch)}
+                                      :branch (outcome-branch)}
+                        (pos? pulled) {:kind "pulled" :count pulled :branch (outcome-branch)}
                         :else         {:kind "push-skipped"})})
           ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
           ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
@@ -1159,7 +1168,7 @@
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
           {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
+           :outcome {:kind "pushed" :count (count synced) :branch (outcome-branch)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1195,7 +1204,7 @@
           {:status :success
            :outcome {:kind "pushed"
                      :count (+ (count writes) (count delete-paths))
-                     :branch (settings/remote-sync-branch)}})))))
+                     :branch (outcome-branch)}})))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.

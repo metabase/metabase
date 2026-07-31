@@ -4,18 +4,22 @@ import type {
   RemoteSyncConflictVariant,
   RemoteSyncTask,
   RemoteSyncTaskType,
+  RemoteSyncWorktreeId,
 } from "metabase-types/api";
 
 export interface SyncTaskState {
   currentTask: RemoteSyncTask | null;
   showModal: boolean;
   syncConflictVariant: RemoteSyncConflictVariant | null;
+  /** The worktree the current task operates on, null for the main app. */
+  worktreeId: RemoteSyncWorktreeId | null;
 }
 
 export const initialState: SyncTaskState = {
   currentTask: null,
   showModal: false,
   syncConflictVariant: null,
+  worktreeId: null,
 };
 
 export const remoteSyncSlice = createSlice({
@@ -24,7 +28,12 @@ export const remoteSyncSlice = createSlice({
   reducers: {
     taskStarted: (
       state,
-      action: { payload: { taskType: RemoteSyncTaskType } },
+      action: {
+        payload: {
+          taskType: RemoteSyncTaskType;
+          worktreeId?: RemoteSyncWorktreeId | null;
+        };
+      },
     ) => {
       state.currentTask = {
         id: 0,
@@ -38,6 +47,7 @@ export const remoteSyncSlice = createSlice({
         initiated_by: 0,
       };
       state.showModal = true;
+      state.worktreeId = action.payload.worktreeId ?? null;
     },
     taskUpdated: (state, action: { payload: RemoteSyncTask }) => {
       if (
@@ -57,6 +67,7 @@ export const remoteSyncSlice = createSlice({
     taskCleared: (state) => {
       state.currentTask = null;
       state.showModal = false;
+      state.worktreeId = null;
     },
     syncConflictVariantUpdated: (
       state,

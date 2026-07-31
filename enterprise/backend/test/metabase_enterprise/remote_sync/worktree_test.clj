@@ -3,10 +3,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.jobs :as transforms.jobs]
@@ -197,6 +199,88 @@
     (testing "the children of a main-app collection never include worktree collections"
       (is (empty? (collection/effective-children (t2/select-one :model/Collection :id main-collection)))))))
 
+(deftest worktree-collection-items-list-its-content-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-items"}
+                 :model/Collection {main-collection :id} {}
+                 :model/Card {main-card :id} {:collection_id main-collection}
+                 :model/Collection {collection :id} {:worktree_id worktree}
+                 :model/Collection {child :id} {:location (format "/%d/" collection)}
+                 :model/Card {card :id} {:collection_id collection}
+                 :model/Dashboard {dashboard :id} {:collection_id collection}]
+    (let [items (fn [collection-id]
+                  (->> (mt/user-http-request :crowberto :get 200 (format "collection/%d/items" collection-id))
+                       :data
+                       (map (juxt :model :id))
+                       set))]
+      (testing "a worktree collection's items are its cards, dashboards, and sub-collections"
+        (is (= #{["card" card] ["dashboard" dashboard] ["collection" child]}
+               (items collection))))
+      (testing "a main-app collection's items never include worktree content"
+        (is (= #{["card" main-card]}
+               (items main-collection))))
+      (testing "a nested worktree collection's breadcrumbs climb through its worktree ancestors"
+        (is (=? {:effective_ancestors [{:id "root"} {:id collection}]}
+                (mt/user-http-request :crowberto :get 200 (format "collection/%d" child))))))))
+
+(deftest worktree-content-is-self-contained-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-self-contained"}
+                 :model/RemoteSyncWorktree {other-worktree :id} {:branch "feature-other"}
+                 :model/Collection {main-synced :id} {:is_remote_synced true}
+                 :model/Collection {collection :id} {:worktree_id worktree :is_remote_synced true}
+                 :model/Collection {other-collection :id} {:worktree_id other-worktree :is_remote_synced true}
+                 :model/Card {worktree-card :id} {:collection_id collection
+                                                  :dataset_query (mt/native-query {:query "SELECT 1"})}
+                 :model/Card {main-synced-card :id} {:collection_id main-synced
+                                                     :dataset_query (mt/native-query {:query "SELECT 1"})}
+                 :model/Card {other-worktree-card :id} {:collection_id other-collection
+                                                        :dataset_query (mt/native-query {:query "SELECT 1"})}]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-model-cleanup [:model/Card]
+        (try
+          (let [save! (fn [status collection-id source-card-id]
+                        (mt/user-http-request :crowberto :post status "card"
+                                              {:name                   "New question"
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :collection_id          collection-id
+                                               :dataset_query          (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}))]
+            (testing "content in a worktree can use content from the same worktree"
+              (is (=? {:collection_id collection}
+                      (save! 200 collection worktree-card))))
+            (testing "content in a worktree cannot use the main app's remote-synced content"
+              (is (= "Uses content from a different remote sync worktree."
+                     (:message (save! 400 collection main-synced-card)))))
+            (testing "content in a worktree cannot use another worktree's content"
+              (is (= "Uses content from a different remote sync worktree."
+                     (:message (save! 400 collection other-worktree-card)))))
+            (testing "main-app remote-synced content cannot use a worktree's content"
+              (is (= "Uses content from a different remote sync worktree."
+                     (:message (save! 400 main-synced worktree-card))))))
+          (finally
+            ;; production worktree deletion (`impl/delete-worktree!`) clears these; with-temp teardown doesn't
+            (t2/delete! :model/RemoteSyncObject :worktree_id [:in [worktree other-worktree]])))))))
+
+(deftest worktree-content-is-editable-in-read-only-mode-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-read-only"}
+                 :model/Collection {collection :id} {:worktree_id worktree :is_remote_synced true}
+                 :model/Collection {main-synced :id} {:is_remote_synced true}
+                 :model/Card {worktree-card :id} {:collection_id collection}
+                 :model/Card {main-synced-card :id} {:collection_id main-synced}]
+    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (testing "a worktree is a working copy of its branch, so its content stays writable"
+        (is (mi/can-write? (t2/select-one :model/Card :id worktree-card))))
+      (testing "the main app's remote-synced content is read-only"
+        (is (not (mi/can-write? (t2/select-one :model/Card :id main-synced-card))))))))
+
+(deftest worktree-sync-outcome-reports-the-worktree-branch-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-outcome"}]
+    (testing "a worktree operation's outcome reports the worktree's own branch"
+      (binding [serdes/*worktree-id* worktree]
+        (is (= "feature-outcome" (#'impl/outcome-branch)))))
+    (testing "a main-app operation's outcome reports the remote-sync-branch setting"
+      (mt/with-temporary-setting-values [remote-sync-branch "main"]
+        (is (= "main" (#'impl/outcome-branch)))))))
+
 (deftest worktree-transforms-never-run-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-k"}
                  :model/Collection {collection :id} {:worktree_id worktree :namespace "transforms"}
@@ -270,3 +354,109 @@
              (mt/user-http-request :rasta :post 403 "ee/remote-sync/worktree" {:branch "nope"})))
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "ee/remote-sync/worktree/%d" worktree)))))))
+
+(deftest snippet-listing-is-scoped-per-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-snippet-list"}
+                 :model/Collection {snippet-collection :id} {:namespace "snippets" :worktree_id worktree}
+                 :model/NativeQuerySnippet {main-snippet :id} {:name "main-app snippet"}
+                 :model/NativeQuerySnippet {worktree-snippet :id} {:name "checked-out snippet"
+                                                                   :collection_id snippet-collection}]
+    (testing "the default listing is the main app's"
+      (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "native-query-snippet")))]
+        (is (contains? ids main-snippet))
+        (is (not (contains? ids worktree-snippet)))))
+    (testing "?worktree-id= returns only that worktree's snippets"
+      (is (= [worktree-snippet]
+             (map :id (mt/user-http-request :crowberto :get 200 "native-query-snippet"
+                                            :worktree-id worktree)))))
+    (testing "worktree snippets are admin-only"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "native-query-snippet"
+                                   :worktree-id worktree))))))
+
+(deftest collection-listings-are-scoped-per-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-collection-list"}
+                 :model/Collection {main-collection :id} {}
+                 :model/Collection {worktree-collection :id} {:worktree_id worktree}]
+    (testing "GET /api/collection?worktree-id= returns the virtual root plus the worktree's collections"
+      (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "collection"
+                                                    :worktree-id worktree)))]
+        (is (= #{"root" worktree-collection} ids))
+        (is (not (contains? ids main-collection)))))
+    (testing "GET /api/collection/tree?worktree-id= returns only the worktree's collections"
+      (is (= [worktree-collection]
+             (map :id (mt/user-http-request :crowberto :get 200 "collection/tree"
+                                            :worktree-id worktree)))))
+    (testing "worktree listings are admin-only"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "collection" :worktree-id worktree)))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "collection/tree" :worktree-id worktree))))))
+
+(deftest worktree-content-is-not-indexed-for-search-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-search"}
+                 :model/Collection {worktree-collection :id} {:worktree_id worktree}
+                 :model/Collection {main-collection :id} {}
+                 :model/Card {worktree-card :id} {:collection_id worktree-collection}
+                 :model/Card {main-card :id} {:collection_id main-collection}
+                 :model/Dashboard {worktree-dashboard :id} {:collection_id worktree-collection}
+                 :model/Dashboard {main-dashboard :id} {:collection_id main-collection}]
+    (let [indexed-ids (fn [search-model ids]
+                        (->> (-> (#'search.ingestion/spec-index-query-where search-model [:in :this.id ids])
+                                 (assoc :select [[:this.id :id]])
+                                 t2/query)
+                             (map :id)
+                             set))]
+      (testing "worktree cards are not fed to the search index"
+        (is (= #{main-card} (indexed-ids "card" [main-card worktree-card]))))
+      (testing "worktree dashboards are not fed to the search index"
+        (is (= #{main-dashboard} (indexed-ids "dashboard" [main-dashboard worktree-dashboard]))))
+      (testing "worktree collections are not fed to the search index"
+        (is (= #{main-collection}
+               (indexed-ids "collection" [main-collection worktree-collection])))))))
+
+(deftest create-collection-in-worktree-api-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-new-collection"}]
+    (mt/with-model-cleanup [:model/Collection]
+      (try
+        (testing "POST /api/ee/remote-sync/worktree/:id/collection creates a root collection in the worktree"
+          (let [{collection :id} (mt/user-http-request :crowberto :post 200
+                                                       (format "ee/remote-sync/worktree/%d/collection" worktree)
+                                                       {:name "Worktree folder"
+                                                        :description "A place for things"})]
+            (is (=? {:worktree_id      worktree
+                     :location         "/"
+                     :description      "A place for things"
+                     :is_remote_synced true}
+                    (t2/select-one :model/Collection :id collection)))
+            (testing "content created inside it joins the worktree"
+              (mt/with-temp [:model/Card {card :id} {:collection_id collection}]
+                (is (= worktree (worktree-id :model/Card card)))))))
+        (testing "404s for an unknown worktree"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 "ee/remote-sync/worktree/13371337/collection"
+                                       {:name "nope"}))))
+        (testing "superuser-only"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403
+                                       (format "ee/remote-sync/worktree/%d/collection" worktree)
+                                       {:name "nope"}))))
+        (finally
+          ;; production worktree deletion (`impl/delete-worktree!`) clears these; with-temp teardown doesn't
+          (t2/delete! :model/RemoteSyncObject :worktree_id worktree))))))
+
+(deftest worktree-changes-are-tracked-in-their-own-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-dirty-tracking"}
+                 :model/Collection {worktree-collection :id} {:worktree_id worktree :is_remote_synced true}
+                 :model/Card card {:dataset_query (mt/mbql-query venues)
+                                   :collection_id worktree-collection}]
+    (try
+      (t2/delete! :model/RemoteSyncObject :model_type "Card" :model_id (:id card))
+      (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)})
+      (testing "the tracking row carries the worktree, so the change lands in the worktree's dirty state"
+        (is (=? {:model_type  "Card"
+                 :worktree_id worktree}
+                (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))))
+      (finally
+        ;; production worktree deletion (`impl/delete-worktree!`) clears these; with-temp teardown doesn't
+        (t2/delete! :model/RemoteSyncObject :worktree_id worktree)))))

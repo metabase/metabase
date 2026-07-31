@@ -1571,7 +1571,9 @@
    :where [:and [:or [:= :collection.namespace nil]
                  [:= :collection.namespace "shared-tenant-collection"]
                  [:= :collection.namespace "tenant-specific"]]
-           [:= :this.document_id nil]]
+           [:= :this.document_id nil]
+           ;; remote-sync worktree copies are not indexed; search is the main app's
+           [:= :this.worktree_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

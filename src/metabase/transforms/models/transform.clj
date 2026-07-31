@@ -595,4 +595,6 @@
                   :source-type   true}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
-                  :transform-id   :id}})
+                  :transform-id   :id}
+   ;; remote-sync worktree copies are not indexed; search is the main app's
+   :where        [:= :this.worktree_id nil]})

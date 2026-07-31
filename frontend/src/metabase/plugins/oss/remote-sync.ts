@@ -1,29 +1,41 @@
-import type {
-  BaseQueryFn,
-  QueryDefinition,
-  TagDescription,
-} from "@reduxjs/toolkit/query";
+import type { TagDescription } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
-import type { TagType } from "metabase/api/tags";
-import type { UseQuery } from "metabase/api/types/rtk";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
+import type {
+  EntityPickerOptions,
+  OmniPickerCollectionItem,
+  OmniPickerFolderItem,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
 } from "metabase/plugins";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { DispatchFn } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type {
-  RemoteSyncChangesResponse,
+  Collection,
   RemoteSyncEntity,
+  RemoteSyncWorktreeId,
 } from "metabase-types/api";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
   onSelect?: (item: ITreeNodeItem) => void;
+};
+
+export type WorktreesSidebarSectionProps = {
+  onItemSelect: () => void;
+  selectedId?: number | string;
+};
+
+export type WorktreeSwitcherProps = {
+  value: RemoteSyncWorktreeId | null;
+  onChange: (worktreeId: RemoteSyncWorktreeId | null) => void;
 };
 
 export interface GitSettingsModalProps {
@@ -49,11 +61,7 @@ export interface RemoteSyncDirtyState {
   /** Check if any dirty entity (including collections) is in the given set of IDs */
   hasDirtyInCollectionTree: (collectionIds: Set<number>) => boolean;
   /** Refetch the dirty state data */
-  refetch: ReturnType<
-    UseQuery<
-      QueryDefinition<void, BaseQueryFn, TagType, RemoteSyncChangesResponse>
-    >
-  >["refetch"];
+  refetch: () => unknown;
 }
 
 const getDefaultPluginRemoteSync = () => ({
@@ -61,6 +69,8 @@ const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+  WorktreesSidebarSection: PluginPlaceholder,
+  WorktreeSwitcher: PluginPlaceholder,
   // Unjustified type cast. FIXME
   GitSyncAppBarControls: PluginPlaceholder as ComponentType,
   // Unjustified type cast. FIXME
@@ -87,6 +97,18 @@ const getDefaultPluginRemoteSync = () => ({
     ({
       isCollectionDirty: false,
     }) as unknown as RemoteSyncDirtyState,
+  // Entity-picker "Worktrees" section (remote sync is enterprise-only, so OSS shows nothing)
+  useWorktreesPickerRootItem: (
+    _options: EntityPickerOptions,
+  ): OmniPickerCollectionItem | null => null,
+  isWorktreesRootItem: (_item: OmniPickerItem) => false,
+  isWorktreeFolderItem: (_item: OmniPickerItem) => false,
+  WorktreesItemList: PluginPlaceholder,
+  WorktreeCollectionsItemList: PluginPlaceholder,
+  getWorktreePickerBasePath: (_args: {
+    collection: Collection;
+    dispatch: DispatchFn;
+  }): Promise<OmniPickerCollectionItem[] | null> => Promise.resolve(null),
 });
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -94,6 +116,8 @@ export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
+  WorktreesSidebarSection: ComponentType<WorktreesSidebarSectionProps>;
+  WorktreeSwitcher: ComponentType<WorktreeSwitcherProps>;
   GitSyncAppBarControls: ComponentType;
   GitSettingsModal: ComponentType<GitSettingsModalProps>;
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
@@ -115,6 +139,25 @@ export const PLUGIN_REMOTE_SYNC: {
   useHasTransformDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
+  /** The "Worktrees" root item for the entity picker, or null when worktrees shouldn't be offered. */
+  useWorktreesPickerRootItem: (
+    options: EntityPickerOptions,
+  ) => OmniPickerCollectionItem | null;
+  isWorktreesRootItem: (item: OmniPickerItem) => boolean;
+  isWorktreeFolderItem: (item: OmniPickerItem) => boolean;
+  WorktreesItemList: ComponentType<{ pathIndex: number }>;
+  WorktreeCollectionsItemList: ComponentType<{
+    parentItem: OmniPickerFolderItem;
+    pathIndex: number;
+  }>;
+  /**
+   * Picker path prefix for a collection inside a worktree — the "Worktrees" root, the worktree's
+   * folder, and the worktree's root-level ancestor — or null when the worktree can't be resolved.
+   */
+  getWorktreePickerBasePath: (args: {
+    collection: Collection;
+    dispatch: DispatchFn;
+  }) => Promise<OmniPickerCollectionItem[] | null>;
 } = getDefaultPluginRemoteSync();
 
 /**

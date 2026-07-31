@@ -167,9 +167,9 @@
   (= (:type collection) library-metrics-collection-type))
 
 (defn remote-synced-collection
-  "Get the remote-synced collection if it exists."
+  "Get the main app's remote-synced collection if it exists. Worktree checkouts of it are excluded."
   []
-  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
+  (t2/select-one :model/Collection :is_remote_synced true :location "/" :worktree_id nil))
 
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
@@ -185,9 +185,10 @@
   (pos-int? (t2/count :model/Collection :is_remote_synced true)))
 
 (defn library-collection
-  "Get the 'library' collection, if it exists."
+  "Get the main app's 'library' collection, if it exists. A remote-sync worktree may hold its own checked-out
+  copy of the library (same `:type`, `:worktree_id` set); those are never returned here."
   []
-  (t2/select-one :model/Collection :type library-collection-type))
+  (t2/select-one :model/Collection :type library-collection-type :worktree_id nil))
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
@@ -921,7 +922,11 @@
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             (when-not (:include-worktrees? visibility-config)
-              [:= :c.worktree_id (:worktree-id visibility-config)])
+              ;; inlined like the other ids in this query: H2 loses bind parameters in a CTE referenced
+              ;; from a derived table, silently matching nothing
+              (if-some [worktree-id (:worktree-id visibility-config)]
+                [:= :c.worktree_id [:inline worktree-id]]
+                [:= :c.worktree_id nil]))
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
@@ -1024,8 +1029,11 @@
   "Given a seq of `collections`, batch hydrates them with their effective location."
   [collections]
   (when (seq collections)
+    ;; worktree collections are included: a worktree collection's ancestors are its worktree's collections,
+    ;; and whether the user may see them is the can-read? filtering downstream, not a path concern
     (let [collection-ids (visible-collection-ids {:include-archived-items :all
-                                                  :include-trash-collection? true})]
+                                                  :include-trash-collection? true
+                                                  :include-worktrees? true})]
       (for [collection collections]
         (when (some? collection)
           (assoc collection
@@ -1292,14 +1300,18 @@
     (case model-key
       :model/Collection
       ;; Collections use their own :id for eligibility, plus namespace and is_remote_synced
-      (t2/select [model-key :id :namespace :is_remote_synced] :id [:in ids])
+      (t2/select [model-key :id :namespace :is_remote_synced :worktree_id] :id [:in ids])
       :model/Table
       (t2/select [model-key :id :collection_id :is_published] :id [:in ids])
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
-      ;; Default - most models just need id and collection_id
-      (t2/select [model-key :id :collection_id] :id [:in ids]))))
+      ;; Default - most models just need id and collection_id, plus the worktree they belong to when their
+      ;; table carries one
+      (t2/select (into [model-key :id :collection_id]
+                       (when (serdes/worktree-scoped? model-key)
+                         [:worktree_id]))
+                 :id [:in ids]))))
 
 (defn- filter-eligible-dependents
   "Filter a list of dependent info maps to only include those that are eligible for remote sync.
@@ -1369,6 +1381,59 @@
       (let [direct-dependents (get all-remote-synced-descendants [(name (t2/model model)) id] [])]
         (filter-eligible-dependents direct-dependents)))))
 
+(defn- in-existing-collection?
+  "Whether `model` -- or, for a Collection, the collection itself -- resolves to a Collection row. Dependency
+  checks only apply to content that lives in a collection."
+  [model]
+  (some? (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection)
+                                                (:id model)
+                                                (:collection_id model)))))
+
+(defn- dependency-instances
+  "Instances of the content `model` depends on, per the serdes descendants graph, grouped by model key. Only
+  collectable models are included. Instances carry the fields needed for remote-sync eligibility checks;
+  worktree-scoped models also carry `:worktree_id`."
+  [{:keys [id] :as model}]
+  (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
+    (into {}
+          (for [m (collectable-models)
+                :let [descendant-ids (set (get descendants (name m)))]
+                :when (seq descendant-ids)]
+            [m (select-for-eligibility-check m descendant-ids)]))))
+
+(defn- non-eligible-dependency-ids
+  "IDs of dependency instances that are not eligible for remote sync. `deps-by-model` is a map of model key to
+  instance seq, as returned by [[dependency-instances]]."
+  [deps-by-model]
+  (apply set/union
+         (for [[m instances] deps-by-model
+               :let [eligibility-map (remote-sync/batch-model-eligible? m instances)]]
+           (into #{}
+                 (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
+                 eligibility-map))))
+
+(defn- cross-worktree-dependency-ids
+  "IDs of dependency instances whose `worktree_id` differs from `worktree-id` (`nil` is the main app). Models
+  that are not worktree-scoped -- their tables carry no `worktree_id` -- are skipped."
+  [worktree-id deps-by-model]
+  (apply set/union
+         (for [[m instances] deps-by-model
+               :when (serdes/worktree-scoped? m)]
+           (into #{}
+                 (comp (remove #(= (:worktree_id %) worktree-id))
+                       (map :id))
+                 instances))))
+
+(defn- model-worktree-id
+  "The remote-sync worktree `model` belongs to -- a Collection's own `worktree_id`, other content's collection's.
+  `nil` is the main app."
+  [model]
+  (if (contains? model :worktree_id)
+    (:worktree_id model)
+    (if (= (t2/model model) :model/Collection)
+      (t2/select-one-fn :worktree_id :model/Collection :id (:id model))
+      (remote-sync/worktree-id-of :model/Collection (:collection_id model)))))
+
 (defn non-remote-synced-dependencies
   "Finds dependencies of a model that are not eligible for remote sync.
    Uses spec-based eligibility rules which account for special cases like
@@ -1377,30 +1442,35 @@
   Takes model (the model to check dependencies for).
 
   Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync."
-  [{:keys [id] :as model}]
-  (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
-    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
-      (apply set/union
-             (for [m (collectable-models)
-                   :let [key (name m)
-                         descendant-ids (set (get descendants key))]
-                   :when (seq descendant-ids)]
-               (let [instances (select-for-eligibility-check m descendant-ids)
-                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
-                 (into #{}
-                       (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
-                       eligibility-map)))))
+  [model]
+  (if (in-existing-collection? model)
+    (non-eligible-dependency-ids (dependency-instances model))
     #{}))
 
-(defn check-non-remote-synced-dependencies
-  "Checks if a model has non-remote-synced-dependencies and throws if it does.
+(defn cross-worktree-dependencies
+  "Finds dependencies of a model that belong to a different remote-sync worktree than the model itself --
+  worktree content is self-contained, and main-app content never uses a worktree's copy.
 
   Takes model (the model to check dependencies for).
 
-  Returns the model if no non-remote-synced dependencies are found.
-
-  Throws an ex-info object with non-remote-synced-dependencies and a 400 status code if dependencies are found."
+  Returns a set of model IDs for dependencies of the given model that live in a different worktree."
   [model]
+  (if (in-existing-collection? model)
+    (cross-worktree-dependency-ids (model-worktree-id model) (dependency-instances model))
+    #{}))
+
+(defn check-non-remote-synced-dependencies
+  "Checks that `model` only depends on content valid for its remote-sync scope: every dependency must live in
+  the same remote-sync worktree as `model`, and must itself be eligible for remote sync.
+
+  Returns the model if all dependencies are valid.
+
+  Throws an ex-info object with the offending model IDs and a 400 status code otherwise."
+  [model]
+  (when-let [cross-worktree-deps (not-empty (cross-worktree-dependencies model))]
+    (throw (ex-info (str (deferred-tru "Uses content from a different remote sync worktree."))
+                    {:cross-worktree-models cross-worktree-deps
+                     :status-code 400})))
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
                     {:non-remote-synced-models non-remote-synced-deps
@@ -2501,10 +2571,13 @@
                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
-   :where [:or [:= :namespace nil]
-           [:= :namespace "analytics"]
-           [:= :namespace "shared-tenant-collection"]
-           [:= :namespace "tenant-specific"]]
+   :where [:and
+           [:or [:= :namespace nil]
+            [:= :namespace "analytics"]
+            [:= :namespace "shared-tenant-collection"]
+            [:= :namespace "tenant-specific"]]
+           ;; remote-sync worktree copies are not indexed; search is the main app's
+           [:= :this.worktree_id nil]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and

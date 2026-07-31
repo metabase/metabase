@@ -88,9 +88,10 @@
   By default, library-type collections are excluded.
 
   Likewise, remote-sync worktree collections -- a checked-out copy of a whole collection tree -- are excluded
-  unless `include-worktrees?` is `true`. "
+  unless `include-worktrees?` is `true`, or a single worktree's collections are requested via `worktree-id`
+  (which returns *only* that worktree's collections). "
   [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
-           include-worktrees?]}]
+           include-worktrees? worktree-id]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -113,8 +114,9 @@
                           [:not-in :type [collection/library-collection-type
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
-                       (when-not include-worktrees?
-                         (remote-sync/exclude-worktrees-clause))
+                       (cond
+                         worktree-id              [:= :worktree_id worktree-id]
+                         (not include-worktrees?) (remote-sync/exclude-worktrees-clause))
                        [:or
                         (when (contains? namespaces nil)
                           [:= :namespace nil])
@@ -127,7 +129,9 @@
                                                       :exclude)
                          :include-trash-collection? true
                          :permission-level          :read
-                         :archive-operation-id      nil})]
+                         :archive-operation-id      nil
+                         :worktree-id               worktree-id
+                         :include-worktrees?        (boolean include-worktrees?)})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -154,11 +158,16 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
-                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]} :- [:map
+                                                                                             [:archived                       {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                                                             [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
+                                                                                             ;; return ONLY the given worktree's collections
+                                                                                             [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+  ;; worktree content is admin-only
+  (when worktree-id
+    (api/check-superuser))
   (as->
    (select-collections {:archived                       (boolean archived)
                         :exclude-other-user-collections exclude-other-user-collections
@@ -169,8 +178,11 @@
                                                           #{nil})
                         :shallow                        false
                         :personal-only                  personal-only
-                        :include-library?               true}) collections
-    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+                        :include-library?               true
+                        :worktree-id                    worktree-id}) collections
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`.
+    ;; The virtual root is included for worktree listings too: a worktree's root-level content
+    ;; (e.g. snippets with no collection) hangs off it just like the main app's.
     (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
@@ -253,19 +265,24 @@
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
   [_route-params
-   {:keys [exclude-archived exclude-other-user-collections include-library include-worktrees
+   {:keys [exclude-archived exclude-other-user-collections include-library include-worktrees worktree-id
            namespace namespaces shallow collection-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
        [:include-worktrees              {:default false} [:maybe :boolean]]
+       ;; return ONLY the given worktree's collections -- how the FE lazily loads one worktree's tree
+       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
        [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
+  ;; worktree content is admin-only
+  (when worktree-id
+    (api/check-superuser))
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
@@ -278,7 +295,8 @@
                                              :shallow                        shallow
                                              :collection-id                  collection-id
                                              :include-library?               include-library
-                                             :include-worktrees?             include-worktrees})
+                                             :include-worktrees?             include-worktrees
+                                             :worktree-id                    worktree-id})
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -1109,7 +1127,10 @@
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
-                     :include-trash-collection? archived?}
+                     :include-trash-collection? archived?
+                     ;; a worktree collection lists its own worktree's content; a main-app collection never
+                     ;; lists worktree content
+                     :worktree-id (:worktree_id collection)}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
