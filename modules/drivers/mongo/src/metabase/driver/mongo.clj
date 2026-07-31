@@ -60,9 +60,13 @@
 (defn- srv-target-hosts
   "Resolve the `_mongodb._tcp.<host>` SRV record that a `mongodb+srv://` connection string expands to, returning the
   target hostnames. `mongodb+srv` puts a layer of caller-controlled DNS indirection in front of the real servers, so
-  checking only the SRV name itself would leave the hosts actually connected to unchecked. Returns nil when this
-  preflight lookup fails; Mongo's guarded transport resolver remains the enforcement point for addresses discovered
-  when the client connects."
+  checking only the SRV name itself would leave the hosts actually connected to unchecked.
+
+  Returns nil when this preflight lookup fails, unlike the parsing in [[driver/connection-hosts]], which fails closed.
+  The two differ because this is a live DNS query: it can fail for reasons that have nothing to do with the details
+  being validated, and failing closed would make a flaky resolver refuse every `mongodb+srv://` database. Nothing is
+  lost by being lenient here -- [[metabase.driver.mongo.connection]] installs an `InetAddressResolver` that checks
+  every SRV target against the same policy as the client connects."
   [host]
   (try
     (let [^InitialDirContext context (InitialDirContext.)]
@@ -80,20 +84,26 @@
     (catch Throwable _ nil)))
 
 (defmethod driver/connection-hosts :mongo
-  [_driver details]
+  [_driver {:keys [use-conn-uri host] :as details}]
   ;; Mongo takes its hosts from `:host` *or*, when `use-conn-uri` is set, from anywhere inside `:conn-uri` -- and
   ;; either may name several hosts (a replica set). Parsing the connection string the driver itself will use is the
   ;; only way to be sure we see the same hosts it will connect to.
-  (let [conn-string (try (mongo.connection/db-details->connection-string details) (catch Throwable _ nil))
-        hosts       (try
-                      (vec (.getHosts (ConnectionString. conn-string no-op-dns-client)))
-                      (catch Throwable _
-                        ;; an unparseable connection string never connects anywhere; fall back to the plain host field
-                        (filterv string? [(:host details)])))
-        hosts       (cond-> hosts
-                      (some-> conn-string (str/starts-with? "mongodb+srv://"))
-                      (into (mapcat srv-target-hosts hosts)))]
-    (driver/hosts-from-details {:host (str/join "," hosts)} [:host])))
+  (if (and (not use-conn-uri) (str/blank? host))
+    ;; nothing to parse and nothing to connect to. `:write_data_details` and `:admin_details` are overlays merged on
+    ;; top of `:details`, so they arrive here as partial maps; one that carries no host of its own names no hosts,
+    ;; which is what the default implementation reports for the same input.
+    []
+    ;; Parsing failures are left to propagate. It is tempting to fall back to the `:host` field, since a connection
+    ;; string this cannot parse is one `db-details->mongo-client-settings` cannot parse either, so it connects
+    ;; nowhere -- but that reasoning holds only as long as both keep building the same `ConnectionString`, and the
+    ;; fallback would have us validate a host the driver may never use. Better to report that we cannot say what the
+    ;; hosts are, which [[metabase.driver.util/validate-connection-hosts!]] turns into a refusal.
+    (let [conn-string (mongo.connection/db-details->connection-string details)
+          hosts       (vec (.getHosts (ConnectionString. conn-string no-op-dns-client)))
+          hosts       (cond-> hosts
+                        (str/starts-with? conn-string "mongodb+srv://")
+                        (into (mapcat srv-target-hosts hosts)))]
+      (driver/hosts-from-details {:host (str/join "," hosts)} [:host]))))
 
 (defmethod driver/can-connect? :mongo
   [_ db-details]

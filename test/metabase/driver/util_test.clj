@@ -685,6 +685,35 @@
                             :postgres
                             {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"})))))))
 
+(driver/register! ::broken-hosts-driver, :abstract? true)
+
+(defmethod driver/connection-hosts ::broken-hosts-driver
+  [_driver _details]
+  (throw (ex-info "boom" {:sensitive "should not reach the caller"})))
+
+(deftest validate-connection-hosts!-fails-closed-test
+  (testing "a driver that cannot say which hosts it would connect to is refused, not left unchecked"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"}))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"could not apply security policy"
+                            (driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"})))
+      (testing "the underlying failure is chained for the logs but kept out of the message"
+        (let [e (try (driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"})
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (= "boom" (ex-message (ex-cause e))))
+          (is (not (str/includes? (ex-message e) "boom")))))
+      (testing "details the driver multimethod itself refuses to dispatch on fail closed the same way"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"could not apply security policy"
+                              (driver.u/validate-connection-hosts!
+                               :postgres
+                               {:host "8.8.8.8" :connection-uri "jdbc:postgresql://127.0.0.1:5432/db"}))))))
+  (testing "with the policy off no hosts are extracted at all, so a broken driver is not an error"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (is (nil? (driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"}))))))
+
 (deftest validate-connection-hosts!-allowed-test
   (testing "allow-private permits private networks but still rejects loopback and link-local addresses"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]

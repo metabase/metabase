@@ -129,16 +129,18 @@
 (defn- hosts-metabase-will-connect-to
   "The hosts Metabase itself resolves and connects to for `details`. With an SSH tunnel enabled Metabase connects to
   the tunnel server and the tunnel server resolves the warehouse host on the far side, so `:host` is (legitimately)
-  often `localhost` there and only `:tunnel-host` is ours to check."
+  often `localhost` there and only `:tunnel-host` is ours to check.
+
+  Eager on purpose: [[validate-connection-hosts!]] turns a failure to extract the hosts into a refusal, which it can
+  only do if the failure happens at the call and not later, when a lazy sequence is walked."
   [driver details]
-  (concat
-   (if (:tunnel-enabled details)
-     (driver/hosts-from-details details [:tunnel-host])
-     ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could turn
-     ;; a bug in a driver's implementation into an unchecked connection.
-     (driver/connection-hosts driver details))
-   (when (:use-auth-provider details)
-     (driver/hosts-from-details details auth-provider-url-detail-keys))))
+  (into (if (:tunnel-enabled details)
+          (driver/hosts-from-details details [:tunnel-host])
+          ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could
+          ;; turn a bug in a driver's implementation into an unchecked connection.
+          (vec (driver/connection-hosts driver details)))
+        (when (:use-auth-provider details)
+          (driver/hosts-from-details details auth-provider-url-detail-keys))))
 
 (defn- blocked-network-address-exception []
   (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]
@@ -146,6 +148,14 @@
              {:status-code 400
               :message     message
               :errors      {:host (str (deferred-tru "check your host settings"))}})))
+
+(defn- unknown-connection-hosts-exception [cause]
+  (let [message (str (deferred-tru "Error resolving hosts: could not apply security policy."))]
+    (ex-info message
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}}
+             cause)))
 
 (defn validate-resolved-addresses!
   "Throw when any of the already-resolved `addresses` is disallowed by [[driver.settings/warehouse-allowed-networks]].
@@ -161,10 +171,14 @@
   [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
   [driver details]
   (let [policy (driver.settings/warehouse-allowed-networks)]
-    (when (and (not= policy :allow-all)
-               (some #(not (u.http/host-allowed-for-network-policy? policy %))
-                     (hosts-metabase-will-connect-to driver details)))
-      (throw (blocked-network-address-exception)))))
+    (when (not= policy :allow-all)
+      (let [hosts (try
+                    (hosts-metabase-will-connect-to driver details)
+                    (catch Throwable e
+                      (log/error e "Could not determine the hosts a connection to this database would open")
+                      (throw (unknown-connection-hosts-exception e))))]
+        (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
+          (throw (blocked-network-address-exception)))))))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
