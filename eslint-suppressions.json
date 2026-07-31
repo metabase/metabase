@@ -1,9 +1,4 @@
 {
-  "frontend/src/metabase/api/analytics.ts": {
-    "boundaries/element-types": {
-      "count": 1
-    }
-  },
   "frontend/src/metabase/api/api.ts": {
     "boundaries/element-types": {
       "count": 1
@@ -30,11 +25,6 @@
     }
   },
   "frontend/src/metabase/api/field.ts": {
-    "boundaries/element-types": {
-      "count": 1
-    }
-  },
-  "frontend/src/metabase/api/geojson.ts": {
     "boundaries/element-types": {
       "count": 1
     }
