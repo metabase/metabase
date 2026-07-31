@@ -32,17 +32,6 @@
 ;; namespace stays pure data, and the `documents` module stays clear of a `permissions` dependency
 ;; that would pull every documents change into the driver test suite.
 
-(def ^:private smart-link-model->db-model
-  {"card"       :model/Card
-   "dataset"    :model/Card
-   "metric"     :model/Card
-   "dashboard"  :model/Dashboard
-   "collection" :model/Collection
-   "table"      :model/Table
-   "database"   :model/Database
-   "document"   :model/Document
-   "user"       :model/User})
-
 (defn- smart-link-href
   [model {:keys [id db_id]}]
   (case model
@@ -88,7 +77,7 @@
   [links]
   (into {}
         (mapcat (fn [[model model-links]]
-                  (let [db-model (smart-link-model->db-model model)
+                  (let [db-model (prose-mirror/smart-link-model->db-model model)
                         ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
                         rows     (when db-model
                                    (try
@@ -120,7 +109,7 @@
                          :label (smart-link-label row)
                          :href (smart-link-href model row))
                  (do
-                   (when (smart-link-model->db-model model)
+                   (when (prose-mirror/smart-link-model->db-model model)
                      (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
                    node)))
              node))

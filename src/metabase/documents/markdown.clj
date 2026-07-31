@@ -59,6 +59,7 @@
   suite."
   (:require
    [clojure.string :as str]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.util.log :as log])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
@@ -115,16 +116,11 @@
 
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
 
-(def ^:private smart-link-model->db-model
-  {"card"       :model/Card
-   "dataset"    :model/Card
-   "metric"     :model/Card
-   "dashboard"  :model/Dashboard
-   "collection" :model/Collection
-   "table"      :model/Table
-   "database"   :model/Database
-   "document"   :model/Document
-   "user"       :model/User})
+;; The `{% entity %}` vocabulary is the key set of
+;; [[metabase.documents.prose-mirror/smart-link-model->db-model]]. Only membership is read here —
+;; which row a model denotes, and whether the caller may see it, belongs to whoever resolves the
+;; link, so this namespace still never touches the database. Parsing and serializing consult the
+;; same keys, so a model the grammar can't express stays literal text in both directions.
 
 ;;; ------------------------------------------------ Token grammar -------------------------------------------------
 
@@ -391,7 +387,7 @@
   [attrs-str]
   (let [{:keys [id model]} (parse-token-attrs attrs-str)
         id (if (string? id) (parse-scalar id) id)]
-    (when (and (pos-int? id) (contains? smart-link-model->db-model model))
+    (when (and (pos-int? id) (contains? prose-mirror/smart-link-model->db-model model))
       {:type  "smartLink"
        :attrs {:entityId id :model model :label nil :href "/"}})))
 
@@ -759,10 +755,11 @@
   "The `{% entity %}` token for a smartLink node's attrs, or nil when `model` isn't one this
   grammar can express — the mirror of [[entity-token->smart-link]], which likewise declines an
   unknown model rather than inventing a node. Interpolating `model` unescaped is safe precisely
-  because membership is checked first: no key in [[smart-link-model->db-model]] contains a quote,
+  because membership is checked first: no key of [[prose-mirror/smart-link-model->db-model]]
+  contains a quote,
   a newline, or a token delimiter."
   ^String [{:keys [entityId model]}]
-  (when (contains? smart-link-model->db-model model)
+  (when (contains? prose-mirror/smart-link-model->db-model model)
     (format "{%% entity id=\"%d\" model=\"%s\" %%}" (attr-pos-long "smartLink" :entityId entityId) model)))
 
 (defn- escape-card-name
