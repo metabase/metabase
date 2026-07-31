@@ -150,7 +150,9 @@
         (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
                               {:storage storage}
                               at)))
-    (reset! last-readiness-probe {:storage    storage
+    (reset! last-readiness-probe {;; The last backing we did establish, so a probe that couldn't find out
+                                  ;; doesn't erase the storage a later switch has to be noticed against.
+                                  :storage    (if resolved? storage previous-storage)
                                   :connected? connected?
                                   :resolved?  resolved?
                                   :at         at})))
