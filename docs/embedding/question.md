@@ -45,7 +45,7 @@ Before you start, an admin needs to [turn on guest embedding](./guest-embedding.
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase.
 5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an SSO embed, because in that case people can explore the data based on their data and collection permissions.)
-6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](#web-component-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
+6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#web-component-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
 7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
@@ -133,7 +133,7 @@ To get this code from the in-app wizard, set the `customer_id` parameter to **Lo
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
-For the full list of attributes, see [web component attributes](#web-component-attributes).
+For the full list of attributes, see [web component attributes](./question-reference.md#web-component-attributes).
 
 ### View-only charts using the React SDK
 
@@ -147,9 +147,7 @@ To embed a view-only chart with the [SDK](./sdk/introduction.md), use the `Stati
 
 The component has a default height, which you can change with the `height` prop. To inherit the height from the parent container, pass `100%`.
 
-#### `StaticQuestion` props
-
-{% include_file "{{ dirname }}/sdk/api/snippets/StaticQuestionProps.md" snippet="properties" %}
+For the full list of props, see [`StaticQuestion` props](./question-reference.md#staticquestion-props).
 
 ## Embed an interactive chart
 
@@ -172,7 +170,7 @@ Reference an existing question by ID. [Drill-through](../questions/visualization
 
 You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
 
-To control what people can do with the chart, check out [web component attributes](#web-component-attributes).
+To control what people can do with the chart, check out [web component attributes](./question-reference.md#web-component-attributes).
 
 ### Interactive charts using the React SDK
 
@@ -183,6 +181,8 @@ Use `InteractiveQuestion` when you want people to explore their data and customi
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question.tsx" %}
 ```
+
+For the full list of props, see [`InteractiveQuestion` props](./question-reference.md#interactivequestion-props).
 
 #### Customize what happens when someone clicks on a chart
 
@@ -200,53 +200,9 @@ You can also customize how custom actions look in the menu:
 {% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
 ```
 
-#### `InteractiveQuestion` props
-
-{% include_file "{{ dirname }}/sdk/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
-
 #### Customize the layout of an interactive chart
 
-By default, `InteractiveQuestion` comes with a layout that lets people view the question, apply filters and aggregations, and use the query builder:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-default-interactive-question" %}
-```
-
-To build your own layout, use namespaced components inside `InteractiveQuestion` (like `<InteractiveQuestion.Filter />`):
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
-```
-
-#### `InteractiveQuestion` components
-
-These components are available via the `InteractiveQuestion` namespace (like `<InteractiveQuestion.Filter />`). Use them to [customize the layout](#customize-the-layout-of-an-interactive-chart) of an interactive question.
-
-- [InteractiveQuestion.AlertsButton](./sdk/api/InteractiveQuestion.html#alertsbutton)
-- [InteractiveQuestion.Breakout](./sdk/api/InteractiveQuestion.html#breakout)
-- [InteractiveQuestion.BreakoutDropdown](./sdk/api/InteractiveQuestion.html#breakoutdropdown)
-- [InteractiveQuestion.ChartTypeDropdown](./sdk/api/InteractiveQuestion.html#charttypedropdown)
-- [InteractiveQuestion.ChartTypeSelector](./sdk/api/InteractiveQuestion.html#charttypeselector)
-- [InteractiveQuestion.DownloadWidget](./sdk/api/InteractiveQuestion.html#downloadwidget)
-- [InteractiveQuestion.DownloadWidgetDropdown](./sdk/api/InteractiveQuestion.html#downloadwidgetdropdown)
-- [InteractiveQuestion.Editor](./sdk/api/InteractiveQuestion.html#editor)
-- [InteractiveQuestion.EditorButton](./sdk/api/InteractiveQuestion.html#editorbutton)
-- [InteractiveQuestion.Filter](./sdk/api/InteractiveQuestion.html#filter)
-- [InteractiveQuestion.FilterDropdown](./sdk/api/InteractiveQuestion.html#filterdropdown)
-- [InteractiveQuestion.NavigationBackButton](./sdk/api/InteractiveQuestion.html#navigationbackbutton)
-- [InteractiveQuestion.QuestionSettings](./sdk/api/InteractiveQuestion.html#questionsettings)
-- [InteractiveQuestion.QuestionSettingsDropdown](./sdk/api/InteractiveQuestion.html#questionsettingsdropdown)
-- [InteractiveQuestion.QuestionVisualization](./sdk/api/InteractiveQuestion.html#questionvisualization)
-- [InteractiveQuestion.ResetButton](./sdk/api/InteractiveQuestion.html#resetbutton)
-- [InteractiveQuestion.SaveButton](./sdk/api/InteractiveQuestion.html#savebutton)
-- [InteractiveQuestion.SaveQuestionForm](./sdk/api/InteractiveQuestion.html#savequestionform)
-- [InteractiveQuestion.SqlParametersList](./sdk/api/InteractiveQuestion.html#sqlparameterslist)
-- [InteractiveQuestion.Summarize](./sdk/api/InteractiveQuestion.html#summarize)
-- [InteractiveQuestion.SummarizeDropdown](./sdk/api/InteractiveQuestion.html#summarizedropdown)
-- [InteractiveQuestion.Title](./sdk/api/InteractiveQuestion.html#title)
-- [InteractiveQuestion.VisualizationButton](./sdk/api/InteractiveQuestion.html#visualizationbutton)
-
-[InteractiveQuestion.BackButton](./sdk/api/InteractiveQuestion.html#backbutton) is deprecated. Use `InteractiveQuestion.NavigationBackButton` instead.
+`InteractiveQuestion` comes with a default layout that lets people view the question, apply filters and aggregations, and use the query builder. You can also build your own layout out of namespaced components like `<InteractiveQuestion.Filter />`. For examples of both, see [Customizing an interactive chart's layout](./question-reference.md#customize-the-layout-of-an-interactive-chart), and the full list of [`InteractiveQuestion` components](./question-reference.md#interactivequestion-components).
 
 ### Let people save their changes
 
@@ -342,11 +298,11 @@ To push values at runtime (controlled), set the `sqlParameters` property on the 
 
 ### Hide a parameter
 
-To hide a parameter from the question's UI, use the `hidden-parameters` attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` has no effect on a guest embed. To hide a parameter on a guest embed, set the parameter to **Locked** or leave it **Disabled** in the question's embed settings.
+To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` has no effect on a guest embed. To hide a parameter on a guest embed, set the parameter to **Locked** or leave it **Disabled** in the question's embed settings.
 
 ## Let people set up alerts on a question
 
-You can let people set up [alerts](../questions/alerts.md) on a saved question by passing `withAlerts` to `StaticQuestion` or `InteractiveQuestion`, or the `with-alerts` attribute on the web component.
+You can let people set up [alerts](../questions/alerts.md) on a saved question by passing `withAlerts` to `StaticQuestion` or `InteractiveQuestion`, or the [`with-alerts`](./question-reference.md#web-component-attributes) attribute on the web component.
 
 Metabase only shows the alerts button when all of these are true:
 
@@ -362,15 +318,9 @@ Alerts created in an embedded context only send to whoever's logged in, and they
 </MetabaseProvider>
 ```
 
-## Web component attributes
-
-These attributes apply to the `<metabase-question>` web component. For the SDK, see [`StaticQuestion` props](#staticquestion-props) and [`InteractiveQuestion` props](#interactivequestion-props).
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
-
 ## Customize chart appearance
 
-You can theme an embedded question and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md).
+You can theme an embedded question and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md). For every attribute and prop, see the [Question reference](./question-reference.md).
 
 - **Title**: show or hide the question title with `with-title` (web component) or `title` (SDK).
 - **Downloads**: show or hide download buttons with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
@@ -401,6 +351,7 @@ Metabase adds a "Powered by Metabase" banner to guest embeds (both charts and da
 
 ## Further reading
 
+- [Question reference](./question-reference.md)
 - [Embed the query builder](./query-builder.md)
 - [Appearance](./appearance.md)
 - [Modular embedding parameters](./parameters.md)

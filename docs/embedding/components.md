@@ -50,6 +50,7 @@ If you surround your attribute value with double quotes, make sure to use single
 
 - [Embed a chart](./question.md)
 - [Embed a query editor](./query-builder.md)
+- [Question reference](./question-reference.md), for `<metabase-question>` attributes and SDK props
 
 ## Browser
 

@@ -34,6 +34,10 @@ Embed a single chart, view-only or interactive, with web components or the React
 
 Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
 
+### [Question reference](./question-reference.md)
+
+Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.

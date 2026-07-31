@@ -74,7 +74,7 @@ By default, dashboard components take full page height (100vh). You can override
 
 ## Customizing drill-through question layout
 
-Drilling through or clicking on a question card in the dashboard will take you to the question view with the [default layout](../question.md#customize-the-layout-of-an-interactive-chart) for interactive questions.
+Drilling through or clicking on a question card in the dashboard will take you to the question view with the [default layout](../question-reference.md#customize-the-layout-of-an-interactive-chart) for interactive questions.
 
 To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component, with the custom view as the child component.
 
@@ -84,7 +84,7 @@ To customize the question layout, pass a `renderDrillThroughQuestion` prop to th
 {% include_file "{{ dirname }}/snippets/dashboards/custom-drill-through-question-layout.tsx" snippet="example-2" %}
 ```
 
-The `questionView` prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customize the layout](../question.md#customize-the-layout-of-an-interactive-chart).
+The `questionView` prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customize the layout](../question-reference.md#customize-the-layout-of-an-interactive-chart).
 
 ## Dashboard plugins
 

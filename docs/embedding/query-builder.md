@@ -36,6 +36,8 @@ With the SDK:
 
 To narrow down what people can start from, list the entity types you want in the data picker with the `entity-types` attribute (web component) or the `entityTypes` prop (SDK). For example, `entity-types="['model']"` limits the picker to [models](../data-modeling/models.md).
 
+Both query editors use the same `<metabase-question>` element as an embedded chart, so they take the same attributes and props. See the [Question reference](./question-reference.md).
+
 ## Embed the SQL editor
 
 ![Embedded SQL editor](./images/embedded-sql-editor.png)
@@ -69,6 +71,7 @@ With a web component, turn saving on with `is-save-enabled="true"`, and set the 
   target-collection="5"
 ></metabase-question>
 ```
+
 ### Saving with the React SDK
 
 With the SDK, saving is already on, so `targetCollection` is all you need. Setting `targetCollection` also hides the collection picker, so nobody has to decide where their question goes.
@@ -77,11 +80,12 @@ For the `isSaveEnabled`, `onBeforeSave`, and `onSave` props, check out [Let peop
 
 ## Customize the query builder's layout
 
-With the SDK, you can build your own layout out of the namespaced components inside `InteractiveQuestion`, like `<InteractiveQuestion.Editor />`. See [InteractiveQuestion components](./question.md#interactivequestion-components).
+With the SDK, you can build your own layout out of the namespaced components inside `InteractiveQuestion`, like `<InteractiveQuestion.Editor />`. See [InteractiveQuestion components](./question-reference.md#interactivequestion-components).
 
 ## Further reading
 
 - [Embed a chart](./question.md)
+- [Question reference](./question-reference.md)
 - [Modular embedding](./modular-embedding.md)
 - [Modular embedding SDK](./sdk/introduction.md)
 - [Modular embedding components](./components.md)
