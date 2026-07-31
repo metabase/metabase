@@ -8,6 +8,7 @@ import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { PublicMode } from "metabase/public/PublicMode";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -16,7 +17,6 @@ import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type { EntityToken } from "metabase-types/api/entity";
 
