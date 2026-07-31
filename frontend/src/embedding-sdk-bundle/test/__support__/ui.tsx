@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { seedApiQueryCache } from "__support__/rtk-query-cache";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -41,8 +41,7 @@ export function renderWithSDKProviders(
   // `settings` and the current user are served from the `getSessionProperties`
   // and `getCurrentUser` RTK Query caches rather than redux slices.
   // Settings are captured here and seeded through `preloadedState` below.
-  // The user entry is seeded by `createMockState` itself;
-  // the raw `currentUser` field is dropped by the reducer-name pick.
+  // The user entry is seeded by `createMockState` itself.
   let { settings: seededSettings, ...initialState }: Partial<StoreSeedState> =
     createMockState(storeInitialState);
 

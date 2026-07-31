@@ -223,7 +223,7 @@ export const dashboardApi = Api.injectEndpoints({
           ]),
         onQueryStarted: (_, { dispatch, queryFulfilled }) =>
           // Archiving the dashboard the current user has set as their custom
-          // homepage clears the homepage; drop it from the cached current user
+          // homepage clears the homepage. Drop it from the cached current user
           // too so the app doesn't redirect to an archived dashboard.
           handleQueryFulfilled(queryFulfilled, (dashboard) => {
             if (dashboard.archived) {

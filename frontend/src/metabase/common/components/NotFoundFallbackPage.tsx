@@ -7,8 +7,8 @@ import { replace } from "metabase/router";
 
 export const NotFoundFallbackPage = () => {
   const dispatch = useDispatch();
-  // A 404 can mean the session expired; re-check who we are
-  // and bounce to login if the current user can't be fetched.
+  // A 404 can mean the session expired.
+  // Re-check who we are and bounce to login if the current user can't be fetched.
   const [refetchCurrentUser] = useLazyGetCurrentUserQuery();
 
   useMount(() => {

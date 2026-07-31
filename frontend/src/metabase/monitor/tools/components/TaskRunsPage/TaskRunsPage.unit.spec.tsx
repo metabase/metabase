@@ -8,7 +8,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
@@ -23,24 +22,20 @@ const PATHNAME = Urls.monitorTasksRuns();
 
 interface SetupOpts {
   taskRunsResponse?: ListTaskRunsResponse;
-  error?: boolean;
   initialRoute?: string;
 }
 
-const setup = ({
-  taskRunsResponse = createMockTaskRunsResponse(),
-  error,
+const setup = async ({
+  taskRunsResponse = createMockTaskRunsResponse({
+    data: [createMockTaskRun()],
+  }),
   initialRoute = PATHNAME,
 }: SetupOpts = {}) => {
-  if (error) {
-    fetchMock.get("path:/api/task/runs", { status: 500 });
-  } else {
-    setupTaskRunsEndpoints(taskRunsResponse);
-  }
+  setupTaskRunsEndpoints(taskRunsResponse);
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  return renderWithProviders(
+  const utils = renderWithProviders(
     <Route path={PATHNAME} element={<TaskRunsPage />}>
       <Route path=":runId" />
     </Route>,
@@ -49,6 +44,13 @@ const setup = ({
       withRouter: true,
     },
   );
+
+  // One await for the page's async source: a rendered row means the task-runs
+  // response has been applied. (The loader is no settle signal — it can mount
+  // a tick after render, so waiting for its absence can pass early.)
+  await screen.findByTestId("task-run");
+
+  return utils;
 };
 
 const getLastRunsParams = () => {
@@ -68,7 +70,7 @@ const selectRange = async (label: string) => {
 
 describe("TaskRunsPage", () => {
   it("should display formatted datetime for started_at and ended_at", async () => {
-    setup({
+    await setup({
       taskRunsResponse: createMockTaskRunsResponse({
         data: [
           createMockTaskRun({
@@ -87,7 +89,7 @@ describe("TaskRunsPage", () => {
 
   it("should show raw ISO timestamp in tooltip on hover", async () => {
     const rawTimestamp = "2023-03-04T01:45:26.005475-08:00";
-    setup({
+    await setup({
       taskRunsResponse: createMockTaskRunsResponse({
         data: [
           createMockTaskRun({
@@ -105,7 +107,7 @@ describe("TaskRunsPage", () => {
   });
 
   it("should show the total results count below the table", async () => {
-    setup({
+    await setup({
       taskRunsResponse: createMockTaskRunsResponse({
         data: [createMockTaskRun()],
         total: 75,
@@ -113,12 +115,7 @@ describe("TaskRunsPage", () => {
         offset: 0,
       }),
     });
-    // `findByRole` rather than waiting on the loader: the loader can mount
-    // a tick after render, so waiting for its absence can pass before
-    // the data (and with it the pagination) has arrived.
-    const pagination = await screen.findByRole("navigation", {
-      name: "pagination",
-    });
+    const pagination = screen.getByRole("navigation", { name: "pagination" });
     expect(
       within(pagination).getByTestId("pagination-total"),
     ).toHaveTextContent("75");
@@ -126,7 +123,7 @@ describe("TaskRunsPage", () => {
   });
 
   it("should navigate to run details when a row is clicked", async () => {
-    const { history } = setup({
+    const { history } = await setup({
       taskRunsResponse: createMockTaskRunsResponse({
         data: [createMockTaskRun({ id: 55 })],
       }),
@@ -150,7 +147,7 @@ describe("TaskRunsPage", () => {
     });
 
     it("requests the default sorting", async () => {
-      setup();
+      await setup();
 
       await waitFor(() => {
         expect(fetchMock.callHistory.calls("path:/api/task/runs")).toHaveLength(
@@ -164,7 +161,7 @@ describe("TaskRunsPage", () => {
     });
 
     it("accepts sorting query params", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?sort_column=task_count&sort_direction=asc`,
       });
 
@@ -180,7 +177,7 @@ describe("TaskRunsPage", () => {
     });
 
     it("sorts by each sortable column", async () => {
-      const { history } = setup({
+      const { history } = await setup({
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
         }),
@@ -222,7 +219,7 @@ describe("TaskRunsPage", () => {
     });
 
     it("toggles sort direction when clicking the active sorted column", async () => {
-      const { history } = setup({
+      const { history } = await setup({
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
         }),
@@ -263,7 +260,7 @@ describe("TaskRunsPage", () => {
     });
 
     it("resets pagination on sorting change", async () => {
-      const { history } = setup({
+      const { history } = await setup({
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
           total: 75,
@@ -308,9 +305,8 @@ describe("TaskRunsPage", () => {
 
   describe("started-at filter with include-today", () => {
     it("requests with the ~ suffix when today is included", async () => {
-      setup();
-      await waitForLoaderToBeRemoved();
-
+      await setup();
+  
       await openDatePicker();
       await selectRange("Previous week");
 
@@ -328,11 +324,10 @@ describe("TaskRunsPage", () => {
     });
 
     it("keeps the selected entity when only include-today changes", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?run-type=alert&started-at=past1weeks&entity-type=card&entity-id=42`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       await openDatePicker();
       await userEvent.click(
         screen.getByRole("switch", { name: "Include today" }),
@@ -347,11 +342,10 @@ describe("TaskRunsPage", () => {
     });
 
     it("clears the selected entity when the range changes", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?run-type=alert&started-at=past1weeks&entity-type=card&entity-id=42`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       await openDatePicker();
       await selectRange("Previous 30 days");
 
@@ -364,11 +358,10 @@ describe("TaskRunsPage", () => {
     });
 
     it("restores the include-today filter from the URL", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?started-at=past1weeks&include-today=true`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       expect(
         screen.getByText("Previous week, including today"),
       ).toBeInTheDocument();
@@ -376,44 +369,40 @@ describe("TaskRunsPage", () => {
     });
 
     it("does not append the ~ suffix for a this* range", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?started-at=thisday&include-today=true`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       expect(getLastRunsParams().get("started-at")).toBe("thisday");
     });
   });
 
   describe("entity filter", () => {
     it("ignores a lone entity-id without a matching entity-type", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?entity-id=5`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       const params = getLastRunsParams();
       expect(params.get("entity-id")).toBeNull();
       expect(params.get("entity-type")).toBeNull();
     });
 
     it("ignores a lone entity-type without a matching entity-id", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?entity-type=card`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       const params = getLastRunsParams();
       expect(params.get("entity-id")).toBeNull();
       expect(params.get("entity-type")).toBeNull();
     });
 
     it("forwards the entity pair when both are present", async () => {
-      setup({
+      await setup({
         initialRoute: `${PATHNAME}?entity-type=card&entity-id=5`,
       });
-      await waitForLoaderToBeRemoved();
-
+  
       const params = getLastRunsParams();
       expect(params.get("entity-type")).toBe("card");
       expect(params.get("entity-id")).toBe("5");

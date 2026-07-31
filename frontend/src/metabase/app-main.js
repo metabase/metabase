@@ -54,7 +54,8 @@ init(mainReducers, getRoutes, (store) => {
     // The session is gone, which means every cached API response (including the current
     // user, which the auth route guards read) is stale.
     // Drop them all, but only if there was a session to invalidate.
-    // Otherwise, we might be in the middle of a login flow, and dropping the cache would abort the very request carrying the 401.
+    // Otherwise, we might be in the middle of a login flow,
+    // and dropping the cache would abort the very request carrying the 401.
     if (getUser(store.getState())) {
       store.dispatch(Api.util.resetApiState());
     }

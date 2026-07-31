@@ -440,12 +440,11 @@ export const metabot = createSlice({
     ),
   },
   extraReducers: (builder) => {
-    // `castDraft` so the returned state is compared to the draft state type
-    // by identity — the structural check trips TS2589 now that the api type
-    // graph has grown.
-    builder.addCase(logout.pending, () => castDraft(getMetabotInitialState()));
-    // CONVERSATION REQUEST REDUCERS
     builder
+      .addCase(logout.pending, (state) => {
+        Object.assign(state, getMetabotInitialState());
+      })
+      // CONVERSATION REQUEST REDUCERS
       .addCase(sendAgentRequest.pending, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {

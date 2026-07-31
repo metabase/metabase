@@ -2,7 +2,7 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { seedApiQueryCache } from "__support__/rtk-query-cache";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import {
   setupCreateCollectionEndpoint,
   setupDeleteCollectionEndpoint,

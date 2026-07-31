@@ -22,9 +22,9 @@ import { createMockVisualizerState } from "./visualizer";
 /**
  * The shape accepted (and returned) by mock-state builders and test render
  * harnesses: `State` plus seed-only fields with no reducer behind them.
- * `settings` is mirrored into `window.MetabaseBootstrap` and `currentUser`
- * into the `getCurrentUser` RTK Query cache entry below; the render harnesses
- * strip both before they reach `preloadedState`.
+ * `settings` is mirrored into `window.MetabaseBootstrap`,
+ * and `currentUser` into the `getCurrentUser` RTK Query cache entry below.
+ * The render harnesses strip both before they reach `preloadedState`.
  */
 export type StoreSeedState = State & {
   settings: SettingsState;

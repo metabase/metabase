@@ -119,12 +119,8 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           authState.siteSettings,
         ),
       );
-      // Pin both upserted entries with never-released subscriptions (the
-      // entries are fulfilled, so no request fires). A tag invalidation
-      // outright deletes zero-subscriber entries instead of refetching them,
-      // and an SDK host page has no bootstrap to fall back to. This mirrors
-      // the non-bootstrap path, whose refetch subscriptions below are also
-      // never released.
+      // Add subscriptions so that the user and settings entries don't get deleted from the cache.
+      // RTK will delete entries with no subscribers if they are invalidated.
       dispatch(loadCurrentUser());
       dispatch(sessionApi.endpoints.getSessionProperties.initiate());
       MetabaseSettings.setAll(authState.siteSettings);
