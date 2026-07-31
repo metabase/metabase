@@ -1,15 +1,15 @@
 ---
-title: Embedded question reference
+title: Question component reference
 summary: "Reference for the metabase-question web component attributes, the StaticQuestion and InteractiveQuestion SDK props, and the InteractiveQuestion layout components."
 ---
 
-# Embedded question reference
+# Question component reference
 
 Reference material for embedding a chart or a query editor: the attributes you can set on the `<metabase-question>` web component, the props you can pass to the SDK's `StaticQuestion` and `InteractiveQuestion` components, and the namespaced components you can use to build your own layout.
 
-For how to set all this up, check out [Embed a chart](./question.md) and [Embed the query builder](./query-builder.md).
+For how to set all this up, check out [Embed a chart](./chart.md) and [Embed the query builder](./query-builder.md).
 
-## Web component attributes
+## `metabase-question` web component attributes
 
 These attributes apply to the `<metabase-question>` web component. For the SDK, see [`StaticQuestion` props](#staticquestion-props) and [`InteractiveQuestion` props](#interactivequestion-props).
 
@@ -19,7 +19,7 @@ These attributes apply to the `<metabase-question>` web component. For the SDK, 
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-`StaticQuestion` embeds a [view-only chart](./question.md#embed-a-view-only-chart).
+`StaticQuestion` embeds a [view-only chart](./chart.md#embed-a-view-only-chart).
 
 {% include_file "{{ dirname }}/sdk/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
@@ -27,7 +27,7 @@ These attributes apply to the `<metabase-question>` web component. For the SDK, 
 
 {% include plans-blockquote.html feature="Interactive charts" convert_pro_link_to_embedding=true is_plural=true %}
 
-`InteractiveQuestion` embeds an [interactive chart](./question.md#embed-an-interactive-chart) or [a query editor](./query-builder.md).
+`InteractiveQuestion` embeds an [interactive chart](./chart.md#embed-an-interactive-chart) or [a query editor](./query-builder.md).
 
 {% include_file "{{ dirname }}/sdk/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
 
@@ -77,7 +77,7 @@ These components are available via the `InteractiveQuestion` namespace (like `<I
 
 ## Further reading
 
-- [Embed a chart](./question.md)
+- [Embed a chart](./chart.md)
 - [Embed the query builder](./query-builder.md)
 - [Modular embedding components](./components.md)
 - [Modular embedding parameters](./parameters.md)

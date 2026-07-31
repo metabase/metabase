@@ -3,13 +3,14 @@ title: Embed a chart
 summary: "Embed a single Metabase chart in your app, either view-only or interactive, with a web component or using the React SDK."
 redirect_from:
   - /docs/latest/embedding/sdk/questions
+  - /docs/latest/embedding/question
 ---
 
 # Embed a chart
 
 There are two ways you can embed a chart (called a question, in Metabase parlance):
 
-- [View-only chart](#embed-a-view-only-chart): people see the results, and that's it.
+- [View-only chart](#embed-a-view-only-chart): people see the results, filter them, and that's it.
 - [Interactive chart](#embed-an-interactive-chart): people can drill through the chart and change the query behind it.
 
 To let people build questions from scratch instead, check out [Embed the query builder](./query-builder.md). To embed an AI chat component, check out [AI chat](./sdk/ai-chat.md).
@@ -22,17 +23,17 @@ A view-only (a.k.a. "static") chart displays results without letting people expl
 
 View-only isn't tied to one kind of embed. You can make a chart view-only in any embedding type:
 
-- **Guest embeds** are always view-only. Guest embeds have no drill-through or ad-hoc querying to turn off.
-- **SSO embeds** are interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or `drills={false}` (SDK), and turn off saving with `is-save-enabled="false"` or `isSaveEnabled={false}`. You can also manage what people can do through data and collection permissions.
+- **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against, and no way to tell whether a new query is one that person should be allowed to run. The published question is the only thing Metabase can safely run, which is why there's no drill-through or ad-hoc querying to turn off.
+- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or `drills={false}` (SDK), and turn off saving with `is-save-enabled="false"` or `isSaveEnabled={false}`. You can also manage what people can do through [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
 So pick your authentication based on what your app needs---plans, permissions, whether Metabase should know who's viewing---not on whether you want a view-only chart. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
 This section covers setting up a view-only chart with guest authentication.
 
-- [Web components](#view-only-charts-using-a-web-component)
+- [Web components](#view-only-charts-with-guest-authentication-using-a-web-component)
 - [React SDK](#view-only-charts-using-the-react-sdk)
 
-### View-only charts using a web component
+### View-only charts with guest authentication using a web component
 
 You can use the in-app wizard to set up a view-only chart using web components.
 
@@ -40,12 +41,14 @@ You can use the in-app wizard to set up a view-only chart using web components.
 
 Before you start, an admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase).
 
+Three things need to happen: you publish the embed in Metabase, you paste the chart code into your app, and your server signs a JWT. The wizard writes most of the code for you, so the list below is longer than the work.
+
 1. Visit the question in your Metabase.
 2. Click the **Share** icon in the upper right.
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase.
 5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an SSO embed, because in that case people can explore the data based on their data and collection permissions.)
-6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#web-component-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
+6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#metabase-question-web-component-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
 7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
@@ -133,7 +136,7 @@ To get this code from the in-app wizard, set the `customer_id` parameter to **Lo
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
-For the full list of attributes, see [web component attributes](./question-reference.md#web-component-attributes).
+For the full list of attributes, see [web component attributes](./question-reference.md#metabase-question-web-component-attributes).
 
 ### View-only charts using the React SDK
 
@@ -170,7 +173,7 @@ Reference an existing question by ID. [Drill-through](../questions/visualization
 
 You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
 
-To control what people can do with the chart, check out [web component attributes](./question-reference.md#web-component-attributes).
+To control what people can do with the chart, check out [web component attributes](./question-reference.md#metabase-question-web-component-attributes). For example, you can show or hide download buttons, the question's title, or the chart type selector.
 
 ### Interactive charts using the React SDK
 
@@ -183,22 +186,6 @@ Use `InteractiveQuestion` when you want people to explore their data and customi
 ```
 
 For the full list of props, see [`InteractiveQuestion` props](./question-reference.md#interactivequestion-props).
-
-#### Customize what happens when someone clicks on a chart
-
-When people click a data point in an interactive chart, Metabase shows a menu of actions. With the SDK, the [`mapQuestionClickActions`](./sdk/plugins.md) plugin lets you customize this: open the default menu, add custom actions, or perform an immediate action without a menu.
-
-Use it globally on `MetabaseProvider`, or on individual `InteractiveQuestion` components:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question-click-actions.tsx" snippet="example" %}
-```
-
-You can also customize how custom actions look in the menu:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
-```
 
 #### Customize the layout of an interactive chart
 
@@ -237,11 +224,37 @@ To prevent people from saving changes (or saving as a new question), set `isSave
 
 In the embedding wizard, this corresponds to the **Allow people to save new questions** option.
 
-## Filter results based on your app's context
+## Customize what happens when someone clicks on a chart
 
-To show each customer only their own data, you have two options, depending on how you authenticate.
+Customizing click behavior is only available in the [Modular embedding SDK](./sdk/introduction.md) for now.
+
+When people click a data point in an interactive chart, Metabase shows a menu of actions. The [`mapQuestionClickActions`](./sdk/plugins.md) plugin lets you customize this: open the default menu, add custom actions, or perform an immediate action without a menu.
+
+Use it globally on `MetabaseProvider`, or on individual `InteractiveQuestion` components:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question-click-actions.tsx" snippet="example" %}
+```
+
+You can also customize how custom actions look in the menu:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
+```
+
+## Embed the query builder or SQL editor
+
+To let people build questions from scratch, check out [Embed the query builder](./query-builder.md).
+
+## Control parameters from your app
+
+Say you want to show each customer only their own orders. How you filter the results depends on how you authenticate the embed.
+
+### Lock a parameter on a guest embed
 
 Embeds with **Guest** authentication can [lock a parameter](./guest-embedding.md#locked-parameters). Your app sets the parameter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
+
+Locked parameters need a question written in SQL, with a [field filter or variable](../questions/native-editor/sql-parameters.md) to lock onto. Query builder questions have no parameters to lock, so segregate their data with permissions instead.
 
 ```javascript
 const payload = {
@@ -255,62 +268,29 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Embeds with **SSO** don't need to lock parameters, because you can apply [data permissions](../permissions/embedding.md), instead of locking parameters by hand.
+### Use permissions on an SSO embed
 
-## Embed the query builder or SQL editor
+Embeds with **SSO** don't need to lock parameters. Since Metabase knows who's viewing, you can apply [data permissions](../permissions/embedding.md) and let Metabase filter the rows, instead of locking parameters by hand. This works for query builder questions and SQL questions alike.
 
-To let people build questions from scratch, check out [Embed the query builder](./query-builder.md).
+### Set parameter values from your app
 
-## Use your app to control parameters
+You can also pass values to a question's [SQL parameters](../questions/native-editor/sql-parameters.md) in the format `{parameter_name: parameter_value}`, and keep your app in sync as people change them. Set the values once on load, or hold the values in your app and get a callback whenever they change.
 
-You can pass values to a question's [SQL parameters](../questions/native-editor/sql-parameters.md) in the format `{parameter_name: parameter_value}`, and keep your app in sync as people change them.
-
-> SQL parameters only work with native SQL questions, not query-builder questions.
-
-### Controlling parameters with the SDK
-
-`initialSqlParameters` sets the values once on load (uncontrolled). Your app won't know when people change them:
-
-```typescript
-{% include_file "{{ dirname }}/snippets/parameters/questions/initial-sql-parameters.tsx" snippet="example" %}
-```
-
-`sqlParameters` with `onSqlParametersChange` works like a controlled `<input value onChange>`: your app holds the source of truth, and you get a callback whenever applied values change:
-
-```typescript
-{% include_file "{{ dirname }}/snippets/parameters/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
-```
-
-`onSqlParametersChange` receives the [SQL question parameter change payload](./parameters.md#sql-question-parameter-change-payload). For how values are resolved (clearing, defaults, missing slugs), see [Modular embedding parameters](./parameters.md#how-parameter-values-are-resolved).
-
-### Controlling parameters with web components
-
-Seed values once with the `initial-sql-parameters` attribute:
-
-```html
-<metabase-question
-  question-id="42"
-  initial-sql-parameters='{"product_id": 50}'
-></metabase-question>
-```
-
-To push values at runtime (controlled), set the `sqlParameters` property on the element instead of the attribute, and listen for the `sql-parameters-change` event. See [Modular embedding parameters](./parameters.md#modular-embedding-web-components) for the full pattern.
+For both the SDK props (`initialSqlParameters`, `sqlParameters`, and `onSqlParametersChange`) and the web component equivalents, see [Modular embedding parameters](./parameters.md).
 
 ### Hide a parameter
 
-To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` has no effect on a guest embed. To hide a parameter on a guest embed, set the parameter to **Locked** or leave it **Disabled** in the question's embed settings.
+To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#metabase-question-web-component-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` has no effect on a guest embed. To hide a parameter on a guest embed, set the parameter to **Locked** or leave it **Disabled** in the question's embed settings.
 
 ## Let people set up alerts on a question
 
-You can let people set up [alerts](../questions/alerts.md) on a saved question by passing `withAlerts` to `StaticQuestion` or `InteractiveQuestion`, or the [`with-alerts`](./question-reference.md#web-component-attributes) attribute on the web component.
+You can let people set up [alerts](../questions/alerts.md) on a saved question with the [`with-alerts`](./question-reference.md#metabase-question-web-component-attributes) attribute on the web component:
 
-Metabase only shows the alerts button when all of these are true:
+```html
+<metabase-question question-id="42" with-alerts="true"></metabase-question>
+```
 
-- Your Metabase has [email set up](../configuring-metabase/email.md).
-- The embed is an authenticated (SSO) embed.
-- The person viewing the embed has permission to create subscriptions and alerts.
-
-Alerts created in an embedded context only send to whoever's logged in, and they exclude links to Metabase items.
+Or by passing `withAlerts` to `StaticQuestion` or `InteractiveQuestion` in the SDK:
 
 ```tsx
 <MetabaseProvider authConfig={authConfig}>
@@ -318,9 +298,18 @@ Alerts created in an embedded context only send to whoever's logged in, and they
 </MetabaseProvider>
 ```
 
+Metabase only shows the alerts button when all of these are true:
+
+- Your Metabase has [email set up](../configuring-metabase/email.md).
+- The embed is an authenticated (SSO) embed.
+- The person viewing the embed is in a group with the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission. Metabase grants this permission to the All Users group by default, so admins have to set it to **No** to take it away.
+- The person viewing the embed has [collection permissions](../permissions/collections.md) for the collection that holds the question.
+
+Alerts created in an embedded context only send to whoever's logged in, and they exclude links to Metabase items.
+
 ## Customize chart appearance
 
-You can theme an embedded question and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md). For every attribute and prop, see the [Question reference](./question-reference.md).
+You can theme an embedded question and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md). For every attribute and prop, see the [Question component reference](./question-reference.md).
 
 - **Title**: show or hide the question title with `with-title` (web component) or `title` (SDK).
 - **Downloads**: show or hide download buttons with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
@@ -351,10 +340,11 @@ Metabase adds a "Powered by Metabase" banner to guest embeds (both charts and da
 
 ## Further reading
 
-- [Question reference](./question-reference.md)
+- [Question component reference](./question-reference.md)
 - [Embed the query builder](./query-builder.md)
 - [Appearance](./appearance.md)
 - [Modular embedding parameters](./parameters.md)
+- [Translating embeds](./translations.md)
 - [Guest embeds](./guest-embedding.md)
 - [Authentication](./authentication.md)
 - [Modular embedding SDK](./sdk/introduction.md)

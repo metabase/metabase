@@ -136,7 +136,7 @@ If you want to replace the existing menu with your own component, you can do so 
 
 ### `mapQuestionClickActions`
 
-You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](../question.md#customize-what-happens-when-someone-clicks-on-a-chart).
+You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart).
 
 ## Creating dashboards
 

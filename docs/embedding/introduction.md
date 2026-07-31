@@ -47,7 +47,7 @@ Accounts for these embedded users in your Metabase count toward the [accounts bi
 
 Whichever way you authenticate, you can set up modular embeds two ways.
 
-- **Web components**: a script tag plus HTML elements like `<metabase-question>`. Web components have no build step and no framework requirement, so they work in plain HTML, Vue, Svelte, Rails, or React. Metabase's [in-app wizard](./modular-embedding.md) writes the code for you.
+- **Web components**: a script tag plus HTML elements like `<metabase-question>`. Web components have no build step and no framework requirement, so they work in plain HTML, Vue, Svelte, Rails, React, or any framework you like. Metabase's [in-app wizard](./modular-embedding.md) writes the code for you.
 - **React SDK**: React components that you import and compose yourself. The [SDK](./sdk/introduction.md) gives you more control: you can build custom layouts and [customize behavior with plugins](./sdk/plugins.md).
 
 If your app runs on React and you want that extra control, go with the SDK. Otherwise start with web components. You can always move to the SDK later.

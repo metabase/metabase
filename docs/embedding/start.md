@@ -26,7 +26,7 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 
 Jump to a SDK quickstart with a sample React application.
 
-### [Embed a chart](./question.md)
+### [Embed a chart](./chart.md)
 
 Embed a single chart, view-only or interactive, with web components or the React SDK.
 
@@ -34,7 +34,7 @@ Embed a single chart, view-only or interactive, with web components or the React
 
 Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
 
-### [Question reference](./question-reference.md)
+### [Question component reference](./question-reference.md)
 
 Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
 
