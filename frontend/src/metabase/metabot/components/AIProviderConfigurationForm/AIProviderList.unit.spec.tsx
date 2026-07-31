@@ -152,4 +152,23 @@ describe("AIProviderList", () => {
       within(reopened).queryByLabelText(/API key/),
     ).not.toBeInTheDocument();
   });
+
+  it("closes the edit modal", async () => {
+    setup();
+
+    const row = await screen.findByTestId("provider-anthropic");
+    await userEvent.click(
+      within(row).getByRole("button", { name: "Provider options" }),
+    );
+    await userEvent.click(await screen.findByText("Edit"));
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByText("Edit provider")).toBeInTheDocument();
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Close" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
 });
