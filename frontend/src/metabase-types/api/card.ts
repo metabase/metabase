@@ -29,7 +29,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
-import type { TimelineEventId, TimelineId } from "./timeline";
+import type { TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
@@ -407,9 +407,6 @@ export type VisualizationSettings = {
 
   /** Timelines whose events are rendered on the chart's x-axis. */
   "timeline.selected_timeline_ids"?: TimelineId[];
-
-  /** Events of the selected timelines that are individually hidden. */
-  "timeline.excluded_timeline_event_ids"?: TimelineEventId[];
 
   /** Result numeric column name used to size scatter plot bubbles. */
   "scatter.bubble"?: string;

@@ -40,8 +40,6 @@ export function useTimelineEvents({
   onDeselectTimelineEvents,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
   const selectedTimelineIds = settings["timeline.selected_timeline_ids"];
-  const excludedTimelineEventIds =
-    settings["timeline.excluded_timeline_event_ids"];
 
   // An absent selection falls back to the dashboard collection's timelines;
   // an explicitly empty selection hides events on this card.
@@ -55,8 +53,7 @@ export function useTimelineEvents({
   // Sorted copy so that the same selection always produces the same cache key,
   // letting dashcards with equal selections share one request.
   const timelineIds = useMemo(
-    () =>
-      selectedTimelineIds ? [...selectedTimelineIds].sort((a, b) => a - b) : [],
+    () => (selectedTimelineIds ?? []).toSorted((a, b) => a - b),
     [selectedTimelineIds],
   );
 
@@ -73,6 +70,8 @@ export function useTimelineEvents({
       : skipToken,
   );
 
+  // The endpoints already return only the requested timelines, so the
+  // responses need no further filtering beyond dropping archived events.
   const selectedTimelines = selectedQuery.data;
   const collectionTimelines = collectionQuery.data;
 
@@ -87,23 +86,14 @@ export function useTimelineEvents({
 
     const timelines =
       (shouldFetchCollection ? collectionTimelines : selectedTimelines) ?? [];
-    const selectedSet = new Set(selectedTimelineIds ?? []);
-    const excludedSet = new Set(excludedTimelineEventIds ?? []);
 
-    return timelines.flatMap((timeline) => {
-      if (shouldFetchSelected && !selectedSet.has(timeline.id)) {
-        return [];
-      }
-      return (timeline.events ?? []).filter(
-        (event) => !excludedSet.has(event.id) && !event.archived,
-      );
-    });
+    return timelines.flatMap((timeline) =>
+      (timeline.events ?? []).filter((event) => !event.archived),
+    );
   }, [
     timelineEventsProp,
     selectedTimelines,
     collectionTimelines,
-    selectedTimelineIds,
-    excludedTimelineEventIds,
     shouldFetchSelected,
     shouldFetchCollection,
   ]);
@@ -125,30 +115,18 @@ export function useTimelineEvents({
     setLocalSelectedEventIds(EMPTY_EVENT_IDS);
   }, []);
 
-  const isLoading = shouldFetchCollection
-    ? collectionQuery.isLoading
-    : selectedQuery.isLoading;
-  const isError = shouldFetchCollection
-    ? collectionQuery.isError
-    : selectedQuery.isError;
-
-  if (hasExternalSelection || timelineEvents.length === 0) {
-    return {
-      timelineEvents,
-      selectedTimelineEventIds: selectedTimelineEventIdsProp ?? EMPTY_EVENT_IDS,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
-      isLoading,
-      isError,
-    };
-  }
-
   return {
     timelineEvents,
-    selectedTimelineEventIds: localSelectedEventIds,
-    onSelectTimelineEvents: handleLocalSelect,
-    onDeselectTimelineEvents: handleLocalDeselect,
-    isLoading,
-    isError,
+    selectedTimelineEventIds: hasExternalSelection
+      ? (selectedTimelineEventIdsProp ?? EMPTY_EVENT_IDS)
+      : localSelectedEventIds,
+    onSelectTimelineEvents: hasExternalSelection
+      ? onSelectTimelineEvents
+      : handleLocalSelect,
+    onDeselectTimelineEvents: hasExternalSelection
+      ? onDeselectTimelineEvents
+      : handleLocalDeselect,
+    isLoading: selectedQuery.isLoading || collectionQuery.isLoading,
+    isError: selectedQuery.isError || collectionQuery.isError,
   };
 }

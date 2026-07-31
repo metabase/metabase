@@ -2,6 +2,12 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
+import { getCollectionName } from "metabase/common/collections/utils";
+import {
+  getEventCount,
+  getSortedTimelines,
+  getTimelineName,
+} from "metabase/common/utils/timelines";
 import { Group, Loader, Stack, Switch, Text } from "metabase/ui";
 import type { Timeline, TimelineId } from "metabase-types/api";
 
@@ -14,12 +20,14 @@ export const ChartSettingTimelineEvents = ({
   value,
   onChange,
 }: ChartSettingTimelineEventsProps) => {
+  // Events are hydrated only to derive the counts below; swap to a dedicated
+  // event_count field if the payload ever becomes a problem.
   const { data: timelines = [], isLoading } = useListTimelinesQuery({
     include: "events",
   });
 
   const sortedTimelines = useMemo(
-    () => [...timelines].sort(compareTimelines),
+    () => getSortedTimelines(timelines),
     [timelines],
   );
 
@@ -35,8 +43,6 @@ export const ChartSettingTimelineEvents = ({
     );
   }
 
-  const selectedTimelineIds = new Set(value ?? []);
-
   const handleToggle = (timelineId: TimelineId, isSelected: boolean) => {
     const nextValue = isSelected
       ? [...(value ?? []), timelineId]
@@ -49,7 +55,7 @@ export const ChartSettingTimelineEvents = ({
       {sortedTimelines.map((timeline) => (
         <Group key={timeline.id} justify="space-between" wrap="nowrap">
           <Stack gap={0}>
-            <Text fw="bold">{timeline.name}</Text>
+            <Text fw="bold">{getTimelineName(timeline)}</Text>
             <Text size="sm" c="text-secondary">
               {getTimelineDescription(timeline)}
             </Text>
@@ -57,8 +63,8 @@ export const ChartSettingTimelineEvents = ({
           <Switch
             size="sm"
             role="switch"
-            aria-label={timeline.name}
-            checked={selectedTimelineIds.has(timeline.id)}
+            aria-label={getTimelineName(timeline)}
+            checked={(value ?? []).includes(timeline.id)}
             onChange={(event) =>
               handleToggle(timeline.id, event.currentTarget.checked)
             }
@@ -70,21 +76,11 @@ export const ChartSettingTimelineEvents = ({
 };
 
 function getTimelineDescription(timeline: Timeline) {
-  const collectionName = timeline.collection?.name ?? t`Our analytics`;
-  const eventCount = timeline.events?.length ?? 0;
+  const eventCount = getEventCount(timeline);
   const eventCountLabel = ngettext(
     msgid`${eventCount} event`,
     `${eventCount} events`,
     eventCount,
   );
-  return `${collectionName} · ${eventCountLabel}`;
-}
-
-function compareTimelines(timelineA: Timeline, timelineB: Timeline) {
-  const collectionA = timelineA.collection?.name ?? "";
-  const collectionB = timelineB.collection?.name ?? "";
-  return (
-    collectionA.localeCompare(collectionB) ||
-    timelineA.name.localeCompare(timelineB.name)
-  );
+  return `${getCollectionName(timeline.collection)} · ${eventCountLabel}`;
 }

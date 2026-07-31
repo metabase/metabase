@@ -92,7 +92,14 @@ function CartesianChartInner(props: VisualizationProps) {
     selectedTimelineEventIds,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
-  } = useTimelineEvents({ ...props, settings });
+  } = useTimelineEvents({
+    timelineEvents: props.timelineEvents,
+    settings,
+    dashboard: props.dashboard,
+    selectedTimelineEventIds: props.selectedTimelineEventIds,
+    onSelectTimelineEvents: props.onSelectTimelineEvents,
+    onDeselectTimelineEvents: props.onDeselectTimelineEvents,
+  });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);

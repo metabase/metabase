@@ -257,10 +257,6 @@
     (testing "export is idempotent - already-portable references are left alone"
       (is (= {:timeline.selected_timeline_ids ["Timeline___1"]}
              (-> (serdes/export-visualization-settings {:timeline.selected_timeline_ids ["Timeline___1"]})
-                 (dissoc :column_settings)))))
-    (testing "excluded event ids are left as raw ids - TimelineEvent has no portable identity"
-      (is (= {:timeline.excluded_timeline_event_ids [7 8]}
-             (-> (serdes/export-visualization-settings {:timeline.excluded_timeline_event_ids [7 8]})
                  (dissoc :column_settings)))))))
 
 (deftest ^:parallel import-viz-timeline-ids-test
@@ -277,10 +273,6 @@
       (is (= {:timeline.selected_timeline_ids [41]}
              (-> (serdes/import-visualization-settings
                   {:timeline.selected_timeline_ids ["aaaaaaaaaaaaaaaaaaaaa" "ccccccccccccccccccccc"]})
-                 (dissoc :column_settings)))))
-    (testing "excluded event ids are passed through untouched"
-      (is (= {:timeline.excluded_timeline_event_ids [7 8]}
-             (-> (serdes/import-visualization-settings {:timeline.excluded_timeline_event_ids [7 8]})
                  (dissoc :column_settings)))))))
 
 (deftest ^:parallel viz-timeline-deps-test
@@ -292,10 +284,7 @@
            (serdes/visualization-settings-deps false {:timeline.selected_timeline_ids [1 2]}))))
   (testing "portable references are load-time (deserialization) deps"
     (is (= #{[{:model "Timeline" :id "aaaaaaaaaaaaaaaaaaaaa"}]}
-           (serdes/visualization-settings-deps false {:timeline.selected_timeline_ids ["aaaaaaaaaaaaaaaaaaaaa"]}))))
-  (testing "excluded event ids are never deps"
-    (is (= #{}
-           (serdes/visualization-settings-deps true {:timeline.excluded_timeline_event_ids [7 8]})))))
+           (serdes/visualization-settings-deps false {:timeline.selected_timeline_ids ["aaaaaaaaaaaaaaaaaaaaa"]})))))
 
 (deftest ^:parallel viz-timeline-descendants-test
   (binding [serdes/*export-fk* (fn [id model]

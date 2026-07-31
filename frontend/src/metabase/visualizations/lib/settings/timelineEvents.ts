@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 
-// No defaults on purpose: an absent selection means "follow the dashboard
-// collection's timelines", while a stored empty selection means "hidden".
 export const TIMELINE_EVENTS_SETTINGS: VisualizationSettingsDefinitions = {
+  // No default on purpose: an absent selection means "follow the dashboard
+  // collection's timelines", while a stored empty selection means "hidden".
   "timeline.selected_timeline_ids": {
     getSection: () => t`Display`,
     get title() {
@@ -20,5 +20,4 @@ export const TIMELINE_EVENTS_SETTINGS: VisualizationSettingsDefinitions = {
     // so the picker is only shown for dashboard cards.
     dashboard: true,
   },
-  "timeline.excluded_timeline_event_ids": {},
 };

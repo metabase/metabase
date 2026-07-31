@@ -597,10 +597,6 @@ export type VisualizationSettingsDefinitions = {
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
-  "timeline.excluded_timeline_event_ids"?: SeriesSettingDefinition<
-    Value,
-    Props
-  >;
   "timeline.selected_timeline_ids"?: SeriesSettingDefinition<
     Value,
     ChartSettingTimelineEventsProps

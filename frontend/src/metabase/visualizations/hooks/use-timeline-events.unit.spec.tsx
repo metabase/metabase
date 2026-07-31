@@ -79,19 +79,6 @@ describe("useTimelineEvents", () => {
     expect(calls[0].url).toContain("id=1");
   });
 
-  it("should filter out excluded events from a selection", async () => {
-    const { result } = setup({
-      settings: {
-        "timeline.selected_timeline_ids": [1, 2],
-        "timeline.excluded_timeline_event_ids": [102],
-      },
-    });
-
-    await waitFor(() => {
-      expect(result.current.timelineEvents).toEqual([event1, event3]);
-    });
-  });
-
   it("should hide all events when the stored selection is empty", () => {
     const { result } = setup({
       settings: { "timeline.selected_timeline_ids": [] },
@@ -129,17 +116,6 @@ describe("useTimelineEvents", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/timeline/collection/root"),
     ).toHaveLength(1);
-  });
-
-  it("should apply exclusions to the collection default", async () => {
-    const { result } = setup({
-      settings: { "timeline.excluded_timeline_event_ids": [102] },
-      dashboard,
-    });
-
-    await waitFor(() => {
-      expect(result.current.timelineEvents).toEqual([event1]);
-    });
   });
 
   it("should manage selection locally when no handlers are passed", async () => {

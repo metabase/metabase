@@ -1636,12 +1636,6 @@
           (m/update-existing-in [:pivot_table.column_split :columns] import-mbql)))
 
 ;;; `timeline.selected_timeline_ids` holds the Timelines whose events a chart draws on its x-axis.
-;;;
-;;; Its sibling setting `timeline.excluded_timeline_event_ids` is deliberately *not* translated: TimelineEvent has no
-;;; `entity_id` column and no other portable identity ([[generate-path]] returns `:id nil` for it), so `*export-fk*`
-;;; cannot produce a reference for one. The raw appdb ids are passed through untouched, which is correct for a
-;;; same-instance round trip and no worse than today's behaviour cross-instance. Giving TimelineEvent an `entity_id`
-;;; would let this setting be handled the same way as `timeline.selected_timeline_ids`.
 
 (defn- export-timeline-id [id]
   ;; `pos-int?` guard makes this idempotent: an already-exported entity id is left alone.
