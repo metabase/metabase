@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
@@ -22,11 +22,6 @@
   [value]
   (when (string? value)
     (not-empty (str/trim value))))
-
-(defn- set-trimmed-string!
-  "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
-  [setting-key new-value]
-  (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
 (def ^:private loopback-hosts
   "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
@@ -51,28 +46,6 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
-(defn- set-prefixed-api-key!
-  [setting-key prefix deferred-message new-value]
-  (let [trimmed (trimmed-string new-value)]
-    (when (and trimmed (not (str/starts-with? trimmed prefix)))
-      (throw (ex-info (str deferred-message) {:status-code 400})))
-    (setting/set-value-of-type! :string setting-key trimmed)))
-
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
-
-(defn- set-normalized-base-url!
-  "Set a base-URL setting to `new-value` with trailing slashes trimmed; blank values are stored as nil.
-  Adapters build request URLs as `(str base-url path)`, so a pasted trailing slash would otherwise
-  produce `//models`."
-  [setting-key new-value]
-  (setting/set-value-of-type! :string setting-key (normalize-llm-base-url new-value)))
-
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
 (defsetting llm-anthropic-api-key
@@ -81,10 +54,8 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-anthropic-api-key
-  :setter           (partial set-prefixed-api-key!
-                             :llm-anthropic-api-key
-                             "sk-ant-"
-                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")))
+  :setter           :none
+  :doc              "Sets up the Anthropic provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 (defsetting llm-anthropic-api-key-configured?
   "Whether an Anthropic API key has been configured."
@@ -108,7 +79,9 @@
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
-  :deprecated-name  :ee-anthropic-api-base-url)
+  :setter           :none
+  :deprecated-name  :ee-anthropic-api-base-url
+  :doc              "The Anthropic API base URL used by the connection configured from the environment.")
 
 (defsetting llm-anthropic-api-version
   (deferred-tru "The Anthropic API version.")
@@ -134,7 +107,9 @@
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
-  :deprecated-name  :ee-openai-api-base-url)
+  :setter           :none
+  :deprecated-name  :ee-openai-api-base-url
+  :doc              "The OpenAI API base URL used by the connection configured from the environment.")
 
 (defsetting llm-openai-api-key
   (deferred-tru "The OpenAI API Key.")
@@ -142,10 +117,8 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openai-api-key
-  :setter           (partial set-prefixed-api-key!
-                             :llm-openai-api-key
-                             "sk-"
-                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''.")))
+  :setter           :none
+  :doc              "Sets up the OpenAI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
@@ -155,7 +128,9 @@
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
-  :deprecated-name  :ee-openrouter-api-base-url)
+  :setter           :none
+  :deprecated-name  :ee-openrouter-api-base-url
+  :doc              "The OpenRouter API base URL used by the connection configured from the environment.")
 
 (defsetting llm-openrouter-api-key
   (deferred-tru "The OpenRouter API Key.")
@@ -163,10 +138,8 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openrouter-api-key
-  :setter           (partial set-prefixed-api-key!
-                             :llm-openrouter-api-key
-                             "sk-or-v1-"
-                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")))
+  :setter           :none
+  :doc              "Sets up the OpenRouter provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 ;;; --------------------------------------------------- Z.AI ----------------------------------------------------
 
@@ -176,7 +149,8 @@
   :visibility :settings-manager
   :default    "https://api.z.ai/api/paas/v4"
   :export?    false
-  :setter     (partial set-normalized-base-url! :llm-zai-api-base-url))
+  :setter     :none
+  :doc        "The Z.AI API base URL used by the connection configured from the environment.")
 
 (defsetting llm-zai-api-key
   (deferred-tru "The Z.AI API Key.")
@@ -185,7 +159,8 @@
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :setter     (partial set-trimmed-string! :llm-zai-api-key))
+  :setter     :none
+  :doc        "Sets up the Z.AI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 ;;; -------------------------------------------------- Mistral ---------------------------------------------------
 
@@ -195,14 +170,16 @@
   :visibility :settings-manager
   :default    "https://api.mistral.ai/v1"
   :export?    false
-  :setter     (partial set-normalized-base-url! :llm-mistral-api-base-url))
+  :setter     :none
+  :doc        "The Mistral API base URL used by the connection configured from the environment.")
 
 (defsetting llm-mistral-api-key
   (deferred-tru "The Mistral API Key.")
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :setter     (partial set-trimmed-string! :llm-mistral-api-key))
+  :setter     :none
+  :doc        "Sets up the Mistral provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 ;;; ------------------------------------------------- Moonshot --------------------------------------------------
 
@@ -212,14 +189,16 @@
   :visibility :settings-manager
   :default    "https://api.moonshot.ai/v1"
   :export?    false
-  :setter     (partial set-normalized-base-url! :llm-moonshot-api-base-url))
+  :setter     :none
+  :doc        "The Moonshot AI API base URL used by the connection configured from the environment.")
 
 (defsetting llm-moonshot-api-key
   (deferred-tru "The Moonshot AI API Key.")
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
+  :setter     :none
+  :doc        "Sets up the Moonshot AI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
@@ -324,28 +303,24 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-trimmed-string! :llm-bedrock-access-key-id))
+  :setter      :none
+  :doc         "Sets up the Amazon Bedrock provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 (defsetting llm-bedrock-secret-access-key
   (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-trimmed-string! :llm-bedrock-secret-access-key))
+  :setter      :none
+  :doc         "The AWS secret access key used by the Amazon Bedrock connection configured from the environment.")
 
 (defsetting llm-bedrock-session-token
   (deferred-tru "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-trimmed-string! :llm-bedrock-session-token))
-
-(defn- set-bedrock-region!
-  [new-value]
-  (let [region (trimmed-string new-value)]
-    (when (and region (not (contains? known-aws-regions region)))
-      (throw (ex-info (tru "Invalid AWS region {0}." (pr-str region)) {:status-code 400})))
-    (setting/set-value-of-type! :string :llm-bedrock-region region)))
+  :setter      :none
+  :doc         "The AWS session token used by the Amazon Bedrock connection configured from the environment. Only needed for temporary credentials.")
 
 (defsetting llm-bedrock-region
   (deferred-tru "The AWS region for Amazon Bedrock (e.g. us-east-1).")
@@ -353,7 +328,8 @@
   :visibility  :settings-manager
   :default     "us-east-1"
   :export?     false
-  :setter      set-bedrock-region!)
+  :setter      :none
+  :doc         "The AWS region used by the Amazon Bedrock connection configured from the environment.")
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
@@ -363,16 +339,23 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-trimmed-string! :llm-azure-api-key))
+  :setter      :none
+  :doc         "Sets up the Azure provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-normalized-base-url! :llm-azure-api-base-url))
+  :setter      :none
+  :doc         "The Azure API base URL used by the connection configured from the environment.")
 
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
+
+;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
+;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
+;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
+;;; Connections are managed through the `/api/llm/providers` endpoints instead.
 
 (defsetting llm-providers
   (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
