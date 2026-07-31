@@ -1,9 +1,11 @@
 (ns metabase-enterprise.remote-sync.source-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -49,6 +51,18 @@
               "merged-version")
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
+
+(deftest entity->path-test
+  (testing "entity->path always joins with `/`, never the platform's File/separator -- this is a git
+           path, so a Windows-hosted instance must not emit `\\`-separated paths, which JGit rejects
+           outright (metabase#74095)"
+    (let [entity (create-test-entity "A" "a" "Card")
+          path   (source/entity->path (serdes/storage-base-context) entity)]
+      (is (str/ends-with? path ".yaml"))
+      (is (not (str/includes? path "\\"))
+          "must never contain a backslash, regardless of host OS")
+      (is (str/includes? path "/")
+          "sanity check: this entity's path has more than one segment, so the join is actually exercised"))))
 
 (deftest paths->children-test
   (testing "the flat-path stand-in matches the contract git's list-dir implements"
