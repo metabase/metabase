@@ -77,11 +77,12 @@
   (reify Closeable
     (close [_] (unregister-run! run-id))))
 
-(defn- set-run-endpoint!
-  "Record the base URL a MicroVM run's logs can be read from, once its VM is up."
-  [run-id endpoint]
+(defn- set-run-vm!
+  "Record where a MicroVM run's logs can be read from, once its VM is up. The endpoint alone is
+  not enough: the proxy in front of the VM rejects an unauthenticated request."
+  [run-id endpoint auth-headers]
   (when run-id
-    (swap! live-runs update run-id assoc :endpoint endpoint)))
+    (swap! live-runs update run-id assoc :endpoint endpoint :auth-headers auth-headers)))
 
 (defmulti fetch-logs
   "Events logged so far by an in-flight run, shaped like the runner's `/logs` response:
@@ -96,10 +97,11 @@
 
 (defmethod fetch-logs :microvm
   [run-id]
-  (if-let [endpoint (get-in @live-runs [run-id :endpoint])]
-    (microvm/fetch-logs endpoint)
-    ;; the VM isn't up yet
-    {:status 404 :body {}}))
+  (let [{:keys [endpoint auth-headers]} (get @live-runs run-id)]
+    (if endpoint
+      (microvm/fetch-logs endpoint auth-headers)
+      ;; the VM isn't up yet
+      {:status 404 :body {}})))
 
 ;;; ------------------------------------------------- Backends -------------------------------------------------
 
@@ -119,7 +121,7 @@
     (microvm/with-microvm
       {:run-id run-id}
       (fn [{:keys [endpoint auth-headers terminate!]}]
-        (set-run-endpoint! run-id endpoint)
+        (set-run-vm! run-id endpoint auth-headers)
         (when cancel-chan
           (a/go (when (a/<! cancel-chan)
                   (log/infof "Cancelling run %s by terminating its MicroVM" run-id)

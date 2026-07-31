@@ -185,17 +185,19 @@
         region (transforms-python.settings/python-microvm-region)
         ;; No execution role: the VM reaches everything by presigned URL, and user code inside it
         ;; can read whatever role it is given.
+        max-secs (transforms-python.settings/python-runner-timeout-seconds)
         vm    (control-plane-call! :post "/2025-09-09/microvms"
                                    {:imageIdentifier          image
-                                    :maximumDurationInSeconds (transforms-python.settings/python-runner-timeout-seconds)
+                                    :maximumDurationInSeconds max-secs
                                     :ingressNetworkConnectors [(or (transforms-python.settings/python-microvm-ingress-connector)
                                                                    (managed-connector region "ALL_INGRESS"))]
                                     :egressNetworkConnectors  [(or (transforms-python.settings/python-microvm-egress-connector)
                                                                    (managed-connector region "INTERNET_EGRESS"))]})
         vm-id (:microvmId vm)
         ;; a map of header name -> value
+        ;; the token has to outlive the VM: it authenticates the status and log polling too
         token (:authToken (control-plane-call! :post (str "/2025-09-09/microvms/" vm-id "/auth-token")
-                                               {:expirationInMinutes 60
+                                               {:expirationInMinutes (+ 5 (quot max-secs 60))
                                                 :allowedPorts        [{:port 8080}]}))]
     (log/infof "Launched MicroVM %s for run %s" vm-id run-id)
     {:endpoint (:endpoint vm), :auth-headers token, :id vm-id}))
