@@ -1457,8 +1457,12 @@
                                (keep #(classify-key ctx %)))
           to-delete       (mapcat :deletes results)
           to-insert       (mapcat :rows results)]
-      (when (seq to-delete) (batch-delete-permissions! to-delete))
-      (when (seq to-insert) (batch-insert-permissions! to-insert)))))
+      (when (or (seq to-delete) (seq to-insert))
+        ;; One transaction so a failed insert (e.g. a unique-constraint violation) can't leave the
+        ;; DB-level rows deleted but the table-level expansion half-written.
+        (t2/with-transaction [_conn]
+          (when (seq to-delete) (batch-delete-permissions! to-delete))
+          (when (seq to-insert) (batch-insert-permissions! to-insert)))))))
 
 (defn set-default-table-permissions!
   "Set default permissions for a newly-created table across all relevant
