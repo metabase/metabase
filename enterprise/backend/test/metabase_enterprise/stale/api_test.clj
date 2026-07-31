@@ -63,7 +63,7 @@
                    ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
                  (->> result :data (map (juxt :model :id)) set)))))))))
 
-(deftest recursive-search-skips-archived-descendants
+(deftest recursive-search-skips-archived-descendants-test
   (testing "a recursive search does not descend into archived collections"
     (mt/with-premium-features #{:collection-cleanup}
       (with-collection-hierarchy! [{:keys [a b]}]

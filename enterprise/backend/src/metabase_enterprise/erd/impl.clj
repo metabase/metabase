@@ -107,7 +107,9 @@
                          [:= :active true]]
                   (contains? opts :table-ids) (conj [:in :id table-ids])
                   (contains? opts :schema)    (conj (schema-clause schema)))]
-      (perms/prime-table-perms-cache {:db-ids #{database-id}})
+      (perms/prime-table-perms-cache (if (contains? opts :table-ids)
+                                       {:table-ids (set table-ids)}
+                                       {:db-ids #{database-id}}))
       (->> (t2/select :model/Table
                       {:select table-select-columns
                        :where  where})
