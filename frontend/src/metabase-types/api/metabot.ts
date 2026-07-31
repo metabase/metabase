@@ -194,8 +194,10 @@ export type MetabotProvider =
   | "anthropic"
   | "azure"
   | "bedrock"
+  | "mistral"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "zai";
 
 export interface BedrockCredentials {
   "access-key-id"?: string | null;

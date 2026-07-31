@@ -310,10 +310,9 @@ describe("QB Actions > initializeQB", () => {
           expect(result.objectId).toBe(123);
         });
 
-        it("passes object ID from location query params correctly", async () => {
+        it("passes object ID from the search string correctly", async () => {
           const location = getLocationForCard(card, {
             search: "?objectId=123",
-            query: { objectId: "123" },
           });
           const { result } = await setup({ card, location });
           expect(result.objectId).toBe("123");
@@ -355,10 +354,9 @@ describe("QB Actions > initializeQB", () => {
           expect(result.objectId).toBe(123);
         });
 
-        it("passes object ID from location query params correctly", async () => {
+        it("passes object ID from the search string correctly", async () => {
           const location = getLocationForCard(card, {
             search: "?objectId=123",
-            query: { objectId: "123" },
           });
           const { result } = await setup({ card: card, location });
           expect(result.objectId).toBe("123");

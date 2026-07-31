@@ -133,7 +133,5 @@ describe("useUrlState", () => {
 });
 
 function createLocation(search: string) {
-  const params = new URLSearchParams(search);
-  const query = Object.fromEntries(params.entries());
-  return createMockLocation({ search, query });
+  return createMockLocation({ search });
 }

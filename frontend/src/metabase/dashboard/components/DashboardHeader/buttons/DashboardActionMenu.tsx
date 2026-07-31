@@ -1,4 +1,4 @@
-import { type MouseEvent, forwardRef, useState } from "react";
+import { type MouseEvent, forwardRef, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
@@ -9,6 +9,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import { parseSearchQuery } from "metabase/utils/browser";
 
 import {
   AutoRefreshMenuItem,
@@ -51,9 +52,14 @@ const DashboardActionMenuInner = ({
     }
   };
 
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location?.search ?? ""),
+    [location?.search],
+  );
+
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
-    parameterQueryParams: location?.query,
+    parameterQueryParams,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(

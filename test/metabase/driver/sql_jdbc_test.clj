@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -391,3 +392,12 @@
               (driver/drop-table! driver db-id qualified-renamed))
             (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
               (driver/drop-table! driver db-id qualified-table))))))))
+
+(deftest ^:parallel insert-into-sqls-boolean-literal-test
+  (testing "boolean row values bind as parameters, never as inlined literals -- not every
+            dialect has a boolean literal keyword"
+    (doseq [driver [:h2]]
+      (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
+                                                                       [[1 true] [2 false]] false))]
+        (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)) (str driver))
+        (is (= [1 true 2 false] params) (str driver))))))

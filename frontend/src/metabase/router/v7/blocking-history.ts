@@ -6,9 +6,9 @@ import {
   parsePath,
 } from "react-router";
 
-import type { Location as HistoryLocation } from "../types";
+import type { Action, Location as HistoryLocation } from "../types";
 
-import { toV3Location } from "./location";
+import { toFacadeLocation } from "./location";
 
 // react-router does not export the `History` interface directly, so pull it off
 // the history prop of `unstable_HistoryRouter`, which is exactly the type the
@@ -17,9 +17,14 @@ type History = HistoryRouterProps["history"];
 
 /**
  * A route-leave hook, matching v3's `setRouteLeaveHook` callback: it receives
- * the attempted destination and returns `false` to cancel the navigation.
+ * the attempted destination and how it was reached, and returns `false` to
+ * cancel the navigation. The navigation type is a second argument rather than a
+ * field on the location, which carries only the URL parts on v7.
  */
-type LeaveHook = (nextLocation?: HistoryLocation) => unknown;
+type LeaveHook = (
+  nextLocation?: HistoryLocation,
+  navigationType?: Action,
+) => unknown;
 
 interface Registration {
   hook: LeaveHook;
@@ -79,7 +84,10 @@ function staysWithin(basePath: string | undefined, pathname: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
-function isBlocked(nextLocation: HistoryLocation): boolean {
+function isBlocked(
+  nextLocation: HistoryLocation,
+  navigationType: Action,
+): boolean {
   // Snapshot so a hook that unregisters mid-run cannot skip a sibling.
   return [...registrations].some(({ hook, basePath }) => {
     // Navigating within the guarded route is not leaving it, so the hook does
@@ -87,15 +95,11 @@ function isBlocked(nextLocation: HistoryLocation): boolean {
     if (staysWithin(basePath, nextLocation.pathname)) {
       return false;
     }
-    return hook(nextLocation) === false;
+    return hook(nextLocation, navigationType) === false;
   });
 }
 
-function toBlockedLocation(
-  to: To,
-  action: HistoryLocation["action"],
-  state: unknown,
-): HistoryLocation {
+function toBlockedLocation(to: To, state: unknown): HistoryLocation {
   const path = typeof to === "string" ? parsePath(to) : to;
   const location: V7Location = {
     pathname: path.pathname ?? "/",
@@ -104,7 +108,7 @@ function toBlockedLocation(
     state: state ?? null,
     key: "default",
   };
-  return toV3Location(location, action);
+  return toFacadeLocation(location);
 }
 
 /**
@@ -123,13 +127,13 @@ export function withBlocking(history: History): History {
   let revertingPop = false;
 
   const push: History["push"] = (to, state) => {
-    if (!isBlocked(toBlockedLocation(to, "PUSH", state))) {
+    if (!isBlocked(toBlockedLocation(to, state), "PUSH")) {
       history.push(to, state);
     }
   };
 
   const replace: History["replace"] = (to, state) => {
-    if (!isBlocked(toBlockedLocation(to, "REPLACE", state))) {
+    if (!isBlocked(toBlockedLocation(to, state), "REPLACE")) {
       history.replace(to, state);
     }
   };
@@ -143,7 +147,7 @@ export function withBlocking(history: History): History {
       }
       const isBlockedPop =
         update.action === "POP" &&
-        isBlocked(toV3Location(update.location, "POP"));
+        isBlocked(toFacadeLocation(update.location), "POP");
       if (isBlockedPop) {
         // The browser already moved, so step forward to undo the back. One step
         // covers the back button, the dominant leave case; a multi-step go is

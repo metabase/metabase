@@ -4,14 +4,17 @@ import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/redux";
-import type { Location, Query } from "metabase/router";
+import type { Location } from "metabase/router";
 import { push, queryToSearch, replace } from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
+
+import type { UrlStateQuery } from "./types";
 
 type BaseState = Record<string, unknown>;
 
 export type UrlStateConfig<State extends BaseState> = {
-  parse: (query: Query) => State;
-  serialize: (state: State) => Query;
+  parse: (query: UrlStateQuery) => State;
+  serialize: (state: State) => UrlStateQuery;
 };
 
 type UrlStateActions<State extends BaseState> = {
@@ -29,7 +32,9 @@ export function useUrlState<State extends BaseState>(
   { parse, serialize }: UrlStateConfig<State>,
 ): [State, UrlStateActions<State>] {
   const dispatch = useDispatch();
-  const [state, setState] = useState(parse(location.query));
+  const [state, setState] = useState(() =>
+    parse(parseSearchQuery(location.search)),
+  );
   const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
   const patchUrlState = useCallback((patch: Partial<State>) => {
@@ -53,7 +58,7 @@ export function useUrlState<State extends BaseState>(
     const query = serialize(urlState);
     // Replacing to the identical URL notifies the router, which re-renders every
     // location consumer on the page for nothing.
-    if (!_.isEqual(query, location.query)) {
+    if (!_.isEqual(query, parseSearchQuery(location.search))) {
       dispatch(replace({ ...location, search: queryToSearch(query) }));
     }
   });

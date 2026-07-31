@@ -14,6 +14,7 @@ import {
   replace,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {
@@ -22,7 +23,7 @@ import {
   getTabs,
   getValuePopulatedParameters,
 } from "../selectors";
-import { createTabSlug } from "../utils";
+import { createTabSlug, parseTabSlug } from "../utils";
 
 export function useDashboardUrlQuery(
   router: InjectedRouter,
@@ -80,7 +81,7 @@ export function useDashboardUrlQuery(
       return;
     }
 
-    const currentQuery = location?.query ?? {};
+    const currentQuery = parseSearchQuery(location.search);
 
     const nextQueryParams = toLocationQuery(queryParams);
     const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
@@ -114,8 +115,8 @@ export function useDashboardUrlQuery(
         return;
       }
 
-      const currentTabId = parseTabId(location);
-      const nextTabId = parseTabId(nextLocation);
+      const currentTabId = parseTabSlug(location);
+      const nextTabId = parseTabSlug(nextLocation);
 
       if (nextTabId && currentTabId !== nextTabId) {
         dispatch(selectTab({ tabId: nextTabId }));
@@ -127,15 +128,6 @@ export function useDashboardUrlQuery(
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
-
-function parseTabId(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
-    const id = parseInt(slug, 10);
-    return Number.isSafeInteger(id) ? id : null;
-  }
-  return null;
-}
 
 function toLocationQuery(object: Record<string, any>) {
   return _.mapObject(object, (value) => (value == null ? "" : value));
