@@ -419,11 +419,12 @@ A card not already owned by the document is cloned into it on write and its id r
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
    :args        document-write-args-schema}
-  [args _context]
+  [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write
                   {:create-required [:name :content_markdown]}
                   args)
-        payload  (case op
-                   :create (create! a)
-                   :update (update! a b))]
+        payload  (common/readback token-scopes [metabot.scope/agent-content-read]
+                                  (case op
+                                    :create (create! a)
+                                    :update (update! a b)))]
     (common/success-content payload)))

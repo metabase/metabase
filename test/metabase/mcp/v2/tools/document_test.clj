@@ -450,3 +450,25 @@
                                          :content_markdown "x" :edits []})))
             (is (thrown-with-msg? Exception #"exactly one of content_markdown"
                                   (call {:method "update" :id doc-id})))))))))
+
+(deftest write-scope-is-not-a-read-scope-test
+  (testing "GHY-4217: a document body is content, so a write must not hand it back to a token whose
+            read scopes get_content would refuse. `edits: []` is the documented way to touch nothing,
+            which made it a clean read oracle over any document the caller could write to."
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [existing (documents/create-document!
+                        {:name          "someone elses doc"
+                         :document      (documents/parse "PRE-EXISTING SECRET")
+                         :collection_id nil})
+              call!    (fn [scopes]
+                         (-> (registry/call-tool scopes nil "document_write"
+                                                 {:method "update" :id (:id existing) :edits []})
+                             :content first :text))]
+          (testing "without the read scope the body is withheld, leaving the minimal ack"
+            (let [txt (call! #{"agent:content:write"})]
+              (is (not (re-find #"PRE-EXISTING SECRET" txt)))
+              (is (re-find #"agent:content:read" txt))))
+          (testing "with it, the body comes back as before — the write still reports its result"
+            (let [txt (call! #{"agent:content:write" "agent:content:read"})]
+              (is (re-find #"PRE-EXISTING SECRET" txt)))))))))
