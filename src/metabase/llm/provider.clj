@@ -120,6 +120,9 @@
     :label         (deferred-tru "Microsoft Azure")
     :icon          "ai"
     :default-model nil
+    ;; Azure serves deployments the customer names, and its listing endpoint returns the regional catalog rather
+    ;; than those deployments, so there is nothing to fetch. The admin names the one this connection serves.
+    :model-field   :model
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -130,7 +133,13 @@
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
-                     :placeholder "https://<resource>.services.ai.azure.com/openai"}]}
+                     :placeholder "https://<resource>.services.ai.azure.com/openai"}
+                    {:key         :model
+                     :label       (deferred-tru "Deployment")
+                     :type        :text
+                     :required?   true
+                     :placeholder "openai/gpt-4.1-mini"
+                     :help        (deferred-tru "The deployment this connection serves, prefixed by its API family: openai/ or anthropic/. Add another connection to use a second deployment.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
     :icon          "ai"
@@ -212,6 +221,12 @@
   [type-name]
   (:models (provider-type type-name)))
 
+(defn model-field
+  "The `:config` key holding the model a connection of `type-name` serves, for types whose models cannot be listed
+  from the provider. Returns nil for types whose catalog is fetched or fixed."
+  [type-name]
+  (:model-field (provider-type type-name)))
+
 (defn default-model
   "The model a new connection of `type-name` starts on, or nil when the type has no sensible default (Azure, whose
   models are deployment names the admin chooses)."
@@ -244,6 +259,17 @@
                     {:status-code 400 :type type-name})))
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config)))
+
+(defn credentials-complete?
+  "Whether `config` carries the credentials a request needs. Unlike [[config-complete?]] this ignores the model
+  field: it names what to call, not what authenticates the call, and adapters receive it separately."
+  [type-name config]
+  (let [model-key (model-field type-name)]
+    (every? (fn [{:keys [key required?]}]
+              (or (not required?)
+                  (= key model-key)
+                  (non-blank (get config key))))
+            (:fields (provider-type type-name)))))
 
 (defn config-complete?
   "Whether `config` carries every required field for `type-name`, i.e. whether the connection can make requests."
@@ -280,7 +306,8 @@
                             :base-url {:setting :llm-zai-api-base-url}}}
    "azure"      {:type     "azure"
                  :settings {:api-key  {:setting :llm-azure-api-key :credential? true}
-                            :base-url {:setting :llm-azure-api-base-url :credential? true}}}
+                            :base-url {:setting :llm-azure-api-base-url :credential? true}
+                            :model    {:setting :llm-azure-model}}}
    "bedrock"    {:type     "bedrock"
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}

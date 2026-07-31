@@ -41,9 +41,11 @@
     (str/starts-with? (str model) "openai/")    :openai
     :else
     (throw (ex-info (tru "Unsupported Azure model {0}. Only anthropic/* and openai/* models are supported." (pr-str model))
-                    {:api-error  true
-                     :error-code :unsupported-model
-                     :model      model}))))
+                    {:api-error   true
+                     :error-code  :unsupported-model
+                     ;; a deployment the admin typed, so this is a bad request rather than an outage
+                     :status-code 400
+                     :model       model}))))
 
 (defn- model->deployment
   "The Azure deployment name carried by a `{family}/{deployment-name}` model string."
@@ -67,7 +69,7 @@
   "Validate the credentials of the connection serving this request.
   Throws when the API key or base URL is missing."
   [credentials]
-  (when-not (llm.provider/config-complete? "azure" credentials)
+  (when-not (llm.provider/credentials-complete? "azure" credentials)
     (throw (missing-credentials-ex)))
   credentials)
 

@@ -350,6 +350,14 @@
   :setter      :none
   :doc         "The Azure API base URL used by the connection configured from the environment.")
 
+(defsetting llm-azure-model
+  (deferred-tru "The Azure deployment served by the connection configured from the environment, prefixed by its API family (openai/ or anthropic/).")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :setter     :none
+  :doc        "The deployment served by the Azure connection configured from the environment, prefixed by its API family: openai/ or anthropic/. Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named.")
+
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set

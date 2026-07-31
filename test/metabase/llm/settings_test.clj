@@ -15,7 +15,7 @@
    :llm-openrouter-api-key :llm-openrouter-api-base-url
    :llm-mistral-api-key :llm-mistral-api-base-url
    :llm-zai-api-key :llm-zai-api-base-url
-   :llm-azure-api-key :llm-azure-api-base-url
+   :llm-azure-api-key :llm-azure-api-base-url :llm-azure-model
    :llm-bedrock-access-key-id :llm-bedrock-secret-access-key
    :llm-bedrock-session-token :llm-bedrock-region])
 

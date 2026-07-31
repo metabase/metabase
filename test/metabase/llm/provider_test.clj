@@ -114,8 +114,13 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"API base URL is required for azure"
          (llm.provider/validate-config! "azure" {:api-key "azure-key"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Deployment is required for azure"
+         (llm.provider/validate-config! "azure" {:api-key  "azure-key"
+                                                 :base-url "https://r.services.ai.azure.com/openai"})))
     (is (nil? (llm.provider/validate-config! "azure" {:api-key  "azure-key"
-                                                      :base-url "https://r.services.ai.azure.com/openai"}))))
+                                                      :base-url "https://r.services.ai.azure.com/openai"
+                                                      :model    "openai/gpt-4.1-mini"}))))
   (testing "the managed type declares no fields, so any config validates"
     (is (nil? (llm.provider/validate-config! "metabase" {})))))
 
@@ -127,12 +132,16 @@
         (is (false? (llm.provider/config-complete? type {:api-key ""})))
         (is (false? (llm.provider/config-complete? type {:api-key nil})))
         (is (false? (llm.provider/config-complete? type nil))))))
-  (testing "azure needs both an API key and a base URL"
+  (testing "azure needs an API key, a base URL, and the deployment it serves"
     (is (true? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
-                                                       :base-url "https://r.services.ai.azure.com/openai"})))
+                                                       :base-url "https://r.services.ai.azure.com/openai"
+                                                       :model    "openai/gpt-4.1-mini"})))
     (is (false? (llm.provider/config-complete? "azure" {:api-key "azure-key"})))
     (is (false? (llm.provider/config-complete? "azure" {:api-key "azure-key" :base-url "  "})))
-    (is (false? (llm.provider/config-complete? "azure" {:base-url "https://r.services.ai.azure.com/openai"}))))
+    (is (false? (llm.provider/config-complete? "azure" {:base-url "https://r.services.ai.azure.com/openai"})))
+    (testing "a connection with no deployment cannot serve a request, so it is not complete"
+      (is (false? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
+                                                          :base-url "https://r.services.ai.azure.com/openai"})))))
   (testing "bedrock needs both AWS keys, and neither the region nor the session token"
     (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                          :secret-access-key "test-secret"})))

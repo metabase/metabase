@@ -13,7 +13,7 @@
    "openrouter" {:api-key "sk-or-v1-test"}
    "mistral"    {:api-key "mistral-test-key"}
    "zai"        {:api-key "zai-test-key"}
-   "azure"      {:api-key "azure-test-key" :base-url azure-base-url}
+   "azure"      {:api-key "azure-test-key" :base-url azure-base-url :model "openai/gpt-4.1-mini"}
    "bedrock"    {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                  :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                  :region            "us-east-1"}
