@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
@@ -19,15 +18,16 @@ import type {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { push, useRouter } from "metabase/router";
+import { push, useLocation, useParams } from "metabase/router";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = () => {
-  const { location, params } = useRouter();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const params = useParams();
+  const { pathname } = location;
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );

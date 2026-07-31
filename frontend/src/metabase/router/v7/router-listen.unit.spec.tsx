@@ -1,28 +1,19 @@
 import { useEffect, useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { Outlet, Route, push, useRouter } from "metabase/router";
+import { Outlet, Route, push, subscribeLocation } from "metabase/router";
 
-import type { Location as HistoryLocation } from "../types";
-
-// Both engines expose `listen` at runtime; v3's `InjectedRouter` type omits it.
-type RouterWithListen = {
-  listen: (callback: (location: HistoryLocation) => void) => () => void;
-};
-
-// v3's `router.listen` fires a callback on every location change and returns an
-// unsubscribe function. The v7 engine has no native equivalent, so the shim wires
-// it to the location fan-out; `use-dashboard-url-query` relies on it (and crashed
-// the dashboard on v7 when it was missing).
+// `subscribeLocation` fires a callback on every location change and returns an
+// unsubscribe function, standing in for v3's `router.listen`.
+// `use-dashboard-url-query` relies on it (and crashed the dashboard on v7 when it
+// was missing).
 function Harness() {
-  const { router } = useRouter();
   const [seen, setSeen] = useState<string[]>([]);
   useEffect(() => {
-    // Cast because v3's `InjectedRouter` type omits `listen` (see above).
-    return (router as unknown as RouterWithListen).listen((location) => {
+    return subscribeLocation((location) => {
       setSeen((previous) => [...previous, location.pathname]);
     });
-  }, [router]);
+  }, []);
   return (
     <div>
       <span data-testid="seen">{seen.join(",")}</span>
@@ -37,7 +28,7 @@ const tree = (
   </Route>
 );
 
-describe("router.listen", () => {
+describe("subscribeLocation", () => {
   it("fires the callback on navigation and stops after unsubscribe", async () => {
     const { store } = renderWithProviders(tree, {
       withRouter: true,

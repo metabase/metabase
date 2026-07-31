@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -8,6 +8,11 @@ import {
   useReorderMetricDimensionsMutation,
 } from "metabase/api/metric";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import {
+  trackMetricDimensionRemoved,
+  trackMetricDimensionsReordered,
+  trackMetricDimensionsTabViewed,
+} from "metabase/metrics/analytics";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Divider, Flex, Paper } from "metabase/ui";
@@ -53,6 +58,10 @@ export function MetricDimensions({
 
   const dimensions = data?.added ?? [];
 
+  useEffect(() => {
+    trackMetricDimensionsTabViewed(metricId);
+  }, [metricId]);
+
   const handleToggle = (id: DimensionId, checked: boolean) => {
     setCheckedIds((prev) => {
       const next = new Set(prev);
@@ -67,8 +76,12 @@ export function MetricDimensions({
 
   const handleRemove = async () => {
     const ids = Array.from(checkedIds);
+    const trackRemoved = (result: "success" | "failure") =>
+      ids.forEach((id) => trackMetricDimensionRemoved(metricId, id, result));
+
     try {
       await removeDimensions({ metricId, dimension_ids: ids }).unwrap();
+      trackRemoved("success");
       setCheckedIds(new Set());
       setMode((current) =>
         current.type === "edit" && ids.includes(current.dimensionId)
@@ -76,6 +89,7 @@ export function MetricDimensions({
           : current,
       );
     } catch {
+      trackRemoved("failure");
       dispatch(
         addUndo({ message: t`Couldn't remove the selected dimensions` }),
       );
@@ -85,7 +99,9 @@ export function MetricDimensions({
   const handleReorder = async (ids: DimensionId[]) => {
     try {
       await reorderDimensions({ metricId, dimension_ids: ids }).unwrap();
+      trackMetricDimensionsReordered(metricId, "success");
     } catch {
+      trackMetricDimensionsReordered(metricId, "failure");
       dispatch(addUndo({ message: t`Couldn't reorder the dimensions` }));
     }
   };

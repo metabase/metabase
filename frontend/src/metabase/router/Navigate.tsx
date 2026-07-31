@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import type { To } from "./types";
+import { useLocation } from "./use-location";
 import { useNavigate } from "./use-navigate";
 
 export interface NavigateProps {
@@ -18,6 +19,13 @@ export interface NavigateProps {
  */
 export function Navigate({ to, replace = false, state }: NavigateProps): null {
   const navigate = useNavigate();
+  // A mounted `<Navigate>` re-asserts its target when the location moves out
+  // from under it, so going back lands forward again. That used to fall out of
+  // `navigate`'s identity churning per location, which only the declarative
+  // `useNavigate` does: inside a data router it is stable across navigations.
+  // Depend on the pathname directly so the behavior does not rest on which
+  // variant is in play.
+  const { pathname } = useLocation();
 
   // Key the effect on the serialized path (always string-valued, so safe to
   // stringify) so an equal `to` object recreated each render does not
@@ -28,7 +36,7 @@ export function Navigate({ to, replace = false, state }: NavigateProps): null {
   useEffect(() => {
     navigate(to, { replace, state });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate, jsonTo, replace, state]);
+  }, [navigate, pathname, jsonTo, replace, state]);
 
   return null;
 }

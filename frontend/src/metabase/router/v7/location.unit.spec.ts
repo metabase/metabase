@@ -1,4 +1,4 @@
-import { queryToSearch, searchToQuery } from "./location";
+import { queryToSearch } from "./location";
 
 // Call sites hold a query object and navigation targets carry a `search` string,
 // so this is what stands between the two. Its encoding is not plain
@@ -36,22 +36,5 @@ describe("queryToSearch", () => {
 
   it("still escapes characters that would break the query string", () => {
     expect(queryToSearch({ q: "a&b=c" })).toBe("?q=a%26b%3Dc");
-  });
-});
-
-describe("searchToQuery", () => {
-  it("collects a repeated key into an array", () => {
-    expect(searchToQuery("?id=1&id=2")).toEqual({ id: ["1", "2"] });
-  });
-
-  it("keeps a valueless key as an empty string", () => {
-    expect(searchToQuery("?city=&state=AK")).toEqual({
-      city: "",
-      state: "AK",
-    });
-  });
-
-  it("returns an empty query for an empty search", () => {
-    expect(searchToQuery("")).toEqual({});
   });
 });

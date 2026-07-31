@@ -11,7 +11,6 @@ import { useSetting } from "metabase/common/hooks";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
-import type { Query } from "metabase/router";
 import { queryToSearch } from "metabase/router";
 import { getDocsUrl, getSettings } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
@@ -19,6 +18,7 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { modelToUrl } from "metabase/urls";
+import type { SearchQuery } from "metabase/utils/browser";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
 import {
@@ -36,7 +36,7 @@ export const useCommandPalette = ({
   locationQuery,
 }: {
   disabled: boolean;
-  locationQuery: Query;
+  locationQuery: SearchQuery;
 }) => {
   const getIcon = useGetIcon();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

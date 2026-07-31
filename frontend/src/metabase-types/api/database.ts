@@ -204,7 +204,7 @@ export interface GetDatabaseMetadataRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
-  skip_fields?: boolean;
+  skip_fields: true; // make sure we don't get every field of every table
 }
 
 export interface CreateDatabaseRequest {

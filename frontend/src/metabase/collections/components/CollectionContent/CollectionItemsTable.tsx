@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
@@ -58,7 +58,7 @@ const getDefaultSortingOptions = (
 };
 
 export type CollectionItemsTableProps = {
-  collectionId: CollectionId;
+  collectionId?: CollectionId;
 } & Partial<{
   bookmarks: Bookmark[];
   clear: () => void;
@@ -163,16 +163,20 @@ export const CollectionItemsTable = ({
       selectOnlyTheseItems={selectOnlyTheseItems}
       toggleItem={toggleItem}
       unpinnedItemsSorting={unpinnedItemsSorting}
-      unpinnedQuery={{
-        id: collectionId,
-        models,
-        limit: pageSize,
-        offset: pageSize * page,
-        ...(showAllItems
-          ? { show_dashboard_questions: showDashboardQuestions }
-          : { pinned_state: "is_not_pinned" }),
-        ...unpinnedItemsSorting,
-      }}
+      unpinnedQuery={
+        collectionId === undefined
+          ? skipToken
+          : {
+              id: collectionId,
+              models,
+              limit: pageSize,
+              offset: pageSize * page,
+              ...(showAllItems
+                ? { show_dashboard_questions: showDashboardQuestions }
+                : { pinned_state: "is_not_pinned" }),
+              ...unpinnedItemsSorting,
+            }
+      }
       visibleColumns={visibleColumns}
       onClick={onClick}
       onNextPage={handleNextPage}
@@ -185,7 +189,7 @@ export const CollectionItemsTable = ({
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
-  unpinnedQuery: ListCollectionItemsRequest;
+  unpinnedQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onUnpinnedItemsSortingChange: (

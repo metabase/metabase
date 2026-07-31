@@ -23,9 +23,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
-      expect(history?.getCurrentLocation().query).toEqual({
-        dashboard_id: "1",
-      });
+      expect(history?.getCurrentLocation().search).toBe("?dashboard_id=1");
       expect(
         await screen.findByTestId("usage-analytics-dashboard"),
       ).toBeInTheDocument();
@@ -41,7 +39,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/202");
-      expect(history?.getCurrentLocation().query).toEqual({ question_id: "0" });
+      expect(history?.getCurrentLocation().search).toBe("?question_id=0");
       expect(
         await screen.findByTestId("usage-analytics-dashboard"),
       ).toBeInTheDocument();
@@ -59,9 +57,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
-      expect(history?.getCurrentLocation().query).toEqual({
-        dashboard_id: "1",
-      });
+      expect(history?.getCurrentLocation().search).toBe("?dashboard_id=1");
       expect(
         await screen.findByTestId("usage-analytics-dashboard"),
       ).toBeInTheDocument();

@@ -40,6 +40,7 @@
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false

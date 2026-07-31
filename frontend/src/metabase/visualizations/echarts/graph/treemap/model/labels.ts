@@ -1,7 +1,9 @@
-import type { VisualizationGridSize } from "custom-viz";
 import { match } from "ts-pattern";
 
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  VisualizationGridSize,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 
 import { LABEL_PADDING, groupHeader } from "../style";
 

@@ -947,6 +947,14 @@
       (is (re-find #"(?i)nvarchar\(max\)" ddl))
       (is (not (re-find #"(?i)\bn?text\b" ddl))))))
 
+(deftest ^:parallel insert-boolean-values-test
+  (testing "SQL Server has no boolean literal -- a bare TRUE/FALSE token parses as an unquoted identifier
+            (\"Invalid column name 'TRUE'\") -- so boolean row values must bind as parameters"
+    (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls :sqlserver :dbo/t ["id" "flag"]
+                                                                     [[1 true] [2 false]] false))]
+      (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
+      (is (= [1 true 2 false] params)))))
+
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
     (testing "compile-transform wraps each base table in a self-UNION subquery so the target doesn't inherit
