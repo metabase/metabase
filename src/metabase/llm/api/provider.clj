@@ -33,6 +33,7 @@
    [:default {:optional true} [:maybe :string]]
    [:help {:optional true} [:maybe :string]]
    [:docs_url {:optional true} [:maybe :string]]
+   [:prefix {:optional true} [:maybe :string]]
    [:options {:optional true} [:maybe [:sequential [:map [:value :string] [:label :string]]]]]])
 
 (def ^:private provider-type-response-schema
@@ -80,7 +81,7 @@
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- field-response
-  [{:keys [key label type required? advanced? placeholder default help docs-url options]}]
+  [{:keys [key label type required? advanced? placeholder default help docs-url prefix options]}]
   (cond-> {:key      (name key)
            :label    (str label)
            :type     (name type)
@@ -90,6 +91,7 @@
     default     (assoc :default default)
     help        (assoc :help (str help))
     docs-url    (assoc :docs_url docs-url)
+    prefix      (assoc :prefix prefix)
     options     (assoc :options options)))
 
 (defn- provider-type-response

@@ -45,6 +45,7 @@
                                 :type     "password"
                                 :required true
                                 :advanced false
+                                :prefix   "sk-ant-"
                                 :docs_url "https://console.anthropic.com/settings/keys"}
                                {:key      "base-url"
                                 :label    "API base URL"
@@ -61,6 +62,15 @@
                         (filter #(= "select" (:type %)))
                         first
                         :options))))
+      (testing "the API-key prefixes reach the client, which uses them to recognize a pasted key"
+        (is (= {"anthropic"  "sk-ant-"
+                "openai"     "sk-"
+                "openrouter" "sk-or-v1-"}
+               (into {}
+                     (keep (fn [{:keys [type fields]}]
+                             (when-let [prefix (some :prefix fields)]
+                               [type prefix])))
+                     types))))
       (testing "`advanced` marks the fields an admin can ignore, which is not the same as the optional ones:
                 Bedrock's region has a default but still decides model availability and data residency, so it
                 stays up front while the session token — only used for temporary credentials — does not"

@@ -54,6 +54,7 @@ export interface LlmProviderField {
   default?: string | null;
   help?: string | null;
   docs_url?: string | null;
+  prefix?: string | null;
   options?: { value: string; label: string }[] | null;
 }
 

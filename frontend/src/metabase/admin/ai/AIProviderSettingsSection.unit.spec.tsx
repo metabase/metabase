@@ -47,6 +47,7 @@ const ANTHROPIC_TYPE = createMockLlmProviderType({
       label: "API key",
       type: "password",
       required: true,
+      prefix: "sk-ant-",
     }),
     createMockLlmProviderField({
       key: "base-url",
@@ -312,6 +313,53 @@ describe("AIProviderSettingsSection", () => {
       screen.getByRole("button", { name: /Add another provider/ }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Model")).toBeInTheDocument();
+  });
+
+  it("picks the provider and fills the key in when one is pasted", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    expect(
+      within(modal).queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.paste("sk-ant-api03-pasted");
+
+    const apiKey = await within(modal).findByLabelText(/API key/);
+    expect(apiKey).toHaveValue("sk-ant-api03-pasted");
+    expect(within(modal).getByText("Anthropic")).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
+
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Connect" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+          body: {
+            type: "anthropic",
+            name: "Anthropic",
+            config: { "api-key": "sk-ant-api03-pasted" },
+          },
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("stays on the picker when the pasted text is not a recognizable key", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.paste("just some text");
+
+    expect(within(modal).queryByLabelText(/API key/)).not.toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    ).toBeInTheDocument();
   });
 
   it("adds a provider through the modal", async () => {
