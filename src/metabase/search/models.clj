@@ -1,6 +1,5 @@
 (ns metabase.search.models
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.app-db.dml-capture :as dml-capture]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -58,19 +57,6 @@
   [model rows]
   (mapv #(t2/instance model %) rows))
 
-(defn- submit-handoff!
-  "Run each of `steps` in order, off the calling thread unless ingestion is forced to be synchronous.
-  A step that throws is logged, and the steps after it still run."
-  [model op & steps]
-  (let [run #(doseq [step steps]
-               (try
-                 (step)
-                 (catch Throwable e
-                   (log/errorf e "Failed search-index handoff for %s %s" model op))))]
-    (if search.ingestion/*force-sync*
-      (run)
-      (future (run)))))
-
 ;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything but
 ;; `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
 ;; This runs inside the user's delete, so a search bug must not fail it: an error skips the enumeration and leaves
@@ -91,7 +77,6 @@
     ;; Do not hand the re-derivation off until the outer transaction commits; Metabase discards the callback on
     ;; rollback.
     (let [instances (rows->instances model rows)]
-      (mdb/do-after-commit
-       #(submit-handoff! model op
-                         (fn [] (search/bulk-update! instances))
-                         (fn [] (search/reconcile-cascading-documents! dependents)))))))
+      (search/after-commit! (format "%s %s" model op)
+                            (fn [] (search/bulk-update! instances))
+                            (fn [] (search/reconcile-cascading-documents! dependents))))))
