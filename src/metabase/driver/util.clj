@@ -268,6 +268,8 @@
   ;; {[app-db-uid router-db-id] {:stamp <updated-at>, :features {driver #{feature}}}}
   (atom {}))
 
+(u.memo/register-monitored-cache! "metabase.driver.util/db-feature-sets" #(count @db-feature-sets))
+
 (defn invalidate-features-cache!
   "Evict the cached feature set(s) for the Database with `database-id`. Called from the
   `:event/database-update` / `:event/database-delete` handlers; between events, the stamp check

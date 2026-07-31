@@ -12,9 +12,11 @@
   ([[metabase-enterprise.serialization.dump]]); an OSS namespace cannot depend on enterprise code. OSS-only builds get
   no memoize-cache telemetry.
 
-  Only caches built with [[clojure.core.memoize]] (`memo`, `ttl`, and
-  [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`) can be measured, because their
-  backing cache is reachable through the memoized function's metadata."
+  Two kinds of cache can be measured: functions built with [[clojure.core.memoize]] (`memo`, `ttl`, and
+  [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`), whose backing cache is reachable
+  through the memoized function's metadata; and caches whose owners self-register a count fn
+  with [[metabase.util.memoize/register-monitored-cache!]] (the inverted option for modules this namespace should not
+  depend on, e.g. `metabase.driver.util/db-feature-sets`)."
   (:require
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.analytics-interface.core :as analytics.interface]
@@ -23,6 +25,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as u.memo]
    [metabase.warehouse-schema.models.field :as schema.field]
    [metabase.warehouses.models.database :as database])
   (:import
@@ -31,15 +34,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private monitored-cache-vars
-  "The vars holding the memoization caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed
-  function (see the namespace docstring)."
+  "The vars holding the caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed function.
+  Caches owned by modules we should not depend on register themselves instead
+  (see [[metabase.util.memoize/register-monitored-cache!]])."
   [#'schema.field/field-id->table-id
    #'database/table-id->database-id
    #'database/db-id->router-db-id
    #'audit-app.impl/memoized-select-audit-entity*
-   ;; NOTE: the driver.u feature-support caches this used to monitor were replaced by a plain
-   ;; atom (`driver.u/db-feature-sets`, bounded by #databases); measuring atom-backed caches
-   ;; here is a planned follow-up.
    #'mi/cached-encrypted-json-out
    #'collection/can-access-root-collection?
    #'collection/visible-collection-ids*
@@ -59,16 +60,29 @@
   [cache-var]
   (try
     (when-let [cache (cache-object @cache-var)]
-      (let [entries (count cache)]
-        {:cache      (str (symbol cache-var))
-         :entries    entries}))
+      {:cache      (str (symbol cache-var))
+       :entries    (count cache)})
     (catch Exception e
       (log/warn "Error measuring memoization cache size" {:cache (str (symbol cache-var))
                                                           :error (ex-message e)}))))
 
+(defn- registered-cache-stats
+  "Stats for the caches whose owners self-registered a count fn
+  via [[metabase.util.memoize/register-monitored-cache!]]."
+  []
+  (keep (fn [[cache-name count-fn]]
+          (try
+            {:cache   cache-name
+             :entries (count-fn)}
+            (catch Exception e
+              (log/warn "Error measuring registered cache size" {:cache cache-name
+                                                                 :error (ex-message e)}))))
+        (u.memo/monitored-caches)))
+
 (defn- all-cache-stats
   []
-  (keep memoization-cache-stats monitored-cache-vars))
+  (concat (keep memoization-cache-stats monitored-cache-vars)
+          (registered-cache-stats)))
 
 (defmethod analytics/pull-collector ::memoize-cache-sizes [_]
   {:min-interval-s (* 10 60)
