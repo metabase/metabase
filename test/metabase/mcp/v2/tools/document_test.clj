@@ -2,6 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.documents.core :as documents]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as v2.content]
    [metabase.mcp.v2.tools.document :as v2.document]
@@ -23,6 +26,13 @@
       (get-in [:content 0 :text])
       json/decode+kw))
 
+(defn- orders-query
+  "A Lib query over ORDERS — a runnable `:dataset_query` for fixtures that only need the card to
+   have one. Lib rather than `mt/mbql-query`, which is deprecated since 0.61.0."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
 (defn- with-tool-documents
   "Call `f` with a `created!` fn that records a payload's document id for cleanup; deletes the
    recorded documents (with their comments and owned cards) afterward. Documents made through
@@ -43,7 +53,7 @@
 
 (deftest create-clones-card-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
-                                            :dataset_query (mt/mbql-query orders)}]
+                                            :dataset_query (orders-query)}]
     (mt/with-current-user (mt/user->id :crowberto)
       (with-tool-documents
         (fn [created!]
@@ -73,7 +83,7 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Card {card-id :id} {:name          "Hidden"
                                             :collection_id coll-id
-                                            :dataset_query (mt/mbql-query orders)}]
+                                            :dataset_query (orders-query)}]
     (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
     (mt/with-current-user (mt/user->id :rasta)
       (testing "an unreadable card collapses into the same not-found error as a missing one"
@@ -155,6 +165,42 @@
             (is (false? (:archived (call {:method "update" :id doc-id :edits [] :archived false}))))
             (is (= doc-before (t2/select-one-fn :document :model/Document :id doc-id)))))))))
 
+(def ^:private unrenderable-body
+  "A stored body holding a block type the Markdown serializer has no rendering for — what a
+   document written by a newer frontend, or by a REST caller (`[:document :any]`), looks like to
+   this tool."
+  {:type    "doc"
+   :content [{:type "mysteryBlock" :attrs {:_id "m1"}}
+             {:type "paragraph" :attrs {:_id "p1"} :content [{:type "text" :text "After."}]}]})
+
+(deftest unrenderable-body-does-not-fail-a-committed-write-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (with-tool-documents
+      (fn [created!]
+        (let [doc-id (:id (created! (call {:method           "create"
+                                           :name             "Old name"
+                                           :content_markdown "Stable body."})))]
+          (t2/update! :model/Document doc-id {:document unrenderable-body})
+          (testing "a metadata-only update lands and is reported as the success it is — the write
+                   commits before the response is built, so a body this tool can't render must not
+                   turn a completed write into a failed call"
+            (let [renamed (call {:method "update" :id doc-id :edits [] :name "New name"})]
+              (is (= "New name" (:name renamed)))
+              (is (= "New name" (t2/select-one-fn :name :model/Document :id doc-id)))))
+          (testing "content_markdown is omitted rather than degraded — the next edit's old_str is
+                   matched against that exact text, so text that isn't the serialization is worse
+                   than none"
+            (let [renamed (call {:method "update" :id doc-id :edits [] :name "Newer name"})]
+              (is (not (contains? renamed :content_markdown)))
+              (is (string? (:content_markdown_unavailable renamed)))))
+          (testing "an edit against a body that can't be serialized still fails, and fails before
+                   writing anything — there is no current Markdown for old_str to match"
+            (is (thrown-with-msg? Exception #"Cannot serialize unknown block node type"
+                                  (call {:method "update" :id doc-id
+                                         :edits  [{:old_str "After." :new_str "Changed."}]})))
+            (is (= "Newer name" (t2/select-one-fn :name :model/Document :id doc-id)))
+            (is (= unrenderable-body (t2/select-one-fn :document :model/Document :id doc-id)))))))))
+
 (deftest edit-matching-errors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
@@ -187,6 +233,125 @@
   (let [result (registry/call-tool nil "test-session" "document_write" args)]
     (when (:isError result)
       (-> result :content first :text))))
+
+(defn- written-smart-link-attrs
+  "The smartLink attrs of a document written through the tool, read back from the stored AST — the
+   `label`/`href` an editor would render. Goes through the tool rather than `md/parse` because
+   resolving those is a permission decision and so lives in the tool, not in the Markdown layer."
+  [created! body]
+  (let [payload (created! (call {:method "create" :name "smart link probe" :content_markdown body}))]
+    (->> (tree-seq :content :content (t2/select-one-fn :document :model/Document :id (:id payload)))
+         (keep #(when (= "smartLink" (:type %)) (:attrs %)))
+         vec)))
+
+(deftest smart-link-resolution-is-permission-checked-test
+  (testing "an entity token pointing at content the caller can't read resolves to nothing, so its
+           name never crosses the permission boundary — a document writer must not be able to use
+           smart links to enumerate the names of content they have no access to"
+    (mt/with-temp [:model/Collection {secret-id :id}   {:name "Top Secret Collection"}
+                   :model/Dashboard  {hidden-id :id}   {:name "CONFIDENTIAL Layoffs" :collection_id secret-id}
+                   :model/Collection {open-id :id}     {:name "Shared Reports"}
+                   :model/Card       {readable-id :id} {:name          "Open Question"
+                                                        :collection_id open-id
+                                                        :dataset_query (orders-query)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+      (with-tool-documents
+        (fn [created!]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "an unreadable target is indistinguishable from a dangling id"
+              (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
+                      {:entityId secret-id :model "collection" :label nil :href "/"}]
+                     (written-smart-link-attrs
+                      created!
+                      (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                              hidden-id secret-id)))))
+            (testing "a readable target still resolves its label and href"
+              (is (= [{:entityId readable-id :model "card" :label "Open Question"
+                       :href (str "/question/" readable-id)}]
+                     (written-smart-link-attrs created!
+                                               (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
+            (testing "user mentions still resolve — :model/User has no can-read? and a name is not
+                     gated outside sandboxing, so the mention picker's behaviour is preserved"
+              (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
+                     (written-smart-link-attrs created!
+                                               (format "{%% entity id=\"%d\" model=\"user\" %%}"
+                                                       (mt/user->id :crowberto)))))))
+          (testing "an admin resolves what a non-admin could not"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
+                       :href (str "/dashboard/" hidden-id)}]
+                     (written-smart-link-attrs created!
+                                               (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
+                                                       hidden-id)))))))))))
+
+(deftest edit-keeps-the-label-of-a-smart-link-the-editor-cannot-read-test
+  (testing "editing other text in a block must not wipe the label of a smart link pointing at
+           content the editor can't read. The `{% entity %}` token carries only id and model, so a
+           re-parsed block's link has no label until it is resolved from the row — and an editor
+           who can't read that row resolves nothing. Treating that as \"no label\" writes the blank
+           back for everyone, including the people who can see the target."
+    (mt/with-temp [:model/Collection {secret-id :id} {:name "Top Secret Collection"}
+                   :model/Card       {hidden-id :id} {:name          "CONFIDENTIAL Revenue"
+                                                      :collection_id secret-id
+                                                      :dataset_query (orders-query)}
+                   :model/Card       {unseen-id :id} {:name          "CONFIDENTIAL Headcount"
+                                                      :collection_id secret-id
+                                                      :dataset_query (orders-query)}
+                   :model/Collection {shared-id :id} {:name "Shared Reports"}]
+      ;; `shared-id` needs no grant: a new collection is already all-users read-write, which is
+      ;; what lets rasta edit the document while the card stays out of reach.
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (with-tool-documents
+        (fn [created!]
+          (let [payload    (mt/with-current-user (mt/user->id :crowberto)
+                             (created!
+                              (call {:method           "create"
+                                     :name             "Smart link label"
+                                     :collection_id    shared-id
+                                     :content_markdown (str "Intro. See {% entity id=\"" hidden-id
+                                                            "\" model=\"card\" %} for detail.")})))
+                doc-id     (:id payload)
+                link-attrs (fn []
+                             (->> (tree-seq :content :content
+                                            (t2/select-one-fn :document :model/Document :id doc-id))
+                                  (some #(when (= "smartLink" (:type %)) (:attrs %)))))
+                resolved   {:entityId hidden-id
+                            :model    "card"
+                            :label    "CONFIDENTIAL Revenue"
+                            :href     (str "/question/" hidden-id)}]
+            (testing "a writer who can read the target stores its label"
+              (is (= resolved (link-attrs))))
+            (let [updated (mt/with-current-user (mt/user->id :rasta)
+                            (call {:method "update" :id doc-id
+                                   :edits  [{:old_str "Intro." :new_str "Introduction."}]}))]
+              (testing "the edit lands"
+                (is (str/starts-with? (:content_markdown updated) "Introduction.")))
+              (testing "and the link the editor never touched keeps its label and href"
+                (is (= resolved (link-attrs))))
+              (testing "without handing that editor the name they cannot read — labels live in the
+                       AST, never in the Markdown, which is what makes carrying one forward safe"
+                (is (not (str/includes? (:content_markdown updated) "CONFIDENTIAL")))))
+            (testing "the fallback only keeps a label the document already had — a link the editor
+                     adds to something they can't read resolves to nothing, so this cannot be used
+                     to acquire a name"
+              (mt/with-current-user (mt/user->id :rasta)
+                (call {:method "update" :id doc-id
+                       :edits  [{:old_str "for detail."
+                                 :new_str (str "for detail, and {% entity id=\"" unseen-id
+                                               "\" model=\"card\" %} too.")}]}))
+              (is (= {:entityId unseen-id :model "card" :label nil :href "/"}
+                     (->> (tree-seq :content :content
+                                    (t2/select-one-fn :document :model/Document :id doc-id))
+                          (some #(when (= unseen-id (get-in % [:attrs :entityId])) (:attrs %)))))))))))))
+
+(deftest smart-link-labels-are-not-resolved-by-the-markdown-layer-test
+  (testing "parse leaves label/href at their defaults — the Markdown namespace performs no lookup,
+           which is what keeps the documents module free of a permissions dependency"
+    (is (= [{:entityId 1 :model "dashboard" :label nil :href "/"}]
+           (->> (tree-seq :content :content (documents/parse "see {% entity id=\"1\" model=\"dashboard\" %}"))
+                (keep #(when (= "smartLink" (:type %)) (:attrs %)))
+                vec)))))
 
 (deftest rejected-argument-values-are-teaching-errors-test
   (testing "an argument the tool accepts but the write path cannot use must come back as an error

@@ -7,12 +7,14 @@ import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import {
-  type InjectedRouter,
   type Location,
   push,
+  queryToSearch,
   replace,
+  subscribeLocation,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {
@@ -21,12 +23,9 @@ import {
   getTabs,
   getValuePopulatedParameters,
 } from "../selectors";
-import { createTabSlug } from "../utils";
+import { createTabSlug, parseTabSlug } from "../utils";
 
-export function useDashboardUrlQuery(
-  router: InjectedRouter,
-  location: Location,
-) {
+export function useDashboardUrlQuery(location: Location) {
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
@@ -79,7 +78,7 @@ export function useDashboardUrlQuery(
       return;
     }
 
-    const currentQuery = location?.query ?? {};
+    const currentQuery = parseSearchQuery(location.search);
 
     const nextQueryParams = toLocationQuery(queryParams);
     const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
@@ -94,7 +93,7 @@ export function useDashboardUrlQuery(
         queryParams.tab !== previousQueryParams.tab;
 
       const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, query: nextQuery }));
+      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
     }
   }, [
     dashboardId,
@@ -106,35 +105,23 @@ export function useDashboardUrlQuery(
   ]);
 
   useEffect(() => {
-    // @ts-expect-error missing type declaration
-    const unsubscribe = router.listen((nextLocation) => {
+    return subscribeLocation((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {
         return;
       }
 
-      const currentTabId = parseTabId(location);
-      const nextTabId = parseTabId(nextLocation);
+      const currentTabId = parseTabSlug(location);
+      const nextTabId = parseTabSlug(nextLocation);
 
       if (nextTabId && currentTabId !== nextTabId) {
         dispatch(selectTab({ tabId: nextTabId }));
       }
     });
-
-    return () => unsubscribe();
-  }, [router, location, selectedTab, dispatch]);
+  }, [location, selectedTab, dispatch]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
-
-function parseTabId(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
-    const id = parseInt(slug, 10);
-    return Number.isSafeInteger(id) ? id : null;
-  }
-  return null;
-}
 
 function toLocationQuery(object: Record<string, any>) {
   return _.mapObject(object, (value) => (value == null ? "" : value));

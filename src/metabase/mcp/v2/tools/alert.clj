@@ -356,10 +356,10 @@
    at write time is the only place the token's scopes can bound that deferred execution. No-op for
    unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
   [token-scopes action]
-  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-execute)
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (throw (ex-info (format (str "%s runs its question and delivers the results, which requires the %s scope — "
                                  "this token can manage alerts but not execute queries.")
-                            action metabot.scope/agent-query-execute)
+                            action metabot.scope/agent-query-run)
                     {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
 
 (def ^:private alert-write-args-schema
@@ -399,8 +399,7 @@
   changing its delivery, additionally requires the agent:query:execute scope — the alert runs the question and
   delivers its results. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
   {:name         "alert_write"
-   :scope        metabot.scope/agent-alert-write
-   :extra-scopes [metabot.scope/agent-query-execute]
+   :scope        metabot.scope/agent-delivery-write
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         alert-write-args-schema}
   [args {:keys [token-scopes]}]
@@ -408,7 +407,7 @@
     (common/success-content
      ;; Reading an alert back demands the read tool's base scope plus the notification extra —
      ;; without them the response is the minimal ack, or a no-op update reads the recipients.
-     (common/readback token-scopes [metabot.scope/agent-resource-read metabot.scope/agent-notification-read]
+     (common/readback token-scopes [metabot.scope/agent-content-read]
                       (case op
                         :create (do (check-query-execute-scope! token-scopes "Creating an alert")
                                     (create! a))

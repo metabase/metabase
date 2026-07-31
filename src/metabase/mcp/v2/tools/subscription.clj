@@ -337,10 +337,10 @@
    deferred execution. No-op for unscoped callers (cookie sessions bind the unrestricted sentinel,
    which matches everything). Mirrors alert_write's check of the same scope."
   [token-scopes action]
-  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-execute)
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (throw (ex-info (format (str "%s runs the dashboard's questions and delivers the results, which requires the "
                                  "%s scope — this token can manage subscriptions but not execute queries.")
-                            action metabot.scope/agent-query-execute)
+                            action metabot.scope/agent-query-run)
                     {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
 
 (registry/deftool subscription-write
@@ -359,8 +359,7 @@
   question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can
   update it."
   {:name         "subscription_write"
-   :scope        metabot.scope/agent-subscription-write
-   :extra-scopes [metabot.scope/agent-query-execute]
+   :scope        metabot.scope/agent-delivery-write
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         subscription-write-args-schema}
   [args {:keys [token-scopes]}]
@@ -372,6 +371,6 @@
                                  (check-query-execute-scope! token-scopes "Changing where a subscription delivers"))
                                (update! a b)))]
     (common/success-content
-     (common/readback token-scopes [metabot.scope/agent-resource-read metabot.scope/agent-notification-read]
+     (common/readback token-scopes [metabot.scope/agent-content-read]
                       (projections/project :subscription :concise
                                            (projections/subscription-row (pulse/retrieve-pulse id)))))))

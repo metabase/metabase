@@ -257,50 +257,32 @@
         (is (re-find #"at most 10" error))
         (is (re-find #"you passed 11" error))))))
 
-(deftest get-content-extra-scope-gates-test
-  (testing "GHY-4140: alert reads require agent:notification:read on top of the base scope"
-    (notification.tu/with-card-notification
-      [notification {:card              {:dataset_query (venues-query)}
-                     :notification      {:creator_id (mt/user->id :crowberto)}
-                     :handlers          []}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"}
-                               {:items [{:type "alert" :id (:id notification)}]})]
-          (is (re-find #"agent:notification:read" (:error row))))
-        (testing "granting the scope lets the same read through"
-          (let [row (content-one #{"agent:resource:read" "agent:notification:read"}
-                                 {:items [{:type "alert" :id (:id notification)}]})]
-            (is (nil? (:error row))))))))
-  (testing "GHY-4140: transform reads require agent:transforms:read"
-    (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                              :source {:type  :query
-                                                       :query {:database (mt/id)
-                                                               :type     "query"
-                                                               :query    {:source-table (mt/id :venues)}}}
-                                              :target {:type   :table
-                                                       :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                                       :name   "t1_out"}}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"} {:items [{:type "transform" :id id}]})]
-          (is (re-find #"agent:transforms:read" (:error row)))))))
-  (testing "snippet reads require agent:snippets:read — a snippet body is not readable on the base scope"
-    (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name "snip" :content "wow" :creator_id (mt/user->id :lucky)}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"} {:items [{:type "snippet" :id id}]})]
-          (is (re-find #"agent:snippets:read" (:error row))))
-        (testing "granting the scope lets the same read through"
-          (let [row (content-one #{"agent:resource:read" "agent:snippets:read"} {:items [{:type "snippet" :id id}]})]
+(deftest get-content-reads-formerly-gated-types-test
+  (testing "GHY-4225: alerts, transforms, snippets and documents each used to need their own read
+            scope on top of the base one. Those folded into `agent:content:read`, so the single
+            scope now carries them — the per-type gate is gone, not merely renamed."
+    (testing "alert"
+      (notification.tu/with-card-notification
+        [notification {:card         {:dataset_query (venues-query)}
+                       :notification {:creator_id (mt/user->id :crowberto)}
+                       :handlers     []}]
+        (mt/with-test-user :crowberto
+          (is (nil? (:error (content-one #{"agent:content:read"}
+                                         {:items [{:type "alert" :id (:id notification)}]})))))))
+    (testing "snippet, including its body"
+      (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name "snip" :content "wow"
+                                                         :creator_id (mt/user->id :lucky)}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one #{"agent:content:read"} {:items [{:type "snippet" :id id}]})]
             (is (nil? (:error row)))
-            (is (= "wow" (:content row))))))))
-  (testing "document reads require agent:document:read"
-    (mt/with-temp [:model/Document {id :id}
-                   {:document     {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "hello"}]}]}
-                    :content_type "application/json+vnd.prose-mirror"}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"} {:items [{:type "document" :id id}]})]
-          (is (re-find #"agent:document:read" (:error row))))
-        (testing "granting the scope lets the same read through"
-          (let [row (content-one #{"agent:resource:read" "agent:document:read"} {:items [{:type "document" :id id}]})]
+            (is (= "wow" (:content row)))))))
+    (testing "document, including its body"
+      (mt/with-temp [:model/Document {id :id}
+                     {:document     {:type "doc" :content [{:type "paragraph"
+                                                            :content [{:type "text" :text "hello"}]}]}
+                      :content_type "application/json+vnd.prose-mirror"}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
             (is (re-find #"hello" (:markdown row)))))))))
 
@@ -385,6 +367,61 @@
                                  :text (-> % :thread first :text))
                          (:orphaned_comments row))))))))))
 
+(def ^:private layout-commented-doc
+  "A layout container holding a list. `resizeNode`/`flexContainer` carry no `_id` at all, so a
+   block nested inside one has to resolve its anchor past them; the paragraph inside the list item
+   is the block with no span of its own — the list re-renders it with a `- ` prefix."
+  {:type    "doc"
+   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
+              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
+                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
+                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
+                                               :content [{:type    "listItem"
+                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
+                                                                     :content [{:type "text"
+                                                                                :text "Nested in a list."}]}]}]}]}
+                                   {:type    "supportingText" :attrs {:_id "support-2"}
+                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
+                                               :content [{:type "text" :text "Beside it."}]}]}]}]}
+             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
+
+(deftest get-content-document-comments-inside-a-layout-container-test
+  (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
+            with no span of its own rolls up to the nearest ancestor that has one, and the
+            id-less resizeNode/flexContainer wrappers in between must not break the chain"
+    (mt/with-temp [:model/Document {doc-id :id} {:document     layout-commented-doc
+                                                 :content_type "application/json+vnd.prose-mirror"}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "list-para"
+                                      :content         (comment-content "on a list paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "support-para"
+                                      :content         (comment-content "on a supporting paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "support-1"
+                                      :content         (comment-content "on the supporting block")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "gone-0000"
+                                      :content         (comment-content "my block was rewritten")}]
+      (mt/with-test-user :crowberto
+        (let [row      (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})
+              markdown (:markdown row)
+              by-id    (into {} (map (juxt :child_target_id identity)) (:comments row))]
+          (is (nil? (:error row)))
+          (testing "every block that still exists is anchored, whatever it is nested in"
+            (is (= #{"support-1" "list-para" "support-para"} (set (keys by-id)))))
+          (testing "a paragraph the list re-renders anchors to its list's span"
+            (is (= "- Nested in a list." (get-in (by-id "list-para") [:anchor :text]))))
+          (testing "a block that has its own span still uses it rather than an ancestor's"
+            (is (= "Beside it." (get-in (by-id "support-para") [:anchor :text])))
+            (is (str/starts-with? (get-in (by-id "support-1") [:anchor :text]) "::: supporting")))
+          (testing "every anchor is a true slice of the returned markdown"
+            (doseq [[id thread] by-id
+                    :let [{:keys [start end text]} (:anchor thread)]]
+              (is (= text (subs markdown start end)) id)))
+          (testing "a thread whose block is genuinely gone is still orphaned"
+            (is (= ["gone-0000"] (mapv :child_target_id (:orphaned_comments row))))))))))
+
 (deftest get-content-document-comments-scope-and-batch-test
   (mt/with-temp [:model/Document {doc-id :id} {:document     commented-doc
                                                :content_type "application/json+vnd.prose-mirror"}
@@ -393,11 +430,10 @@
                                     :content         (comment-content "hi")}
                  :model/Card     {card-id :id} {:dataset_query (venues-query)}]
     (mt/with-test-user :crowberto
-      (testing "GHY-4159: include [comments] still requires agent:document:read"
-        (let [row (content-one #{"agent:resource:read"}
-                               {:items [{:type "document" :id doc-id}] :include ["comments"]})]
-          (is (re-find #"agent:document:read" (:error row))))
-        (let [row (content-one #{"agent:resource:read" "agent:document:read"}
+      (testing "GHY-4159/GHY-4225: comment threads are document content, so the tool's own
+                agent:content:read carries them — they used to need agent:document:read on top,
+                and that per-type gate is gone rather than renamed"
+        (let [row (content-one #{"agent:content:read"}
                                {:items [{:type "document" :id doc-id}] :include ["comments"]})]
           (is (nil? (:error row)))
           (is (= 1 (count (:comments row))))))
@@ -459,8 +495,14 @@
           (is (nil? (:error row)))
           (testing "rendered as real Markdown, not the flattened-text fallback"
             (is (str/includes? (str (:markdown row)) "> buried"))))))
-    (testing "past that ceiling the write is refused outright, so no such document exists to read"
-      (is (thrown? Exception
+    (testing "past that ceiling the write does not succeed, so no such document exists to read"
+      ;; Throwable, not Exception: which mechanism stops the write depends on how much stack the
+      ;; running thread has. The JSON nesting limit raises an ordinary exception, but on a smaller
+      ;; stack — CI's parallel test threads, say — a recursive walk over the body can overflow
+      ;; first, and a StackOverflowError is an Error. Either outcome satisfies what this pins,
+      ;; which is that the write does not land; asserting one of them made the test
+      ;; environment-dependent.
+      (is (thrown? Throwable
                    (mt/with-temp [:model/Document _ {:document     (deeply-nested-ast 600)
                                                      :content_type "application/json+vnd.prose-mirror"}]
                      nil))))))

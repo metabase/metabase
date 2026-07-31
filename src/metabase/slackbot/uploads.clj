@@ -45,7 +45,7 @@
   [{:keys [db_id schema_name table_prefix]} {:keys [name url_private] :as file}]
   (if-let [size-error (validate-file-size file)]
     (do
-      (log/warnf "[slackbot] File exceeds size limit: file=%s error=%s" name size-error)
+      (log/warnf "[slackbot] File exceeds size limit: error=%s" size-error)
       {:error size-error :filename name})
     (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
       (try
@@ -58,13 +58,13 @@
                          :schema-name   schema_name
                          :table-prefix  table_prefix
                          :collection-id nil})]
-            (log/infof "[slackbot] File uploaded: file=%s model_id=%d" name (:id result))
+            (log/infof "[slackbot] File uploaded: model_id=%d" (:id result))
             (analytics/inc! :metabase-slackbot/file-uploads {:result "success"})
             {:filename name
              :model-id (:id result)
              :model-name (:name result)}))
         (catch Exception e
-          (log/warnf "[slackbot] File upload failed: file=%s error=%s" name (ex-message e))
+          (log/warnf "[slackbot] File upload failed: error=%s" (ex-message e))
           (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
           {:error (ex-message e) :filename name})
         (finally
@@ -78,7 +78,7 @@
   (let [{csv-files true other-files false} (group-by csv-file? files)
         skipped (mapv :name other-files)]
     (when (seq skipped)
-      (log/debugf "[slackbot] Skipping non-CSV files: %s" (pr-str skipped)))
+      (log/debugf "[slackbot] Skipping %d non-CSV files" (count skipped)))
     {:results (mapv (partial process-csv-file settings) csv-files)
      :skipped skipped}))
 

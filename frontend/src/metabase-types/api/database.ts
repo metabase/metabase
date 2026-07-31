@@ -10,7 +10,6 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
-  "database-enable-workspaces"?: boolean;
 };
 
 export type DatabaseFeature =
@@ -58,8 +57,7 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table"
-  | "workspace";
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -206,7 +204,7 @@ export interface GetDatabaseMetadataRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
-  skip_fields?: boolean;
+  skip_fields: true; // make sure we don't get every field of every table
 }
 
 export interface CreateDatabaseRequest {

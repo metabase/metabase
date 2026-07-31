@@ -292,7 +292,13 @@
                                          "the only removal path — there is no hard delete.")}]]]
    [:revision_message {:optional true}
     [:maybe [:string {:min 1 :description (str "Update only, required: a short sentence describing the change, "
-                                               "recorded in the revision history.")}]]]])
+                                               "recorded in the revision history.")}]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description (str "Update only: property names to unset (description). Needed "
+                                                   "because a null cannot say \"clear this\" — strict clients fill "
+                                                   "every unset property with null, so nulls are stripped at the "
+                                                   "boundary.")}
+                          "description"]]]]])
 
 ;;; ------------------------------------------------ segment_write -------------------------------------------------
 
@@ -309,7 +315,8 @@
                           "reference other segments; cycles are rejected.")}))
 
 (def ^:private segment-write-entry
-  {:create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]
+   :clearable       #{:description}})
 
 (registry/deftool segment-write
   "Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries'
@@ -322,7 +329,7 @@
   a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the
   table, and the table must not live in a read-only remote-synced collection."
   {:name        "segment_write"
-   :scope       metabot.scope/agent-segment-write
+   :scope       metabot.scope/agent-content-write
    ;; `archived: true` trashes the segment, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
@@ -340,7 +347,7 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :segment)
-            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content))
 
       :update
@@ -355,7 +362,7 @@
                                               (t2/select-one :model/Table :id (:table_id segment)))))]
         (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
-            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content)))))
 
 ;;; ------------------------------------------------ measure_write -------------------------------------------------
@@ -373,7 +380,8 @@
                           "but not metrics; cycles are rejected.")}))
 
 (def ^:private measure-write-entry
-  {:create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]
+   :clearable       #{:description}})
 
 (registry/deftool measure-write
   "Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another
@@ -388,7 +396,7 @@
   writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live
   in a read-only remote-synced collection."
   {:name        "measure_write"
-   :scope       metabot.scope/agent-measure-write
+   :scope       metabot.scope/agent-content-write
    ;; `archived: true` trashes the measure, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
@@ -406,7 +414,7 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :measure)
-            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content))
 
       :update
@@ -421,5 +429,5 @@
                                               (t2/select-one :model/Table :id (:table_id measure)))))]
         (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
-            (->> (common/readback token-scopes [metabot.scope/agent-resource-read]))
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content)))))

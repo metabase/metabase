@@ -62,10 +62,7 @@ import {
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import {
-  formatVisualizerClickObject,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+import { formatVisualizerClickObject } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -80,6 +77,7 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
 
@@ -685,7 +683,6 @@ class Visualization extends PureComponent<
       getHref,
       hasDevWatermark,
       headerIcon,
-      height: rawHeight,
       isAction,
       isDashboard,
       isDocument,
@@ -732,7 +729,6 @@ class Visualization extends PureComponent<
       tableHeaderHeight,
       timelineEvents,
       totalNumGridCols,
-      width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
@@ -951,7 +947,7 @@ class Visualization extends PureComponent<
                     getHref={getHref}
                     gridSize={gridSize}
                     headerIcon={hasHeader ? null : headerIcon}
-                    height={rawHeight}
+                    height={height}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
@@ -989,7 +985,7 @@ class Visualization extends PureComponent<
                     timelineEvents={timelineEvents}
                     totalNumGridCols={totalNumGridCols}
                     visualizationIsClickable={this.visualizationIsClickable}
-                    width={rawWidth}
+                    width={width}
                     zoomedRowIndex={zoomedRowIndex}
                     onZoomRow={onZoomRow}
                     onActionDismissal={this.hideActions}

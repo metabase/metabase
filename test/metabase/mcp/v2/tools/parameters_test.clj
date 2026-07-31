@@ -416,8 +416,8 @@
     (with-fixtures [{:keys [dashboard]}]
       (mt/with-test-user :rasta
         (is (re-find #"Insufficient scope"
-                     (params-error #{"agent:search"}
+                     (params-error #{"agent:sql:run"}
                                    {:target "dashboard" :id (:id dashboard) :parameter_id "_STATIC_"})))
         (is (= [["African"] ["American"] ["Asian"]]
-               (:values (params-result #{"agent:resource:read"}
+               (:values (params-result #{"agent:content:read"}
                                        {:target "dashboard" :id (:id dashboard) :parameter_id "_STATIC_"}))))))))

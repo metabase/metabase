@@ -245,7 +245,7 @@
 (deftest scope-gating-test
   (mt/with-current-user (mt/user->id :rasta)
     (testing "GHY-4157: each MCP Apps tool is gated on its own scope"
-      (is (str/includes? (-> (registry/call-tool #{"agent:query:execute"} (str (random-uuid))
+      (is (str/includes? (-> (registry/call-tool #{"agent:query:run"} (str (random-uuid))
                                                  "visualize_query" {:query_handle (str (random-uuid))}
                                                  mcp-ui-client)
                              response-text)
@@ -305,10 +305,10 @@
            (set (map :uri (:resources (v2.resources/list-resources viz-scopes))))))
     (is (= #{v2.resources/visualize-query-uri}
            (set (map :uri (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))))
-    (is (empty? (:resources (v2.resources/list-resources #{"agent:query:execute"})))))
+    (is (empty? (:resources (v2.resources/list-resources #{"agent:query:run"})))))
   (testing "GHY-4157: reading a shell without its scope is denied, not served"
     (is (= :scope-denied (:status (v2.resources/read-resource v2.resources/visualize-query-uri
-                                                              #{"agent:query:execute"} {}))))
+                                                              #{"agent:query:run"} {}))))
     (is (= :not-found (:status (v2.resources/read-resource "ui://metabase/nope.html"
                                                            viz-scopes {}))))))
 

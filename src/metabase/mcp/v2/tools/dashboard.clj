@@ -288,9 +288,21 @@
                 "`wire_parameter` connects it to at least one card.")
            (into [[:parameter_id parameter-id-schema]] parameter-fields))
    (op-map "update_parameter"
-           (str "Change only the passed properties of an existing parameter. Null reads as omitted, "
-                "so it cannot clear an already-set default or linked filter.")
-           (into [[:parameter_id parameter-id-schema]] parameter-fields))
+           (str "Change properties of an existing parameter. Only the properties you pass change; "
+                "the rest are left alone. Passing null does not clear a property — it is treated as "
+                "omitted — so to remove one, name it in `clear`.")
+           (into [[:parameter_id parameter-id-schema]
+                  [:clear {:optional true}
+                   [:maybe [:sequential
+                            [:enum {:description (str "Property names to remove from this parameter "
+                                                      "(default, filteringParameters, "
+                                                      "values_source_config, values_source_type, "
+                                                      "sectionId, temporal_units). Null cannot say this: "
+                                                      "strict clients fill every unset property with "
+                                                      "null, so nulls are treated as omitted.")}
+                             "default" "filteringParameters" "values_source_config"
+                             "values_source_type" "sectionId" "temporal_units"]]]]]
+                 parameter-fields))
    (op-map "remove_parameter"
            (str "Delete a parameter with its card mappings, inline placements, and linked-filter "
                 "references; dependent subscriptions are archived and their owners emailed.")
@@ -355,11 +367,15 @@
                                          "Archiving is the only removal path — there is no hard delete.")}]]]
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "Dry run: returns the layout the ops would produce, writing nothing."}]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "collection_position" "cache_ttl"]]]]
    [:ops {:optional true}
     [:maybe [:sequential {:description "Editor operations, applied in order as one atomic save."} op-schema]]]])
 
 (def ^:private dashboard-write-entry
-  {:create-required [:name]})
+  {:create-required [:name]
+   :clearable       #{:description :collection_position :cache_ttl}})
 
 ;;; ------------------------------------------------- Handler ------------------------------------------------------
 
@@ -417,7 +433,7 @@
   clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on every referenced card."
   {:name         "dashboard_write"
-   :scope        metabot.scope/agent-dashboard-write
+   :scope        metabot.scope/agent-content-write
    ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
    ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
    ;; would assert.
@@ -426,7 +442,7 @@
   [args {:keys [token-scopes]}]
   (let [dispatched (common/dispatch-write dashboard-write-entry args)]
     (common/success-content
-     (common/readback token-scopes [metabot.scope/agent-resource-read]
+     (common/readback token-scopes [metabot.scope/agent-content-read]
                       (projections/project
                        :dashboard :concise
                        (case (first dispatched)

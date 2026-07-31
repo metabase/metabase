@@ -3,10 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.documents.markdown :as md]
-   [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.documents.markdown :as md]))
 
 (set! *warn-on-reflection* true)
 
@@ -355,6 +352,86 @@
         (is (empty? (filter #{"cardEmbed" "resizeNode" "flexContainer" "supportingText"} types))
             (format "%s in a %s manufactured structure: %s" label block-name (pr-str types)))))))
 
+(def ^:private parser-line-endings
+  "Line terminators the Markdown parser ends a line on, `\\n` aside. Prose holding one of these is
+  re-read as two lines, so the second one can open a block."
+  {"carriage return" "\r"
+   "CRLF"            "\r\n"})
+
+(def ^:private non-ending-separators
+  "Unicode separators the Markdown parser reads as ordinary text. They are line terminators to
+  Java's regex engine, where `.` excludes them, so line-oriented serialization has to keep them
+  out of a `.`-shaped pattern."
+  {"next line"           (str (char 0x85))
+   "line separator"      (str (char 0x2028))
+   "paragraph separator" (str (char 0x2029))})
+
+(defn- round-trip-block-types
+  "The block types `text` round-trips to when it is the prose of `block-name`."
+  [block-name text]
+  (let [node (get (text-bearing-blocks text) block-name)]
+    (mapv :type (:content (md/parse (reserialize {:type    "doc"
+                                                  :content [node {:type "paragraph" :attrs {:_id "z"}}]}))))))
+
+(deftest ^:parallel exotic-line-terminators-cannot-manufacture-structure-test
+  (testing "a line terminator other than \\n inside a text node serializes without failing and
+           cannot open a block on re-parse — the block structure has to come out the same as it
+           would for a plain space. `[:document :any]` on the REST write path lets any of these
+           reach the serializer, and text pasted from a PDF or a Word document routinely carries
+           one."
+    (doseq [[label separator] (merge parser-line-endings non-ending-separators)
+            block-name        (keys (text-bearing-blocks ""))]
+      (let [types (round-trip-block-types block-name (str "before" separator "# Injected"))]
+        (is (= (round-trip-block-types block-name "before # Injected") types)
+            (format "%s in a %s changed the block structure: %s" label block-name (pr-str types)))))))
+
+(defn- code-block-in
+  "A document holding one code block whose text is `text`, nested in `container`."
+  [container text]
+  (let [code {:type "codeBlock" :attrs {:language nil :_id "code"} :content [{:type "text" :text text}]}]
+    {:type    "doc"
+     :content [(case container
+                 "blockquote" {:type "blockquote" :attrs {:_id "b"} :content [code]}
+                 "bulletList" {:type    "bulletList" :attrs {:_id "b"}
+                               :content [{:type "listItem" :content [code]}]})
+               {:type "paragraph" :attrs {:_id "z"}}]}))
+
+(defn- code-block-texts
+  "The text of every codeBlock in `ast`, however deeply nested."
+  [ast]
+  (->> (tree-seq :content :content ast)
+       (filter #(= "codeBlock" (:type %)))
+       (mapv #(apply str (map :text (:content %))))))
+
+(deftest ^:parallel nested-code-block-survives-its-line-endings-test
+  (testing "code block content is emitted raw — it is the one text the serializer must not escape
+           — so the line prefixes a blockquote or list adds have to be applied per line the parser
+           will see. Miss one and the closing fence lands outside the prefix, which does not merely
+           render oddly: it re-opens as a new block, the code's tail leaks out as top-level prose,
+           and `splice` writes that structure back to the document column on the next edit."
+    (doseq [[label separator] parser-line-endings
+            container         ["blockquote" "bulletList"]]
+      (let [reparsed (md/parse (reserialize (code-block-in container (str "foo" separator "bar"))))]
+        (testing "the code survives as one code block, its line endings normalized to \\n"
+          (is (= ["foo\nbar"] (code-block-texts reparsed))
+              (format "%s in a code block inside a %s" label container)))
+        (testing "and the document is shaped exactly as the same code written with \\n"
+          (is (= (strip-ids (:content (md/parse (reserialize (code-block-in container "foo\nbar")))))
+                 (strip-ids (:content reparsed)))
+              (format "%s in a code block inside a %s" label container)))))))
+
+(deftest ^:parallel non-ending-separators-survive-round-trip-test
+  (testing "a separator the parser reads as text stays in the prose verbatim — it is not a line
+           boundary to the grammar, so nothing about it needs normalizing away. The prefixes are
+           the ones that send the line down an escaping branch, where a pattern that stops at the
+           separator would drop the rest of the line."
+    (doseq [[label separator] non-ending-separators
+            prefix            ["before" "1. before" "# before" "- before" "> before"]]
+      (let [text (str prefix separator "after")
+            ast  {:type "doc" :content [(para text) {:type "paragraph" :attrs {:_id "z"}}]}]
+        (is (= text (get-in (md/parse (reserialize ast)) [:content 0 :content 0 :text]))
+            (format "%s after %s did not survive the round trip" label (pr-str prefix)))))))
+
 (deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
   (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
            attr — serializes as its label rather than failing the whole document body"
@@ -441,42 +518,6 @@
     (let [reparsed (md/parse "x {% entity id=\"987654321\" model=\"dashboard\" %} y")]
       (is (= {:entityId 987654321 :model "dashboard" :label nil :href "/"}
              (get-in reparsed [:content 0 :content 1 :attrs]))))))
-
-(defn- smart-link-attrs
-  [markdown]
-  (->> (tree-seq :content :content (md/parse markdown))
-       (keep #(when (= "smartLink" (:type %)) (:attrs %)))
-       vec))
-
-(deftest smart-link-resolution-is-permission-checked-test
-  (testing "an entity token pointing at content the caller can't read resolves to nothing, so its
-           name never crosses the permission boundary (a document writer must not be able to use
-           smart links to enumerate the names of content they have no access to)"
-    (mt/with-temp [:model/Collection {secret-id :id}   {:name "Top Secret Collection"}
-                   :model/Dashboard  {hidden-id :id}   {:name "CONFIDENTIAL Layoffs" :collection_id secret-id}
-                   :model/Collection {open-id :id}     {:name "Shared Reports"}
-                   :model/Card       {readable-id :id} {:name "Open Question" :collection_id open-id}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
-      (mt/with-current-user (mt/user->id :rasta)
-        (testing "an unreadable target is indistinguishable from a dangling id"
-          (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
-                  {:entityId secret-id :model "collection" :label nil :href "/"}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
-                                           hidden-id secret-id)))))
-        (testing "a readable target still resolves its label and href"
-          (is (= [{:entityId readable-id :model "card" :label "Open Question"
-                   :href (str "/question/" readable-id)}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
-        (testing "user mentions still resolve — :model/User has no can-read? and a name is not gated
-                 outside sandboxing, so the mention picker's behaviour is preserved"
-          (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"user\" %%}" (mt/user->id :crowberto)))))))
-      (testing "an admin resolves what a non-admin could not"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
-                   :href (str "/dashboard/" hidden-id)}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%}" hidden-id)))))))))
 
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
 

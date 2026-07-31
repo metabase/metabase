@@ -47,7 +47,6 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -62,6 +61,7 @@ import type {
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -393,6 +393,7 @@ export const fetchCardDataAction = createAsyncThunk<
         result = (await fetchDataOrError(
           runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
             cardId: card.id,
+            dashboardId: dashcard.dashboard_id,
             ignore_cache: ignoreCache,
           }),
         )) as Dataset | { error: unknown };

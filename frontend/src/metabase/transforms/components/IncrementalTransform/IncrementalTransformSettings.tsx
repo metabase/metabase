@@ -28,6 +28,7 @@ import {
   NativeQueryTableTagFieldSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
+import { LookbackField } from "./LookbackField";
 import { UniqueKeyField } from "./UniqueKeyField";
 import type { IncrementalSettingsFormValues } from "./form";
 import { useHasCheckpointOptions } from "./useHasCheckpointOptions";
@@ -295,6 +296,7 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
+          <LookbackField readOnly={readOnly} />
         </>
       )}
     </>

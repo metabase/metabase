@@ -324,18 +324,13 @@
   (testing "GHY-4151: the tool itself requires agent:content:duplicate"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
       (is (= "Insufficient scope to call tool: duplicate_content"
-             (tool-error (call-tool! :crowberto #{metabot.scope/agent-search}
+             (tool-error (call-tool! :crowberto #{metabot.scope/agent-content-read}
                                      {:type "dashboard" :id dash-id}))))))
-  (testing "GHY-4151: each type additionally requires its own create scope — duplicating is creating"
+  ;; GHY-4225 folded duplicate_content's per-type create scopes into the single
+  ;; `agent:content:write` the tool already gates on, so there is no second scope to check.
+  (testing "the tool's own write scope is all a copy needs"
     (mt/with-model-cleanup [:model/Dashboard]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
-        (is (re-find #"agent:dashboard:create"
-                     (tool-error (call-tool! :crowberto
-                                             #{metabot.scope/agent-content-duplicate
-                                               metabot.scope/agent-question-create}
-                                             {:type "dashboard" :id dash-id}))))
         (is (=? {:name "Copy of Sales"}
-                (tool-result (call-tool! :crowberto
-                                         #{metabot.scope/agent-content-duplicate
-                                           metabot.scope/agent-dashboard-create}
+                (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
                                          {:type "dashboard" :id dash-id}))))))))

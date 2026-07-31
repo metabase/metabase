@@ -72,29 +72,32 @@ function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
     <Group justify="space-between" align="flex-start" wrap="nowrap">
       <Stack gap="xs">
         <Box fw="bold" lh="1.25rem">{t`Two-factor authentication`}</Box>
-        <Box c="text-secondary" lh="1.25rem">
+        <Box c="text-secondary" lh="1.25rem" mb="sm">
           {status.enrolled
             ? t`Authenticator apps are enabled.`
             : t`Protect your account with a code from an authenticator app.`}
         </Box>
-      </Stack>
-      <Box>
-        {status.enrolled ? (
-          <Group gap="sm" wrap="nowrap">
-            <Button onClick={() => onOpenModal("disable")}>{t`Disable`}</Button>
-            <Button onClick={() => onOpenModal("recovery-codes")}>
-              {t`Generate recovery codes`}
+
+        <Box>
+          {status.enrolled ? (
+            <Group gap="sm" wrap="nowrap">
+              <Button
+                onClick={() => onOpenModal("disable")}
+              >{t`Disable`}</Button>
+              <Button onClick={() => onOpenModal("recovery-codes")}>
+                {t`Generate recovery codes`}
+              </Button>
+            </Group>
+          ) : (
+            <Button
+              disabled={!hasFeature || !status.mfa_enabled}
+              onClick={() => onOpenModal("setup")}
+            >
+              {t`Set up two-factor authentication`}
             </Button>
-          </Group>
-        ) : (
-          <Button
-            disabled={!hasFeature || !status.mfa_enabled}
-            onClick={() => onOpenModal("setup")}
-          >
-            {t`Set up two-factor authentication`}
-          </Button>
-        )}
-      </Box>
+          )}
+        </Box>
+      </Stack>
     </Group>
   );
 }

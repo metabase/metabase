@@ -35,8 +35,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
-
 (def ^:private cell-formatter (DataFormatter.))
 
 (defn- read-cell-with-formatting

@@ -204,7 +204,7 @@
           (when (pos? deleted-count)
             (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))))
     (catch Exception e
-      (log/error e "Failed to clean up tombstone records from gate table"))))
+      (log/errorf "Failed to clean up tombstone records from gate table: %s" (ex-message e)))))
 
 (defn- drop-index-table!
   "Drops one stale/orphaned index table, isolating failures: one undroppable table (e.g. one with a
@@ -220,10 +220,10 @@
       (if (= "42P01" (.getSQLState e))
         (do (log/infof "Skipping %s semantic search index %s: table no longer exists" kind table-name)
             :missing)
-        (do (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+        (do (log/warnf "Failed to drop %s semantic search index %s: %s" kind table-name (ex-message e))
             :failed)))
     (catch Exception e
-      (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+      (log/warnf "Failed to drop %s semantic search index %s: %s" kind table-name (ex-message e))
       :failed)))
 
 (defn- cleanup-stale-indexes!

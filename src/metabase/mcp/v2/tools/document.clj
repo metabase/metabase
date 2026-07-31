@@ -8,6 +8,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
@@ -16,10 +17,129 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Smart links ---------------------------------------------------
+
+;; Parsing a `{% entity %}` token yields a smartLink with only its `entityId`/`model`; filling in
+;; the `label`/`href` the editor displays means reading the referenced row, which is a permission
+;; decision. That is why it happens here and not in [[metabase.documents.markdown]] — that
+;; namespace stays pure data, and the `documents` module stays clear of a `permissions` dependency
+;; that would pull every documents change into the driver test suite.
+
+(defn- smart-link-href
+  [model {:keys [id db_id]}]
+  (case model
+    "card"       (str "/question/" id)
+    "dataset"    (str "/model/" id)
+    "metric"     (str "/metric/" id)
+    "dashboard"  (str "/dashboard/" id)
+    "collection" (str "/collection/" id)
+    "document"   (str "/document/" id)
+    "database"   (str "/browse/databases/" id)
+    "table"      (str "/question#?db=" db_id "&table=" id)
+    "/"))
+
+(defn- smart-link-label
+  [row]
+  (or (:display_name row)
+      (:name row)
+      (:common_name row)
+      (not-empty (str/trim (str (:first_name row) " " (:last_name row))))))
+
+(defn- smart-link-readable?
+  "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
+  a [[mi/can-read?]] implementation to defer to.
+
+  `:model/User` has none, so a user's name follows the mention picker's visibility rule instead
+  (see `filter-clauses` in [[metabase.users.models.user]]): a sandboxed or impersonated caller
+  resolves nobody but themselves, and everyone else resolves any user — non-admins are already
+  handed other people's names to populate subscription recipients. The internal user is not
+  filtered out the way the picker does it; a system account's name is noise, not a permission
+  boundary, and `:type` isn't among `:model/User`'s default fields to test cheaply."
+  [model row]
+  (if (= "user" model)
+    (or (= (:id row) api/*current-user-id*)
+        (not (perms/sandboxed-or-impersonated-user?)))
+    (mi/can-read? row)))
+
+(defn- smart-link-rows
+  "`{[model id] row}` for every distinct smart-link target among `links` the current user may
+  see, one query per referenced model. A target the caller can't read is left out, so it is
+  indistinguishable from one that doesn't exist and its name never crosses the permission
+  boundary — the caller's write check on the *document* does not extend to whatever the
+  document happens to point at."
+  [links]
+  (into {}
+        (mapcat (fn [[model model-links]]
+                  (let [db-model (prose-mirror/smart-link-model->db-model model)
+                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
+                        rows     (when db-model
+                                   (try
+                                     (filterv #(smart-link-readable? model %)
+                                              (t2/select db-model :id [:in ids]))
+                                     (catch Exception e
+                                       (log/warnf e "smart link lookup failed for %s" model)
+                                       nil)))]
+                    (for [row rows]
+                      [[model (:id row)] row]))))
+        (group-by #(get-in % [:attrs :model]) links)))
+
+(defn- stored-smart-link-attrs
+  "`{[model entityId] attrs}` for every already-labelled smartLink in `ast`."
+  [ast]
+  (into {}
+        (keep (fn [node]
+                (when (and (map? node) (= "smartLink" (:type node)))
+                  (let [{:keys [entityId model label] :as attrs} (:attrs node)]
+                    (when label
+                      [[model entityId] attrs])))))
+        (tree-seq :content :content ast)))
+
+(defn- resolve-smart-links!
+  "Fill `:label`/`:href` on every smartLink node in `ast` from its target row, falling back to the
+  same link's attrs in `previous-ast` (nil at create) and then to the defaults `parse` gave it.
+
+  Re-reading the row is what heals a renamed target, so it wins whenever it is available. The
+  fallback covers the case where it isn't: a `{% entity %}` token carries only `entityId`/`model`,
+  so every re-parsed block's links arrive label-less, and an editor who can't read the target
+  resolves nothing. Without a fallback, editing one sentence blanks the label of a link elsewhere
+  in the same block for everyone, including the people who can see it — the editor is treated as
+  authoritative about a name they were never shown.
+
+  Carrying the old label forward writes back a string the caller can't see, which is safe in the
+  one direction that matters: labels live in the AST and never in the Markdown projection, so no
+  response hands the caller a name they can't read. An id that resolves no row and has no previous
+  label keeps `parse`'s defaults and logs a warning: bad content, not a write error."
+  [ast previous-ast]
+  (let [links (->> (tree-seq :content :content ast)
+                   (filter #(= "smartLink" (:type %))))]
+    (if (empty? links)
+      ast
+      (let [rows   (smart-link-rows links)
+            stored (some-> previous-ast stored-smart-link-attrs)]
+        (walk/postwalk
+         (fn [node]
+           (if (and (map? node) (= "smartLink" (:type node)))
+             (let [{:keys [entityId model]} (:attrs node)
+                   k                        [model entityId]]
+               (if-let [row (get rows k)]
+                 (update node :attrs assoc
+                         :label (smart-link-label row)
+                         :href (smart-link-href model row))
+                 (if-let [prior (get stored k)]
+                   (update node :attrs assoc :label (:label prior) :href (:href prior))
+                   (do
+                     (when (prose-mirror/smart-link-model->db-model model)
+                       (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
+                     node))))
+             node))
+         ast)))))
 
 (defn- ast-id-set
   [ast]
@@ -45,18 +165,38 @@
                                (mi/can-read? card)))
               (common/throw-not-found :model/Card id))))))))
 
+(defn- body-projection
+  "`{:content_markdown …}` for a stored AST, or an explanation in its place when the body has no
+  Markdown rendering — a block type from a newer frontend, or one a REST caller stored through
+  `[:document :any]`.
+
+  Serialized fresh from the stored AST, so it reflects post-clone card ids — the next edit's
+  old_str has to match this text, not what the caller submitted. Every caller reaches this after
+  its write has committed, so a body that won't render must not turn a completed write into a
+  failed call; `Throwable` for the same reason the search indexer uses it, since an unrenderable
+  body is exactly the input that finds a way to fail that isn't an `Exception`. The key is omitted
+  rather than filled with a degraded rendering: old_str is matched against this exact text, so
+  text that isn't the serialization is worse than none."
+  [ast]
+  (try
+    {:content_markdown (:markdown (documents/serialize ast))}
+    (catch Throwable e
+      (log/warn e "document body has no Markdown rendering; omitting content_markdown")
+      {:content_markdown_unavailable
+       (str "The write succeeded, but this document's body contains a block that has no Markdown "
+            "form, so content_markdown is omitted and edits cannot be applied to it. Read it with "
+            "get_content, or replace the whole body with content_markdown.")})))
+
 (defn- document-response
   [document orphaned-threads]
-  {:id                       (:id document)
-   :entity_id                (:entity_id document)
-   :name                     (:name document)
-   :collection_id            (:collection_id document)
-   :collection_position      (:collection_position document)
-   :archived                 (boolean (:archived document))
-   ;; Serialized fresh from the stored AST, so it reflects post-clone card ids — the next
-   ;; edit's old_str has to match this text, not what the caller submitted.
-   :content_markdown         (:markdown (documents/serialize (:document document)))
-   :orphaned_comment_threads orphaned-threads})
+  (merge {:id                       (:id document)
+          :entity_id                (:entity_id document)
+          :name                     (:name document)
+          :collection_id            (:collection_id document)
+          :collection_position      (:collection_position document)
+          :archived                 (boolean (:archived document))
+          :orphaned_comment_threads orphaned-threads}
+         (body-projection (:document document))))
 
 ;;; ------------------------------------------------------ Edits ---------------------------------------------------
 
@@ -124,7 +264,9 @@
     (loop [ast ast, ser first-ser, bound Long/MAX_VALUE, iterations 0]
       (when (> iterations (+ 100 (* 2 (count first-matches))))
         (common/throw-teaching-error
-         (format "replace_all could not converge for old_str %s — the replacement keeps re-creating text that matches. Use distinct old_str/new_str pairs or edit the surrounding blocks individually."
+         (format (str "replace_all could not converge for old_str %s — the replacement keeps re-creating "
+                      "text that matches. Use distinct old_str/new_str pairs or edit the surrounding "
+                      "blocks individually.")
                  (snippet old_str))))
       (let [matches (match-indexes (:markdown ser) old_str)
             idx     (last (filter #(< % bound) matches))]
@@ -149,12 +291,15 @@
     (cond
       (empty? matches)
       (common/throw-teaching-error
-       (format "old_str %s matches 0 places in the document's current Markdown. The document may have changed since you read it — copy the snippet exactly from the content_markdown this tool (or get_content) returns."
+       (format (str "old_str %s matches 0 places in the document's current Markdown. The document may "
+                    "have changed since you read it — copy the snippet exactly from the content_markdown "
+                    "this tool (or get_content) returns.")
                (snippet old_str)))
 
       (and (> (count matches) 1) (not replace_all))
       (common/throw-teaching-error
-       (format "old_str %s matches %d places — extend the snippet with more surrounding context so it matches exactly once, or set replace_all: true."
+       (format (str "old_str %s matches %d places — extend the snippet with more surrounding context so "
+                    "it matches exactly once, or set replace_all: true.")
                (snippet old_str) (count matches)))
 
       replace_all
@@ -175,7 +320,7 @@
     (common/throw-teaching-error "archived only applies to method: \"update\" — a new document is never archived."))
   (let [collection-id (common/resolve-collection-id (:collection_id args))]
     (api/create-check :model/Document {:collection_id collection-id})
-    (let [ast (documents/parse content_markdown)]
+    (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
       (check-card-embeds! ast nil)
       (let [created (documents/create-document! {:name                name
                                                  :document            ast
@@ -192,7 +337,8 @@
      "Pass exactly one of content_markdown (a deliberate full-body rewrite) or edits (surgical text edits), not both."))
   (when-not (or content_markdown edits)
     (common/throw-teaching-error
-     "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text edits). To change only collection_id/collection_position/archived, pass edits: []."))
+     (str "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text "
+          "edits). To change only collection_id/collection_position/archived, pass edits: [].")))
   (let [existing (common/resolve-and-read :model/Document id
                                           (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
@@ -206,11 +352,15 @@
       (let [old-ids (ast-id-set (:document existing))
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document
             ;; column is left entirely alone below.
-            new-ast (cond
-                      ;; Full rewrite: everything re-parses, nothing keeps its node id, so
-                      ;; every anchored comment thread is reported orphaned below.
-                      content_markdown (documents/parse content_markdown)
-                      (seq edits)      (reduce apply-edit (:document existing) edits))
+            ;; Resolved once on the finished AST rather than per splice: fewer queries, and it
+            ;; picks up a link any of the edits introduced. The pre-edit AST goes along so a link
+            ;; whose target this caller can't read keeps the label it already had.
+            new-ast (some-> (cond
+                              ;; Full rewrite: everything re-parses, nothing keeps its node id, so
+                              ;; every anchored comment thread is reported orphaned below.
+                              content_markdown (documents/parse content_markdown)
+                              (seq edits)      (reduce apply-edit (:document existing) edits))
+                            (resolve-smart-links! (:document existing)))
             _       (when new-ast
                       (check-card-embeds! new-ast (:id existing)))
             body    (cond-> {}
@@ -256,7 +406,7 @@
 (registry/deftool document-write-tool
   "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (\"root\" or omit for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). The response lists orphaned_comment_threads. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
   {:name        "document_write"
-   :scope       metabot.scope/agent-document-write
+   :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
    :args        document-write-args-schema}
   [args _context]

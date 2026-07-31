@@ -9,7 +9,6 @@
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.alert :as tools.alert]
@@ -573,11 +572,11 @@
             send happens later, tokenlessly, under the creator's permissions, and write time is the
             only moment scopes can bound it"
     (mt/with-temp [:model/Card {card-id :id} {}]
-      (let [write-only #{metabot.scope/agent-alert-write}
-            with-exec  #{metabot.scope/agent-alert-write metabot.scope/agent-query-execute}
+      (let [write-only #{metabot.scope/agent-delivery-write}
+            with-exec  #{metabot.scope/agent-delivery-write metabot.scope/agent-query-run}
             create-args (wire {:method "create" :card_id card-id :schedule (daily-schedule 9)})]
         (testing "create with only the write scope is refused, naming the missing scope"
-          (is (re-find #"agent:query:execute"
+          (is (re-find #"agent:query:run"
                        (tool-error (call-tool! :crowberto write-only create-args))))
           (is (zero? (t2/count :model/NotificationCard :card_id card-id))))
         (mt/with-model-cleanup [:model/Notification]
@@ -585,7 +584,7 @@
             (let [created (tool-result (call-tool! :crowberto with-exec create-args))]
               (is (pos-int? (:id created)))
               (testing "redirecting delivery with only the write scope is refused"
-                (is (re-find #"agent:query:execute"
+                (is (re-find #"agent:query:run"
                              (tool-error (call-tool! :crowberto write-only
                                                      (wire {:method "update" :id (:id created)
                                                             :recipients ["someone@example.com"]}))))))
@@ -597,23 +596,24 @@
                                                      (wire {:method "update" :id (:id created)
                                                             :active false}))))))
                 (is (false? (t2/select-one-fn :active :model/Notification :id (:id created)))))))))))
-  (testing "the extra scope is advertised as opt-in, so tokens can request it"
-    (is (contains? (registry/registered-opt-in-scopes) "agent:query:execute"))))
+  (testing "the scope the gate needs is grantable — it reaches the default DCR grant as
+            execute_query's own scope, so a client holding the default grant can satisfy the gate"
+    (is (contains? (registry/registered-scopes) "agent:query:run"))))
 
 (deftest write-response-respects-read-scopes-test
   (testing "GHY-4217: a write scope must not double as a read scope — without the alert read scopes
             the response is a minimal ack, so a no-op update can't read the recipients back"
     (mt/with-model-cleanup [:model/Notification]
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (let [write-only #{metabot.scope/agent-alert-write metabot.scope/agent-query-execute}
-              readable   (conj write-only "agent:resource:read" "agent:notification:read")
+        (let [write-only #{metabot.scope/agent-delivery-write metabot.scope/agent-query-run}
+              readable   (conj write-only "agent:content:read")
               created    (tool-result (call-tool! :crowberto write-only
                                                   (wire {:method "create" :card_id card-id
                                                          :schedule (daily-schedule 9)})))]
           (testing "create without the read scopes returns the ack, not the alert"
             (is (pos-int? (:id created)))
             (is (not (contains? created :handlers)))
-            (is (re-find #"agent:notification:read" (:note created))))
+            (is (re-find #"agent:content:read" (:note created))))
           (testing "and a no-op update can't read the body back either"
             (is (not (contains? (tool-result (call-tool! :crowberto write-only
                                                          (wire {:method "update" :id (:id created)
@@ -644,25 +644,25 @@
   (let [args (wire {:method "update" :id 13371337 :active false})]
     (testing "GHY-4155: a bearer token without the alert scope is refused before dispatch"
       (is (= "Insufficient scope to call tool: alert_write"
-             (tool-error (call-tool! :crowberto #{"agent:search"} args)))))
+             (tool-error (call-tool! :crowberto #{"agent:content:read"} args)))))
     (testing "GHY-4155: the write scope covers both methods — there is no create-only alert token"
       (is (re-find #"not found"
-                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-write} args)))))
+                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-delivery-write} args)))))
     (testing "GHY-4155: v1's agent:alert:create does not reach this tool — it gates the v1 tool only"
       (is (= "Insufficient scope to call tool: alert_write"
              (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-create} args)))))
-    (testing "GHY-4155: the wildcard the metabot permission bucket grants passes too"
-      (is (re-find #"not found" (tool-error (call-tool! :crowberto #{"agent:alert:*"} args)))))))
+    ;; GHY-4225: the metabot permission wildcards no longer bear on v2. In-app callers reach
+    ;; v2 through cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw
+    ;; their scopes from the tool registry (`registered-scopes`), not from
+    ;; `user-metabot-perms->scopes` — so the old wildcard coupling was already vestigial here.
+    ))
 
 (deftest ^:parallel scopes-grantable-test
   (testing "GHY-4155: the scope the tool checks must be grantable — advertised through registered-scopes"
-    (is (set/subset? #{"agent:alert:write"} (registry/registered-scopes))))
-  (testing "GHY-4155: the metabot other-tools bucket covers it via its agent:alert:* wildcard"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
-      (is (mcp.scope/matches? scopes "agent:alert:write")))))
+    (is (set/subset? #{"agent:delivery:write"} (registry/registered-scopes)))))
 
 (deftest ^:parallel tools-list-visibility-test
   (testing "GHY-4155: the tool is visible exactly to tokens carrying its write scope"
-    (is (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:write"})))
+    (is (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:delivery:write"})))
     (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:create"}))))
-    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:search"}))))))
+    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:content:read"}))))))

@@ -46,20 +46,23 @@
   serializing prose can never manufacture an embed; a paragraph's leading
   indentation is not preserved (four or more columns would read back as an indented code
   block, so it collapses to at most three spaces, which CommonMark itself absorbs);
-  boundary whitespace inside a bold/italic run moves outside the mark; and spaces in link
-  hrefs percent-encode to `%20`.
+  boundary whitespace inside a bold/italic run moves outside the mark; spaces in link
+  hrefs percent-encode to `%20`; and a CR or CRLF inside a text node normalizes to a newline,
+  which re-parses as a space, since the parser ends a line on it either way — inside code block
+  content it normalizes too, staying a newline there, because CommonMark gives a fence no way to
+  carry a bare CR.
 
-  Structural conversion here takes and returns plain data. The one exception is the
-  display-name/href lookup `parse` runs for `{% entity %}` tokens, which reads the referenced
-  row and so is permission-checked against the current user — see [[smart-link-readable?]]."
+  This namespace takes and returns plain data and touches no database. A `{% entity %}` token
+  parses to a smartLink carrying only its `entityId`/`model`, with `label`/`href` left at their
+  defaults; resolving those means reading the referenced row, which is a permission decision, so
+  it belongs to the caller — see `resolve-smart-links!` in
+  [[metabase.mcp.v2.tools.document]]. Keeping it there also keeps the `documents` module clear of
+  a dependency on `permissions`, which would drag every documents change into the driver test
+  suite."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [metabase.api.common :as api]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.util.log :as log])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
                              HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline
@@ -115,100 +118,11 @@
 
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
 
-(def ^:private smart-link-model->db-model
-  {"card"       :model/Card
-   "dataset"    :model/Card
-   "metric"     :model/Card
-   "dashboard"  :model/Dashboard
-   "collection" :model/Collection
-   "table"      :model/Table
-   "database"   :model/Database
-   "document"   :model/Document
-   "user"       :model/User})
-
-(defn- smart-link-href
-  [model {:keys [id db_id]}]
-  (case model
-    "card"       (str "/question/" id)
-    "dataset"    (str "/model/" id)
-    "metric"     (str "/metric/" id)
-    "dashboard"  (str "/dashboard/" id)
-    "collection" (str "/collection/" id)
-    "document"   (str "/document/" id)
-    "database"   (str "/browse/databases/" id)
-    "table"      (str "/question#?db=" db_id "&table=" id)
-    "/"))
-
-(defn- smart-link-label
-  [row]
-  (or (:display_name row)
-      (:name row)
-      (:common_name row)
-      (not-empty (str/trim (str (:first_name row) " " (:last_name row))))))
-
-(defn- smart-link-readable?
-  "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to.
-
-  `:model/User` has none, so a user's name follows the mention picker's visibility rule instead
-  (see `filter-clauses` in [[metabase.users.models.user]]): a sandboxed or impersonated caller
-  resolves nobody but themselves, and everyone else resolves any user — non-admins are already
-  handed other people's names to populate subscription recipients. The internal user is not
-  filtered out the way the picker does it; a system account's name is noise, not a permission
-  boundary, and `:type` isn't among `:model/User`'s default fields to test cheaply."
-  [model row]
-  (if (= "user" model)
-    (or (= (:id row) api/*current-user-id*)
-        (not (perms/sandboxed-or-impersonated-user?)))
-    (mi/can-read? row)))
-
-(defn- smart-link-rows
-  "`{[model id] row}` for every distinct smart-link target among `links` the current user may
-  see, one query per referenced model. A target the caller can't read is left out, so it is
-  indistinguishable from one that doesn't exist and its name never crosses the permission
-  boundary — the caller's write check on the *document* does not extend to whatever the
-  document happens to point at."
-  [links]
-  (into {}
-        (mapcat (fn [[model model-links]]
-                  (let [db-model (smart-link-model->db-model model)
-                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
-                        rows     (when db-model
-                                   (try
-                                     (filterv #(smart-link-readable? model %)
-                                              (t2/select db-model :id [:in ids]))
-                                     (catch Exception e
-                                       (log/warnf e "smart link lookup failed for %s" model)
-                                       nil)))]
-                    (for [row rows]
-                      [[model (:id row)] row]))))
-        (group-by #(get-in % [:attrs :model]) links)))
-
-(defn- resolve-smart-links
-  "Fill `:label`/`:href` on every smartLink node in `content` from its target row. An id that
-  doesn't resolve — because nothing has it or because the current user can't read what does —
-  keeps the node with its default label/href and logs a warning: bad content, not a parse
-  error."
-  [content]
-  (let [links (->> (tree-seq :content :content {:content content})
-                   (filter #(= "smartLink" (:type %))))]
-    (if (empty? links)
-      content
-      (let [rows (smart-link-rows links)]
-        (walk/postwalk
-         (fn [node]
-           (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:keys [entityId model]} (:attrs node)]
-               (if-let [row (get rows [model entityId])]
-                 (update node :attrs assoc
-                         :label (smart-link-label row)
-                         :href (smart-link-href model row))
-                 (do
-                   (when (smart-link-model->db-model model)
-                     (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
-                   node)))
-             node))
-         content)))))
+;; The `{% entity %}` vocabulary is the key set of
+;; [[metabase.documents.prose-mirror/smart-link-model->db-model]]. Only membership is read here —
+;; which row a model denotes, and whether the caller may see it, belongs to whoever resolves the
+;; link, so this namespace still never touches the database. Parsing and serializing consult the
+;; same keys, so a model the grammar can't express stays literal text in both directions.
 
 ;;; ------------------------------------------------ Token grammar -------------------------------------------------
 
@@ -475,7 +389,7 @@
   [attrs-str]
   (let [{:keys [id model]} (parse-token-attrs attrs-str)
         id (if (string? id) (parse-scalar id) id)]
-    (when (and (pos-int? id) (contains? smart-link-model->db-model model))
+    (when (and (pos-int? id) (contains? prose-mirror/smart-link-model->db-model model))
       {:type  "smartLink"
        :attrs {:entityId id :model model :label nil :href "/"}})))
 
@@ -667,7 +581,7 @@
 (defn- parse-content
   [markdown-string]
   (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
-    (resolve-smart-links (into [] (mapcat segment->nodes) segments))))
+    (into [] (mapcat segment->nodes) segments)))
 
 (defn- wrap-loose-embeds
   "Give every top-level `cardEmbed`/`flexContainer` its `resizeNode` wrapper. A chart's height
@@ -733,13 +647,15 @@
   stored string reaches the output verbatim, so this is what keeps a text node that merely
   *looks* like markup from becoming markup on the next parse. Leading indentation of four or
   more columns (or any tab) would read as an indented code block, so it collapses to three
-  spaces."
+  spaces.
+
+  Both patterns are DOTALL: a line can still hold a separator the parser reads as ordinary text
+  (NEL, LINE SEPARATOR, PARAGRAPH SEPARATOR — routine in prose pasted from a PDF or a word
+  processor), and a bare `.` excludes exactly those, which would drop everything past one."
   ^String [^String line]
-  (let [[_ ws body] (re-matches #"([ \t]*)(.*)" line)
+  (let [[_ ws body] (re-matches #"(?s)([ \t]*)(.*)" line)
         ws (if (or (str/includes? ws "\t") (>= (count ws) 4)) "   " ws)]
     (cond
-      (nil? body) line
-
       ;; `card-token-line-body` is the same predicate the scanner uses, so a line is escaped
       ;; exactly when it would otherwise be read as a card embed — never more, never less.
       (or (re-find #"^(#{1,6}([ \t]|$)|>|[-+]([ \t]|$)|:::|~~~|=+[ \t]*$|-+[ \t]*$)" body)
@@ -747,14 +663,23 @@
       (str ws "\\" body)
 
       (re-find #"^\d{1,9}[.)]([ \t]|$)" body)
-      (let [[_ digits delim tail] (re-matches #"(\d{1,9})([.)])(.*)" body)]
+      (let [[_ digits delim tail] (re-matches #"(?s)(\d{1,9})([.)])(.*)" body)]
         (str ws digits "\\" delim tail))
 
       :else (str ws body))))
 
+(def ^:private line-ending-re
+  "The line endings the Markdown parser breaks a line on: CRLF, CR, LF (CommonMark 2.2). Prose
+  reaching the serializer is an arbitrary stored string, so it can hold any of them, and every
+  line the parser will see has to go through [[escape-line-start]] — a CR the serializer treats
+  as ordinary text is a line the parser reads as a fresh one, free to open a block."
+  #"\r\n|\r|\n")
+
 (defn- escape-block-starts
+  "Escape every line of `s` against being re-read as a block construct, normalizing the parser's
+  line endings to `\\n` on the way out."
   ^String [^String s]
-  (str/join "\n" (map escape-line-start (str/split s #"\n" -1))))
+  (str/join "\n" (map escape-line-start (str/split s line-ending-re -1))))
 
 (defn- code-span
   "Wrap `s` in a backtick run longer than any run it contains, space-padded when the content
@@ -832,10 +757,11 @@
   "The `{% entity %}` token for a smartLink node's attrs, or nil when `model` isn't one this
   grammar can express — the mirror of [[entity-token->smart-link]], which likewise declines an
   unknown model rather than inventing a node. Interpolating `model` unescaped is safe precisely
-  because membership is checked first: no key in [[smart-link-model->db-model]] contains a quote,
+  because membership is checked first: no key of [[prose-mirror/smart-link-model->db-model]]
+  contains a quote,
   a newline, or a token delimiter."
   ^String [{:keys [entityId model]}]
-  (when (contains? smart-link-model->db-model model)
+  (when (contains? prose-mirror/smart-link-model->db-model model)
     (format "{%% entity id=\"%d\" model=\"%s\" %%}" (attr-pos-long "smartLink" :entityId entityId) model)))
 
 (defn- escape-card-name
@@ -924,16 +850,22 @@
     (emit-blocks! {:sb sb :spans nil :record? false} nodes)
     (.toString sb)))
 
+;; Both prefixers split on [[line-ending-re]], not on `\n`. The body they are handed can hold a
+;; line ending they didn't put there: code block content is emitted raw, being the one text the
+;; serializer must not escape. A line the parser starts that the prefixer didn't prefix escapes the
+;; blockquote or list entirely — for a code block that puts the closing fence outside the prefix,
+;; where it re-opens as a new block instead of closing the old one.
+
 (defn- prefix-quote
   ^String [^String s]
-  (->> (str/split s #"\n" -1)
+  (->> (str/split s line-ending-re -1)
        (map #(if (str/blank? %) ">" (str "> " %)))
        (str/join "\n")))
 
 (defn- prefix-list-item
   ^String [^String marker ^String body]
   (let [indent (apply str (repeat (count marker) " "))
-        lines  (str/split body #"\n" -1)]
+        lines  (str/split body line-ending-re -1)]
     (str marker
          (first lines)
          (when (next lines)
@@ -1060,8 +992,9 @@
 (defn serialize
   "ProseMirror AST -> `{:markdown string, :spans [{:node-id string, :start int, :end int} …]}`.
   `:spans` covers every node carrying an `:_id` whose text appears verbatim in `:markdown`
-  (blocks nested inside blockquotes/lists are re-rendered with line prefixes and are covered
-  by their outermost block's span instead), in document order; offsets are character indexes,
+  (blocks nested inside blockquotes/lists are re-rendered with line prefixes and get no span of
+  their own — their text falls inside the span of the nearest enclosing block that has one, which
+  is not necessarily a top-level one), in document order; offsets are character indexes,
   end exclusive. Deterministic: the same AST always serializes to the same string, which is
   what makes untouched-node reuse in [[splice]] well-defined. Transient metabot nodes are
   skipped entirely — no token, no span.

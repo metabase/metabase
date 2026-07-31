@@ -56,9 +56,8 @@
   (converted by the segment model's after-select hook), so we just extract the first stage."
   [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    {:keys [definition], :as _legacy-macro} :- ::legacy-macro]
-  (log/tracef "Extracting MBQL 5 stage from segment definition:\n%s" (u/pprint-to-str definition))
-  (u/prog1 (first (:stages definition))
-    (log/tracef "Extracted stage:\n%s" (u/pprint-to-str <>))))
+  (log/trace "Extracting MBQL 5 stage from segment definition")
+  (first (:stages definition)))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
   "Get the filter(s) associated with a Segment."
@@ -99,9 +98,7 @@
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]
-          (log/debugf "Expanding legacy Segment macro\n%s" (u/pprint-to-str &match))
-          (doseq [filter-clause filter-clauses]
-            (log/tracef "Adding filter clause for legacy Segment %d:\n%s" id (u/pprint-to-str filter-clause)))
+          (log/debugf "Expanding legacy Segment macro for Segment %d (%d filter clauses)" id (count filter-clauses))
           ;; replace a single segment with a single filter, wrapping them in `:and` if needed... we will unwrap once
           ;; we've expanded all of the :segment refs.
           (if (> (count filter-clauses) 1)

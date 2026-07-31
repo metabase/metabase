@@ -99,7 +99,6 @@ runs:
         && steps.run-test.outcome == 'failure'
         && !(inputs.driver-status == 'info'
              && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')))
-      continue-on-error: ${{ inputs.quarantine-engine != 'ci-conductor' }}
       uses: ./.github/actions/quarantine-gate
       with:
         adapter: backend

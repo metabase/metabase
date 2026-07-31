@@ -36,8 +36,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each (fn [thunk] (api.pivots/do-with-pivot-parity-check thunk)))
-
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn- shared-obj []

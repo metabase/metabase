@@ -3,7 +3,7 @@ import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery, JoinStrategy } from "./query";
+import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
@@ -14,6 +14,8 @@ export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
+
+export const PENDING_RUN_ID = -1;
 
 export type InspectorLensId = string;
 export type InspectorCardId = string;
@@ -97,9 +99,18 @@ export type PythonTransformTableEntry = {
 
 export type PythonTransformTableAliases = PythonTransformTableEntry[];
 
+export type LookbackUnit = "millisecond" | "second" | DateTimeAbsoluteUnit;
+
+// Only supported for temporal checkpoint columns.
+export type TransformLookback = {
+  value: number;
+  unit: LookbackUnit;
+};
+
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
   "checkpoint-filter-field-id": number;
+  lookback?: TransformLookback | null;
 };
 
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;

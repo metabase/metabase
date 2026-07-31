@@ -36,6 +36,28 @@
 (api-scope/defscope agent-query-execute "agent:query:execute"
   (deferred-tru "Execute queries"))
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; Rationalized MCP v2 scopes (GHY-4225)
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; Five scopes a human can actually read on a consent screen, replacing the per-entity leaves below
+;; for the v2 surface. The per-entity scopes stay declared: MCP v1 and the agent API still gate on
+;; them, and a token carrying one satisfies no other name, so they can never be renamed away.
+;;
+;; The `agent:` prefix is deliberate — these gate the agent API and Metabot too, not only MCP, so an
+;; `mcp:` prefix would both misdescribe them and strand two prefixes side by side forever.
+
+(api-scope/defscope agent-content-read "agent:content:read"
+  (deferred-tru "See your Metabase content and data structure"))
+(api-scope/defscope agent-content-write "agent:content:write"
+  (deferred-tru "Create, edit and trash Metabase content"))
+(api-scope/defscope agent-query-run "agent:query:run"
+  (deferred-tru "Run queries against your connected databases and see the results"))
+(api-scope/defscope agent-sql-run "agent:sql:run"
+  (deferred-tru "Write and run its own raw SQL on your connected databases"))
+(api-scope/defscope agent-delivery-write "agent:delivery:write"
+  (deferred-tru "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"))
+
 ;; Question (saved cards via Agent API)
 (api-scope/defscope agent-question-create "agent:question:create"
   (deferred-tru "Create saved questions"))
@@ -99,8 +121,6 @@
   (deferred-tru "View documents"))
 (api-scope/defscope agent-document-create "agent:document:create"
   (deferred-tru "Create documents"))
-(api-scope/defscope agent-document-write "agent:document:write"
-  (deferred-tru "Create and edit documents"))
 
 ;; Visualization
 (api-scope/defscope agent-viz-read "agent:viz:read"

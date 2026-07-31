@@ -241,7 +241,7 @@
 
 Dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAMES first (search, browse_data) — never invent identifiers, never numeric ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}; each stage \"lib/type\": \"mbql.stage/mbql\" plus source-table: [\"<db>\", \"<schema-or-null>\", \"<table>\"] or source-card: \"<entity_id>\" on the FIRST stage only — later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, [\"<db>\", \"<schema-or-null>\", \"<table>\", \"<column>\"]], or a bare column-name string against a previous stage ([\"field\", {}, \"count\"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example (order count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}. Call learn(\"query-dialect\") before authoring a non-trivial query (joins, expressions, multi-stage); learn(\"query-dialect\", \"operators\") lists every operator. Native SQL is rejected at any depth — use execute_sql."
   {:name        "execute_query"
-   :scope       metabot.scope/agent-query-execute
+   :scope       metabot.scope/agent-query-run
    :annotations {:readOnlyHint true}
    :args        execute-query-args-schema}
   [{:keys [validate_only row_limit] :as args} {:keys [session-id]}]
@@ -390,7 +390,7 @@ Dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAM
   ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
   ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
   {:name  "execute_sql"
-   :scope metabot.scope/agent-sql-execute
+   :scope metabot.scope/agent-sql-run
    :args  execute-sql-args-schema}
   [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
@@ -543,7 +543,7 @@ Dialect (portable MBQL 5, JSON): discover exact database/schema/table/column NAM
 (registry/deftool run-saved-question
   "Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({{variable}} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000)."
   {:name        "run_saved_question"
-   :scope       metabot.scope/agent-query-execute
+   :scope       metabot.scope/agent-query-run
    :annotations {:readOnlyHint true}
    :args        run-saved-question-args-schema}
   [{:keys [id parameters row_limit]} _context]

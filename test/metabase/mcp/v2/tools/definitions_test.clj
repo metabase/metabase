@@ -190,7 +190,7 @@
 (deftest segment-write-lifecycle-test
   (mt/with-model-cleanup [:model/Segment :model/Revision]
     (let [create!  (fn [name definition]
-                     (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
+                     (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
                                               {:method "create" :table_id (mt/id :venues)
                                                :name name :definition definition})))
           created  (create! "definitions-test segment A"
@@ -209,7 +209,7 @@
         (is (not (contains? created :description))
             "an unset description is omitted from the response, not null"))
       (testing "GHY-4137: update resolves an entity_id, applies the change, and records the revision message"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
                                                {:method "update" :id (:entity_id created)
                                                 :description "price of three"
                                                 :revision_message "add description"}))]
@@ -217,17 +217,17 @@
           (is (= "price of three" (:description updated)))
           (is (= "add description" (latest-revision-message "Segment" (:id created))))))
       (testing "GHY-4137: a fragment on update is wrapped onto the segment's existing table"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
                                                {:method "update" :id (:id created)
                                                 :definition {:filter ["=" ["field" (mt/id :venues :price) nil] 4]}
                                                 :revision_message "loosen filter"}))]
           (is (= (mt/id :venues) (:table_id updated)))
           (is (= 1 (count (get-in updated [:definition :stages]))))))
       (testing "GHY-4137: archived true trashes and archived false restores — the only removal path"
-        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
+        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
                                                        {:method "update" :id (:id created)
                                                         :archived true :revision_message "trash"})))))
-        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:segment:write" "agent:resource:read"} "segment_write"
+        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
                                                         {:method "update" :id (:id created)
                                                          :archived false :revision_message "restore"}))))))
       (testing "GHY-4137: MBQL 4 full queries and MBQL 5 queries are accepted on create too"
@@ -259,7 +259,7 @@
 ;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
 (deftest measure-write-lifecycle-test
   (mt/with-model-cleanup [:model/Measure :model/Revision]
-    (let [created (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
+    (let [created (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
                                            {:method "create" :table_id (mt/id :venues)
                                             :name "definitions-test measure A"
                                             :definition (venues-count-definition)}))]
@@ -272,23 +272,23 @@
                 created))
         (is (= 1 (count (get-in created [:definition :stages 0 :aggregation])))))
       (testing "GHY-4137: update applies the change and records the revision message"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
                                                {:method "update" :id (:entity_id created)
                                                 :description "how many venues"
                                                 :revision_message "clarify"}))]
           (is (= "how many venues" (:description updated)))
           (is (= "clarify" (latest-revision-message "Measure" (:id created))))))
       (testing "GHY-4137: a definition on a different table moves the measure — table_id is derived, not caller-set"
-        (let [updated (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
+        (let [updated (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
                                                {:method "update" :id (:id created)
                                                 :definition (count-definition (mt/id :checkins))
                                                 :revision_message "move to checkins"}))]
           (is (= (mt/id :checkins) (:table_id updated)))))
       (testing "GHY-4137: archived true trashes and archived false restores"
-        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
+        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
                                                        {:method "update" :id (:id created)
                                                         :archived true :revision_message "trash"})))))
-        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:measure:write" "agent:resource:read"} "measure_write"
+        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
                                                         {:method "update" :id (:id created)
                                                          :archived false :revision_message "restore"})))))))))
 
@@ -482,13 +482,13 @@
 ;;; ------------------------------------------------- Scopes -------------------------------------------------------
 
 (deftest ^:parallel scope-gating-test
-  (doseq [[tool scope] {"segment_write" "agent:segment:write"
-                        "measure_write" "agent:measure:write"}
+  (doseq [[tool scope] {"segment_write" "agent:content:write"
+                        "measure_write" "agent:content:write"}
           :let [args {:method "update" :id 13371337 :revision_message "x"}]]
     (testing tool
       (testing "GHY-4137: a bearer token without the write scope is refused before dispatch"
         (is (= (str "Insufficient scope to call tool: " tool)
-               (tool-error (call-tool! :crowberto #{"agent:search"} tool args)))))
+               (tool-error (call-tool! :crowberto #{"agent:content:read"} tool args)))))
       (testing "GHY-4137: the exact scope passes the gate — the identical call reaches the id lookup"
         (is (re-find #"not found" (tool-error (call-tool! :crowberto #{scope} tool args)))))
       (testing "GHY-4137: the wildcard the metabot permission bucket grants passes too"
@@ -498,23 +498,23 @@
 
 (deftest ^:parallel write-scopes-grantable-test
   (testing "GHY-4137: a scope a tool checks must be grantable — advertised through registered-scopes"
-    (is (set/subset? #{"agent:segment:write" "agent:measure:write"}
+    (is (set/subset? #{"agent:content:write"}
                      (registry/registered-scopes))))
   (testing "GHY-4153/GHY-4154: the metabot NLQ permission bucket covers both scopes via its wildcards, alongside metric"
     (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
-      (is (mcp.scope/matches? scopes "agent:segment:write"))
-      (is (mcp.scope/matches? scopes "agent:measure:write"))))
+      (is (mcp.scope/matches? scopes "agent:content:write"))
+      (is (mcp.scope/matches? scopes "agent:content:write"))))
   (testing "GHY-4153/GHY-4154: and the sql-generation bucket does not"
     (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
-      (is (not (mcp.scope/matches? scopes "agent:segment:write")))
-      (is (not (mcp.scope/matches? scopes "agent:measure:write"))))))
+      (is (not (mcp.scope/matches? scopes "agent:content:write")))
+      (is (not (mcp.scope/matches? scopes "agent:content:write"))))))
 
 (deftest ^:parallel tools-list-visibility-test
   (testing "GHY-4137: each tool is visible exactly to tokens carrying its scope"
-    (doseq [[tool scope] {"segment_write" "agent:segment:write"
-                          "measure_write" "agent:measure:write"}]
+    (doseq [[tool scope] {"segment_write" "agent:content:write"
+                          "measure_write" "agent:content:write"}]
       (is (some #(= tool (:name %)) (registry/list-tools #{scope})))
-      (is (not (some #(= tool (:name %)) (registry/list-tools #{"agent:search"})))))))
+      (is (not (some #(= tool (:name %)) (registry/list-tools #{"agent:content:read"})))))))
 
 ;;; ----------------------------------------------- Permissions ----------------------------------------------------
 
