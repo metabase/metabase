@@ -117,7 +117,16 @@
        (filter #(str/starts-with? % (str directive " ")))
        first))
 
+;; `form-action` is the SOLE barrier (no JS backstop) against a hostile bundle
+;; native-submitting a HOST `<form action="/api/user">` to provision an admin — the
+;; backend takes `:form-params` before the JSON body and a normal-cookie session
+;; needs no anti-CSRF token. So on a data-app iframe document it must ALWAYS be set,
+;; and must never resolve to a value that reaches the instance origin.
 (deftest data-app-form-action-test
+  (testing "form-action is ALWAYS set on a data-app iframe document (its absence = admin provisioning)"
+    (doseq [hosts [[] ["https://api.example.com"]]]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly hosts)]
+        (is (some? (csp-directive-for "/embed/apps/sales" "form-action"))))))
   (testing "with no allowed_hosts, native <form action> submits are blocked (client-side onSubmit still works)"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
       (is (= "form-action 'none'" (csp-directive-for "/embed/apps/sales" "form-action")))
@@ -131,6 +140,21 @@
   (testing "other documents leave form-action unset (falls through to no restriction)"
     (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/apps/sales"]]
       (is (nil? (csp-directive-for uri "form-action"))))))
+
+(deftest data-app-unsafe-eval-test
+  ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
+  ;; iframe served from `/api/apps/sandbox-host`, which carries the grant in its own
+  ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
+  ;; anything running there — including guest code that escaped the membrane.
+  (testing "the data-app document does not get 'unsafe-eval'"
+    (with-redefs [config/is-dev? false]
+      (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"]]
+        (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
+            (str uri " should not grant 'unsafe-eval'")))))
+  (testing "and neither does any other document"
+    (with-redefs [config/is-dev? false]
+      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "script-src")
+                              "'unsafe-eval'"))))))
 
 (deftest data-app-frame-src-test
   (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"
@@ -172,6 +196,34 @@
             (is (not (str/includes? form-action "mymetabase.example")))
             (is (not (str/includes? frame-src "https://mymetabase.example")))
             (is (not (str/includes? connect-src "https://mymetabase.example")))))))))
+
+(deftest data-app-instance-origin-wildcard-excluded-test
+  (testing "a wildcard allowed_hosts entry covering the instance origin is dropped from the app allowlist"
+    ;; The instance is hosted on a subdomain that a broad wildcard would cover. Left in
+    ;; place, `form-action https://*.company.com` matches `mb.company.com`, letting a
+    ;; hostile bundle native-submit a `<form action="…/api/user">` and provision an admin.
+    (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://*.company.com"    ; covers mb.company.com -> must be dropped
+                                 "https://*.othercdn.com"   ; unrelated wildcard  -> must survive
+                                 "https://api.allowed.test"])]
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (testing "the wildcard covering the instance origin is stripped from every directive"
+            (doseq [[directive value] {"form-action" form-action
+                                       "frame-src"   frame-src
+                                       "connect-src" connect-src}]
+              (is (not (str/includes? value "*.company.com"))
+                  (str directive " must not admit a wildcard covering the instance origin"))))
+          (testing "an unrelated wildcard and a genuinely-external host are preserved"
+            (doseq [[directive value] {"form-action" form-action
+                                       "frame-src"   frame-src
+                                       "connect-src" connect-src}]
+              (is (str/includes? value "https://*.othercdn.com")
+                  (str directive " must keep an unrelated wildcard"))
+              (is (str/includes? value "https://api.allowed.test")
+                  (str directive " must keep an external host")))))))))
 
 (deftest data-app-connect-src-test
   (testing "a data app's allowed_hosts are added to the iframe document's connect-src"
@@ -243,23 +295,10 @@
         (is (str/includes? data-script-src "'nonce-"))
         (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
-(deftest data-app-unsafe-eval-csp-test
-  (testing "Only data-app iframe responses allow 'unsafe-eval' in script-src"
-    ;; Data apps run their uploaded bundle through a Near-Membrane sandbox whose
-    ;; same-origin child iframe inherits this document's CSP and evaluates the
-    ;; bundle source via `eval`, so the data-app entrypoint must permit
-    ;; 'unsafe-eval' while the main app CSP stays strict.
-    (with-redefs [config/is-dev? false]
-      (let [wrapped-handler (mw.security/add-security-headers
-                             (fn [_request respond _raise]
-                               (respond {:status 200 :headers {} :body "ok"})))
-            script-src-for  (fn [uri]
-                              (-> (wrapped-handler {:uri uri :headers {}} identity identity)
-                                  (csp-directive-from-response "script-src")))]
-        (is (not (str/includes? (script-src-for "/") "'unsafe-eval'")))
-        (is (str/includes? (script-src-for "/embed/apps/boba") "'unsafe-eval'"))
-        ;; sub-routes under the data-app entrypoint are the same SPA shell
-        (is (str/includes? (script-src-for "/embed/apps/boba/sub/route") "'unsafe-eval'"))))))
+;; NOTE: `unsafe-eval` was removed from the data-app iframe document (it now lives
+;; only in the sandbox-host realm's own CSP). `data-app-unsafe-eval-test` above
+;; asserts the data-app document does NOT get it; the old contradicting test that
+;; expected it here was removed.
 
 (deftest data-app-blob-img-csp-test
   (testing "Only data-app iframe responses allow the blob: scheme in img-src"
@@ -273,6 +312,31 @@
         (is (not (str/includes? (img-src-for "/") "blob:")))
         (is (str/includes? (img-src-for "/embed/apps/boba") "blob:"))
         (is (str/includes? (img-src-for "/embed/apps/boba/sub/route") "blob:"))))))
+
+;; A sandboxed data-app document must never get `img-src *`: the `img` tag can't be
+;; blocked (the SDK renders images), and `new Image()`/`<img>` under `*` would beacon
+;; the viewing user's data off-origin. It uses the restricted allowlist regardless of
+;; `csp-img-enabled`, still respecting the admin's "Allowed domains for images".
+(deftest data-app-img-src-no-wildcard-test
+  (mt/with-temporary-setting-values [csp-img-enabled false]
+    ;; Check the standalone `*` token, not the substring — a map-tile host like
+    ;; `*.tile.openstreetmap.org` legitimately contains `*`.
+    (let [wildcard? (fn [uri] (contains? (set (str/split (csp-directive-for uri "img-src") #" +")) "*"))]
+      (testing "with csp-img-enabled off, a data-app img-src drops the `*` the rest of the app gets"
+        (is (wildcard? "/embed/dashboard/abc"))
+        (is (not (wildcard? "/embed/apps/sales")) "data-app img-src must not contain the bare wildcard")
+        (let [img-src (csp-directive-for "/embed/apps/sales" "img-src")]
+          (is (str/includes? img-src "'self'"))
+          (is (str/includes? img-src "blob:")))))
+    (testing "and it still honors the admin's Allowed domains for images (csp-img-allowed-hosts)"
+      (mt/with-temporary-setting-values [csp-img-allowed-hosts "https://cdn.example.com"]
+        (is (str/includes? (csp-directive-for "/embed/apps/sales" "img-src")
+                           "https://cdn.example.com"))))
+    (testing "and the app's own allowed_hosts (mirroring connect-src/frame-src), plus 'self'"
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.myapp.com"])]
+        (let [img-src (csp-directive-for "/embed/apps/sales" "img-src")]
+          (is (str/includes? img-src "https://api.myapp.com"))
+          (is (str/includes? img-src "'self'")))))))
 
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
