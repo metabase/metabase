@@ -81,9 +81,11 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: remoteSyncApi.endpoints.stashChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "export" }));
+  matcher: remoteSyncApi.endpoints.stashChanges.matchFulfilled,
+  effect: async (action, { dispatch }) => {
+    if (action.payload.task_id) {
+      dispatch(taskStarted({ taskType: "export" }));
+    }
   },
 });
 
