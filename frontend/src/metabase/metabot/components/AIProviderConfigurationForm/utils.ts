@@ -77,6 +77,15 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    zai: {
+      value: "zai",
+      label: "Z.AI",
+      apiKey: {
+        // Z.AI keys have no recognizable prefix
+        placeholder: t`Enter your Z.AI API key`,
+        addKeyUrl: "https://z.ai/manage-apikey/apikey-list",
+      },
+    },
   };
 }
 
@@ -98,17 +107,22 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "bedrock" ||
     provider === "metabase" ||
     provider === "openai" ||
-    provider === "openrouter"
+    provider === "openrouter" ||
+    provider === "zai"
   );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
+  | "llm-zai-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
+  zai: "llm-zai-api-key",
 };
 
 export const AZURE_MODEL_FAMILIES = [
