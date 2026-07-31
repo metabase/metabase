@@ -27,7 +27,8 @@
     ExecutorService
     ScheduledExecutorService
     SynchronousQueue
-    TimeUnit)))
+    TimeUnit)
+   (java.util.concurrent.atomic AtomicLong)))
 
 (set! *warn-on-reflection* true)
 
@@ -75,13 +76,18 @@
                         block-ms
                         sleep-ms))
 
-(defrecord DelayValue [value ^Instant ready-at]
+(defonce ^{:private true :tag AtomicLong} delay-sequence (AtomicLong.))
+
+(defrecord DelayValue [value ^Instant ready-at ^long sequence]
   Delayed
   (getDelay [_ unit]
     (.convert unit (- (.toEpochMilli ready-at) (System/currentTimeMillis)) TimeUnit/MILLISECONDS))
   (compareTo [this other]
-    (Long/compare (.getDelay this TimeUnit/MILLISECONDS)
-                  (.getDelay ^Delayed other TimeUnit/MILLISECONDS))))
+    (let [ready-order (Long/compare (.toEpochMilli ready-at)
+                                    (.toEpochMilli ^Instant (:ready-at other)))]
+      (if (zero? ready-order)
+        (Long/compare sequence ^long (:sequence other))
+        ready-order))))
 
 (defn delay-queue
   "Return an unbounded queue that returns each item only after some specified delay."
@@ -91,7 +97,9 @@
 (defn put-with-delay!
   "Put an item on a delay queue, with a delay given in milliseconds."
   [^DelayQueue queue delay-ms value]
-  (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
+  (.offer queue (->DelayValue value
+                              (.plus (Instant/now) (Duration/ofMillis delay-ms))
+                              (.incrementAndGet delay-sequence))))
 
 (defn- take-batch* [^BlockingQueue queue ^long max-messages ^long poll-ms acc]
   (loop [acc acc]

@@ -432,6 +432,17 @@
       (when (pos? deleted)
         (recur)))))
 
+(defn- submit-search-handoff!
+  "Run post-commit search work off the transaction thread, except in synchronous test mode."
+  [thunk]
+  (let [run #(try
+               (thunk)
+               (catch Throwable e
+                 (log/error e "Failed database-delete search handoff")))]
+    (if (var-get (requiring-resolve 'metabase.search.ingestion/*force-sync*))
+      (run)
+      (future (run)))))
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -466,9 +477,10 @@
                             :where       [:in :id ids]})
                  ;; Index mutations must see committed state. The shared ingestion queue serializes these
                  ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
-                 (mdb/do-after-commit #(future
-                                         (delete! :model/Card ids)
-                                         (reconcile! cascading)))))))
+                 (mdb/do-after-commit #(submit-search-handoff!
+                                        (fn []
+                                          (delete! :model/Card ids)
+                                          (reconcile! cascading))))))))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
