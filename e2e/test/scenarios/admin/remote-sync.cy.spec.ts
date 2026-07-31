@@ -978,7 +978,7 @@ describe("Remote Sync", () => {
     });
 
     it("can push to a new branch", () => {
-      cy.intercept("POST", "/api/ee/remote-sync/export").as("exportChanges");
+      cy.intercept("POST", "/api/ee/remote-sync/stash").as("stashChanges");
       H.DataStudio.Transforms.visit();
       H.clickPullOption();
 
@@ -1002,7 +1002,7 @@ describe("Remote Sync", () => {
 
       cy.findByRole("button", { name: "Push changes" }).click();
 
-      cy.wait("@exportChanges");
+      cy.wait("@stashChanges");
       H.waitForTask({ taskName: "export" });
 
       H.getGitSyncControls().should("have.text", "new-branch");
