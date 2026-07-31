@@ -8,7 +8,6 @@ import {
 } from "react-router";
 
 import { AppShell } from "./AppShell";
-import { mapToV7 } from "./map-to-v7";
 
 export type MemoryTestRouter = DataRouter;
 
@@ -19,16 +18,14 @@ export type MemoryTestRouter = DataRouter;
 export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
 
 /**
- * The whole facade tree as real data routes, under a pathless layout route.
+ * The app's route tree as data routes, under a pathless layout route.
  *
  * The layout route contributes no path, so it changes no matching. It exists so
  * relative redux navigation resolves from the root (see `AppShell`) and as the
  * seat for anything the app shell needs above the route tree.
  */
 function toDataRoutes(tree: ReactNode) {
-  return createRoutesFromElements(
-    <Route element={<AppShell />}>{mapToV7(tree)}</Route>,
-  );
+  return createRoutesFromElements(<Route element={<AppShell />}>{tree}</Route>);
 }
 
 export function createAppRouter(
