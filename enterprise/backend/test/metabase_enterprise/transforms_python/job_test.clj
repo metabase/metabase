@@ -52,7 +52,7 @@
 
 (def ^:private python-source {:type "python"})
 
-(deftest run-transform-feature-flag-test
+(deftest ^:synchronized run-transform-feature-flag-test
   (testing "Python transforms are skipped without :transforms-python feature"
     (mt/with-premium-features #{:transforms-basic}
       (let [python-transform {:id 2
@@ -60,9 +60,10 @@
                               :name "Test Python Transform"}
             run-id 101
             logged-messages (atom [])]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                               (swap! logged-messages conj {:level level :message message}))
-                                    transform-run/running-run-for-transform-id (constantly nil)]
+        ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
+        (with-redefs [log/log* (fn [_ level _ message]
+                                 (swap! logged-messages conj {:level level :message message}))
+                      transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! {:parent-run       [:job run-id]
                                   :run-method       :scheduled
                                   :user-id          nil

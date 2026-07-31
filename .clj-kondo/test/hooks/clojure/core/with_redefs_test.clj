@@ -22,36 +22,54 @@
     a-multimethod   {:ns example.ns :name a-multimethod}     ; defmulti — no arities
     can-read?       {:ns example.ns :name can-read?}         ; defmulti
     can-query?      {:ns example.ns :name can-query?}        ; defmulti
-    a-value         {:ns example.ns :name a-value}})         ; (def a-value 42) — no arities
+    a-value         {:ns example.ns :name a-value}           ; (def a-value 42) — no arities
+    file            {:ns clojure.java.io :name file :fixed-arities #{1 2 3}}
+    resource        {:ns clojure.java.io :name resource :fixed-arities #{1}}
+    log*            {:ns clojure.tools.logging :name log* :fixed-arities #{4}}
+    zoned-date-time {:ns java-time.api :name zoned-date-time :fixed-arities #{0 1 2}}
+    inc!            {:ns metabase.analytics-interface.core :name inc! :varargs-min-arity 1}
+    observe!        {:ns metabase.analytics-interface.core :name observe! :varargs-min-arity 2}
+    set-gauge!      {:ns metabase.analytics-interface.core :name set-gauge! :varargs-min-arity 2}
+    table           {:ns metabase.lib.metadata.protocols :name table :fixed-arities #{2}}
+    truncate-alias  {:ns metabase.lib.util.unique-name-generator :name truncate-alias :fixed-arities #{1 2}}})
 
 (defn- stub-resolve [{nm :name}]
   (when (symbol? nm)
     (let [bare (symbol (name nm))]
       (if (contains? stub-vars bare)
-        {:ns 'example.ns :name bare}
+        (select-keys (get stub-vars bare) [:ns :name])
         {:ns :clj-kondo/unknown-namespace :name bare}))))
 
 (defn- stub-ns-analysis [_ns-sym]
-  ;; All stubbed vars live in `example.ns` for simplicity.
+  ;; The tests only need a kondo-style var lookup map; namespace selection is exercised
+  ;; by `stub-resolve` above.
   {:clj stub-vars})
 
-(defn- lint
+(defn- lint-with-hook
   "Run the hook on the given source. Pass a string to preserve reader-macro literals like
    `#(...)` (whose `:fn` node tag is distinct from a regular list); pass a quoted form
    for the common case where exact node shape doesn't matter. The optional
    `analysis-fn` stub overrides `hooks/ns-analysis` for tests that want to simulate a
    cache miss or other non-default cache state."
-  ([src] (lint src stub-ns-analysis))
-  ([src analysis-fn]
-   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :warning}}}
+  ([hook-fn src] (lint-with-hook hook-fn src stub-ns-analysis))
+  ([hook-fn src analysis-fn]
+   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/no-dynamic-fn-redefs-on-hot-path {:level :error}
+                                                                :metabase/prefer-with-dynamic-fn-redefs    {:level :warning}}}
                                          :ignores    (atom nil)
                                          :findings   (atom [])
                                          :namespaces (atom {})}]
      (with-redefs [hooks/resolve     stub-resolve
                    hooks/ns-analysis analysis-fn]
-       (hooks.clojure.core.with-redefs/lint-with-redefs
-        {:node (hooks/parse-string (if (string? src) src (pr-str src)))}))
+       (hook-fn {:node (hooks/parse-string (if (string? src) src (pr-str src)))}))
      @(:findings clj-kondo.impl.utils/*ctx*))))
+
+(defn- lint
+  ([src] (lint-with-hook hooks.clojure.core.with-redefs/lint-with-redefs src))
+  ([src analysis-fn]
+   (lint-with-hook hooks.clojure.core.with-redefs/lint-with-redefs src analysis-fn)))
+
+(defn- lint-dynamic [src]
+  (lint-with-hook hooks.clojure.core.with-redefs/lint-with-dynamic-fn-redefs src))
 
 (deftest ^:synchronized flags-when-every-lhs-is-defn-test
   (testing "RHS shape doesn't matter — once every LHS resolves to a defn, the form is a
@@ -98,6 +116,48 @@
     (is (= [] (lint '(with-redefs [plain-fn      (fn [x] x)
                                    a-multimethod (fn [& _] nil)]
                        :body))))))
+
+(deftest ^:synchronized hot-path-redefs-test
+  (let [hot-vars '[io/file
+                   io/resource
+                   log/log*
+                   t/zoned-date-time
+                   analytics/inc!
+                   analytics/observe!
+                   analytics/set-gauge!
+                   lib.metadata.protocols/table
+                   unique-name-generator/truncate-alias]]
+    (testing "dynamic redefs of each deliberately listed hot var are errors"
+      (doseq [hot-var hot-vars]
+        (is (=? [{:type    :metabase/no-dynamic-fn-redefs-on-hot-path
+                  :level   :error
+                  :message #(re-find #"Use `with-redefs` in a `\^:synchronized` test" %)}]
+                (lint-dynamic (list 'mt/with-dynamic-fn-redefs
+                                    [hot-var '(constantly nil)]
+                                    :body)))
+            (str "expected hot-path error for " hot-var))))
+    (testing "one form gets one actionable error even when it contains multiple hot vars"
+      (is (=? [{:type :metabase/no-dynamic-fn-redefs-on-hot-path
+                :message #(and (re-find #"clojure.java.io/file" %)
+                               (re-find #"clojure.tools.logging/log\*" %))}]
+              (lint-dynamic '(mt/with-dynamic-fn-redefs [io/file (constantly nil)
+                                                         log/log* (constantly nil)]
+                               :body)))))
+    (testing "unlisted vars remain eligible for dynamic redefs"
+      (is (= [] (lint-dynamic '(mt/with-dynamic-fn-redefs [plain-fn identity] :body)))))
+    (testing "ordinary with-redefs of listed vars do not get the conversion warning"
+      (doseq [hot-var hot-vars]
+        (is (= [] (lint (list 'with-redefs [hot-var '(constantly nil)] :body)))
+            (str "expected no dynamic-redefs nudge for " hot-var)))
+      (is (= [] (lint '(with-redefs [io/file  identity
+                                     plain-fn identity]
+                         :body)))
+          "one prohibited hot var keeps a mixed binding form on synchronized with-redefs"))
+    (testing "the ordinary warning asks callers to assess hot-path cost before converting"
+      (is (=? [{:type    :metabase/prefer-with-dynamic-fn-redefs
+                :message #(and (re-find #"cheap, frequently called test hot path" %)
+                               (re-find #"dynamic-redefs-prohibited-vars" %))}]
+              (lint '(with-redefs [plain-fn identity] :body)))))))
 
 (defn- spit-fixture! [^java.io.File f content]
   (.mkdirs (.getParentFile f))

@@ -130,7 +130,7 @@
 
 (def ^:private query-source {:type "query"})
 
-(deftest run-query-transform-without-features-test
+(deftest ^:synchronized run-query-transform-without-features-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
     (mt/with-premium-features #{}
       (let [query-transform {:id 3
@@ -139,11 +139,12 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                               (swap! logged-messages conj {:level level :message message}))
-                                    transform-run/running-run-for-transform-id (constantly nil)
-                                    transforms.execute/execute! (fn [_ _]
-                                                                  (reset! run-called? true))]
+        ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
+        (with-redefs [log/log* (fn [_ level _ message]
+                                 (swap! logged-messages conj {:level level :message message}))
+                      transform-run/running-run-for-transform-id (constantly nil)
+                      transforms.execute/execute! (fn [_ _]
+                                                    (reset! run-called? true))]
           (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
                                   :add-run-activity! (constantly nil)}
                                  (promise) query-transform)
@@ -152,16 +153,17 @@
           (is @run-called?
               "Should call run-mbql-transform! when feature is enabled"))))))
 
-(deftest run-query-transform-skipped-hosted-without-basic-feature-test
+(deftest ^:synchronized run-query-transform-skipped-hosted-without-basic-feature-test
   (mt/with-premium-features #{:hosting}
     (let [query-transform {:id 1
                            :source query-source
                            :name "Test Query Transform"}
           run-id 100
           logged-messages (atom [])]
-      (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                             (swap! logged-messages conj {:level level :message message}))
-                                  transform-run/running-run-for-transform-id (constantly nil)]
+      ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
+      (with-redefs [log/log* (fn [_ level _ message]
+                               (swap! logged-messages conj {:level level :message message}))
+                    transform-run/running-run-for-transform-id (constantly nil)]
         (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
                                 :add-run-activity! (constantly nil)}
                                (promise) query-transform)
@@ -173,7 +175,7 @@
                         (:message (first @logged-messages)))
             "Warning message should indicate transform was skipped due to missing features")))))
 
-(deftest run-query-transform-with-transforms-basic-feature-test
+(deftest ^:synchronized run-query-transform-with-transforms-basic-feature-test
   (mt/with-premium-features #{:hosting :transforms-basic}
     (let [query-transform {:id 3
                            :source query-source
@@ -181,11 +183,12 @@
           run-id 102
           logged-messages (atom [])
           run-called? (atom false)]
-      (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                             (swap! logged-messages conj {:level level :message message}))
-                                  transform-run/running-run-for-transform-id (constantly nil)
-                                  transforms.execute/execute! (fn [_ _]
-                                                                (reset! run-called? true))]
+      ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
+      (with-redefs [log/log* (fn [_ level _ message]
+                               (swap! logged-messages conj {:level level :message message}))
+                    transform-run/running-run-for-transform-id (constantly nil)
+                    transforms.execute/execute! (fn [_ _]
+                                                  (reset! run-called? true))]
         (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
                                 :add-run-activity! (constantly nil)}
                                (promise) query-transform)
@@ -194,7 +197,7 @@
         (is @run-called?
             "Should call run-mbql-transform! when feature is enabled")))))
 
-(deftest run-query-transform-skipped-when-transforms-enabled-false-test
+(deftest ^:synchronized run-query-transform-skipped-when-transforms-enabled-false-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
     (mt/with-premium-features #{:hosting :transforms-basic}
       (let [query-transform {:id 4
@@ -203,11 +206,12 @@
             run-id 103
             logged-messages (atom [])
             run-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                               (swap! logged-messages conj {:level level :message message}))
-                                    transform-run/running-run-for-transform-id (constantly nil)
-                                    transforms.execute/execute! (fn [_ _]
-                                                                  (reset! run-called? true))]
+        ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
+        (with-redefs [log/log* (fn [_ level _ message]
+                                 (swap! logged-messages conj {:level level :message message}))
+                      transform-run/running-run-for-transform-id (constantly nil)
+                      transforms.execute/execute! (fn [_ _]
+                                                    (reset! run-called? true))]
           (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
                                   :add-run-activity! (constantly nil)}
                                  (promise) query-transform)
@@ -221,7 +225,7 @@
           (is (false? @run-called?)
               "Should not execute when transforms-enabled is explicitly false"))))))
 
-(deftest run-transform-locked-meter-test
+(deftest ^:synchronized run-transform-locked-meter-test
   ;; `transform-metered-as` is `defenterprise`; the OSS impl returns nil for everything,
   ;; which makes `transform-locked?` short-circuit to false regardless of `:locked-meters`.
   ;; Mock the routing so the test exercises the lock-check branch under any classpath.
@@ -240,10 +244,11 @@
                                  :name        "Locked Transform"}
                 logged          (atom [])
                 run-called?     (atom false)]
-            (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                                   (swap! logged conj {:level level :message message}))
-                                        transform-run/running-run-for-transform-id (constantly nil)
-                                        transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
+            ;; `log*` is shared by every log call; avoid permanently proxying that hot path for this synchronized test.
+            (with-redefs [log/log* (fn [_ level _ message]
+                                     (swap! logged conj {:level level :message message}))
+                          transform-run/running-run-for-transform-id (constantly nil)
+                          transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
               (#'jobs/run-transform! {:parent-run [:job 200] :run-method :scheduled :user-id nil
                                       :add-run-activity! (constantly nil)}
                                      (promise) transform)
