@@ -3,7 +3,7 @@ import {
   createMockLlmProviderType,
 } from "metabase-types/api/mocks";
 
-import { canRecognizeApiKeys, findProviderTypeForApiKey } from "./api-key";
+import { findProviderTypeForApiKey } from "./api-key";
 
 const apiKeyField = (prefix?: string) =>
   createMockLlmProviderField({
@@ -88,15 +88,5 @@ describe("findProviderTypeForApiKey", () => {
       managed: true,
     });
     expect(findProviderTypeForApiKey([managed], "sk-ant-abc")).toBe(undefined);
-  });
-});
-
-describe("canRecognizeApiKeys", () => {
-  it("is true when some connectable provider declares a prefix", () => {
-    expect(canRecognizeApiKeys(ALL)).toBe(true);
-  });
-
-  it("is false when no provider declares one", () => {
-    expect(canRecognizeApiKeys([AZURE])).toBe(false);
   });
 });
