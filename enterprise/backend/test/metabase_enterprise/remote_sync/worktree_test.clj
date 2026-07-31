@@ -1,4 +1,4 @@
-(ns metabase-enterprise.remote-sync.worktree-test
+(ns ^:synchronous metabase-enterprise.remote-sync.worktree-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
@@ -212,15 +212,14 @@
                  :model/TransformJob {job :id} {:name "worktree-job" :schedule "0 0 0 * * ?"}
                  :model/TransformJobTransformTag _ {:job_id job :tag_id tag :position 0}
                  :model/TransformTransformTag _ {:transform_id transform :tag_id tag :position 0}]
-    (mt/with-premium-features #{:remote-sync :transforms-basic}
-      (mt/with-temporary-setting-values [transforms-enabled true]
-        (testing "tags can still be attached, but the transform is left out of the job's run"
-          (is (empty? (transforms.jobs/job-transforms job))))
-        (testing "and it cannot be run by hand"
-          (is (= "Transforms in a remote sync worktree cannot be run."
-                 (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" transform)))))
-        (testing "the UI is told as much"
-          (is (false? (:can_execute (t2/hydrate (t2/select-one :model/Transform :id transform) :can_execute)))))))))
+    (mt/with-premium-features #{:remote-sync :hosting :transforms-basic}
+      (testing "tags can still be attached, but the transform is left out of the job's run"
+        (is (empty? (transforms.jobs/job-transforms job))))
+      (testing "and it cannot be run by hand"
+        (is (= "Transforms in a remote sync worktree cannot be run."
+               (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" transform)))))
+      (testing "the UI is told as much"
+        (is (false? (:can_execute (t2/hydrate (t2/select-one :model/Transform :id transform) :can_execute))))))))
 
 (deftest delete-worktree!-removes-its-content-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-f"}

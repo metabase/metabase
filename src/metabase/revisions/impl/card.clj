@@ -24,7 +24,8 @@
     :metabot_conversation_id
     :public_uuid
     :updated_at
-    :view_count})
+    :view_count
+    :worktree_id})
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]
