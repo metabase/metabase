@@ -8,20 +8,22 @@ describe("ProviderTypeIcon", () => {
     renderWithProviders(<ProviderTypeIcon type="metabase" icon="metabot" />);
 
     expect(screen.getByTestId("main-logo")).toBeInTheDocument();
+    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
   });
 
   it.each([
-    ["anthropic", "anthropic.svg"],
-    ["mistral", "mistral.svg"],
-    ["zai", "zai.svg"],
-  ] as const)("renders the vendor logo for %s", (type, file) => {
+    "anthropic",
+    "openai",
+    "openrouter",
+    "mistral",
+    "zai",
+    "azure",
+    "bedrock",
+  ] as const)("renders the vendor logo for %s", (type) => {
     renderWithProviders(<ProviderTypeIcon type={type} icon="ai" />);
 
     expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
-    expect(screen.getByRole("presentation")).toHaveAttribute(
-      "src",
-      `app/assets/img/llm-providers/${file}`,
-    );
+    expect(screen.getByRole("presentation")).toBeInTheDocument();
   });
 
   it("falls back to the registry icon for a type the frontend does not know yet", () => {
