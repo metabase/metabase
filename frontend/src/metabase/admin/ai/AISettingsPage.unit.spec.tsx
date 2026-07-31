@@ -117,6 +117,10 @@ const setup = async ({
       key: "llm-zai-api-key",
       value: undefined,
     }),
+    createMockSettingDefinition({
+      key: "llm-mistral-api-key",
+      value: undefined,
+    }),
   ]);
   setupUpdateSettingEndpoint();
   setupCollectionByIdEndpoint({ collections });

@@ -191,6 +191,7 @@ export type MetabotProvider =
   | "anthropic"
   | "azure"
   | "bedrock"
+  | "mistral"
   | "openai"
   | "openrouter"
   | "zai";

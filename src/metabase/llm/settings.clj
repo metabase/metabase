@@ -145,6 +145,22 @@
   :export?    false
   :setter     (partial set-trimmed-string! :llm-zai-api-key))
 
+;;; -------------------------------------------------- Mistral ---------------------------------------------------
+
+(defsetting llm-mistral-api-base-url
+  (deferred-tru "The Mistral API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.mistral.ai/v1"
+  :export?    false)
+
+(defsetting llm-mistral-api-key
+  (deferred-tru "The Mistral API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-mistral-api-key))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
