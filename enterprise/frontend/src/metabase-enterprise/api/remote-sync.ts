@@ -11,6 +11,8 @@ import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
+  StashChangesRequest,
+  StashChangesResponse,
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
@@ -126,21 +128,35 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({
         method: "GET",
-        url: `/api/ee/remote-sync/branches`,
+        url: `/api/ee/remote-sync/branch`,
       }),
       providesTags: () => [tag("remote-sync-branches")],
     }),
     createBranch: builder.mutation<void, CreateBranchRequest>({
       query: ({ name }) => ({
         method: "POST",
-        url: `/api/ee/remote-sync/create-branch`,
+        url: `/api/ee/remote-sync/branch`,
         body: {
           name,
+        },
+      }),
+      invalidatesTags: () => [tag("remote-sync-branches")],
+    }),
+    stashChanges: builder.mutation<StashChangesResponse, StashChangesRequest>({
+      query: ({ new_branch, message }) => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/stash`,
+        body: {
+          new_branch,
+          message,
         },
       }),
       invalidatesTags: () => [
         tag("remote-sync-branches"),
         tag("session-properties"),
+        tag("remote-sync-current-task"),
+        tag("collection-dirty-entities"),
+        tag("collection-is-dirty"),
       ],
     }),
     getRemoteSyncCurrentTask: builder.query<RemoteSyncTask, void>({
@@ -180,6 +196,7 @@ export const {
   useLazyGetExportPreflightQuery,
   useGetBranchesQuery,
   useCreateBranchMutation,
+  useStashChangesMutation,
   useImportChangesMutation,
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,

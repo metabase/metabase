@@ -1169,6 +1169,7 @@
                        {:where [:and
                                 [:= :is_remote_synced true]
                                 [:= :location "/"]
+                                [:= :worktree_id serdes/*worktree-id*]
                                 [:not :archived]]})
      (when (rs-settings/remote-sync-transforms)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
@@ -1176,6 +1177,7 @@
                          {:where [:and
                                   [:= :namespace (name collections/transforms-ns)]
                                   [:= :location "/"]
+                                  [:= :worktree_id serdes/*worktree-id*]
                                   [:not :archived]]}))
      (when (rs-settings/library-is-remote-synced?)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
@@ -1183,6 +1185,7 @@
                          {:where [:and
                                   [:= :namespace "snippets"]
                                   [:= :location "/"]
+                                  [:= :worktree_id serdes/*worktree-id*]
                                   [:not :archived]]})))
     :derived
     nil))

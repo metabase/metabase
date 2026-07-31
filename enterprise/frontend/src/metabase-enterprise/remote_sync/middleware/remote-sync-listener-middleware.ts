@@ -81,6 +81,22 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchFulfilled,
+  effect: async (action, { dispatch }) => {
+    if (action.payload.task_id) {
+      dispatch(taskStarted({ taskType: "export" }));
+    }
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
   effect: async (_action, { dispatch }) => {
     dispatch(taskStarted({ taskType: "import" }));

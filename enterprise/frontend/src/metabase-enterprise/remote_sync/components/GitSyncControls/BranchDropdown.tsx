@@ -16,8 +16,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import {
-  useCreateBranchMutation,
   useGetBranchesQuery,
+  useStashChangesMutation,
 } from "metabase-enterprise/api";
 
 import { trackBranchCreated } from "../../analytics";
@@ -44,7 +44,7 @@ export const BranchDropdown = ({
     isLoading: branchesLoading,
     isError: branchesError,
   } = useGetBranchesQuery();
-  const [createBranch, { isLoading: isCreating }] = useCreateBranchMutation();
+  const [stashChanges, { isLoading: isCreating }] = useStashChangesMutation();
 
   const branches = useMemo(() => branchesData?.items || [], [branchesData]);
 
@@ -79,8 +79,10 @@ export const BranchDropdown = ({
     setSearchValue("");
 
     try {
-      await createBranch({
-        name: branchName,
+      await stashChanges({
+        new_branch: branchName,
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is the git commit message recorded on the branch, not UI text
+        message: t`Created branch ${branchName} from Metabase`,
       }).unwrap();
 
       trackBranchCreated({

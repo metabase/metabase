@@ -321,7 +321,8 @@
 
 (defmethod mi/can-write? :model/Collection
   ([instance]
-   (and (not (default-audit-collection? instance))
+   (and (remote-sync/collection-readable? instance)
+        (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
@@ -330,8 +331,9 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection instance)))
+   (and (remote-sync/collection-readable? instance)
+        (or (is-trash? instance)
+            (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
        (mi/can-read? (t2/select-one :model/Collection :id pk)))))
@@ -489,6 +491,19 @@
   metabase-enterprise.library.validation
   [_model-type _collection-id]
   true)
+
+(defn- assert-location-parent-same-worktree
+  "If `:location` is changing, verify the new parent Collection belongs to the same worktree as this one -- a
+  collection cannot be moved into, out of, or between remote-sync worktrees."
+  [collection-before-updates {:keys [location] :as _collection-updates}]
+  (when location
+    (let [current (:worktree_id collection-before-updates)
+          target  (remote-sync/worktree-id-of :model/Collection (location-path->parent-id location))]
+      (when (not= current target)
+        (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+                        {:status-code        400
+                         :worktree-id        current
+                         :target-worktree-id target}))))))
 
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed changes."
@@ -778,6 +793,8 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
+   [:worktree-id {:optional true} [:maybe :int]]
+   [:include-worktrees? {:optional true} :boolean]
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
 (def ^:private UserScope
@@ -789,6 +806,8 @@
   {:cte-name nil
    :include-archived-items :exclude
    :include-trash-collection? false
+   :worktree-id nil
+   :include-worktrees? false
    :effective-child-of nil
    :archive-operation-id nil
    :permission-level :read})
@@ -841,7 +860,8 @@
    :c.archive_operation_id
    :c.archived_directly
    :c.type
-   :c.namespace])
+   :c.namespace
+   :c.worktree_id])
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
@@ -903,6 +923,8 @@
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
+            (when-not (:include-worktrees? visibility-config)
+              [:= :c.worktree_id (:worktree-id visibility-config)])
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
@@ -1188,7 +1210,8 @@
   [collection collection-table-alias visibility-config & additional-honeysql-where-clauses]
   (into
    [:and
-    (effective-child-of-filter-clause collection collection-table-alias visibility-config)
+    (effective-child-of-filter-clause collection collection-table-alias
+                                      (assoc visibility-config :worktree-id (:worktree_id collection)))
     ;; don't want personal collections in collection items. Only on the sidebar
     [:= :personal_owner_id nil]]
    ;; (any additional conditions)
@@ -1777,11 +1800,14 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
-  (u/prog1 (-> collection
-               (assoc :slug (slugify collection-name))
-               (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)))
+  (let [parent-id (some-> (:location collection) location-path->parent-id)]
+    (u/prog1 (-> collection
+                 (assoc :slug (slugify collection-name))
+                 (cond->
+                  (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+                  parent-id (assoc :worktree_id (remote-sync/worktree-id-of :model/Collection parent-id)))
+                 remote-sync/check-worktree-create-allowed)
+      (assert-valid-remote-synced-parent <>))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -1972,6 +1998,8 @@
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
+    (remote-sync/check-worktree-id-unchanged collection)
+    (assert-location-parent-same-worktree collection-before-updates collection-updates)
     ;; (3) make sure Collection namespace is valid
     (when (contains? collection-updates :namespace)
       (when-not (namespace-equals? (:namespace collection-before-updates) (:namespace collection-updates))
@@ -2073,7 +2101,8 @@
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
-                          [:not= :type trash-collection-type]]]
+                          [:not= :type trash-collection-type]]
+        worktree-clause  (serdes/worktree-scope-clause "Collection")]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
                            {:where
@@ -2083,6 +2112,7 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
+                             worktree-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order})
@@ -2092,6 +2122,7 @@
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
+                             worktree-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
@@ -2187,7 +2218,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

@@ -57,6 +57,8 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
+    :model/RemoteSyncWorktreeRemapping
     :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SecurityAdvisory

@@ -106,6 +106,7 @@
            parameters
            queries
            query-processor
+           remote-sync
            search
            settings
            util
@@ -633,6 +634,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            settings
@@ -724,6 +726,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -824,6 +827,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1444,6 +1448,7 @@
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/RemoteSyncWorktreeRemapping
                     :model/Segment
                     :model/Table
                     :model/User}}
@@ -1790,6 +1795,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -1941,7 +1947,8 @@
            metabase.remote-sync.init}
    :uses #{api
            models
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Collection}}
 
   request
@@ -2397,6 +2404,7 @@
            collections
            events
            models
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -3455,8 +3463,9 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask}
-   :model-imports #{:model/Card
+   :model-exports #{:model/RemoteSyncTask :model/RemoteSyncWorktreeRemapping}
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document

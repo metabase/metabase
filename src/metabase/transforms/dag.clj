@@ -6,6 +6,7 @@
   transform runs via `transform_run.dag_run_id`."
   (:require
    [clojure.set :as set]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
@@ -51,9 +52,11 @@
 
 (defn- lean-transforms
   "Transforms with only the columns the ordering walk needs — avoids loading every transform's full
-  row just to compute the dependency graph (full rows are fetched only for the resulting closure)."
+  row just to compute the dependency graph (full rows are fetched only for the resulting closure).
+  Transforms checked out into a remote-sync worktree are left out: a DAG run never runs them."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
+  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]
+             {:where (remote-sync/exclude-worktrees-clause)}))
 
 (defn- full-transforms [ids]
   (if (seq ids)

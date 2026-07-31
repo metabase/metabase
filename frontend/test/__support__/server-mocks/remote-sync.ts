@@ -30,7 +30,7 @@ export const setupRemoteSyncBranchesEndpoint = (
 ) => {
   fetchMock.removeRoute("remote-sync-branches");
   fetchMock.get(
-    "path:/api/ee/remote-sync/branches",
+    "path:/api/ee/remote-sync/branch",
     { items: branches },
     { name: "remote-sync-branches" },
   );
@@ -217,7 +217,11 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncExportPreflightEndpoint(exportPreflight);
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });
-  fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
+  fetchMock.post("path:/api/ee/remote-sync/branch", {});
+  fetchMock.post("path:/api/ee/remote-sync/stash", {
+    status: "success",
+    message: "Stashing",
+  });
   fetchMock.get(
     "path:/api/ee/remote-sync/has-remote-changes",
     hasRemoteChangesError

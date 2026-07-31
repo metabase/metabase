@@ -27,12 +27,16 @@
 
   Takes a collection to check for editability.
 
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  Returns true if the collection is editable, false otherwise. A worktree collection is editable by an admin
+  whatever the sync type -- a worktree is a working copy of its branch -- and by nobody else. Otherwise true when
+  remote-sync-type is :read-write, or when the collection is not a remote-synced collection. Always returns true on
+  OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
-      (not (collections/remote-synced-collection? collection))))
+  (if (:worktree_id collection)
+    api/*is-superuser?*
+    (or (= (settings/remote-sync-type) :read-write)
+        (not (collections/remote-synced-collection? collection)))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
@@ -68,16 +72,24 @@
       (= (settings/remote-sync-type) :read-write)))
 
 (defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration."
+  "Determines if a model instance is editable based on remote sync configuration. Worktree content is editable by an
+  admin whatever the sync type -- a worktree is a working copy of its branch -- and by nobody else."
   :feature :none
   [model-key instance]
-  (spec/model-editable? model-key instance))
+  (if (:worktree_id instance)
+    api/*is-superuser?*
+    (spec/model-editable? model-key instance)))
 
 (defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean. Worktree content is editable
+  by an admin whatever the sync type -- a worktree is a working copy of its branch -- and by nobody else."
   :feature :none
   [model-key instances]
-  (spec/batch-model-editable? model-key instances))
+  (let [editable (spec/batch-model-editable? model-key (remove :worktree_id instances))]
+    (into editable
+          (comp (filter :worktree_id)
+                (map (fn [inst] [(:id inst) api/*is-superuser?*])))
+          instances)))
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.

@@ -190,6 +190,17 @@ export type CreateBranchResponse = {
   message: string;
 };
 
+export type StashChangesRequest = {
+  new_branch: string;
+  message: string;
+};
+
+export type StashChangesResponse = {
+  status: string;
+  message: string;
+  task_id?: number;
+};
+
 export type TestRemoteSyncConnectionRequest = {
   "remote-sync-url"?: string | null;
   "remote-sync-token"?: string | null;

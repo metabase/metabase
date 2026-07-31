@@ -225,7 +225,8 @@
         ns-coll-conflicts (spec/check-namespace-collection-conflicts
                            import-namespace-collections
                            (:entity-ids import-ns-info))
-        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
+        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type
+                                                                 :worktree_id nil)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
@@ -296,12 +297,14 @@
 
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
-  each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
+  each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert.
+  Rows are stamped with the worktree in scope ([[serdes/*worktree-id*]]; nil is the main app)."
   [rows repo-paths]
   (serdes/with-cache
     (doseq [chunk (partition-all app-db-batch-size rows)]
       (t2/insert! :model/RemoteSyncObject
-                  (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
+                  (mapv #(assoc % :worktree_id serdes/*worktree-id*)
+                        (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -357,7 +360,7 @@
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.
-      (t2/delete! :model/RemoteSyncObject)
+      (t2/delete! :model/RemoteSyncObject :worktree_id serdes/*worktree-id*)
       (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
@@ -422,7 +425,9 @@
         deleted      (into #{} (filter legal-yaml-path?) (:deleted changed))
         ;; N+1: one query per deleted path (bounded by deletions in a single pull; left un-batched because
         ;; file_path values are long, making an IN clause bulky for marginal gain).
-        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p)) deleted)
+        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p
+                                                  :worktree_id serdes/*worktree-id*))
+                           deleted)
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
         add-models (if ingestable
@@ -503,7 +508,9 @@
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
   Captured before a local-only merge so they can be restored afterwards (see [[import-merged!]])."
   []
-  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+  (t2/select :model/RemoteSyncObject {:where [:and
+                                              [:not= :status "synced"]
+                                              [:= :worktree_id serdes/*worktree-id*]]}))
 
 (defn- restore-dirty-objects!
   "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
@@ -511,7 +518,8 @@
   (e.g. a pending local deletion, whose entity is absent from the merged set)."
   [dirty-objects timestamp]
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
-    (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id)]
+    (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id
+                                     :worktree_id serdes/*worktree-id*)]
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status :status_changed_at timestamp})
       (t2/insert! :model/RemoteSyncObject
@@ -574,7 +582,7 @@
   (let [sync-timestamp (t/instant)]
     (try
       (let [snapshot-version      (source.p/version snapshot)
-            last-imported-version (remote-sync.task/last-version)
+            last-imported-version (remote-sync.task/last-version serdes/*worktree-id*)
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
@@ -594,7 +602,7 @@
                                      (not force-deletion?)
                                      (into (:deletion-conflicts @conflicts)))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
-            dirty?             (delay (remote-sync.object/dirty?))
+            dirty?             (delay (remote-sync.object/dirty? serdes/*worktree-id*))
             result
             (cond
               ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
@@ -771,7 +779,9 @@
           (let [pulled (apply + (vals summary))]
             (load-snapshot! merged-snapshot task-id sync-timestamp
                             :finalize! (fn []
-                                         (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                                         (t2/update! :model/RemoteSyncObject
+                                                     {:worktree_id serdes/*worktree-id*}
+                                                     {:status "synced" :status_changed_at sync-timestamp})
                                          (remote-sync.task/set-version! task-id version)))
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
                        pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
@@ -1078,7 +1088,8 @@
   [exported-rows]
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
     (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
-                    :status [:in ["removed" "delete"]])
+                    :status [:in ["removed" "delete"]]
+                    :worktree_id serdes/*worktree-id*)
          (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
          (remove #(exported (select-keys % [:model_type :model_id])))
          (map :id))))
@@ -1141,7 +1152,8 @@
             (remote-sync.task/set-version! task-id version))
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
+          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject :worktree_id serdes/*worktree-id*)
+                             synced sync-timestamp))
         (if (= version :remote-sync/empty-commit)
           (do
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
@@ -1203,13 +1215,13 @@
     (try
       (analytics/inc! :metabase-remote-sync/exports)
       (serdes/with-cache
-        (let [base-version   (remote-sync.task/last-version)
+        (let [base-version   (remote-sync.task/last-version serdes/*worktree-id*)
               remote-version (source.p/version snapshot)
               diverged?      (and (some? base-version)
                                   (not= base-version remote-version))
               disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
                                              (source.p/list-files snapshot)))
-              dirty-rows     (delay (remote-sync.object/dirty-rows))
+              dirty-rows     (delay (remote-sync.object/dirty-rows serdes/*worktree-id*))
               plan           (delay (when (seq @dirty-rows)
                                       (incremental-export-plan snapshot @dirty-rows)))]
           (cond
@@ -1272,14 +1284,16 @@
   Used directly by the auto-import Quartz job, so auto-imports self-heal after a stale task. User-driven
   endpoints go through `ensure-no-active-task!` first (in `async-import!` / `async-export!` / etc.), which
   uses the stricter `task-running?` predicate and refuses if any task — including stale — is alive. So
-  this function only reaches the supersession branch on the auto-import path."
-  [task-type]
-  (cluster-lock/with-cluster-lock ::remote-sync-task
-    (if-let [task (remote-sync.task/current-task)]
-      (assoc task :existing? true)
-      (do
-        (remote-sync.task/supersede-stale-tasks!)
-        (remote-sync.task/create-sync-task! task-type api/*current-user-id*)))))
+  this function only reaches the supersession branch on the auto-import path. `worktree-id` attaches the new task
+  to a remote-sync worktree; nil is the main app."
+  ([task-type] (create-task-with-lock! task-type nil))
+  ([task-type worktree-id]
+   (cluster-lock/with-cluster-lock ::remote-sync-task
+     (if-let [task (remote-sync.task/current-task)]
+       (assoc task :existing? true)
+       (do
+         (remote-sync.task/supersede-stale-tasks!)
+         (remote-sync.task/create-sync-task! task-type api/*current-user-id* {:worktree_id worktree-id}))))))
 
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
@@ -1360,18 +1374,22 @@
      on the remote; the result is not cached in that case so the next call
      picks up a branch switch immediately)
 
+   `:branch` overrides the branch to check (a worktree passes its own branch, since a worktree never touches the
+   `remote-sync-branch` setting); the cache keys on the branch, so a worktree check does not serve the main app a
+   stale answer.
+
    Cache is invalidated if:
    - TTL has expired
    - Branch setting has changed
    - force-refresh? is true"
   ([]
    (has-remote-changes? nil))
-  ([{:keys [force-refresh?]}]
+  ([{:keys [force-refresh? branch]}]
    (let [cache-state @remote-changes-cache
-         current-branch (settings/remote-sync-branch)]
+         current-branch (or branch (settings/remote-sync-branch))]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
-       (let [last-imported (remote-sync.task/last-version)
+       (let [last-imported (remote-sync.task/last-version serdes/*worktree-id*)
              source (source/source-from-settings current-branch)
              snapshot (snapshot-or-missing-branch source)]
          (if (= ::missing-branch snapshot)
@@ -1441,14 +1459,19 @@
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
 
-  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, a
-  sync-fn function that takes a task-id and performs the sync operation, and an optional :on-success callback
-  that receives [task-id result] after a successful sync. Creates a new task (or errors if one is already
-  running), then executes the sync function in a virtual thread with a timeout.
+  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion (nil to
+  leave the setting alone -- worktree operations never touch it), a sync-fn function that takes a task-id and
+  performs the sync operation, and an optional :on-success callback that receives [task-id result] after a
+  successful sync. Creates a new task (or errors if one is already running), then executes the sync function in
+  a virtual thread with a timeout.
+
+  `:worktree-id`, when given, is bound as [[serdes/*worktree-id*]] around task creation so the new
+  RemoteSyncTask row is stamped with it. A virtual thread does not inherit the caller's dynamic bindings, so
+  `sync-fn` is responsible for re-establishing that binding for its own work.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn & {:keys [on-success]}]
-  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
+  [task-type branch sync-fn & {:keys [on-success worktree-id]}]
+  (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type worktree-id)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
@@ -1478,45 +1501,55 @@
   When `:merge?` is set, a local-only 3-way merge keeps un-pushed local changes instead of overwriting
   them, so the dirty-changes guard is skipped.
 
+  `:worktree-id` (default: the worktree already in scope, [[serdes/*worktree-id*]]) scopes the whole
+  operation to a remote-sync worktree instead of the main app: the dirty check, merge-base lookup, task
+  creation, and the load itself all read and write under that scope, and the operation never touches the
+  global `remote-sync-branch` setting -- `branch` is still the git branch to import from (the worktree's own
+  branch, resolved by the caller), it just stops driving the setting.
+
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
-  [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
+  [branch force? import-args & {:keys [on-success merge? force-deletion? worktree-id]
+                                :or   {worktree-id serdes/*worktree-id*}}]
   (guards/ensure-no-active-task!)
-  (let [pre-task-branch        (settings/remote-sync-branch)
-        source                 (source/source-from-settings branch)
-        has-dirty?             (remote-sync.object/dirty?)
-        snapshot               (source.p/snapshot source)
-        ;; the merge base for a merge pull. When the remote has not advanced it is the remote tip itself
-        ;; (base == theirs, so import-merged! no-ops and keeps local dirty). When the remote has advanced
-        ;; it's the last-synced commit, which may be nil if orphaned by a force-push/rebase (→ conflict).
-        ;; nil also when there's no prior sync. Resolved only for a merge.
-        last-task-version      (remote-sync.task/last-version)
-        base-snapshot          (when (and merge? (some? last-task-version))
-                                 (if (= last-task-version (source.p/version snapshot))
-                                   snapshot
-                                   (source.p/snapshot-at source last-task-version)))]
-    (when (and has-dirty? (not force?) (not merge?))
-      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true
-                       ;; The un-pushed local changes a switch would discard, so the client can name exactly
-                       ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
-    (run-async! "import" branch
-                (fn [task-id]
-                  (when (branch-changed-since-scheduling? pre-task-branch)
-                    (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
-                               pre-task-branch (settings/remote-sync-branch))
-                    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
-                                    {:pre-task-branch pre-task-branch
-                                     :current-branch  (settings/remote-sync-branch)})))
-                  (import! snapshot task-id
-                           (assoc import-args
-                                  :force?           force?
-                                  :force-deletion?  force-deletion?
-                                  :merge?           merge?
-                                  :base-snapshot    base-snapshot)))
-                :on-success on-success)))
+  (binding [serdes/*worktree-id* worktree-id]
+    (let [pre-task-branch        (settings/remote-sync-branch)
+          source                 (source/source-from-settings branch)
+          has-dirty?             (remote-sync.object/dirty? worktree-id)
+          snapshot               (source.p/snapshot source)
+          ;; the merge base for a merge pull. When the remote has not advanced it is the remote tip itself
+          ;; (base == theirs, so import-merged! no-ops and keeps local dirty). When the remote has advanced
+          ;; it's the last-synced commit, which may be nil if orphaned by a force-push/rebase (→ conflict).
+          ;; nil also when there's no prior sync. Resolved only for a merge.
+          last-task-version      (remote-sync.task/last-version worktree-id)
+          base-snapshot          (when (and merge? (some? last-task-version))
+                                   (if (= last-task-version (source.p/version snapshot))
+                                     snapshot
+                                     (source.p/snapshot-at source last-task-version)))]
+      (when (and has-dirty? (not force?) (not merge?))
+        (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                        {:status-code 400
+                         :conflicts true
+                         ;; The un-pushed local changes a switch would discard, so the client can name exactly
+                         ;; what would be lost without a second round-trip to /dirty.
+                         :dirty_objects (remote-sync.object/dirty-objects worktree-id)})))
+      (run-async! "import" (when-not worktree-id branch)
+                  (fn [task-id]
+                    (binding [serdes/*worktree-id* worktree-id]
+                      (when (and (nil? worktree-id) (branch-changed-since-scheduling? pre-task-branch))
+                        (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
+                                   pre-task-branch (settings/remote-sync-branch))
+                        (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                                        {:pre-task-branch pre-task-branch
+                                         :current-branch  (settings/remote-sync-branch)})))
+                      (import! snapshot task-id
+                               (assoc import-args
+                                      :force?           force?
+                                      :force-deletion?  force-deletion?
+                                      :merge?           merge?
+                                      :base-snapshot    base-snapshot))))
+                  :on-success  on-success
+                  :worktree-id worktree-id))))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
@@ -1533,36 +1566,46 @@
   - neither (default) -> `:conflict` task result; the caller (typically the UI, via the export preflight)
                          decides whether to force, branch, or merge.
 
+  `:worktree-id` (default: the worktree already in scope, [[serdes/*worktree-id*]]) scopes the whole
+  operation to a remote-sync worktree instead of the main app, the same way [[async-import!]]'s does: the
+  merge-base lookup, task creation, and the export itself happen under that scope, and the operation never
+  touches the global `remote-sync-branch` setting -- `branch` is still the git branch to export to (the
+  worktree's own branch, resolved by the caller).
+
   Returns a RemoteSyncTask."
-  [branch force? message & {:keys [on-success merge?]}]
+  [branch force? message & {:keys [on-success merge? worktree-id]
+                            :or   {worktree-id serdes/*worktree-id*}}]
   (guards/ensure-no-active-task!)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
-  (let [pre-task-branch        (settings/remote-sync-branch)
-        source                 (source/source-from-settings branch)
-        last-task-version      (remote-sync.task/last-version)
-        snapshot               (source.p/snapshot source)
-        current-source-version (source.p/version snapshot)
-        ;; the merge base, resolved only when the remote has advanced; nil here means a 3-way merge isn't
-        ;; possible (no prior sync, or the base commit was orphaned by a force-push/rebase)
-        base-snapshot          (when (and (some? last-task-version)
-                                          (not= last-task-version current-source-version))
-                                 (source.p/snapshot-at source last-task-version))]
-    (run-async! "export" branch
-                (fn [task-id]
-                  (when (branch-changed-since-scheduling? pre-task-branch)
-                    (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
-                               pre-task-branch (settings/remote-sync-branch))
-                    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
-                                    {:pre-task-branch pre-task-branch
-                                     :current-branch  (settings/remote-sync-branch)})))
-                  (export! snapshot task-id message
-                           :force?          force?
-                           :merge?          merge?
-                           :source          source
-                           :base-snapshot   base-snapshot))
-                :on-success on-success)))
+  (binding [serdes/*worktree-id* worktree-id]
+    (let [pre-task-branch        (settings/remote-sync-branch)
+          source                 (source/source-from-settings branch)
+          last-task-version      (remote-sync.task/last-version worktree-id)
+          snapshot               (source.p/snapshot source)
+          current-source-version (source.p/version snapshot)
+          ;; the merge base, resolved only when the remote has advanced; nil here means a 3-way merge isn't
+          ;; possible (no prior sync, or the base commit was orphaned by a force-push/rebase)
+          base-snapshot          (when (and (some? last-task-version)
+                                            (not= last-task-version current-source-version))
+                                   (source.p/snapshot-at source last-task-version))]
+      (run-async! "export" (when-not worktree-id branch)
+                  (fn [task-id]
+                    (binding [serdes/*worktree-id* worktree-id]
+                      (when (and (nil? worktree-id) (branch-changed-since-scheduling? pre-task-branch))
+                        (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
+                                   pre-task-branch (settings/remote-sync-branch))
+                        (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                                        {:pre-task-branch pre-task-branch
+                                         :current-branch  (settings/remote-sync-branch)})))
+                      (export! snapshot task-id message
+                               :force?          force?
+                               :merge?          merge?
+                               :source          source
+                               :base-snapshot   base-snapshot)))
+                  :on-success  on-success
+                  :worktree-id worktree-id))))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing
@@ -1582,7 +1625,7 @@
         source         (source/source-from-settings branch)
         snapshot       (source.p/snapshot source)
         remote-version (source.p/version snapshot)
-        base-version   (remote-sync.task/last-version)]
+        base-version   (remote-sync.task/last-version serdes/*worktree-id*)]
     (if (or (nil? base-version) (= base-version remote-version))
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
@@ -1600,14 +1643,34 @@
                                     {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
-  "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
-   to the new name. Does not publish events or return a response map; the caller
-   is responsible for those concerns."
+  "Creates a new remote branch from `base-branch`. Does NOT switch `remote-sync-branch` to it -- creating a
+   branch never moves the instance off the branch it is on; switching is a separate action (see [[stash!]],
+   which creates a branch, pushes to it, and switches). Does not publish events or return a response map; the
+   caller is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (source.p/create-branch source name base-branch)))
+
+(def ^:private worktree-content-models
+  "The models a worktree materializes, in delete order. Children (dashboard cards and tabs, parameter cards,
+  action rows, transform tag assignments) go with their parents through the DB's cascading FKs; collections are
+  deleted last, once nothing points at them. Must stay in sync with the tables carrying a `worktree_id` column."
+  [:model/Card :model/Dashboard :model/Document :model/Timeline :model/NativeQuerySnippet
+   :model/Action :model/Transform])
+
+(defn delete-worktree!
+  "Delete a worktree and everything it checked out: its content, its collections, its entity_id remappings, its
+  sync ledger and task history, and finally the worktree row itself. Runs in a single transaction."
+  [worktree-id]
+  (t2/with-transaction [_conn]
+    (doseq [model worktree-content-models]
+      (t2/delete! model :worktree_id worktree-id))
+    (t2/delete! :model/Collection :worktree_id worktree-id)
+    (t2/delete! :model/RemoteSyncWorktreeRemapping :worktree_id worktree-id)
+    (t2/delete! :model/RemoteSyncObject :worktree_id worktree-id)
+    (t2/delete! :model/RemoteSyncTask :worktree_id worktree-id)
+    (t2/delete! :model/RemoteSyncWorktree :id worktree-id)))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
