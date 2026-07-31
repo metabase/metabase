@@ -7,10 +7,10 @@
    every MCP client implements, so it is model-invokable everywhere. The tool's own description
    carries the catalog inline, so even a model that ignores every per-tool pointer sees the
    topics in its tool list. Knowledge is not sensitive — it describes the API, not the
-   instance's data — so it gates on `agent:resource:read`, which
-   [[metabase.mcp.v2.registry/registered-scopes]] folds into the default grant like any other
-   tool `:scope`. Declaring one is not optional: the v2 gate denies a nil `:scope` outright, so
-   omitting it would hide the tool rather than make it public."
+   instance's data — but what it documents is the content tools, so it rides their
+   `agent:content:read` rather than adding a sixth scope to the v2 surface. Declaring some scope
+   is not optional: the v2 gate denies a nil `:scope` outright, so omitting it would hide the
+   tool rather than make it public."
   (:require
    [clojure.string :as str]
    [metabase.mcp.v2.common :as common]
@@ -29,7 +29,7 @@
 (registry/deftool learn
   "Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (portable MBQL 5 for execute_query and question_write's query; reference \"operators\" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), visualization-settings (display choice and settings; reference \"settings\" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context."
   {:name        "learn"
-   :scope       metabot.scope/agent-resource-read
+   :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
    :args        [:map {:closed true}
                  [:topic {:optional true}
