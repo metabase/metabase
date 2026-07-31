@@ -451,6 +451,30 @@
                                                  {:schema-names [(:schema dynamic-table)]
                                                   :table-names  [(:name dynamic-table)]}))))))))))))
 
+(deftest ^:parallel show-dynamic-tables-sql-test
+  (testing "only the LIKE pattern escapes `_`; the IN SCHEMA identifiers stay raw (#78541)"
+    (is (= "SHOW DYNAMIC TABLES LIKE 'MY\\_TABLE' IN SCHEMA \"MY_DB\".\"RAW_DATA\";"
+           (#'driver.snowflake/show-dynamic-tables-sql "MY_DB" "RAW_DATA" "MY_TABLE")))))
+
+(deftest ^:synchronized describe-fks-dynamic-table-check-test
+  (testing "the FK path passes raw names to the dynamic table check (#78541)"
+    (let [dynamic-table-args (atom nil)
+          fk-args            (atom nil)]
+      (with-redefs [driver.snowflake/dynamic-table?
+                    (fn [_conn db-name schema table-name]
+                      (reset! dynamic-table-args [db-name schema table-name])
+                      false)
+
+                    sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
+                    (fn [_metadata db-name schema table-name]
+                      (reset! fk-args [db-name schema table-name])
+                      [])]
+        (#'driver.snowflake/reducible-table-fks-from-jdbc-metadata
+         (reify java.sql.Connection) (reify java.sql.DatabaseMetaData) "MY_DB" "RAW_DATA" "MY_TABLE"))
+      (is (= ["MY_DB" "RAW_DATA" "MY_TABLE"] @dynamic-table-args))
+      (testing "but still escapes for the JDBC metadata call, which treats them as patterns"
+        (is (= ["MY_DB" "RAW\\_DATA" "MY\\_TABLE"] @fk-args))))))
+
 (deftest ^:sequential describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"

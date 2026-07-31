@@ -23,7 +23,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push, useParams, useRouter } from "metabase/router";
+import { push, useLocation, useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
@@ -52,7 +52,7 @@ import type { RouteParams } from "./types";
 import { buildListParams, urlStateConfig } from "./utils";
 
 export const NotificationsAdminPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { notificationId: notificationIdParam } = useParams<RouteParams>();
   const notificationId = Urls.extractEntityId(notificationIdParam);
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -361,8 +361,12 @@ export const NotificationsAdminPage = () => {
               itemsLength={notifications.length}
               total={total}
               showTotal
-              onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
-              onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
+              onPreviousPage={() =>
+                patchUrlState({ page: urlState.page - 1 }, { immediate: true })
+              }
+              onNextPage={() =>
+                patchUrlState({ page: urlState.page + 1 }, { immediate: true })
+              }
             />
           </Flex>
         </MonitorMain>

@@ -366,7 +366,7 @@
         (audit-app.settings/audit-db-dialect-sync-pending! false)
         (log/info "Audit DB sync complete.")
         (catch Exception e
-          (log/error e "Audit DB sync failed."))))))
+          (log/errorf "Audit DB sync failed: %s" (ex-message e)))))))
 
 (defn- host-canonical-table
   "The `[name schema]` an audit-DB `metabase_table` row should use for the host engine, matching the

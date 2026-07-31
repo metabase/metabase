@@ -77,6 +77,7 @@
                               :visibility_type nil
                               {:order-by [[:%lower.schema :asc]
                                           [:%lower.display_name :asc]]})
+        _ (perms/prime-db-perms-cache (map :id dbs))
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?          (filter mi/can-query?)
                           can-write-metadata? (filter mi/can-write?))
@@ -128,7 +129,6 @@
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
-  (perms/prime-db-cache (map :id dbs))
   (for [db dbs]
     (assoc db
            :native_permissions
@@ -200,13 +200,14 @@
                 (card-has-ambiguous-columns? card)))))
 
 (defn- ids-of-dbs-that-support-source-queries []
-  (set (filter (fn [db-id]
-                 (try
-                   (when-let [db (t2/select-one :model/Database :id db-id)]
-                     (driver.u/supports? (driver.u/database->driver db) :nested-queries db))
-                   (catch Throwable e
-                     (log/error e "Error determining whether Database supports nested queries"))))
-               (t2/select-pks-set :model/Database))))
+  ;; the nested-queries check only reads the engine — don't realize full rows (decrypted :details etc.) for it
+  (set (keep (fn [db]
+               (try
+                 (when (driver.u/supports? (driver.u/database->driver db) :nested-queries db)
+                   (:id db))
+                 (catch Throwable e
+                   (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
+             (t2/select [:model/Database :id :engine]))))
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -252,8 +253,8 @@
    Builder.)"
   [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
-  (for [card (source-query-cards card-type)]
-    (schema.table/card->virtual-table card :include-fields? include-fields?)))
+  (schema.table/cards->virtual-tables (source-query-cards card-type)
+                                      :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card-type
@@ -347,7 +348,8 @@
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
-                                        :where where-clause})]
+                                        :where where-clause})
+        _ (perms/prime-db-perms-cache (map :id dbs))]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       include-schemas?             add-schemas
@@ -646,7 +648,7 @@
                           (fn [tables]
                             (->> tables
                                  (remove :visibility_type)
-                                 (map #(update % :fields filter-sensitive-fields))))))
+                                 (map #(m/update-existing % :fields filter-sensitive-fields))))))
         (update :tables (fn [tables]
                           (if-not include-editable-data-model?
                             ;; If we're filtering by data model perms, table perm checks were already done by
@@ -827,7 +829,7 @@
                 substring (autocomplete-suggestions id (str "%" substring "%"))
                 prefix    (autocomplete-suggestions id (str prefix "%")))}
     (catch Throwable e
-      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
+      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -854,7 +856,7 @@
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
-      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
+      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 

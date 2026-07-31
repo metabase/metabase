@@ -737,7 +737,7 @@
       (driver/refresh-table-stats! (:engine database) database (:schema target) (:name target)
                                    (keyword (:type target)))
       (catch Throwable t
-        (log/warnf t "refresh-table-stats! failed for %s.%s" (:schema target) (:name target))))
+        (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete

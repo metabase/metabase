@@ -131,7 +131,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/plan")}
       (catch Exception e
-        (log/warn e "Error fetching plans information")
+        (log/warnf "Error fetching plans information: %s" (ex-message e))
         (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -150,7 +150,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/addons")}
       (catch Exception e
-        (log/warn e "Error fetching addons information")
+        (log/warnf "Error fetching addons information: %s" (ex-message e))
         (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -209,7 +209,7 @@
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e
-        (log/warnf e "Error purchasing add-on '%s'" product-type)
+        (log/warnf "Error purchasing add-on '%s': %s" product-type (ex-message e))
         (handle-store-api-error e {400 error-cannot-purchase})))))
 
 (api.macros/defendpoint :delete "/:product-type" :- [:map
@@ -232,7 +232,7 @@
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e
-        (log/warnf e "Error removing add-on '%s'" product-type)
+        (log/warnf "Error removing add-on '%s': %s" product-type (ex-message e))
         (handle-store-api-error e {400 error-cannot-remove})))))
 
 (def ^{:arglists '([request respond raise])} routes

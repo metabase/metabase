@@ -180,7 +180,7 @@
 
     ;; this should not happen (and cannot happen in CLJ land)
     ;; but it does seem to happen in JS land with broken MLv1 queries
-    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
+    (do (log/error "with-join-value should not be called with this type of value")
         field-or-join)))
 
 (mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
@@ -371,10 +371,7 @@
                                                                                                     (with-join-alias field-ref nil))]
                                                (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
                                                  resolved))
-                                             (log/debugf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                         (pr-str join-alias)
-                                                         (pr-str field-ref)
-                                                         (pr-str (map (juxt :id :lib/join-alias :lib/source-column-alias) cols))))]
+                                             (log/debug "Failed to find matching column in join for ref"))]
 
                         :when     (and match
                                        (not (false? (:active match))))]

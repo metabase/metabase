@@ -247,10 +247,11 @@
             ;; the socket cleanly when this body fn returns. The error is fully
             ;; captured in the row via the `finally` below and in the log here.
             (vreset! thrown t)
-            (log/error t "Native agent stream failed"
+            (log/error "Native agent stream failed"
                        {:conversation-id conversation-id
                         :assistant-msg-id assistant-msg-id
-                        :external-id     external-id})
+                        :external-id     external-id
+                        :error           (ex-message t)})
             ;; Stream a well-formed AI SDK error tail so the client surfaces the failure
             ;; instead of treating the truncated stream as a silent success. Unlike binary
             ;; downloads (which abort the connection), an event stream carries its own error
@@ -284,10 +285,11 @@
                  :error      error-data
                  :turn-state (some-> @memory-atom memory/turn-state)))
               (catch Exception e
-                (log/error e "Failed to finalize assistant turn"
+                (log/error "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
                             :assistant-msg-id assistant-msg-id
-                            :external-id      external-id})))))))))
+                            :external-id      external-id
+                            :error            (ex-message e)})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc.
@@ -334,7 +336,7 @@
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
           state     (metabot.persistence/conversation-state live)
-          first-msg (or (:content (metabot.persistence/first-valid-user-message live))
+          first-msg (or (:content (metabot.persistence/first-non-forked-user-message live))
                         (:content message))
           title-job (conversation-title/ensure-title!
                      conversation_id
@@ -482,8 +484,10 @@
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "mistral"    :llm-mistral-api-key
     "openai"     :llm-openai-api-key
-    "openrouter" :llm-openrouter-api-key))
+    "openrouter" :llm-openrouter-api-key
+    "zai"        :llm-zai-api-key))
 
 (defn- non-blank-string
   [value]

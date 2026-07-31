@@ -60,6 +60,7 @@
                               :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
@@ -181,7 +182,7 @@
              (when (.next rset)
                (.getBoolean rset 1))))))
       (catch Throwable e
-        (log/error e "An exception during ClickHouse connectivity check")
+        (log/errorf "An exception during ClickHouse connectivity check: %s" (ex-message e))
         false))
     ;; During normal usage, fall back to the default implementation
     (sql-jdbc.conn/can-connect? driver details)))

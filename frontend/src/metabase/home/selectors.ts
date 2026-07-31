@@ -5,6 +5,6 @@ export const getIsXrayEnabled = (state: State) => {
   return getSetting(state, "enable-xrays");
 };
 
-export const getHasMetabotLogo = (state: State) => {
+export const getShowMetabotLogoAndGreeting = (state: State) => {
   return getSetting(state, "show-metabot");
 };

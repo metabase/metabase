@@ -7,26 +7,20 @@ import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
 import { connect, useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { push } from "metabase/router";
+import type { Location, LocationDescriptorObject } from "metabase/router";
+import { push, queryToSearch } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment } from "metabase-types/api";
 
-type LocationWithQuery = Location<{
-  table?: string;
-}>;
-
 type FilteredToUrlTableInnerProps = {
-  location: LocationWithQuery;
-  push: (location: LocationWithQuery) => void;
+  location: Location;
+  push: (location: LocationDescriptorObject) => void;
   segments: Segment[];
 };
 
-function getTableIdFromLocation(
-  location: LocationWithQuery,
-): ConcreteTableId | null {
-  const tableId = location.query?.table;
+function getTableIdFromLocation(location: Location): ConcreteTableId | null {
+  const tableId = new URLSearchParams(location.search).get("table");
   return tableId != null ? parseInt(tableId, 10) : null;
 }
 
@@ -53,7 +47,9 @@ export function FilteredToUrlTable(
       setTableIdState(newTableId);
       push({
         ...location,
-        query: newTableId == null ? {} : { table: String(newTableId) },
+        search: queryToSearch(
+          newTableId == null ? {} : { table: String(newTableId) },
+        ),
       });
     };
 

@@ -140,7 +140,7 @@
         (jsonrpc-error id -32601 (str "Method not found: " method))
         nil))
     (catch Throwable e
-      (log/error e "Error dispatching JSON-RPC method" method)
+      (log/error "Error dispatching JSON-RPC method" method (ex-message e))
       (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))
 
 (defn- dispatch-request

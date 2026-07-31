@@ -8,7 +8,6 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -49,9 +48,8 @@
   "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
   this way."
   [error]
-  (log/debugf "Error normalizing MBQL 5: %s\n%s"
-              (pr-str (me/humanize (:explain error)))
-              (u/pprint-to-str (dissoc error :explain)))
+  (log/debugf "Error normalizing MBQL 5: %s"
+              (pr-str (me/humanize (:explain error))))
   (:value error))
 
 (def ^:private ^:dynamic *error-fn*

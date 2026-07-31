@@ -866,7 +866,7 @@
 
                :else honeysql-form)
       (when-not (= <> honeysql-form)
-        (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
+        (log/trace "Applied casting")))))
 
 (defmethod ->honeysql [:sql :datetime]
   [driver [_ value {:keys [mode]}]]
@@ -1041,9 +1041,7 @@
           (or database-type effective-temporal-type) maybe-add-type-info
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
-        (log/trace (binding [*print-meta* true]
-                     (format "Compiled field clause\n%s\n=>\n%s"
-                             (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
+        (log/trace "Compiled field clause")))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
@@ -2149,9 +2147,7 @@
       (format-honeysql-2 driver dialect honeysql-form)
       (catch Throwable e
         (try
-          (log/error e (u/format-color :red
-                                       "Invalid HoneySQL form: %s\n%s"
-                                       (ex-message e) (u/pprint-to-str honeysql-form)))
+          (log/error (u/format-color :red "Invalid HoneySQL form: %s" (ex-message e)))
           (finally
             (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                             {:dialect dialect
@@ -2316,9 +2312,9 @@
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
-        (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+        (log/trace "Compiling MBQL query")
         (u/prog1 (compile-mbql driver inner-query)
-          (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+          (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)
           database-id       (if (:type query)
@@ -2350,15 +2346,16 @@
         ;; so the CTAS lands in that database. The target namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
-        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
-        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
-        ;; Server / BigQuery cross-DB) aren't expressible through this single-
-        ;; keyword shape; supporting those would need `output-table` to carry
-        ;; both qualifiers or a different HoneySQL form.
+        ;; 3-part `db.schema.name` writes (Snowflake / SQL Server / BigQuery
+        ;; cross-DB) aren't expressible here; supporting those would need
+        ;; `output-table` to carry both qualifiers.
         target-id (cond
                     (and (not (str/blank? output-db))
                          (str/blank? (namespace (keyword output-table))))
-                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    ;; a dot-joined string, not (keyword output-db name): HoneySQL munges dashes to
+                    ;; underscores in a keyword's namespace, so a catalog named test-data would
+                    ;; target the nonexistent test_data. A string splits on `.`, quoted verbatim.
+                    (str output-db "." (clojure.core/name (keyword output-table)))
                     :else
                     (keyword output-table))]
     [(first (format-honeysql driver
