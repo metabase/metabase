@@ -412,31 +412,29 @@
   (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
     (lib-be/with-metadata-provider-cache
       (if (seq (search.engine/active-engines))
-        (let [[tombstones updates] (reduce (fn [[tombstones updates] update]
-                                             (if (= :delete (:op update))
-                                               [(conj tombstones update) updates]
-                                               [tombstones (conj updates update)]))
-                                           [[] []]
-                                           updates)
-              documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                               (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                             ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                             (reduce u/rconcat [])
-                             query->documents)
-              passed-documents (map extract-model-and-id updates)
-              ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
-              ;; The eduction will replay the streaming query when passed to update!.
-              indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
-              ;; TODO: The list of documents to delete is not completely accurate.
-              ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-              ;; This will not work for cases like indexed-entries with compound PKs,
-              ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-              ;; Long-term, we should find a better approach to knowing what to purge.
-              to-delete (concat (remove indexed-pairs passed-documents)
-                                (mapcat (fn [{:keys [search-model ids]}]
-                                          (map (fn [id] [search-model id]) ids))
-                                        tombstones))]
-          (update! documents to-delete))
+        (doseq [messages (partition-by #(= :delete (:op %)) updates)]
+          (if (= :delete (:op (first messages)))
+            ;; Preserve the queue's relative ordering: an update after this tombstone is authoritative, while
+            ;; a prior update must finish before the delete. We only coalesce contiguous update messages.
+            (update! [] (mapcat (fn [{:keys [search-model ids]}]
+                                  (map (fn [id] [search-model id]) ids))
+                                messages))
+            (let [documents (->> (for [[search-model where-clauses] (u/group-by first second messages)]
+                                   (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                                 ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                                 (reduce u/rconcat [])
+                                 query->documents)
+                  passed-documents (map extract-model-and-id messages)
+                  ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
+                  ;; The eduction will replay the streaming query when passed to update!.
+                  indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
+                  ;; TODO: The list of documents to delete is not completely accurate.
+                  ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+                  ;; This will not work for cases like indexed-entries with compound PKs,
+                  ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+                  ;; Long-term, we should find a better approach to knowing what to purge.
+                  to-delete (remove indexed-pairs passed-documents)]
+              (update! documents to-delete))))
         {}))))
 
 (defn- track-queue-size! []

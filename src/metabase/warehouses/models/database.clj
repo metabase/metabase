@@ -466,8 +466,9 @@
                             :where       [:in :id ids]})
                  ;; Index mutations must see committed state. The shared ingestion queue serializes these
                  ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
-                 (mdb/do-after-commit #(do (delete! :model/Card ids)
-                                           (reconcile! cascading)))))))
+                 (mdb/do-after-commit #(future
+                                         (delete! :model/Card ids)
+                                         (reconcile! cascading)))))))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
