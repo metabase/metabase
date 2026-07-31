@@ -12,7 +12,7 @@ type PerformMount<P> = (container: Element, props: P) => WidgetMountHandle<P>;
 export function usePluginMount<P>(
   performMount: PerformMount<P>,
   props: P,
-  plugin?: CustomVizPluginRuntime,
+  plugin: CustomVizPluginRuntime,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetMountRef = useRef<WidgetMountHandle<P> | null>(null);
@@ -28,9 +28,6 @@ export function usePluginMount<P>(
         widgetMountRef.current.update(props);
       }
     } catch (error) {
-      if (!plugin) {
-        throw error;
-      }
       console.error(
         t`Failed to render plugin "${plugin.display_name}":`,
         error,

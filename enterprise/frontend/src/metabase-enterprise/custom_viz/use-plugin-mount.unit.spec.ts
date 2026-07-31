@@ -10,7 +10,7 @@ type Props = { value: number };
 
 function renderPluginMount(
   performMount: (container: Element, props: Props) => WidgetMountHandle<Props>,
-  plugin?: CustomVizPluginRuntime,
+  plugin: CustomVizPluginRuntime = createMockCustomVizPluginRuntime(),
 ) {
   const { rerender } = renderHook(
     ({ props }) => {
@@ -38,7 +38,7 @@ describe("usePluginMount", () => {
     consoleError.mockRestore();
   });
 
-  it("logs a mount error when a plugin is given", () => {
+  it("logs a mount error for the given plugin", () => {
     const error = new Error("mount failed");
 
     renderPluginMount(() => {
@@ -73,7 +73,7 @@ describe("usePluginMount", () => {
     );
   });
 
-  it("logs an update error when a plugin is given", () => {
+  it("logs an update error for the given plugin", () => {
     const error = new Error("update failed");
     const handle: WidgetMountHandle<Props> = {
       update: () => {
@@ -94,14 +94,6 @@ describe("usePluginMount", () => {
       'Failed to render plugin "My Viz":',
       error,
     );
-  });
-
-  it("rethrows without a plugin", () => {
-    expect(() =>
-      renderPluginMount(() => {
-        throw new Error("mount failed");
-      }),
-    ).toThrow("mount failed");
   });
 
   it("mounts and updates normally when nothing throws", () => {

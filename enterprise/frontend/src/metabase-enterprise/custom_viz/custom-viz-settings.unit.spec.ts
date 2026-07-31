@@ -6,12 +6,12 @@ import type {
 } from "custom-viz";
 import type { ComponentType } from "react";
 
-import type { CustomVizPluginId } from "metabase-types/api";
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
-import { getWidgetMountPluginId, isWidgetMount } from "./widget-mount";
+import { getWidgetMountPlugin, isWidgetMount } from "./widget-mount";
 
-const PLUGIN_ID: CustomVizPluginId = 1;
+const PLUGIN = createMockCustomVizPluginRuntime();
 
 function setupMount() {
   const handle: CustomVisualizationMountHandle<object> = {
@@ -41,7 +41,7 @@ describe("sanitizePluginSettings", () => {
   it("returns undefined when the plugin declares no settings", () => {
     const { mount } = setupMount();
 
-    expect(sanitizePluginSettings(undefined, mount, PLUGIN_ID)).toBeUndefined();
+    expect(sanitizePluginSettings(undefined, mount, PLUGIN)).toBeUndefined();
   });
 
   it("passes built-in widget settings through unchanged", () => {
@@ -51,7 +51,7 @@ describe("sanitizePluginSettings", () => {
       widget: "number",
     });
 
-    const sanitized = sanitizePluginSettings({ threshold }, mount, PLUGIN_ID);
+    const sanitized = sanitizePluginSettings({ threshold }, mount, PLUGIN);
 
     expect(sanitized?.threshold).toBe(threshold);
   });
@@ -62,7 +62,7 @@ describe("sanitizePluginSettings", () => {
     const sanitized = sanitizePluginSettings(
       { broken: definePluginSetting("not-a-definition") },
       mount,
-      PLUGIN_ID,
+      PLUGIN,
     );
 
     expect(sanitized).toEqual({});
@@ -82,7 +82,7 @@ describe("sanitizePluginSettings", () => {
         threshold,
       },
       mount,
-      PLUGIN_ID,
+      PLUGIN,
     );
 
     expect(sanitized).toEqual({ threshold });
@@ -107,7 +107,7 @@ describe("sanitizePluginSettings", () => {
       const sanitized = sanitizePluginSettings(
         { customWidget: original },
         mount,
-        PLUGIN_ID,
+        PLUGIN,
       );
 
       const definition = getRuntimeDefinition(sanitized?.customWidget);
@@ -115,7 +115,7 @@ describe("sanitizePluginSettings", () => {
 
       const widget = getMountWidget(sanitized?.customWidget);
       expect(isWidgetMount(widget)).toBe(true);
-      expect(getWidgetMountPluginId(widget)).toBe(PLUGIN_ID);
+      expect(getWidgetMountPlugin(widget)).toBe(PLUGIN);
 
       expect(getRuntimeDefinition(original).widget).toBe(Widget);
     });
@@ -125,7 +125,7 @@ describe("sanitizePluginSettings", () => {
       const sanitized = sanitizePluginSettings(
         { customWidget: definePluginSetting({ widget: Widget }) },
         mount,
-        PLUGIN_ID,
+        PLUGIN,
       );
 
       const widget = getMountWidget(sanitized?.customWidget);
@@ -149,7 +149,7 @@ describe("sanitizePluginSettings", () => {
             bad: definePluginSetting({ widget: "dropdown" }),
           },
           mount,
-          PLUGIN_ID,
+          PLUGIN,
         ),
       ).toThrow();
     });
@@ -176,7 +176,7 @@ describe("sanitizePluginSettings", () => {
       );
 
       expect(() =>
-        sanitizePluginSettings(settings, mount, PLUGIN_ID),
+        sanitizePluginSettings(settings, mount, PLUGIN),
       ).not.toThrow();
     });
   });

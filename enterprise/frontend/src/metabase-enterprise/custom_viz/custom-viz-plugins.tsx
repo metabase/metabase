@@ -415,7 +415,7 @@ export async function loadCustomVizPlugin(
       vizDef,
       {
         identifier,
-        pluginId: plugin.id,
+        plugin,
         getUiName: () => plugin.display_name,
         iconUrl: resolvedIconUrl,
         isDev: Boolean(plugin.dev_bundle_url),
