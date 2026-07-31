@@ -93,7 +93,7 @@
         (deliver release-lock true)
         (t2/delete! :model/SearchIndexMetadata :engine engine :version version)))))
 
-(deftest delete-obsolete!-test
+(deftest ^:synchronized delete-obsolete!-test
   (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
     (let [engine        :something-futureproof
           n             5
@@ -118,7 +118,8 @@
         (is (= (set (take-last 3 versions))
                (t2/select-fn-set :version :model/SearchIndexMetadata))))
       (testing "After 1 day, it deletes version which are neither the latest, nor used by this instance"
-        (mt/with-dynamic-fn-redefs [t/zoned-date-time (constantly (t/plus (t/zoned-date-time) (t/days 1) (t/minutes 1)))]
+        ;; `zoned-date-time` is a hot clock primitive; avoid permanently proxying it for one test.
+        (with-redefs [t/zoned-date-time (constantly (t/plus (t/zoned-date-time) (t/days 1) (t/minutes 1)))]
           (search-index-metadata/delete-obsolete! our-version)
           (is (= #{our-version (last versions)}
                  (t2/select-fn-set :version :model/SearchIndexMetadata))))))))
