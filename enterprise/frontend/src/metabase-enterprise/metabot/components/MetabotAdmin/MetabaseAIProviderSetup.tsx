@@ -114,7 +114,6 @@ export function MetabaseAIProviderSetup({
   }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
 
   const connectAction = match({
-    hasAcceptedTerms,
     hasMetabaseManagedAiProviderFeature,
     hasDeprecatedMetabaseAiProvider,
     isConfigured,
@@ -123,12 +122,11 @@ export function MetabaseAIProviderSetup({
     .with({ isConfigured: true }, () => null)
     .with({ hasMetabaseManagedAiProviderFeature: true }, () => handleConnect)
     .with({ hasDeprecatedMetabaseAiProvider: true }, () => handleConnect)
-    .with(
-      { hasMetabaseManagedAiProviderFeature: false, hasAcceptedTerms: false },
-      () => null,
-    )
     .with({ isAdmin: false }, () => null)
     .otherwise(() => handleMetabasePurchase);
+
+  const needsTermsAcceptance =
+    connectAction === handleMetabasePurchase && !hasAcceptedTerms;
 
   const onDisconnect = useCallback(async () => {
     const feature = match({
@@ -292,7 +290,7 @@ export function MetabaseAIProviderSetup({
                   <Button
                     variant="filled"
                     loading={isMutating}
-                    disabled={isMutating}
+                    disabled={isMutating || needsTermsAcceptance}
                     onClick={connectAction}
                   >
                     {t`Connect`}

@@ -288,6 +288,21 @@ describe("MetabaseAIProviderSetup", () => {
       });
     });
 
+    it("keeps the Connect button visible but disabled until the Terms are accepted", async () => {
+      setup();
+
+      const connect = await screen.findByRole("button", { name: "Connect" });
+      expect(connect).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+
+      expect(connect).toBeEnabled();
+    });
+
     it("returns to provider selection when requested by the connection flow", async () => {
       const onCancel = jest.fn();
       setup({ hasManagedAi: true, onCancel });
