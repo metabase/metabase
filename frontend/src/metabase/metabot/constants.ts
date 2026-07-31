@@ -10,7 +10,7 @@ export const LLM_PROVIDER_LOGOS: Record<LlmProviderTypeName, string | null> = {
   openai: "openai.svg",
   openrouter: "openrouter.svg",
   mistral: "mistral.svg",
-  zai: null,
+  zai: "zai.svg",
   azure: "azure.svg",
   bedrock: "bedrock.svg",
   metabase: null,
