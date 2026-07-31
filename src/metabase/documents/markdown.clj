@@ -48,7 +48,9 @@
   block, so it collapses to at most three spaces, which CommonMark itself absorbs);
   boundary whitespace inside a bold/italic run moves outside the mark; spaces in link
   hrefs percent-encode to `%20`; and a CR or CRLF inside a text node normalizes to a newline,
-  which re-parses as a space, since the parser ends a line on it either way.
+  which re-parses as a space, since the parser ends a line on it either way — inside code block
+  content it normalizes too, staying a newline there, because CommonMark gives a fence no way to
+  carry a bare CR.
 
   This namespace takes and returns plain data and touches no database. A `{% entity %}` token
   parses to a smartLink carrying only its `entityId`/`model`, with `label`/`href` left at their
@@ -848,16 +850,22 @@
     (emit-blocks! {:sb sb :spans nil :record? false} nodes)
     (.toString sb)))
 
+;; Both prefixers split on [[line-ending-re]], not on `\n`. The body they are handed can hold a
+;; line ending they didn't put there: code block content is emitted raw, being the one text the
+;; serializer must not escape. A line the parser starts that the prefixer didn't prefix escapes the
+;; blockquote or list entirely — for a code block that puts the closing fence outside the prefix,
+;; where it re-opens as a new block instead of closing the old one.
+
 (defn- prefix-quote
   ^String [^String s]
-  (->> (str/split s #"\n" -1)
+  (->> (str/split s line-ending-re -1)
        (map #(if (str/blank? %) ">" (str "> " %)))
        (str/join "\n")))
 
 (defn- prefix-list-item
   ^String [^String marker ^String body]
   (let [indent (apply str (repeat (count marker) " "))
-        lines  (str/split body #"\n" -1)]
+        lines  (str/split body line-ending-re -1)]
     (str marker
          (first lines)
          (when (next lines)

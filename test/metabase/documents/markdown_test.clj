@@ -385,6 +385,41 @@
         (is (= (round-trip-block-types block-name "before # Injected") types)
             (format "%s in a %s changed the block structure: %s" label block-name (pr-str types)))))))
 
+(defn- code-block-in
+  "A document holding one code block whose text is `text`, nested in `container`."
+  [container text]
+  (let [code {:type "codeBlock" :attrs {:language nil :_id "code"} :content [{:type "text" :text text}]}]
+    {:type    "doc"
+     :content [(case container
+                 "blockquote" {:type "blockquote" :attrs {:_id "b"} :content [code]}
+                 "bulletList" {:type    "bulletList" :attrs {:_id "b"}
+                               :content [{:type "listItem" :content [code]}]})
+               {:type "paragraph" :attrs {:_id "z"}}]}))
+
+(defn- code-block-texts
+  "The text of every codeBlock in `ast`, however deeply nested."
+  [ast]
+  (->> (tree-seq :content :content ast)
+       (filter #(= "codeBlock" (:type %)))
+       (mapv #(apply str (map :text (:content %))))))
+
+(deftest ^:parallel nested-code-block-survives-its-line-endings-test
+  (testing "code block content is emitted raw — it is the one text the serializer must not escape
+           — so the line prefixes a blockquote or list adds have to be applied per line the parser
+           will see. Miss one and the closing fence lands outside the prefix, which does not merely
+           render oddly: it re-opens as a new block, the code's tail leaks out as top-level prose,
+           and `splice` writes that structure back to the document column on the next edit."
+    (doseq [[label separator] parser-line-endings
+            container         ["blockquote" "bulletList"]]
+      (let [reparsed (md/parse (reserialize (code-block-in container (str "foo" separator "bar"))))]
+        (testing "the code survives as one code block, its line endings normalized to \\n"
+          (is (= ["foo\nbar"] (code-block-texts reparsed))
+              (format "%s in a code block inside a %s" label container)))
+        (testing "and the document is shaped exactly as the same code written with \\n"
+          (is (= (strip-ids (:content (md/parse (reserialize (code-block-in container "foo\nbar")))))
+                 (strip-ids (:content reparsed)))
+              (format "%s in a code block inside a %s" label container)))))))
+
 (deftest ^:parallel non-ending-separators-survive-round-trip-test
   (testing "a separator the parser reads as text stays in the prose verbatim — it is not a line
            boundary to the grammar, so nothing about it needs normalizing away. The prefixes are
