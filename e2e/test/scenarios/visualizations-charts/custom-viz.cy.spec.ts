@@ -25,6 +25,16 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 const AGGREGATED_VALUE = "18760";
 const AGGREGATED_VALUE_FORMATTED = "18,760";
 
+type MaildevEmail = {
+  id: string;
+  html: string;
+  attachments?: {
+    contentType: string;
+    fileName: string;
+    generatedFileName: string;
+  }[];
+};
+
 function drillThroughDemoVizClick() {
   cy.intercept("POST", "/api/dataset").as("demoVizDrillDataset");
   cy.findByTestId("demo-viz-click-target").click();
@@ -1106,7 +1116,7 @@ describe("admin > custom visualizations", () => {
         .should("not.be.checked")
         .click({ force: true }); // Input is placed behind the label
 
-      H.sendEmailAndAssert((email) => {
+      H.sendEmailAndAssert((email: MaildevEmail) => {
         const { html } = email;
         expect(html).to.include("Custom Viz Subscription Question");
         expect(html).not.to.include(
@@ -1118,10 +1128,12 @@ describe("admin > custom visualizations", () => {
         expect(html).to.include("<img");
         expect(html).not.to.include(AGGREGATED_VALUE_FORMATTED);
 
-        const pdfAttachment = email.attachments.find(
+        const pdfAttachment = email.attachments?.find(
           (attachment) => attachment.contentType === "application/pdf",
         );
-        expect(pdfAttachment).to.exist;
+        if (!pdfAttachment) {
+          throw new Error("Expected the email to have a PDF attachment");
+        }
         expect(pdfAttachment.fileName).to.include(
           "Custom Viz Subscription Dashboard",
         );
@@ -1143,7 +1155,7 @@ describe("admin > custom visualizations", () => {
         display: `custom:${H.CUSTOM_VIZ_IDENTIFIER_3_SECURITY}` as const,
       });
 
-      H.sendEmailAndAssert(({ html }) => {
+      H.sendEmailAndAssert(({ html }: MaildevEmail) => {
         expect(html).not.to.include(
           "An error occurred while displaying this card.",
         );
