@@ -154,6 +154,8 @@
                    :model/Database         {normal-db-id :id} {}]
       (mt/with-restored-data-perms-for-group! group-id
         (testing "via raw t2/insert!"
+          ;; clear the default rows first — data_permissions has a unique constraint per scope
+          (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
           (is (t2/insert! :model/DataPermissions {:db_id      normal-db-id
                                                   :group_id   group-id
                                                   :perm_type  :perms/view-data

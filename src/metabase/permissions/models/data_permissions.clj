@@ -104,6 +104,12 @@
    :type       mi/transform-keyword
    :value      mi/transform-keyword})
 
+(t2/define-after-select :model/DataPermissions
+  [permissions]
+  ;; unique_perms_helper is a generated column backing the unique constraint; it is not part of the
+  ;; model and must not round-trip into inserts.
+  (dissoc permissions :unique_perms_helper))
+
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
 (defn least-permissive-value
