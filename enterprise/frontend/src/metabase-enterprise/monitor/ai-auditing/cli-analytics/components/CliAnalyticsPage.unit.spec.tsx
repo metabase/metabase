@@ -143,6 +143,12 @@ const emptyDatasetResponse: Dataset = createMockDataset({
 /** Mock the audit-DB metadata, users/groups, and the `/api/dataset` adhoc endpoint (with the given dataset). */
 function setupEndpoints(dataset: Dataset = datasetResponse) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
+  // useAuditTable pulls the table's fields (and its FK targets') from here.
+  fetchMock.post("path:/api/dataset/query_metadata", {
+    databases: [auditDatabase],
+    tables: auditDatabase.tables ?? [],
+    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  });
   setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
   setupGroupsEndpoint([createMockGroup({ id: 1, name: "All Users" })]);
   fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });

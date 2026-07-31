@@ -178,6 +178,12 @@ function setupEndpoints(
   datasetError = false,
 ) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
+  // useAuditTable pulls the table's fields (and its FK targets') from here.
+  fetchMock.post("path:/api/dataset/query_metadata", {
+    databases: [auditDatabase],
+    tables: auditDatabase.tables ?? [],
+    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  });
   setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
   setupGroupsEndpoint([createMockGroup({ id: 1, name: "All Users" })]);
   if (datasetError) {

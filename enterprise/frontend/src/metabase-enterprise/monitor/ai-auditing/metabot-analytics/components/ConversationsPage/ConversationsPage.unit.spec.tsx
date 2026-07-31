@@ -20,6 +20,7 @@ import {
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import {
   ALL_USERS_GROUP,
   BOBBY,
@@ -301,7 +302,9 @@ describe("ConversationsPage", () => {
 
       await assertRequestedWithParams({ user_id: String(ROBERT.id) });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().query).toMatchObject({
+        expect(
+          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+        ).toMatchObject({
           user: String(ROBERT.id),
         });
       });
@@ -341,7 +344,9 @@ describe("ConversationsPage", () => {
 
       await assertRequestedWithParams({ tenant_id: String(ROBERT_TENANT.id) });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().query).toMatchObject({
+        expect(
+          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+        ).toMatchObject({
           tenant: String(ROBERT_TENANT.id),
         });
       });

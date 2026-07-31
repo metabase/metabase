@@ -22,7 +22,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -41,6 +41,7 @@ import {
 import * as Urls from "metabase/urls";
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
+import { checkNotNull } from "metabase/utils/types";
 import { getUserName } from "metabase/utils/user";
 import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
 import type {
@@ -55,8 +56,9 @@ import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
 export function ConversationDetailPage() {
-  const { params } = useRouter();
-  const convoId = params.convoId;
+  const params = useParams();
+  // The route always matches with a :convoId segment.
+  const convoId = checkNotNull(params.convoId);
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedToolCall, setSelectedToolCall] =
     useState<MetabotDebugToolCallMessage | null>(null);

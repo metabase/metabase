@@ -45,7 +45,7 @@ export interface IFrameVizProps {
   onTogglePreviewing: () => void;
 }
 
-export function IFrameViz({
+function IFrameVizInner({
   dashcard,
   dashboard,
   isEditing,
@@ -211,4 +211,4 @@ function GenericError() {
   );
 }
 
-Object.assign(IFrameViz, settings);
+export const IFrameViz = Object.assign(IFrameVizInner, settings);

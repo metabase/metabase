@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.quoting :as quoting]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -391,3 +393,67 @@
               (driver/drop-table! driver db-id qualified-renamed))
             (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
               (driver/drop-table! driver db-id qualified-table))))))))
+
+(defn- sql-jdbc-drivers
+  "Every registered sql-jdbc driver. These tests build SQL without connecting, so they run against the
+  whole hierarchy rather than whichever drivers happen to be available."
+  []
+  (descendants driver/hierarchy :sql-jdbc))
+
+(deftest ^:parallel insert-into-sqls-boolean-literal-test
+  (testing "boolean row values bind as parameters, never as inlined literals -- not every
+            dialect has a boolean literal keyword"
+    (doseq [driver (sql-jdbc-drivers)]
+      (testing driver
+        (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
+                                                                         [[1 true] [2 false]] false))]
+          (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
+          (is (= [1 true 2 false] params)))))))
+
+(deftest ^:parallel dot-qualified-test
+  (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
+    (are [table-name expected] (= expected (quoting/dot-qualified table-name))
+      (keyword "test-data" "some_tbl") :test-data.some_tbl
+      (keyword "test-data" "a.b")      :test-data.a.b
+      (keyword "some_tbl")             :some_tbl
+      "test-data.tbl"                  :test-data.tbl
+      "some_tbl"                       :some_tbl)))
+
+(deftest ^:parallel create-table-sql-preserves-dashes-test
+  (let [create-sql #(#'driver.sql-jdbc/create-table!-sql %1 %2 [["id" [:int]]])]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, CREATE TABLE
+              targets a schema that isn't there"
+      (doseq [driver (sql-jdbc-drivers)]
+        (testing driver
+          (let [sql (create-sql driver (keyword "test-data" "some_tbl"))]
+            (is (re-find #"test-data" sql))
+            (is (not (re-find #"test_data" sql)))))))
+    (testing "the whole statement, for one dialect"
+      (is (= "CREATE TABLE \"test-data\".\"some_tbl\" (\"id\" INT)"
+             (create-sql :h2 (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "CREATE TABLE \"some_tbl\" (\"id\" INT)"
+             (create-sql :h2 (keyword "some_tbl")))))
+    (testing "dot-qualified strings split into segments"
+      (is (= "CREATE TABLE \"schema\".\"name\" (\"id\" INT)"
+             (create-sql :h2 "schema.name"))))))
+
+(deftest ^:parallel drop-table-sql-preserves-dashes-test
+  (let [drop-sql #'driver.sql-jdbc/drop-table-sql]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, DROP TABLE IF
+              EXISTS targets a nonexistent object and silently no-ops, leaking the table"
+      (doseq [driver (sql-jdbc-drivers)]
+        (testing driver
+          (let [sql (drop-sql driver (keyword "test-data" "some_tbl"))]
+            (is (re-find #"test-data" sql))
+            (is (not (re-find #"test_data" sql)))))))
+    (testing "the whole statement, for one dialect"
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"some_tbl\""
+             (drop-sql :h2 (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "DROP TABLE IF EXISTS \"some_tbl\"" (drop-sql :h2 (keyword "some_tbl")))))
+    (testing "dot-qualified strings (metabase.upload.impl/table-identifier's shape) split into segments"
+      (is (= "DROP TABLE IF EXISTS \"schema\".\"name\"" (drop-sql :h2 "schema.name"))))
+    (testing "a dot inside the name splits too -- no call site produces this shape, but keep it uniform"
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"a\".\"b\""
+             (drop-sql :h2 (keyword "test-data" "a.b")))))))

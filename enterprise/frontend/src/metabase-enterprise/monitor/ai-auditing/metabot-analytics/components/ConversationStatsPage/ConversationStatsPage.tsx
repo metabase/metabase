@@ -9,7 +9,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
-import { push, queryToSearch, useRouter } from "metabase/router";
+import { push, queryToSearch, useLocation } from "metabase/router";
 import {
   Button,
   Flex,
@@ -145,7 +145,7 @@ const labelUnknownIpAddress = (value: unknown) =>
   value == null ? t`Unknown` : value;
 
 export function ConversationStatsPage() {
-  const { location } = useRouter();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [{ date, user, group, tenant, metric }, { patchUrlState }] =
     useUrlState(location, statsUrlStateConfig);

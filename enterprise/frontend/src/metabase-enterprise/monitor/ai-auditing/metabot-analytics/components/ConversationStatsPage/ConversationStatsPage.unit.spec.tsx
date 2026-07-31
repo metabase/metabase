@@ -12,6 +12,7 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
@@ -207,6 +208,12 @@ function setup({
   setupEnterprisePlugins();
 
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
+  // useAuditTable pulls the table's fields (and its FK targets') from here.
+  fetchMock.post("path:/api/dataset/query_metadata", {
+    databases: [auditDatabase],
+    tables: auditDatabase.tables ?? [],
+    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  });
   fetchMock.post(
     "path:/api/dataset",
     (call) => buildDatasetResponse(call?.options.body),
@@ -303,7 +310,9 @@ describe("ConversationStatsPage", () => {
           expect(await screen.findByText(title)).toBeInTheDocument();
         }
         await waitFor(() => {
-          expect(history?.getCurrentLocation().query).toMatchObject({
+          expect(
+            parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+          ).toMatchObject({
             metric,
           });
         });
@@ -390,7 +399,9 @@ describe("ConversationStatsPage", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().query).toMatchObject({
+        expect(
+          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+        ).toMatchObject({
           tenant: String(BOBBY_TENANT.id),
         });
       });
@@ -413,7 +424,9 @@ describe("ConversationStatsPage", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().query).toMatchObject({
+        expect(
+          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+        ).toMatchObject({
           user: String(ROBERT.id),
         });
       });
@@ -429,7 +442,9 @@ describe("ConversationStatsPage", () => {
       await selectFilterOption("conversation-filters-group-select", "data");
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().query).toMatchObject({
+        expect(
+          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+        ).toMatchObject({
           group: String(DATA_GROUP.id),
         });
       });
@@ -479,7 +494,9 @@ describe("ConversationStatsPage", () => {
         await drillInto(chart, label);
 
         expect(history?.getCurrentLocation().pathname).toBe(CONVERSATIONS_PATH);
-        expect(history?.getCurrentLocation().query).toEqual(query);
+        expect(
+          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+        ).toEqual(query);
       },
     );
 
@@ -490,7 +507,9 @@ describe("ConversationStatsPage", () => {
 
       await drillInto("Users with most conversations", "Bobby Tables");
 
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({
         date: "past6days~",
         group: String(ADMIN_GROUP.id),
         user: String(BOBBY.id),

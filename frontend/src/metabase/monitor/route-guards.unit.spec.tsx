@@ -4,6 +4,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
@@ -45,9 +46,11 @@ describe("monitor route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
       });
 
-      expect(history?.getCurrentLocation().query).toEqual(
-        expect.objectContaining({ redirect: "/monitor" }),
-      );
+      expect(
+        new URLSearchParams(history?.getCurrentLocation().search).get(
+          "redirect",
+        ),
+      ).toBe("/monitor");
     });
 
     it("redirects users without monitor access to unauthorized", async () => {
@@ -62,7 +65,7 @@ describe("monitor route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(history?.getCurrentLocation().search).toBe("");
     });
 
     it("renders for analysts", () => {
@@ -123,7 +126,7 @@ describe("monitor route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(history?.getCurrentLocation().search).toBe("");
       expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
 
@@ -139,7 +142,7 @@ describe("monitor route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(history?.getCurrentLocation().search).toBe("");
       expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
   });
@@ -189,7 +192,9 @@ describe("monitor route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({});
       expect(screen.queryByText("ai auditing page")).not.toBeInTheDocument();
     });
 
@@ -205,7 +210,9 @@ describe("monitor route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({});
       expect(screen.queryByText("ai auditing page")).not.toBeInTheDocument();
     });
   });
