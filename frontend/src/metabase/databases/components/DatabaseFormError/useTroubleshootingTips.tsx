@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 import { identity } from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getDocsUrl, getIsHosted } from "metabase/selectors/settings";
+import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Code } from "metabase/ui";
 
@@ -25,7 +26,7 @@ export const useTroubleshootingTips = (
   expanded: boolean,
 ): TipProps[] => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const getDocPageUrl = useSelector(docPageUrlGetter);
   const metabaseIPAddresses = useCloudGatewayIPs();
 

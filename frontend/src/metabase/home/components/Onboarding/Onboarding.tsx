@@ -14,13 +14,11 @@ import { Link } from "metabase/common/components/Link";
 import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
 import {
   getDocsUrl,
-  getIsHosted,
   getIsPaidPlan,
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -54,10 +52,10 @@ export const Onboarding = () => {
   const isPaidPlan = useSelector(getIsPaidPlan);
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const shouldConfigureCommunicationChannels = isAdmin && !isHosted;
 
-  const isXrayEnabled = useSelector(getIsXrayEnabled);
+  const isXrayEnabled = useSetting("enable-xrays");
 
   const exampleDashboardId = useSetting("example-dashboard-id");
 

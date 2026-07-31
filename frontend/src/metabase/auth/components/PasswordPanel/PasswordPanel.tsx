@@ -2,16 +2,13 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import type { MfaChallengeResponse } from "metabase/api/session";
+import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { LoginData } from "metabase/redux/auth";
 import { login } from "metabase/redux/auth";
 
-import {
-  getExternalAuthProviders,
-  getHasSessionCookies,
-  getIsLdapEnabled,
-} from "../../selectors";
+import { getExternalAuthProviders } from "../../selectors";
 import { AuthTextLink } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
 
@@ -23,8 +20,8 @@ interface PasswordPanelProps {
 
 export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const providers = useSelector(getExternalAuthProviders);
-  const isLdapEnabled = useSelector(getIsLdapEnabled);
-  const hasSessionCookies = useSelector(getHasSessionCookies);
+  const isLdapEnabled = useSetting("ldap-enabled");
+  const hasSessionCookies = useSetting("session-cookies") ?? false;
   const dispatch = useDispatch();
 
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeResponse | null>(

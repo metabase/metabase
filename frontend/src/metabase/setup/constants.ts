@@ -1,4 +1,8 @@
+import type { LocaleData } from "metabase-types/api";
+
 export const LOCALE_TIMEOUT = 300;
+
+export const DEFAULT_LOCALES: LocaleData[] = [];
 
 export const SUBSCRIBE_URL =
   "https://metabase.us10.list-manage.com/subscribe/post?u=869fec0e4689e8fd1db91e795&id=b9664113a8";

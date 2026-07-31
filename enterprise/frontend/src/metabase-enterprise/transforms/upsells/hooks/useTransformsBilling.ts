@@ -1,4 +1,4 @@
-import { getIsHosted } from "metabase/databases/selectors";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -8,7 +8,7 @@ import {
 
 export function useTransformsBilling() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
 
   const {
     data: addOns,

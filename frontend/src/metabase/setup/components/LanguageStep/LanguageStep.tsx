@@ -3,13 +3,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Locale } from "metabase/redux/store";
 import { Button, Stack } from "metabase/ui";
 
 import { useStep } from "../..//useStep";
 import { goToNextStep, updateLocale } from "../../actions";
-import { getAvailableLocales, getLocale } from "../../selectors";
+import { DEFAULT_LOCALES } from "../../constants";
+import { getLocale } from "../../selectors";
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
@@ -26,7 +28,7 @@ import {
 export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("language");
   const locale = useSelector(getLocale);
-  const localeData = useSelector(getAvailableLocales);
+  const localeData = useSetting("available-locales") ?? DEFAULT_LOCALES;
   const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
   const dispatch = useDispatch();

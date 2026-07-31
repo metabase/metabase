@@ -11,10 +11,6 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
 
-export const getIsHosted = (state: State): boolean => {
-  return getSetting(state, "is-hosted?");
-};
-
 export type StorePaths =
   /** store main page */
   | ""

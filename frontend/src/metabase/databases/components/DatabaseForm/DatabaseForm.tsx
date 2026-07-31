@@ -1,11 +1,10 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
-import { useSelector } from "metabase/redux";
 import type { DatabaseData } from "metabase-types/api";
 
-import { getEngines } from "../../selectors";
 import type { FormLocation } from "../../types";
 import { getSubmitValues, getValidationSchema } from "../../utils/schema";
 
@@ -64,7 +63,7 @@ export const DatabaseForm = ({
 }: DatabaseFormProps): JSX.Element => {
   const isAdvanced = config.isAdvanced || false;
 
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const initialEngineKey = useMemo(() => {
     return getEngineKey(engines, initialData, isAdvanced);
   }, [engines, initialData, isAdvanced]);

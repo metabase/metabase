@@ -2,12 +2,10 @@ import { t } from "ttag";
 
 import { UpsellPill } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 
 export const UpsellEmailWhitelabelPill = ({ source }: { source: string }) => {
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const hasCloudSMTPFeature = useHasTokenFeature("cloud_custom_smtp");
 
   if (!isHosted || hasCloudSMTPFeature) {
