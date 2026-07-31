@@ -4,7 +4,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -351,7 +350,7 @@
   cannot, since a worktree is a working copy of a branch."
   [transform]
   (transforms.core/check-feature-enabled! transform)
-  (api/check-400 (remote-sync/default-worktree-id? (:worktree_id transform))
+  (api/check-400 (nil? (:worktree_id transform))
                  (deferred-tru "Transforms in a remote sync worktree cannot be run."))
   (api/check (not (transforms.core/transform-locked? transform))
              [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")

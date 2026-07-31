@@ -16,7 +16,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -44,13 +43,12 @@
    requested-branch))
 
 (defn- check-worktree
-  "Resolve `worktree-id` to a worktree row's id, 404ing when there is no such worktree. An omitted id means the main
-  app, which is the default worktree. Returns the id, so it can be threaded straight into the sync functions."
+  "Resolve `worktree-id` (nil means the main app) to its worktree row, 404ing when there is no such worktree.
+  Returns the id, so it can be threaded straight into the sync functions."
   [worktree-id]
-  (if worktree-id
-    (do (api/check-404 (t2/exists? :model/RemoteSyncWorktree :id worktree-id))
-        worktree-id)
-    (remote-sync/default-worktree-id)))
+  (when worktree-id
+    (api/check-404 (t2/exists? :model/RemoteSyncWorktree :id worktree-id)))
+  worktree-id)
 
 (defn- effective-branch
   "The branch a remote-sync operation actually targets: `worktree-id`'s own branch when it is inside a worktree,
@@ -412,18 +410,16 @@
                       {:status-code 400})))))
 
 (api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
-  "List all remote-sync worktrees. The default worktree, which stands for the main app rather than a checkout, is
-  not one of them. Requires superuser permissions."
+  "List all remote-sync worktrees. Requires superuser permissions."
   []
   (api/check-superuser)
-  (t2/hydrate (t2/select :model/RemoteSyncWorktree :is_default false {:order-by [[:id :asc]]}) :creator))
+  (t2/hydrate (t2/select :model/RemoteSyncWorktree {:order-by [[:id :asc]]}) :creator))
 
 (api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
-  "Get a single remote-sync worktree by id. The default worktree is not addressable here -- it stands for the main
-  app rather than a checkout. Requires superuser permissions."
+  "Get a single remote-sync worktree by id. Requires superuser permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (-> (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id :is_default false))
+  (-> (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))
       (t2/hydrate :creator)))
 
 (api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree

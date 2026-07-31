@@ -3,7 +3,6 @@
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -31,7 +30,7 @@
   [task]
   (when-let [existing (current-task)]
     (throw (ex-info "A running task exists" {:existing-task existing})))
-  (update task :worktree_id #(or % (remote-sync/default-worktree-id))))
+  task)
 
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
@@ -198,10 +197,10 @@
                         [:< :last_progress_report_at cutoff]]})))
 
 (defn most-recent-task
-  "Gets the most recently run task, including currently running tasks, within `worktree-id` (the default worktree is the main app).
+  "Gets the most recently run task, including currently running tasks, within `worktree-id` (nil is the main app).
 
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
-  ([] (most-recent-task (remote-sync/default-worktree-id)))
+  ([] (most-recent-task nil))
   ([worktree-id]
    (t2/select-one :model/RemoteSyncTask
                   {:where [:and
@@ -212,11 +211,11 @@
                               [:id :desc]]})))
 
 (defn last-version
-  "Gets the version that any changes are built off of, within `worktree-id` (the default worktree is the main app).
+  "Gets the version that any changes are built off of, within `worktree-id` (nil is the main app).
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
   tasks exist."
-  ([] (last-version (remote-sync/default-worktree-id)))
+  ([] (last-version nil))
   ([worktree-id]
    (:version (t2/select-one :model/RemoteSyncTask
                             {:where [:and

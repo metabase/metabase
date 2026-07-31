@@ -200,8 +200,9 @@
     {:quoted false})))
 
 (def ^:private generated-columns
-  "Computed/generated columns that can never be included in an `INSERT` when copying rows between databases."
-  [:unique_table_helper :unique_field_helper])
+  "Computed/generated columns that can never be included in an `INSERT` when copying rows between databases.
+  `worktree_id_helper` is on every remote-sync worktree-scoped content table."
+  [:unique_table_helper :unique_field_helper :worktree_id_helper])
 
 (defn- model-results-xform [model]
   (comp

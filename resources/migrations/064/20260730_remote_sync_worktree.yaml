@@ -1,34 +1,12 @@
-## Remote-sync worktrees: a worktree is a checked-out branch materialized alongside the main app.
-## Its content lives in the same tables as the main app's, tagged with `worktree_id`.
-##
-## The main app is itself a worktree row -- the one flagged `is_default` -- so `worktree_id` is
-## NOT NULL everywhere and no row is ambiguous. Its `branch` is null: the main app follows the
-## `remote-sync-branch` setting rather than being pinned to one branch. The
-## default worktree is created here and nothing else ever sets the flag.
-##
-## Making `worktree_id` NOT NULL is what lets the database enforce worktree containment. A child
-## carries a composite foreign key `(parent_id, worktree_id) -> parent (id, worktree_id)`, so a
-## row can only ever be attached to a parent in its own worktree, and nothing can be moved across
-## worktrees. With a nullable `worktree_id` this would not work: a foreign key with a null column
-## is not checked at all, which would let main-app rows sit inside worktree collections.
-##
-## Where the parent link is NOT NULL (dashboard cards, tabs, series, parameter cards, actions,
-## transform tag assignments) the check always applies. Where it is nullable (anything parented by
-## a collection) it applies to everything except root-level content, which has no parent to check.
-##
-## The single-column `entity_id` uniques these composite uniques replace are dropped in
-## 20260730_drop_entity_id_uniques.yaml, which runs before this file.
-
 databaseChangeLog:
-
   - changeSet:
       id: v64.2026-07-30T10:00:00
       author: ranquild
-      comment: Create remote_sync_worktree table - one row per checkout, including the default one standing for the main app
+      comment: Create remote_sync_worktree table
       changes:
         - createTable:
             tableName: remote_sync_worktree
-            remarks: One row per checked-out remote-sync branch, plus the default row standing for the main app
+            remarks: One row per checked-out remote-sync branch (a git-worktree-style checkout of the synced content tree)
             columns:
               - column:
                   name: id
@@ -41,20 +19,13 @@ databaseChangeLog:
               - column:
                   name: branch
                   type: varchar(254)
-                  remarks: Git branch this worktree is checked out to; null for the default worktree, which follows the remote-sync-branch setting
-                  constraints:
-                    nullable: true
-              - column:
-                  name: is_default
-                  type: ${boolean.type}
-                  remarks: True on the single row standing for the main app, false on every real worktree
-                  defaultValueBoolean: false
+                  remarks: Git branch this worktree is checked out to
                   constraints:
                     nullable: false
               - column:
                   name: creator_id
                   type: int
-                  remarks: User who created this worktree; null once that user is deleted, and on the default worktree
+                  remarks: User who created this worktree; null once that user is deleted
                   constraints:
                     nullable: true
               - column:
@@ -101,828 +72,6 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-07-30T10:00:03
       author: ranquild
-      comment: Insert the default worktree - the main app's own row, which every pre-existing row is attached to below
-      changes:
-        - insert:
-            tableName: remote_sync_worktree
-            columns:
-              - column:
-                  name: is_default
-                  valueBoolean: true
-      rollback:
-        - delete:
-            tableName: remote_sync_worktree
-            where: is_default = TRUE
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:04
-      author: ranquild
-      comment: Add collection.worktree_id
-      changes:
-        - addColumn:
-            tableName: collection
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this collection was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:05
-      author: ranquild
-      comment: Attach every existing collection row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: collection
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:06
-      author: ranquild
-      comment: Require collection.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: collection
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:07
-      author: ranquild
-      comment: Index on collection.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: collection
-            indexName: idx_collection_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:08
-      author: ranquild
-      comment: FK collection.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_collection_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:09
-      author: ranquild
-      comment: Add report_card.worktree_id
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this card was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:10
-      author: ranquild
-      comment: Attach every existing report_card row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: report_card
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:11
-      author: ranquild
-      comment: Require report_card.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: report_card
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:12
-      author: ranquild
-      comment: Index on report_card.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: report_card
-            indexName: idx_report_card_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:13
-      author: ranquild
-      comment: FK report_card.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_report_card_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:14
-      author: ranquild
-      comment: Add report_dashboard.worktree_id
-      changes:
-        - addColumn:
-            tableName: report_dashboard
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this dashboard was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:15
-      author: ranquild
-      comment: Attach every existing report_dashboard row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: report_dashboard
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:16
-      author: ranquild
-      comment: Require report_dashboard.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: report_dashboard
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:17
-      author: ranquild
-      comment: Index on report_dashboard.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: report_dashboard
-            indexName: idx_report_dashboard_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:18
-      author: ranquild
-      comment: FK report_dashboard.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboard
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_report_dashboard_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:19
-      author: ranquild
-      comment: Add report_dashboardcard.worktree_id
-      changes:
-        - addColumn:
-            tableName: report_dashboardcard
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this dashboard card was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:20
-      author: ranquild
-      comment: Attach every existing report_dashboardcard row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: report_dashboardcard
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:21
-      author: ranquild
-      comment: Require report_dashboardcard.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: report_dashboardcard
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:22
-      author: ranquild
-      comment: Index on report_dashboardcard.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: report_dashboardcard
-            indexName: idx_report_dashboardcard_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:23
-      author: ranquild
-      comment: FK report_dashboardcard.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboardcard
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_report_dashboardcard_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:24
-      author: ranquild
-      comment: Add dashboardcard_series.worktree_id
-      changes:
-        - addColumn:
-            tableName: dashboardcard_series
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this dashboard card series was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:25
-      author: ranquild
-      comment: Attach every existing dashboardcard_series row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: dashboardcard_series
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:26
-      author: ranquild
-      comment: Require dashboardcard_series.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: dashboardcard_series
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:27
-      author: ranquild
-      comment: Index on dashboardcard_series.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: dashboardcard_series
-            indexName: idx_dashboardcard_series_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:28
-      author: ranquild
-      comment: FK dashboardcard_series.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: dashboardcard_series
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_dashboardcard_series_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:29
-      author: ranquild
-      comment: Add dashboard_tab.worktree_id
-      changes:
-        - addColumn:
-            tableName: dashboard_tab
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this dashboard tab was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:30
-      author: ranquild
-      comment: Attach every existing dashboard_tab row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: dashboard_tab
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:31
-      author: ranquild
-      comment: Require dashboard_tab.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: dashboard_tab
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:32
-      author: ranquild
-      comment: Index on dashboard_tab.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: dashboard_tab
-            indexName: idx_dashboard_tab_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:33
-      author: ranquild
-      comment: FK dashboard_tab.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: dashboard_tab
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_dashboard_tab_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:34
-      author: ranquild
-      comment: Add document.worktree_id
-      changes:
-        - addColumn:
-            tableName: document
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this document was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:35
-      author: ranquild
-      comment: Attach every existing document row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: document
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:36
-      author: ranquild
-      comment: Require document.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: document
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:37
-      author: ranquild
-      comment: Index on document.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: document
-            indexName: idx_document_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:38
-      author: ranquild
-      comment: FK document.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: document
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_document_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:39
-      author: ranquild
-      comment: Add parameter_card.worktree_id
-      changes:
-        - addColumn:
-            tableName: parameter_card
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this parameter card was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:40
-      author: ranquild
-      comment: Attach every existing parameter_card row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: parameter_card
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:41
-      author: ranquild
-      comment: Require parameter_card.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: parameter_card
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:42
-      author: ranquild
-      comment: Index on parameter_card.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: parameter_card
-            indexName: idx_parameter_card_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:43
-      author: ranquild
-      comment: FK parameter_card.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: parameter_card
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_parameter_card_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:44
-      author: ranquild
-      comment: Add timeline.worktree_id
-      changes:
-        - addColumn:
-            tableName: timeline
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this timeline was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:45
-      author: ranquild
-      comment: Attach every existing timeline row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: timeline
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:46
-      author: ranquild
-      comment: Require timeline.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: timeline
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:47
-      author: ranquild
-      comment: Index on timeline.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: timeline
-            indexName: idx_timeline_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:48
-      author: ranquild
-      comment: FK timeline.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: timeline
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_timeline_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:49
-      author: ranquild
-      comment: Add native_query_snippet.worktree_id
-      changes:
-        - addColumn:
-            tableName: native_query_snippet
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this snippet was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:50
-      author: ranquild
-      comment: Attach every existing native_query_snippet row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: native_query_snippet
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:51
-      author: ranquild
-      comment: Require native_query_snippet.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: native_query_snippet
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:52
-      author: ranquild
-      comment: Index on native_query_snippet.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: native_query_snippet
-            indexName: idx_native_query_snippet_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:53
-      author: ranquild
-      comment: FK native_query_snippet.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_native_query_snippet_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:54
-      author: ranquild
-      comment: Add action.worktree_id
-      changes:
-        - addColumn:
-            tableName: action
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this action was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:55
-      author: ranquild
-      comment: Attach every existing action row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: action
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:56
-      author: ranquild
-      comment: Require action.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: action
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:57
-      author: ranquild
-      comment: Index on action.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: action
-            indexName: idx_action_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:58
-      author: ranquild
-      comment: FK action.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: action
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_action_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:00:59
-      author: ranquild
-      comment: Add transform.worktree_id
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this transform was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:00
-      author: ranquild
-      comment: Attach every existing transform row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: transform
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:01
-      author: ranquild
-      comment: Require transform.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: transform
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:02
-      author: ranquild
-      comment: Index on transform.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:03
-      author: ranquild
-      comment: FK transform.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_transform_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:04
-      author: ranquild
-      comment: Add transform_transform_tag.worktree_id
-      changes:
-        - addColumn:
-            tableName: transform_transform_tag
-            columns:
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this transform tag assignment was checked out into; the default worktree is the main app
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:05
-      author: ranquild
-      comment: Attach every existing transform_transform_tag row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: transform_transform_tag
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:06
-      author: ranquild
-      comment: Require transform_transform_tag.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: transform_transform_tag
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:07
-      author: ranquild
-      comment: Index on transform_transform_tag.worktree_id (backs the FK below and every worktree-scoped query)
-      changes:
-        - createIndex:
-            tableName: transform_transform_tag
-            indexName: idx_transform_transform_tag_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:08
-      author: ranquild
-      comment: FK transform_transform_tag.worktree_id -> remote_sync_worktree
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform_transform_tag
-            baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
-            referencedColumnNames: id
-            constraintName: fk_transform_transform_tag_worktree_id
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:09
-      author: ranquild
       comment: Add remote_sync_object.worktree_id
       changes:
         - addColumn:
@@ -931,35 +80,12 @@ databaseChangeLog:
               - column:
                   name: worktree_id
                   type: int
-                  remarks: Worktree whose sync ledger this row belongs to; the default worktree is the main app
+                  remarks: Worktree whose sync ledger this row belongs to; null for main-app remote sync
                   constraints:
                     nullable: true
 
   - changeSet:
-      id: v64.2026-07-30T10:01:10
-      author: ranquild
-      comment: Attach every existing remote_sync_object row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: remote_sync_object
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:11
-      author: ranquild
-      comment: Require remote_sync_object.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: remote_sync_object
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:12
+      id: v64.2026-07-30T10:00:04
       author: ranquild
       comment: Index on remote_sync_object.worktree_id (backs the FK below and every worktree-scoped query)
       changes:
@@ -971,7 +97,7 @@ databaseChangeLog:
                   name: worktree_id
 
   - changeSet:
-      id: v64.2026-07-30T10:01:13
+      id: v64.2026-07-30T10:00:05
       author: ranquild
       comment: FK remote_sync_object.worktree_id -> remote_sync_worktree
       changes:
@@ -983,7 +109,7 @@ databaseChangeLog:
             constraintName: fk_remote_sync_object_worktree_id
 
   - changeSet:
-      id: v64.2026-07-30T10:01:14
+      id: v64.2026-07-30T10:00:06
       author: ranquild
       comment: Add remote_sync_task.worktree_id
       changes:
@@ -993,35 +119,12 @@ databaseChangeLog:
               - column:
                   name: worktree_id
                   type: int
-                  remarks: Worktree this sync task ran in; the default worktree is the main app
+                  remarks: Worktree this sync task ran in; null for main-app remote sync
                   constraints:
                     nullable: true
 
   - changeSet:
-      id: v64.2026-07-30T10:01:15
-      author: ranquild
-      comment: Attach every existing remote_sync_task row to the default worktree - they are all main-app content
-      changes:
-        - update:
-            tableName: remote_sync_task
-            columns:
-              - column:
-                  name: worktree_id
-                  valueComputed: (SELECT id FROM remote_sync_worktree WHERE is_default = TRUE)
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:16
-      author: ranquild
-      comment: Require remote_sync_task.worktree_id from now on - it is what makes the composite worktree FKs below enforceable
-      changes:
-        - addNotNullConstraint:
-            tableName: remote_sync_task
-            columnName: worktree_id
-            columnDataType: int
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:17
+      id: v64.2026-07-30T10:00:07
       author: ranquild
       comment: Index on remote_sync_task.worktree_id (backs the FK below and every worktree-scoped query)
       changes:
@@ -1033,7 +136,7 @@ databaseChangeLog:
                   name: worktree_id
 
   - changeSet:
-      id: v64.2026-07-30T10:01:18
+      id: v64.2026-07-30T10:00:08
       author: ranquild
       comment: FK remote_sync_task.worktree_id -> remote_sync_worktree
       changes:
@@ -1045,341 +148,1168 @@ databaseChangeLog:
             constraintName: fk_remote_sync_task_worktree_id
 
   - changeSet:
-      id: v64.2026-07-30T10:01:19
+      id: v64.2026-07-30T10:00:09
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for collection - an entity_id is unique within a worktree, and each worktree may hold its own copy
+      comment: Add collection.worktree_id
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this collection was checked out into; null for main-app collections
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:10
+      author: ranquild
+      comment: Index on collection.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:11
+      author: ranquild
+      comment: FK collection.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_collection_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:12
+      author: ranquild
+      comment: Add collection.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "collection" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `collection` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `collection` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE collection ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:13
+      author: ranquild
+      comment: Drop the single-column entity_id unique on collection; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "collection" DROP CONSTRAINT IF EXISTS "collection_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `collection` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'COLLECTION' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: collection
+            columnNames: entity_id
+            constraintName: unique_collection_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:14
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for collection - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
       changes:
         - addUniqueConstraint:
             tableName: collection
-            columnNames: entity_id, worktree_id
+            columnNames: entity_id, worktree_id_helper
             constraintName: unique_collection_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:15
+      author: ranquild
+      comment: Add report_card.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this card was checked out into; null for main-app cards
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:16
+      author: ranquild
+      comment: Index on report_card.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:17
+      author: ranquild
+      comment: FK report_card.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_report_card_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:18
+      author: ranquild
+      comment: Add report_card.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "report_card" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `report_card` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `report_card` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE report_card ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:19
+      author: ranquild
+      comment: Drop the single-column entity_id unique on report_card; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "report_card" DROP CONSTRAINT IF EXISTS "report_card_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `report_card` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'REPORT_CARD' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id
+            constraintName: unique_report_card_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:20
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for report_card - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_report_card_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:21
+      author: ranquild
+      comment: Add report_dashboard.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this dashboard was checked out into; null for main-app dashboards
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:22
+      author: ranquild
+      comment: Index on report_dashboard.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:23
+      author: ranquild
+      comment: FK report_dashboard.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_report_dashboard_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:24
+      author: ranquild
+      comment: Add report_dashboard.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "report_dashboard" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `report_dashboard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `report_dashboard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE report_dashboard ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:25
+      author: ranquild
+      comment: Drop the single-column entity_id unique on report_dashboard; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "report_dashboard" DROP CONSTRAINT IF EXISTS "report_dashboard_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `report_dashboard` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'REPORT_DASHBOARD' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id
+            constraintName: unique_report_dashboard_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:26
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for report_dashboard - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_report_dashboard_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:27
+      author: ranquild
+      comment: Add report_dashboardcard.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this dashboard card was checked out into; null for main-app dashboard cards
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:28
+      author: ranquild
+      comment: Index on report_dashboardcard.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_dashboardcard
+            indexName: idx_report_dashboardcard_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:29
+      author: ranquild
+      comment: FK report_dashboardcard.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:30
+      author: ranquild
+      comment: Add report_dashboardcard.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "report_dashboardcard" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `report_dashboardcard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `report_dashboardcard` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: report_dashboardcard
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:31
+      author: ranquild
+      comment: Drop the single-column entity_id unique on report_dashboardcard; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "report_dashboardcard" DROP CONSTRAINT IF EXISTS "report_dashboardcard_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `report_dashboardcard` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'REPORT_DASHBOARDCARD' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id
+            constraintName: unique_report_dashboardcard_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:32
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for report_dashboardcard - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_report_dashboardcard_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:33
+      author: ranquild
+      comment: Add dashboardcard_series.worktree_id
+      changes:
+        - addColumn:
+            tableName: dashboardcard_series
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this dashboard card series was checked out into; null for main-app series
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:34
+      author: ranquild
+      comment: Index on dashboardcard_series.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:35
+      author: ranquild
+      comment: FK dashboardcard_series.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_dashboardcard_series_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:36
+      author: ranquild
+      comment: Add dashboard_tab.worktree_id
+      changes:
+        - addColumn:
+            tableName: dashboard_tab
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this dashboard tab was checked out into; null for main-app dashboard tabs
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:37
+      author: ranquild
+      comment: Index on dashboard_tab.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: dashboard_tab
+            indexName: idx_dashboard_tab_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:38
+      author: ranquild
+      comment: FK dashboard_tab.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboard_tab
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_dashboard_tab_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:39
+      author: ranquild
+      comment: Add dashboard_tab.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "dashboard_tab" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `dashboard_tab` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `dashboard_tab` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE dashboard_tab ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: dashboard_tab
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:40
+      author: ranquild
+      comment: Drop the single-column entity_id unique on dashboard_tab; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "dashboard_tab" DROP CONSTRAINT IF EXISTS "dashboard_tab_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `dashboard_tab` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'DASHBOARD_TAB' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id
+            constraintName: unique_dashboard_tab_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:41
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for dashboard_tab - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_dashboard_tab_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:42
+      author: ranquild
+      comment: Add document.worktree_id
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this document was checked out into; null for main-app documents
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:43
+      author: ranquild
+      comment: Index on document.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:44
+      author: ranquild
+      comment: FK document.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_document_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:45
+      author: ranquild
+      comment: Add document.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "document" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `document` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `document` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE document ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: document
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:46
+      author: ranquild
+      comment: Drop the single-column entity_id unique on document; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "document" DROP CONSTRAINT IF EXISTS "document_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `document` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'DOCUMENT' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id
+            constraintName: unique_document_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:47
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for document - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_document_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:48
+      author: ranquild
+      comment: Add parameter_card.worktree_id
+      changes:
+        - addColumn:
+            tableName: parameter_card
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this parameter card was checked out into; null for main-app parameter cards
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:49
+      author: ranquild
+      comment: Index on parameter_card.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: parameter_card
+            indexName: idx_parameter_card_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:50
+      author: ranquild
+      comment: FK parameter_card.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: parameter_card
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_parameter_card_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:51
+      author: ranquild
+      comment: Add timeline.worktree_id
+      changes:
+        - addColumn:
+            tableName: timeline
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this timeline was checked out into; null for main-app timelines
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:52
+      author: ranquild
+      comment: Index on timeline.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:53
+      author: ranquild
+      comment: FK timeline.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: timeline
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_timeline_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:54
+      author: ranquild
+      comment: Add timeline.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "timeline" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `timeline` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `timeline` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE timeline ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: timeline
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:55
+      author: ranquild
+      comment: Drop the single-column entity_id unique on timeline; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "timeline" DROP CONSTRAINT IF EXISTS "timeline_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `timeline` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TIMELINE' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id
+            constraintName: unique_timeline_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:56
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for timeline - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_timeline_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:57
+      author: ranquild
+      comment: Add native_query_snippet.worktree_id
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this snippet was checked out into; null for main-app snippets
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:58
+      author: ranquild
+      comment: Index on native_query_snippet.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:00:59
+      author: ranquild
+      comment: FK native_query_snippet.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_native_query_snippet_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:00
+      author: ranquild
+      comment: Add native_query_snippet.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "native_query_snippet" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `native_query_snippet` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `native_query_snippet` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:01
+      author: ranquild
+      comment: Drop the single-column entity_id unique on native_query_snippet; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "native_query_snippet" DROP CONSTRAINT IF EXISTS "native_query_snippet_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `native_query_snippet` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'NATIVE_QUERY_SNIPPET' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id
+            constraintName: unique_native_query_snippet_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:02
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for native_query_snippet - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_native_query_snippet_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:03
+      author: ranquild
+      comment: Add action.worktree_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this action was checked out into; null for main-app actions
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:04
+      author: ranquild
+      comment: Index on action.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: action
+            indexName: idx_action_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:05
+      author: ranquild
+      comment: FK action.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_action_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:06
+      author: ranquild
+      comment: Add action.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "action" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `action` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `action` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE action ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:07
+      author: ranquild
+      comment: Drop the single-column entity_id unique on action; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "action" DROP CONSTRAINT IF EXISTS "action_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `action` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'ACTION' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: action
+            columnNames: entity_id
+            constraintName: unique_action_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:08
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for action - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: action
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_action_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:09
+      author: ranquild
+      comment: Add transform.worktree_id
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this transform was checked out into; null for main-app transforms
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:10
+      author: ranquild
+      comment: Index on transform.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:11
+      author: ranquild
+      comment: FK transform.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:12
+      author: ranquild
+      comment: Add transform.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "transform" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `transform` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `transform` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE transform ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:13
+      author: ranquild
+      comment: Drop the single-column entity_id unique on transform; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "transform" DROP CONSTRAINT IF EXISTS "transform_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `transform` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TRANSFORM' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: entity_id
+            constraintName: unique_transform_entity_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:14
+      author: ranquild
+      comment: Per-worktree entity_id uniqueness for transform - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: entity_id, worktree_id_helper
+            constraintName: unique_transform_entity_id_worktree
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:15
+      author: ranquild
+      comment: Add transform_transform_tag.worktree_id
+      changes:
+        - addColumn:
+            tableName: transform_transform_tag
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this transform tag assignment was checked out into; null for main-app assignments
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:16
+      author: ranquild
+      comment: Index on transform_transform_tag.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: transform_transform_tag
+            indexName: idx_transform_transform_tag_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:17
+      author: ranquild
+      comment: FK transform_transform_tag.worktree_id -> remote_sync_worktree
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_transform_tag_worktree_id
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:18
+      author: ranquild
+      comment: Add transform_transform_tag.worktree_id_helper generated column - COALESCE(worktree_id, 0), so entity_id uniqueness can be scoped per worktree with NULLs (main-app rows) collapsing into one bucket
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "transform_transform_tag" ADD COLUMN "worktree_id_helper" integer GENERATED ALWAYS AS (COALESCE("worktree_id", 0)) STORED;
+        - sql:
+            dbms: mysql
+            sql: |
+              ALTER TABLE `transform_transform_tag` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) VIRTUAL;
+        - sql:
+            dbms: mariadb
+            sql: |
+              ALTER TABLE `transform_transform_tag` ADD COLUMN `worktree_id_helper` INT GENERATED ALWAYS AS (COALESCE(`worktree_id`, 0)) STORED;
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id_helper int GENERATED ALWAYS AS (COALESCE(worktree_id, 0));
+      rollback:
+        - dropColumn:
+            tableName: transform_transform_tag
+            columnName: worktree_id_helper
+
+  - changeSet:
+      id: v64.2026-07-30T10:01:19
+      author: ranquild
+      comment: Drop the single-column entity_id unique on transform_transform_tag; superseded by the composite (entity_id, worktree_id_helper) unique below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE "transform_transform_tag" DROP CONSTRAINT IF EXISTS "transform_transform_tag_entity_id_key";
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE `transform_transform_tag` DROP INDEX `entity_id`;
+        - sql:
+            dbms: h2
+            splitStatements: false
+            sql: |
+              EXECUTE IMMEDIATE COALESCE((SELECT 'ALTER TABLE ' || tc.table_name || ' DROP CONSTRAINT ' || tc.constraint_name FROM information_schema.table_constraints tc WHERE tc.table_name = 'TRANSFORM_TRANSFORM_TAG' AND tc.constraint_type = 'UNIQUE' AND EXISTS (SELECT 1 FROM information_schema.key_column_usage k WHERE k.constraint_name = tc.constraint_name AND k.table_name = tc.table_name AND k.column_name = 'ENTITY_ID') AND NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage k2 WHERE k2.constraint_name = tc.constraint_name AND k2.table_name = tc.table_name AND k2.column_name <> 'ENTITY_ID')), '');
+      rollback:
+        - addUniqueConstraint:
+            tableName: transform_transform_tag
+            columnNames: entity_id
+            constraintName: unique_transform_transform_tag_entity_id
 
   - changeSet:
       id: v64.2026-07-30T10:01:20
       author: ranquild
-      comment: Per-worktree entity_id uniqueness for report_card - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: report_card
-            columnNames: entity_id, worktree_id
-            constraintName: unique_report_card_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:21
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for report_dashboard - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: report_dashboard
-            columnNames: entity_id, worktree_id
-            constraintName: unique_report_dashboard_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:22
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for report_dashboardcard - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: report_dashboardcard
-            columnNames: entity_id, worktree_id
-            constraintName: unique_report_dashboardcard_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:23
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for dashboard_tab - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: dashboard_tab
-            columnNames: entity_id, worktree_id
-            constraintName: unique_dashboard_tab_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:24
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for document - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: document
-            columnNames: entity_id, worktree_id
-            constraintName: unique_document_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:25
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for timeline - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: timeline
-            columnNames: entity_id, worktree_id
-            constraintName: unique_timeline_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:26
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for native_query_snippet - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: native_query_snippet
-            columnNames: entity_id, worktree_id
-            constraintName: unique_native_query_snippet_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:27
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for action - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: action
-            columnNames: entity_id, worktree_id
-            constraintName: unique_action_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:28
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for transform - an entity_id is unique within a worktree, and each worktree may hold its own copy
-      changes:
-        - addUniqueConstraint:
-            tableName: transform
-            columnNames: entity_id, worktree_id
-            constraintName: unique_transform_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:29
-      author: ranquild
-      comment: Per-worktree entity_id uniqueness for transform_transform_tag - an entity_id is unique within a worktree, and each worktree may hold its own copy
+      comment: Per-worktree entity_id uniqueness for transform_transform_tag - worktree_id_helper collapses NULL/main-app rows to 0, so entity_id stays globally unique outside worktrees and per-worktree inside them
       changes:
         - addUniqueConstraint:
             tableName: transform_transform_tag
-            columnNames: entity_id, worktree_id
+            columnNames: entity_id, worktree_id_helper
             constraintName: unique_transform_transform_tag_entity_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:30
-      author: ranquild
-      comment: Unique (id, worktree_id) on collection - the key the composite worktree FKs below reference
-      changes:
-        - addUniqueConstraint:
-            tableName: collection
-            columnNames: id, worktree_id
-            constraintName: unique_collection_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:31
-      author: ranquild
-      comment: Unique (id, worktree_id) on report_card - the key the composite worktree FKs below reference
-      changes:
-        - addUniqueConstraint:
-            tableName: report_card
-            columnNames: id, worktree_id
-            constraintName: unique_report_card_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:32
-      author: ranquild
-      comment: Unique (id, worktree_id) on report_dashboard - the key the composite worktree FKs below reference
-      changes:
-        - addUniqueConstraint:
-            tableName: report_dashboard
-            columnNames: id, worktree_id
-            constraintName: unique_report_dashboard_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:33
-      author: ranquild
-      comment: Unique (id, worktree_id) on report_dashboardcard - the key the composite worktree FKs below reference
-      changes:
-        - addUniqueConstraint:
-            tableName: report_dashboardcard
-            columnNames: id, worktree_id
-            constraintName: unique_report_dashboardcard_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:34
-      author: ranquild
-      comment: Unique (id, worktree_id) on transform - the key the composite worktree FKs below reference
-      changes:
-        - addUniqueConstraint:
-            tableName: transform
-            columnNames: id, worktree_id
-            constraintName: unique_transform_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:35
-      author: ranquild
-      comment: report_card must live in its parent collection's worktree - checked whenever report_card.collection_id is set; root-level content has no parent to check against
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: collection_id, worktree_id
-            referencedTableName: collection
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_report_card_worktree_matches_collection
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:36
-      author: ranquild
-      comment: report_dashboard must live in its parent collection's worktree - checked whenever report_dashboard.collection_id is set; root-level content has no parent to check against
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboard
-            baseColumnNames: collection_id, worktree_id
-            referencedTableName: collection
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_report_dashboard_worktree_matches_collection
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:37
-      author: ranquild
-      comment: report_dashboardcard must live in its parent report_dashboard's worktree - always checked, since report_dashboardcard.dashboard_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboardcard
-            baseColumnNames: dashboard_id, worktree_id
-            referencedTableName: report_dashboard
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_report_dashboardcard_worktree_matches_report_dashboard
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:38
-      author: ranquild
-      comment: dashboardcard_series must live in its parent report_dashboardcard's worktree - always checked, since dashboardcard_series.dashboardcard_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: dashboardcard_series
-            baseColumnNames: dashboardcard_id, worktree_id
-            referencedTableName: report_dashboardcard
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_dashboardcard_series_worktree_matches_report_dashboardcard
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:39
-      author: ranquild
-      comment: dashboard_tab must live in its parent report_dashboard's worktree - always checked, since dashboard_tab.dashboard_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: dashboard_tab
-            baseColumnNames: dashboard_id, worktree_id
-            referencedTableName: report_dashboard
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_dashboard_tab_worktree_matches_report_dashboard
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:40
-      author: ranquild
-      comment: document must live in its parent collection's worktree - checked whenever document.collection_id is set; root-level content has no parent to check against
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: document
-            baseColumnNames: collection_id, worktree_id
-            referencedTableName: collection
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_document_worktree_matches_collection
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:41
-      author: ranquild
-      comment: parameter_card must live in its parent report_card's worktree - always checked, since parameter_card.card_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: parameter_card
-            baseColumnNames: card_id, worktree_id
-            referencedTableName: report_card
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_parameter_card_worktree_matches_report_card
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:42
-      author: ranquild
-      comment: timeline must live in its parent collection's worktree - checked whenever timeline.collection_id is set; root-level content has no parent to check against
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: timeline
-            baseColumnNames: collection_id, worktree_id
-            referencedTableName: collection
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_timeline_worktree_matches_collection
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:43
-      author: ranquild
-      comment: native_query_snippet must live in its parent collection's worktree - checked whenever native_query_snippet.collection_id is set; root-level content has no parent to check against
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            baseColumnNames: collection_id, worktree_id
-            referencedTableName: collection
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_native_query_snippet_worktree_matches_collection
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:44
-      author: ranquild
-      comment: action must live in its parent report_card's worktree - always checked, since action.model_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: action
-            baseColumnNames: model_id, worktree_id
-            referencedTableName: report_card
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_action_worktree_matches_report_card
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:45
-      author: ranquild
-      comment: transform must live in its parent collection's worktree - checked whenever transform.collection_id is set; root-level content has no parent to check against
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: collection_id, worktree_id
-            referencedTableName: collection
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_transform_worktree_matches_collection
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:46
-      author: ranquild
-      comment: transform_transform_tag must live in its parent transform's worktree - always checked, since transform_transform_tag.transform_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform_transform_tag
-            baseColumnNames: transform_id, worktree_id
-            referencedTableName: transform
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_transform_transform_tag_worktree_matches_transform
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:47
-      author: ranquild
-      comment: report_card.dashboard_id must point into report_card's own worktree - checked whenever report_card.dashboard_id is set
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: dashboard_id, worktree_id
-            referencedTableName: report_dashboard
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_report_card_dashboard_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:48
-      author: ranquild
-      comment: report_dashboardcard.card_id must point into report_dashboardcard's own worktree - checked whenever report_dashboardcard.card_id is set
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboardcard
-            baseColumnNames: card_id, worktree_id
-            referencedTableName: report_card
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_report_dashboardcard_card_id_worktree
-
-  - changeSet:
-      id: v64.2026-07-30T10:01:49
-      author: ranquild
-      comment: dashboardcard_series.card_id must point into dashboardcard_series's own worktree - always checked, since dashboardcard_series.card_id is NOT NULL
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: dashboardcard_series
-            baseColumnNames: card_id, worktree_id
-            referencedTableName: report_card
-            referencedColumnNames: id, worktree_id
-            constraintName: fk_dashboardcard_series_card_id_worktree

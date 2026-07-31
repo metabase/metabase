@@ -7,7 +7,6 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -18,17 +17,13 @@
 
 (derive :model/RemoteSyncObject :metabase/model)
 
-(t2/define-before-insert :model/RemoteSyncObject
-  [row]
-  (update row :worktree_id #(or % (remote-sync/default-worktree-id))))
-
 ;;; ------------------------------------------------- Public API -------------------------------------------------------
 
 (defn dirty?
-  "Checks if any collection has changes since the last sync, within `worktree-id` (the default worktree is the main app).
+  "Checks if any collection has changes since the last sync, within `worktree-id` (nil is the main app).
    Returns true if any remote-synced object has a status other than 'synced', false otherwise.
    Excludes transform model types when transform sync is disabled."
-  ([] (dirty? (remote-sync/default-worktree-id)))
+  ([] (dirty? nil))
   ([worktree-id]
    (let [excluded (spec/excluded-model-types)]
      (if (empty? excluded)
@@ -39,9 +34,9 @@
                    :worktree_id worktree-id)))))
 
 (defn dirty-rows
-  "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced') within `worktree-id` (the default worktree is
+  "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced') within `worktree-id` (nil is
   the main app), excluding disabled model types (e.g. transforms when transform sync is off)."
-  ([] (dirty-rows (remote-sync/default-worktree-id)))
+  ([] (dirty-rows nil))
   ([worktree-id]
    (let [excluded (spec/excluded-model-types)]
      (if (empty? excluded)
@@ -52,12 +47,12 @@
                   :worktree_id worktree-id)))))
 
 (defn dirty-objects
-  "Gets all models in any collection that are dirty with their sync status, within `worktree-id` (the default worktree is the
-   main app).
+  "Gets all models in any collection that are dirty with their sync status, within `worktree-id` (nil is the main
+   app).
    Returns a sequence of model maps that have changed since the last remote sync,
    including details about their current state and sync status.
    Excludes transform model types when transform sync is disabled."
-  ([] (dirty-objects (remote-sync/default-worktree-id)))
+  ([] (dirty-objects nil))
   ([worktree-id]
    (->> (dirty-rows worktree-id)
         (map #(-> %

@@ -108,6 +108,7 @@
 (t2/define-after-select :model/Document
   [document]
   (-> document
+      remote-sync/remove-worktree-id-helper
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
@@ -218,7 +219,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:worktree_id :view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:worktree_id :worktree_id_helper :view_count :last_viewed_at :public_uuid :made_public_by_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content

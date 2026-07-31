@@ -298,12 +298,12 @@
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert.
-  Rows are stamped with the worktree in scope ([[(serdes/current-worktree-id)]]; nil is the main app)."
+  Rows are stamped with the worktree in scope ([[serdes/*worktree-id*]]; nil is the main app)."
   [rows repo-paths]
   (serdes/with-cache
     (doseq [chunk (partition-all app-db-batch-size rows)]
       (t2/insert! :model/RemoteSyncObject
-                  (mapv #(assoc % :worktree_id (serdes/current-worktree-id))
+                  (mapv #(assoc % :worktree_id serdes/*worktree-id*)
                         (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))))
 
 (defn- branch-changed-since-scheduling?
@@ -360,7 +360,7 @@
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.
-      (t2/delete! :model/RemoteSyncObject :worktree_id (serdes/current-worktree-id))
+      (t2/delete! :model/RemoteSyncObject :worktree_id serdes/*worktree-id*)
       (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
@@ -426,7 +426,7 @@
         ;; N+1: one query per deleted path (bounded by deletions in a single pull; left un-batched because
         ;; file_path values are long, making an IN clause bulky for marginal gain).
         deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p
-                                                  :worktree_id (serdes/current-worktree-id)))
+                                                  :worktree_id serdes/*worktree-id*))
                            deleted)
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
@@ -510,7 +510,7 @@
   []
   (t2/select :model/RemoteSyncObject {:where [:and
                                               [:not= :status "synced"]
-                                              [:= :worktree_id (serdes/current-worktree-id)]]}))
+                                              [:= :worktree_id serdes/*worktree-id*]]}))
 
 (defn- restore-dirty-objects!
   "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
@@ -519,7 +519,7 @@
   [dirty-objects timestamp]
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
     (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id
-                                     :worktree_id (serdes/current-worktree-id))]
+                                     :worktree_id serdes/*worktree-id*)]
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status :status_changed_at timestamp})
       (t2/insert! :model/RemoteSyncObject
@@ -582,7 +582,7 @@
   (let [sync-timestamp (t/instant)]
     (try
       (let [snapshot-version      (source.p/version snapshot)
-            last-imported-version (remote-sync.task/last-version (serdes/current-worktree-id))
+            last-imported-version (remote-sync.task/last-version serdes/*worktree-id*)
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
@@ -602,7 +602,7 @@
                                      (not force-deletion?)
                                      (into (:deletion-conflicts @conflicts)))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
-            dirty?             (delay (remote-sync.object/dirty? (serdes/current-worktree-id)))
+            dirty?             (delay (remote-sync.object/dirty? serdes/*worktree-id*))
             result
             (cond
               ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
@@ -780,7 +780,7 @@
             (load-snapshot! merged-snapshot task-id sync-timestamp
                             :finalize! (fn []
                                          (t2/update! :model/RemoteSyncObject
-                                                     {:worktree_id (serdes/current-worktree-id)}
+                                                     {:worktree_id serdes/*worktree-id*}
                                                      {:status "synced" :status_changed_at sync-timestamp})
                                          (remote-sync.task/set-version! task-id version)))
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
@@ -1089,7 +1089,7 @@
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
     (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
                     :status [:in ["removed" "delete"]]
-                    :worktree_id (serdes/current-worktree-id))
+                    :worktree_id serdes/*worktree-id*)
          (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
          (remove #(exported (select-keys % [:model_type :model_id])))
          (map :id))))
@@ -1152,7 +1152,7 @@
             (remote-sync.task/set-version! task-id version))
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject :worktree_id (serdes/current-worktree-id))
+          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject :worktree_id serdes/*worktree-id*)
                              synced sync-timestamp))
         (if (= version :remote-sync/empty-commit)
           (do
@@ -1215,13 +1215,13 @@
     (try
       (analytics/inc! :metabase-remote-sync/exports)
       (serdes/with-cache
-        (let [base-version   (remote-sync.task/last-version (serdes/current-worktree-id))
+        (let [base-version   (remote-sync.task/last-version serdes/*worktree-id*)
               remote-version (source.p/version snapshot)
               diverged?      (and (some? base-version)
                                   (not= base-version remote-version))
               disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
                                              (source.p/list-files snapshot)))
-              dirty-rows     (delay (remote-sync.object/dirty-rows (serdes/current-worktree-id)))
+              dirty-rows     (delay (remote-sync.object/dirty-rows serdes/*worktree-id*))
               plan           (delay (when (seq @dirty-rows)
                                       (incremental-export-plan snapshot @dirty-rows)))]
           (cond
@@ -1389,7 +1389,7 @@
          current-branch (or branch (settings/remote-sync-branch))]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
-       (let [last-imported (remote-sync.task/last-version (serdes/current-worktree-id))
+       (let [last-imported (remote-sync.task/last-version serdes/*worktree-id*)
              source (source/source-from-settings current-branch)
              snapshot (snapshot-or-missing-branch source)]
          (if (= ::missing-branch snapshot)
@@ -1465,7 +1465,7 @@
   successful sync. Creates a new task (or errors if one is already running), then executes the sync function in
   a virtual thread with a timeout.
 
-  `:worktree-id`, when given, is bound as [[(serdes/current-worktree-id)]] around task creation so the new
+  `:worktree-id`, when given, is bound as [[serdes/*worktree-id*]] around task creation so the new
   RemoteSyncTask row is stamped with it. A virtual thread does not inherit the caller's dynamic bindings, so
   `sync-fn` is responsible for re-establishing that binding for its own work.
 
@@ -1501,7 +1501,7 @@
   When `:merge?` is set, a local-only 3-way merge keeps un-pushed local changes instead of overwriting
   them, so the dirty-changes guard is skipped.
 
-  `:worktree-id` (default: the worktree already in scope, [[(serdes/current-worktree-id)]]) scopes the whole
+  `:worktree-id` (default: the worktree already in scope, [[serdes/*worktree-id*]]) scopes the whole
   operation to a remote-sync worktree instead of the main app: the dirty check, merge-base lookup, task
   creation, and the load itself all read and write under that scope, and the operation never touches the
   global `remote-sync-branch` setting -- `branch` is still the git branch to import from (the worktree's own
@@ -1566,7 +1566,7 @@
   - neither (default) -> `:conflict` task result; the caller (typically the UI, via the export preflight)
                          decides whether to force, branch, or merge.
 
-  `:worktree-id` (default: the worktree already in scope, [[(serdes/current-worktree-id)]]) scopes the whole
+  `:worktree-id` (default: the worktree already in scope, [[serdes/*worktree-id*]]) scopes the whole
   operation to a remote-sync worktree instead of the main app, the same way [[async-import!]]'s does: the
   merge-base lookup, task creation, and the export itself happen under that scope, and the operation never
   touches the global `remote-sync-branch` setting -- `branch` is still the git branch to export to (the
@@ -1625,7 +1625,7 @@
         source         (source/source-from-settings branch)
         snapshot       (source.p/snapshot source)
         remote-version (source.p/version snapshot)
-        base-version   (remote-sync.task/last-version (serdes/current-worktree-id))]
+        base-version   (remote-sync.task/last-version serdes/*worktree-id*)]
     (if (or (nil? base-version) (= base-version remote-version))
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]

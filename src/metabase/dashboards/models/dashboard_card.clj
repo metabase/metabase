@@ -41,14 +41,16 @@
 (t2/define-before-update :model/DashboardCard
   [dashcard]
   (remote-sync/check-worktree-id-unchanged dashcard)
+  (remote-sync/check-parent-same-worktree dashcard :model/Dashboard :dashboard_id)
   dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
-  (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
-    dashcard))
+  (let [dashcard (remote-sync/remove-worktree-id-helper dashcard)]
+    (if (contains? dashcard :visualization_settings)
+      (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
+      dashcard)))
 
 (declare series)
 
@@ -401,7 +403,7 @@
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      [:worktree_id]
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)
