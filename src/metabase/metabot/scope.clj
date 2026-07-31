@@ -121,8 +121,6 @@
   (deferred-tru "View documents"))
 (api-scope/defscope agent-document-create "agent:document:create"
   (deferred-tru "Create documents"))
-(api-scope/defscope agent-document-write "agent:document:write"
-  (deferred-tru "Create and edit documents"))
 
 ;; Visualization
 (api-scope/defscope agent-viz-read "agent:viz:read"

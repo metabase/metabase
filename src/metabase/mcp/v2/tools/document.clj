@@ -416,7 +416,7 @@
 
 A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. On create, pass name and content_markdown; optional collection_id (\"root\" or omit for the root collection) and collection_position. On update, pass id and exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, so every comment thread anchored to the document body is orphaned) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through an edit to their text, so only a block the edit actually removes loses its comments); pass edits: [] to change only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). The response lists orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened; read that document with get_content and rewrite it with content_markdown rather than edits. Writes are last-write-wins — there is no version check, and a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
   {:name        "document_write"
-   :scope       metabot.scope/agent-document-write
+   :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
    :args        document-write-args-schema}
   [args _context]

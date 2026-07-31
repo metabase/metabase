@@ -430,11 +430,10 @@
                                     :content         (comment-content "hi")}
                  :model/Card     {card-id :id} {:dataset_query (venues-query)}]
     (mt/with-test-user :crowberto
-      (testing "GHY-4159: include [comments] still requires agent:document:read"
-        (let [row (content-one #{"agent:resource:read"}
-                               {:items [{:type "document" :id doc-id}] :include ["comments"]})]
-          (is (re-find #"agent:document:read" (:error row))))
-        (let [row (content-one #{"agent:resource:read" "agent:document:read"}
+      (testing "GHY-4159/GHY-4225: comment threads are document content, so the tool's own
+                agent:content:read carries them — they used to need agent:document:read on top,
+                and that per-type gate is gone rather than renamed"
+        (let [row (content-one #{"agent:content:read"}
                                {:items [{:type "document" :id doc-id}] :include ["comments"]})]
           (is (nil? (:error row)))
           (is (= 1 (count (:comments row))))))
