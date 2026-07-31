@@ -7,9 +7,11 @@
   resulting svg."
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.render.js.graal :as js.graal]
    [metabase.channel.render.js.svg :as js.svg])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
+   (org.graalvm.polyglot Context)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +49,44 @@
     (is (.hasAttribute line "fill-opacity"))
     (is (= "0.0"
            (.getAttribute line "fill-opacity")))))
+
+(deftest untrusted-plugin-context-loads-slim-bundle-test
+  (testing "the plugin isolate pool loads the slim custom-viz bundle, exposing the interface surface it needs"
+    (js.graal/do-with-untrusted-plugin-context
+     (fn [^Context ctx]
+       (doseq [fn-name ["renderChartJSON" "initializeContextJSON" "registerCustomVizPlugin"]]
+         (is (= "function" (.asString (.eval ctx "js" (str "typeof MetabaseStaticViz." fn-name))))
+             (str "slim bundle should expose MetabaseStaticViz." fn-name)))
+       ;; getCellBackgroundColorsJSON is only exported by the full bundle (only the builtin pool's table
+       ;; rendering calls it), so its absence proves the slim bundle is what got loaded here.
+       (is (= "undefined" (.asString (.eval ctx "js" "typeof MetabaseStaticViz.getCellBackgroundColorsJSON")))
+           "the full static-viz bundle (getCellBackgroundColorsJSON present) leaked into the plugin pool")))))
+
+(deftest untrusted-builtin-context-loads-full-bundle-test
+  (testing "the builtin isolate pool loads the full static-viz bundle, including the table-rendering surface"
+    (js.graal/do-with-untrusted-builtin-context
+     (fn [^Context ctx]
+       (doseq [fn-name ["renderChartJSON" "getCellBackgroundColorsJSON"]]
+         (is (= "function" (.asString (.eval ctx "js" (str "typeof MetabaseStaticViz." fn-name))))
+             (str "full bundle should expose MetabaseStaticViz." fn-name)))))))
+
+(deftest builtin-and-plugin-pools-are-taint-separated-test
+  (testing "globals set in a plugin context are invisible to builtin contexts (isolated realms on the shared engine)"
+    (js.graal/do-with-untrusted-plugin-context
+     (fn [^Context ctx]
+       (.eval ctx "js" "globalThis.__taint_marker = 'tainted'")))
+    (js.graal/do-with-untrusted-builtin-context
+     (fn [^Context ctx]
+       (is (= "undefined" (.asString (.eval ctx "js" "typeof globalThis.__taint_marker")))
+           "plugin-context globals must not leak into builtin contexts")))))
+
+(deftest untrusted-plugin-context-is-pooled-test
+  (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
+    (let [context-identity (fn []
+                             (js.graal/do-with-untrusted-plugin-context
+                              (fn [^Context ctx] (System/identityHashCode ctx))))]
+      (is (= (context-identity) (context-identity))
+          "the same pooled isolate context should serve every render"))))
 
 (deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
