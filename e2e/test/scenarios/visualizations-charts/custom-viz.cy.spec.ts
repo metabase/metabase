@@ -1,4 +1,9 @@
-import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_TABLES,
+  USERS,
+  USER_GROUPS,
+  WEBMAIL_CONFIG,
+} from "e2e/support/cypress_data";
 import {
   type DashboardDetails,
   type StructuredQuestionDetails,
@@ -1054,6 +1059,96 @@ describe("admin > custom visualizations", () => {
           "include",
           `${parameter.slug}=${AGGREGATED_VALUE}`,
         );
+      });
+    });
+  });
+
+  describe("static rendering — subscriptions", { tags: "@external" }, () => {
+    const { admin } = USERS;
+
+    const subscriptionQuestionDetails: StructuredQuestionDetails = {
+      name: "Custom Viz Subscription Question",
+      query: {
+        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: H.CUSTOM_VIZ_DISPLAY,
+      visualization_settings: { threshold: 0 },
+    };
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
+      H.updateSetting("custom-viz-enabled", true);
+      H.setupSMTP();
+    });
+
+    function setupDashboardWithSubscription(
+      questionDetails: StructuredQuestionDetails,
+    ) {
+      H.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails: { name: "Custom Viz Subscription Dashboard" },
+      }).then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+    }
+
+    it("renders the custom viz server-side in a subscription email and its PDF attachment", () => {
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+      setupDashboardWithSubscription(subscriptionQuestionDetails);
+
+      cy.findByLabelText("Attach a PDF of the dashboard")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the label
+
+      H.sendEmailAndAssert((email) => {
+        const { html } = email;
+        expect(html).to.include("Custom Viz Subscription Question");
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        // The plugin's static SVG rasterizes to a PNG <img>; the table
+        // fallback (asserted present in the next test) would instead print
+        // the aggregated value as text.
+        expect(html).to.include("<img");
+        expect(html).not.to.include(AGGREGATED_VALUE_FORMATTED);
+
+        const pdfAttachment = email.attachments.find(
+          (attachment) => attachment.contentType === "application/pdf",
+        );
+        expect(pdfAttachment).to.exist;
+        expect(pdfAttachment.fileName).to.include(
+          "Custom Viz Subscription Dashboard",
+        );
+
+        cy.request({
+          url: `http://localhost:${WEBMAIL_CONFIG.WEB_PORT}/email/${email.id}/attachment/${pdfAttachment.generatedFileName}`,
+          encoding: "binary",
+        }).then(({ body }) => {
+          expect(body.slice(0, 5)).to.equal("%PDF-");
+        });
+      });
+    });
+
+    it("falls back to a table in the email when the plugin has no static component", () => {
+      // depends on demo-viz-security having no static component
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+      setupDashboardWithSubscription({
+        ...subscriptionQuestionDetails,
+        display: `custom:${H.CUSTOM_VIZ_IDENTIFIER_3_SECURITY}` as const,
+      });
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Count");
+        expect(html).to.include(AGGREGATED_VALUE_FORMATTED);
       });
     });
   });
