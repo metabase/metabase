@@ -1,6 +1,34 @@
+import type { CollectionAuthorityLevel } from "./collection";
 import type { EnterpriseSettings } from "./settings";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
+
+export type RemoteSyncWorktreeId = number;
+
+/**
+ * A self-contained checkout of a git branch: its content lives in the same
+ * tables as the main app, tagged with the worktree's id, and is synced with
+ * the worktree's own branch. Superuser-only.
+ */
+export type RemoteSyncWorktree = {
+  id: RemoteSyncWorktreeId;
+  branch: string;
+  creator_id: UserId | null;
+  created_at: string;
+  updated_at: string;
+  creator?: UserInfo | null;
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+};
+
+export type CreateWorktreeCollectionRequest = {
+  worktree_id: RemoteSyncWorktreeId;
+  name: string;
+  description?: string | null;
+  authority_level?: CollectionAuthorityLevel;
+};
 
 export type RemoteSyncEntityModel =
   | "card"
@@ -59,6 +87,8 @@ export type ExportChangesRequest = {
   force?: boolean;
   /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
   merge?: boolean;
+  /** Push a worktree's content to its own branch instead of the main app's. */
+  worktree_id?: RemoteSyncWorktreeId;
 };
 
 export type ExportChangesResponse = {
@@ -107,6 +137,8 @@ export type ImportFromBranchRequest = {
    * on a branch switch, where `branch` is the target and this is the branch being switched away from.
    */
   expected_branch: string;
+  /** Pull into a worktree from its own branch instead of into the main app. */
+  worktree_id?: RemoteSyncWorktreeId;
 };
 
 export type ImportFromBranchResponse = {

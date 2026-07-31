@@ -115,16 +115,22 @@
 
 (defn get-transforms
   "Get a list of transforms. Transforms checked out into a remote-sync worktree are left out unless
-  `include-worktrees` is set."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id include-worktrees]}]
+  `include-worktrees` is set, or a single worktree's transforms are requested via `worktree-id` (which
+  returns *only* that worktree's transforms)."
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id include-worktrees worktree-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
+    (when worktree-id
+      (api/check-superuser))
     (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
                                                                   (cond-> []
                                                                     database-id
                                                                     (conj [:= :source_database_id database-id])
 
-                                                                    (not include-worktrees)
+                                                                    worktree-id
+                                                                    (conj [:= :worktree_id worktree-id])
+
+                                                                    (and (nil? worktree-id) (not include-worktrees))
                                                                     (conj (remote-sync/exclude-worktrees-clause))))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)

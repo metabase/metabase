@@ -21,22 +21,24 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
+   [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (defn enable-snippet-tracking!
-  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
+  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync. Only the main
+  app's: worktree snippets are tracked within their own worktree by its pull."
   []
   (let [timestamp (t/offset-date-time)
         rows      (concat
-                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets" :worktree_id nil)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
                       :status            "create"
                       :status_changed_at timestamp})
-                   (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
+                   (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id] :worktree_id nil)]
                      {:model_type          "NativeQuerySnippet"
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
@@ -47,15 +49,18 @@
       (t2/insert! :model/RemoteSyncObject rows))))
 
 (defn disable-snippet-tracking!
-  "Remove all snippet-related tracking entries."
+  "Remove the main app's snippet-related tracking entries. A worktree's tracking rows are left alone; they
+  live and die with the worktree."
   []
-  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets")]
+  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets" :worktree_id nil)]
     (t2/delete! :model/RemoteSyncObject
-                :model_type "NativeQuerySnippet")
+                :model_type "NativeQuerySnippet"
+                :worktree_id nil)
     (when (seq snippet-coll-ids)
       (t2/delete! :model/RemoteSyncObject
                   :model_type "Collection"
-                  :model_id [:in snippet-coll-ids]))))
+                  :model_id [:in snippet-coll-ids]
+                  :worktree_id nil))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -75,6 +80,14 @@
 
     :else ;; hash has not changed
     "synced"))
+
+(defn- tracked-row-worktree-id
+  "The worktree the tracked model row belongs to: nil for main-app rows and for models whose table has no
+  `worktree_id` column. Tracking rows must carry their model's worktree so each worktree's dirty state stays
+  separate from the main app's."
+  [model-type model-id]
+  (when (serdes/worktree-scoped? model-type)
+    (t2/select-one-fn :worktree_id (keyword "model" model-type) :id model-id)))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -98,6 +111,7 @@
                      :model_display (some-> model-details :display name)
                      :model_table_id (:table_id model-details)
                      :model_table_name (:table_name model-details)
+                     :worktree_id (tracked-row-worktree-id model-type model-id)
                      :status status
                      :status_changed_at (t/offset-date-time)}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
@@ -155,6 +169,7 @@
           (t2/insert! :model/RemoteSyncObject
                       (merge {:model_type        model-type
                               :model_id          model-id
+                              :worktree_id       (tracked-row-worktree-id model-type model-id)
                               :status            status
                               :status_changed_at (t/offset-date-time)}
                              fields)))
@@ -272,7 +287,9 @@
   "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
    This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
-  (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject :model_type "NativeQuerySnippet")]
+  (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject
+                                              :model_type "NativeQuerySnippet"
+                                              :worktree_id nil)]
     (cond
       (and is-now-synced? (not snippets-already-tracked?))
       (do

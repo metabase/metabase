@@ -9,6 +9,7 @@ import { tag } from "metabase-enterprise/api/tags";
 import type { RemoteSyncTaskStatus } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
+import { getSyncTaskWorktreeId } from "../selectors";
 import {
   modalDismissed,
   syncConflictVariantUpdated,
@@ -68,8 +69,13 @@ const ALL_INVALIDATION_TAGS = [
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "export" }));
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "export",
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -98,8 +104,13 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "import" }));
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "import",
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -130,7 +141,7 @@ const terminalTaskStates: RemoteSyncTaskStatus[] = [
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.getRemoteSyncCurrentTask.matchFulfilled,
-  effect: async (action, { dispatch }) => {
+  effect: async (action, { dispatch, getState }) => {
     const task = action.payload;
 
     if (task) {
@@ -140,8 +151,10 @@ remoteSyncListenerMiddleware.startListening({
         dispatch(modalDismissed());
         // The first-import / setup flow surfaces conflicts as a task status. Export conflicts are
         // surfaced as a toast by GitSyncControls (which observes the task), not here — middleware can't
-        // use the useToast hook.
-        if (task.sync_task_type !== "export") {
+        // use the useToast hook. Worktree tasks never go through the setup flow: their conflicts are
+        // handled by the worktree's own pull/push UI.
+        const isWorktreeTask = getSyncTaskWorktreeId(getState()) != null;
+        if (task.sync_task_type !== "export" && !isWorktreeTask) {
           dispatch(syncConflictVariantUpdated("setup"));
         }
         return;

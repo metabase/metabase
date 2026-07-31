@@ -4,10 +4,14 @@ import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { buildActiveSnippetTree, buildArchivedSnippetTree } from "./utils";
 
-export const useBuildSnippetTree = ({ archived = false } = {}): {
+export const useBuildSnippetTree = ({
+  archived = false,
+  worktreeId,
+}: { archived?: boolean; worktreeId?: RemoteSyncWorktreeId } = {}): {
   isLoading: boolean;
   tree: TreeItem[];
   error?: unknown;
@@ -17,7 +21,10 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     isLoading: loadingSnippets,
     isFetching: fetchingSnippets,
     error,
-  } = useListSnippetsQuery({ archived }, { refetchOnMountOrArgChange: true });
+  } = useListSnippetsQuery(
+    { archived, "worktree-id": worktreeId },
+    { refetchOnMountOrArgChange: true },
+  );
   const {
     data: snippetCollections,
     isLoading: loadingCollections,
@@ -26,6 +33,7 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     {
       namespace: "snippets",
       archived,
+      "worktree-id": worktreeId,
     },
     { refetchOnMountOrArgChange: true },
   );
@@ -57,7 +65,8 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
         : buildActiveSnippetTree(
             snippetCollections,
             snippets,
-            !isRemoteSyncReadOnly,
+            // Creating snippets is a main-app affordance: worktree content is created via pulls.
+            !isRemoteSyncReadOnly && worktreeId == null,
           ),
     };
   }, [
@@ -70,5 +79,6 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     error,
     archived,
     isRemoteSyncReadOnly,
+    worktreeId,
   ]);
 };

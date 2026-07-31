@@ -34,7 +34,7 @@ import { trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
-import { type SyncError, parseSyncError } from "../../utils";
+import { parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
 import { SyncConflictModal } from "../SyncConflictModal";
 
@@ -107,8 +107,7 @@ export const GitSyncControls = () => {
       hasBranchMismatch,
       errorMessage,
       currentBranch: serverBranch,
-      // Unjustified type cast. FIXME
-    } = parseSyncError(error as SyncError);
+    } = parseSyncError(error);
     if (hasBranchMismatch) {
       setBranchMismatch({
         message: errorMessage ?? t`The sync branch changed in another session.`,
@@ -206,8 +205,7 @@ export const GitSyncControls = () => {
         return;
       }
 
-      // Unjustified type cast. FIXME
-      const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
+      const { hasConflict, errorMessage } = parseSyncError(error);
 
       if (hasConflict) {
         setConflictPreflight(null);

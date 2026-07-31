@@ -1,6 +1,7 @@
 import type { Collection, RegularCollectionId } from "./collection";
 import type { TemplateTags } from "./dataset";
 import type { BaseEntityId } from "./entity-id";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { UserId, UserInfo } from "./user";
 
 export type NativeQuerySnippetId = number;
@@ -24,6 +25,8 @@ export interface NativeQuerySnippet {
 
 export type ListSnippetsParams = {
   archived?: boolean;
+  /** Return only the given remote-sync worktree's snippets. */
+  "worktree-id"?: RemoteSyncWorktreeId;
 };
 
 export interface CreateSnippetRequest {

@@ -171,6 +171,8 @@ export function FormCollectionAndDashboardPicker({
       // Search API doesn't support collection namespaces yet
       hasSearch: type === "collections",
       hasRecents: type !== "snippet-collections",
+      // this picker only ever places new content, which is allowed to start life in a worktree
+      hasWorktrees: type === "collections",
       hasConfirmButtons: true,
       namespaces: type === "snippet-collections" ? ["snippets"] : undefined,
       canCreateCollections: showCreateNewCollectionOption,

@@ -9,6 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -68,6 +69,8 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  /** The remote-sync worktree this collection is checked out into, null for the main app. */
+  worktree_id?: RemoteSyncWorktreeId | null;
   namespace: CollectionNamespace | null;
 
   parent_id?: CollectionId | null;
@@ -210,6 +213,8 @@ export type ListCollectionsRequest = {
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
+  /** Return only the given worktree's collections. */
+  "worktree-id"?: RemoteSyncWorktreeId;
 };
 export type ListCollectionsTreeRequest = {
   "exclude-archived"?: boolean;
@@ -221,6 +226,9 @@ export type ListCollectionsTreeRequest = {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
+  "include-worktrees"?: boolean;
+  /** Return only the given worktree's collections. */
+  "worktree-id"?: RemoteSyncWorktreeId;
 };
 
 export interface DeleteCollectionRequest {

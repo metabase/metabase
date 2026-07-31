@@ -4,7 +4,7 @@ import {
   type OmniPickerFolderItem,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 
 import { CollectionItemList } from "./CollectionItemList";
 import { DashboardItemList } from "./DashboardItemList";
@@ -43,6 +43,19 @@ export const ItemListRouter = ({
   if (parentItem.model === "collection") {
     if (parentItem.id === PERSONAL_COLLECTIONS.id) {
       return <PersonalCollectionsItemList pathIndex={pathIndex} />;
+    }
+
+    if (PLUGIN_REMOTE_SYNC.isWorktreesRootItem(parentItem)) {
+      return <PLUGIN_REMOTE_SYNC.WorktreesItemList pathIndex={pathIndex} />;
+    }
+
+    if (PLUGIN_REMOTE_SYNC.isWorktreeFolderItem(parentItem)) {
+      return (
+        <PLUGIN_REMOTE_SYNC.WorktreeCollectionsItemList
+          parentItem={parentItem}
+          pathIndex={pathIndex}
+        />
+      );
     }
 
     if (parentItem.id === "search-results") {

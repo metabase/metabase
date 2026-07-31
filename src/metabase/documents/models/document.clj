@@ -149,6 +149,8 @@
    ;; Document bodies are full-text searchable (via `document->search-text` above) but are
    ;; deliberately excluded from semantic-search embeddings.
    :embedding-exclude #{:document}
+   ;; remote-sync worktree copies are not indexed; search is the main app's
+   :where [:= :this.worktree_id nil]
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id

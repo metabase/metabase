@@ -7,14 +7,12 @@ import {
   useImportChangesMutation,
   useStashChangesMutation,
 } from "metabase-enterprise/api";
-import {
-  type SyncError,
-  parseSyncError,
-} from "metabase-enterprise/remote_sync/utils";
+import { parseSyncError } from "metabase-enterprise/remote_sync/utils";
+import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { trackBranchCreated, trackPushChanges } from "../../analytics";
 
-export const usePushChangesAction = () => {
+export const usePushChangesAction = (worktreeId?: RemoteSyncWorktreeId) => {
   const [exportChanges, { isLoading: isPushingChanges }] =
     useExportChangesMutation();
   const [sendToast] = useToast();
@@ -32,6 +30,7 @@ export const usePushChangesAction = () => {
             branch,
             force,
             message,
+            worktree_id: worktreeId,
           }).unwrap();
 
           trackPushChanges({
@@ -45,8 +44,7 @@ export const usePushChangesAction = () => {
           });
           closeModal();
         } catch (error) {
-          // Unjustified type cast. FIXME
-          const { errorMessage } = parseSyncError(error as SyncError);
+          const { errorMessage } = parseSyncError(error);
           sendToast({
             message: errorMessage || t`Failed to push changes`,
             icon: "warning",
@@ -54,13 +52,13 @@ export const usePushChangesAction = () => {
           });
         }
       },
-      [exportChanges, sendToast],
+      [exportChanges, sendToast, worktreeId],
     ),
     isPushingChanges,
   };
 };
 
-export const useMergeChangesAction = () => {
+export const useMergeChangesAction = (worktreeId?: RemoteSyncWorktreeId) => {
   const [exportChanges, { isLoading: isMerging }] = useExportChangesMutation();
   const [sendToast] = useToast();
 
@@ -72,6 +70,7 @@ export const useMergeChangesAction = () => {
             branch,
             merge: true,
             message,
+            worktree_id: worktreeId,
           }).unwrap();
 
           trackPushChanges({
@@ -85,8 +84,7 @@ export const useMergeChangesAction = () => {
           });
           closeModal();
         } catch (error) {
-          // Unjustified type cast. FIXME
-          const { errorMessage } = parseSyncError(error as SyncError);
+          const { errorMessage } = parseSyncError(error);
           sendToast({
             message: errorMessage || t`Failed to merge changes`,
             icon: "warning",
@@ -94,13 +92,13 @@ export const useMergeChangesAction = () => {
           });
         }
       },
-      [exportChanges, sendToast],
+      [exportChanges, sendToast, worktreeId],
     ),
     isMerging,
   };
 };
 
-export const useMergeImportAction = () => {
+export const useMergeImportAction = (worktreeId?: RemoteSyncWorktreeId) => {
   const [importChanges, { isLoading: isMergingImport }] =
     useImportChangesMutation();
   const [sendToast] = useToast();
@@ -115,6 +113,7 @@ export const useMergeImportAction = () => {
             branch,
             merge: true,
             expected_branch: branch,
+            worktree_id: worktreeId,
           }).unwrap();
 
           sendToast({
@@ -122,8 +121,7 @@ export const useMergeImportAction = () => {
           });
           closeModal();
         } catch (error) {
-          // Unjustified type cast. FIXME
-          const { errorMessage } = parseSyncError(error as SyncError);
+          const { errorMessage } = parseSyncError(error);
           sendToast({
             message: errorMessage || t`Failed to merge changes`,
             icon: "warning",
@@ -131,7 +129,7 @@ export const useMergeImportAction = () => {
           });
         }
       },
-      [importChanges, sendToast],
+      [importChanges, sendToast, worktreeId],
     ),
     isMergingImport,
   };
@@ -197,7 +195,9 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
   };
 };
 
-export const useDiscardChangesAndImportAction = () => {
+export const useDiscardChangesAndImportAction = (
+  worktreeId?: RemoteSyncWorktreeId,
+) => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [sendToast] = useToast();
@@ -216,11 +216,11 @@ export const useDiscardChangesAndImportAction = () => {
             branch: targetBranch,
             force: true,
             expected_branch: expectedBranch,
+            worktree_id: worktreeId,
           }).unwrap();
           closeModal();
         } catch (error) {
-          // Unjustified type cast. FIXME
-          const { errorMessage } = parseSyncError(error as SyncError);
+          const { errorMessage } = parseSyncError(error);
           sendToast({
             message:
               errorMessage ||
@@ -230,7 +230,7 @@ export const useDiscardChangesAndImportAction = () => {
           });
         }
       },
-      [importChanges, sendToast],
+      [importChanges, sendToast, worktreeId],
     ),
     isImporting,
   };

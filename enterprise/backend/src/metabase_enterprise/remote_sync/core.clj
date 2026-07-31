@@ -25,18 +25,23 @@
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 
-  Takes a collection to check for editability.
+  Takes a collection, or a collection id, to check for editability.
 
   Returns true if the collection is editable, false otherwise. A worktree collection is editable by an admin
   whatever the sync type -- a worktree is a working copy of its branch -- and by nobody else. Otherwise true when
   remote-sync-type is :read-write, or when the collection is not a remote-synced collection. Always returns true on
   OSS."
   :feature :none
-  [collection]
-  (if (:worktree_id collection)
-    api/*is-superuser?*
-    (or (= (settings/remote-sync-type) :read-write)
-        (not (collections/remote-synced-collection? collection)))))
+  [collection-or-id]
+  (let [collection (if (map? collection-or-id)
+                     collection-or-id
+                     (when collection-or-id
+                       (t2/select-one [:model/Collection :is_remote_synced :worktree_id]
+                                      :id collection-or-id)))]
+    (if (:worktree_id collection)
+      api/*is-superuser?*
+      (or (= (settings/remote-sync-type) :read-write)
+          (not (collections/remote-synced-collection? collection))))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.

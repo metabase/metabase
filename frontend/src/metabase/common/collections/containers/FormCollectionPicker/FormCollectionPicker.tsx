@@ -35,6 +35,8 @@ interface FormCollectionPickerProps extends InputWrapperProps {
   entityType?: EntityType;
   collectionPickerModalProps?: Partial<EntityPickerModalProps>;
   onCollectionSelect?: (collection: OmniPickerItem) => void;
+  /** Offer remote-sync worktrees as save targets — only for pickers that place *new* content. */
+  hasWorktrees?: boolean;
 }
 
 function ItemName({
@@ -74,6 +76,7 @@ function FormCollectionPicker({
   entityType,
   collectionPickerModalProps,
   onCollectionSelect,
+  hasWorktrees = false,
   ...rest
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
@@ -125,6 +128,7 @@ function FormCollectionPicker({
       hasSearch: !nonDefaultNamespace,
       hasRecents: !nonDefaultNamespace,
       hasLibrary: !nonDefaultNamespace,
+      hasWorktrees: hasWorktrees && !nonDefaultNamespace,
       hasConfirmButtons: true,
       canCreateCollections: showCreateNewCollectionOption,
     }),
@@ -132,6 +136,7 @@ function FormCollectionPicker({
       filterPersonalCollections,
       showCreateNewCollectionOption,
       nonDefaultNamespace,
+      hasWorktrees,
     ],
   );
 

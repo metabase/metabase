@@ -18,7 +18,11 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useRouter } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
@@ -42,6 +46,7 @@ import {
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
+import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -122,6 +127,12 @@ export const TransformListPage = () => {
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Non-null when an admin is viewing a remote-sync worktree's transforms
+  // instead of the main app's.
+  const [worktreeId, setWorktreeId] = useState<RemoteSyncWorktreeId | null>(
+    null,
+  );
+  const isWorktreeView = worktreeId != null;
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -138,13 +149,16 @@ export const TransformListPage = () => {
   } = useListCollectionsTreeQuery({
     namespace: "transforms",
     "exclude-archived": true,
+    ...(isWorktreeView && { "worktree-id": worktreeId }),
   });
 
   const {
     data: transforms,
     error: transformsError,
     isLoading: isLoadingTransforms,
-  } = useListTransformsQuery({});
+  } = useListTransformsQuery(
+    isWorktreeView ? { "worktree-id": worktreeId } : {},
+  );
 
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
@@ -160,8 +174,10 @@ export const TransformListPage = () => {
     const data = buildTreeData(collections, transforms);
 
     // It will trigger the upsell modal if the feature isn't enabled.
+    // The Python library is shared app-wide, so it is left out of worktree views.
     const shouldShowPythonLibraryRow =
-      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
+      !isWorktreeView &&
+      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
 
     if (shouldShowPythonLibraryRow) {
       data.push({
@@ -179,6 +195,7 @@ export const TransformListPage = () => {
   }, [
     collections,
     hasPythonTransformsFeature,
+    isWorktreeView,
     shouldShowPythonTransformsUpsell,
     transforms,
     transformsDatabases.length,
@@ -340,7 +357,11 @@ export const TransformListPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {transformsDatabases.length > 0 && (
+          <PLUGIN_REMOTE_SYNC.WorktreeSwitcher
+            value={worktreeId}
+            onChange={setWorktreeId}
+          />
+          {transformsDatabases.length > 0 && !isWorktreeView && (
             <>
               <CreateTransformMenu />
               <PLUGIN_REPLACEMENT.TransformToolsMenu />

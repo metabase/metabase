@@ -131,7 +131,11 @@ export {
   type PermissionOption,
   type PostActionFunction,
 } from "./oss/permissions";
-export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REMOTE_SYNC,
+  type WorktreeSwitcherProps,
+  type WorktreesSidebarSectionProps,
+} from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
   type SourceReplacementButtonChildProps,

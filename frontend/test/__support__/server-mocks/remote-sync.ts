@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncEntity, RemoteSyncWorktree } from "metabase-types/api";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -19,6 +19,18 @@ export const setupRemoteSyncDirtyEndpoint = ({
     "path:/api/ee/remote-sync/dirty",
     { dirty, changedCollections },
     { name: "remote-sync-dirty" },
+  );
+};
+
+/**
+ * Setup the remote-sync is-dirty endpoint
+ */
+export const setupRemoteSyncIsDirtyEndpoint = (isDirty = false) => {
+  fetchMock.removeRoute("remote-sync-is-dirty");
+  fetchMock.get(
+    "path:/api/ee/remote-sync/is-dirty",
+    { is_dirty: isDirty },
+    { name: "remote-sync-is-dirty" },
   );
 };
 
@@ -184,22 +196,63 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync worktree endpoints
+ */
+export const setupRemoteSyncWorktreeEndpoints = (
+  worktrees: RemoteSyncWorktree[] = [],
+) => {
+  fetchMock.removeRoute("remote-sync-worktree-list");
+  fetchMock.removeRoute("remote-sync-worktree-create");
+  fetchMock.removeRoute("remote-sync-worktree-delete");
+  fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
+    name: "remote-sync-worktree-list",
+  });
+  fetchMock.post(
+    "path:/api/ee/remote-sync/worktree",
+    {
+      id: 1,
+      branch: "new-branch",
+      creator_id: 1,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    { name: "remote-sync-worktree-create" },
+  );
+  fetchMock.delete("express:/api/ee/remote-sync/worktree/:id", 204, {
+    name: "remote-sync-worktree-delete",
+  });
+  fetchMock.post(
+    "express:/api/ee/remote-sync/worktree/:id/collection",
+    {
+      id: 100,
+      name: "New collection",
+      worktree_id: 1,
+    },
+    { name: "remote-sync-worktree-create-collection" },
+  );
+};
+
+/**
  * Setup all remote-sync endpoints at once
  */
 export const setupRemoteSyncEndpoints = ({
   branches = ["main", "develop"],
   dirty = [],
   changedCollections = {},
+  isDirty = false,
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
   hasRemoteChangesError = false,
   exportPreflight,
   settingsResponse = { success: true },
   testConnectionError,
+  worktrees = [],
 }: {
   branches?: string[];
+  worktrees?: RemoteSyncWorktree[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
+  isDirty?: boolean;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
   hasRemoteChangesError?: boolean;
@@ -211,12 +264,14 @@ export const setupRemoteSyncEndpoints = ({
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
+  setupRemoteSyncIsDirtyEndpoint(isDirty);
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncExportEndpoint();
   setupRemoteSyncExportPreflightEndpoint(exportPreflight);
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });
+  setupRemoteSyncWorktreeEndpoints(worktrees);
   fetchMock.post("path:/api/ee/remote-sync/branch", {});
   fetchMock.post("path:/api/ee/remote-sync/stash", {
     status: "success",

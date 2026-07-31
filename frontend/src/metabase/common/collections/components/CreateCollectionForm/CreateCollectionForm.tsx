@@ -23,7 +23,11 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Collection, CollectionNamespace } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionAuthorityLevel,
+  CollectionNamespace,
+} from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
@@ -41,6 +45,7 @@ const COLLECTION_SCHEMA = Yup.object({
 export interface CreateCollectionProperties {
   name: string;
   description: string | null;
+  authority_level?: CollectionAuthorityLevel;
   parent_id: Collection["id"] | null;
   namespace?: CollectionNamespace;
 }

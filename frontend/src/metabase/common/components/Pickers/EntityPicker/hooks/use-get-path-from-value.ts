@@ -13,7 +13,7 @@ import {
   transformApi,
 } from "metabase/api";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
 import type {
   Collection,
@@ -414,11 +414,23 @@ async function getCollectionPathFromValue({
   const isInOtherUserPersonalCollection =
     collection.is_personal && !isInPersonalCollection;
 
+  // a worktree's collections live under the "Worktrees" section, not under the root
+  // (null outside a worktree, so the default path handling below applies)
+  const worktreeBasePath = await PLUGIN_REMOTE_SYNC.getWorktreePickerBasePath({
+    collection,
+    dispatch,
+  });
+
+  if (worktreeBasePath) {
+    collectionIds.shift();
+    locationPath.shift();
+    locationPath.push(...worktreeBasePath);
+  }
+
   // pretend special collections are at the top level
   if (
-    isInPersonalCollection ||
-    isInOtherUserPersonalCollection ||
-    isInLibrary
+    !worktreeBasePath &&
+    (isInPersonalCollection || isInOtherUserPersonalCollection || isInLibrary)
   ) {
     collectionIds.shift();
     locationPath.shift();

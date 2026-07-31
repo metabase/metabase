@@ -25,7 +25,7 @@ type ErrorData = {
   current_branch?: string;
 };
 
-export type SyncError = {
+type SyncError = {
   data?: ErrorData;
   message?: string;
 };
@@ -81,8 +81,11 @@ const getErrorMessage = (data: ErrorData): string | undefined =>
     ? data.message
     : undefined;
 
-export const parseSyncError = (exportError: SyncError | null): ParsedError => {
-  if (!exportError) {
+const isSyncError = (error: unknown): error is SyncError =>
+  typeof error === "object" && error !== null;
+
+export const parseSyncError = (error: unknown): ParsedError => {
+  if (!error) {
     return {
       errorMessage: null,
       hasConflict: false,
@@ -90,6 +93,17 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
       currentBranch: null,
     };
   }
+
+  if (!isSyncError(error)) {
+    return {
+      errorMessage: t`Something went wrong. Please try again.`,
+      hasConflict: false,
+      hasBranchMismatch: false,
+      currentBranch: null,
+    };
+  }
+
+  const exportError = error;
 
   if (
     "data" in exportError &&

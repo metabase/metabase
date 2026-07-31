@@ -13,7 +13,11 @@ import {
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type {
@@ -67,6 +71,9 @@ export const useRootItems = () => {
     skip: !options.hasLibrary,
   });
 
+  const worktreesRootItem =
+    PLUGIN_REMOTE_SYNC.useWorktreesPickerRootItem(options);
+
   const {
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
@@ -97,6 +104,7 @@ export const useRootItems = () => {
       transformsEnabled,
       currentUser,
       hasTenants,
+      worktreesRootItem,
       dispatch,
     })
       .then((rootItems) => {
@@ -119,6 +127,7 @@ export const useRootItems = () => {
     transformsEnabled,
     currentUser,
     hasTenants,
+    worktreesRootItem,
     setIsLoadingCollections,
     dispatch,
   ]);
@@ -146,6 +155,7 @@ async function getRootItems({
   transformsEnabled,
   currentUser,
   hasTenants,
+  worktreesRootItem,
   dispatch,
 }: {
   searchQuery?: string;
@@ -161,6 +171,7 @@ async function getRootItems({
   transformsEnabled: boolean;
   currentUser: User | null;
   hasTenants: boolean;
+  worktreesRootItem: OmniPickerCollectionItem | null;
   dispatch: DispatchFn;
 }): Promise<OmniPickerCollectionItem[]> {
   const collectionItems: OmniPickerCollectionItem[] = [];
@@ -312,5 +323,10 @@ async function getRootItems({
       });
     }
   }
+
+  if (worktreesRootItem && namespaces.includes(null)) {
+    collectionItems.push(worktreesRootItem);
+  }
+
   return collectionItems;
 }

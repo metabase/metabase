@@ -20,7 +20,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection } from "metabase-types/api";
+import type { Collection, RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
@@ -35,6 +35,8 @@ type Params = {
   collections: Collection[];
   isLoadingCollections: boolean;
   searchQuery: string;
+  /** Show a remote-sync worktree's copy of the library instead of the main app's. */
+  worktreeId?: RemoteSyncWorktreeId;
   onPublishTableClick: VoidFunction;
 };
 
@@ -42,6 +44,7 @@ export function useLibraryTreeTableInstance({
   collections,
   isLoadingCollections,
   searchQuery,
+  worktreeId,
   onPublishTableClick,
 }: Params) {
   const { location } = useRouter();
@@ -86,7 +89,7 @@ export function useLibraryTreeTableInstance({
     tree: snippetTree,
     isLoading: loadingSnippets,
     error: snippetsError,
-  } = useBuildSnippetTree();
+  } = useBuildSnippetTree({ worktreeId });
 
   // Server-side search for tables and metrics, client-side for snippets
   const {

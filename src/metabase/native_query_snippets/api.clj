@@ -7,6 +7,7 @@
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -16,12 +17,17 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn list-native-query-snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
-  "List all native query snippets the current user has read access to."
+  "List all native query snippets the current user has read access to: the main app's when `worktree-id` is nil,
+  otherwise only the ones checked out into that remote-sync worktree."
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
+   (list-native-query-snippets archived nil))
+  ([archived :- ms/BooleanValue
+    worktree-id :- [:maybe ms/PositiveInt]]
    (let [snippets (t2/select :model/NativeQuerySnippet
                              :archived archived
+                             :worktree_id worktree-id
                              {:order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
@@ -32,9 +38,15 @@
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
   [_route-params
-   {:keys [archived]} :- [:map
-                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
-  (list-native-query-snippets (boolean archived)))
+   {:keys [archived worktree-id]} :- [:map
+                                      [:archived {:default false} [:maybe ms/BooleanValue]]
+                                      ;; return ONLY the given worktree's snippets -- how the FE lists a
+                                      ;; remote-sync worktree's checked-out snippets
+                                      [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  ;; worktree content is admin-only
+  (when worktree-id
+    (api/check-superuser))
+  (list-native-query-snippets (boolean archived) worktree-id))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
@@ -52,8 +64,11 @@
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
 
-(defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
+(defn- check-snippet-name-is-unique
+  "Snippet names are unique within a worktree and within the main app (`worktree-id` nil), but a worktree may
+  freely check out a snippet whose name also exists elsewhere -- it is a copy of the same snippet."
+  [snippet-name worktree-id]
+  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name :worktree_id worktree-id)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
@@ -70,7 +85,7 @@
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
                                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-snippet-name-is-unique name)
+  (check-snippet-name-is-unique name (remote-sync/worktree-id-of :model/Collection collection_id))
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
@@ -91,7 +106,7 @@
     (when (seq changes)
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
-        (check-snippet-name-is-unique new-name))
+        (check-snippet-name-is-unique new-name (:worktree_id snippet)))
       (t2/with-transaction [_conn]
         (t2/update! :model/NativeQuerySnippet id changes)
         (collections/check-for-remote-sync-update snippet)))

@@ -20,7 +20,7 @@ import {
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { trackBranchSwitched } from "../../analytics";
-import { type SyncError, parseSyncError } from "../../utils";
+import { parseSyncError } from "../../utils";
 import { BranchDropdown } from "../GitSyncControls/BranchDropdown";
 import { SyncConflictModal } from "../SyncConflictModal";
 
@@ -80,10 +80,7 @@ export const BranchSwitcher = ({
       }).unwrap();
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
     } catch (error) {
-      const { hasBranchMismatch, errorMessage } = parseSyncError(
-        // Unjustified type cast. FIXME
-        error as SyncError,
-      );
+      const { hasBranchMismatch, errorMessage } = parseSyncError(error);
       if (hasBranchMismatch) {
         setBranchMismatch(
           errorMessage ?? t`The sync branch changed in another session.`,
