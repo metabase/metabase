@@ -147,10 +147,14 @@
 
 (defn- write-result
   "The created/updated transform echoed to the caller: the `:transform` concise read projection — so
-   the echo and a concise `get_content` read carry the same fields by construction — plus
-   `:entity_id` (a portable id to update by), the transform's URL, and `:tag_ids` — the one write
-   arg the concise projection omits — so every field this tool accepts is confirmed back rather
-   than silently dropped."
+   every field the echo carries is named and shaped exactly as a concise `get_content` read names
+   it — plus `:entity_id` (a portable id to update by), the transform's URL, and `:tag_ids` — the
+   one write arg the concise projection omits — so every field this tool accepts is confirmed back
+   rather than silently dropped.
+
+   A confirmation of the write, not a read of the result: `:last_run` is the one concise key the
+   echo never carries, because it is hydrated state the write neither sets nor loads. Its absence
+   here means \"not fetched\" rather than \"never run\" — run state comes from `get_content`."
   [transform]
   ;; The :transform projection is registered by metabase.mcp.v2.tools.content, which the v2 api ns
   ;; requires alongside this one — so the registry is populated before any tool dispatch reaches here.
