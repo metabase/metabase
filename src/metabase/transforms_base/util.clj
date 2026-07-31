@@ -274,12 +274,16 @@
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
 (defn save-watermark!
-  "Commits the incremental transforms :hi watermark value to the appdb."
+  "Commits the incremental transforms :hi watermark value to the appdb.
+
+  A run with no source range has no watermark to commit, and must leave `incremental_state` alone:
+  an ingestion transform stores the state its own code returned in that same column."
   [transform-id source-range-params]
-  (let [hi-value (:value (:hi source-range-params))]
-    (t2/update! :model/Transform
-                transform-id
-                {:incremental_state (some-> hi-value encode-checkpoint-value)})))
+  (when source-range-params
+    (let [hi-value (:value (:hi source-range-params))]
+      (t2/update! :model/Transform
+                  transform-id
+                  {:incremental_state (some-> hi-value encode-checkpoint-value)}))))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
