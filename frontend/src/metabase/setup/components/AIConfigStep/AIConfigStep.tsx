@@ -18,16 +18,18 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
   const { isStepActive, isStepCompleted } = useStep("ai_config");
   const dispatch = useDispatch();
 
-  const { data: connections = [] } = useListLlmProvidersQuery();
+  const { data: connections = [], isLoading } = useListLlmProvidersQuery();
   const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
 
-  const connection = connections[0];
+  // a connection can be listed without being able to serve a request — one configured by env
+  // var with a field missing, say — and that is not something to call connected
+  const connectedProvider = connections.find((connection) => connection.usable);
   const connectedLabel = providerTypes.find(
-    (providerType) => providerType.type === connection?.type,
+    (providerType) => providerType.type === connectedProvider?.type,
   )?.label;
 
   const handleDone = () => {
-    dispatch(submitAiConfig(connection?.type));
+    dispatch(submitAiConfig(connectedProvider?.type));
   };
 
   const handleSkip = () => {
@@ -37,7 +39,11 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
   if (!isStepActive) {
     return (
       <InactiveStep
-        title={getStepTitle({ connectedLabel, isStepCompleted })}
+        title={getStepTitle({
+          connectedLabel,
+          hasConnectedProvider: connectedProvider != null,
+          isStepCompleted,
+        })}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
       />
@@ -50,7 +56,7 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
         {t`Select your AI provider to use AI explorations, SQL generation and Metabot.`}
       </Text>
       <AIProviderSetup onDone={handleDone} />
-      {connection == null && (
+      {!isLoading && connectedProvider == null && (
         <Flex justify="end" mt="md">
           <Button variant="subtle" onClick={handleSkip}>
             {t`I'll set this up later`}
@@ -63,15 +69,21 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
 
 const getStepTitle = ({
   connectedLabel,
+  hasConnectedProvider,
   isStepCompleted,
 }: {
   connectedLabel: string | undefined;
+  hasConnectedProvider: boolean;
   isStepCompleted: boolean;
 }): string => {
   if (!isStepCompleted) {
     return t`Connect to an AI provider`;
   }
+  if (!hasConnectedProvider) {
+    return t`I'll set up AI later`;
+  }
+  // the label comes from a separate request, so a connected provider can briefly have no name
   return connectedLabel
     ? t`Connected to ${connectedLabel}`
-    : t`I'll set up AI later`;
+    : t`Connected to an AI provider`;
 };
