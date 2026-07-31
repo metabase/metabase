@@ -310,11 +310,8 @@
              (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
              (partition-all reindex-batch-size alive))))
     (when-let [gone (not-empty (set/difference ids alive))]
-      (doseq [engine (search.engine/active-engines)]
-        (try
-          (search.engine/delete! engine search-model (into #{} (map str) gone))
-          (catch Exception e
-            (log/errorf e "Failed to purge cascaded %s documents from %s" search-model engine)))))))
+      (search.ingestion/ingest-maybe-async!
+       [(search.ingestion/tombstone search-model gone)]))))
 
 ;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
 ;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
@@ -322,7 +319,7 @@
   "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
   A search-model whose surviving documents cannot be enumerated is left alone.
-  A failure for one search-model, or one engine, is logged and does not stop the others."
+  A failure for one search-model is logged and does not stop the others."
   [cascading]
   (when (and (seq cascading) (supports-index?))
     (doseq [[search-model ids] cascading]
@@ -332,11 +329,11 @@
           (log/errorf e "Failed to reconcile cascaded %s documents" search-model))))))
 
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
-            search-model (->> (vals (search.spec/specifications))
-                              (filter (comp #{model} :model))
-                              (map :name))]
-      (search.engine/delete! e search-model ids))))
+    (search.ingestion/ingest-maybe-async!
+     (for [search-model (->> (vals (search.spec/specifications))
+                             (filter (comp #{model} :model))
+                             (map :name))]
+       (search.ingestion/tombstone search-model ids)))))
