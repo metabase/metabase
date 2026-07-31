@@ -157,12 +157,13 @@
 
 (deftest nested-plugin-load-on-one-thread-is-allowed-test
   (let [calls         (atom [])
-        plugin-a-name (str "test nested plugin A " (random-uuid))
-        plugin-b-name (str "test nested plugin B " (random-uuid))
+        suffix        (random-uuid)
+        plugin-a-name (str "test nested plugin A " suffix)
+        plugin-b-name (str "test nested plugin B " suffix)
         plugin        (fn [plugin-name marker]
                         {:metabase-plugin-api-version initialize/plugin-api-version
-                         :info                       {:name plugin-name :version "1.0.0"}
-                         :init                       [{:step "test" :marker marker}]})]
+                         :info                        {:name plugin-name :version "1.0.0"}
+                         :init                        [{:step "test" :marker marker}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])
                                 init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
@@ -176,19 +177,18 @@
         "an init step that loads another plugin is nesting on one thread, not concurrent loading")))
 
 (deftest plugin-load-cycles-are-rejected-test
-  (let [plugin-a-name (str "test cyclic plugin A " (random-uuid))
-        plugin-b-name (str "test cyclic plugin B " (random-uuid))
+  (let [suffix        (random-uuid)
+        plugin-a-name (str "test cyclic plugin A " suffix)
+        plugin-b-name (str "test cyclic plugin B " suffix)
         plugin        (fn [plugin-name marker]
                         {:metabase-plugin-api-version initialize/plugin-api-version
-                         :info                       {:name plugin-name :version "1.0.0"}
-                         :init                       [{:step "test" :marker marker}]})
-        register-both! (fn []
-                         (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
-                                                     deps/update-unsatisfied-deps!    (constantly [])]
-                           (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
-                           (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-b-name :plugin-b))))))]
+                         :info                        {:name plugin-name :version "1.0.0"}
+                         :init                        [{:step "test" :marker marker}]})]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                deps/update-unsatisfied-deps!    (constantly [])]
+      (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
+      (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-b-name :plugin-b)))))
     (testing "a plugin whose init step loads itself"
-      (register-both!)
       (mt/with-dynamic-fn-redefs [init-steps/do-init-steps! (fn [_] (plugins/load-plugin! plugin-a-name))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"while it is already loading"
