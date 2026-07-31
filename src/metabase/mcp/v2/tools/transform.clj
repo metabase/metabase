@@ -180,6 +180,18 @@
      (format "Transform %d is a %s transform. %s"
              (:id transform) (name (:source_type transform)) python-note))))
 
+(defn- check-source-replaceable!
+  "Refuse to replace a source that loads incrementally. The strategy lives on the source, and a
+   source is stored whole — so writing the plain `{type, query}` source this tool builds over one
+   would drop the strategy and silently turn an incremental transform into a full read."
+  [transform]
+  (when-let [strategy (get-in transform [:source :source-incremental-strategy])]
+    (common/throw-teaching-error
+     (format (str "This transform's source loads incrementally (%s), which transform_write can't author — "
+                  "replacing its query here would drop that. Edit the query in Metabase, or omit "
+                  "`definition`/`query_handle` to leave the source alone.")
+             (name (:type strategy))))))
+
 (defn- update!
   "Write-check the existing transform, patch only the caller-supplied fields, then hand the patch to
    the shared REST update path, which re-runs feature, database, schema, target-conflict, and cycle
@@ -189,6 +201,9 @@
                     :model/Transform id
                     (fn [tid] (api/write-check :model/Transform tid)))
         _          (check-is-query-transform! transform)
+        ;; Refuse before resolving, so a doomed source doesn't pay for the query pipeline first.
+        _          (when (or (:definition args) (:query_handle args))
+                     (check-source-replaceable! transform))
         new-source (resolve-source args session-id)
         updates    (cond-> {}
                      (contains? args :name)          (assoc :name name)

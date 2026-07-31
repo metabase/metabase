@@ -272,6 +272,24 @@
           (is (re-find #"table-incremental target" error))
           (is (re-find #"omit `target`" error)))))))
 
+(deftest transform-write-update-refuses-incremental-source-test
+  (testing "GHY-4240: replacing the query of an incrementally-loading transform would drop the strategy
+            off its source, so the update is refused rather than silently degrading it to a full read"
+    (with-transforms
+      (with-target-db-support
+        (let [strategy {:type "checkpoint" :checkpoint-filter-field-id (mt/id :venues :id)}]
+          (mt/with-temp [:model/Transform {id :id}
+                         (assoc-in (temp-transform-defaults "mcp_checkpoint")
+                                   [:source :source-incremental-strategy] strategy)]
+            (let [error (tool-error (write! {:method "update" :id id :definition (query-definition)}))]
+              (is (re-find #"loads incrementally \(checkpoint\)" error))
+              (is (re-find #"omit `definition`" error)))
+            (testing "and the stored strategy is untouched"
+              (is (= strategy (:source-incremental-strategy
+                               (t2/select-one-fn :source :model/Transform :id id)))))
+            (testing "while an update that leaves the source alone still goes through"
+              (is (= "renamed" (:name (tool-result (write! {:method "update" :id id :name "renamed"}))))))))))))
+
 (deftest transform-write-update-refuses-python-transform-test
   (testing "GHY-4240: addressing a python transform with this tool refuses rather than retyping it"
     (mt/with-premium-features #{:transforms-basic :transforms-python}
