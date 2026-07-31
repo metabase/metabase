@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
@@ -36,6 +37,7 @@
                               :describe-is-nullable             true
                               :expression-literals              true
                               :identifiers-with-spaces          true
+                              :native-pivot-tables              true
                               :now                              true
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false
@@ -83,6 +85,11 @@
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_driver]
   (h2x/with-database-type-info [:current_timestamp [:inline 6]] "timestamptz"))
+
+;; Vertica's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
+(defmethod sql-mbql5.pivot/pivot-grouping-hsql :vertica
+  [_driver exprs]
+  (into [::sql-mbql5.pivot/grouping-id-fn] exprs))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_driver _seconds-or-milliseconds honeysql-expr]

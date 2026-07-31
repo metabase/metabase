@@ -58,6 +58,7 @@
                               :expressions                      true
                               :metadata/key-constraints         false
                               :native-parameters                true
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :set-timezone                     true
