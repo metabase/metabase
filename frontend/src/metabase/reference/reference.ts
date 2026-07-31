@@ -55,6 +55,10 @@ interface DatabaseFetchProps extends FetchProps {
   fetchRealDatabases: (args: unknown) => Promise<unknown>;
 }
 
+interface TableFetchProps extends FetchProps {
+  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
+}
+
 interface SegmentFetchProps extends FetchProps {
   fetchSegments: (id?: number) => Promise<unknown>;
   fetchSegmentTable: (id: number) => Promise<unknown>;
@@ -102,6 +106,18 @@ export const wrappedFetchDatabaseMetadata = (
   databaseID: number,
 ) => {
   fetchDataWrapper(props, props.fetchDatabaseMetadata)(databaseID);
+};
+
+export const wrappedFetchTableMetadata = (
+  props: TableFetchProps,
+  tableID: number,
+) => {
+  fetchDataWrapper(
+    props,
+    props.fetchTableMetadataAndForeignKeys,
+  )({
+    id: tableID,
+  });
 };
 
 export const wrappedFetchDatabaseMetadataAndQuestion = async (
