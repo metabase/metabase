@@ -61,9 +61,15 @@ export function useAuditTable(viewName: string): UseAuditTableResult {
     [provider, table],
   );
 
-  const { isLoading: isLoadingFields } = useGetAdhocQueryMetadataQuery(
+  const { data: queryMetadata } = useGetAdhocQueryMetadataQuery(
     datasetQuery ?? skipToken,
   );
 
-  return { provider, table, isLoading: isLoadingTables || isLoadingFields };
+  const isLoadingFields = table != null && queryMetadata == null;
+
+  return {
+    provider,
+    table: isLoadingFields ? null : table,
+    isLoading: isLoadingTables || isLoadingFields,
+  };
 }
