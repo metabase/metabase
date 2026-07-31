@@ -68,6 +68,13 @@
       (str/replace #"(?<=/)\d+(?=/|$)" ":id")
       (str/replace uuid-re ":uuid")))
 
+(defn- error-message-from-response
+  "Best-effort human-readable error string from a response, for the gated `error_message` column.
+  Keyword lookups are nil-safe, so a streaming/opaque body just yields nil."
+  [response]
+  (let [body (:body response)]
+    (or (:message body) (:error body))))
+
 (defn wrap-record-cli-usage
   "Ring middleware that records one `agent_api_call_log` row for every `/api/*` call whose
   `User-Agent` identifies the Metabase CLI. MCP's synthetic in-process dispatch bypasses the
@@ -85,14 +92,14 @@
                      (let [status-code (:status response)
                            error?      (or (nil? status-code) (>= status-code 400))]
                        (record-agent-api-call!
-                        {:user-id       api/*current-user-id*
-                         :tenant-id     nil
+                        {:user-id       (or (:metabase-user-id request) api/*current-user-id*)
+                         :tenant-id     (some-> api/*current-user* deref :tenant_id)
                          :user-agent    user-agent
                          :operation     (str (some-> (:request-method request) name u/upper-case-en)
                                              " " (templatize-uri uri))
                          :status        (if error? "error" "success")
                          :duration-ms   (long (u/since-ms timer))
                          :ip-address    (request/ip-address request)
-                         :error-message nil}))
+                         :error-message (when error? (error-message-from-response response))}))
                      (respond response))
                    raise))))))
