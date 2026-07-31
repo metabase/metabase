@@ -218,13 +218,14 @@
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 111))))
   (testing "DELETE ... USING maps are rejected before the capture pipeline can compile them"
-    (with-redefs [t2.pipeline/build (fn [& _]
-                                      (throw (ex-info "capture pipeline must not build a USING delete" {})))]
-      (is (nil? (#'dml-capture/pre-image-rows
-                 :toucan.query-type/select.instances ::bird [:id] {}
-                 {:delete-from (keyword table-name)
-                  :using       [:other_table]
-                  :where       [:= :group_id 112]}))))))
+    (let [build-calls (atom 0)]
+      (with-redefs [t2.pipeline/build (fn [& _] (swap! build-calls inc))]
+        (is (nil? (#'dml-capture/pre-image-rows
+                   :toucan.query-type/select.instances ::bird [:id] {}
+                   {:delete-from (keyword table-name)
+                    :using       [:other_table]
+                    :where       [:= :group_id 112]})))
+        (is (zero? @build-calls))))))
 
 (deftest uncaptured-ops-fire-nothing-test
   (reset-capture!)
