@@ -7,12 +7,12 @@ summary: "Embed Metabase's visual query builder or SQL editor in your app, so pe
 
 {% include plans-blockquote.html feature="Embedding the query builder" convert_pro_link_to_embedding=true %}
 
-You can embed one of Metabase's editors so people can build questions from scratch.
+You can embed one of Metabase's query editors so people can build questions from scratch.
 
 - [Visual query builder](#embed-the-visual-query-builder)
 - [SQL editor](#embed-the-sql-editor)
 
-Both editors require SSO, because in order to run a new query, Metabase has to know who's asking, so it can work out which data they're allowed to see.
+Both query editors require SSO, because in order to run a new query, Metabase has to know who's asking, so it can work out which data they're allowed to see.
 
 To embed an existing chart instead, check out [Embed a chart](./question.md).
 
@@ -60,7 +60,7 @@ Everyone still queries through their own Metabase account, so people can only ru
 
 ### Saving with web components
 
-With a web component, turn saving on with `is-save-enabled="true"`, and set the collection that new questions land in with `target-collection`:
+With a web component, turn saving on with `is-save-enabled="true"`, and set the collection for new questions to land in with `target-collection`:
 
 ```html
 <metabase-question

@@ -7,7 +7,7 @@ redirect_from:
 
 # Embed a chart
 
-You can embed a chart (a.k.a. a question) in your app in two ways:
+There are two ways you can embed a chart (called a question, in Metabase parlance):
 
 - [View-only chart](#embed-a-view-only-chart): people see the results, and that's it.
 - [Interactive chart](#embed-an-interactive-chart): people can drill through the chart and change the query behind it.
@@ -18,16 +18,16 @@ To let people build questions from scratch instead, check out [Embed the query b
 
 ![Static question](./images/static-question.png)
 
-A view-only (a.k.a. "static") chart displays results without letting people explore the data. Nobody can drill through it, change the query behind it, or run a new one. You can still add editable filters that people can change.
+A view-only (a.k.a. "static") chart displays results without letting people explore the data. Nobody can drill through it, change the query behind it, or run a new one. You can, however, add editable filters that people can change to update the query results.
 
 View-only isn't tied to one kind of embed. You can make a chart view-only in any embedding type:
 
 - **Guest embeds** are always view-only. Guest embeds have no drill-through or ad-hoc querying to turn off.
-- **SSO embeds** are interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or `drills={false}` (SDK), and turn off saving with `is-save-enabled="false"` or `isSaveEnabled={false}`.
+- **SSO embeds** are interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or `drills={false}` (SDK), and turn off saving with `is-save-enabled="false"` or `isSaveEnabled={false}`. You can also manage what people can do through data and collection permissions.
 
-So pick your authentication based on what your app needs — plans, permissions, whether Metabase should know who's viewing — not on whether you want a view-only chart. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
+So pick your authentication based on what your app needs---plans, permissions, whether Metabase should know who's viewing---not on whether you want a view-only chart. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
-The rest of this section walks through a guest embed, since that's what the in-app wizard sets up.
+This section covers setting up a view-only chart with guest authentication.
 
 - [Web components](#view-only-charts-using-a-web-component)
 - [React SDK](#view-only-charts-using-the-react-sdk)
@@ -44,7 +44,7 @@ Before you start, an admin needs to [turn on guest embedding](./guest-embedding.
 2. Click the **Share** icon in the upper right.
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase.
-5. Click the **Publish** button. Publishing only applies to guest embeds; there's nothing to publish for an SSO embed.
+5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an SSO embed, because in that case people can explore the data based on their data and collection permissions.)
 6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](#web-component-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
 7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
@@ -69,7 +69,7 @@ WHERE
 {% endraw %}
 ```
 
-Now say you want to drop this question on each customer's account page in your app, showing only that customer's orders. Here's the frontend code.
+Now say you want to embed this question on each customer's account page in your app, showing only that customer's orders. Here's the frontend code.
 
 ```html
 <script defer src="https://your-metabase.example.com/app/embed.js"></script>
@@ -103,7 +103,7 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 </metabase-question>
 ```
 
-The `theme` key sets the chart's appearance. Two colors are enough to show the shape of it; for the full theme object with all the options, check out [Appearance](./appearance.md).
+The `theme` key sets the chart's appearance. For the full theme object with all the options, check out [Appearance](./appearance.md).
 
 On your app's server, set the value for the locked parameter in the token. Whoever's looking at the page can't see or change that value, so an embed on customer 13's account page returns only customer 13's orders.
 
@@ -157,7 +157,7 @@ The component has a default height, which you can change with the `height` prop.
 
 An interactive chart lets people explore their data: they can drill through the chart, filter results, summarize and group them, change visualization settings, and optionally save their changes.
 
-Interactive charts need an [SSO embed](./modular-embedding.md), which you can set up with either web components or the React SDK. Guest embeds are always view-only.
+Interactive charts require SSO, which you can set up with either web components or the React SDK.
 
 - [Web components](#interactive-charts-using-a-web-component)
 - [React SDK](#interactive-charts-using-the-react-sdk)
@@ -299,7 +299,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Embeds with **SSO** don't need to lock parameters, because you can apply [data permissions](../permissions/embedding.md), [row and column security](../permissions/row-and-column-security.md), and [database routing](../permissions/database-routing.md) instead of locking parameters by hand.
+Embeds with **SSO** don't need to lock parameters, because you can apply [data permissions](../permissions/embedding.md), instead of locking parameters by hand.
 
 ## Embed the query builder or SQL editor
 

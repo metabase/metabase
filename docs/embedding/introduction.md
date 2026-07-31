@@ -7,7 +7,7 @@ redirect_from:
 
 # Embedding introduction
 
-You can embed Metabase tables, charts, dashboards, AI chat — even Metabase's query builder — in your website or application.
+You can embed Metabase tables, charts, dashboards, AI chat---even Metabase's query builder---in your website or application.
 
 There are two ways to embed Metabase.
 
@@ -35,7 +35,7 @@ With SSO, Metabase can know who's viewing what, which unlocks a lot of power. Yo
 
 If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
 
-Accounts for these embedded users in your Metabase count toward the accounts billed in your Metabase plan. But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
+Accounts for these embedded users in your Metabase count toward the [accounts billed in your Metabase plan](https://www.metabase.com/docs/latest/cloud/how-billing-works). But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
 
 ### Guest embedding
 
@@ -79,7 +79,7 @@ All SSO options require a Pro or Enterprise plan.
 
 \*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan for any embedding type.
 
-\*\*\* SSO embeds don't need locked filters. Since Metabase knows who's viewing an SSO embed, you can segregate data with [permissions](../permissions/embedding.md) instead.
+\*\*\* SSO embeds don't need locked filters. Since Metabase knows who's viewing an SSO embed, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
 
 ## Full app embedding
 
