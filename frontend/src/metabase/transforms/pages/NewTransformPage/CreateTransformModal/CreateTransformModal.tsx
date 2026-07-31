@@ -22,6 +22,7 @@ import {
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
+  RemoteSyncWorktreeId,
   SchemaName,
   Transform,
   TransformSource,
@@ -49,6 +50,7 @@ type CreateTransformModalProps = {
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
   closeOnEscape?: boolean;
+  worktreeId?: RemoteSyncWorktreeId | null;
 };
 
 export function CreateTransformModal({
@@ -63,6 +65,7 @@ export function CreateTransformModal({
   validateOnMount,
   showIncrementalSettings,
   closeOnEscape,
+  worktreeId = null,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -91,7 +94,7 @@ export function CreateTransformModal({
     initialValues,
     validationSchema: defaultSchema,
     createTransform,
-  } = useCreateTransform(schemas, defaultValues);
+  } = useCreateTransform(schemas, defaultValues, worktreeId);
 
   const validationSchema = useMemo(
     () =>
@@ -140,6 +143,7 @@ export function CreateTransformModal({
           onClose={onClose}
           targetDescription={targetDescription}
           showIncrementalSettings={showIncrementalSettings}
+          worktreeId={worktreeId}
         />
       </FormProvider>
     </Modal>
@@ -153,6 +157,7 @@ type CreateTransformFormFieldsProps = {
   onClose: () => void;
   targetDescription?: string;
   showIncrementalSettings?: boolean;
+  worktreeId?: RemoteSyncWorktreeId | null;
 };
 
 function CreateTransformForm({
@@ -162,6 +167,7 @@ function CreateTransformForm({
   onClose,
   targetDescription,
   showIncrementalSettings = true,
+  worktreeId = null,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
 
@@ -186,17 +192,22 @@ function CreateTransformForm({
           />
         )}
         <TargetNameInput description={targetDescription} />
-        <FormCollectionPicker
-          name="collection_id"
-          title={t`Collection`}
-          collectionPickerModalProps={{ namespaces: ["transforms"] }}
-          style={{ marginBottom: 0 }}
-        />
+        {/* Inside a worktree the transform lands at the worktree's root: the picker only
+            offers main-app collections, which would silently pull it out of the worktree. */}
+        {worktreeId == null && (
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            collectionPickerModalProps={{ namespaces: ["transforms"] }}
+            style={{ marginBottom: 0 }}
+          />
+        )}
         {showIncrementalSettings && (
           <IncrementalTransformSettings
             source={source}
             incremental={values.incremental}
             onIncrementalChange={handleIncrementalChange}
+            worktreeId={worktreeId}
           />
         )}
         <Group>

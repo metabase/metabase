@@ -19,7 +19,7 @@ import {
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { push, useRouter } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -46,6 +46,10 @@ export function NewSnippetPage() {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const { location } = useRouter();
+  // A worktree is an admin's working copy of its branch; a snippet created into one is
+  // exempt from read-only sync and lands at the worktree's root.
+  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
@@ -55,6 +59,7 @@ export function NewSnippetPage() {
       content,
       description: description.trim().length > 0 ? description.trim() : null,
       collection_id: collectionId,
+      ...(worktreeId != null && { worktree_id: worktreeId }),
     });
 
     if (error) {
@@ -74,7 +79,9 @@ export function NewSnippetPage() {
   }, [savedSnippet, dispatch]);
 
   const handleSave = async () => {
-    if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
+    // The folder picker only offers main-app folders, which would pull the snippet
+    // out of the worktree.
+    if (!PLUGIN_SNIPPET_FOLDERS.isEnabled || worktreeId != null) {
       await handleCreateSnippet(null);
       return;
     }
@@ -82,7 +89,9 @@ export function NewSnippetPage() {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    dispatch(
+      push(Urls.dataStudioLibrary(worktreeId != null ? { worktreeId } : {})),
+    );
   };
 
   const handleCollectionSelected = async (
@@ -94,7 +103,7 @@ export function NewSnippetPage() {
 
   const extensions = useMemo(() => [sql()], []);
 
-  if (isRemoteSyncReadOnly) {
+  if (isRemoteSyncReadOnly && worktreeId == null) {
     return <Unauthorized />;
   }
 
@@ -122,7 +131,11 @@ export function NewSnippetPage() {
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
+              <Link
+                to={Urls.dataStudioLibrary(
+                  worktreeId != null ? { worktreeId } : {},
+                )}
+              >{t`SQL snippets`}</Link>
               {t`New Snippet`}
             </DataStudioBreadcrumbs>
           }

@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
+import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
 import { getValidationResult } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
@@ -32,9 +33,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     readOnly,
   } = props;
   const metadata = useSelector(getMetadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsTransformSyncReadOnly(transform);
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {

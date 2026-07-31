@@ -264,6 +264,20 @@
           (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
           (is (= :successful (:status (t2/hydrate task :status)))))))))
 
+(deftest handle-task-result!-stamps-the-synced-branch-test
+  (testing "a success's outcome reports the branch the task synced with -- on a branch switch the setting still
+            holds the old branch when the outcome is built, so the stamp must come from the task's own branch"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (mt/with-temporary-setting-values [remote-sync-branch "main"]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                               {:sync_task_type "import"
+                                                :initiated_by (mt/user->id :rasta)})]
+          (impl/handle-task-result! {:status :success :outcome {:kind "pulled" :count 3}} task-id
+                                    :branch "feature-x")
+          (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
+            (is (= {:kind "pulled" :count 3 :branch "feature-x"} (:outcome task)))
+            (is (= "feature-x" (remote-sync.settings/remote-sync-branch)))))))))
+
 (deftest import!-proceeds-when-version-matches-with-force-test
   (testing "import! proceeds with import when source version matches last imported version but force? is true"
     (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]

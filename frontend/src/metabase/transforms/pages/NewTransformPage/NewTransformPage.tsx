@@ -17,7 +17,7 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import { type Location, push, useParams } from "metabase/router";
+import { type Location, push, useParams, useRouter } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -27,6 +27,7 @@ import * as Lib from "metabase-lib";
 import type {
   Database,
   DraftTransformSource,
+  RemoteSyncWorktreeId,
   Transform,
 } from "metabase-types/api";
 
@@ -57,6 +58,10 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const { location } = useRouter();
+  // A worktree is an admin's working copy of its branch; a transform created into one is
+  // exempt from read-only sync.
+  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -66,7 +71,7 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     );
   }
 
-  if (isRemoteSyncReadOnly) {
+  if (isRemoteSyncReadOnly && worktreeId == null) {
     return (
       <PageContainer pos="relative" data-testid="transform-query-editor">
         <PaneHeader
@@ -87,6 +92,7 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     <NewTransformPageBody
       initialSource={initialSource}
       databases={transformsDatabases}
+      worktreeId={worktreeId}
     />
   );
 }
@@ -94,11 +100,13 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
 type NewTransformPageBodyProps = {
   initialSource: DraftTransformSource;
   databases: Database[];
+  worktreeId: RemoteSyncWorktreeId | null;
 };
 
 function NewTransformPageBody({
   initialSource,
   databases,
+  worktreeId,
 }: NewTransformPageBodyProps) {
   const {
     source,
@@ -133,7 +141,9 @@ function NewTransformPageBody({
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformList()));
+    dispatch(
+      push(Urls.transformList(worktreeId != null ? { worktreeId } : {})),
+    );
   };
 
   const isLocationAllowed = useCallback(
@@ -165,7 +175,12 @@ function NewTransformPageBody({
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link key="transform-list" to={Urls.transformList()}>
+              <Link
+                key="transform-list"
+                to={Urls.transformList(
+                  worktreeId != null ? { worktreeId } : {},
+                )}
+              >
                 {t`Transforms`}
               </Link>
               {t`New transform`}
@@ -217,6 +232,7 @@ function NewTransformPageBody({
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}
           closeOnEscape={!isLeaveWarningOpen}
+          worktreeId={worktreeId}
           onCreate={handleCreate}
           onClose={closeModal}
         />

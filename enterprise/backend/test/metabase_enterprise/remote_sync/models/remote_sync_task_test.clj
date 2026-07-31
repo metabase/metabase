@@ -396,7 +396,14 @@
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/complete-sync-task! (:id new-task))
           (rst/set-version! (:id new-task) "version 2")
-          (is (= "version 2" (rst/last-version))))))))
+          (is (= "version 2" (rst/last-version)))))
+      (testing "Ignores conflicted tasks — their version was never applied"
+        (let [conflicted (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/set-version! (:id conflicted) "conflicted version")
+          (rst/conflict-sync-task! (:id conflicted) ["some conflict"])
+          (is (= "version 2" (rst/last-version)))
+          (testing "but last-attempted-version counts them"
+            (is (= "conflicted version" (rst/last-attempted-version)))))))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for supersede-stale-tasks!

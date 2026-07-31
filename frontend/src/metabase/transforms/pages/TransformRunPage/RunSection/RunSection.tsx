@@ -15,9 +15,8 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
   Anchor,
@@ -100,10 +99,10 @@ function useScheduledDagRun(transform: Transform) {
 }
 
 export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsTransformSyncReadOnly(transform);
   const { isScheduled, schedule } = useScheduledDagRun(transform);
+  // Worktree transforms never run — they are a branch's working copy, not live pipelines.
+  const isRunnable = transform.worktree_id == null;
 
   const content = (
     <>
@@ -112,7 +111,7 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
           <RunStatusSection transform={transform} isScheduled={isScheduled} />
           <RunButtonSection
             transform={transform}
-            readOnly={readOnly}
+            readOnly={readOnly || !isRunnable}
             onScheduled={schedule}
           />
         </Group>

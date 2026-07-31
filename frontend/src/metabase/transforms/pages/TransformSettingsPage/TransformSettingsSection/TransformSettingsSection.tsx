@@ -12,9 +12,8 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
+import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName, Transform, UserId } from "metabase-types/api";
@@ -33,9 +32,7 @@ export const TransformSettingsSection = ({
   transform,
   readOnly,
 }: TransformSettingsSectionProps) => {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsTransformSyncReadOnly(transform);
 
   return (
     <Stack gap="2.5rem">

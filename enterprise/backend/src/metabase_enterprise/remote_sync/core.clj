@@ -65,16 +65,19 @@
                                                       (:collection_id table))))))
 
 (defenterprise transforms-editable?
-  "Determines if transforms should be editable.
+  "Determines if `transform` (an instance, or a create-request map) should be editable.
 
-  Returns true if transforms are editable, false otherwise. Transforms are globally
-  read-only when remote-sync is enabled and remote-sync-type is :read-only.
+  A worktree transform is editable by an admin whatever the sync type -- a worktree is a working copy of its
+  branch -- and by nobody else. Otherwise transforms are globally read-only when remote-sync is enabled and
+  remote-sync-type is :read-only.
 
   Always returns true on OSS."
   :feature :none
-  []
-  (or (not (settings/remote-sync-enabled))
-      (= (settings/remote-sync-type) :read-write)))
+  [transform]
+  (if (:worktree_id transform)
+    api/*is-superuser?*
+    (or (not (settings/remote-sync-enabled))
+        (= (settings/remote-sync-type) :read-write))))
 
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration. Worktree content is editable by an

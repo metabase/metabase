@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, RemoteSyncWorktreeId } from "metabase-types/api";
 
 import type { LibrarySectionType, TreeItem } from "../types";
 
@@ -40,6 +40,7 @@ export const createEmptyStateItem = (
   sectionType: LibrarySectionType,
   collectionId?: CollectionId,
   hideAction?: boolean,
+  worktreeId?: RemoteSyncWorktreeId,
 ): TreeItem => {
   const config = getEmptyStateConfig(sectionType);
 
@@ -47,7 +48,9 @@ export const createEmptyStateItem = (
   if (sectionType === "metrics" && collectionId && !hideAction) {
     actionUrl = Urls.newDataStudioMetric({ collectionId: collectionId });
   } else if (sectionType === "snippets" && !hideAction) {
-    actionUrl = Urls.newDataStudioSnippet();
+    actionUrl = Urls.newDataStudioSnippet(
+      worktreeId != null ? { worktreeId } : {},
+    );
   }
   // "data" section opens a modal, so no actionUrl
 

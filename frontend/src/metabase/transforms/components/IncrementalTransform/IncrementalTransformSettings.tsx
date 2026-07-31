@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
+import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
 import { getLibQuery } from "metabase/transforms/utils";
 import {
   Anchor,
@@ -20,7 +20,11 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { TableId, TransformSource } from "metabase-types/api";
+import type {
+  RemoteSyncWorktreeId,
+  TableId,
+  TransformSource,
+} from "metabase-types/api";
 import type { TransformType } from "metabase-types/api/transform";
 
 import {
@@ -42,6 +46,8 @@ type IncrementalTransformSettingsProps = {
   extraActions?: React.ReactNode;
   // When the target table already exists, its id powers a column picker for the unique key.
   targetTableId?: TableId;
+  // The worktree the transform lives in (or will be created into); read-only sync does not apply there.
+  worktreeId?: RemoteSyncWorktreeId | null;
 };
 
 export const IncrementalTransformSettings = ({
@@ -52,12 +58,13 @@ export const IncrementalTransformSettings = ({
   readOnly,
   extraActions,
   targetTableId,
+  worktreeId = null,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsTransformSyncReadOnly({
+    worktree_id: worktreeId,
+  });
 
   const { hasCheckpointOptions, transformType } =
     useHasCheckpointOptions(source);

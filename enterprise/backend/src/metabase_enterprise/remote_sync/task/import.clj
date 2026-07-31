@@ -25,7 +25,9 @@
           source (source/source-from-settings branch)
           snapshot (source.p/snapshot source)
           snapshot-version (source.p/version snapshot)
-          last-version (remote-sync.task/last-version)]
+          ;; last-attempted-version so a branch tip that already conflicted isn't re-checked every run;
+          ;; a manual import (which ignores this damping) still re-detects the conflict.
+          last-version (remote-sync.task/last-attempted-version)]
       (if (= last-version snapshot-version)
         (log/infof "Skipping auto-import: source version %s matches last imported version" snapshot-version)
         (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]

@@ -298,6 +298,7 @@ export type CreateTransformRequest = {
   target: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;
+  worktree_id?: RemoteSyncWorktreeId | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
 };

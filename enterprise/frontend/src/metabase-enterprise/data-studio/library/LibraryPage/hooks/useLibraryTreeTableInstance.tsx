@@ -142,7 +142,12 @@ export function useLibraryTreeTableInstance({
                 <Text c="text-disabled" fz="inherit">
                   {data.description}
                 </Text>
-                {!isRemoteSyncReadOnly && (
+                {/* In a worktree an admin can create everything except published
+                    tables, which are shared app-wide; read-only sync only gates
+                    the main app. */}
+                {(worktreeId != null
+                  ? data.sectionType !== "data"
+                  : !isRemoteSyncReadOnly) && (
                   <EmptyStateAction
                     data={data}
                     onPublishTableClick={onPublishTableClick}
@@ -225,6 +230,7 @@ export function useLibraryTreeTableInstance({
     ],
     [
       isRemoteSyncReadOnly,
+      worktreeId,
       onPublishTableClick,
       refreshMetricCollections,
       refreshTableCollections,

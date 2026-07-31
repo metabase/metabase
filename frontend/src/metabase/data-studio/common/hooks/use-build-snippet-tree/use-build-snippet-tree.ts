@@ -65,8 +65,10 @@ export const useBuildSnippetTree = ({
         : buildActiveSnippetTree(
             snippetCollections,
             snippets,
-            // Creating snippets is a main-app affordance: worktree content is created via pulls.
-            !isRemoteSyncReadOnly && worktreeId == null,
+            // A worktree is an admin's working copy of its branch, so read-only
+            // sync only gates snippet creation in the main app.
+            worktreeId != null || !isRemoteSyncReadOnly,
+            worktreeId,
           ),
     };
   }, [

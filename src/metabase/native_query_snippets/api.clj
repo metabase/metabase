@@ -77,20 +77,25 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `NativeQuerySnippet`."
+  "Create a new `NativeQuerySnippet`. With a `collection_id` the collection's worktree always wins, so pass
+  `worktree_id` only for a snippet at a worktree's root."
   [_route-params
    _query-params
-   {:keys [content description name collection_id]} :- [:map
-                                                        [:content       :string]
-                                                        [:description   {:optional true} [:maybe :string]]
-                                                        [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-snippet-name-is-unique name (remote-sync/worktree-id-of :model/Collection collection_id))
+   {:keys [content description name collection_id worktree_id]} :- [:map
+                                                                    [:content       :string]
+                                                                    [:description   {:optional true} [:maybe :string]]
+                                                                    [:name          native-query-snippet/NativeQuerySnippetName]
+                                                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                    [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]]]
+  (check-snippet-name-is-unique name (if collection_id
+                                       (remote-sync/worktree-id-of :model/Collection collection_id)
+                                       worktree_id))
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
                  :name          name
-                 :collection_id collection_id}]
+                 :collection_id collection_id
+                 :worktree_id   worktree_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 

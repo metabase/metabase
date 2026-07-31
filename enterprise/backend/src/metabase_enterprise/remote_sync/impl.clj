@@ -60,10 +60,13 @@
   "Deletes any remote sync content that was NOT part of the import.
 
   Takes a sequence of remote-synced collection IDs and imported-data map from spec/extract-imported-entities.
-  For each entity-id based model, deletes entities whose entity_id is not in the imported set.
+  For each entity-id based model, deletes entities whose entity_id is not in the imported set. Inside a
+  worktree the imported (branch) ids are first translated to the worktree's own entity_ids through the
+  remapping table, and every delete is restricted to the worktree's rows.
 
   Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
-  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
+  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id — but only by a
+  main-app import; a worktree pull never touches models that aren't worktree-scoped.
 
   Path-based models (Table, Field) are not removed here - they are controlled by published table settings.
 
@@ -71,7 +74,9 @@
   Collection are deleted before Collection itself)."
   [synced-collection-ids {:keys [by-entity-id]}]
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
-          :let [entity-ids (get by-entity-id (:model-type model-spec) [])
+          :when (spec/reconcilable-in-scope? model-spec)
+          :let [entity-ids (spec/local-imported-ids model-spec
+                                                    (get by-entity-id (:model-type model-spec) []))
                 clauses    (spec/removal-where-clauses model-spec synced-collection-ids entity-ids)]]
     (cond
       ;; Scoped model with no collections to scope to — nothing to delete
@@ -205,42 +210,48 @@
   [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list)
-        models-present (spec/models-in-import ingest-list)
-        ;; Extract namespace info from imported Collection entities
-        import-ns-info
-        (reduce (fn [acc path]
-                  (if (= "Collection" (:model (last path)))
-                    (let [entity (serialization/ingest-one ingestable path)]
-                      (if-let [ns (some-> (:namespace entity) keyword name)]
-                        (-> acc
-                            (update :namespaces conj ns)
-                            (update-in [:entity-ids ns] (fnil conj #{}) (:entity_id entity)))
-                        acc))
-                    acc))
-                {:namespaces #{} :entity-ids {}}
-                ingest-list)
-        import-namespace-collections (:namespaces import-ns-info)
-        ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
-        feature-conflicts (spec/check-feature-conflicts models-present import-namespace-collections)
-        ns-coll-conflicts (spec/check-namespace-collection-conflicts
-                           import-namespace-collections
-                           (:entity-ids import-ns-info))
-        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type
-                                                                 :worktree_id nil)]
-                           (when (and first-import?
-                                      (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
-                                                 collection/library-entity-id)
-                                      (not (t2/exists? :model/RemoteSyncObject
-                                                       :model_type "Collection"
-                                                       :model_id (:id local-library))))
-                             {:type :library-conflict
-                              :category "Library"
-                              :message "Import contains Library but local instance has an unsynced Library collection"}))
-        first-import-conflicts (concat
-                                feature-conflicts
-                                ns-coll-conflicts
-                                (when library-conflict [library-conflict]))]
-    {:first-import-conflicts (vec first-import-conflicts)
+        first-import-conflicts
+        ;; Feature/namespace/library conflicts protect the main app's unsynced content from a first import.
+        ;; A worktree pull only ever writes the worktree's own rows, so there is nothing to protect there —
+        ;; and a fresh worktree must never be blocked by unsynced main-app content.
+        (if serdes/*worktree-id*
+          []
+          (let [models-present (spec/models-in-import ingest-list)
+                ;; Extract namespace info from imported Collection entities
+                import-ns-info
+                (reduce (fn [acc path]
+                          (if (= "Collection" (:model (last path)))
+                            (let [entity (serialization/ingest-one ingestable path)]
+                              (if-let [ns (some-> (:namespace entity) keyword name)]
+                                (-> acc
+                                    (update :namespaces conj ns)
+                                    (update-in [:entity-ids ns] (fnil conj #{}) (:entity_id entity)))
+                                acc))
+                            acc))
+                        {:namespaces #{} :entity-ids {}}
+                        ingest-list)
+                import-namespace-collections (:namespaces import-ns-info)
+                ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
+                feature-conflicts (spec/check-feature-conflicts models-present import-namespace-collections)
+                ns-coll-conflicts (spec/check-namespace-collection-conflicts
+                                   import-namespace-collections
+                                   (:entity-ids import-ns-info))
+                library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type
+                                                                         :worktree_id nil)]
+                                   (when (and first-import?
+                                              (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
+                                                         collection/library-entity-id)
+                                              (not (t2/exists? :model/RemoteSyncObject
+                                                               :model_type "Collection"
+                                                               :model_id (:id local-library)
+                                                               :worktree_id nil)))
+                                     {:type :library-conflict
+                                      :category "Library"
+                                      :message "Import contains Library but local instance has an unsynced Library collection"}))]
+            (vec (concat feature-conflicts
+                         ns-coll-conflicts
+                         (when library-conflict [library-conflict])))))]
+    {:first-import-conflicts first-import-conflicts
      :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
                                    (spec/check-content-deletion-conflicts imported-data))}))
 
@@ -351,7 +362,9 @@
         seen-paths          (:seen load-result)
         imported-data       (spec/extract-imported-entities seen-paths)]
     (remote-sync.task/update-progress! task-id 0.8)
-    (when (and has-transforms?
+    ;; The remote-sync-transforms setting is global app state; only a main-app import may toggle it.
+    (when (and (nil? serdes/*worktree-id*)
+               has-transforms?
                (not (settings/remote-sync-transforms)))
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! true))
@@ -364,7 +377,8 @@
       (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                              (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
-    (when (and (not has-transforms?)
+    (when (and (nil? serdes/*worktree-id*)
+               (not has-transforms?)
                (settings/remote-sync-transforms))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! false))
@@ -400,15 +414,6 @@
   (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
                                      (vals (:by-path imported-data)))))
 
-(defn- outcome-branch
-  "The git branch the running operation syncs with, for reporting in a task's `:outcome`: the worktree's own
-  branch when one is in scope ([[serdes/*worktree-id*]]), otherwise the main app's `remote-sync-branch`
-  setting -- a worktree pull/push never involves the setting's branch."
-  []
-  (if-some [worktree-id serdes/*worktree-id*]
-    (t2/select-one-fn :branch :model/RemoteSyncWorktree :id worktree-id)
-    (settings/remote-sync-branch)))
-
 (defn- fold-data-app-changes
   "Fold the count of data apps a pull changed — upserted *or* removed — into its
   `:outcome`. Data apps live under `data_apps/` — outside serdes — and are
@@ -418,7 +423,7 @@
   `count 0`. Caller guarantees `da-changed` is positive."
   [outcome da-changed]
   (case (:kind outcome)
-    "pull-skipped" {:kind "pulled" :count da-changed :branch (outcome-branch)}
+    "pull-skipped" {:kind "pulled" :count da-changed}
     "pulled"       (update outcome :count (fnil + 0) da-changed)
     "merged"       (update outcome :pulled (fnil + 0) da-changed)
     outcome))
@@ -510,8 +515,7 @@
     {:status :success
      :version snapshot-version
      :outcome {:kind "pulled"
-               :count (+ (pulled-change-count imported-data) (count deletes))
-               :branch (outcome-branch)}}))
+               :count (+ (pulled-change-count imported-data) (count deletes))}}))
 
 (defn- capture-dirty-objects
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
@@ -567,8 +571,7 @@
          :version       (source.p/version snapshot)
          :merge-summary summary
          :outcome       {:kind "pulled"
-                         :count (apply + (vals summary))
-                         :branch (outcome-branch)}}))))
+                         :count (apply + (vals summary))}}))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -656,8 +659,7 @@
                   {:status :success
                    :version snapshot-version
                    :outcome {:kind "pulled"
-                             :count (pulled-change-count imported-data)
-                             :branch (outcome-branch)}}))
+                             :count (pulled-change-count imported-data)}}))
 
               ;; --- Normal pull ---
               ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
@@ -694,8 +696,7 @@
                 {:status :success
                  :version snapshot-version
                  :outcome {:kind "pulled"
-                           :count (pulled-change-count imported-data)
-                           :branch (outcome-branch)}}))]
+                           :count (pulled-change-count imported-data)}}))]
         ;; Data apps ride the pull: re-materialize from the real source snapshot
         ;; (the repo file tree under `data_apps/`), not the synthetic merged
         ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
@@ -798,9 +799,8 @@
              ;; An empty merge pushed nothing: it's a pull when remote changes were folded in, or a no-op
              ;; when nothing changed on either side.
              :outcome (cond
-                        (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
-                                      :branch (outcome-branch)}
-                        (pos? pulled) {:kind "pulled" :count pulled :branch (outcome-branch)}
+                        (not empty?)  {:kind "merged" :pulled pulled :pushed pushed-count}
+                        (pos? pulled) {:kind "pulled" :count pulled}
                         :else         {:kind "push-skipped"})})
           ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
           ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
@@ -1086,7 +1086,9 @@
 (defn- exportable-write-rows
   "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject id (untracked deps get :id nil)."
   []
-  (let [rso-id (u/index-by (juxt :model_type :model_id) :id (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
+  (let [rso-id (u/index-by (juxt :model_type :model_id) :id
+                           (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+                                      :worktree_id serdes/*worktree-id*))]
     (for [[model ids] (spec/exportable-entities)
           id          ids]
       {:model_type model :model_id id :id (rso-id [model id])})))
@@ -1168,7 +1170,7 @@
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
           {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (outcome-branch)}})))))
+           :outcome {:kind "pushed" :count (count synced)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1203,8 +1205,7 @@
           (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
           {:status :success
            :outcome {:kind "pushed"
-                     :count (+ (count writes) (count delete-paths))
-                     :branch (outcome-branch)}})))))
+                     :count (+ (count writes) (count delete-paths))}})))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
@@ -1310,6 +1311,7 @@
   "Cache for remote changes check to avoid frequent git operations.
    Structure: {:last-checked <instant>
                :branch <branch-name>
+               :worktree-id <worktree id or nil for the main app>
                :remote-version <git-sha>
                :local-version <git-sha or nil>
                :has-changes? <boolean>}"
@@ -1331,6 +1333,8 @@
   (and cache-state
        (not force-refresh?)
        (= current-branch (:branch cache-state))
+       ;; :local-version is per sync scope, so a cached answer is only good for the scope that computed it.
+       (= serdes/*worktree-id* (:worktree-id cache-state))
        (not (cache-expired? (:last-checked cache-state)))))
 
 (defn- snapshot-or-missing-branch
@@ -1363,6 +1367,7 @@
   (let [current-remote (source.p/version snapshot)
         result {:last-checked (t/instant)
                 :branch current-branch
+                :worktree-id serdes/*worktree-id*
                 :remote-version current-remote
                 :local-version last-imported
                 ;; has-changes? is true if nothing's been imported yet, or if
@@ -1384,8 +1389,8 @@
      picks up a branch switch immediately)
 
    `:branch` overrides the branch to check (a worktree passes its own branch, since a worktree never touches the
-   `remote-sync-branch` setting); the cache keys on the branch, so a worktree check does not serve the main app a
-   stale answer.
+   `remote-sync-branch` setting); the cache keys on the branch and the sync scope ([[serdes/*worktree-id*]]), so
+   a worktree check and a main-app check never serve each other a stale answer.
 
    Cache is invalidated if:
    - TTL has expired
@@ -1411,10 +1416,17 @@
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
   Takes a result map with a :status key (either :success, :conflict, or :error) and optional :message key, a
-  RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
-  provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
-  stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
-  task as failed with 'Unexpected Error'.
+  RemoteSyncTask ID, and options:
+
+  - `:branch` -- the git branch the operation synced with. The import/export internals don't know it (a branch
+    switch imports a branch the settings don't hold yet, and a worktree has its own), so it is stamped onto the
+    successful result's `:outcome` here, where the task is finalized, rather than assembled inside them.
+  - `:worktree-id` -- the remote-sync worktree the task ran under, nil for the main app. Only a main-app
+    success writes `branch` to the remote-sync-branch setting -- a worktree operation never touches it.
+
+  On success, marks the task complete with the branch-stamped outcome and invalidates the remote changes
+  cache. On conflict, sets the version and stores the conflicts. On error, marks the task as failed with the
+  error message. For any other status, marks the task as failed with 'Unexpected Error'.
 
   If the task has already been terminated (`ended_at` is set, e.g., because an admin cancelled it
   via POST /current-task/cancel while the virtual thread was still running), this function logs a
@@ -1423,7 +1435,7 @@
 
   The read and the subsequent write happen in a single transaction with `SELECT ... FOR UPDATE` so
   a concurrent cancel cannot slip in between the terminated-check and the result-write."
-  [result task-id & [branch]]
+  [result task-id & {:keys [branch worktree-id]}]
   (let [proceed?
         (t2/with-transaction [_conn]
           (let [task (t2/select-one :model/RemoteSyncTask :id task-id {:for :update})]
@@ -1441,9 +1453,12 @@
               (do
                 (case (:status result)
                   :success (do
-                             (when branch
+                             (when (and branch (nil? worktree-id))
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
+                             (remote-sync.task/complete-sync-task!
+                              task-id
+                              (cond-> (:outcome result)
+                                (and branch (:outcome result)) (assoc :branch branch))))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
@@ -1468,15 +1483,16 @@
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
 
-  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion (nil to
-  leave the setting alone -- worktree operations never touch it), a sync-fn function that takes a task-id and
-  performs the sync operation, and an optional :on-success callback that receives [task-id result] after a
-  successful sync. Creates a new task (or errors if one is already running), then executes the sync function in
-  a virtual thread with a timeout.
+  Takes a task-type string ('import' or 'export'), the git branch the operation syncs with (stamped into a
+  successful task's `:outcome`, and -- for main-app operations only -- written to the remote-sync-branch
+  setting on success), a sync-fn function that takes a task-id and performs the sync operation, and an
+  optional :on-success callback that receives [task-id result] after a successful sync. Creates a new task
+  (or errors if one is already running), then executes the sync function in a virtual thread with a timeout.
 
   `:worktree-id`, when given, is bound as [[serdes/*worktree-id*]] around task creation so the new
-  RemoteSyncTask row is stamped with it. A virtual thread does not inherit the caller's dynamic bindings, so
-  `sync-fn` is responsible for re-establishing that binding for its own work.
+  RemoteSyncTask row is stamped with it, and marks `branch` as the worktree's own -- never the setting's.
+  A virtual thread does not inherit the caller's dynamic bindings, so `sync-fn` is responsible for
+  re-establishing that binding for its own work.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
   [task-type branch sync-fn & {:keys [on-success worktree-id]}]
@@ -1491,7 +1507,7 @@
                         (log/errorf "Remote sync task failed: %s" (ex-message e))
                         {:status :error
                          :message (source-error-message e)}))]
-         (handle-task-result! result task-id branch)
+         (handle-task-result! result task-id :branch branch :worktree-id worktree-id)
          (when (and on-success (= :success (:status result)))
            (try
              (on-success task-id result)
@@ -1542,7 +1558,7 @@
                          ;; The un-pushed local changes a switch would discard, so the client can name exactly
                          ;; what would be lost without a second round-trip to /dirty.
                          :dirty_objects (remote-sync.object/dirty-objects worktree-id)})))
-      (run-async! "import" (when-not worktree-id branch)
+      (run-async! "import" branch
                   (fn [task-id]
                     (binding [serdes/*worktree-id* worktree-id]
                       (when (and (nil? worktree-id) (branch-changed-since-scheduling? pre-task-branch))
@@ -1599,7 +1615,7 @@
           base-snapshot          (when (and (some? last-task-version)
                                             (not= last-task-version current-source-version))
                                    (source.p/snapshot-at source last-task-version))]
-      (run-async! "export" (when-not worktree-id branch)
+      (run-async! "export" branch
                   (fn [task-id]
                     (binding [serdes/*worktree-id* worktree-id]
                       (when (and (nil? worktree-id) (branch-changed-since-scheduling? pre-task-branch))

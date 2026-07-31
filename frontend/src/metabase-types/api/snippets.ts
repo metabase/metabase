@@ -34,6 +34,8 @@ export interface CreateSnippetRequest {
   content: string;
   description?: string | null;
   collection_id?: RegularCollectionId | null;
+  /** With a collection_id the collection's worktree always wins; pass only for a worktree-root snippet. */
+  worktree_id?: RemoteSyncWorktreeId | null;
 }
 
 export interface UpdateSnippetRequest {

@@ -14,11 +14,15 @@ import { CreateTransformMenu } from "./CreateTransformMenu";
 
 function setup({
   isMetabotEnabled = true,
-}: { isMetabotEnabled?: boolean } = {}) {
+  worktreeId,
+}: {
+  isMetabotEnabled?: boolean;
+  worktreeId?: number;
+} = {}) {
   return setupMetabot({
     ui: (
       <>
-        <CreateTransformMenu />
+        <CreateTransformMenu worktreeId={worktreeId} />
         <Metabot />
       </>
     ),
@@ -63,5 +67,17 @@ describe("CreateTransformMenu", () => {
 
     await assertMetabotVisible();
     expect(await metabotInput()).toHaveTextContent("Create a transform that");
+  });
+
+  it("offers only in-worktree creation options in a worktree view", async () => {
+    setup({ isMetabotEnabled: true, worktreeId: 7 });
+    await openMenu();
+
+    expect(await screen.findByText("Query builder")).toBeInTheDocument();
+    expect(screen.getByText("SQL query")).toBeInTheDocument();
+    expect(screen.getByText("Copy of a saved question")).toBeInTheDocument();
+    // Metabot and transform folders create main-app content.
+    expect(screen.queryByText("Metabot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transform folder")).not.toBeInTheDocument();
   });
 });

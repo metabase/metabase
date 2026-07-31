@@ -64,20 +64,23 @@ const setup = ({
 
   const onItemSelect = jest.fn();
 
-  renderWithProviders(<WorktreesSidebarSection onItemSelect={onItemSelect} />, {
-    withRouter: true,
-    withDND: true,
-    storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: isAdmin }),
-      settings: mockSettings({
-        "remote-sync-enabled": remoteSyncEnabled,
-        "remote-sync-branch": "main",
-        "remote-sync-type": "read-write",
+  const { store } = renderWithProviders(
+    <WorktreesSidebarSection onItemSelect={onItemSelect} />,
+    {
+      withRouter: true,
+      withDND: true,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+        settings: mockSettings({
+          "remote-sync-enabled": remoteSyncEnabled,
+          "remote-sync-branch": "main",
+          "remote-sync-type": "read-write",
+        }),
       }),
-    }),
-  });
+    },
+  );
 
-  return { onItemSelect };
+  return { onItemSelect, store };
 };
 
 describe("WorktreesSidebarSection", () => {
@@ -387,5 +390,48 @@ describe("WorktreesSidebarSection", () => {
       .lastCall("path:/api/ee/remote-sync/worktree", { method: "POST" })
       ?.request?.json();
     expect(body).toEqual({ branch: "develop" });
+
+    // Creation immediately pulls the branch's content into the new worktree.
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/import"),
+      ).toBe(true);
+    });
+    const importBody = await fetchMock.callHistory
+      .lastCall("path:/api/ee/remote-sync/import")
+      ?.request?.json();
+    expect(importBody).toEqual({
+      branch: "develop",
+      expected_branch: "develop",
+      worktree_id: 1,
+    });
+  });
+
+  it("toasts when the pull into a freshly created worktree fails", async () => {
+    // The toaster (UndoListing) isn't mounted in this harness, so assert the dispatched
+    // toast via the undo store rather than the DOM.
+    const { store } = setup({ worktrees: [] });
+
+    fetchMock.removeRoute("remote-sync-import");
+    fetchMock.post(
+      "path:/api/ee/remote-sync/import",
+      { status: 500, body: { message: "boom" } },
+      { name: "remote-sync-import" },
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create a new worktree" }),
+    );
+    await userEvent.type(await screen.findByLabelText("Branch"), "develop");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create worktree" }),
+    );
+
+    await waitFor(() => {
+      const messages = store
+        .getState()
+        .undo.map((undo) => String(undo.message));
+      expect(messages.some((m) => /boom/.test(m))).toBe(true);
+    });
   });
 });

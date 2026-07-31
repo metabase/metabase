@@ -237,6 +237,37 @@ describe("remote-sync-listener-middleware", () => {
       );
     });
 
+    it("should clear task when import succeeds without starting a task", async () => {
+      // "No changes since last import": the backend starts no task, so the optimistic
+      // pending state must be cleared instead of polling /current-task forever.
+      fetchMock.post("path:/api/ee/remote-sync/import", {
+        status: "success",
+        task_id: null,
+        message: "No changes since last import",
+      });
+
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.importChanges.initiate({
+          branch: "main",
+          expected_branch: "main",
+        }),
+      );
+
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
+      );
+
+      // Give middleware time to process the fulfillment
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Unjustified type cast. FIXME
+      const state = store.getState() as TestState;
+      expect(state.remoteSyncPlugin?.showModal).toBe(false);
+      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+    });
+
     it("should clear task when import request fails", async () => {
       fetchMock.post("path:/api/ee/remote-sync/import", {
         status: 500,

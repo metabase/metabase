@@ -94,13 +94,18 @@ export const useWorktreeSyncActions = (worktree: RemoteSyncWorktree) => {
     }
 
     try {
-      await importChanges({
+      const result = await importChanges({
         branch: worktree.branch,
         expected_branch: worktree.branch,
         worktree_id: worktree.id,
       }).unwrap();
 
       trackPullChanges({ triggeredFrom: "app-bar", force: false });
+      if (result.task_id == null) {
+        // The backend skipped the pull because the branch hasn't moved; no task means
+        // no progress modal, so acknowledge here.
+        sendToast({ message: t`No changes to pull` });
+      }
     } catch (error) {
       const { hasConflict, errorMessage } = parseSyncError(error);
       if (hasConflict) {

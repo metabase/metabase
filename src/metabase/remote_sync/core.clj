@@ -102,12 +102,12 @@
   true)
 
 (defenterprise transforms-editable?
-  "Returns if transforms can be edited.
+  "Returns if `transform` (an instance, or a create-request map) can be edited.
 
-  Returns false if remote-sync is enabled and remote-sync-type is :read-only.
-  Always true on OSS."
+  Returns false if remote-sync is enabled and remote-sync-type is :read-only, unless the transform belongs to a
+  worktree, which an admin can always edit. Always true on OSS."
   metabase-enterprise.remote-sync.core
-  []
+  [_transform]
   true)
 
 (defenterprise model-editable?
