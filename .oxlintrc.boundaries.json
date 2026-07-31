@@ -1,0 +1,59 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "import"
+  ],
+  "jsPlugins": [
+    "./frontend/lint/boundaries-plugin.mjs"
+  ],
+  "categories": {
+    "correctness": "off"
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": [
+          "./tsconfig.json",
+          "./e2e/tsconfig.json"
+        ],
+        "noWarnOnMultipleProjects": true
+      }
+    }
+  },
+  "ignorePatterns": [
+    "**/*.d.ts",
+    "e2e/support/cypress_sample_database.js",
+    "e2e/support/cypress_sample_instance_data.js",
+    "e2e/support/assets/**",
+    "e2e/embedding-sdk-host-apps/**",
+    "frontend/test/__support__/custom-viz-fixtures/**/*.js",
+    "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+    "**/dist/**",
+    "resources/**",
+    "**/__snapshots__/**",
+    "!.storybook/**",
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
+    "enterprise/frontend/src/custom-viz/**"
+  ],
+  "rules": {
+    "import/no-duplicates": [
+      "error",
+      {
+        "considerQueryString": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "frontend/src/**/*.{js,jsx,ts,tsx}",
+        "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "boundaries/element-types": "error",
+        "boundaries/no-unknown-files": "error"
+      }
+    }
+  ]
+}
