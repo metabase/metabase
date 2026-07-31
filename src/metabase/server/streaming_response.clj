@@ -64,6 +64,11 @@
    response object may have been recycled and must not be touched."
   nil)
 
+(def ^:private ^:dynamic *errored?*
+  "An `AtomicBoolean` set to `true` once [[write-error!]] has handled an error. Error paths dispose of
+   the output stream themselves, so the worker thread uses this to decide whether to close it."
+  nil)
+
 (defn- async-context-completed?
   "Returns true if the async context has already been completed (by timeout, error, or worker thread).
    When true, the response object may have been recycled by Jetty and must not be touched."
@@ -181,6 +186,8 @@
   ([os obj export-format]
    (write-error! os obj export-format nil))
   ([^OutputStream os obj export-format status-code]
+   (when *errored?*
+     (.set ^AtomicBoolean *errored?* true))
    (cond
      (async-context-completed?)
      (log-skipped-error! obj)
@@ -239,7 +246,8 @@
   (let [task (^:once fn* []
                (binding [*response*   response
                          *request*    request
-                         *completed?* completed?]
+                         *completed?* completed?
+                         *errored?*   (AtomicBoolean. false)]
                  (try
                    (do-f* f os finished-chan canceled-chan)
                    (catch Throwable e
@@ -247,6 +255,11 @@
                      (a/>!! finished-chan :unexpected-error)
                      (write-error! os e nil))
                    (finally
+                     ;; A gzip trailer is only written on close, so a stream left open truncates the response.
+                     ;; Not on error paths: they close it themselves, and an aborted connection must stay
+                     ;; without a clean terminator.
+                     (when-not (.get ^AtomicBoolean *errored?*)
+                       (try (.close os) (catch Throwable _)))
                      ;; Clear the interrupted flag to prevent the thread from
                      ;; carrying stale interrupted state to the next task.
                      (Thread/interrupted)

@@ -525,3 +525,15 @@
       (is (= "real_dir"
              (.getName ^File (#'api.serialization/find-serialization-dir dst))))
       (run! io/delete-file (reverse (file-seq dst))))))
+
+(deftest export-gzip-encoded-archive-is-complete-test
+  (testing "a gzip-encoded export download is a complete, non-truncated archive"
+    ;; Global (with-redefs) mode so the real Jetty handler threads see the feature, otherwise 402.
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:serialization}
+        ;; Needs a real request: the mock client hands the handler a plain ByteArrayOutputStream, so it
+        ;; never builds the GZIPOutputStream whose trailer is missing.
+        (let [resp (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
+                                         {:request-options {:headers {"accept-encoding" "gzip"}
+                                                            :as      :byte-array}})]
+          (is (seq (entry-names resp))))))))
