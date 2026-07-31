@@ -101,7 +101,9 @@ describe("fetchDataAppBundleCode", () => {
 
 describe("instantiateDataAppBundle", () => {
   const setup = (factoryResult: unknown) => {
-    mockedCreateSandbox.mockReturnValue({
+    // Sandbox creation is async — Near-Membrane defers setup to the realm
+    // iframe's `load` event once `iframeSrc` is set.
+    mockedCreateSandbox.mockResolvedValue({
       // @ts-expect-error - the factory result is deliberately untyped: these tests
       // feed the loader malformed values (`null`, a non-function `component`).
       evaluate: () => () => factoryResult,
@@ -114,7 +116,17 @@ describe("instantiateDataAppBundle", () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  it("returns the component and narrows providerProps to the allowed keys", () => {
+  it("points the sandbox at the realm-host document", async () => {
+    const { instantiate } = setup({ component: () => null });
+
+    await instantiate();
+
+    expect(mockedCreateSandbox).toHaveBeenCalledWith(
+      expect.objectContaining({ realmHostUrl: "/api/apps/sandbox-host" }),
+    );
+  });
+
+  it("returns the component and narrows providerProps to the allowed keys", async () => {
     const component = () => null;
     const { instantiate } = setup({
       component,
@@ -126,7 +138,7 @@ describe("instantiateDataAppBundle", () => {
       },
     });
 
-    const loaded = instantiate();
+    const loaded = await instantiate();
 
     expect(loaded.component).toBe(component);
     expect(loaded.providerProps).toEqual({
@@ -137,10 +149,12 @@ describe("instantiateDataAppBundle", () => {
 
   it.each<unknown>([{ component: "not a function" }, null])(
     "throws when the factory returns %p",
-    (factoryResult) => {
+    async (factoryResult) => {
       const { instantiate } = setup(factoryResult);
 
-      expect(instantiate).toThrow(/missing a `component` function/);
+      await expect(instantiate()).rejects.toThrow(
+        /missing a `component` function/,
+      );
     },
   );
 });

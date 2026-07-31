@@ -61,6 +61,15 @@ export function getProviderOptions(
           "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
       },
     },
+    mistral: {
+      value: "mistral",
+      label: "Mistral",
+      apiKey: {
+        // Mistral keys have no recognizable prefix
+        placeholder: t`Enter your Mistral API key`,
+        addKeyUrl: "https://console.mistral.ai/api-keys",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -75,6 +84,15 @@ export function getProviderOptions(
       apiKey: {
         placeholder: "sk-or-v1-...",
         addKeyUrl: "https://openrouter.ai/keys",
+      },
+    },
+    zai: {
+      value: "zai",
+      label: "Z.AI",
+      apiKey: {
+        // Z.AI keys have no recognizable prefix
+        placeholder: t`Enter your Z.AI API key`,
+        addKeyUrl: "https://z.ai/manage-apikey/apikey-list",
       },
     },
   };
@@ -97,18 +115,26 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "azure" ||
     provider === "bedrock" ||
     provider === "metabase" ||
+    provider === "mistral" ||
     provider === "openai" ||
-    provider === "openrouter"
+    provider === "openrouter" ||
+    provider === "zai"
   );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-mistral-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
+  | "llm-zai-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  mistral: "llm-mistral-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
+  zai: "llm-zai-api-key",
 };
 
 export const AZURE_MODEL_FAMILIES = [

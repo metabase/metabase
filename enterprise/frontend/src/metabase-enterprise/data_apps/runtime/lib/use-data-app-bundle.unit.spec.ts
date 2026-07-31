@@ -43,7 +43,9 @@ function setup({
     mockedFetch.mockResolvedValue({ code, allowedHosts });
   }
   if (app) {
-    mockedInstantiate.mockReturnValue(app);
+    // Instantiating is async: Near-Membrane defers setup to the realm iframe's
+    // `load` event once the sandbox is given a realm-host document.
+    mockedInstantiate.mockResolvedValue(app);
   }
   return renderHook(() => useDataAppBundle("sales"));
 }

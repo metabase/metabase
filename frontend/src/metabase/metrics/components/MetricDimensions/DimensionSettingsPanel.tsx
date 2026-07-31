@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,6 +7,10 @@ import {
 } from "metabase/api/metric";
 import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import {
+  trackMetricDimensionSetDefault,
+  trackMetricDimensionUpdated,
+} from "metabase/metrics/analytics";
 import {
   Button,
   Group,
@@ -22,9 +26,11 @@ import type {
   CardQueryMetadata,
   MetricDimension,
   MetricId,
+  TemporalUnit,
   UpdateMetricDimensionRequest,
 } from "metabase-types/api";
 
+import { DimensionTimeGroupingSelect } from "./DimensionTimeGroupingSelect";
 import S from "./MetricDimensions.module.css";
 import {
   getDimensionTypeLabel,
@@ -56,11 +62,18 @@ export function DimensionSettingsPanel({
 
   const [displayName, setDisplayName] = useState(dimension.display_name);
   const [description, setDescription] = useState(dimension.description ?? "");
+  const [defaultTemporalUnit, setDefaultTemporalUnit] = useState(
+    dimension.default_temporal_unit,
+  );
 
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
   const showSetAsDefaultButton = !isOrphaned(dimension) && !dimension.default;
+
+  useEffect(() => {
+    setDefaultTemporalUnit(dimension.default_temporal_unit);
+  }, [dimension.default_temporal_unit]);
 
   const persist = async (changes: DimensionChanges) => {
     try {
@@ -69,8 +82,10 @@ export function DimensionSettingsPanel({
         dimensionId: dimension.id,
         ...changes,
       }).unwrap();
+      trackMetricDimensionUpdated(metricId, dimension.id, "success");
       return true;
     } catch {
+      trackMetricDimensionUpdated(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't update ${dimension.display_name}`);
       return false;
     }
@@ -98,13 +113,24 @@ export function DimensionSettingsPanel({
     }
   };
 
+  const handleTimeGroupingChange = async (unit: TemporalUnit) => {
+    const previousUnit = defaultTemporalUnit;
+    setDefaultTemporalUnit(unit);
+    const isPersisted = await persist({ default_temporal_unit: unit });
+    if (!isPersisted) {
+      setDefaultTemporalUnit(previousUnit);
+    }
+  };
+
   const handleSetDefault = async () => {
     try {
       await setDefaultDimension({
         metricId,
         dimension_id: dimension.id,
       }).unwrap();
+      trackMetricDimensionSetDefault(metricId, dimension.id, "success");
     } catch {
+      trackMetricDimensionSetDefault(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't make ${dimension.display_name} the default`);
     }
   };
@@ -135,12 +161,22 @@ export function DimensionSettingsPanel({
         )}
       </Group>
 
-      <TextInput
-        label={t`Display name`}
-        value={displayName}
-        onChange={(event) => setDisplayName(event.currentTarget.value)}
-        onBlur={handleNameBlur}
-      />
+      <Group align="flex-end" wrap="nowrap">
+        <TextInput
+          flex={1}
+          miw={0}
+          label={t`Display name`}
+          value={displayName}
+          onChange={(event) => setDisplayName(event.currentTarget.value)}
+          onBlur={handleNameBlur}
+        />
+        <DimensionTimeGroupingSelect
+          metricId={metricId}
+          dimension={dimension}
+          value={defaultTemporalUnit}
+          onChange={handleTimeGroupingChange}
+        />
+      </Group>
 
       <Textarea
         label={t`Description`}

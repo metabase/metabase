@@ -187,6 +187,7 @@ export function TreeTable<TData extends TreeNodeData>({
       renderRowLink={renderRowLink}
       renderSubRow={renderSubRow}
       hierarchical={hierarchical}
+      isClickable={Boolean(onRowClick) || Boolean(renderRowLink)}
     />
   );
 

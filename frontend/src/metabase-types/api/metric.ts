@@ -1,5 +1,5 @@
 import type { Collection, CollectionId } from "./collection";
-import type { DatasetColumn, RowValue } from "./dataset";
+import type { DatasetColumn, RowValue, TemporalUnit } from "./dataset";
 import type { FieldValue } from "./field";
 
 export type MetricId = number;
@@ -26,6 +26,7 @@ export type MetricDimension = {
   effective_type: string;
   semantic_type: string | null;
   default?: boolean;
+  default_temporal_unit?: TemporalUnit;
   status?: MetricDimensionStatus;
   group?: MetricDimensionGroup;
   sources?: MetricDimensionSource[];
@@ -190,5 +191,6 @@ export type UpdateMetricDimensionRequest = {
   dimensionId: DimensionId;
   display_name?: string;
   description?: string | null;
+  default_temporal_unit?: TemporalUnit;
   source?: MetricDimensionSource;
 };

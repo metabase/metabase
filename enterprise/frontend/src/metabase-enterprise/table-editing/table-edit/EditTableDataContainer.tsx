@@ -10,7 +10,7 @@ import {
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
 import { useSelector } from "metabase/redux";
-import { useParams, useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
@@ -45,7 +45,7 @@ type EditTableDataContainerParams = {
 };
 
 export const EditTableDataContainer = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { dbId: dbIdParam, tableId: tableIdParam } =
     useParams<EditTableDataContainerParams>();
 

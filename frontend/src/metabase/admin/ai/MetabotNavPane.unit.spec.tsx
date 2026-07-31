@@ -94,6 +94,14 @@ describe("MetabotNavPane", () => {
     ).toBeInTheDocument();
   });
 
+  it("no longer exposes the Auditing folder or CLI analytics with audit_app", async () => {
+    setup({ aiControlsEnabled: true, auditAppEnabled: true });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(screen.queryByText("Auditing")).not.toBeInTheDocument();
+    expect(screen.queryByText("CLI analytics")).not.toBeInTheDocument();
+  });
+
   it("displays the ai controls upsell links when the ai controls feature is unavailable", async () => {
     setup({ aiControlsEnabled: false, aiFeaturesEnabled: true });
 
@@ -122,73 +130,5 @@ describe("MetabotNavPane", () => {
     expect(
       screen.getByRole("link", { name: "Authorizations" }),
     ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
-  });
-
-  it("shows usage auditing as a folder with MCP analytics (audit app) and an upsell Stats when ai controls is unavailable", async () => {
-    setup({
-      aiControlsEnabled: false,
-      auditAppEnabled: true,
-      aiFeaturesEnabled: true,
-    });
-
-    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
-
-    // Expand "Auditing" to reveal its children
-    await userEvent.click(await screen.findByText("Auditing"));
-
-    // MCP analytics is available with audit_app alone (no ai_controls needed)
-    expect(
-      await screen.findByRole("link", { name: "MCP analytics" }),
-    ).toHaveAttribute("href", "/admin/metabot/usage-auditing/mcp");
-
-    // Metabot stats stays an upsell (still links to usage-auditing); Conversations needs ai_controls
-    expect(screen.getByRole("link", { name: /Usage stats/ })).toHaveAttribute(
-      "href",
-      "/admin/metabot/usage-auditing",
-    );
-    expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
-  });
-
-  it("keeps MCP analytics (and the upsell Stats) available when AI features are disabled", async () => {
-    // Regression guard: `ai-features-enabled?` must gate only the Metabot children, never the
-    // `audit_app`-gated MCP analytics child or the upsell stub.
-    setup({
-      aiControlsEnabled: false,
-      auditAppEnabled: true,
-      aiFeaturesEnabled: false,
-    });
-
-    await userEvent.click(await screen.findByText("Auditing"));
-
-    expect(
-      await screen.findByRole("link", { name: "MCP analytics" }),
-    ).toHaveAttribute("href", "/admin/metabot/usage-auditing/mcp");
-    expect(screen.getByRole("link", { name: /Usage stats/ })).toHaveAttribute(
-      "href",
-      "/admin/metabot/usage-auditing",
-    );
-    expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
-  });
-
-  it("shows usage auditing with Stats, Conversations and MCP analytics when ai controls is available", async () => {
-    setup({
-      aiControlsEnabled: true,
-      auditAppEnabled: true,
-      aiFeaturesEnabled: true,
-    });
-
-    await userEvent.click(await screen.findByText("Auditing"));
-
-    expect(
-      await screen.findByRole("link", { name: "Usage stats" }),
-    ).toHaveAttribute("href", "/admin/metabot/usage-auditing");
-    expect(screen.getByRole("link", { name: "Conversations" })).toHaveAttribute(
-      "href",
-      "/admin/metabot/usage-auditing/conversations",
-    );
-    expect(screen.getByRole("link", { name: "MCP analytics" })).toHaveAttribute(
-      "href",
-      "/admin/metabot/usage-auditing/mcp",
-    );
   });
 });

@@ -4,7 +4,7 @@ import _ from "underscore";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import type { AuthProvider } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
-import { useParams, useRouter } from "metabase/router";
+import { useParams, useSearchParams } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Divider } from "metabase/ui";
 
@@ -16,11 +16,11 @@ type LoginQueryParams = {
 };
 
 export const Login = (): JSX.Element => {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
   const params = useParams<LoginQueryParams>();
   const providers = useSelector(getAuthProviders);
   const selection = getSelectedProvider(providers, params.provider);
-  const redirectUrl = location.query?.redirect;
+  const redirectUrl = searchParams.get("redirect") ?? undefined;
   const applicationName = useSelector(getApplicationName);
 
   usePageTitle(t`Login`);

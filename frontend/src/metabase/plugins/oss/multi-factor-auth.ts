@@ -12,6 +12,8 @@ const getDefaultPluginMultiFactorAuth = () => ({
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
   AccountSecurityPanel: PluginPlaceholder,
   AdminAuthCard: PluginPlaceholder,
+  EnrolledUsersPage: PluginPlaceholder,
+  UnenrolledUsersPage: PluginPlaceholder,
 });
 
 export const PLUGIN_MULTI_FACTOR_AUTH = getDefaultPluginMultiFactorAuth();
