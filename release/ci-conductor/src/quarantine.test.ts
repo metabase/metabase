@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, jest } from "bun:test";
 
 import type { NormalizedTest } from "./contract.ts";
 import {
@@ -170,7 +170,16 @@ describe("fetchQuarantineList", () => {
   const originalLog = console.log;
   const originalError = console.error;
 
+  beforeEach(() => {
+    // The retry loop really sleeps between attempts. Freeze the clock so these
+    // tests exercise the production backoff (no shortened delays) while
+    // deciding for themselves when each sleep ends.
+    jest.useFakeTimers();
+  });
+
   afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
     globalThis.fetch = originalFetch;
     console.log = originalLog;
     console.error = originalError;
@@ -195,20 +204,49 @@ describe("fetchQuarantineList", () => {
     return () => calls.length;
   }
 
+  /**
+   * Hand the event loop a real turn. `useFakeTimers` freezes `setTimeout` but
+   * leaves `setImmediate` alone, so this is what lets the awaits inside the
+   * retry loop actually run while the clock is stopped.
+   */
+  const macrotask = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+  /**
+   * Settle a `fetchQuarantineList` call on the frozen clock: let its pending
+   * awaits run, fire whichever backoff timer that parked it, and repeat until
+   * it resolves. Bounded, so a call that never settles fails loudly instead of
+   * hanging the suite.
+   */
+  async function settle<T>(pending: Promise<T>): Promise<T> {
+    let done = false;
+    void pending.then(
+      () => (done = true),
+      () => (done = true),
+    );
+    for (let pass = 0; pass < 10 && !done; pass++) {
+      await macrotask();
+      if (!done) {
+        jest.runAllTimers();
+      }
+    }
+    if (!done) {
+      throw new Error("fetchQuarantineList never settled");
+    }
+    return pending;
+  }
+
   const okList = (entries: QuarantineEntry[]) =>
     new Response(JSON.stringify({ tests: entries }), { status: 200 });
   const errorStatus = (status: number) => new Response("", { status });
   const econnreset = () => new Error("The socket connection was closed unexpectedly");
 
-  // Real backoff would make these tests sleep for seconds; the loop is what's
-  // under test, not the clock.
   const fetchList = () =>
-    fetchQuarantineList({
-      baseUrl: "https://ci-conductor.example",
-      suite: "e2e",
-      attempts: 3,
-      sleep: async () => {},
-    });
+    settle(
+      fetchQuarantineList({
+        baseUrl: "https://ci-conductor.example",
+        suite: "e2e",
+      }),
+    );
 
   it("returns the list without retrying when the first call succeeds", async () => {
     const calls = stubFetch([okList([quarantined("a")])]);
@@ -254,6 +292,30 @@ describe("fetchQuarantineList", () => {
 
     expect(await fetchList()).toBeNull();
     expect(calls()).toBe(1);
+  });
+
+  it("waits out the backoff window before retrying, rather than hammering", async () => {
+    const calls = stubFetch([errorStatus(503), okList([])]);
+    const pending = fetchQuarantineList({
+      baseUrl: "https://ci-conductor.example",
+      suite: "e2e",
+    });
+
+    await macrotask();
+    expect(calls()).toBe(1);
+
+    // Half-jittered backoff off a 500ms base puts the first retry somewhere in
+    // [250ms, 500ms) — early enough to keep the gate snappy, late enough to let
+    // a blip pass. Asserting the bounds holds for any jitter draw.
+    jest.advanceTimersByTime(249);
+    await macrotask();
+    expect(calls()).toBe(1);
+
+    jest.advanceTimersByTime(251);
+    await macrotask();
+    expect(calls()).toBe(2);
+
+    expect(await settle(pending)).toEqual([]);
   });
 });
 

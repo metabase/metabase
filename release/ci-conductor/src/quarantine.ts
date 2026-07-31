@@ -2,23 +2,17 @@
 // iff every failure is on ci-conductor's quarantine list.
 
 import type { NormalizedTest } from "./contract.ts";
+import { fetchWithRetry } from "./fetchWithRetry.ts";
 import { log } from "./util.ts";
 
 // The list endpoint can be slow, but the gate must never hang a CI job.
 const REQUEST_TIMEOUT_MS = 15_000;
 
 // A dropped socket (ECONNRESET) or a 5xx is a blip, not a verdict, so the fetch
-// gets a few tries before the gate gives up.
+// gets a few tries before the gate gives up. `fetchWithRetry` spaces those tries
+// with jittered exponential backoff, so parallel jobs don't retry in lockstep.
 const MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 500;
-
-/** Exponential backoff with jitter, so parallel jobs don't retry in lockstep. */
-function retryDelayMs(attempt: number): number {
-  return RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + Math.random() * RETRY_BASE_DELAY_MS;
-}
-
-const sleepMs = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
 
 /** One quarantined test as served by ci-conductor's `/api/quarantine`. */
 export type QuarantineEntry = {
@@ -121,53 +115,50 @@ export function junitFailuresToFailedTests(
  * is the request's own fault and returns straight away. Returns null (not [])
  * when it can't be retrieved, so the caller can tell "nothing quarantined" from
  * "couldn't check". Never throws. Logs the path and suite only — never the host
- * (public repo) or the secret. `attempts`/`sleep` exist so tests can drive the
- * retry loop without waiting on real time.
+ * (public repo) or the secret. The retry policy is fixed rather than injectable:
+ * the tests drive it on fake timers, so there's nothing to shorten for them.
  */
 export async function fetchQuarantineList(opts: {
   baseUrl: string;
   suite: string;
   secret?: string;
-  attempts?: number;
-  sleep?: (ms: number) => Promise<void>;
 }): Promise<QuarantineEntry[] | null> {
-  const { suite, attempts = MAX_ATTEMPTS, sleep = sleepMs } = opts;
-  const base = opts.baseUrl.replace(/\/+$/, "");
+  const { baseUrl, suite, secret } = opts;
+  const base = baseUrl.replace(/\/+$/, "");
   const url = `${base}/api/quarantine?suite=${encodeURIComponent(suite)}`;
-  const headers: Record<string, string> = opts.secret
-    ? { "x-internal-secret": opts.secret }
+  const headers: Record<string, string> = secret
+    ? { "x-internal-secret": secret }
     : {};
 
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const response = await fetch(url, {
-        headers,
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-      if (response.ok) {
-        const body = (await response.json()) as { tests?: QuarantineEntry[] };
-        return body.tests ?? [];
-      }
-      log(
-        `🛑 GET /api/quarantine?suite=${suite} → ${response.status} ${response.statusText}`,
-      );
-      // A 4xx (bad secret, unknown suite) answers the same way every time.
-      if (response.status < 500 && response.status !== 429) {
-        return null;
-      }
-    } catch (error) {
-      console.error("[ci-conductor] failed to fetch the quarantine list", error);
-    }
-    if (attempt === attempts) {
+  try {
+    const response = await fetchWithRetry(url, {
+      headers,
+      retries: MAX_ATTEMPTS - 1,
+      baseDelay: RETRY_BASE_DELAY_MS,
+      timeout: REQUEST_TIMEOUT_MS,
+      // Called once per completed response, so it doubles as the one place a
+      // non-ok status gets logged — including on attempts we then retry.
+      shouldRetry: (res) => {
+        if (!res.ok) {
+          log(
+            `🛑 GET /api/quarantine?suite=${suite} → ${res.status} ${res.statusText}`,
+          );
+        }
+        // A 4xx (bad secret, unknown suite) answers the same way every time.
+        return res.status >= 500 || res.status === 429;
+      },
+    });
+    if (!response.ok) {
+      response.body?.cancel().catch(() => {}); // don't leak the unread stream
       return null;
     }
-    const delay = retryDelayMs(attempt);
-    log(
-      `🔁 retrying in ${Math.round(delay)}ms — attempt ${attempt + 1} of ${attempts}`,
-    );
-    await sleep(delay);
+    // `json()` is `any`; this names the wire shape we read (and only read).
+    const body = (await response.json()) as { tests?: QuarantineEntry[] };
+    return body.tests ?? [];
+  } catch (error) {
+    console.error("[ci-conductor] failed to fetch the quarantine list", error);
+    return null;
   }
-  return null;
 }
 
 const RULE = "─".repeat(60);
