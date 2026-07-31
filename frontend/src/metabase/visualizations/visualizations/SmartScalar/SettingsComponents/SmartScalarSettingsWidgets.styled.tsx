@@ -33,6 +33,7 @@ export const ComparisonPickerSecondaryText = styled(
   ),
 )<ComparisonPickerSecondaryTextProps>``;
 
+// Unjustified type cast. FIXME
 export const ComparisonPickerButton = styled(Button)<ButtonProps>`
   height: 40px;
 

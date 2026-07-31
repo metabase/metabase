@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobsQuery } from "metabase/api";
@@ -12,6 +11,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";

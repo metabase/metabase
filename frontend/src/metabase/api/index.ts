@@ -24,6 +24,7 @@ export * from "./frontend-errors";
 export * from "./glossary";
 export * from "./google";
 export * from "./group-table-access-policy";
+export * from "./index-manager";
 export * from "./ldap";
 export * from "./llm";
 export * from "./login-history";

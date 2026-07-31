@@ -36,10 +36,10 @@ You can generate a code snippet for embedding a component by going through the e
 In your Metabase:
 
 1. Visit the item you want to embed.
-2. Click the sharing icon.
+2. Click the **Share** icon.
 3. Select **Embed**.
 
-![Embed share button](./images/embed-share-button.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 You can also open a command palette with Ctrl/Cmd+K, type "New embed". You'll get a wizard to help you set up your embed.
 

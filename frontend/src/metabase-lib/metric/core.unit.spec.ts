@@ -37,7 +37,7 @@ const SAMPLE_METRIC = createMockMetric({
         semantic_type: "type/Currency",
       }),
       sources: [{ type: "field", "field-id": 5 }],
-    } as any,
+    },
     createMockMetricDimension({
       id: "dim-4",
       display_name: "Is Active",
@@ -195,7 +195,7 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.filterableDimensions(definition);
 
       // The metric has 2 dimensions defined
-      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions!.length);
+      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions.length);
     });
 
     it("should include filter-positions in dimension display info", () => {
@@ -536,6 +536,7 @@ describe("metabase-lib/metric/core", () => {
       // New format uses expression instead of source-metric
       const jsObj = jsDefinition as Record<string, unknown>;
       expect(jsObj["expression"]).toBeDefined();
+      // Unjustified type cast. FIXME
       const expression = jsObj["expression"] as unknown[];
       expect(expression[0]).toBe("metric");
       expect(expression[2]).toBe(SAMPLE_METRIC.id);
@@ -570,7 +571,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "=" as const,
-        dimension: stringDimension!,
+        dimension: stringDimension,
         values: ["Electronics", "Clothing"],
         options: {},
       };
@@ -586,7 +587,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "contains" as const,
-        dimension: stringDimension!,
+        dimension: stringDimension,
         values: ["search term"],
         options: { caseSensitive: false },
       };
@@ -607,7 +608,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "between" as const,
-        dimension: dimension!,
+        dimension: dimension,
         values: [10, 100],
       };
 
@@ -622,7 +623,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: ">" as const,
-        dimension: dimension!,
+        dimension: dimension,
         values: [50],
       };
 
@@ -639,7 +640,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "=" as const,
-        dimension: dimension!,
+        dimension: dimension,
         values: [true],
       };
 
@@ -654,7 +655,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "is-null" as const,
-        dimension: dimension!,
+        dimension: dimension,
         values: [],
       };
 
@@ -671,7 +672,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "is-null" as const,
-        dimension: dimension!,
+        dimension: dimension,
       };
 
       const clause = LibMetric.defaultFilterClause(parts);
@@ -685,7 +686,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "not-null" as const,
-        dimension: dimension!,
+        dimension: dimension,
       };
 
       const clause = LibMetric.defaultFilterClause(parts);
@@ -704,7 +705,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "=" as const,
-        dimension: dateDimension!,
+        dimension: dateDimension,
         values: [new Date("2024-01-15")],
         hasTime: false,
       };
@@ -720,7 +721,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "between" as const,
-        dimension: dateDimension!,
+        dimension: dateDimension,
         values: [new Date("2024-01-01"), new Date("2024-12-31")],
         hasTime: false,
       };
@@ -738,7 +739,7 @@ describe("metabase-lib/metric/core", () => {
       const dateDimension = dimensions[0];
 
       const parts = {
-        dimension: dateDimension!,
+        dimension: dateDimension,
         unit: "day" as const,
         value: -30,
         offsetUnit: null,
@@ -756,7 +757,7 @@ describe("metabase-lib/metric/core", () => {
       const dateDimension = dimensions[0];
 
       const parts = {
-        dimension: dateDimension!,
+        dimension: dateDimension,
         unit: "day" as const,
         value: -7,
         offsetUnit: "week" as const,
@@ -777,7 +778,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: ">" as const,
-        dimension: dimension!,
+        dimension: dimension,
         values: [new Date("1970-01-01T09:00:00")],
       };
 
@@ -792,7 +793,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "between" as const,
-        dimension: dimension!,
+        dimension: dimension,
         values: [
           new Date("1970-01-01T09:00:00"),
           new Date("1970-01-01T17:00:00"),
@@ -812,7 +813,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "=" as const,
-        dimension: dimension!,
+        dimension: dimension,
         longitudeDimension: null,
         values: [40.7128],
       };
@@ -831,7 +832,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "!=" as const,
-        dimension: dateDimension!,
+        dimension: dateDimension,
         unit: "day-of-week" as const,
         values: [1, 7], // Exclude Sunday and Saturday
       };
@@ -850,7 +851,7 @@ describe("metabase-lib/metric/core", () => {
 
       const parts = {
         operator: "=" as const,
-        dimension: stringDimension!,
+        dimension: stringDimension,
         values: ["Electronics"],
         options: {},
       };
@@ -869,12 +870,12 @@ describe("metabase-lib/metric/core", () => {
 
       const clause1 = LibMetric.defaultFilterClause({
         operator: "not-null" as const,
-        dimension: dimension!,
+        dimension: dimension,
       });
 
       const clause2 = LibMetric.defaultFilterClause({
         operator: "not-null" as const,
-        dimension: dimensions[1]!,
+        dimension: dimensions[1],
       });
 
       let updatedDefinition = LibMetric.filter(definition, clause1);
@@ -1606,6 +1607,7 @@ describe("metabase-lib/metric/core", () => {
       expect(parts).not.toBeNull();
       // StringFilterParts has an options property
       expect(parts).toHaveProperty("options");
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
     });
 
@@ -1622,6 +1624,7 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("is-null");
     });
 
@@ -1645,7 +1648,9 @@ describe("metabase-lib/metric/core", () => {
       // RelativeDateFilterParts has unit and value properties
       expect(parts).toHaveProperty("unit");
       expect(parts).toHaveProperty("value");
+      // Unjustified type cast. FIXME
       expect((parts as { unit: string }).unit).toBe("day");
+      // Unjustified type cast. FIXME
       expect((parts as { value: number }).value).toBe(-30);
     });
 
@@ -1663,7 +1668,9 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("between");
+      // Unjustified type cast. FIXME
       expect((parts as { values: number[] }).values).toEqual([10, 100]);
     });
 
@@ -1681,7 +1688,9 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
+      // Unjustified type cast. FIXME
       expect((parts as { values: boolean[] }).values).toEqual([true]);
     });
 
@@ -1700,6 +1709,7 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
       // CoordinateFilterParts has longitudeDimension property
       expect(parts).toHaveProperty("longitudeDimension");
@@ -1720,9 +1730,11 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
       // SpecificDateFilterParts has hasTime property
       expect(parts).toHaveProperty("hasTime");
+      // Unjustified type cast. FIXME
       expect((parts as { hasTime: boolean }).hasTime).toBe(false);
     });
 
@@ -1740,6 +1752,7 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe(">");
     });
 
@@ -1758,9 +1771,11 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("!=");
       // ExcludeDateFilterParts has unit property
       expect(parts).toHaveProperty("unit");
+      // Unjustified type cast. FIXME
       expect((parts as { unit: string }).unit).toBe("day-of-week");
     });
   });

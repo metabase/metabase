@@ -76,6 +76,7 @@ export function modelToUrl(item: UrlableModel): string {
     case "transform":
       return transform(item.id);
     case "indexed-entity":
+      // Unjustified type cast. FIXME
       return indexedEntity(item as IndexedEntity);
     case "action":
       if (item.model_id != null) {

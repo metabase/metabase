@@ -108,6 +108,7 @@ export function useListRecentsQuery<T extends boolean | undefined = undefined>(
   options?: GetRecentsQueryOptions,
 ) {
   type ResultType = T extends true ? RecentItemWithMetadata : RecentItem;
+  // Unjustified type cast. FIXME
   return activityApi.endpoints.listRecents.useQuery(
     params,
     options,

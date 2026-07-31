@@ -19,7 +19,8 @@ export const InsightsLink = ({
 
   const collection = dashboard
     ? dashboard.collection
-    : (question.collection() as Collection);
+    : // Unjustified type cast. FIXME
+      (question.collection() as Collection);
 
   if (isLoading) {
     return <div data-testid="loading-indicator" />;

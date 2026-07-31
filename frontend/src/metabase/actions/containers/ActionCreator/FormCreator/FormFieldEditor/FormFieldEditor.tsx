@@ -127,6 +127,7 @@ function FormFieldEditor({
             <Radio.Group
               label={<Subtitle>{t`Field type`}</Subtitle>}
               value={fieldSettings.fieldType}
+              // Unjustified type cast. FIXME
               onChange={(value) => handleChangeFieldType(value as FieldType)}
             >
               <Group gap="lg">

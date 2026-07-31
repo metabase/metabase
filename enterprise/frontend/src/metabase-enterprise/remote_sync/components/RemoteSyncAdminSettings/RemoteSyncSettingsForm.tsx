@@ -70,6 +70,7 @@ import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
+import { BranchSwitcher } from "./BranchSwitcher";
 import { DevInstanceUpsell } from "./DevInstanceUpsell";
 import { PullChangesButton } from "./PullChangesButton";
 import { TestConnectionButton } from "./TestConnectionButton";
@@ -296,7 +297,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
           confirmButtonText: t`Continue`,
           confirmButtonProps: {
             variant: "filled",
-            color: "danger",
+            color: "feedback-negative",
           },
           onConfirm: async () => {
             if (pendingConfirmationSettingsRef.current) {
@@ -332,7 +333,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       confirmButtonText: t`Disable`,
       confirmButtonProps: {
         variant: "filled",
-        color: "danger",
+        color: "feedback-negative",
       },
       onConfirm: async () => {
         try {
@@ -477,6 +478,30 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                 )}
               </RemoteSyncSettingsSection>
 
+              {/* Branch switching (read-write): a rare, destructive operation kept out of the everyday sync
+                  controls and behind guard rails. Read-only mode changes the branch via the Sync branch
+                  field below, which triggers a reconciling import. */}
+              {isRemoteSyncEnabled &&
+                values?.[TYPE_KEY] === "read-write" &&
+                !isModalVariant && (
+                  <RemoteSyncSettingsSection
+                    title={t`Sync branch`}
+                    description={t`Choose which branch to sync with git.`}
+                    variant={variant}
+                  >
+                    <BranchSwitcher
+                      currentBranch={currentBranch}
+                      dirty={dirtyData?.dirty ?? []}
+                      disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
+                      envVarName={
+                        settingDetails?.[BRANCH_KEY]?.is_env_setting
+                          ? settingDetails?.[BRANCH_KEY]?.env_name
+                          : undefined
+                      }
+                    />
+                  </RemoteSyncSettingsSection>
+                )}
+
               {/* Section 3: Branch to sync with (read-only only) */}
               {values?.[TYPE_KEY] === "read-only" && (
                 <RemoteSyncSettingsSection
@@ -555,7 +580,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   {isRemoteSyncEnabled &&
                     !settingDetails?.[REMOTE_SYNC_KEY]?.is_env_setting && (
                       <Button
-                        c="error"
+                        c="feedback-negative"
                         variant="subtle"
                         size="md"
                         w="12rem"

@@ -1,46 +1,20 @@
-import type { History } from "history";
-import { type PropsWithChildren, createContext } from "react";
-import { Route, Router, type WithRouterProps, withRouter } from "react-router";
+import type { PropsWithChildren } from "react";
 
-import { useHistory } from "metabase/history";
-
-type RouterContextType = WithRouterProps;
-
-export const RouterContext = createContext<RouterContextType | null>(null);
-
-const RouterContextProviderBase = ({
-  router,
-  location,
-  params,
-  routes,
-  children,
-}: PropsWithChildren<RouterContextType>) => {
-  return (
-    <RouterContext.Provider value={{ router, location, params, routes }}>
-      {children}
-    </RouterContext.Provider>
-  );
-};
-
-const RouterContextProvider = withRouter(RouterContextProviderBase);
-
-type RouterProviderProps = {
-  history?: History | undefined;
-};
+import { RouterProviderV7 } from "./v7/RouterProviderV7";
+import type { LocationMirror } from "./v7/location-mirror";
 
 /**
- * This provider encapsulates react-router initiation and puts router and routes references to the context
- * This is v3's only solution to provide a router and routes.
- * Without extra Route component it doesn't work.
- * Additionally, it provides the history reference
+ * Hosts the app on react-router v7.
+ *
+ * Pass `createLocationMirror(store.dispatch)` as `onLocationChange` to emit a
+ * LOCATION_CHANGE for every navigation (the `isNavbarOpen` / `errorPage`
+ * reducers and trace-id rotation react to it).
  */
 export const RouterProvider = ({
   children,
-}: PropsWithChildren<RouterProviderProps>) => {
-  const { history } = useHistory();
-  return (
-    <Router history={history}>
-      <Route component={RouterContextProvider}>{children}</Route>
-    </Router>
-  );
-};
+  onLocationChange,
+}: PropsWithChildren<{ onLocationChange?: LocationMirror }>) => (
+  <RouterProviderV7 onLocationChange={onLocationChange}>
+    {children}
+  </RouterProviderV7>
+);

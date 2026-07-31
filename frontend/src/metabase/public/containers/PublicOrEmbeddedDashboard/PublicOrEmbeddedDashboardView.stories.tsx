@@ -44,9 +44,7 @@ import {
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 export default {
@@ -66,6 +64,7 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({
     currentUser: null,
@@ -400,7 +399,6 @@ export function ComponentCompatibility() {
 
 // Card visualizations
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(ObjectDetail);
 
 export const CardVisualizationsLightTheme = {

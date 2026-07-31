@@ -88,6 +88,7 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+  should_index?: boolean;
 
   remapping?: Map<RowValue, string | number>;
 }
@@ -133,6 +134,7 @@ export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
+  total_count?: number;
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;

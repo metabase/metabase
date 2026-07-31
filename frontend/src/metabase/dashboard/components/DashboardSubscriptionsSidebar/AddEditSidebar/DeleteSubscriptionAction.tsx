@@ -121,7 +121,7 @@ export function DeleteSubscriptionAction({
           <Flex justify="flex-end" gap="sm">
             <Button onClick={closeModal}>{t`Cancel`}</Button>
             <Button
-              color={confirmed ? "danger" : undefined}
+              color={confirmed ? "feedback-negative" : undefined}
               variant="filled"
               onClick={handleDelete}
               disabled={!confirmed}

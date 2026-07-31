@@ -31,6 +31,7 @@ export const ResourceTreeNode = <TData = unknown>({
       data-is-expanded={isExpanded}
     >
       {isRoot && <NodeListItemIcon name="chevronright" data-role="chevron" />}
+      {/* Unjustified type cast. FIXME */}
       <NodeListItemIcon name={item.icon as IconName} />
       <NodeListItemName>{item.name}</NodeListItemName>
       {!isRoot && displayId && <NodeListItemId>{`#${item.id}`}</NodeListItemId>}

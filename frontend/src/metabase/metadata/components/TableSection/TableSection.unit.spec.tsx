@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { FieldId, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
@@ -17,7 +16,7 @@ function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <TableSection
           table={table}
           fieldId={fieldId}
@@ -25,7 +24,7 @@ function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
           getFieldHref={(fieldId) => `/field/${fieldId}`}
           onSyncOptionsClick={onSyncOptionsClick}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

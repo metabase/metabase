@@ -76,8 +76,8 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
 
       const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
 
-      const successColor = d3.rgb(color("success"));
-      const errorColor = d3.rgb(color("error"));
+      const successColor = d3.rgb(color("feedback-positive"));
+      const errorColor = d3.rgb(color("feedback-negative"));
 
       const colorScale =
         min == null || max == null

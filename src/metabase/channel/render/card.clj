@@ -45,9 +45,7 @@
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
-    (let [card-name    (or (-> dashcard :visualization_settings :visualization :settings :card.title)
-                           (-> dashcard :visualization_settings :card.title)
-                           (-> card :name))
+    (let [card-name    (render.util/dashcard-title card dashcard)
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
           title-href   (if dashcard
@@ -140,14 +138,14 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
+  [{display-type :display :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (render.util/visualizer-display-type maybe-dashcard) display-type)
         map-type          (map-chart-type display-type card maybe-dashcard data)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
-                          tyype (pr-str card-name) (apply format reason args))
+                          tyype (:id card) (apply format reason args))
               tyype)]
       (cond
         (or (empty? rows)
@@ -230,10 +228,10 @@
 
           (:card-error data)
           (do
-            (log/error e "Pulse card query error")
+            (log/errorf "Pulse card query error: %s" (ex-message e))
             (body/render :card-error nil nil nil nil nil))
           :else (do
-                  (log/error e "Pulse card render error")
+                  (log/errorf "Pulse card render error: %s" (ex-message e))
                   (body/render :render-error nil nil nil nil nil)))))))
 
 (mu/defn error-rendered-part :- ::body/RenderedPartCard

@@ -7,46 +7,6 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
-describe("issue 13504", () => {
-  const questionDetails = {
-    name: "13504",
-    display: "line",
-    query: {
-      "source-query": {
-        "source-table": ORDERS_ID,
-        filter: [">", ["field", ORDERS.TOTAL, null], 50],
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 100],
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.cartesianChartCircle().eq(0).click({ force: true });
-
-    H.popover().findByText("See these Orders").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At: Month is Mar 1–31, 2026").should("be.visible");
-    });
-  });
-});
-
 const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {

@@ -290,6 +290,84 @@ describe("treemap data model", () => {
       },
     ]);
   });
+
+  it("omits negative values and warns when values are mixed sign", () => {
+    const showWarning = jest.fn();
+    const result = getTreemapData(
+      makeRawSeries2Level([
+        ["A", "x", 30],
+        ["A", "x", -50],
+        ["B", "x", 10],
+      ]),
+      treemapColumnsWithSub,
+      undefined,
+      undefined,
+      showWarning,
+    );
+
+    expect(result).toEqual([
+      {
+        rawName: "A",
+        displayName: "A",
+        value: 30,
+        rowIndices: [0],
+        children: [
+          { rawName: "x", displayName: "x", value: 30, rowIndices: [0] },
+        ],
+      },
+      {
+        rawName: "B",
+        displayName: "B",
+        value: 10,
+        rowIndices: [2],
+        children: [
+          { rawName: "x", displayName: "x", value: 10, rowIndices: [2] },
+        ],
+      },
+    ]);
+    expect(showWarning).toHaveBeenCalledWith(
+      "Negative values in measure column have been omitted from treemap chart.",
+    );
+  });
+
+  it("drops a group entirely when all of its rows are negative in mixed data", () => {
+    const showWarning = jest.fn();
+    const result = getTreemapData(
+      makeRawSeries1Level([
+        ["A", 30],
+        ["B", -50],
+      ]),
+      treemapColumns,
+      undefined,
+      undefined,
+      showWarning,
+    );
+
+    expect(result).toEqual([
+      { rawName: "A", displayName: "A", value: 30, rowIndices: [0] },
+    ]);
+    expect(showWarning).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to absolute values when every value is negative", () => {
+    const showWarning = jest.fn();
+    const result = getTreemapData(
+      makeRawSeries1Level([
+        ["A", -30],
+        ["B", -50],
+      ]),
+      treemapColumns,
+      undefined,
+      undefined,
+      showWarning,
+    );
+
+    expect(result).toEqual([
+      { rawName: "A", displayName: "A", value: 30, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 50, rowIndices: [1] },
+    ]);
+    expect(showWarning).not.toHaveBeenCalled();
+  });
 });
 
 describe("getNodesFromPath", () => {

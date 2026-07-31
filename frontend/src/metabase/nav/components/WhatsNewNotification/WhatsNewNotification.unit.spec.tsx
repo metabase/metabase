@@ -168,6 +168,7 @@ describe("WhatsNewNotification", () => {
 
       await waitFor(async () => {
         const lastCall = fetchMock.callHistory.lastCall(LAST_ACK_SETTINGS_URL);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
           value: currentVersionTag,
         });

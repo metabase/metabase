@@ -108,6 +108,7 @@ describe("ArchiveCollectionModal", () => {
       expect(findArchiveCall()).toBeTruthy();
     });
 
+    // Unjustified type cast. FIXME
     expect(JSON.parse(findArchiveCall()?.options?.body as string)).toEqual({
       archived: true,
     });

@@ -46,6 +46,7 @@ import {
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
+  /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
   nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
@@ -99,6 +100,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
       const remoteSyncSettings: RemoteSyncConfigurationSettings = {
+        // Unjustified type cast. FIXME
         [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
           COLLECTIONS_KEY
         ],
@@ -158,8 +160,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "discard") {
-      // nextBranch is set on a switch-branch discard; currentBranch is the branch we're on now and is
-      // asserted against the setting to catch a stale tab.
+      // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
+      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
+      // switched under us).
       await discardChangesAndImport(
         nextBranch || currentBranch,
         currentBranch,
@@ -243,7 +246,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
             {t`Cancel`}
           </Button>
           <Button
-            color={optionValue === "discard" ? "error" : "core-brand"}
+            color={
+              optionValue === "discard" ? "feedback-negative" : "core-brand"
+            }
             disabled={isButtonDisabled}
             leftSection={
               optionValue === "force-push" ? <Icon name="warning" /> : undefined

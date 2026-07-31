@@ -135,7 +135,7 @@
 
       :email/handlebars-text
       (do
-        (log/debugf "Rendering user-provided template body=%s" (pr-str (:body details)))
+        (log/debug "Rendering user-provided template body")
         (handlebars/render-string (:body details) payload))
 
       (do
@@ -220,11 +220,11 @@
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{payload.dashboard.name}}"
-                                           :path    "metabase/channel/email/dashboard_subscription.hbs"}}
+                                           :path    "dashboard_subscription"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{computed.subject}}"
-                                           :path    "metabase/channel/email/notification_card.hbs"}}})
+                                           :path    "notification_card"}}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
@@ -296,7 +296,7 @@
        :content      (.. temp-file toURI toURL)
        :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
     (catch Throwable e
-      (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
+      (log/errorf "Error rendering dashboard subscription PDF; skipping PDF attachment: %s" (ex-message e))
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
@@ -328,7 +328,7 @@
                                     (when-not attachment_only
                                       (conj html-contents (html content)))])
                                  (catch Throwable e
-                                   (log/error e "Error rendering dashboard subscription part; substituting error placeholder")
+                                   (log/errorf "Error rendering dashboard subscription part; substituting error placeholder: %s" (ex-message e))
                                    [merged-attachments
                                     result-attachments
                                     (when-not attachment_only

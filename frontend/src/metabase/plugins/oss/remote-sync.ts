@@ -13,10 +13,7 @@ import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
 } from "metabase/plugins";
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
 import type {
   RemoteSyncChangesResponse,
@@ -62,12 +59,16 @@ export interface RemoteSyncDirtyState {
 const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
-  RemoteSyncSettings: NotFoundPlaceholder,
+  RemoteSyncSettings: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   GitSyncAppBarControls: PluginPlaceholder as ComponentType,
+  // Unjustified type cast. FIXME
   GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
   GitSyncSetupMenuItem: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
+  // Unjustified type cast. FIXME
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
@@ -82,6 +83,7 @@ const getDefaultPluginRemoteSync = () => ({
   useHasTransformDirtyChanges: () => false,
   getIsRemoteSyncReadOnly: () => false,
   useRemoteSyncDirtyState: () =>
+    // Unjustified type cast. FIXME
     ({
       isCollectionDirty: false,
     }) as unknown as RemoteSyncDirtyState,

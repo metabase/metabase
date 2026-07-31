@@ -911,7 +911,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.PARENT,
+            // Unjustified type cast. FIXME
             id: COLLECTION.PARENT.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
@@ -924,7 +926,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.CHILD,
+            // Unjustified type cast. FIXME
             id: COLLECTION.CHILD.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,

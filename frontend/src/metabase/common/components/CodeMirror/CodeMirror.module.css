@@ -56,7 +56,7 @@
     }
 
     .cm-selectionBackground {
-      background: var(--mb-color-focus) !important;
+      background: var(--mb-color-input-focus) !important;
       border-radius: 1px;
     }
 

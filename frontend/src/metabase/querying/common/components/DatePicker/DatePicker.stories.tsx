@@ -21,6 +21,7 @@ const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
@@ -31,6 +32,7 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
+// Unjustified type cast. FIXME
 export default {
   title: "Components/Parameters/DatePicker",
   component: DatePicker,

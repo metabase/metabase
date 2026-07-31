@@ -14,7 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+                                  (search.tu/with-appdb-search-if-available-otherwise-legacy (thunk)))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))
@@ -94,8 +94,6 @@
    :verified                       true
    :curated?                       true
    :ids                            [1 2 3 4]
-   :non-temporal-dim-ids           "[1]"
-   :has-temporal-dim               true
    :display-type                   ["line"]
    :models                         (disj search.config/all-models "dataset")
    :enabled-transform-source-types #{"mbql"}})
@@ -151,8 +149,6 @@
                 [:in :search_index.model_id ["1" "2" "3" "4"]]
                 [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]
                 [:>= [:cast :search_index.model_created_at :date] #t "2024-10-01"]
-                [:= :search_index.non_temporal_dim_ids "[1]"]
-                [:= :search_index.has_temporal_dim true]
                 :and
                 [:= :search_index.database_id 231]
                 [:in :search_index.display_type ["line"]]

@@ -175,6 +175,7 @@ export const TableColumnCard = ({
             onBrowseAll={handleBrowseAll}
             onChange={handleTableSelect}
             shouldShowLibrary={false}
+            // Unjustified type cast. FIXME
             shouldHide={(item) => shouldHidePickerItem(item as MiniPickerItem)}
           />
 

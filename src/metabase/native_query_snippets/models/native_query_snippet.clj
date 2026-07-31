@@ -25,6 +25,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
                    :out (comp (mi/catch-normalization-exceptions
@@ -60,7 +61,9 @@
                                      (filter snippet-tag?)
                                      (map (juxt :snippet-name identity)))
                             old-tags)
-        new-tags (lib/recognize-template-tags (:content snippet))
+        new-tags (into {}
+                       (map (juxt :name identity))
+                       (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
                          (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
@@ -106,10 +109,6 @@
   [snippet]
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
-
-(defmethod serdes/hash-fields :model/NativeQuerySnippet
-  [_snippet]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
   [& args]
@@ -174,11 +173,15 @@
                                                    where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name :template_tags]
+  {:copy      [:archived :content :description :entity_id :name]
    :skip      []
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :creator_id    (serdes/fk :model/User)}
+               :creator_id    (serdes/fk :model/User)
+               ;; Normalize on import so template-tag name keys come back as strings (YAML ingest keywordizes
+               ;; them).
+               :template_tags {:export identity
+                               :import #(lib/normalize :metabase.lib.schema.template-tag/template-tag-map %)}}
    :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"
@@ -186,10 +189,16 @@
   (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
-(defmethod serdes/dependencies "NativeQuerySnippet"
+(defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
   (when collection_id
     [[{:model "Collection" :id collection_id}]]))
+
+(defmethod serdes/serialization-dependencies "NativeQuerySnippet"
+  [_model-name {:keys [collection_id]}]
+  ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
+  (when collection_id
+    #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))

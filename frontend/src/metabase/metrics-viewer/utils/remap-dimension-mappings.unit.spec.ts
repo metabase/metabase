@@ -11,7 +11,7 @@ import { remapDimensionMappings } from "./remap-dimension-mappings";
 // ---------------------------------------------------------------------------
 
 function metric(sourceId: MetricSourceId): MetricDefinitionEntry {
-  return { id: sourceId, type: "metric", definition: null as any };
+  return { id: sourceId, type: "metric", definition: null };
 }
 
 function makeDimensionBreakout(
@@ -28,9 +28,9 @@ function makeDimensionBreakout(
   };
 }
 
-const REVENUE: MetricSourceId = "metric:1" as MetricSourceId;
-const ORDERS: MetricSourceId = "metric:2" as MetricSourceId;
-const COSTS: MetricSourceId = "metric:3" as MetricSourceId;
+const REVENUE: MetricSourceId = "metric:1";
+const ORDERS: MetricSourceId = "metric:2";
+const COSTS: MetricSourceId = "metric:3";
 
 // ---------------------------------------------------------------------------
 // remapDimensionMappings — fast path using precomputed slot mapping

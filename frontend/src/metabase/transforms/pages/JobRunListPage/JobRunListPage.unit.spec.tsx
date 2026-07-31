@@ -1,11 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
+  setupDatabaseListEndpoint,
+  setupGetTransformEndpoint,
   setupGetTransformJobEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformJobRunsEndpoint,
+  setupListTransformJobTransformsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -16,13 +19,16 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import type {
   TransformJobRun,
   TransformRunForJobRun,
 } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockListTransformJobRunsResponse,
+  createMockTransform,
   createMockTransformJob,
   createMockTransformJobRun,
   createMockTransformRunForJobRun,
@@ -31,6 +37,7 @@ import {
 import { JobRunListPage } from "./JobRunListPage";
 
 const JOB_ID = 3;
+const TRANSFORM_ID = 1;
 
 type SetupOpts = {
   runs?: TransformJobRun[];
@@ -43,11 +50,16 @@ function setup({
   transformRunsByRunId = {},
   initialRoute = `/data-studio/transforms/jobs/${JOB_ID}/runs`,
 }: SetupOpts = {}) {
+  const transform = createMockTransform({ id: TRANSFORM_ID });
   const job = createMockTransformJob({ id: JOB_ID, name: "Nightly job" });
   let currentRuns = runs;
 
   setupUserMetabotPermissionsEndpoint();
   setupGetTransformJobEndpoint(job);
+  setupDatabaseListEndpoint([createMockDatabase()]);
+  setupListTransformJobTransformsEndpoint(JOB_ID, []);
+  setupGetTransformEndpoint(transform);
+  setupListDatabaseSchemasEndpoint(transform.target.database, []);
   setupListTransformJobRunsEndpoint(JOB_ID, () =>
     createMockListTransformJobRunsResponse({
       data: currentRuns,
@@ -61,7 +73,7 @@ function setup({
 
   const path = "/data-studio/transforms/jobs/:jobId/runs";
 
-  renderWithProviders(<Route path={path} component={JobRunListPage} />, {
+  renderWithProviders(<Route path={path} element={<JobRunListPage />} />, {
     withRouter: true,
     initialRoute,
   });
@@ -110,6 +122,7 @@ describe("JobRunListPage", () => {
           createMockTransformRunForJobRun({
             id: 17,
             status: "succeeded",
+            transform_id: TRANSFORM_ID,
             transform_name: "transform_2",
           }),
         ],
@@ -132,6 +145,7 @@ describe("JobRunListPage", () => {
           createMockTransformRunForJobRun({
             id: 21,
             status: "failed",
+            transform_id: TRANSFORM_ID,
             transform_name: "broken_transform",
             message: 'relation "abc" does not exist',
           }),
@@ -160,6 +174,7 @@ describe("JobRunListPage", () => {
         createMockTransformRunForJobRun({
           id: 17,
           status: isFinished ? "succeeded" : "started",
+          transform_id: TRANSFORM_ID,
           transform_name: "transform_f",
         }),
       ]);

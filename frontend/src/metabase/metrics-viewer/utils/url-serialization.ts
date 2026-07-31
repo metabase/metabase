@@ -160,6 +160,7 @@ function deserializeSubToken(
     const hasInfo = token.filters || token.segments;
     return {
       type: "metric",
+      // Unjustified type cast. FIXME
       sourceId: token.sourceId as MetricSourceId,
       occurrenceCount: 0,
       serializedDefinitionInfo: hasInfo
@@ -213,6 +214,7 @@ export function deserializeFormulaEntities(
     }
     if (entity.type === "expression") {
       entities.push({
+        // Unjustified type cast. FIXME
         id: entity.id as MetricExpressionId,
         type: "expression" as const,
         name: entity.name,

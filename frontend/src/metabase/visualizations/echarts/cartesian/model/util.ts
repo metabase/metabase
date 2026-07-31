@@ -30,5 +30,6 @@ export function getColumnScaling(
   const columnSettings =
     settings.column?.(column) ?? getColumnSettings(settings, column);
   const scale = columnSettings?.scale;
+  // Unjustified type cast. FIXME
   return Number.isFinite(scale) ? (scale as number) : 1;
 }

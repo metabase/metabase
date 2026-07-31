@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
@@ -8,6 +7,7 @@ import type { CollectionPickerValueItem } from "metabase/common/components/Picke
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 import type { Card } from "metabase-types/api";
 
 import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
@@ -47,7 +47,7 @@ export function MetricPageShell({
           onMove={(collection: CollectionPickerValueItem) =>
             updateCard({
               id: card.id,
-              collection_id: collection.id as number,
+              collection_id: collection.id,
               archived: false,
             })
           }

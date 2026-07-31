@@ -17,9 +17,7 @@
 
 (deftest ^:parallel fks-are-indexed-test
   (when (= (mdb/db-type) :postgres)
-    (let [excluded-fks #{{:table_name  "pulse_channel"
-                          :column_name "channel_id"}
-                         {:table_name  "workspace"
+    (let [excluded-fks #{{:table_name  "data_app"
                           :column_name "creator_id"}}
           indexed-fks  (t2/query
                         "SELECT

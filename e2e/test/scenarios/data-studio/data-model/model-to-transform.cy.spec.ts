@@ -338,6 +338,7 @@ function openReplaceWithTransformModal() {
   H.modal()
     .findByLabelText("Table name")
     .should(($input) => {
+      // Unjustified type cast. FIXME
       expect(($input.val() as string).length).to.be.greaterThan(0);
     });
 }

@@ -3,7 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.events.core :as events]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -402,3 +404,41 @@
   (testing "Context query param controls return values: selections"
     (is (= {:recents []}
            (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections")))))
+
+(deftest post-recents-selection-permission-test
+  (testing "POST /api/activity/recents read-checks the target before recording a selection"
+    (mt/with-model-cleanup [:model/RecentViews]
+      (mt/with-temp [:model/Collection c {} :model/Dashboard d {:collection_id (:id c)}]
+        (perms/revoke-collection-permissions! (perms/all-users-group) (:id c))
+        (mt/user-http-request :rasta :post 403 "activity/recents"
+                              {:model "dashboard" :model_id (:id d) :context "selection"})
+        (perms/grant-collection-read-permissions! (perms/all-users-group) (:id c))
+        (mt/user-http-request :rasta :post 204 "activity/recents"
+                              {:model "dashboard" :model_id (:id d) :context "selection"})))))
+
+(deftest card-query-collection-context-excluded-from-recents-test
+  (testing "A card-query event with a non-question context is not recorded as a recent view (#45003)"
+    (mt/with-test-user :crowberto
+      (mt/with-model-cleanup [:model/RecentViews]
+        (mt/with-temp [:model/Card {card-id :id} {:creator_id (mt/user->id :crowberto)}]
+          (doseq [ctx [:collection :dashboard :dashboard-subscription]]
+            (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id card-id :context ctx}))
+          (is (empty? (filter (comp #{card-id} :id)
+                              (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))))))))
+
+(deftest recent-views-verified-status-test
+  (testing "moderated_status reflects a verified moderation review (metabase#18021)"
+    (mt/with-premium-features #{:content-verification}
+      (clear-recent-views-for-user :crowberto)
+      (mt/with-model-cleanup [:model/RecentViews :model/ModerationReview]
+        (mt/with-temp [:model/Card card {:name "verified card"}]
+          (moderation-review/create-review! {:moderated_item_id   (:id card)
+                                             :moderated_item_type "card"
+                                             :moderator_id        (mt/user->id :crowberto)
+                                             :status              "verified"})
+          (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id (:id card)})
+          (is (=? {:model "card" :moderated_status "verified"}
+                  (->> (mt/user-http-request :crowberto :get 200 "activity/recents?context=views")
+                       :recents
+                       (filter (comp #{(:id card)} :id))
+                       first))))))))

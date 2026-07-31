@@ -43,6 +43,7 @@ export const useToggleResourceEmbedding = () => {
     } as const;
 
     await handlersMap[resourceType]?.({
+      // Unjustified type cast. FIXME
       id: resource.id as number,
       enable_embedding: enableEmbedding,
       embedding_type: enableEmbedding ? GUEST_EMBED_EMBEDDING_TYPE : null,
@@ -58,6 +59,7 @@ export const useToggleResourceEmbedding = () => {
     } as const;
 
     await handlersMap[resourceType]?.({
+      // Unjustified type cast. FIXME
       id: resource.id as number,
       embedding_params: embeddingParams,
       embedding_type: GUEST_EMBED_EMBEDDING_TYPE,

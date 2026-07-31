@@ -1,5 +1,4 @@
-import { Link } from "react-router";
-
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import * as Urls from "metabase/urls";

@@ -23,7 +23,7 @@ export function DeleteThemeModal({
             {t`Cancel`}
           </Button>
 
-          <Button variant="filled" color="error" onClick={onDelete}>
+          <Button variant="filled" color="feedback-negative" onClick={onDelete}>
             {t`Delete`}
           </Button>
         </Flex>

@@ -29,7 +29,7 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-focus);
+    background-color: var(--mb-color-input-focus);
   }
 }
 

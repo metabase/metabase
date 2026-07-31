@@ -55,7 +55,7 @@ function UnsubscribeModal({
         <Button
           key="submit"
           variant="filled"
-          color="error"
+          color="feedback-negative"
           onClick={handleUnsubscribeClick}
         >
           {t`Unsubscribe`}

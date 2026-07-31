@@ -41,6 +41,19 @@ export const getErrorMessage = (
   return fallback;
 };
 
+type RequestError = {
+  status?: number;
+  data?: { error_code?: string; errors?: Record<string, unknown> };
+};
+
+const isRequestError = (error: unknown): error is RequestError =>
+  typeof error === "object" && error !== null;
+
+// The createUser endpoint rejects a duplicate email with a 400 carrying an
+// `error_code`. Prefer the stable code over the localized field message.
+export const isEmailAlreadyInUse = (error: unknown): boolean =>
+  isRequestError(error) && error.data?.error_code === "email-already-in-use";
+
 function isEmpty(value: unknown): boolean {
   return value == null || value === "";
 }

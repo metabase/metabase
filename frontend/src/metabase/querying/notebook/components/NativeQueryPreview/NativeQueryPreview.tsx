@@ -43,7 +43,7 @@ export function NativeQueryPreview({
     <Stack>
       {formattedError && (
         <Flex gap="sm">
-          <Icon name="warning" c="error" />
+          <Icon name="warning" c="feedback-negative" />
           {t`An error occurred in your query`}
         </Flex>
       )}

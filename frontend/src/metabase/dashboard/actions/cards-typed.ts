@@ -19,10 +19,7 @@ import {
 } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
 import { getDefaultSize } from "metabase/visualizations";
-import {
-  getCardIdsFromColumnValueMappings,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -33,6 +30,7 @@ import type {
   VirtualCard,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import {
   trackCardCreated,
@@ -180,6 +178,7 @@ export const addCardToDashboard =
     );
 
     const dashcardId = generateTemporaryDashcardId();
+    // Unjustified type cast. FIXME
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId,
@@ -309,6 +308,7 @@ export const addCardWithVisualization =
     const [mainCard, ...secondaryCards] = cards;
 
     const dashcardId = generateTemporaryDashcardId();
+    // Unjustified type cast. FIXME
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId: getState().dashboard.dashboardId!,

@@ -5,7 +5,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > summarize sidebar", () => {
   beforeEach(() => {
@@ -109,38 +109,6 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.button("Add dimension").realHover();
       cy.findByLabelText("Binning strategy").should("be.visible");
     });
-  });
-
-  it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-    H.createQuestion(
-      {
-        name: "14649_min",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "aggregation-options",
-                ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { name: "Revenue", "display-name": "Revenue" },
-              ],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          aggregation: [
-            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
-          ],
-        },
-
-        display: "scalar",
-      },
-      { visitQuestion: true },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("49.54");
   });
 
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {

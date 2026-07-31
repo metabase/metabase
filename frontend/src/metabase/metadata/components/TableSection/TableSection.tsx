@@ -1,5 +1,4 @@
 import { memo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -7,6 +6,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
@@ -207,9 +207,7 @@ const TableSectionBase = ({
           >
             {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
 
-            {isUpdatingSorting && (
-              <Loader data-testid="loading-indicator" size="xs" />
-            )}
+            {isUpdatingSorting && <Loader size="xs" />}
 
             {!isSorting && hasFields && (
               <ResponsiveButton

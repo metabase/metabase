@@ -659,7 +659,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
       H.openObjectDetail(0);
       cy.findByTestId("object-detail").within(() => {
-        const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}/detail/1`;
+        const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}-people/detail/1`;
 
         cy.findByLabelText("Copy link to this record").click();
         H.readClipboard().should("equal", expectedUrl);

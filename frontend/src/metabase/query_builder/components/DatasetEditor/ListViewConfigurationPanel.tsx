@@ -22,7 +22,7 @@ export function getComputedVisualizationSettings(
 
   return getComputedSettingsForSeries(
     getVisualizationTransformed(extractRemappings(series)).series,
-  ) as ComputedVisualizationSettings;
+  );
 }
 
 type ListViewConfigurationPanelProps = {

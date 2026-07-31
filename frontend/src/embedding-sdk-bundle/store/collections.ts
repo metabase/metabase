@@ -24,32 +24,37 @@ export const getCollectionIdValueFromReference = createSelector(
     tenantCollectionId,
     collectionReference,
   ): CollectionId | null => {
-    return match(collectionReference)
-      .with("personal", () => personalCollectionId as RegularCollectionId)
-      .with("tenant", () => {
-        if (!tenantCollectionId) {
-          throw new Error(
-            "You must be a tenant member to access the tenant collection.",
-          );
-        }
+    return (
+      match(collectionReference)
+        // Unjustified type cast. FIXME
+        .with("personal", () => personalCollectionId as RegularCollectionId)
+        .with("tenant", () => {
+          if (!tenantCollectionId) {
+            throw new Error(
+              "You must be a tenant member to access the tenant collection.",
+            );
+          }
 
-        return tenantCollectionId as RegularCollectionId;
-      })
-      .with("root", () => null)
-      .with(P.union(P.number, P.string), (id) => id)
-      .otherwise(() => {
-        throw new Error(
-          "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
-        );
-      });
+          return tenantCollectionId;
+        })
+        .with("root", () => null)
+        .with(P.union(P.number, P.string), (id) => id)
+        .otherwise(() => {
+          throw new Error(
+            "Invalid collection id, expected `number | string | 'root' | 'personal' | 'tenant'`",
+          );
+        })
+    );
   },
 );
 
 /**
- * This return an "id"/"slug" that can be used in `/api/collection/{:id}`
- * There are extra handlers for "root" and "trash" so unlike when
- * creating a dashboard, we have to pass "root" for the root collection
- * instead of null
+ * Returns an "id"/"slug" for `/api/collection/{:id}` — unlike when creating a
+ * dashboard, the root collection is `"root"` here rather than null.
+ *
+ * `undefined` when `"personal"` can't be resolved: `currentUser` hasn't loaded
+ * yet, or has no personal collection. Callers must handle that (e.g. with
+ * `skipToken`) — `/api/collection/undefined` is a 404.
  */
 export const getCollectionIdSlugFromReference = createSelector(
   [
@@ -61,9 +66,9 @@ export const getCollectionIdSlugFromReference = createSelector(
     personalCollectionId,
     tenantCollectionId,
     collectionReference,
-  ): CollectionId => {
+  ): CollectionId | undefined => {
     return match(collectionReference)
-      .with("personal", () => personalCollectionId as RegularCollectionId)
+      .with("personal", () => personalCollectionId)
       .with("tenant", () => {
         if (!tenantCollectionId) {
           throw new Error(
@@ -71,7 +76,7 @@ export const getCollectionIdSlugFromReference = createSelector(
           );
         }
 
-        return tenantCollectionId as RegularCollectionId;
+        return tenantCollectionId;
       })
       .with("root", () => "root" as const)
       .with(P.union(P.number, P.string), (id) => id)

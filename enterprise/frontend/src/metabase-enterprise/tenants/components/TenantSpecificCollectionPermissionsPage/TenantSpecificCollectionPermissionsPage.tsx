@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
@@ -17,11 +15,11 @@ import {
   saveTenantSpecificCollectionPermissions,
   updateTenantSpecificCollectionPermission,
 } from "metabase/admin/permissions/permissions";
-import type { CollectionIdProps } from "metabase/admin/permissions/selectors/collection-permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push, useParams } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
@@ -32,20 +30,13 @@ import {
   tenantSpecificCollectionsQuery,
 } from "./selectors";
 
-type TenantSpecificCollectionPermissionsPageProps = {
-  params: CollectionIdProps["params"];
-  route: Route;
-};
-
-function TenantSpecificCollectionPermissionsPageView({
-  params,
-  route,
-}: TenantSpecificCollectionPermissionsPageProps) {
+function TenantSpecificCollectionPermissionsPageView() {
+  const { collectionId } = useParams();
   useListCollectionsTreeQuery(tenantSpecificCollectionsQuery);
 
   const dispatch = useDispatch();
 
-  const props = useMemo(() => ({ params }), [params]);
+  const props = useMemo(() => ({ params: { collectionId } }), [collectionId]);
   const sidebar = useSelector((state) =>
     getTenantSpecificCollectionsSidebar(state, props),
   );
@@ -112,6 +103,7 @@ function TenantSpecificCollectionPermissionsPageView({
       // Always propagate to sub-collections for tenant-specific collections
       updateCollectionPermission({
         groupId: assertNumericId(item.id),
+        // Unjustified type cast. FIXME
         collection: collection as Collection,
         value,
         shouldPropagateToChildren: true,
@@ -124,7 +116,6 @@ function TenantSpecificCollectionPermissionsPageView({
     <PermissionsPageLayout
       tab="tenant-specific-collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}

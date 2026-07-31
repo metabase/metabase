@@ -23,7 +23,6 @@ export default {
   component: PieChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PieChart);
 
 const Template: StoryFn = (args) => {
@@ -55,6 +54,7 @@ const Template: StoryFn = (args) => {
       <Box h={500} style={{ backgroundColor }}>
         <Visualization
           {...props}
+          // Unjustified type cast. FIXME
           rawSeries={data.defaultSettings as unknown as Series}
           width={500}
         />
@@ -84,6 +84,7 @@ export const EmbeddedDashcard = {
 export const DarkTheme: StoryFn = () => (
   <VisualizationWrapper displayTheme="dark">
     <Box h={500}>
+      {/* Unjustified type cast. FIXME */}
       <Visualization rawSeries={data.defaultSettings as unknown as Series} />
     </Box>
   </VisualizationWrapper>
@@ -100,6 +101,7 @@ export const Watermark: StoryFn = () => (
     })}
   >
     <Box h={500}>
+      {/* Unjustified type cast. FIXME */}
       <Visualization rawSeries={data.defaultSettings as unknown as Series} />
     </Box>
   </VisualizationWrapper>

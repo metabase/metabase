@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -25,7 +24,6 @@ import type {
   DatabaseId,
   WritebackAction,
   WritebackActionId,
-  WritebackQueryAction,
 } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
@@ -41,7 +39,11 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
-  route?: Route;
+  /**
+   * Whether the creator is mounted as its own route. A routed creator guards
+   * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
+   */
+  isRouted?: boolean;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
@@ -63,7 +65,7 @@ const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
-function ActionCreator({ model, onSubmit, onClose, route }: Props) {
+function ActionCreator({ model, onSubmit, onClose, isRouted }: Props) {
   const [createAction] = useCreateActionMutation();
   const [updateAction] = useUpdateActionMutation();
   const [sendToast] = useToast();
@@ -91,7 +93,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
 
-  useBeforeUnload(!route && showUnsavedChangesWarning);
+  useBeforeUnload(!isRouted && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -103,7 +105,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         ...action,
         ...values,
         visualization_settings: formSettings,
-      } as WritebackQueryAction).unwrap();
+      }).unwrap();
 
       // Sync the editor state with data from save modal form
       handleActionChange(values);
@@ -187,11 +189,8 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         />
       </Modal>
 
-      {route && (
-        <LeaveRouteConfirmModal
-          isEnabled={showUnsavedChangesWarning}
-          route={route}
-        />
+      {isRouted && (
+        <LeaveRouteConfirmModal isEnabled={showUnsavedChangesWarning} />
       )}
     </>
   );

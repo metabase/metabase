@@ -27,7 +27,7 @@
   }
 
   &[data-variant="warning"] {
-    color: var(--mb-color-warning);
+    color: var(--mb-color-feedback-warning);
     background-color: transparent;
 
     &:hover,
@@ -38,7 +38,7 @@
   }
 
   &[data-variant="error"] {
-    color: var(--mb-color-error);
+    color: var(--mb-color-feedback-negative);
     background-color: transparent;
 
     &:hover,

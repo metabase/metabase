@@ -8,6 +8,7 @@ import type { EntityToken } from "metabase-types/api/entity";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
+  // Unjustified type cast. FIXME
   getDictionaryBasePath: null as string | null,
   setEndpointsForAuthEmbedding: () => {},
   setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},

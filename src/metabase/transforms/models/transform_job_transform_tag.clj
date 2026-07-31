@@ -12,10 +12,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id))
 
-(defmethod serdes/hash-fields :model/TransformJobTransformTag
-  [_job-tag]
-  [:job_id :tag_id :position])
-
 (defmethod serdes/make-spec "TransformJobTransformTag"
   [_model-name _opts]
   {:copy [:entity_id :position]

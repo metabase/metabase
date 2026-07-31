@@ -39,7 +39,7 @@ export const DiscardTableFieldValuesButton = ({
   };
 
   return (
-    <Button c="error" variant="subtle" onClick={handleClick}>
+    <Button c="feedback-negative" variant="subtle" onClick={handleClick}>
       {started ? t`Discard triggered!` : t`Discard cached field values`}
     </Button>
   );

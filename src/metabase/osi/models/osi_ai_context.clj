@@ -124,10 +124,6 @@
 
 (defmethod serdes/entity-id "OsiAiContext" [_ _] nil)
 
-(defmethod serdes/hash-fields :model/OsiAiContext
-  [_model]
-  [:entity_type :entity_local_id])
-
 (defmethod serdes/generate-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
   (conj (vec (entity-parent-path entity_type entity_local_id))
         {:model "OsiAiContext" :id "ai_context"}))
@@ -159,7 +155,7 @@
                                  :import-with-context
                                  (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
 
-(defmethod serdes/dependencies "OsiAiContext"
+(defmethod serdes/deserialization-dependencies "OsiAiContext"
   [entity]
   ;; Depend on the entity this row describes (its parent path), so it imports after that entity exists.
   [(vec (pop (serdes/path entity)))])

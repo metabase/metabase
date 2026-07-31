@@ -95,6 +95,7 @@ describe("ActionMenu", () => {
           `path:/api/card/${item.id}`,
           { method: "PUT" },
         );
+        // Unjustified type cast. FIXME
         expect(JSON.parse(call?.options.body as string)).toEqual({
           collection_preview: false,
         });
@@ -155,6 +156,7 @@ describe("ActionMenu", () => {
           `path:/api/card/${item.id}`,
           { method: "PUT" },
         );
+        // Unjustified type cast. FIXME
         expect(JSON.parse(call?.options.body as string)).toEqual({
           collection_preview: true,
         });
@@ -216,6 +218,7 @@ describe("ActionMenu", () => {
       expect(calls).toHaveLength(1);
       const [putCall] = calls;
       expect(putCall.options.method).toBe("PUT");
+      // Unjustified type cast. FIXME
       expect(JSON.parse(putCall.options.body as string)).toMatchObject({
         archived: true,
       });
@@ -330,6 +333,7 @@ describe("ActionMenu", () => {
       const [putCall] = fetchMock.callHistory.calls("path:/api/document/7", {
         method: "PUT",
       });
+      // Unjustified type cast. FIXME
       expect(JSON.parse(putCall.options.body as string)).toMatchObject({
         archived: false,
       });

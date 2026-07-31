@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Flex,
@@ -41,7 +41,7 @@ export const SidebarHeader = ({
   const dispatch = useDispatch();
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notificationId)}`;
+    const url = `${window.location.origin}${Urls.monitorNotificationDetail(notificationId)}`;
     await navigator.clipboard.writeText(url);
     trackAlertsManagementLinkCopied(notificationId);
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
@@ -50,7 +50,7 @@ export const SidebarHeader = ({
   const handleNavigate = (id: NotificationId | undefined) => {
     if (id !== undefined) {
       trackAlertsManagementAlertOpened(id, "sidebar_navigation");
-      dispatch(push(Urls.adminToolsNotificationDetail(id)));
+      dispatch(push(Urls.monitorNotificationDetail(id)));
     }
   };
 
@@ -100,7 +100,7 @@ export const SidebarHeader = ({
               </Menu.Item>
               {notification?.active && (
                 <Menu.Item
-                  c="danger"
+                  c="feedback-negative"
                   leftSection={<Icon name="trash" />}
                   onClick={() => onDelete(notification)}
                 >

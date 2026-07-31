@@ -65,10 +65,10 @@ export function UpgradeModalLoading({
         justify="center"
         w={64}
         h={64}
-        bg="success"
+        bg="feedback-positive"
         style={{ borderRadius: "50%" }}
       >
-        <Icon name="check" c="white" size={32} />
+        <Icon name="check" c="core-white" size={32} />
       </Flex>
 
       <Stack align="center" gap="xs">

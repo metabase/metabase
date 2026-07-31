@@ -3,13 +3,13 @@ import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
-import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
+import { ListItem } from "metabase/reference/components/ListItem";
 import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";

@@ -59,15 +59,15 @@ export const getSyncStatusColor = (
 ): ColorName => {
   switch (status) {
     case "create":
-      return "success";
+      return "feedback-positive";
     case "removed":
     case "delete":
-      return "danger";
+      return "feedback-negative";
     case "update":
     case "touch":
       return "core-blue-saturated";
     default:
-      return "info";
+      return "core-info";
   }
 };
 

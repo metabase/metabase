@@ -115,6 +115,7 @@ export function DashboardHeaderView({
             isSidebarOpen && !isInfoSidebarOpen && !isSettingsSidebarOpen,
         })}
         style={
+          // Unjustified type cast. FIXME
           {
             "--sidebar-width": `${SIDEBAR_WIDTH}px`,
           } as React.CSSProperties

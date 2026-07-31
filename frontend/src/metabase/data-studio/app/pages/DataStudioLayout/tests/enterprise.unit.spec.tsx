@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
-import * as Urls from "metabase/urls";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -206,22 +205,54 @@ describe("DataStudioLayout", () => {
     });
   });
 
-  describe("workspaces tab", () => {
-    it("admin sees the tab and it links to the workspaces index", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
+  describe("transforms tab visibility", () => {
+    const transformsReadySettings = {
+      transformsSetupComplete: true,
+      transformsEnabled: true,
+    };
 
-      const tab = await screen.findByLabelText("Workspaces");
-      expect(tab).toHaveAttribute("href", Urls.workspaces());
-    });
-
-    it("non-admin does not see the tab", async () => {
+    it("should show Transforms tab for admins", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
-        isAdmin: false,
+        ...transformsReadySettings,
+        isAdmin: true,
       });
 
-      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+    });
+
+    it("should show Transforms tab for a non-admin with transforms permission", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: false,
+        canAccessTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+    });
+
+    it("should hide Transforms tab for a non-admin without transforms permission", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: false,
+        canAccessTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
     });
   });
 });

@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
+import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import CS from "metabase/css/core/index.css";

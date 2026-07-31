@@ -12,7 +12,7 @@
 }
 
 .overlay {
-  background-color: var(--mb-color-overlay);
+  background-color: var(--mb-color-modal-overlay);
   padding: 11px;
 }
 

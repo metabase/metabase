@@ -21,6 +21,7 @@ import {
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -120,12 +121,14 @@ const setup = ({
       <HomepageSetting />
       <UndoListing />
     </div>,
+    { storeInitialState: { settings: createMockSettingsState(settings) } },
   );
 };
 
 const findBulkPutBody = async () => {
   const requests = await findRequests("PUT");
   const bulk = requests.find(({ url }) => url.endsWith("/api/setting"));
+  // Unjustified type cast. FIXME
   return bulk?.body as Record<string, unknown> | undefined;
 };
 

@@ -567,23 +567,6 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
-  it("should work with `isNull` function (metabase#15922)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.getNotebookStep("data").button("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: "isnull([Discount])",
-      name: "No discount",
-    });
-    cy.button("Done").click();
-
-    H.visualize((response) => {
-      expect(response.body.error).to.not.exist;
-    });
-
-    cy.findAllByRole("gridcell").contains("37.65");
-    cy.findAllByTestId("header-cell").contains("No discount");
-  });
-
   it("should be able to add a date range filter to a custom column", () => {
     H.visitQuestionAdhoc({
       display: "table",

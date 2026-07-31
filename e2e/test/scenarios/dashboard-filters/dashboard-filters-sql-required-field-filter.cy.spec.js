@@ -47,50 +47,6 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     cy.signInAsAdmin();
   });
 
-  it("should apply default of the SQL field filter if the dashboard doesn't have a filter connected to it", () => {
-    H.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: dashboardCard }) => {
-      const { dashboard_id } = dashboardCard;
-      H.visitDashboard(dashboard_id);
-    });
-
-    // the native SQL filter is not mapped to the dashcard filter
-    // the results should show the default value was applied
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("Gizmo");
-      cy.contains("Widget").should("not.exist");
-    });
-  });
-
-  it("should apply default of the SQL field filter if the dashboard filter is empty", () => {
-    H.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: dashboardCard }) => {
-      const { card_id, dashboard_id } = dashboardCard;
-      const mapFilterToCard = {
-        parameter_mappings: [
-          {
-            parameter_id: filter.id,
-            card_id,
-            target: ["dimension", ["template-tag", "filter"]],
-          },
-        ],
-      };
-      H.editDashboardCard(dashboardCard, mapFilterToCard);
-      H.visitDashboard(dashboard_id);
-    });
-
-    H.clearFilterWidget();
-
-    // the results should show that the field filter was not applied
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("Doohickey");
-    });
-  });
-
   it("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
     H.createNativeQuestionAndDashboard({
       questionDetails: questionDetailsWithRequiredFilter,

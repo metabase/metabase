@@ -1,8 +1,8 @@
-name: CI Conductor quarantine gate (dry run)
+name: CI Conductor quarantine gate
 description: >-
-  Check this job's test failures against ci-conductor's quarantine list and print
-  a verdict. DRY RUN — it never fails the job. No-ops unless CI_CONDUCTOR_BASE_URL
-  is set.
+  Check this job's test failures against ci-conductor's quarantine list.
+  Either enforces the quarantine or only prints a verdict (dry run).
+  Fails closed when enforcing but the `CI_CONDUCTOR_BASE_URL` is missing or unreachable.
 
 inputs:
   adapter:
@@ -13,31 +13,23 @@ inputs:
       Suite label to gate (CI_CONDUCTOR_TEST_SUITE). MUST match the label this
       job reports under, or the gate checks the wrong quarantine list.
     required: true
+  enforce-quarantine:
+    description: >-
+      Whether the gate actually gates the job. When "false", it only prints a verdict.
+    required: false
+    default: "false"
 
 runs:
   using: composite
   steps:
-    - name: Detect bun
-      id: bun
-      shell: bash
-      run: |
-        if command -v bun >/dev/null; then
-          echo "present=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "present=false" >> "$GITHUB_OUTPUT"
-        fi
-    - name: Install bun
-      if: steps.bun.outputs.present != 'true'
-      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-      with:
-        bun-version: "1.3.14"
-        token: ${{ github.token }}
+    - name: Prepare CI Conductor
+      uses: ./.github/actions/prepare-ci-conductor
     - name: Check failures against the quarantine list
       shell: bash
       env:
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
         ADAPTER: ${{ inputs.adapter }}
-        QUARANTINE_DRY_RUN: "true"
+        QUARANTINE_DRY_RUN: ${{ inputs.enforce-quarantine != 'true' }}
       run: |
         case "$ADAPTER" in
           backend|frontend|e2e) ;;

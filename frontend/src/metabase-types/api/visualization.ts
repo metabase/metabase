@@ -13,6 +13,7 @@ export const isVirtualCardDisplayType = (
   value: string,
 ): value is VirtualCardDisplay =>
   typeof value === "string" &&
+  // Unjustified type cast. FIXME
   virtualCardDisplayTypes.includes(value as VirtualCardDisplay);
 
 export const cardDisplayTypes = [
@@ -41,6 +42,7 @@ export const cardDisplayTypes = [
 
 export const isCardDisplayType = (value: unknown): value is CardDisplayType =>
   typeof value === "string" &&
+  // Unjustified type cast. FIXME
   cardDisplayTypes.includes(value as CardDisplayType);
 
 export type CardDisplayType = (typeof cardDisplayTypes)[number];
@@ -53,7 +55,9 @@ export type QueryVisualizationDisplayType =
 
 export type VisualizationDisplay =
   | VirtualCardDisplay
-  | QueryVisualizationDisplayType;
+  | QueryVisualizationDisplayType
+  // internal-only display registered by the audit app, not saveable on cards
+  | "audit-table";
 
 export type TimeseriesDisplayType = Extract<
   CardDisplayType,

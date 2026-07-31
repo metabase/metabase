@@ -56,10 +56,10 @@
   :export?    false)
 
 (defn process-files-channel-name
-  "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
+  "Converts empty strings to `nil`, and removes a leading `#` (channel) or `@` (user) from the name if present."
   [channel-name]
   (when-not (str/blank? channel-name)
-    (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
+    (if (contains? #{\# \@} (first channel-name)) (subs channel-name 1) channel-name)))
 
 (defn find-cached-slack-channel-or-username
   "Look up a Slack channel or username by name or ID in [[slack-cached-channels-and-usernames]].

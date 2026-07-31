@@ -1,11 +1,8 @@
-import { useMemo } from "react";
-
 import {
   useAcknowledgeAdvisoriesMutation,
   useAcknowledgeAdvisoryMutation,
   useListSecurityAdvisoriesQuery,
 } from "metabase/api";
-import type { Advisory } from "metabase-types/api";
 
 const POLLING_INTERVAL = 2000;
 
@@ -21,13 +18,8 @@ export function useSecurityAdvisories(isPolling = false) {
   const [acknowledgeAdvisory] = useAcknowledgeAdvisoryMutation();
   const [acknowledgeAdvisories] = useAcknowledgeAdvisoriesMutation();
 
-  const advisories: Advisory[] = useMemo(
-    () => response?.advisories ?? [],
-    [response?.advisories],
-  );
-
   return {
-    data: advisories,
+    data: response?.advisories ?? [],
     lastCheckedAt: response?.last_checked_at ?? null,
     isLoading,
     isError,

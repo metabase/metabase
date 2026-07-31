@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -23,6 +22,7 @@ import {
   createMockQueryBuilderState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
 import type { Card } from "metabase-types/api";
 import {
@@ -380,7 +380,7 @@ function setup({
   setupCardEndpoints(card);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
-  return renderWithProviders(<Route path="*" component={AppBarContainer} />, {
+  return renderWithProviders(<Route path="*" element={<AppBarContainer />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

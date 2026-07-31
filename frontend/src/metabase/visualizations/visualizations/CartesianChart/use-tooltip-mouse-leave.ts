@@ -22,7 +22,9 @@ export const useTooltipMouseLeave = (
 
     const handleGlobalMouseMove = _.throttle((e: MouseEvent) => {
       try {
+        // Unjustified type cast. FIXME
         const target = e.target as HTMLElement;
+        // Unjustified type cast. FIXME
         const tooltipElement = target.closest(
           ECHARTS_TOOLTIP_SELECTOR,
         ) as HTMLElement;

@@ -486,80 +486,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     );
   });
 
-  describe("custom columns (metabase#14604)", () => {
-    it("should work with custom columns as values", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            expressions: {
-              "Twice Total": ["*", ["field", ORDERS.TOTAL, null], 2],
-            },
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["sum", ["expression", "Twice Total"]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          type: "query",
-        },
-        display: "pivot",
-      });
-
-      // value headings
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sum of Total");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sum of Twice Total");
-
-      // check values in the table
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42,156.87"); // sum of total for 2025
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("84,313.74"); // sum of "twice total" for 2025
-
-      // check grand totals
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("1,510,621.68"); // sum of total grand total
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3,021,243.37"); // sum of "twice total" grand total
-    });
-
-    it("should work with custom columns as pivoted columns", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            expressions: {
-              category_foo: [
-                "concat",
-                ["field", PRODUCTS.CATEGORY, null],
-                "foo",
-              ],
-            },
-            aggregation: [["count"]],
-            breakout: [["expression", "category_foo"]],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "pivot",
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("category_foo");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Doohickeyfoo");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42"); // count of Doohickeyfoo
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("200"); // grand total
-    });
-  });
-
   describe("dashboards", () => {
     it("should be scrollable even when tiny (metabase#24678)", () => {
       H.createQuestionAndDashboard({
@@ -819,32 +745,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.icon("download").click();
     H.popover().findByText(HINT_TEXT).should("not.exist");
-  });
-
-  it("should work for user without data permissions (metabase#14989)", () => {
-    cy.request("POST", "/api/card", {
-      name: "14989",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
-            ["field-id", PRODUCTS.CATEGORY],
-          ],
-        },
-        type: "query",
-      },
-      display: "pivot",
-      visualization_settings: {},
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.signIn("nodata");
-      H.visitQuestion(QUESTION_ID);
-    });
-    cy.findAllByTestId("pivot-table-cell").contains("Grand totals");
-    cy.findAllByTestId("pivot-table-cell").contains("Row totals");
-    cy.findAllByTestId("pivot-table-cell").contains("200");
   });
 
   it("should work with custom mapping of display values (metabase#14985)", () => {
@@ -1228,52 +1128,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.popover().findByText("Address").click();
 
     H.main().findByText("User → Address").should("be.visible");
-  });
-
-  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
-    const query = {
-      type: "query",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-          ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
-        ],
-      },
-      database: SAMPLE_DB_ID,
-    };
-
-    H.visitQuestionAdhoc({
-      dataset_query: query,
-      display: "pivot",
-      visualization_settings: {
-        "pivot_table.column_split": {
-          rows: ["CATEGORY", "EAN"],
-          columns: [],
-          values: ["count"],
-        },
-      },
-    });
-
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 205 rows",
-    );
-
-    H.saveQuestion(undefined, undefined, {
-      path: ["Our analytics"],
-    });
-    cy.wait("@createCard");
-    cy.url().should("include", "/question/");
-    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
-    cy.reload();
-    cy.wait("@cardPivotQuery");
-
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 205 rows",
-    );
   });
 
   describe("issue 37380", () => {

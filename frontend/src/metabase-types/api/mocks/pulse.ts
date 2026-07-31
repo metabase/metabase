@@ -18,6 +18,7 @@ export const createMockDashboardSubscription = (
   creator_id: createMockUser().id,
   dashboard_id: 1,
   disable_links: false,
+  // Unjustified type cast. FIXME
   entity_id: "" as BaseEntityId,
   skip_if_empty: false,
   id: 1,

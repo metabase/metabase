@@ -23,6 +23,7 @@ import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { SdkQuestion } from "./SdkQuestion";
 import { nativeQuestionWithParametersData } from "./data/data";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 type SdkQuestionComponentProps = ComponentProps<typeof SdkQuestion>;
@@ -348,6 +349,7 @@ export const ControlledSqlParameters = {
         // Smart query handler: filters rows by the pushed state / city /
         // source params so the visualization reacts visibly to every push.
         http.post(`*/api/card/${QUESTION_ID}/query`, async ({ request }) => {
+          // Unjustified type cast. FIXME
           const body = (await request.json()) as {
             parameters?: Array<{ id: string; value: unknown }>;
           };

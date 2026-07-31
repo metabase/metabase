@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -105,7 +105,7 @@ export function PythonEditorBody({
                 <Button
                   data-testid="accept-proposed-changes-button"
                   variant="filled"
-                  bg="success"
+                  bg="feedback-positive"
                   px="0"
                   w="2.5rem"
                   onClick={onAcceptProposed}
@@ -119,7 +119,7 @@ export function PythonEditorBody({
                   w="2.5rem"
                   px="0"
                   variant="filled"
-                  bg="danger"
+                  bg="feedback-negative"
                   onClick={onRejectProposed}
                 >
                   <Icon name="close" />

@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useGetCollectionQuery,
@@ -7,6 +5,7 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 

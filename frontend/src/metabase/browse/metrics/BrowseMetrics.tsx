@@ -9,7 +9,6 @@ import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
@@ -33,6 +32,7 @@ import S from "../components/BrowseContainer.module.css";
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
 import type { MetricFilterSettings, MetricResult } from "./types";
+import { useFetchMetrics } from "./use-fetch-metrics";
 
 const {
   contentVerificationEnabled,
@@ -242,6 +242,7 @@ function useFilteredMetrics(metricFilters: MetricFilterSettings) {
 
   const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
   const error = hasVerifiedMetrics.error || metricsResult.error;
+  // Unjustified type cast. FIXME
   const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
   return {

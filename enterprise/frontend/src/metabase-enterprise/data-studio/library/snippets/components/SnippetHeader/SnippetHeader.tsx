@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { isRootCollection } from "metabase/common/collections/utils";
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,

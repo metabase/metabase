@@ -1,29 +1,4 @@
-import type { Path, URLSearchParamsInit } from "./types";
-
-/**
- * Split a path string into `pathname`, `search`, and `hash`, mirroring
- * react-router v7's `parsePath`. Used when a string destination has to be
- * combined with history `state` into a v3 location descriptor.
- */
-export function parsePath(path: string): Path {
-  let pathname = path;
-  let search = "";
-  let hash = "";
-
-  const hashIndex = pathname.indexOf("#");
-  if (hashIndex >= 0) {
-    hash = pathname.slice(hashIndex);
-    pathname = pathname.slice(0, hashIndex);
-  }
-
-  const searchIndex = pathname.indexOf("?");
-  if (searchIndex >= 0) {
-    search = pathname.slice(searchIndex);
-    pathname = pathname.slice(0, searchIndex);
-  }
-
-  return { pathname, search, hash };
-}
+import type { URLSearchParamsInit } from "./types";
 
 /**
  * Build a `URLSearchParams`, mirroring react-router v7's `createSearchParams`.

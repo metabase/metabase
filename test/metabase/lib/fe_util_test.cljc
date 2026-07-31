@@ -702,6 +702,17 @@
         (lib.filter/is-null column)
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
 
+(deftest ^:parallel relative-date-filter-parts-on-temporal-expression-test
+  (testing "QUE-2567 a relative-date filter over a temporal expression column round-trips to date-picker parts"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Foo" (lib/datetime-add (meta/field-metadata :orders :created-at) 5 :day)))
+          query (lib/filter query (lib/time-interval (lib/expression-ref query "Foo") -12 :month))
+          parts (lib.fe-util/relative-date-filter-parts query -1 (first (lib/filters query)))]
+      (is (some? parts))
+      (is (=? {:value -12
+               :unit  :month}
+              parts)))))
+
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
         column (m/filter-vals some? (meta/field-metadata :checkins :date))]
@@ -1069,23 +1080,23 @@
 
 (deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
-    (let [;; lib/native-query would try to look up the snippets:
+    (let [ ;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query
                  :database 1
-                 :stages [{:lib/type :mbql.stage/native
-                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
-                           :template-tags {"snippet: filter1" {:type :snippet
-                                                               :snippet-id 10
-                                                               :snippet-name "filter1"
-                                                               :name "snippet: filter1"
-                                                               :display-name "Filter 1"
-                                                               :id "def456"}
-                                           "snippet: filter2" {:type :snippet
-                                                               :snippet-id 20
-                                                               :snippet-name "filter2"
-                                                               :name "snippet: filter2"
-                                                               :display-name "Filter 2"
-                                                               :id "ghi789"}}}]}]
+                 :stages   [{:lib/type      :mbql.stage/native
+                             :native        "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                             :template-tags [{:type         :snippet
+                                              :snippet-id   10
+                                              :snippet-name "filter1"
+                                              :name         "snippet: filter1"
+                                              :display-name "Filter 1"
+                                              :id           "def456"}
+                                             {:type         :snippet
+                                              :snippet-id   20
+                                              :snippet-name "filter2"
+                                              :name         "snippet: filter2"
+                                              :display-name "Filter 2"
+                                              :id           "ghi789"}]}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}

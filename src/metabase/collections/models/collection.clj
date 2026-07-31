@@ -740,10 +740,13 @@
         ;; root collection is nil
         [collection]))
     (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
+          ;; Personal Collections only ever live in the Root Collection, so a Collection is inside one exactly when
+          ;; the first ID of its location path is a Personal Collection. Testing that ID against the set beats
+          ;; scanning every personal collection per row: instances with thousands of each made this quadratic.
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
-                                          (some #(str/starts-with? location (format "/%d/" %)) personal-collection-ids))))]
+                                          (personal-collection-ids (first (location-path->ids location))))))]
       (map (fn [{:keys [location personal_owner_id] :as coll}]
              (if (some? coll)
                (assoc coll :is_personal (or (some? personal_owner_id)
@@ -2067,20 +2070,6 @@
       [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
-(defn- parent-identity-hash [coll]
-  (let [parent-id (-> coll
-                      (t2/hydrate :parent_id)
-                      :parent_id)
-        parent    (when parent-id (t2/select-one :model/Collection :id parent-id))]
-    (cond
-      (not parent-id) "ROOT"
-      (not parent)    (throw (ex-info (format "Collection %s is an orphan" (:id coll)) {:parent-id parent-id}))
-      :else           (serdes/identity-hash parent))))
-
-(defmethod serdes/hash-fields :model/Collection
-  [_collection]
-  [:name :namespace parent-identity-hash :created_at])
-
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
@@ -2107,10 +2096,17 @@
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
 
-(defmethod serdes/dependencies "Collection"
+(defmethod serdes/deserialization-dependencies "Collection"
   [{:keys [parent_id]}]
   (when parent_id
     #{[{:model "Collection" :id parent_id}]}))
+
+(defmethod serdes/serialization-dependencies "Collection"
+  ;; The raw entity carries its ancestry in `:location` (the ingested form is normalized to `:parent_id`), so the
+  ;; parent Collection is derived from the path. A selective export may legitimately omit the parent.
+  [_model-name {:keys [location]}]
+  (when-let [parent-id (location-path->parent-id location)]
+    #{[{:model "Collection" :id parent-id}]}))
 
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))

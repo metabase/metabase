@@ -56,7 +56,6 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
         onChangeUiState={setUiState}
         onAcceptProposed={handleRunQuery}
         onRejectProposed={() => {}}
-        height={hasVisualizeButton ? "calc(100% - 100px)" : undefined}
         extraEditorButton={
           hasVisualizeButton && runQuestionQuery && result && !result?.error ? (
             <VisualizeButton

@@ -71,7 +71,7 @@
                   nil)))))))))
 
 (deftest is-temp-transform-tables-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:hosting :transforms-basic}
     (testing "tables with schema"
       (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
             table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
@@ -436,7 +436,11 @@
             Proved via a mock Statement so the test is deterministic and independent of any driver's enforcement
             semantics."
     (let [captured-seconds (atom nil)
+          ;; `set-query-timeout!` reads the Statement's Connection to decide whether the driver would
+          ;; send MariaDB-only syntax; an unimplemented `getConnection` would throw before the timeout
+          ;; is ever set. A nil Connection makes that check fall through to "timeouts work".
           mock-stmt        (proxy [java.sql.Statement] []
+                             (getConnection [] nil)
                              (setQueryTimeout [secs] (reset! captured-seconds secs)))
           set-timeout!     @#'sql-jdbc.execute/set-statement-query-timeout!]
       (testing "default dynamic scope"
@@ -449,6 +453,7 @@
           (is (= (* 90 60) @captured-seconds))))
       (testing "a throwing driver does not propagate the exception"
         (let [throwing-stmt (proxy [java.sql.Statement] []
+                              (getConnection [] nil)
                               (setQueryTimeout [_] (throw (java.sql.SQLFeatureNotSupportedException.))))]
           (is (nil? (set-timeout! :h2 throwing-stmt)))))
       (testing "drivers that opt out via :jdbc/set-query-timeout=false skip the call entirely"

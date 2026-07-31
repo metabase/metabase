@@ -32,7 +32,7 @@ export const SdkIframeEmbedSiteUrlMismatchError = ({
         mx="auto"
         p="xl"
       >
-        <Icon name="warning" size={48} c="warning" />
+        <Icon name="warning" size={48} c="feedback-warning" />
 
         <Text fw="bold" size="lg" ta="center">
           {t`The preview can't load because the Site URL doesn't match the host you're using.`}

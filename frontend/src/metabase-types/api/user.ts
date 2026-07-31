@@ -60,7 +60,6 @@ export interface UserPermissions {
   can_access_subscription?: boolean;
   can_access_data_studio?: boolean;
   can_access_transforms?: boolean;
-  can_access_workspaces?: boolean;
 }
 
 export interface User extends BaseUser {
@@ -125,6 +124,12 @@ export type UserLoginHistoryItem = {
 
 export type UserLoginHistory = UserLoginHistoryItem[];
 
+export type InviteTarget = {
+  type: "dashboard" | "question";
+  id: number;
+  name: string;
+};
+
 export type CreateUserRequest = {
   email: string;
   first_name?: string;
@@ -133,6 +138,7 @@ export type CreateUserRequest = {
   login_attributes?: UserAttributeMap;
   password?: string;
   source?: "setup" | "admin";
+  invite_target?: InviteTarget;
 };
 
 export type UpdatePasswordRequest = {
@@ -190,6 +196,11 @@ export type UserKeyValue =
   | {
       namespace: "data_studio";
       key: string;
+      value: boolean;
+    }
+  | {
+      namespace: "monitor";
+      key: "isNavbarOpened";
       value: boolean;
     }
   | {

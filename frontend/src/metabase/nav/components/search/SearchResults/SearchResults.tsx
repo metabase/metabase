@@ -1,5 +1,5 @@
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -8,14 +8,9 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import type { SearchFilters } from "metabase/common/search/types";
-import {
-  EmptyStateContainer,
-  ResultsContainer,
-  ResultsFooter,
-  SearchResultsList,
-} from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 import { useDispatch } from "metabase/redux";
-import { Loader } from "metabase/ui";
+import { push } from "metabase/router";
+import { Box, Loader, Stack, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import {
   DEFAULT_SEARCH_LIMIT,
@@ -28,6 +23,8 @@ import type {
   SearchResult as SearchResultType,
   SearchResponse as SearchResultsType,
 } from "metabase-types/api";
+
+import S from "./SearchResults.module.css";
 
 export type SearchResultsFooter =
   | (({
@@ -51,7 +48,19 @@ export type SearchResultsProps = {
 };
 
 export const SearchLoadingSpinner = () => (
-  <Loader size="lg" data-testid="loading-indicator" label={t`Loading…`} />
+  <Loader size="lg" label={t`Loading…`} />
+);
+
+export const EmptyStateContainer = ({
+  children,
+  "data-testid": dataTestId,
+}: {
+  children: ReactNode;
+  "data-testid"?: string;
+}) => (
+  <Box mt={rem(64)} mb="xl" data-testid={dataTestId}>
+    {children}
+  </Box>
 );
 
 export const SearchResults = ({
@@ -132,7 +141,7 @@ export const SearchResults = ({
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
     ItemType,
-    HTMLLIElement
+    HTMLElement
   >({
     list: dropdownItemList,
     onEnter: onEnterSelect,
@@ -148,8 +157,12 @@ export const SearchResults = ({
   }
 
   return hasResults ? (
-    <SearchResultsList data-testid="search-results-list" gap={0}>
-      <ResultsContainer>
+    <Stack
+      className={S.searchResultsList}
+      data-testid="search-results-list"
+      gap={0}
+    >
+      <Box component="ul" p="sm" className={S.resultsContainer}>
         {list.map((item, index) => {
           const isIndexedEntity = item.model === "indexed-entity";
           const onClick =
@@ -173,16 +186,16 @@ export const SearchResults = ({
             </li>
           );
         })}
-      </ResultsContainer>
+      </Box>
       {showFooter && (
-        <ResultsFooter ref={getRef(footerComponent)}>
+        <Box ref={getRef(footerComponent)}>
           {footerComponent({
             metadata,
             isSelected: cursorIndex === dropdownItemList.length - 1,
           })}
-        </ResultsFooter>
+        </Box>
       )}
-    </SearchResultsList>
+    </Stack>
   ) : (
     <EmptyStateContainer data-testid="search-results-empty-state">
       <EmptyState message={t`Didn't find anything`} icon="search" />

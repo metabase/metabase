@@ -1,16 +1,23 @@
-import cx from "classnames";
-import { push } from "react-router-redux";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
+import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
-import { Box, Ellipsified, Flex } from "metabase/ui";
+import { push } from "metabase/router";
+import {
+  Card,
+  Ellipsified,
+  Text,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type {
@@ -20,10 +27,15 @@ import type {
   Task,
 } from "metabase-types/api";
 
+import { DEFAULT_SORTING, TASK_SORT_COLUMNS } from "./utils";
+
+const COLUMN_WIDTHS = [0.25, 0.15, 0.12, 0.16, 0.16, 0.1, 0.06];
+
 interface Props {
   databases: Database[];
-  error: unknown;
+  isFetching: boolean;
   isLoading: boolean;
+  page: number;
   sortingOptions: SortingOptions<ListTasksSortColumn>;
   tasks: Task[];
   onSortingOptionsChange: (
@@ -33,129 +45,188 @@ interface Props {
 
 export const TasksTable = ({
   databases,
-  error,
+  isFetching,
   isLoading,
+  page,
   sortingOptions,
   tasks,
   onSortingOptionsChange,
 }: Props) => {
-  // index databases by id for lookup
-  const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
-  const showLoadingAndErrorWrapper = isLoading || error != null;
   const dispatch = useDispatch();
 
-  const onClickTask = (task: Task) => {
-    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
-  };
+  const databaseByID: Record<number, Database> = useMemo(
+    () => _.indexBy(databases, "id"),
+    [databases],
+  );
+
+  const columns = useMemo(() => getColumns(databaseByID), [databaseByID]);
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions,
+    columns: TASK_SORT_COLUMNS,
+    defaultSorting: DEFAULT_SORTING,
+    onSortingOptionsChange,
+  });
+
+  const handleRowActivate = useCallback(
+    (row: Row<Task>) => {
+      dispatch(push(Urls.monitorTaskDetails(row.original.id)));
+    },
+    [dispatch],
+  );
+
+  const treeTableInstance = useTreeTableInstance<Task>({
+    data: tasks,
+    columns,
+    sorting: sortingState,
+    manualSorting: true,
+    getNodeId: (task) => String(task.id),
+    onRowActivate: handleRowActivate,
+    onSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sortingOptions],
+    skip: isFetching,
+  });
 
   return (
-    <table
-      className={cx(AdminS.ContentTable, CS.mt2)}
-      data-testid="tasks-table"
-    >
-      <thead>
-        <tr>
-          {/* set width to limit CLS when changing sort direction */}
-          <Box component="th" w={300}>{t`Task`}</Box>
-          <th>{t`DB Name`}</th>
-          <th>{t`DB Engine`}</th>
-          <SortableColumnHeader
-            name="started_at"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Started at`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="ended_at"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Ended at`}</SortableColumnHeader>
-          <SortableColumnHeader
-            name="duration"
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Duration (ms)`}</SortableColumnHeader>
-          <th>{t`Status`}</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {showLoadingAndErrorWrapper && (
-          <tr>
-            <td colSpan={7}>
-              <LoadingAndErrorWrapper loading={isLoading} error={error} />
-            </td>
-          </tr>
-        )}
-
-        {!showLoadingAndErrorWrapper && (
-          <>
-            {tasks.length === 0 && (
-              <tr>
-                <td colSpan={8}>
-                  <Flex
-                    c="text-disabled"
-                    justify="center"
-                  >{t`No results`}</Flex>
-                </td>
-              </tr>
-            )}
-
-            {tasks.map((task: Task) => {
-              const db = task.db_id ? databaseByID[task.db_id] : null;
-              const name = db ? db.name : null;
-              const engine = db ? db.engine : null;
-              // only want unknown if there is a db on the task and we don't have info
-              return (
-                <tr
-                  data-testid="task"
-                  key={task.id}
-                  className={CS.cursorPointer}
-                  onClick={() => onClickTask(task)}
-                >
-                  <td className={CS.textBold}>{task.task}</td>
-                  <td>{task.db_id ? name || t`Unknown name` : null}</td>
-                  <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
-
-                  <td>
-                    <Ellipsified
-                      style={{ maxWidth: 180 }}
-                      alwaysShowTooltip
-                      tooltip={task.started_at}
-                    >
-                      <DateTime
-                        value={task.started_at}
-                        unit="minute"
-                        data-testid="started-at"
-                      />
-                    </Ellipsified>
-                  </td>
-                  <td>
-                    {task.ended_at ? (
-                      <Ellipsified
-                        style={{ maxWidth: 180 }}
-                        alwaysShowTooltip={Boolean(task.ended_at)}
-                        tooltip={task.ended_at}
-                      >
-                        <DateTime
-                          value={task.ended_at}
-                          unit="minute"
-                          data-testid="ended-at"
-                        />
-                      </Ellipsified>
-                    ) : (
-                      EMPTY_CELL_PLACEHOLDER
-                    )}
-                  </td>
-                  <td>{task.duration}</td>
-                  <td>
-                    <TaskStatusBadge task={task} />
-                  </td>
-                </tr>
-              );
-            })}
-          </>
-        )}
-      </tbody>
-    </table>
+    <Card flex="0 1 auto" mih={0} p={0} withBorder data-testid="tasks-table">
+      {isLoading ? (
+        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+      ) : (
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          ariaLabel={t`Tasks`}
+          emptyState={<MonitorEmptyState label={t`No results`} />}
+          getRowProps={() => ({ "data-testid": "task" })}
+          onRowClick={handleRowActivate}
+        />
+      )}
+    </Card>
   );
 };
+
+function getColumns(
+  databaseByID: Record<number, Database>,
+): TreeTableColumnDef<Task>[] {
+  return [
+    {
+      id: "task",
+      header: t`Task`,
+      width: "auto",
+      minWidth: 200,
+      maxAutoWidth: 230,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (task) => task.task,
+      cell: ({ row }) => <Text>{row.original.task}</Text>,
+    },
+    {
+      id: "db_name",
+      header: t`DB Name`,
+      width: "auto",
+      minWidth: 120,
+      maxAutoWidth: 240,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (task) =>
+        task.db_id !== null ? (databaseByID[task.db_id]?.name ?? "") : "",
+      cell: ({ row }) => {
+        const { db_id } = row.original;
+        // only want unknown if there is a db on the task and we don't have info
+        if (db_id === null) {
+          return null;
+        }
+        return databaseByID[db_id]?.name || t`Unknown name`;
+      },
+    },
+    {
+      id: "db_engine",
+      header: t`DB Engine`,
+      width: "auto",
+      minWidth: 120,
+      maxAutoWidth: 240,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (task) =>
+        task.db_id !== null ? (databaseByID[task.db_id]?.engine ?? "") : "",
+      cell: ({ row }) => {
+        const { db_id } = row.original;
+        if (db_id === null) {
+          return null;
+        }
+        return databaseByID[db_id]?.engine || t`Unknown engine`;
+      },
+    },
+    {
+      id: "started_at",
+      header: t`Started at`,
+      width: "auto",
+      minWidth: 150,
+      enableSorting: true,
+      sortDescFirst: true,
+      accessorFn: (task) => task.started_at,
+      cell: ({ row }) => (
+        <Ellipsified
+          style={{ maxWidth: 180 }}
+          alwaysShowTooltip
+          tooltip={row.original.started_at}
+        >
+          <DateTime
+            value={row.original.started_at}
+            unit="minute"
+            data-testid="started-at"
+          />
+        </Ellipsified>
+      ),
+    },
+    {
+      id: "ended_at",
+      header: t`Ended at`,
+      width: "auto",
+      minWidth: 150,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (task) => task.ended_at,
+      cell: ({ row }) =>
+        row.original.ended_at ? (
+          <Ellipsified
+            style={{ maxWidth: 180 }}
+            alwaysShowTooltip
+            tooltip={row.original.ended_at}
+          >
+            <DateTime
+              value={row.original.ended_at}
+              unit="minute"
+              data-testid="ended-at"
+            />
+          </Ellipsified>
+        ) : (
+          EMPTY_CELL_PLACEHOLDER
+        ),
+    },
+    {
+      id: "duration",
+      header: t`Duration (ms)`,
+      width: "auto",
+      minWidth: 80,
+      maxAutoWidth: 100,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (task) => task.duration,
+      cell: ({ row }) => row.original.duration,
+    },
+    {
+      id: "status",
+      header: t`Status`,
+      width: "auto",
+      minWidth: 100,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (task) => task.status,
+      cell: ({ row }) => <TaskStatusBadge task={row.original} />,
+    },
+  ];
+}

@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 type EmbedJsContentProps = {

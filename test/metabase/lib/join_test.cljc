@@ -2051,3 +2051,115 @@
                {:lib/join-alias    "Q2"
                 :lib/source-column-alias "count"}]
               (lib.join/join-fields-to-add-to-parent-stage query -1 (first (lib/joins query -1)) {}))))))
+
+(deftest ^:parallel join-condition-numeric-operand-not-binned-test
+  (testing "#18589 numeric columns used in a join condition are not auto-binned"
+    (let [cnd (lib/= (meta/field-metadata :orders :quantity)
+                     (meta/field-metadata :products :rating))]
+      (is (every? #(nil? (get-in % [1 :binning])) (drop 2 cnd))))))
+
+(deftest ^:parallel breakoutable-joined-column-marked-selected-test
+  (testing "#27873 a joined column that is already broken out is marked :selected? in breakoutable-columns"
+    (let [q       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/join (meta/table-metadata :products)))
+          rating  (m/find-first #(and (= "RATING" (:name %)) (= :source/joins (:lib/source %)))
+                                (lib/breakoutable-columns q))
+          q2      (lib/breakout q rating)
+          rating2 (m/find-first #(and (= "RATING" (:name %)) (= :source/joins (:lib/source %)))
+                                (lib/breakoutable-columns q2))]
+      (is (some? rating))
+      (is (= [0] (:breakout-positions (lib/display-info q2 rating2)))))))
+
+(deftest ^:parallel replace-join-condition-literal-with-expression-test
+  (testing "replacing a literal join condition with a column-expression condition keeps a runnable query"
+    (let [q   (-> (lib.tu/venues-query)
+                  (lib/join (lib/join-clause (meta/table-metadata :categories) [(lib/= 1 1)])))
+          cnd (first (lib/join-conditions (first (lib/joins q))))
+          q'  (lib/replace-clause q cnd
+                                  (lib/= (lib/+ (meta/field-metadata :venues :id) 1)
+                                         (lib/+ (meta/field-metadata :categories :id) 1)))]
+      (is (=? [[[:= {} [:+ {} [:field {} some?] 1] [:+ {} [:field {} some?] 1]]]]
+              (map lib/join-conditions (lib/joins q')))))))
+
+(deftest ^:parallel model-metadata-wins-over-raw-field-in-join-test
+  (testing "#25113 a model's overridden column metadata wins over raw field metadata when the model is a join source"
+    (let [people-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          people-cols (lib/returned-columns people-query)
+          result-meta (mapv (fn [col]
+                              (cond-> (select-keys col [:id :name :base-type :effective-type :display-name])
+                                (= (:id col) (meta/id :people :id))
+                                (assoc :display-name "ID renamed")))
+                            people-cols)
+          mp          (lib.tu/metadata-provider-with-card-from-query
+                       meta/metadata-provider 1 people-query
+                       {:type :model :name "People Model" :result-metadata result-meta})
+          model       (lib.metadata/card mp 1)
+          model-id    (m/find-first #(= "ID renamed" (:display-name %))
+                                    (lib/returned-columns (lib/query mp model)))
+          q           (-> (lib/query mp (meta/table-metadata :orders))
+                          (lib/join (lib/join-clause model
+                                                     [(lib/= (meta/field-metadata :orders :user-id) model-id)])))
+          joined      (m/find-first #(and (= :source/joins (:lib/source %))
+                                          (= "ID_2" (:name %)))
+                                    (lib/returned-columns q))]
+      (is (some? model-id))
+      (is (some? joined))
+      (testing "the model's overridden display name wins over raw People.ID metadata"
+        (is (= "People Model - User → ID renamed" (lib/display-name q joined)))))))
+
+(deftest ^:parallel join-native-card-columns-marked-selected-test
+  (testing "#39033 columns are correctly marked :selected? when joining a native card"
+    (let [mp     (lib.tu/metadata-provider-with-mock-cards)
+          q1     (:orders/native (lib.tu/mock-cards))
+          q2     (:products/native (lib.tu/mock-cards))
+          query  (lib/query mp q1)
+          lhs    (m/find-first #(= "PRODUCT_ID" (:name %)) (lib/visible-columns query))
+          rhs    (m/find-first #(= "ID" (:name %)) (lib/returned-columns (lib/query mp q2)))
+          joined (lib/join query (-> (lib/join-clause q2 [(lib/= lhs rhs)])
+                                     (lib/with-join-fields :all)))
+          jn     (first (lib/joins joined))]
+      (testing ":fields :all marks every joined column as selected"
+        (let [cols (lib/join-fieldable-columns joined jn)]
+          (is (seq cols) "the join must expose fieldable columns, or `every?` below checks nothing")
+          (is (every? :selected? cols))))
+      (testing "restricting :fields unselects the dropped column"
+        (let [some-cols (drop 1 (lib/join-fieldable-columns joined jn))
+              jn'       (lib/with-join-fields jn some-cols)
+              joined2   (lib/replace-clause joined jn jn')
+              jn2       (first (lib/joins joined2))]
+          (is (not (:selected? (first (lib/join-fieldable-columns joined2 jn2))))))))))
+
+(deftest ^:parallel expression-over-joined-model-columns-test
+  (testing "#56602 expressions (coalesce) can reference columns from a joined model"
+    (let [model-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+          mp          (lib.tu/metadata-provider-with-card-from-query
+                       meta/metadata-provider 1 model-query {:type :model :name "Products Model"})
+          model       (lib.metadata/card mp 1)
+          base        (lib/query mp (meta/table-metadata :orders))
+          model-id    (m/find-first #(= "ID" (:name %)) (lib/returned-columns (lib/query mp model)))
+          joined      (lib/join base (lib/join-clause model
+                                                      [(lib/= (meta/field-metadata :orders :product-id) model-id)]))
+          model-price (m/find-first #(and (= "PRICE" (:name %)) (= :source/joins (:lib/source %)))
+                                    (lib/visible-columns joined))
+          q           (lib/expression joined "Coalesced"
+                                      (lib/coalesce (meta/field-metadata :orders :total) model-price))
+          cc          (m/find-first #(= "Coalesced" (:name %)) (lib/returned-columns q))]
+      (is (some? model-price))
+      (is (some? cc))
+      (is (= "Coalesced" (:display-name cc)))))
+  (testing "#58371 a joined column whose name contains a dash renders in expression display names"
+    (let [agg-card (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (-> (lib/count) (lib/with-expression-name "Agg - Dash")))
+                       (lib/breakout (meta/field-metadata :orders :product-id)))
+          mp       (lib.tu/metadata-provider-with-card-from-query
+                    meta/metadata-provider 1 agg-card {:name "Other Question"})
+          card     (lib.metadata/card mp 1)
+          base     (lib/query mp (meta/table-metadata :products))
+          card-pid (m/find-first #(= "PRODUCT_ID" (:name %)) (lib/returned-columns (lib/query mp card)))
+          joined   (lib/join base (lib/join-clause card
+                                                   [(lib/= (meta/field-metadata :products :id) card-pid)]))
+          dash-col (m/find-first #(and (= "Agg - Dash" (:name %)) (= :source/joins (:lib/source %)))
+                                 (lib/visible-columns joined))]
+      (is (some? dash-col))
+      (testing "the dash-named joined column resolves in the expression display name (not \"Unknown\")"
+        (is (= "0 + Other Question → Agg - Dash" (lib/display-name joined (lib/+ 0 dash-col))))))))

@@ -138,6 +138,7 @@ export const QuestionPane = ({
         )}
         {table.fields && (
           <FieldList
+            table={table}
             fields={table.fields}
             onFieldClick={(field) => {
               onItemClick({
@@ -145,7 +146,8 @@ export const QuestionPane = ({
                 id:
                   typeof field.id === "number"
                     ? field.id
-                    : (field.getUniqueId() as UniqueFieldId),
+                    : // Unjustified type cast. FIXME
+                      (field.getUniqueId() as UniqueFieldId),
               });
             }}
           />

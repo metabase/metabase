@@ -3,10 +3,14 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.template.handlebars :as handlebars]
    [metabase.notification.models :as models.notification]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- nullify-timestamp
   [data]
@@ -35,6 +39,42 @@
                  (notification.seed/seed-notification!))))
         (testing "it equals to the data before "
           (is (= before (get-notifications-data))))))))
+
+(deftest seeded-template-paths-resolve-test
+  (testing "every seeded handlebars-resource :path resolves through the template loader"
+    (let [loader (handlebars/default-loader)
+          paths  (for [notification @@#'notification.seed/default-notifications
+                       handler      (:handlers notification)
+                       :let         [details (get-in handler [:template :details])]
+                       :when        (= "email/handlebars-resource" (:type details))]
+                   (:path details))]
+      (is (seq paths) "seed must contain handlebars-resource templates, else this test proves nothing")
+      (doseq [path paths]
+        (testing path
+          (is (some? (.sourceAt loader path))))))))
+
+(deftest reseed-replaces-legacy-template-paths-test
+  (testing "re-seeding over rows whose template :path predates the current schema replaces them instead of throwing"
+    ;; before the handlebars 4.5.3 bump (#77134) seeded templates stored full classpath paths like
+    ;; `metabase/channel/email/new_user_invite.hbs`; the current schema only accepts bare names like
+    ;; `new_user_invite`. The seed must be able to read such pre-upgrade rows in order to replace them.
+    (mt/with-empty-h2-app-db!
+      (notification.seed/seed-notification!)
+      (let [template-id (t2/select-one-pk :model/ChannelTemplate :name "User joined Email template")
+            details     (t2/select-one-fn :details :model/ChannelTemplate :id template-id)
+            legacy-path "metabase/channel/email/new_user_invite.hbs"]
+        ;; plant the legacy path with a raw update: rows written by a pre-upgrade version never went
+        ;; through the current before-update validation, so neither should this
+        (t2/query {:update [:channel_template]
+                   :set    {:details (json/encode (assoc details :path legacy-path))}
+                   :where  [:= :id template-id]})
+        (is (= legacy-path (t2/select-one-fn (comp :path :details) :model/ChannelTemplate :id template-id)))
+        (testing "seed replaces the stale notification without throwing"
+          (is (= 1 (:replace (notification.seed/seed-notification!)))))
+        (testing "the recreated template has the current path"
+          (is (= "new_user_invite"
+                 (t2/select-one-fn (comp :path :details) :model/ChannelTemplate
+                                   :name "User joined Email template"))))))))
 
 (deftest sync-notification!-test
   (let [internal-id       (mt/random-name)
@@ -87,6 +127,8 @@
       (is (= :replace (check-change (assoc-in test-notification [:subscriptions 0 :event_name] :event/user-uninvited)))))
     (testing ":replace if template changed"
       (is (= :replace (check-change (assoc-in test-notification [:handlers 0 :template :name] "new name")))))
+    (testing ":replace if template :details :path changes"
+      (is (= :replace (check-change (assoc-in test-notification [:handlers 0 :template :details :path] "renamed_template")))))
     (testing ":replace if handlers.active changed"
       (is (= :replace (check-change (assoc-in test-notification [:handlers 0 :active] not)))))
     (testing ":replace if recipients changed"

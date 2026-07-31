@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
@@ -73,7 +73,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
         ? { component: Link, to: fkQuestionUrl, onClick }
         : undefined)}
     >
-      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+      {isFetching && <Loader size="md" />}
 
       {!isFetching && (
         <Text

@@ -122,6 +122,7 @@ export function Cell({
         {!!onResize && (
           <ResizableHandle
             id={`resize-handle-${cellId}`}
+            // Unjustified type cast. FIXME
             initialWidth={(style?.width as number) ?? 0}
             onResizeEnd={onResize}
           />

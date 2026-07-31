@@ -34,6 +34,7 @@ const TabListInner = forwardRef(function TabGroup<T>(
   return (
     <TabListRoot {...props} role="tablist">
       <TabListContent ref={ref} onScroll={onScroll}>
+        {/* Unjustified type cast. FIXME */}
         <TabContext.Provider value={activeContext as TabContextType}>
           {children}
         </TabContext.Provider>

@@ -1,6 +1,5 @@
 import _userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupMetabotPromptSuggestionsEndpoint,
@@ -11,6 +10,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { Route } from "metabase/router";
 import type {
   RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
@@ -95,7 +95,7 @@ const setup = async (opts?: SetupOpts) => {
     </>
   );
 
-  renderWithProviders(<Route path="/" component={TestComponent} />, {
+  renderWithProviders(<Route path="/" element={<TestComponent />} />, {
     withRouter: true,
   });
 

@@ -255,6 +255,7 @@ export type GdrivePayload = {
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
+  "attached-dwh",
   "audit-app",
   "cache-granular-controls",
   "collection-cleanup",
@@ -345,6 +346,7 @@ export const tokenFeatures = [
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabot-v3",
+  "multi-factor-auth",
   "official_collections",
   "sandboxes",
   "scim",
@@ -370,6 +372,7 @@ export const tokenFeatures = [
   "etl_connections_pg",
   "table_data_editing",
   "remote_sync",
+  "data-apps",
   "dependencies",
   "schema-viewer",
   "semantic_search",
@@ -382,7 +385,6 @@ export const tokenFeatures = [
   "writable_connection",
   "admin_security_center",
   "ai_controls",
-  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -536,6 +538,8 @@ interface SettingsManagerSettings {
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-zai-api-key"?: string | null;
+  "llm-mistral-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
   "llm-bedrock-access-key-id"?: string | null;
@@ -580,8 +584,10 @@ interface PublicSettings {
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
+  "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
+  "mfa-enforcement"?: "off" | "optional";
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
@@ -651,6 +657,7 @@ interface PublicSettings {
   "token-features": TokenFeatures;
   "tracing-enabled": boolean;
   "transforms-enabled": boolean;
+  "transforms-setup-complete": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
@@ -710,7 +717,7 @@ export type UserSettings = {
  *
  * To further complicate things, there are two endpoints for fetching settings:
  *  - `GET /api/setting` that _can only be used by admins!_ — returns `403` for non-admins.
- *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted (unavailable).
+ *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted.
  */
 export type Settings = InstanceSettings &
   PublicSettings &
@@ -764,7 +771,10 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-api-key"?: string;
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
+  "llm-metabot-supports-reasoning?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-zai-api-key"?: string | null;
+  "llm-mistral-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -801,6 +811,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "jwt-group-mappings": Record<string, GroupId[]> | null;
+  "oidc-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;

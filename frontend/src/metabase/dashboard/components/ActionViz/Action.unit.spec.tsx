@@ -5,6 +5,7 @@ import {
   setupActionEndpoints,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
+  setupPrefetchDashcardValuesEndpoint,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -36,7 +37,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { ActionProps } from "./Action";
-import Action from "./Action";
+import { Action } from "./Action";
 
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
@@ -132,7 +133,7 @@ async function setup({
   const card = checkNotNull(dashcard.card);
 
   if (getActionIsEnabledInDatabase(dashcard)) {
-    fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
+    setupPrefetchDashcardValuesEndpoint(DASHBOARD_ID, DASHCARD_ID, {});
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": 1 });
 
     // for ActionCreator modal (action edit modal)
@@ -470,7 +471,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.type(screen.getByLabelText("Parameter 2"), "5");
       await waitFor(() =>
-        expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
+        expect(screen.getByLabelText("Parameter 2")).toHaveValue("5"),
       );
 
       await userEvent.click(screen.getByRole("button", { name: ACTION.name }));

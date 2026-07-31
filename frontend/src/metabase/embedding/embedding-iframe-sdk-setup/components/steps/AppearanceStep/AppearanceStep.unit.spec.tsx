@@ -14,6 +14,7 @@ const getOptionCardsWrapper = () => {
   if (!wrapper) {
     throw new Error("Could not find option cards wrapper with opacity style");
   }
+  // Unjustified type cast. FIXME
   return wrapper as HTMLElement;
 };
 

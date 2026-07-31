@@ -7,8 +7,16 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.util.random :refer [random-name]]))
+
+(defn- test-engines
+  "The engines to exercise: in-place always, appdb only where the app db supports it.
+  An explicit search_engine the instance cannot serve returns a 400 rather than falling back."
+  []
+  (filter #(search.engine/supported-engine? (keyword "search.engine" %))
+          ["in-place" "appdb"]))
 
 (deftest published-table-collection-filter-test
   (mt/with-premium-features #{:library}
@@ -26,7 +34,7 @@
          :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
         ;; Initialize search index for appdb engine
         (search/reindex! {:async? false :in-place? true})
-        (doseq [engine ["in-place" "appdb"]]
+        (doseq [engine (test-engines)]
           (testing (str "with engine " engine)
             (testing "Global search"
               (let [results (mt/user-http-request :crowberto :get 200 "search" :search_engine engine)]
@@ -85,7 +93,7 @@
       (mt/with-temp
         [:model/Table {root-table :id} {:name "Root Published Searchable" :is_published true :collection_id nil}]
         (search/reindex! {:async? false :in-place? true})
-        (doseq [engine ["in-place" "appdb"]]
+        (doseq [engine (test-engines)]
           (testing (str "with engine " engine)
             (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Root Published Searchable" :search_engine engine)]
               (is (some #(= root-table (:id %)) (:data results))
@@ -104,7 +112,7 @@
                                               :db_id db-id
                                               :is_published false}]
         (search/reindex! {:async? false :in-place? true})
-        (doseq [engine ["in-place" "appdb"]]
+        (doseq [engine (test-engines)]
           (testing (str "with engine " engine)
             (let [results (mt/user-http-request :crowberto :get 200 "search"
                                                 :q "Context" :models "table" :search_engine engine)
@@ -132,7 +140,7 @@
             ;; Explicitly deny both view and query perms so this assertion doesn't depend on global defaults.
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
-            (doseq [engine ["in-place" "appdb"]]
+            (doseq [engine (test-engines)]
               (search/reindex! {:async? false :in-place? true})
               (mt/with-non-admin-groups-no-root-collection-perms
                 (let [results (mt/user-http-request :rasta :get 200 "search"
@@ -157,7 +165,7 @@
             ;; Grant data permissions on the table
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
-            (doseq [engine ["in-place" "appdb"]]
+            (doseq [engine (test-engines)]
               (search/reindex! {:async? false :in-place? true})
               ;; Remove collection permissions so the user has data perms but NO collection access
               (mt/with-non-admin-groups-no-root-collection-perms
@@ -197,7 +205,7 @@
          :model/Card       {outside-card :id}    {:name          (str search-term " Outside Card")
                                                   :collection_id outside-coll}]
         (search/reindex! {:async? false :in-place? true})
-        (doseq [engine ["in-place" "appdb"]]
+        (doseq [engine (test-engines)]
           (testing (str "with engine " engine)
             (let [results    (mt/user-http-request :crowberto :get 200 "search"
                                                    :q search-term
@@ -221,7 +229,7 @@
           ;; Explicitly grant data/query perms so this does not rely on global test defaults.
           (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
           (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
-          (doseq [engine ["in-place" "appdb"]]
+          (doseq [engine (test-engines)]
             (search/reindex! {:async? false :in-place? true})
             (mt/with-non-admin-groups-no-root-collection-perms
               (let [result-ids (->> (mt/user-http-request :rasta :get 200 "search"
@@ -257,7 +265,7 @@
             (perms/grant-collection-read-permissions! (perms/all-users-group) accessible)
             (perms/revoke-collection-permissions! (perms/all-users-group) no-access)
             (search/reindex! {:async? false :in-place? true})
-            (doseq [engine ["in-place" "appdb"]]
+            (doseq [engine (test-engines)]
               (testing (str "with engine " engine)
                 (let [result-ids (->> (mt/user-http-request :rasta :get 200 "search"
                                                             :q search-term :search_engine engine)

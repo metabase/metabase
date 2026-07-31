@@ -63,6 +63,7 @@ export function ModelUploadModal({
 
       return onUpload({
         tableId: Number(tableId),
+        // Unjustified type cast. FIXME
         modelId: modelForTableId?.id as number,
         uploadMode: uploadMode,
       });
@@ -110,6 +111,7 @@ export function ModelUploadModal({
         </Text>
         <Radio.Group
           value={uploadMode}
+          // Unjustified type cast. FIXME
           onChange={(val) => setUploadMode(val as UploadMode)}
           pl="1px"
         >

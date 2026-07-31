@@ -38,9 +38,11 @@ describe("metaplow", () => {
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe(METAPLOW_URL);
     expect(init?.method).toBe("POST");
+    // Unjustified type cast. FIXME
     expect((init?.headers as Record<string, string>)["Content-Type"]).toBe(
       "application/json",
     );
+    // Unjustified type cast. FIXME
     return JSON.parse(init?.body as string);
   };
 

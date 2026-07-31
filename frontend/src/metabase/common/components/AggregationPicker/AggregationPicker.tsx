@@ -565,11 +565,7 @@ function getMeasureListItem(
   measure: Lib.MeasureMetadata,
   clauseIndex?: number,
 ): MeasureListItem {
-  const measureInfo = Lib.displayInfo(
-    query,
-    stageIndex,
-    measure,
-  ) as Lib.MeasureDisplayInfo;
+  const measureInfo = Lib.displayInfo(query, stageIndex, measure);
   return {
     ...measureInfo,
     type: "measure",

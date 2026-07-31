@@ -274,6 +274,38 @@ describe("AllChangesView", () => {
       expect(screen.getByText("Transform in Collection")).toBeInTheDocument();
     });
 
+    it("should link the Transforms virtual root to the transforms list, not a dead collection URL (GHY-3901)", async () => {
+      const transformsCollection = createMockCollection({
+        id: 100,
+        name: "My Transforms Collection",
+        namespace: "transforms",
+        effective_ancestors: [],
+      });
+      const transformEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Transform in Collection",
+        model: "transform",
+        collection_id: 100,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [transformEntity],
+        collections: [transformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      // The virtual root uses the sentinel id -1, which must not leak into a
+      // /collection/-1-transforms URL.
+      const transformsRootLink = await screen.findByRole("link", {
+        name: "Transforms",
+      });
+      expect(transformsRootLink).toHaveAttribute(
+        "href",
+        "/data-studio/transforms",
+      );
+    });
+
     it("should display nested transforms collections with Transforms virtual root in path", async () => {
       const childTransformsCollection = createMockCollection({
         id: 101,

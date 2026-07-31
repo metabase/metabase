@@ -52,6 +52,7 @@ describe("createSankeyClickData", () => {
   };
 
   const settings = {};
+  // Unjustified type cast. FIXME
   const mockEvent = {
     event: {
       event: new MouseEvent("click"),

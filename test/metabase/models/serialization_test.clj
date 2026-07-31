@@ -265,7 +265,36 @@
   (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
             dependency (it's synthesized on import if missing)"
     (is (= #{[{:model "Database" :id "DB"}]}
-           (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})))))
+           (#'serdes/mbql-deps-map false {:table-id ["DB" "SCHEMA" "TABLE"]})))))
+
+(deftest ^:parallel mbql-deps-format-parity-test
+  (testing "mbql-deps finds each reference on both the serialized (portable) and the raw (numeric) form of a query.
+            serialization-dependencies runs on raw entities and existence-checks the referenced Table/Field;
+            deserialization-dependencies runs on the serialized form, where Table/Field are synthesized on import, so
+            it reports only their Database. Every other ref type resolves to the same model in both forms. This is the
+            parity guard for the two dependency codepaths sharing mbql-deps."
+    (let [models (fn [deps] (into #{} (map (comp :model last)) deps))
+          eid    (fn [c] (apply str (repeat 21 c)))]
+      (testing "MBQL ref clauses"
+        (doseq [[label serialized raw ser-models raw-models]
+                [["field (pMBQL)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
+                 ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{"Database"} #{"Field"}]
+                 ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
+                 ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
+                 ["measure"        [:measure {} (eid \c)]         [:measure {} 3]  #{"Measure"}  #{"Measure"}]]]
+          (testing label
+            (is (= ser-models (models (serdes/mbql-deps false serialized))) "serialized (portable) form")
+            (is (= raw-models (models (serdes/mbql-deps true raw)))
+                "raw (numeric) form"))))
+      (testing "MBQL map keys"
+        (doseq [[label serialized raw ser-models raw-models]
+                [["source-table" {:source-table ["DB" "S" "T"]} {:source-table 9} #{"Database"}           #{"Table"}]
+                 ["source-card"  {:source-card (eid \d)}         {:source-card 7}  #{"Card"}               #{"Card"}]
+                 ["snippet-id"   {:snippet-id (eid \e)}          {:snippet-id 2}   #{"NativeQuerySnippet"} #{"NativeQuerySnippet"}]]]
+          (testing label
+            (is (= ser-models (models (#'serdes/mbql-deps-map false serialized))) "serialized")
+            (is (= raw-models (models (#'serdes/mbql-deps-map true raw)))
+                "raw")))))))
 
 (deftest ^:parallel export-parameters-test
   (binding [serdes/*export-fk*       (fn [id model]

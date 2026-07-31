@@ -39,7 +39,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
         return style;
       } else if (highlightedForDrag) {
         style.border = "2px solid var(--mb-color-core-brand)";
-        style.boxShadow = "0px 1px 4px 1px var(--mb-color-shadow)";
+        style.boxShadow = "0px 1px 4px 1px var(--mb-color-shadow-default)";
         style.cursor = "grab";
         style.backgroundColor = "var(--mb-color-background_page-secondary)";
         style.borderRadius = "var(--default-border-radius)";
@@ -68,6 +68,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
             miw={16}
           />
           <Icon
+            // Unjustified type cast. FIXME
             name={getIconForField(column) as IconName}
             mr={4}
             size={16}

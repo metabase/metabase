@@ -131,6 +131,42 @@
                           :from_entity_type :card :from_entity_id card-id
                           :to_entity_type :snippet :to_entity_id snippet-id)))))))
 
+(deftest ^:sequential backfill-snippet-in-snippet-test
+  (testing "A snippet referencing another snippet produces a snippet->snippet dependency"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner_snip" :content "1 = 1"}
+                     :model/NativeQuerySnippet {outer-id :id} {:name "outer_snip" :content "SELECT * WHERE {{snippet: inner_snip}}"}]
+        (mark-stale! :snippet inner-id)
+        (mark-stale! :snippet outer-id)
+        (is (false? (t2/exists? :model/Dependency
+                                :from_entity_type :snippet :from_entity_id outer-id
+                                :to_entity_type :snippet :to_entity_id inner-id)))
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :snippet inner-id)
+        (assert-processed :snippet outer-id)
+        (is (t2/exists? :model/Dependency
+                        :from_entity_type :snippet :from_entity_id outer-id
+                        :to_entity_type :snippet :to_entity_id inner-id))))))
+
+(deftest ^:sequential backfill-snippet-referencing-card-test
+  (testing "A snippet referencing a card produces a snippet->card dependency"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/NativeQuerySnippet {snippet-id :id} {:name "card_ref_snip"
+                                                                 :content (format "SELECT * FROM {{#%d}}" card-id)}]
+        (mark-stale! :card card-id)
+        (mark-stale! :snippet snippet-id)
+        (is (false? (t2/exists? :model/Dependency
+                                :from_entity_type :snippet :from_entity_id snippet-id
+                                :to_entity_type :card :to_entity_id card-id)))
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :snippet snippet-id)
+        (is (t2/exists? :model/Dependency
+                        :from_entity_type :snippet :from_entity_id snippet-id
+                        :to_entity_type :card :to_entity_id card-id))))))
+
 (deftest ^:sequential backfill-idempotency-test
   (testing "Running the backfill multiple times should be idempotent"
     (backfill-all-existing-entities!)

@@ -1,20 +1,20 @@
 import dayjs from "dayjs";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
-import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
-import {
-  LicenseTokenMissingBanner,
-  useLicenseTokenMissingBanner,
-} from "metabase/nav/components/LicenseTokenMissingBanner";
-import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
-import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
-import { TrialBanner } from "metabase/nav/components/TrialBanner";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getIsHosted } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { isWithinIframe } from "metabase/utils/iframe";
 
+import { DevModeBanner } from "./DevModeBanner";
+import {
+  LicenseTokenMissingBanner,
+  useLicenseTokenMissingBanner,
+} from "./LicenseTokenMissingBanner";
+import { PaymentBanner } from "./PaymentBanner/PaymentBanner";
+import { ReadOnlyBanner } from "./ReadOnlyBanner";
+import { TrialBanner } from "./TrialBanner";
 import { getCurrentUTCTimestamp, shouldShowTrialBanner } from "./utils";
 
 export const AppBanner = () => {

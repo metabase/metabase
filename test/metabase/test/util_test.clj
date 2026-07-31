@@ -154,7 +154,7 @@
 (deftest ^:parallel with-dynamic-fn-redefs-capture-bug-test
   (testing "A replacement that delegates through the var itself is caught as runaway recursion"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
+         AssertionError
          #"runaway recursion through proxy"
          (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (capture-bug-target (inc x)))]
            (capture-bug-target 0)))))

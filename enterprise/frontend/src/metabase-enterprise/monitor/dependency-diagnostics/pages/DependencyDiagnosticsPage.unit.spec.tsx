@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupListBreakingGraphNodesEndpoint,
@@ -12,7 +11,10 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { Route } from "metabase/router";
 import type * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
   DependencyDiagnosticsUserParams,
@@ -88,7 +90,14 @@ function setup({
       : UnreferencedDependencyDiagnosticsPage;
 
   const { history } = renderWithProviders(
-    <Route path={getPageUrl(mode, {})} component={PageComponent} />,
+    <Route
+      path={getPageUrl(mode, {})}
+      element={
+        <MonitorContent>
+          <PageComponent />
+        </MonitorContent>
+      }
+    />,
     {
       withRouter: true,
       initialRoute: getPageUrl(mode, urlParams),
@@ -126,6 +135,16 @@ describe("DependencyDiagnosticsPage", () => {
       expect(await within(list).findByText("Question 1")).toBeInTheDocument();
       expect(await within(list).findByText("Question 2")).toBeInTheDocument();
     });
+
+    it("renders selected row details in the Monitor sidebar outlet", async () => {
+      setup({ nodes: CARD_NODES });
+
+      const list = await screen.findByRole("treegrid");
+      await userEvent.click(await within(list).findByText("Question 1"));
+
+      const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+      expect(sidebarRegion).toHaveTextContent("Question 1");
+    });
   });
 
   describe("URL parameters", () => {
@@ -141,7 +160,9 @@ describe("DependencyDiagnosticsPage", () => {
       const popover = await getFilterPopover();
       await userEvent.click(getTypeCheckbox(popover, "Table"));
 
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({
         "group-types": ["question", "model"],
       });
     });
@@ -158,7 +179,9 @@ describe("DependencyDiagnosticsPage", () => {
       const popover = await getFilterPopover();
       await userEvent.click(getTypeCheckbox(popover, "Model"));
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({});
     });
 
     it("should set the include-personal-collections parameter when it is unchecked", async () => {
@@ -176,7 +199,9 @@ describe("DependencyDiagnosticsPage", () => {
       });
       await userEvent.click(checkbox);
 
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({
         "include-personal-collections": "false",
       });
     });
@@ -196,7 +221,9 @@ describe("DependencyDiagnosticsPage", () => {
       });
       await userEvent.click(checkbox);
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({});
     });
 
     it("should set the page parameter when navigating to the next page and it is not the first page", async () => {
@@ -210,7 +237,9 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Next page"));
 
-      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({ page: "1" });
     });
 
     it("should set the page parameter when navigating to the previous page and it is not the first page", async () => {
@@ -224,7 +253,9 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Previous page"));
 
-      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({ page: "1" });
     });
 
     it("should not set the page parameter when it is the first page", async () => {
@@ -238,7 +269,9 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Previous page"));
 
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(
+        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
+      ).toEqual({});
     });
   });
 
@@ -316,7 +349,7 @@ describe("DependencyDiagnosticsPage", () => {
       await waitForListToLoad();
 
       const currentLocation = history?.getCurrentLocation();
-      expect(currentLocation?.query).toEqual({
+      expect(parseSearchQuery(currentLocation?.search ?? "")).toEqual({
         "group-types": ["table", "question"],
       });
     });

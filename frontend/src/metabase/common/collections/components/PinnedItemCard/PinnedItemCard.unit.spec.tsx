@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
+  mockTextOverflow,
   renderWithProviders,
   screen,
   getIcon as testGetIcon,
 } from "__support__/ui";
 import { modelIconMap } from "metabase/common/utils/icon";
+import { Route } from "metabase/router";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
   createMockCollection,
@@ -56,6 +57,7 @@ const getCollectionItem = ({
   description?: string;
   collection_position?: number;
 } = {}): CollectionItem & { description: string } => {
+  // Unjustified type cast. FIXME
   return createMockCollectionItem({
     ...rest,
     id,
@@ -75,7 +77,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <PinnedItemCard
           item={item}
           collection={collection}
@@ -84,7 +86,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
           createBookmark={jest.fn()}
           deleteBookmark={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );
@@ -118,24 +120,12 @@ describe("PinnedItemCard", () => {
   });
 
   describe("description", () => {
-    const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-    const rangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
-
     beforeAll(() => {
-      // Mock return values so that getIsTruncated can kick in
-      HTMLElement.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 1, width: 1 });
-      Range.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 1, width: 2 });
+      mockTextOverflow();
     });
 
     afterAll(() => {
-      HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
-      Range.prototype.getBoundingClientRect = rangeGetBoundingClientRect;
-
-      jest.resetAllMocks();
+      jest.restoreAllMocks();
     });
 
     it("should render description markdown as plain text", () => {

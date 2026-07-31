@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -48,6 +49,41 @@
                (->> (mt/user-http-request :rasta :get 200 "bookmark")
                     (map :type)
                     set)))))))
+
+(deftest bookmark-survives-card-dashboard-move-test
+  (testing "A CardBookmark survives moving the card to a Dashboard (metabase#dashboard-questions)"
+    (mt/with-temp [:model/Card card {}
+                   :model/Dashboard d {}]
+      (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:dashboard_id (u/the-id d)})
+      (is (some #(= (u/the-id card) (:item_id %))
+                (mt/user-http-request :rasta :get 200 "bookmark"))))))
+
+(deftest bookmark-requires-only-read-perms-test
+  (testing "POST /api/bookmark/card/:id succeeds for a read-only (collection-read) user"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+        (is (some? (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))))))))
+
+(deftest bookmark-hidden-when-parent-collection-trashed-test
+  (testing "GET /api/bookmark hides a bookmark whose parent collection was trashed, and shows it again on restore (metabase#44499)"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (mt/user-http-request :rasta :post 200 (str "bookmark/card/" card-id))
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+      (is (empty? (mt/user-http-request :rasta :get 200 "bookmark")))
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
+      (is (= [card-id] (map :item_id (mt/user-http-request :rasta :get 200 "bookmark")))))))
+
+(deftest bookmark-card-type-tracks-current-card-type-test
+  (testing "GET /api/bookmark's card_type reflects the card's current type after it changes (e.g. Turn into a model)"
+    (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
+      (mt/user-http-request :rasta :post 200 (str "bookmark/card/" card-id))
+      (is (= "question" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark")))))
+      (t2/update! :model/Card card-id {:type :model})
+      (is (= "model" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark"))))))))
 
 (defn bookmark-models [user-id & models]
   (doseq [model models]

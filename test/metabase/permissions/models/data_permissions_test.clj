@@ -8,6 +8,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -21,6 +22,68 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
+(deftest ^:parallel ranks->most-permissive-value-test
+  (testing "reconstructs coalesce from a bucket's [min max] value ranks"
+    ;; :perms/create-queries values: [:query-builder-and-native :query-builder :no]
+    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/create-queries pair))
+      :query-builder-and-native [0 2]
+      :query-builder            [1 1]
+      :no                       [2 2]
+      nil                       nil))
+  (testing ":perms/view-data's special rule: a :blocked row overrides :legacy-no-self-service but not :unrestricted"
+    ;; :perms/view-data values: [:unrestricted :legacy-no-self-service :blocked]
+    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/view-data pair))
+      :unrestricted           [0 2]
+      :blocked                [1 2]
+      :legacy-no-self-service [1 1]
+      :blocked                [2 2])))
+
+(deftest ^:parallel combine-rank-pairs-test
+  (is (= [0 2] (#'data-perms/combine-rank-pairs [1 2] [0 1])))
+  (is (= [1 1] (#'data-perms/combine-rank-pairs nil [1 1])))
+  (is (nil? (#'data-perms/combine-rank-pairs nil nil))))
+
+(deftest permission-caches-load-on-demand-test
+  (let [user-id 1
+        loads   (atom [])
+        cache   (atom {:db-ids #{} :perms {}})]
+    (binding [api/*current-user-id*       user-id
+              data-perms/*database-permission-cache* cache]
+      (mt/with-dynamic-fn-redefs [data-perms/load-database-permission-perms
+                                  (fn [_user-id db-ids]
+                                    (swap! loads conj db-ids)
+                                    {:perms/view-data (zipmap db-ids (repeat :unrestricted))})]
+        (testing "a per-function cache loads only databases not already fetched"
+          (letfn [(check! [db-ids]
+                    (#'data-perms/cached-db-perms cache
+                                                  @#'data-perms/load-database-permission-perms
+                                                  user-id db-ids))]
+            (check! [10])
+            (check! [10 11])
+            (check! [10 11])
+            (is (= [[10] [11]] @loads))
+            (is (= #{10 11} (:db-ids @cache)))
+            (is (= :unrestricted
+                   (get-in @cache [:perms user-id :perms/view-data 10])))))))))
+
+(deftest permission-caches-memoize-most-permissive-values-test
+  (let [user-id 1
+        loads   (atom 0)
+        cache   (atom {})]
+    (binding [api/*current-user-id*                     user-id
+              data-perms/*most-permissive-permission-cache*  cache]
+      (mt/with-dynamic-fn-redefs [data-perms/load-most-permissive-db-perms
+                                  (fn [_user-id perm-type]
+                                    (swap! loads inc)
+                                    {10 (data-perms/most-permissive-value perm-type)})]
+        (testing "cross-database questions share one memoized load per permission type"
+          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
+          (is (= :query-builder-and-native
+                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
+          (is (= :no
+                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 11)))
+          (is (= 1 @loads)))))))
+
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
@@ -32,6 +95,78 @@
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
+
+(deftest destination-db-permissions-insert-throws-test
+  (testing "inserting a DataPermissions row for a destination database throws"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                   :model/Database         {router-db-id :id}  {}
+                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"destination database"
+           (t2/insert! :model/DataPermissions {:db_id      destination-db-id
+                                               :group_id   group-id
+                                               :perm_type  :perms/view-data
+                                               :perm_value :unrestricted}))))))
+
+(deftest destination-db-permissions-batch-insert-throws-test
+  (testing "batch-insert-permissions! throws for a destination database row"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                   :model/Database         {router-db-id :id}  {}
+                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"destination database"
+           (data-perms/batch-insert-permissions!
+            [{:db_id      destination-db-id
+              :group_id   group-id
+              :perm_type  :perms/view-data
+              :perm_value :unrestricted}]))))))
+
+(deftest assert-no-destination-db-permissions!-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}          {}
+                 :model/Database         {normal-db-id :id}      {}
+                 :model/Database         {router-db-id :id}      {}
+                 :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
+    (let [dest-row   {:db_id destination-db-id :group_id group-id
+                      :perm_type :perms/view-data :perm_value :unrestricted}
+          normal-row {:db_id normal-db-id :group_id group-id
+                      :perm_type :perms/view-data :perm_value :unrestricted}]
+      (testing "a single destination-db row throws"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"destination database"
+             (data-perms/assert-no-destination-db-permissions! [dest-row]))))
+      (testing "a batch mixing a destination-db row with normal-db rows throws"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"destination database"
+             (data-perms/assert-no-destination-db-permissions! [normal-row dest-row]))))
+      (testing "an all-normal-db batch does not throw"
+        (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
+      (testing "an empty seq does not throw"
+        (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
+
+(deftest destination-db-permissions-positive-control-test
+  (testing "inserting a perm row for a normal (non-destination) db still succeeds"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
+                   :model/Database         {normal-db-id :id} {}]
+      (mt/with-restored-data-perms-for-group! group-id
+        (testing "via raw t2/insert!"
+          (is (t2/insert! :model/DataPermissions {:db_id      normal-db-id
+                                                  :group_id   group-id
+                                                  :perm_type  :perms/view-data
+                                                  :perm_value :unrestricted})))
+        (testing "via batch-insert-permissions!"
+          (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
+          (is (nil? (data-perms/batch-insert-permissions!
+                     [{:db_id      normal-db-id
+                       :group_id   group-id
+                       :perm_type  :perms/view-data
+                       :perm_value :unrestricted}])))
+          (is (t2/exists? :model/DataPermissions
+                          :db_id normal-db-id :group_id group-id
+                          :perm_type :perms/view-data)))))))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
@@ -175,10 +310,15 @@
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
               (is (zero? (call-count)))))
-          ;; Fetching perms for a different DB is a cache miss
-          (t2/with-call-count [call-count]
-            (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
-            (is (= 1 (call-count)))))))))
+          ;; Fetching perms for a different DB is a cache miss (spy on the load fn rather than counting queries so the
+          ;; assertion doesn't depend on how many statements a load issues)
+          (let [loads (atom 0)
+                orig  (dynamic-redefs/original-fn #'data-perms/load-database-permission-perms)]
+            (mt/with-dynamic-fn-redefs [data-perms/load-database-permission-perms (fn [user-id db-ids]
+                                                                                    (swap! loads inc)
+                                                                                    (orig user-id db-ids))]
+              (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
+              (is (= 1 @loads)))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -244,6 +384,37 @@
           (t2/update! :model/Table table-id-1 {:active true})
           (is (= :unrestricted
                  (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
+
+(deftest inactive-table-grants-ignored-test
+  (testing "a grant that exists only on an inactive table does not count for value-aggregating checks"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}    {}
+                   :model/User                       {user-id :id}     {}
+                   :model/PermissionsGroupMembership {}                {:user_id  user-id
+                                                                        :group_id group-id}
+                   :model/Database                   {database-id :id} {}
+                   :model/Table                      {table-id :id}    {:db_id database-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! group-id table-id :perms/manage-table-metadata :yes)
+        (letfn [(check! [has-any? most-permissive]
+                  (testing "\nreading straight from the DB"
+                    (is (= has-any?
+                           (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
+                    (is (= most-permissive
+                           (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata database-id))))
+                  (testing "\nreading from the request cache"
+                    (mt/with-current-user user-id
+                      (is (= has-any?
+                             (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
+                      (is (= most-permissive
+                             (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata database-id))))))]
+          (testing "\na grant on an active table counts"
+            (check! true :yes))
+          (testing "\nthe same grant does not count once the table is deactivated"
+            (t2/update! :model/Table table-id {:active false})
+            (check! false :no))
+          (testing "\nreactivating the table restores it"
+            (t2/update! :model/Table table-id {:active true})
+            (check! true :yes)))))))
 
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -403,21 +574,6 @@
                (data-perms.graph/data-permissions-graph :group-id group-id-1
                                                         :db-id database-id-1
                                                         :perm-type :perms/view-data)))))))
-
-(deftest most-restrictive-per-group-works
-  (is (= #{:query-builder-and-native}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder-and-native}])))
-  (is (= #{:no}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder}
-                                                                         {:group-id 1 :value :no}])))
-  (is (= #{:no :query-builder-and-native}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder-and-native}
-                                                                         {:group-id 1 :value :no}
-                                                                         {:group-id 2 :value :query-builder-and-native}])))
-  (is (= #{:no}
-         (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :no}
-                                                                         {:group-id 1 :value :query-builder}
-                                                                         {:group-id 1 :value :query-builder-and-native}]))))
 
 (deftest full-schema-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -895,6 +1051,30 @@
           (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
                                             :group_id group-id :db_id db-id
                                             :table_id table-id-3 :perm_type :perms/view-data))))))))
+
+(deftest set-default-table-permissions!-blocked-db-stays-collapsed-test
+  (testing "A :blocked DB-level row already covers a new :blocked table, so we don't go granular (#76077)"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+      (mt/with-temp [:model/Table {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+        (t2/delete! :model/DataPermissions :group_id group-id :table_id table-id-2 :perm_type :perms/view-data)
+        (mt/with-dynamic-fn-redefs [data-perms/new-table-view-data-permission-levels
+                                    (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))]
+          (data-perms/set-default-table-permissions!
+           {:id table-id-2 :db_id db-id :schema "PUBLIC"}
+           [{:group-id group-id :perm-type :perms/view-data :default-value :unrestricted}]))
+        (testing "the DB-level :blocked row remains and no per-table rows were written"
+          (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
+                                            :group_id group-id :db_id db-id :table_id nil
+                                            :perm_type :perms/view-data)))
+          (is (zero? (t2/count :model/DataPermissions
+                               :group_id group-id :db_id db-id :perm_type :perms/view-data
+                               :table_id [:not= nil]))))
+        (testing "effective permission for the new table is still :blocked"
+          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-2)))
+          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-1))))))))
 
 (deftest set-default-table-permissions!-simple-insert-test
   (testing "When group is already table-granular, new table gets a simple insert"

@@ -202,7 +202,7 @@
 ;;; ------------------------------------------------------------------------------------
 
 (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
         with-tz-info? (or (sql.qp.u/field-with-tz? arg)
                           (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)"))
@@ -275,10 +275,10 @@
   (driver-api/is-clause? :interval expr))
 
 (defmethod sql.qp/->honeysql [:clickhouse :+]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
-      (reduce (fn [hsql-form [_ amount unit]]
+      (reduce (fn [hsql-form [_ _opts amount unit]]
                 (sql.qp/add-interval-honeysql-form driver hsql-form amount unit))
               (sql.qp/->honeysql driver field)
               intervals)
@@ -286,19 +286,19 @@
     (into [:+] (args->float64 args))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:'log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
-  [driver [_ field p]]
+  [driver [_ _opts field p]]
   [:raw "quantile(" (sql.qp/->honeysql driver p) ")(" (sql.qp/->honeysql driver field) ")"])
 
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:'extract (sql.qp/->honeysql driver arg) pattern])
 
 (defmethod sql.qp/->honeysql [:clickhouse :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
@@ -309,7 +309,7 @@
       [:'toInt64 position]]]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/date-dbtype :clickhouse
@@ -317,16 +317,16 @@
   :Date32)
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:'stddevPop (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :median]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:'median (sql.qp/->honeysql driver field)])
 
 ;; Substring does not work for Enums, so we need to cast to String
 (defmethod sql.qp/->honeysql [:clickhouse :substring]
-  [driver [_ arg start length]]
+  [driver [_ _opts arg start length]]
   (let [str [:'toString (sql.qp/->honeysql driver arg)]]
     (if length
       [:'substring str
@@ -336,7 +336,7 @@
        (sql.qp/->honeysql driver start)])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :var]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:'varPop (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/float-dbtype :clickhouse
@@ -354,27 +354,28 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
-  (let [[_ value {base-type :base_type}] value]
+  (let [[_ {:keys [base-type]} value] value]
     (when (some? value)
       (condp #(isa? %2 %1) base-type
         :type/IPAddress [:'toIPv4 value]
         (sql.qp/->honeysql driver value)))))
 
 (defn- text-val? [value]
-  (let [[qual valuevalue fieldinfo] value]
+  (let [[qual opts valuevalue] value]
     (and (isa? qual :value)
-         (isa? (:base_type fieldinfo) :type/Text)
+         (isa? (:base-type opts) :type/Text)
          (nil? valuevalue))))
 
 (defn- uuid-comp? [field value]
-  (let [[qual valuevalue fieldinfo] value]
+  (let [[qual val-opts valuevalue] value
+        [_ field-opts] field]
     (and (isa? qual :value)
-         (isa? (:base_type fieldinfo) :type/UUID)
-         (isa? (:base-type (nth field 2)) :type/UUID)
+         (isa? (:base-type val-opts) :type/UUID)
+         (isa? (:base-type field-opts) :type/UUID)
          (string? valuevalue))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :=]
-  [driver [op field value]]
+  [driver [_ _opts field value :as clause]]
   (let [hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
     (cond
@@ -391,10 +392,10 @@
         [:= hsql-field hsql-value]
         false)
 
-      :else ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
+      :else ((get-method sql.qp/->honeysql [:sql-mbql5 :=]) driver clause))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
-  [driver [op field value]]
+  [driver [_ _opts field value :as clause]]
   (let [hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
     (cond
@@ -409,7 +410,7 @@
          [:isNull hsql-field]]
         true)
 
-      :else ((get-method sql.qp/->honeysql [:sql :!=]) driver [op field value]))))
+      :else ((get-method sql.qp/->honeysql [:sql-mbql5 :!=]) driver clause))))
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)
@@ -419,14 +420,14 @@
 ;; metabase.query-processor.count-where-test
 ;; metabase.query-processor.share-test
 (defmethod sql.qp/->honeysql [:clickhouse :count-where]
-  [driver [_ pred]]
+  [driver [_ _opts pred]]
   [:case
    [:> [:'count] 0]
    [:sum [:case (sql.qp/->honeysql driver pred) 1 :else 0]]
    :else nil])
 
 (defmethod sql.qp/->honeysql [:clickhouse :sum-where]
-  [driver [_ field pred]]
+  [driver [_ _opts field pred]]
   [:sum [:case (sql.qp/->honeysql driver pred) (sql.qp/->honeysql driver field)
          :else 0]])
 
@@ -437,42 +438,42 @@
       type-info (h2x/with-type-info type-info))))
 
 (defn- clickhouse-string-fn
-  [fn-name field value options]
-  (let [[_ _ {:keys [base-type]}] field
+  [fn-name field value opts]
+  (let [[_ {:keys [base-type]} _] field
         hsql-field (cond->> (sql.qp/->honeysql :clickhouse field)
                      (= base-type :type/UUID) (conj [:'toString]))
         hsql-value (sql.qp/->honeysql :clickhouse value)]
-    (if (get options :case-sensitive true)
+    (if (get opts :case-sensitive true)
       [fn-name hsql-field hsql-value]
       [fn-name [:'lowerUTF8 hsql-field] [:'lowerUTF8 hsql-value]])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
-  [_ [_ field value options]]
+  [_ [_ opts field value]]
   (let [starts-with (clickhouse-version/with-min 23 8
                       (constantly :'startsWithUTF8)
                       (constantly :'startsWith))]
-    (clickhouse-string-fn starts-with field value options)))
+    (clickhouse-string-fn starts-with field value opts)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with]
-  [_ [_ field value options]]
+  [_ [_ opts field value]]
   (let [ends-with (clickhouse-version/with-min 23 8
                     (constantly :'endsWithUTF8)
                     (constantly :'endsWith))]
-    (clickhouse-string-fn ends-with field value options)))
+    (clickhouse-string-fn ends-with field value opts)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
-  [_ [_ field value options]]
-  (let [[_ _ {:keys [base-type]}] field
+  [_ [_ opts field value]]
+  (let [[_ {:keys [base-type]} _] field
         hsql-field (cond->> (sql.qp/->honeysql :clickhouse field)
                      (= base-type :type/UUID) (conj [:'toString]))
         hsql-value (sql.qp/->honeysql :clickhouse value)
-        position-fn (if (get options :case-sensitive true)
+        position-fn (if (get opts :case-sensitive true)
                       :'positionUTF8
                       :'positionCaseInsensitiveUTF8)]
     [:> [position-fn hsql-field hsql-value] 0]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (case unit

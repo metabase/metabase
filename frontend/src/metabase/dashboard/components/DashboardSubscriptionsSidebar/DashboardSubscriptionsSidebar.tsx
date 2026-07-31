@@ -5,7 +5,7 @@ import { skipToken, useListSubscriptionsQuery, userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
@@ -116,6 +116,7 @@ const getEditingPulseWithDefaults = (
 const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
+  // Unjustified type cast. FIXME
   formInput: getPulseFormInput(state) as ChannelApiResponse,
   user: getUser(state),
 });
@@ -344,6 +345,7 @@ function DashboardSubscriptionsSidebarInner({
       return;
     }
 
+    // Unjustified type cast. FIXME
     const cleanedPulse = cleanPulse(pulse, formInput.channels as ChannelSpecs);
     cleanedPulse.name = dashboard.name;
 

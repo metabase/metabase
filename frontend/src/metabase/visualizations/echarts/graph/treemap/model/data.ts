@@ -1,6 +1,8 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import { treemapNegativesWarning } from "metabase/visualizations/lib/warnings";
 import { getKeyFromDimensionValue } from "metabase/visualizations/shared/settings/pie";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -64,6 +66,7 @@ export function getTreemapData(
   treemapColumns: TreemapChartColumns,
   treemapRows?: TreemapRow[],
   settings?: Pick<ComputedVisualizationSettings, "column">,
+  showWarning?: (warning: string) => void,
 ): TreemapTree {
   const [
     {
@@ -90,15 +93,37 @@ export function getTreemapData(
       .map((row) => row.key),
   );
 
+  const isRowEnabled = (row: RowValue[]) =>
+    !userDisabledRows.has(getKeyFromDimensionValue(row[grouping.index]));
+
+  const enabledRows = rows.filter(isRowEnabled);
+  const areAllNegative =
+    enabledRows.length > 0 &&
+    enabledRows.every((row) => getNumberOr(row[value.index], 0) < 0);
+
   const rootByKey = new Map<RowValue, TreemapNode>();
   const leafMapByRoot = new Map<TreemapNode, Map<RowValue, TreemapNode>>();
 
   rows.forEach((row, rowIndex) => {
     const groupingValue = row[grouping.index];
-    const metricValue = row[value.index];
+    let metricValue = row[value.index];
 
-    if (userDisabledRows.has(getKeyFromDimensionValue(groupingValue))) {
+    if (!isRowEnabled(row)) {
       return;
+    }
+
+    // Filter negatives per-row (before summing) so a parent's value always
+    // equals the sum of its surviving leaves — required for treemap area
+    // containment. This differs from the pie chart, which drops whole negative
+    // groups but still sums negative rows into the aggregate.
+    const numericValue = getNumberOr(metricValue, null);
+    if (numericValue !== null && numericValue < 0) {
+      if (areAllNegative) {
+        metricValue = Math.abs(numericValue);
+      } else {
+        showWarning?.(treemapNegativesWarning().text);
+        return;
+      }
     }
 
     const { node: rootNode } = getOrCreateNode({

@@ -43,11 +43,13 @@ const addPointerListeners = (
   listeners: Record<string, (e: PointerEvent) => void>,
 ) => {
   for (const [event, handler] of Object.entries(listeners)) {
+    // Unjustified type cast. FIXME
     el.addEventListener(event, handler as EventListener);
   }
 
   return () => {
     for (const [event, handler] of Object.entries(listeners)) {
+      // Unjustified type cast. FIXME
       el.removeEventListener(event, handler as EventListener);
     }
   };

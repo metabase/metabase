@@ -19,10 +19,12 @@ const CACHED: ParameterValues = {
 };
 
 const createGetState = (cache: Record<string, ParameterValues>): GetState =>
+  // Unjustified type cast. FIXME
   (() => ({
     parameters: { parameterValuesCache: cache },
   })) as unknown as GetState;
 
+// Unjustified type cast. FIXME
 const dispatch = jest.fn() as unknown as DispatchFn;
 
 describe("parameters > actions", () => {

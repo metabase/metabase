@@ -180,7 +180,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to send comment`,
       });
     } else {
@@ -213,12 +213,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         </ActionIcon>
       </Flex>
 
-      <Tabs
-        value={activeTab}
-        onChange={(value) => {
-          setActiveTab(value as SidesheetTab);
-        }}
-      >
+      <Tabs value={activeTab} onChange={setActiveTab}>
         {availableTabs.length > 0 && (
           <Tabs.List px="1.625rem" className={S.tabsList}>
             <Tabs.Tab value="open" data-testid="comments-open-tab">

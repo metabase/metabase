@@ -123,6 +123,7 @@ function ActionMenu({
   }, [item, onMove]);
 
   const handleArchive = useCallback(
+    // Unjustified type cast. FIXME
     () => archive(item as ArchivableItem, true),
     [archive, item],
   );

@@ -49,6 +49,7 @@ describe(
         const { data } = result.body;
         for (const item of data) {
           if (/Dashboard/i.test(item.name)) {
+            // Unjustified type cast. FIXME
             dashboard = item as unknown as Dashboard;
           } else if (/Question|Model/i.test(item.name)) {
             sandboxableQuestions.push(item);
@@ -75,6 +76,7 @@ describe(
         "dashcardQuery",
       );
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
+      // Unjustified type cast. FIXME
       H.restore("sandboxing-snapshot" as any);
     });
 

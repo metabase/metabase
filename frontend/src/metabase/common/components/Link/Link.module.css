@@ -1,0 +1,33 @@
+.link {
+  transition: opacity 0.3s linear;
+
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.brand {
+  color: var(--mb-color-core-brand);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.brandBold {
+  color: var(--mb-color-core-brand);
+  font-weight: bold;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

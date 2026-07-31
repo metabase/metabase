@@ -14,8 +14,8 @@ const BUTTON_VARIANT_PROPS: Record<
 > = {
   default: { variant: "default" },
   primary: { variant: "filled" },
-  danger: { variant: "filled", color: "error" },
-  success: { variant: "filled", color: "success" },
+  danger: { variant: "filled", color: "feedback-negative" },
+  success: { variant: "filled", color: "feedback-positive" },
   borderless: { variant: "subtle" },
 };
 
@@ -47,7 +47,7 @@ function ActionButtonView({
       className={S.actionButton}
       p={0}
       h={isFullHeight ? "100%" : undefined}
-      bd={focus ? "2px solid var(--mb-color-focus)" : undefined}
+      bd={focus ? "2px solid var(--mb-color-input-focus)" : undefined}
       variant={buttonVariant}
       color={color}
       disabled={!!disabled}

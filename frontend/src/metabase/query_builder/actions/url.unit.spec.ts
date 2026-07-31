@@ -2,9 +2,9 @@
 //
 // This pins updateUrl -> dispatch(push/replace, { ..., state }), the QB side that
 // decides which router action to emit and what card state to carry on it. It is a
-// lock-down net for the upcoming react-router migration and is complementary to
+// lock-down net for the react-router migration and is complementary to
 // redux/routing-contract.unit.spec.ts, which pins the transport side (how the
-// dispatched push/replace action mutates state.routing).
+// dispatched push/replace action drives history navigation).
 
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -15,7 +15,7 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
@@ -94,7 +94,7 @@ async function setup({
     qb,
   });
 
-  await updateUrl(question, options)(dispatch, getState as any);
+  await updateUrl(question, options)(dispatch, getState);
 
   return { dispatch };
 }

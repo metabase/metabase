@@ -41,6 +41,7 @@ describe("admin > permissions > sandboxing > misconfiguration", () => {
 
   beforeEach(() => {
     cy.signInAsAdmin();
+    // Unjustified type cast. FIXME
     H.restore("sandboxing-misconfiguration-snapshot" as any);
   });
 

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import type {
   DimensionPillBarItem,
   ExpressionDimensionItem,
@@ -439,6 +440,7 @@ export function splitByBreakout({
         };
       }
     }
+    // Unjustified type cast. FIXME
     groupedRows.push([
       row[DIMENSION_COLUMN_INDEX],
       row[metricColumnIndex],
@@ -494,6 +496,7 @@ function createSeriesCard(
   display: string,
   vizSettings: VisualizationSettings,
 ): Card {
+  // Unjustified type cast. FIXME
   return {
     id,
     name,
@@ -680,15 +683,17 @@ function buildStandaloneDimensionItem(
       return null;
     }
 
-    const dimensionInfo = LibMetric.displayInfo(
-      modifiedDefinition,
-      projectionDimension,
+    const dimension = getDimensionDescriptors(defEntry.definition).get(
+      dimensionId,
     );
 
     return {
       type: "metric",
       slotIndex: slot.slotIndex,
-      label: dimensionInfo.longDisplayName,
+      label:
+        dimension?.displayName ??
+        LibMetric.displayInfo(modifiedDefinition, projectionDimension)
+          .displayName,
       icon: getDimensionIcon(projectionDimension),
       colors: entryColors,
       availableOptions: computeAvailableOptions(
@@ -758,10 +763,11 @@ function buildExpressionMetricSources(
           LibMetric.projectionDimension(modifiedDefinition, projections[0]) ??
           undefined;
         if (currentDimension) {
-          currentDimensionLabel = LibMetric.displayInfo(
-            modifiedDefinition,
-            currentDimension,
-          ).longDisplayName;
+          currentDimensionLabel =
+            getDimensionDescriptors(defEntry.definition).get(dimensionId)
+              ?.displayName ??
+            LibMetric.displayInfo(modifiedDefinition, currentDimension)
+              .displayName;
           currentDimensionIcon = getDimensionIcon(currentDimension);
         }
       }

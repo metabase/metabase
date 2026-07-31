@@ -116,9 +116,8 @@ export function TablePicker({
 
                     {filtersCount > 0 && (
                       <Badge
-                        bg="core-brand"
-                        circle
-                        size="8"
+                        color="brand"
+                        indicator
                         pos="absolute"
                         top={-6}
                         right={-8}

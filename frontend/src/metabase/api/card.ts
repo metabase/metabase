@@ -22,7 +22,7 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -98,28 +98,29 @@ export const cardApi = Api.injectEndpoints({
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
         onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
-      getCardQuery: builder.query<
-        Dataset,
-        CardQueryRequest & { _refetchDeps?: unknown }
-      >({
-        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
-        // force a unique key per call) but must not be sent to the server.
-        query: ({ cardId, _refetchDeps, ...body }) => ({
+      getCardQuery: builder.query<Dataset, CardQueryRequest & RtkCacheKeyed>({
+        query: ({ cardId, dashboardId, ...body }) => ({
           method: "POST",
           url: `/api/card/${cardId}/query`,
-          body,
+          body: {
+            ...body,
+            dashboard_id: dashboardId,
+          },
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
       }),
       getCardQueryPivot: builder.query<
         Dataset,
-        CardQueryRequest & { _refetchDeps?: unknown }
+        CardQueryRequest & RtkCacheKeyed
       >({
-        query: ({ cardId, _refetchDeps, ...body }) => ({
+        query: ({ cardId, dashboardId, ...body }) => ({
           method: "POST",
           url: `/api/card/pivot/${cardId}/query`,
-          body,
+          body: {
+            ...body,
+            dashboard_id: dashboardId,
+          },
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),

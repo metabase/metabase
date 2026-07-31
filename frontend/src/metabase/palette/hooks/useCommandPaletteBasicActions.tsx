@@ -1,11 +1,10 @@
 import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
+import type { UseInitialCollectionIdProps } from "metabase/common/collections/hooks";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
@@ -18,6 +17,7 @@ import {
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
+import { push } from "metabase/router";
 import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
@@ -74,7 +74,9 @@ const getActionPriority = (id: string) => {
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
-}: WithRouterProps & { isLoggedIn: boolean }) => {
+}: Pick<UseInitialCollectionIdProps, "location" | "params"> & {
+  isLoggedIn: boolean;
+}) => {
   const dispatch = useDispatch();
   const collectionId = useInitialCollectionId(props) ?? undefined;
 

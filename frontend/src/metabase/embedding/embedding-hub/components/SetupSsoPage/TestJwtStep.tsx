@@ -1,10 +1,10 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
 import { useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useHelpUrl } from "metabase/embedding/embedding-hub/hooks";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
@@ -25,7 +25,7 @@ export const TestJwtStep = () => {
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to save SSO test status`,
       });
     }

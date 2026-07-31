@@ -153,7 +153,7 @@ function InnerSavedEntityPicker({
     }
     // Tree erases node ids to string | number, but a selected collection
     // node's id is always a CollectionId.
-    setSelectedCollectionId(collection.id as CollectionId);
+    setSelectedCollectionId(collection.id);
   }, []);
 
   return (

@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
@@ -7,6 +6,7 @@ import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
@@ -118,17 +118,7 @@ export const DocumentHeader = ({
   );
 
   return (
-    <Flex
-      justify="space-between"
-      align="flex-start"
-      gap="1rem"
-      mt="xl"
-      pt="xl"
-      pb="1rem"
-      maw={900}
-      mx="auto"
-      w="100%"
-    >
+    <Flex className={S.documentHeader}>
       <Flex direction="column" className={S.titleContainer}>
         <TextInput
           aria-label={t`Document Title`}

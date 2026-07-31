@@ -27,10 +27,12 @@ describe("tablesReducer", () => {
     }
 
     function getCreateAction(question: unknown) {
+      // Unjustified type cast. FIXME
       return cardCreated(question as Card);
     }
 
     function getUpdateAction(question: unknown) {
+      // Unjustified type cast. FIXME
       return cardUpdated(question as Card);
     }
 

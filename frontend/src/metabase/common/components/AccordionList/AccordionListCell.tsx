@@ -12,11 +12,10 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ListSearchField } from "metabase/common/components/ListSearchField";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import type { TextInputProps } from "metabase/ui";
-import { Box, Icon, Text, isValidIconName } from "metabase/ui";
+import { Box, Icon, Loader, Text, isValidIconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import { isTouchDevice } from "metabase/utils/browser";
@@ -231,7 +230,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
-              <LoadingSpinner size={16} borderWidth={2} />
+              <Loader size="xs" />
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
@@ -299,7 +298,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         )}
         {showSpinner(section) && (
           <Box ml="0.5rem">
-            <LoadingSpinner size={16} borderWidth={2} />
+            <Loader size="xs" />
           </Box>
         )}
         <IconWrapper>
@@ -316,7 +315,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
   } else if (type === "loading") {
     content = (
       <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
-        <LoadingSpinner />
+        <Loader size="lg" />
       </div>
     );
   } else if (type === "search") {
@@ -402,7 +401,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           </div>
           {showSpinner(item) && (
             <Box ml="0.5rem">
-              <LoadingSpinner size={16} borderWidth={2} />
+              <Loader size="xs" />
             </Box>
           )}
         </Content>

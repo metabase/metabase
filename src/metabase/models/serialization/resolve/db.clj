@@ -126,8 +126,10 @@
       (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
           (synthesize-table! db-id schema table-name))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
-                      {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
+                      {:table-id       table-id
+                       :db-name        db-name
+                       :database-names (sort (t2/select-fn-vec :name :model/Database))
+                       :error          ::database-not-found})))))
 
 (defn import-field-fk
   "Given [db-name schema table-name field-name ...], return numeric field_id. If part of the parent
@@ -167,7 +169,7 @@
   (reify resolve/SerdesImportResolver
     (resolve/import-fk       [_ eid model]            (try (resolve/import-fk default-import-resolver eid model)
                                                            (catch ExceptionInfo e
-                                                             (log/warn e "Failed to import FK")
+                                                             (log/warnf "Failed to import FK: %s" (ex-message e))
                                                              nil)))
     (resolve/import-fk-keyed [_ portable model field] (resolve/import-fk-keyed default-import-resolver portable model field))
     (resolve/import-user     [_ email]                (resolve/import-user default-import-resolver email))

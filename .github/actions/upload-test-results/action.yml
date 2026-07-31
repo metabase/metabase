@@ -34,6 +34,10 @@ inputs:
     description: >-
       Optional label disambiguating matrix legs of the same job, so the info-driver
       job summary and PR comment stay distinct per leg.
+  run-trunk:
+    required: false
+    default: "true"
+    description: Whether to run the Trunk step at all.
 
 runs:
   using: "composite"
@@ -60,13 +64,11 @@ runs:
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
 
     - name: Upload results to Trunk
+      if: ${{ always() && github.repository_owner == 'metabase' && inputs.run-trunk == 'true' }}
       # Important!
-      # 1. This step must always run because it controls job's exit code.
-      # 2. There's no point in running this outside the organization
-      # 3. For "info" drivers off master/release branches, our own status takes precedence: we let this
-      #    step pass so the job is reported as passing regardless of the real outcome (still uploaded).
-      #    On master and release branches, info status is ignored and the real outcome gates the job.
-      if: always() && github.repository_owner == 'metabase'
+      # For "info" drivers off master/release branches, our own status takes precedence: we let this
+      # step pass so the job is reported as passing regardless of the real outcome (still uploaded).
+      # On master and release branches, info status is ignored and the real outcome gates the job.
       continue-on-error: ${{ inputs.driver-status == 'info' && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
       uses: trunk-io/analytics-uploader@1198efcc0976501147b10a7e343c3fa069527526 # v2.0.9
       env:

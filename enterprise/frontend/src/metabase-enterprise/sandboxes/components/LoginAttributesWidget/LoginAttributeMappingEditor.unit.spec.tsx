@@ -162,6 +162,20 @@ describe("LoginAttributeMappingEditor", () => {
       });
     });
 
+    it("focuses the key input of a newly added attribute", async () => {
+      setup({ simpleAttributes });
+
+      const keyInputs = await screen.findAllByPlaceholderText("Key");
+      keyInputs.forEach((input) => expect(input).not.toHaveFocus());
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Add an attribute/ }),
+      );
+
+      const newKeyInput = (await screen.findAllByPlaceholderText("Key")).at(-1);
+      expect(newKeyInput).toHaveFocus();
+    });
+
     it("can remove an attribute", async () => {
       const { onChange } = setup({ simpleAttributes });
 

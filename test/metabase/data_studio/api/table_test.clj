@@ -41,6 +41,15 @@
                                :visibility_type  "hidden"
                                :data_layer "hidden"})))))
 
+(deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
+  (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id :data_source :metabase-transform}]
+      (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
+                            {:table_ids   [table-id]
+                             :data_source "ingested"})
+      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
     (let [data-analyst-group-id (:id (perms-group/data-analyst))]
@@ -426,12 +435,12 @@
     ;; order_items.order_id remaps to orders.name
     ;; orders.customer_id remaps to customers.name
     (mt/with-temp [:model/Database  {db-id :id}          {}
-                   ;; Customers table
-                   :model/Table     {customers-id :id}   {:db_id db-id :name "customers" :schema "PUBLIC"
-                                                          :is_published false}
-                   :model/Field     _                    {:table_id customers-id :name "id"
+                   ;; Purchasers table
+                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers" :schema "PUBLIC"
+                                                           :is_published false}
+                   :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
-                   :model/Field     {cust-name-f :id}    {:table_id customers-id :name "name"
+                   :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table
                    :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"
@@ -440,8 +449,8 @@
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
-                   :model/Field     {customer-fk :id}    {:table_id orders-id :name "customer_id"
-                                                          :semantic_type :type/FK :base_type :type/Integer}
+                   :model/Field     {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
+                                                           :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table
                    :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"
                                                           :is_published false}
@@ -450,7 +459,7 @@
                    :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
                                                           :semantic_type :type/FK :base_type :type/Integer}
                    ;; Dimensions for FK remapping
-                   :model/Dimension _                    {:field_id customer-fk
+                   :model/Dimension _                    {:field_id purchaser-fk
                                                           :human_readable_field_id cust-name-f
                                                           :type :external}
                    :model/Dimension _                    {:field_id order-fk
@@ -466,7 +475,7 @@
                                                   :schema       "PUBLIC"}
                    :unpublished_upstream_tables (mt/malli=? [:sequential {:min 2 :max 2} :map])}
                   response))
-          (is (= #{orders-id customers-id}
+          (is (= #{orders-id purchasers-id}
                  (set (map :id (:unpublished_upstream_tables response)))))
           ;; Verify upstream tables have all required fields
           (doseq [table (:unpublished_upstream_tables response)]
@@ -478,12 +487,12 @@
     ;; Same chain: order_items -> orders -> customers
     ;; If we unpublish customers, we need to unpublish orders and order_items too
     (mt/with-temp [:model/Database  {db-id :id}          {}
-                   ;; Customers table (published)
-                   :model/Table     {customers-id :id}   {:db_id db-id :name "customers" :schema "PUBLIC"
-                                                          :is_published true}
-                   :model/Field     _                    {:table_id customers-id :name "id"
+                   ;; Purchasers table (published)
+                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers" :schema "PUBLIC"
+                                                           :is_published true}
+                   :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
-                   :model/Field     {cust-name-f :id}    {:table_id customers-id :name "name"
+                   :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table (published)
                    :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"
@@ -492,8 +501,8 @@
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
-                   :model/Field     {customer-fk :id}    {:table_id orders-id :name "customer_id"
-                                                          :semantic_type :type/FK :base_type :type/Integer}
+                   :model/Field     {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
+                                                           :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table (published)
                    :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"
                                                           :is_published true}
@@ -502,7 +511,7 @@
                    :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
                                                           :semantic_type :type/FK :base_type :type/Integer}
                    ;; Dimensions for FK remapping
-                   :model/Dimension _                    {:field_id customer-fk
+                   :model/Dimension _                    {:field_id purchaser-fk
                                                           :human_readable_field_id cust-name-f
                                                           :type :external}
                    :model/Dimension _                    {:field_id order-fk
@@ -510,11 +519,11 @@
                                                           :type :external}]
       (testing "selecting customers returns orders and order_items as downstream (recursive)"
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
-                                             {:table_ids [customers-id]})]
-          (is (=? {:selected_table               {:id           customers-id
+                                             {:table_ids [purchasers-id]})]
+          (is (=? {:selected_table               {:id           purchasers-id
                                                   :db_id        db-id
-                                                  :name         "customers"
-                                                  :display_name "Customers"
+                                                  :name         "purchasers"
+                                                  :display_name "Purchasers"
                                                   :schema       "PUBLIC"}
                    :published_downstream_tables (mt/malli=? [:sequential {:min 2 :max 2} :map])}
                   response))

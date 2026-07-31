@@ -1,13 +1,14 @@
 import { useEffect, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -22,7 +23,7 @@ const PAGE_SIZE = 25;
 const DEFAULT_NO_RESULTS_MESSAGE = () => t`No results found`;
 
 export function PeopleListingApp({
-  children,
+  children = <Outlet />,
   external = false,
   showInviteButton = true,
   noResultsMessage = DEFAULT_NO_RESULTS_MESSAGE(),
@@ -74,9 +75,9 @@ export function PeopleListingApp({
         : t`Invite someone`
       : undefined;
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: ActiveStatus | null) => {
     if (tab) {
-      updateStatus(tab as ActiveStatus);
+      updateStatus(tab);
     }
   };
 

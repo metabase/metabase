@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -114,7 +114,7 @@ export const NotebookNativePreview = ({
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
-            <Icon name="warning" size="2rem" c="error" />
+            <Icon name="warning" size="2rem" c="feedback-negative" />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>

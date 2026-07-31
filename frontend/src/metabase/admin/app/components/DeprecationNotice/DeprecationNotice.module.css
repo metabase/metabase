@@ -23,5 +23,5 @@
 }
 
 .NoticeCloseIcon:hover {
-  color: var(--mb-color-admin-navbar);
+  color: var(--mb-color-navbar-admin);
 }

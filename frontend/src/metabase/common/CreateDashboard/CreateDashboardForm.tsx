@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
@@ -54,7 +53,7 @@ export interface CreateDashboardProperties {
 
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  targetCollection?: SdkCollectionId | null;
+  targetCollection?: CollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -67,7 +66,6 @@ export function CreateDashboardForm({
 }: CreateDashboardFormOwnProps) {
   const initialCollectionId = useInitialCollectionId({ collectionId });
 
-  // When passing `"root"` it will be resolved to `null`
   const hasTargetCollection = targetCollection !== undefined;
 
   const [handleCreateDashboard] = useCreateDashboardMutation();

@@ -19,7 +19,7 @@ export const StepRoot = styled.section<Props>`
 
 export const StepTitle = styled.div<Props>`
   color: ${(props) =>
-    props.isCompleted ? color("success") : color("core-brand")};
+    props.isCompleted ? color("feedback-positive") : color("core-brand")};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -37,10 +37,12 @@ export const StepLabel = styled.div<Props>`
   height: 2.625rem;
   border: 1px solid
     ${(props) =>
-      props.isCompleted ? color("success") : color("border-neutral")};
+      props.isCompleted ? color("feedback-positive") : color("border-neutral")};
   border-radius: 50%;
   background-color: ${(props) =>
-    props.isCompleted ? color("success") : color("background_page-primary")};
+    props.isCompleted
+      ? color("feedback-positive")
+      : color("background_page-primary")};
 `;
 
 export const StepLabelText = styled.span`

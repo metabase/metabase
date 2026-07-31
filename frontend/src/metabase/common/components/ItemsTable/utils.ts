@@ -27,6 +27,7 @@ export const getVisibleColumnsMap = (
   visibleColumns.reduce((result, item) => {
     result[item] = true;
     return result;
+    // Unjustified type cast. FIXME
   }, {} as CollectionContentTableColumnsMap);
 
 export const canSelectItems = (

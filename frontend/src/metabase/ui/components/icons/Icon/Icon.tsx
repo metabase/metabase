@@ -54,6 +54,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   // like "core-yellow-saturated" don't render — only valid CSS color strings do.
   // Resolve known palette keys to their `--mb-color-*` CSS variables.
   if ("color" in restProps) {
+    // Unjustified type cast. FIXME
     restProps.color = resolveIconColor(restProps.color) as ColorName;
   }
 

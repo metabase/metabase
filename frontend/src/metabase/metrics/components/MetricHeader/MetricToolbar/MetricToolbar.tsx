@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -23,6 +22,7 @@ import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { ActionIcon, Icon, Menu } from "metabase/ui";

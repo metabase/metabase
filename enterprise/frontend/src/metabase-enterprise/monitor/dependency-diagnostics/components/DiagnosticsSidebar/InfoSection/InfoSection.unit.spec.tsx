@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { DependencyNode } from "metabase-types/api";
 import {
   createMockCardDependencyNode,
@@ -23,7 +22,7 @@ type SetupOpts = {
 
 function setup({ node = createMockCardDependencyNode() }: SetupOpts = {}) {
   renderWithProviders(
-    <Route path="/" component={() => <InfoSection node={node} />} />,
+    <Route path="/" element={<InfoSection node={node} />} />,
     { withRouter: true, initialRoute: "/" },
   );
 }

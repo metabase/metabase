@@ -11,7 +11,7 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
-import { useSelector, useStore } from "metabase/redux";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
@@ -20,7 +20,6 @@ import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/C
 import { CommandSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
-import DropCursorS from "metabase/rich_text_editing/tiptap/extensions/DropCursor/DropCursor.module.css";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
@@ -43,7 +42,9 @@ import { Box, Center, Loader } from "metabase/ui";
 
 import { DocumentBlockShell } from "./DocumentBlockShell";
 import { DocumentEditorHostProvider } from "./DocumentEditorHost";
+import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
+import { createChartPasteExtension } from "./chart-paste-extension";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -108,6 +109,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
+    const dispatch = useDispatch();
 
     const extensions = useMemo(
       () => [
@@ -164,8 +166,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
         }),
         ResizeNode,
         HandleEditorDrop,
+        createChartPasteExtension(dispatch),
       ],
-      [siteUrl, getState],
+      [siteUrl, getState, dispatch],
     );
 
     const editor = useEditor(

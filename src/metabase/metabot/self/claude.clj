@@ -52,10 +52,8 @@
    :cacheReadTokens     (:cache_read_input_tokens u 0)})
 
 (def ^:private translated-chunk-type?
-  "Claude content-block types we translate into AI SDK chunks. Other block types
-  (e.g. `thinking`/`redacted_thinking` from extended or adaptive thinking) are
-  ignored, mirroring the OpenAI adapter's handling of reasoning output."
-  #{:text :tool_use})
+  "Claude content-block types we translate into AI SDK chunks."
+  #{:text :tool_use :thinking :redacted_thinking})
 
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
@@ -88,11 +86,11 @@
           ;; usage in the completion arity so we don't lose data entirely.
           last-usage   (volatile! nil)
           close!       (fn [result]
-                         ;; only emit an end marker for block types we translate; thinking and
-                         ;; other untranslated blocks are ignored.
                          (u/prog1 (if-let [end-type (case @current-type
-                                                      :text     :text-end
-                                                      :tool_use :tool-input-available
+                                                      :text              :text-end
+                                                      :tool_use          :tool-input-available
+                                                      :thinking          :reasoning-end
+                                                      :redacted_thinking :reasoning-end
                                                       nil)]
                                     (rf result (merge {:type end-type} @payload))
                                     result)
@@ -110,10 +108,10 @@
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
-        ([result {t :type :keys [message content_block delta error] :as chunk}]
+        ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
                             (keyword (:type content_block)))
-               chunk-id   (or (:id content_block) @current-id (core/mkid))]
+               chunk-id   (or (:id content_block) @current-id (some-> index str) (core/mkid))]
            (cond-> result
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
@@ -127,28 +125,41 @@
                                                (vreset! current-id chunk-id)
                                                (vreset! payload
                                                         (case block-type
-                                                          :text     {:id chunk-id}
-                                                          :tool_use {:toolCallId chunk-id
-                                                                     :toolName   (:name content_block)}
+                                                          :text              {:id chunk-id}
+                                                          :tool_use          {:toolCallId chunk-id
+                                                                              :toolName   (:name content_block)}
+                                                          :thinking          {:id chunk-id}
+                                                          ;; redactedData rides the reasoning-end (via @payload,
+                                                          ;; kept off the start); redacted blocks stream no deltas.
+                                                          :redacted_thinking {:id chunk-id
+                                                                              :providerMetadata {:anthropic {:redactedData (:data content_block)}}}
                                                           nil)))
                                              (cond->
                                               (translated-chunk-type? block-type)
-                                               (rf (merge (case block-type
-                                                            :text     {:type :text-start}
-                                                            :tool_use {:type :tool-input-start})
-                                                          @payload))))
+                                               (rf (case block-type
+                                                     :text                          (merge {:type :text-start} @payload)
+                                                     :tool_use                      (merge {:type :tool-input-start} @payload)
+                                                     (:thinking :redacted_thinking) {:type :reasoning-start :id chunk-id}))))
 
-             ;; content block delta — ignore deltas for blocks we don't translate
-             ;; (e.g. thinking_delta / signature_delta from extended thinking)
+             ;; content block delta
              (and (= t "content_block_delta")
-                  (contains? #{"text_delta" "input_json_delta"} (:type delta)))
+                  (contains? #{"text_delta" "input_json_delta" "thinking_delta"} (:type delta)))
              (rf (case (:type delta)
                    "text_delta"       {:type  :text-delta
                                        :id    (:id @payload)
                                        :delta (:text delta)}
+                   "thinking_delta"   {:type  :reasoning-delta
+                                       :id    (:id @payload)
+                                       :delta (:thinking delta)}
                    "input_json_delta" {:type           :tool-input-delta
                                        :toolCallId     (:toolCallId @payload)
                                        :inputTextDelta (:partial_json delta)}))
+
+             ;; the signature rides the reasoning-end via @payload (needed to replay
+             ;; the block within the turn); nothing is emitted to the client
+             (and (= t "content_block_delta") (= "signature_delta" (:type delta)))
+             (u/prog1
+               (vswap! payload update-in [:providerMetadata :anthropic :signature] (fnil str "") (:signature delta)))
 
              ;; end of content block
              (= t "content_block_stop") (close!)
@@ -185,38 +196,67 @@
                              :content (into [] (mapcat (comp ->content-blocks :content)) group)}])))
         messages))
 
+(defn- merge-reasoning
+  "Join consecutive same-id `:reasoning` parts (streamed as small parts plus a
+  metadata carrier) into one block, keeping its provider metadata."
+  [parts]
+  (->> parts
+       (partition-by (fn [p] (if (= :reasoning (:type p)) [:reasoning (:id p)] :other)))
+       (mapcat (fn [group]
+                 (if (= :reasoning (:type (first group)))
+                   [{:type              :reasoning
+                     :id                (:id (first group))
+                     :text              (->> group (map :text) (str/join ""))
+                     :provider-metadata (some :provider-metadata group)}]
+                   group)))))
+
 (defn parts->claude-messages
   "Convert a sequence of AISDK parts into Claude API messages.
 
   Input: flat sequence of AISDK parts and user messages:
     {:role :user, :content \"...\"}
+    {:type :reasoning, :text \"...\", :provider-metadata {...}}
     {:type :text, :text \"...\"}
     {:type :tool-input, :id ..., :function ..., :arguments ...}
     {:type :tool-output, :id ..., :result ...}
 
-  Output: Claude messages with tool_use/tool_result content blocks, consecutive
-  assistant messages merged."
+  Reasoning becomes `thinking`/`redacted_thinking` blocks — Claude 400s unless they
+  are echoed back verbatim (signed) ahead of the tool_use they preceded. Unsigned
+  reasoning (foreign parts, interrupted blocks) is dropped."
   [parts]
   (->> parts
-       (mapv (fn [part]
-               (case (:type part)
-                 :text        {:role    "assistant"
-                               :content (:text part)}
-                 :tool-input  {:role    "assistant"
-                               :content [{:type  "tool_use"
-                                          :id    (:id part)
-                                          :name  (:function part)
-                                          :input (or (:arguments part) {})}]}
-                 :tool-output {:role    "user"
-                               :content [{:type        "tool_result"
-                                          :tool_use_id (:id part)
-                                          :content     (or (get-in part [:result :output])
-                                                           (when-let [err (:error part)]
-                                                             (str "Error: " (:message err)))
-                                                           (pr-str (:result part)))}]}
-                 ;; User messages pass through
-                 {:role    (name (or (:role part) "user"))
-                  :content (:content part)})))
+       merge-reasoning
+       (into []
+             (keep (fn [part]
+                     (case (:type part)
+                       :reasoning   (let [pm       (:provider-metadata part)
+                                          redacted (get-in pm [:anthropic :redactedData])
+                                          sig      (get-in pm [:anthropic :signature])]
+                                      (cond
+                                        redacted {:role    "assistant"
+                                                  :content [{:type "redacted_thinking" :data redacted}]}
+                                        sig      {:role    "assistant"
+                                                  :content [{:type      "thinking"
+                                                             :thinking  (:text part)
+                                                             :signature sig}]}
+                                        :else    nil))
+                       :text        {:role    "assistant"
+                                     :content (:text part)}
+                       :tool-input  {:role    "assistant"
+                                     :content [{:type  "tool_use"
+                                                :id    (:id part)
+                                                :name  (:function part)
+                                                :input (or (:arguments part) {})}]}
+                       :tool-output {:role    "user"
+                                     :content [{:type        "tool_result"
+                                                :tool_use_id (:id part)
+                                                :content     (or (get-in part [:result :output])
+                                                                 (when-let [err (:error part)]
+                                                                   (str "Error: " (:message err)))
+                                                                 (pr-str (:result part)))}]}
+                       ;; User messages pass through
+                       {:role    (name (or (:role part) "user"))
+                        :content (:content part)}))))
        merge-consecutive
        vec))
 
@@ -252,28 +292,28 @@
   by other provider adapters."
   "<<<METABOT_CACHE_BREAKPOINT>>>")
 
-(defn- system->cached-content-blocks
+(defn system->cached-content-blocks
   "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
 
   If `system` contains the cache breakpoint sentinel, split it into two content
   blocks: a cached static prefix and an uncached dynamic suffix. The model sees
   the concatenation; the split is purely a wire-protocol device for caching.
 
-  If the sentinel is absent, fall back to a single cached content block covering
-  the whole prompt."
+  If the sentinel is absent (or nothing but whitespace follows it) fall back to
+  a single cached content block covering the whole prompt."
   [system]
-  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
-    (if (neg? idx)
+  (let [idx    (.indexOf ^String system ^String system-cache-breakpoint-sentinel)
+        suffix (when-not (neg? idx)
+                 (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel)))))]
+    (if (or (neg? idx) (str/blank? suffix))
       [{:type          "text"
-        :text          system
+        :text          (if (neg? idx) system (str/trimr (subs system 0 idx)))
         :cache_control {:type "ephemeral"}}]
-      (let [prefix (str/trimr (subs system 0 idx))
-            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
-        [{:type          "text"
-          :text          prefix
-          :cache_control {:type "ephemeral"}}
-         {:type "text"
-          :text suffix}]))))
+      [{:type          "text"
+        :text          (str/trimr (subs system 0 idx))
+        :cache_control {:type "ephemeral"}}
+       {:type "text"
+        :text suffix}])))
 
 (defn- anthropic-error-msg
   "Canonical, status-specific Anthropic error message."
@@ -289,56 +329,114 @@
       529 (tru "Anthropic API is overloaded and is asking us to wait")
       (tru "Anthropic API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"claude-fable-5"             "Claude Fable 5"
+   "claude-opus-5"              "Claude Opus 5"
+   "claude-opus-4-8"            "Claude Opus 4.8"
+   "claude-opus-4-7"            "Claude Opus 4.7"
+   "claude-opus-4-6"            "Claude Opus 4.6"
+   "claude-opus-4-5-20251101"   "Claude Opus 4.5"
+   "claude-opus-4-1-20250805"   "Claude Opus 4.1"
+   "claude-sonnet-5"            "Claude Sonnet 5"
+   "claude-sonnet-4-6"          "Claude Sonnet 4.6"
+   "claude-sonnet-4-5-20250929" "Claude Sonnet 4.5"
+   "claude-haiku-4-5-20251001"  "Claude Haiku 4.5"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full Anthropic model catalog (`GET /v1/models`).
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  [{:keys [credentials ai-proxy?]}]
+  (try
+    (let [auth (core/resolve-auth "anthropic" "Anthropic"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-anthropic-api-key)))]
+                                    {:url     (llm/llm-anthropic-api-base-url)
+                                     :headers {"x-api-key" k}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :headers {"anthropic-version" "2023-06-01"}})]
+      (:data (json/decode+kw (:body res))))
+    (catch Exception e
+      (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))
+
 (defn list-models
-  "List available Anthropic models.
+  "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy?]}]
-   (when (and credentials (str/blank? (:api-key credentials)))
-     (throw (core/missing-api-key-ex "Anthropic")))
-   (try
-     (let [auth   (core/resolve-auth "anthropic" "Anthropic"
-                                     (when-let [k (or (not-empty (:api-key credentials))
-                                                      (not-empty (llm/llm-anthropic-api-key)))]
-                                       {:url     (llm/llm-anthropic-api-base-url)
-                                        :headers {"x-api-key" k}})
-                                     ai-proxy?)
-           res    (core/request auth {:method  :get
-                                      :url     "/v1/models"
-                                      :headers {"anthropic-version" "2023-06-01"}})
-           body   (json/decode+kw (:body res))
-           models (reverse (sort-by :created_at (:data body)))]
-       {:models (map #(select-keys % [:id :display_name]) models)})
-     (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id display_name]}]
+                         {:id id :display_name (or display_name (supported-models id))})))}))
+
+(defn- claude-model-version
+  "`[family major minor]` for a Claude opus/sonnet model id, or nil. Strips an
+  optional vendor prefix (e.g. Bedrock's `anthropic.`)."
+  [model]
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:-(\d+))?"
+                                             (str/replace-first (str model) #"^anthropic\." ""))]
+    [family (parse-long major) (or (some-> minor parse-long) 0)]))
+
+(defn- model-current-gen?
+  "Current-generation Claude (Fable, Opus >=4.7, Sonnet >=5): no sampling params;
+  thinking streams via `display: summarized`."
+  [model]
+  (or (str/starts-with? (str/replace-first (str model) #"^anthropic\." "") "claude-fable")
+      (when-let [[family major minor] (claude-model-version model)]
+        (case family
+          "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
+          "sonnet" (>= major 5)))))
 
 (defn- model-supports-temperature?
-  "Whether `model` accepts an explicit `temperature` parameter.
-
-  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7 and Sonnet 5.
-  Strips an optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
+  "Whether `model` accepts an explicit `temperature` parameter. Sampling params
+  were removed starting with Claude Opus 4.7 and Sonnet 5."
   [model]
-  (let [model (str/replace-first (str model) #"^anthropic\." "")]
-    (not (or (str/starts-with? model "claude-fable")
-             (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:-(\d+))?" model)]
-               (let [major (parse-long major)
-                     minor (or (some-> minor parse-long) 0)]
-                 (case family
-                   "opus"   (or (> major 4)
-                                (and (= major 4) (>= minor 7)))
-                   "sonnet" (>= major 5))))))))
+  (not (model-current-gen? model)))
+
+(defn- model-thinking-config
+  "Thinking config that streams reasoning for `model`, or nil where we don't enable
+  it (older budget-token models — off in v1)."
+  [model]
+  (let [[_ major minor] (claude-model-version model)]
+    (cond
+      (model-current-gen? model)          {:type "adaptive" :display "summarized"}
+      (and major (= major 4) (= minor 6)) {:type "adaptive" :display "summarized"})))
+
+(defn reasoning-model?
+  "Whether `model` streams reasoning back to us."
+  [model]
+  (some? (model-thinking-config model)))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (let [messages  (parts->claude-messages input)
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+    :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
+  (let [;; forced tool choice (structured output, or "required") is incompatible
+        ;; with thinking — suppress it there.
+        thinking  (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
+                    (model-thinking-config model))
+        input     (cond->> input
+                    (nil? thinking) (remove #(= :reasoning (:type %))))
+        messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
         all-tools (if (and all-tools (not schema))
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)]
     (cond-> {:model         model
-             :max_tokens    (or max-tokens 4096)
+             ;; thinking draws from the same max_tokens budget as the answer, so with
+             ;; the 4096 default the model can spend it all thinking and truncate its
+             ;; reply — give thinking requests more headroom.
+             :max_tokens    (cond-> (or max-tokens 4096)
+                              thinking (max 16384))
              :stream        true
              :cache_control {:type "ephemeral"}
              :messages      messages}
@@ -355,7 +453,10 @@
                             "auto"     {:type "auto"}
                             "required" {:type "any"}))
 
-      (and temperature (model-supports-temperature? model))
+      thinking          (assoc :thinking thinking)
+
+      ;; sampling params are rejected alongside thinking
+      (and temperature (not thinking) (model-supports-temperature? model))
       (assoc :temperature temperature))))
 
 (mu/defn claude-raw

@@ -5,8 +5,11 @@ import {
   SdkVisualizationStory,
 } from "__support__/storybook";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import * as data from "./stories-data";
+
+registerVisualizations();
 
 export default {
   title: "viz/SankeyChart",

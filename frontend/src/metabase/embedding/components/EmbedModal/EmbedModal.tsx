@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { ModalHeader } from "metabase/common/components/ModalContent";
 import { StaticEmbedSetupPane } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane";
 import type {
   EmbedResource,
@@ -9,7 +10,7 @@ import type {
 import { Modal } from "metabase/ui";
 import type { EmbeddingParameters } from "metabase-types/api";
 
-import { EmbedModalHeader } from "./EmbedModal.styled";
+import S from "./EmbedModal.module.css";
 
 interface EmbedModalProps {
   opened: boolean;
@@ -40,9 +41,14 @@ export const EmbedModal = ({
     withCloseButton={false}
     padding={0}
   >
-    <EmbedModalHeader onClose={onClose} onBack={onBack}>
+    <ModalHeader
+      py="lg"
+      className={S.embedModalHeader}
+      onClose={onClose}
+      onBack={onBack}
+    >
       {t`Static embedding`}
-    </EmbedModalHeader>
+    </ModalHeader>
 
     <StaticEmbedSetupPane
       resource={resource}

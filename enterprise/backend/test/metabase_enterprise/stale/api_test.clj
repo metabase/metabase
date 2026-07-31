@@ -4,6 +4,8 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -234,3 +236,23 @@
                        "cutoff_date" "1988-01-21T00:00:00Z"}
                 :user-id (str (mt/user->id :crowberto))}
                (last (snowplow-test/pop-event-data-and-user-id!))))))))
+
+(deftest stale-candidates-respects-permissions-test
+  (mt/with-premium-features #{:collection-cleanup}
+    (testing "GET /api/ee/stale/:id read-checks the target collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (stale-url collection)))))))
+    (testing "is_recursive traversal excludes descendants the user cannot write to"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection parent {}
+                       :model/Collection child {:location (collection/children-location parent)}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) child)
+          (stale.test/with-stale-items [:model/Card parent-card {:collection_id (:id parent)}
+                                        :model/Card child-card {:collection_id (:id child)}]
+            (let [result (mt/user-http-request :rasta :get 200 (stale-url parent) :is_recursive true)
+                  ids    (->> result :data (map (juxt :model :id)) set)]
+              (is (contains? ids ["card" (u/the-id parent-card)]))
+              (is (not (contains? ids ["card" (u/the-id child-card)]))))))))))

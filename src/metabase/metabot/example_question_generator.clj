@@ -165,7 +165,8 @@
                               (try
                                 {:ok (generate-fn item)}
                                 (catch Throwable e
-                                  (log/warn e "Example question generation failed for one item")
+                                  (when-not (= :api-key-missing (:error-code (ex-data e)))
+                                    (log/warnf "Example question generation failed for one item: %s" (ex-message e)))
                                   {:error e}))))
                           batch)]
         (mapv deref futures)))

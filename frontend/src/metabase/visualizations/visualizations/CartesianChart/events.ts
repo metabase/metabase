@@ -44,7 +44,6 @@ import type {
   SeriesModel,
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 import type {
   EChartsSeriesBrushEndEvent,
@@ -72,8 +71,6 @@ import type {
   CardId,
   DatasetColumn,
   RawSeries,
-  TimelineEvent,
-  TimelineEventId,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 
@@ -868,67 +865,12 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
-const isMouseEventWithXAxis = (
-  event: EChartsSeriesMouseEvent,
-): event is EChartsSeriesMouseEvent<{ xAxis: string }> => {
-  return (
-    typeof event.data === "object" &&
-    event.data !== null &&
-    "xAxis" in event.data &&
-    typeof event.data.xAxis === "string" &&
-    event.data.xAxis.length > 0
-  );
-};
-
-export const getTimelineEventsForEvent = (
-  timelineEventsModel: TimelineEventsModel,
-  event: EChartsSeriesMouseEvent,
-) => {
-  if (isMouseEventWithXAxis(event)) {
-    return timelineEventsModel.find(
-      (timelineEvents) => timelineEvents.date === event.data.xAxis,
-    )?.events;
-  }
-
-  return timelineEventsModel.find(
-    (timelineEvents) => timelineEvents.date === event.value,
-  )?.events;
-};
-
-export const hasSelectedTimelineEvents = (
-  timelineEvents: TimelineEvent[],
-  selectedTimelineEventIds?: TimelineEventId[],
-) => {
-  return (
-    selectedTimelineEventIds != null &&
-    selectedTimelineEventIds.length > 0 &&
-    timelineEvents.some((timelineEvent) =>
-      selectedTimelineEventIds.includes(timelineEvent.id),
-    )
-  );
-};
-
-export const getTimelineEventsHoverData = (
-  timelineEventsModel: TimelineEventsModel,
-  event: EChartsSeriesMouseEvent,
-) => {
-  const hoveredTimelineEvents = getTimelineEventsForEvent(
-    timelineEventsModel,
-    event,
-  );
-  const element = event.event.event.target as Element;
-
-  return {
-    element: element?.nodeName === "image" ? element : undefined,
-    timelineEvents: hoveredTimelineEvents,
-  };
-};
-
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
   formatGoal?: AxisFormatter,
 ) => {
+  // Unjustified type cast. FIXME
   const element = event.event.event.target as Element;
 
   if (element?.nodeName !== "text") {

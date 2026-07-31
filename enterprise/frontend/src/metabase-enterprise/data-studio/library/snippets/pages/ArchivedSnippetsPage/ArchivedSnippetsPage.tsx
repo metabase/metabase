@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
@@ -116,15 +116,17 @@ export function ArchivedSnippetsPage() {
                   return;
                 }
               }}
-              getRowHref={(row) => {
+              renderRowLink={(row, props) => {
                 const { data } = row.original;
 
                 if (data.model === "snippet") {
                   const snippetId = Number(data.id);
-                  return Urls.dataStudioSnippet(snippetId);
+                  return (
+                    <Link to={Urls.dataStudioSnippet(snippetId)} {...props} />
+                  );
                 }
 
-                return null;
+                return props.children;
               }}
             />
           )}

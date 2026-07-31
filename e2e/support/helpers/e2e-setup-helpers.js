@@ -48,6 +48,12 @@ export function restore(name = "default") {
     resetWritableDb({ type: dbType });
   }
 
+  cy.request({
+    method: "POST",
+    url: "/api/testing/reset-throttlers",
+    failOnStatusCode: false,
+  });
+
   return cy.request("POST", `/api/testing/restore/${name}`);
 }
 

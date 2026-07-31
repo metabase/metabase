@@ -32,6 +32,7 @@ function setup(collection: Collection | CollectionItem) {
   const onClose = jest.fn();
   const onSave = jest.fn();
 
+  // Unjustified type cast. FIXME
   setupUpdateCollectionEndpoint(collection as Collection);
   setupCollectionByIdEndpoint({
     collections: [parentCollection, itemParentCollection],
@@ -94,8 +95,9 @@ describe("EditCollectionModal", () => {
       id: 2,
       model: "collection",
       name: "Collection item",
+      // Unjustified type cast. FIXME
       collection_id: itemParentCollection.id as number,
-    }) as CollectionItem;
+    });
     const { onSave } = setup(collectionItem);
 
     await userEvent.clear(screen.getByLabelText("Name"));

@@ -1,7 +1,7 @@
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import {
   hasActionsEnabled,
   hasFeature,

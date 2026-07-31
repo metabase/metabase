@@ -22,7 +22,7 @@ const yAxisScaleTransforms: NumericAxisScaleTransforms = {
 
 const createMockBoxPlotSeriesModel = (
   opts?: Partial<BoxPlotSeriesModel>,
-): BoxPlotSeriesModel => createMockSeriesModel(opts) as BoxPlotSeriesModel;
+): BoxPlotSeriesModel => createMockSeriesModel(opts);
 
 describe("computeMultiSeriesBoxPlotData", () => {
   describe("basic statistics calculation", () => {

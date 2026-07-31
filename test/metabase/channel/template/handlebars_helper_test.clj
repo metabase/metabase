@@ -8,7 +8,7 @@
    [metabase.util :as u]))
 
 (def custom-hbs
-  (handlebars/registry (handlebars/classpath-loader "/" "")))
+  (handlebars/registry (handlebars/default-loader)))
 
 (handlebars-helper/defhelper
   format-name
@@ -19,7 +19,7 @@
     (str title name)))
 
 (deftest helper-with-keyword-params-test
-  (let [hbs (handlebars/registry (handlebars/classpath-loader "/" ""))]
+  (let [hbs (handlebars/registry (handlebars/default-loader))]
     (handlebars-helper/register-helper hbs "format-name" format-name)
     (is (= "Mr.Romeo" (handlebars/render-string hbs "{{format-name name}}" {:name "Romeo"})))
     (is (= "Ms.JULIET" (handlebars/render-string hbs "{{format-name name title=\"Ms.\" uppercase=true}}" {:name "Juliet"})))))
@@ -33,7 +33,7 @@
     (handlebars-helper/option-else-block options)))
 
 (deftest block-body-test
-  (let [hbs (handlebars/registry (handlebars/classpath-loader "/" ""))
+  (let [hbs (handlebars/registry (handlebars/default-loader))
         hot-dog-not-hot-dog #(handlebars/render-string hbs "{{#ifequals food \"Hot Dog\"}}It's a Hot Dog{{else}}Not Hot Dog{{/ifequals}}" {:food %})]
     (handlebars-helper/register-helper hbs "ifequals" ifequals)
     (is (= "It's a Hot Dog" (hot-dog-not-hot-dog "Hot Dog")))

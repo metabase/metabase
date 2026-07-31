@@ -13,6 +13,7 @@ import { ComponentProvider } from "../ComponentProvider";
 
 import { SdkQuestion } from "./SdkQuestion";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 export default {

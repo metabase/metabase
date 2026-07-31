@@ -146,11 +146,13 @@ const EditableTextInner = forwardRef(function EditableText(
       // For a11y, allow typing to activate the textarea
       onKeyDown={(e: React.KeyboardEvent) => {
         if (shouldPassKeyToTextarea(e.key)) {
+          // Unjustified type cast. FIXME
           (e.currentTarget as HTMLTextAreaElement).click();
         }
       }}
       onKeyUp={(e: React.KeyboardEvent) => {
         if (!shouldPassKeyToTextarea(e.key)) {
+          // Unjustified type cast. FIXME
           (e.currentTarget as HTMLTextAreaElement).click();
         }
       }}

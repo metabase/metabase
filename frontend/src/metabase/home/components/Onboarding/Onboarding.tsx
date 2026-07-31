@@ -225,6 +225,7 @@ export const Onboarding = () => {
             label: S.label,
           }}
           onChange={(value: string | null) =>
+            // Unjustified type cast. FIXME
             handleValueChange(value as ChecklistItemValue | null)
           }
         >
@@ -339,7 +340,7 @@ export const Onboarding = () => {
                       <Text>
                         {jt`Hover over a table and click the yellow lightning bolt ${(
                           <Icon
-                            c="warning"
+                            c="feedback-warning"
                             className={S.inlineIcon}
                             key="bolt_icon"
                             name="bolt_filled"

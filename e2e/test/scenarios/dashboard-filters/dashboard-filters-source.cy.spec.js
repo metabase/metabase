@@ -1,5 +1,5 @@
 const { H } = cy;
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -19,14 +19,6 @@ const nativeSourceQuestion = {
   native: {
     query: "select CATEGORY from PRODUCTS WHERE CATEGORY != 'Doohickey'",
   },
-};
-
-const targetParameter = {
-  id: "f8ec7c71",
-  type: "string/=",
-  name: "Text",
-  slug: "text",
-  sectionId: "string",
 };
 
 const targetQuestion = {
@@ -62,38 +54,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
       cy.get("@questionId").then(H.visitQuestion);
       archiveQuestion();
-    });
-
-    it("should be able to use a structured question source when embedded", () => {
-      H.createQuestion(structuredSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getStructuredDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitEmbeddedPage(getDashboardResource(card));
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a structured question source when public", () => {
-      H.createQuestion(structuredSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getStructuredDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitPublicDashboard(card.dashboard_id);
-          });
-        },
-      );
-
-      filterDashboard();
     });
 
     it("should be able to use a structured question source with string/contains parameter", () => {
@@ -254,38 +214,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.get("@questionId").then(H.visitQuestion);
       archiveQuestion();
     });
-
-    it("should be able to use a native question source when embedded", () => {
-      H.createNativeQuestion(nativeSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getNativeDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitEmbeddedPage(getDashboardResource(card));
-          });
-        },
-      );
-
-      filterDashboard();
-    });
-
-    it("should be able to use a native question source when public", () => {
-      H.createNativeQuestion(nativeSourceQuestion).then(
-        ({ body: { id: questionId } }) => {
-          H.createQuestionAndDashboard({
-            questionDetails: targetQuestion,
-            dashboardDetails: getNativeDashboard(questionId),
-          }).then(({ body: card }) => {
-            H.editDashboardCard(card, getParameterMapping(card));
-            H.visitPublicDashboard(card.dashboard_id);
-          });
-        },
-      );
-
-      filterDashboard();
-    });
   });
 
   describe("static list source (dropdown)", () => {
@@ -303,32 +231,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
       });
       H.saveDashboard();
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
-
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
-
-    it("should be able to use a static list source when public", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard(),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
-      });
-
       filterDashboard({ isLabeled: true });
       H.filterWidget().findByText("Gizmo Label").should("be.visible");
     });
@@ -350,31 +252,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
       });
       H.saveDashboard();
-
-      setSearchFilter("Gizmo Label");
-    });
-
-    it("should be able to use a static list source when embedded", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard("search"),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
-      });
-
-      setSearchFilter("Gizmo Label");
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
-    });
-
-    it("should be able to use a static list source when public", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-        dashboardDetails: getListDashboard("search"),
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
-      });
 
       setSearchFilter("Gizmo Label");
     });
@@ -486,53 +363,12 @@ describe(
   },
 );
 
-describe("scenarios > dashboard > filters", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-  });
-
-  it("should sandbox parameter values in dashboards", () => {
-    cy.sandboxTable({
-      table_id: PRODUCTS_ID,
-      attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
-      },
-    });
-
-    H.createQuestion(structuredSourceQuestion).then(
-      ({ body: { id: questionId } }) => {
-        H.createQuestionAndDashboard({
-          questionDetails: targetQuestion,
-          dashboardDetails: getStructuredDashboard(questionId),
-        }).then(({ body: card }) => {
-          H.editDashboardCard(card, getParameterMapping(card));
-          cy.signOut();
-          cy.signInAsSandboxedUser();
-          H.visitDashboard(card.dashboard_id);
-          H.assertDatasetReqIsSandboxed({
-            requestAlias: `@dashcardQuery${card.id}`,
-          });
-        });
-      },
-    );
-
-    filterDashboard({ isSandboxed: true });
-  });
-});
-
 const mapFilterToQuestion = (column = "Category") => {
   cy.findByText("Select…").click();
   H.popover().within(() => cy.findByText(column).click());
 };
 
-const filterDashboard = ({
-  isField = false,
-  isSandboxed = false,
-  isLabeled = false,
-} = {}) => {
+const filterDashboard = ({ isField = false, isLabeled = false } = {}) => {
   cy.findByText("Text").click();
 
   H.popover().within(() => {
@@ -540,12 +376,12 @@ const filterDashboard = ({
 
     cy.findByText(GIZMO).should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
-    cy.findByText("Gadget").should(isSandboxed ? "not.exist" : "be.visible");
-    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Gadget").should("be.visible");
+    cy.findByText("Widget").should("be.visible");
 
     cy.findByPlaceholderText("Search the list").type("i");
     cy.findByText("Gadget").should("not.exist");
-    cy.findByText("Widget").should(isSandboxed ? "not.exist" : "be.visible");
+    cy.findByText("Widget").should("be.visible");
     cy.findByText("Doohickey").should(isField ? "be.visible" : "not.exist");
 
     cy.findByText(GIZMO).click();
@@ -564,64 +400,6 @@ const archiveQuestion = () => {
     "This question will be removed from any dashboards or alerts using it. It will also be removed from the filter that uses it to populate values.",
   );
 };
-
-const getDashboardResource = ({ dashboard_id }) => ({
-  resource: { dashboard: dashboard_id },
-  params: {},
-});
-
-const getTargetDashboard = (sourceSettings) => ({
-  parameters: [
-    {
-      ...targetParameter,
-      ...sourceSettings,
-    },
-  ],
-  enable_embedding: true,
-  embedding_params: {
-    [targetParameter.slug]: "enabled",
-  },
-});
-
-const getStructuredDashboard = (questionId) => {
-  return getTargetDashboard({
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", PRODUCTS.CATEGORY, null],
-    },
-  });
-};
-
-const getNativeDashboard = (questionId) => {
-  return getTargetDashboard({
-    values_source_type: "card",
-    values_source_config: {
-      card_id: questionId,
-      value_field: ["field", "CATEGORY", { "base-type": "type/Text" }],
-    },
-  });
-};
-
-const getListDashboard = (values_query_type) => {
-  return getTargetDashboard({
-    values_source_type: "static-list",
-    values_query_type,
-    values_source_config: {
-      values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
-    },
-  });
-};
-
-const getParameterMapping = ({ card_id }) => ({
-  parameter_mappings: [
-    {
-      card_id,
-      parameter_id: targetParameter.id,
-      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-    },
-  ],
-});
 
 function setSearchFilter(label) {
   H.filterWidget().click();

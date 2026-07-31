@@ -63,6 +63,7 @@ export const DeleteGroupMappingModal = ({
           <Radio.Group
             value={value}
             onChange={(newValue) =>
+              // Unjustified type cast. FIXME
               handleChange(newValue as DeleteMappingModalValueType)
             }
           >
@@ -89,7 +90,11 @@ export const DeleteGroupMappingModal = ({
 
         <Group justify="flex-end">
           <Button onClick={onHide}>{t`Cancel`}</Button>
-          <Button variant="filled" color="error" onClick={handleConfirm}>
+          <Button
+            variant="filled"
+            color="feedback-negative"
+            onClick={handleConfirm}
+          >
             {submitButtonLabels[value]}
           </Button>
         </Group>

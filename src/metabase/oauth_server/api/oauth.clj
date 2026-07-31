@@ -23,7 +23,7 @@
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URLEncoder)))
+   (java.net URI URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,12 +34,22 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
+(defn- site-path-prefix
+  "Path component of site-url with no trailing slash (e.g. `/metabase` when Metabase is hosted
+   under a subpath), or an empty string when site-url has no path or is unset."
+  []
+  (or (some-> (system/site-url) (URI.) (.getPath) (str/replace #"/$" "") not-empty)
+      ""))
+
 (defn- csrf-cookie-opts
-  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS."
+  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS.
+   The cookie `:path` is the path the *browser* sees, so it must include the subpath prefix
+   when Metabase is hosted under one — otherwise the cookie is never sent back with the
+   consent form POST and CSRF validation fails."
   [max-age]
   (cond-> {:http-only true
            :same-site :strict
-           :path      "/oauth/authorize"
+           :path      (str (site-path-prefix) "/oauth/authorize")
            :max-age   max-age}
     (some-> (system/site-url) (str/starts-with? "https"))
     (assoc :secure true)))
@@ -268,7 +278,7 @@
                               :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e
-              (log/warn e "OAuth authorize request failed")
+              (log/warnf "OAuth authorize request failed: %s" (ex-message e))
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {:error             "invalid_request"
@@ -311,7 +321,7 @@
                          :body    {:error "params_tampered"}}
                         (redirect-authorization-decision provider parsed approved request)))
                     (catch ExceptionInfo e
-                      (log/warn e "OAuth authorization decision failed")
+                      (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
                        :headers {"Content-Type" "application/json"}
                        :body    {:error             "invalid_request"
@@ -339,7 +349,7 @@
                              "Pragma"        "no-cache"}
                    :body    response})
                 (catch ExceptionInfo e
-                  (log/warn e "OAuth token request failed")
+                  (log/warnf "OAuth token request failed: %s" (ex-message e))
                   (let [data  (ex-data e)
                         error (or (:error data) "invalid_request")]
                     {:status  (if (= error "invalid_client") 401 400)

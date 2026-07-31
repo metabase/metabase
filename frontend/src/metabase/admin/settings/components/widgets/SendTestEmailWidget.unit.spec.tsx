@@ -37,6 +37,7 @@ const setup = async (props: {
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );

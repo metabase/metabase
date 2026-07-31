@@ -9,14 +9,11 @@ import {
   fetchTableMetadata,
 } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Loader } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Description, EmptyDescription } from "../MetadataInfo";
-import {
-  AbsoluteContainer,
-  Fade,
-  LoadingSpinner,
-} from "../MetadataInfo.styled";
+import { AbsoluteContainer, Fade } from "../MetadataInfo.styled";
 
 import { ColumnCount } from "./ColumnCount";
 import { ConnectedTables } from "./ConnectedTables";
@@ -103,7 +100,7 @@ export function TableInfoInner({
       <MetadataContainer>
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
-            <LoadingSpinner size={24} />
+            <Loader size="md" color="core-brand" />
           </AbsoluteContainer>
         </Fade>
         <Fade visible={hasFetchedMetadata}>

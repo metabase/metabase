@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -15,6 +14,7 @@ import {
   isDbModifiable,
 } from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";

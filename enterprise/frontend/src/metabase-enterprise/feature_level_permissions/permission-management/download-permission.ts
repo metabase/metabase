@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
@@ -17,6 +16,7 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { push } from "metabase/router";
 import {
   DataPermission,
   DataPermissionValue,
@@ -46,7 +46,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   limited: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -67,7 +67,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 };
 
@@ -90,6 +90,7 @@ const getPermissionValue = (
       return getFieldsPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as TableEntityId,
         permission,
       );
@@ -97,6 +98,7 @@ const getPermissionValue = (
       return getTablesPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as SchemaEntityId,
         permission,
       );

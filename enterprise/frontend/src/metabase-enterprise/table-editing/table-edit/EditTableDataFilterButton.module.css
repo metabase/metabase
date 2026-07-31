@@ -9,7 +9,7 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 10%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
     }
   }
@@ -24,7 +24,7 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 10%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
     }
 
@@ -47,6 +47,6 @@
   background-color: color-mix(
     in srgb,
     var(--mb-color-core-filter) 15%,
-    var(--mb-color-white)
+    var(--mb-color-core-white)
   );
 }

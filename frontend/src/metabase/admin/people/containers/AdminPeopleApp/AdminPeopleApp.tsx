@@ -1,12 +1,12 @@
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
 import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { Outlet, useLocation } from "metabase/router";
 
 import { PeopleNav } from "../../components/PeopleNav";
 
-export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
-  const location = useSelector(getLocation);
+export const AdminPeopleApp = () => {
+  const location = useLocation();
   const showTenantsUpsell = useSelector(shouldShowTenantsUpsell);
   const isTenantsRoute = location?.pathname.startsWith("/admin/people/tenants");
   const isFullWidth = showTenantsUpsell && isTenantsRoute;
@@ -17,7 +17,7 @@ export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
       maw="80rem"
       fullWidth={isFullWidth}
     >
-      {children}
+      <Outlet />
     </AdminSettingsLayout>
   );
 };

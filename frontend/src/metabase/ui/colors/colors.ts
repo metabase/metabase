@@ -6,6 +6,7 @@ import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import { deriveFullMetabaseTheme } from "./derive-theme";
 import type { MetabaseColorKey } from "./types/color-keys";
 
+// Unjustified type cast. FIXME
 const win = typeof window !== "undefined" ? window : ({} as Window);
 const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
 const shouldWhitelabel = !!tokenFeatures["whitelabel"];
@@ -23,6 +24,7 @@ export const colors: Record<MetabaseColorKey, string> =
 export const mutateColors = (whitelabelColors: ColorSettings) => {
   // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
   Object.keys(colors).forEach((key) => {
+    // Unjustified type cast. FIXME
     delete colors[key as keyof typeof colors];
   });
   Object.assign(colors, getColors(whitelabelColors));

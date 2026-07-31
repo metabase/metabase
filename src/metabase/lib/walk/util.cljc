@@ -9,6 +9,7 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -50,7 +51,8 @@
   (transduce-stages
    (comp (filter (fn [stage]
                    (= (:lib/type stage) :mbql.stage/native)))
-         (mapcat :template-tags))
+         (mapcat :template-tags)
+         (map (juxt :name identity)))
    (fn rf
      ([m]
       (not-empty (persistent! m)))
@@ -321,3 +323,49 @@
       :measure measure-ids
       :segment segment-ids
       :snippet template-tag-snippet-ids})))
+
+(defn- remap-field-clause-ids
+  "Remap the Field ID and any `:source-field`/`:fk-field-id` option of a single `:field` clause via `id->new-id`
+  (a `nil` result leaves a value unchanged). Non-`:field` clauses and non-clauses are returned unchanged."
+  [id->new-id clause]
+  (if (lib.util/clause-of-type? clause :field)
+    (let [[tag opts id-or-name] clause
+          remap (fn [x] (if (pos-int? x) (or (id->new-id x) x) x))]
+      [tag
+       (cond-> opts
+         (:source-field opts) (update :source-field remap)
+         (:fk-field-id opts)  (update :fk-field-id remap))
+       (remap id-or-name)])
+    clause))
+
+(mu/defn replace-field-ids :- ::lib.schema/query
+  "Return `query` with every Field ID reference remapped by `id->new-id` (a function; a map works). Covers `:field`
+  refs everywhere they appear (filters, aggregations, breakouts, expressions, order-by, join conditions and fields,
+  nested stages), the `:source-field`/`:fk-field-id` options inside `:field` refs, and native `:template-tags`
+  `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
+  [query      :- ::lib.schema/query
+   id->new-id :- ifn?]
+  (let [remap #(remap-field-clause-ids id->new-id %)]
+    (-> query
+        (lib.walk/walk-clauses (fn [_query _path-type _path clause]
+                                 (remap clause)))
+        (lib.walk/walk-stages (fn [_query _path stage]
+                                (cond-> stage
+                                  (:template-tags stage)
+                                  (update :template-tags update-vals
+                                          (fn [tag]
+                                            (cond-> tag
+                                              (:dimension tag) (update :dimension remap))))))))))
+
+(mu/defn replace-table-ids :- ::lib.schema/query
+  "Return `query` with every source Table ID remapped by `id->new-id` (a function; a map works). Covers
+  `:source-table` in every stage and join. A table id for which `id->new-id` returns `nil` is left unchanged;
+  `:source-card` refs are untouched."
+  [query      :- ::lib.schema/query
+   id->new-id :- ifn?]
+  (lib.walk/walk-stages
+   query
+   (fn [_query _path stage]
+     (if-let [table-id (:source-table stage)]
+       (assoc stage :source-table (or (id->new-id table-id) table-id))
+       stage))))

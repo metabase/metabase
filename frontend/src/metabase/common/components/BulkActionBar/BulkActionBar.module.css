@@ -44,7 +44,7 @@
       var(--mb-color-background_page-primary),
       transparent 100%
     );
-    background-color: var(--mb-color-error);
+    background-color: var(--mb-color-feedback-negative);
   }
 
   &:disabled:hover {

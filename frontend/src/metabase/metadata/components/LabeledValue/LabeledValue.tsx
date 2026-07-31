@@ -20,16 +20,9 @@ export const LabeledValue = ({ children, label }: Props) => {
 
       <Badge
         aria-labelledby={id}
-        bg="accent-gray-light"
-        c="text-primary"
         classNames={{ root: S.badge, label: S.badgeLabel }}
-        fw="normal"
-        p="sm"
-        radius="md"
-        size="lg"
-        tt="none"
-        variant="default"
-        lh="sm"
+        size="sm"
+        variant="light"
       >
         {children}
       </Badge>

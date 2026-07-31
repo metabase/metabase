@@ -26,7 +26,7 @@ jobs:
       # Only record a data point when a bundle's as-served size (brotli where the
       # build ships .br, else gzip) moved by at least this percent vs the last
       # plotted point, keeping the chart to real changes.
-      MIN_DELTA_PERCENT: "1"
+      MIN_DELTA_PERCENT: "0.5"
     steps:
       - name: Check out the code
         uses: actions/checkout@v6

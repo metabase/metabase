@@ -1,8 +1,8 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useFormErrorMessage } from "metabase/forms";

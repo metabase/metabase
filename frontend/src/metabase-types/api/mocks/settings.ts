@@ -118,6 +118,7 @@ export const createMockTokenFeatures = (
   hosting: false,
   "metabase-ai-managed": false,
   "metabot-v3": false,
+  "multi-factor-auth": false,
   "offer-metabase-ai-managed": false,
   official_collections: false,
   sandboxes: false,
@@ -143,6 +144,7 @@ export const createMockTokenFeatures = (
   table_data_editing: false,
   semantic_search: false,
   remote_sync: false,
+  "data-apps": false,
   "transforms-basic": false,
   "transforms-python": false,
   library: false,
@@ -152,7 +154,6 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
-  workspaces: false,
   ...opts,
 });
 
@@ -365,6 +366,8 @@ export const createMockSettings = (
   "saml-attribute-group": null,
   "saml-group-sync": null,
   "saml-group-mappings": null,
+  "jwt-group-mappings": null,
+  "oidc-group-mappings": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
@@ -414,6 +417,7 @@ export const createMockSettings = (
   "token-status": null,
   "tracing-enabled": false,
   "transforms-enabled": false,
+  "transforms-setup-complete": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
@@ -443,5 +447,6 @@ export const createMockSettings = (
   "mcp-apps-cors-enabled-clients": [],
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
+  "mfa-enforcement": "off",
   ...opts,
 });

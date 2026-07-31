@@ -19,7 +19,9 @@ import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesia
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, TimelineEventId } from "metabase-types/api";
+
+const NO_SELECTED_TIMELINE_EVENT_IDS: TimelineEventId[] = [];
 
 export function useModelsAndOption(
   {
@@ -31,13 +33,13 @@ export function useModelsAndOption(
     height,
     hiddenSeries = new Set(),
     timelineEvents,
-    selectedTimelineEventIds,
+    selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
-    hovered,
     isFullscreen,
     gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
+  hoveredTimelineEventIds?: TimelineEventId[],
 ) {
   const tc = useTranslateContent();
 
@@ -117,37 +119,32 @@ export function useModelsAndOption(
   );
 
   const timelineEventsModel = useMemo(
-    () =>
-      getTimelineEventsModel(
-        chartModel,
-        chartLayout,
-        timelineEvents ?? [],
-        renderingContext,
-      ),
-    [chartModel, chartLayout, timelineEvents, renderingContext],
+    () => getTimelineEventsModel(chartModel, chartLayout, timelineEvents ?? []),
+    [chartModel, chartLayout, timelineEvents],
   );
-
-  const selectedOrHoveredTimelineEventIds = useMemo(() => {
-    const ids = [];
-
-    if (selectedTimelineEventIds != null) {
-      ids.push(...selectedTimelineEventIds);
-    }
-    if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map((e) => e.id));
-    }
-
-    return ids;
-  }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
   const tooltipOption = useMemo(() => {
     return getTooltipOption(
       chartModel,
       settings,
+      // Unjustified type cast. FIXME
       card.display as CardDisplayType,
       containerRef,
     );
   }, [chartModel, settings, card.display, containerRef]);
+
+  const markedTimelineEventIds = useMemo(() => {
+    if (
+      card.display === "bar" ||
+      hoveredTimelineEventIds == null ||
+      hoveredTimelineEventIds.length === 0
+    ) {
+      return selectedTimelineEventIds;
+    }
+    return [
+      ...new Set([...selectedTimelineEventIds, ...hoveredTimelineEventIds]),
+    ];
+  }, [selectedTimelineEventIds, hoveredTimelineEventIds, card.display]);
 
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
@@ -161,11 +158,13 @@ export function useModelsAndOption(
     switch (card.display) {
       case "waterfall":
         baseOption = getWaterfallChartOption(
+          // Unjustified type cast. FIXME
           chartModel as WaterfallChartModel,
           width,
           chartLayout,
+          hasTimelineEvents,
           timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          markedTimelineEventIds,
           settings,
           shouldAnimate,
           renderingContext,
@@ -173,10 +172,12 @@ export function useModelsAndOption(
         break;
       case "scatter":
         baseOption = getScatterPlotOption(
+          // Unjustified type cast. FIXME
           chartModel as ScatterPlotModel,
           chartLayout,
+          hasTimelineEvents,
           timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          markedTimelineEventIds,
           settings,
           width,
           shouldAnimate,
@@ -185,10 +186,12 @@ export function useModelsAndOption(
         break;
       default:
         baseOption = getCartesianChartOption(
+          // Unjustified type cast. FIXME
           chartModel as CartesianChartModel,
           chartLayout,
+          hasTimelineEvents,
           timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          markedTimelineEventIds,
           settings,
           width,
           shouldAnimate,
@@ -207,11 +210,18 @@ export function useModelsAndOption(
     tooltipOption,
     chartModel,
     chartLayout,
+    hasTimelineEvents,
     timelineEventsModel,
-    selectedOrHoveredTimelineEventIds,
+    markedTimelineEventIds,
     settings,
     renderingContext,
   ]);
 
-  return { chartModel, timelineEventsModel, option, renderingContext };
+  return {
+    chartModel,
+    chartLayout,
+    timelineEventsModel,
+    option,
+    renderingContext,
+  };
 }

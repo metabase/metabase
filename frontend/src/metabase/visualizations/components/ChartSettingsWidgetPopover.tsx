@@ -57,6 +57,7 @@ export const ChartSettingsWidgetPopover = ({
   const hasMultipleSections = sections.current.length > 1;
 
   const onClose = () => {
+    // Unjustified type cast. FIXME
     const activeElement = document.activeElement as HTMLElement;
     if (activeElement && contentRef.current?.contains(activeElement)) {
       activeElement.blur();
@@ -97,7 +98,7 @@ export const ChartSettingsWidgetPopover = ({
                 px="md"
                 pt="xs"
                 value={currentSection}
-                onChange={(section) => setCurrentSection(String(section))}
+                onChange={(section) => setCurrentSection(section ?? undefined)}
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (

@@ -550,7 +550,7 @@ export function getDependencyGroupTypeInfo(
     case "table":
       return { label: t`Table`, color: "core-brand" };
     case "transform":
-      return { label: t`Transform`, color: "warning" };
+      return { label: t`Transform`, color: "feedback-warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
@@ -558,7 +558,10 @@ export function getDependencyGroupTypeInfo(
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
-      return { label: t`Row and column security rule`, color: "error" };
+      return {
+        label: t`Row and column security rule`,
+        color: "feedback-negative",
+      };
     case "segment":
       return { label: t`Segment`, color: "accent2" };
     case "measure":

@@ -35,7 +35,7 @@ export function PreviousValueComparisonTooltip({
       </VariationPercent>
       <VariationDetails>
         <DetailCandidate
-          color="white"
+          color="core-white"
           comparison={comparison}
           valueFormatted={valueCandidates[0]}
         />

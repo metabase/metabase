@@ -76,7 +76,7 @@ If something goes wrong, Metabase will display the error message it received fro
 
 ### Example `UPDATE` action
 
-You could write an action that would update the `plan` column for a record in the `invoices` table in the Sample Database:
+You could write an action that would update the `plan` column for a record in the `invoices` table:
 
 ```sql
 {% raw %}

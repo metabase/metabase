@@ -45,6 +45,7 @@ const DashboardContextWithReduxProps = (
   );
 };
 
+// Unjustified type cast. FIXME
 const ConnectedDashboardContextWithReduxProps = connect(
   mapStateToProps,
   mapDispatchToProps,

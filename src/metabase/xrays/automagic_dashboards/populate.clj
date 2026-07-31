@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.core :as queries]
@@ -176,11 +177,7 @@
           (merge (dashcard-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
-                                           {:text         text
-                                            :virtual_card {:name                   nil
-                                                           :display                :text
-                                                           :dataset_query          {}
-                                                           :visualization_settings {}}}
+                                           (dashboard-card/virtual-card-settings "text" text)
                                            visualization-settings)
                   :col                    y
                   :row                    x
@@ -372,10 +369,7 @@
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))
          dashboard     (update dashboard :dashcards create-dashboard-populate-dashcards)]
-     (log/debugf "Adding %s cards to dashboard %s:\n%s"
-                 (count cards)
-                 title
-                 (str/join "; " (map :title cards)))
+     (log/debugf "Adding %s cards to dashboard" (count cards))
      (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
        (not-empty filters) (filters/add-filters filters max-filters)))))
 

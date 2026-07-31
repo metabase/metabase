@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -14,6 +12,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
+import { push, useParams } from "metabase/router";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseData } from "metabase-types/api";
@@ -32,15 +31,8 @@ type WritableConnectionInfoPageParams = {
   databaseId: string;
 };
 
-type WritableConnectionInfoPageProps = {
-  params: WritableConnectionInfoPageParams;
-  route: Route;
-};
-
-export function WritableConnectionInfoPage({
-  params,
-  route,
-}: WritableConnectionInfoPageProps) {
+export function WritableConnectionInfoPage() {
+  const params = useParams<WritableConnectionInfoPageParams>();
   const databaseId = Urls.extractEntityId(params.databaseId);
   const {
     data: database,
@@ -52,17 +44,15 @@ export function WritableConnectionInfoPage({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <WritableConnectionInfoPageBody database={database} route={route} />;
+  return <WritableConnectionInfoPageBody database={database} />;
 }
 
 type WritableConnectionInfoPageBodyProps = {
   database: Database;
-  route: Route;
 };
 
 function WritableConnectionInfoPageBody({
   database,
-  route,
 }: WritableConnectionInfoPageBodyProps) {
   const title = getTitle(database);
   const initialValues = useMemo(() => getInitialValues(database), [database]);
@@ -108,7 +98,7 @@ function WritableConnectionInfoPageBody({
           </SettingsSection>
         </Box>
       </Box>
-      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </Flex>
   );
 }

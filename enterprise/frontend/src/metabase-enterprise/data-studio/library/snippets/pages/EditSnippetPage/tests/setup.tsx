@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
@@ -9,6 +7,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   EnterpriseSettings,
   NativeQuerySnippet,
@@ -55,7 +54,7 @@ export const setup = async ({
   }
 
   renderWithProviders(
-    <Route component={EditSnippetPage} path="/snippets/:snippetId" />,
+    <Route element={<EditSnippetPage />} path="/snippets/:snippetId" />,
     {
       initialRoute: `/snippets/${mockSnippet.id}`,
       storeInitialState: state,

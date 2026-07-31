@@ -1,50 +1,52 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
+import {
+  StorageSetupErrorView,
+  StorageSetupView,
+} from "metabase/common/components/upsells/StoragePurchaseModal";
 import * as Urls from "metabase/urls";
 
-import { CSVPanelEmptyState } from "./AddDataModalEmptyStates";
+import { useCsvPanelState } from "../csv-panel-state";
+
+import {
+  CSVPanelEmptyState,
+  CSVStorageNotProvisionedEmptyState,
+  PanelLoadingState,
+} from "./AddDataModalEmptyStates";
 import { CSVUpload } from "./CSVUpload";
 
 interface CSVPanelProps {
-  canUpload: boolean;
-  canManageUploads: boolean;
   onCloseAddDataModal: () => void;
-  uploadsEnabled: boolean;
 }
 
-export const CSVPanel = ({
-  canUpload,
-  canManageUploads,
-  onCloseAddDataModal,
-  uploadsEnabled,
-}: CSVPanelProps) => {
-  const showObtainPermissionPrompt = uploadsEnabled && !canUpload;
+export const CSVPanel = ({ onCloseAddDataModal }: CSVPanelProps) => {
+  const state = useCsvPanelState();
 
-  const showEnableUploadsCTA = !uploadsEnabled && canManageUploads;
-  const showEnableUploadsPrompt = !uploadsEnabled && !canManageUploads;
-
-  if (showEnableUploadsPrompt) {
-    return <CSVPanelEmptyState contactAdminReason="enable-csv-upload" />;
-  }
-
-  if (showObtainPermissionPrompt) {
-    return (
+  return match(state)
+    .with({ type: "loading" }, () => <PanelLoadingState />)
+    .with({ type: "provisioning-storage" }, () => <StorageSetupView />)
+    .with({ type: "storage-setup-failed" }, () => <StorageSetupErrorView />)
+    .with({ type: "storage-not-provisioned" }, () => (
+      <CSVStorageNotProvisionedEmptyState />
+    ))
+    .with({ type: "ask-admin" }, () => (
+      <CSVPanelEmptyState contactAdminReason="enable-csv-upload" />
+    ))
+    .with({ type: "no-upload-permission" }, () => (
       <CSVPanelEmptyState contactAdminReason="obtain-csv-upload-permission" />
-    );
-  }
-
-  if (showEnableUploadsCTA) {
-    return (
+    ))
+    .with({ type: "needs-uploads-setup" }, ({ canOfferStorage }) => (
       <CSVPanelEmptyState
         ctaLink={{
           text: t`Enable uploads`,
           to: Urls.uploadsSettings(),
         }}
-        upsell={<UpsellStorage location="add-data-modal-csv" />}
+        canOfferStorage={canOfferStorage}
       />
-    );
-  }
-
-  return <CSVUpload onCloseAddDataModal={onCloseAddDataModal} />;
+    ))
+    .with({ type: "ready" }, () => (
+      <CSVUpload onCloseAddDataModal={onCloseAddDataModal} />
+    ))
+    .exhaustive();
 };

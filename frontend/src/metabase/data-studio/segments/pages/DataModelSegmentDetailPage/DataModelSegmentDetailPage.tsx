@@ -1,6 +1,5 @@
-import type { Route } from "react-router";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
@@ -14,15 +13,8 @@ type DataModelSegmentDetailPageParams = {
   segmentId: string;
 };
 
-type DataModelSegmentDetailPageProps = {
-  params: DataModelSegmentDetailPageParams;
-  route: Route;
-};
-
-export function DataModelSegmentDetailPage({
-  params,
-  route,
-}: DataModelSegmentDetailPageProps) {
+export function DataModelSegmentDetailPage() {
+  const params = useParams<DataModelSegmentDetailPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     useDataModelSegmentPage(params);
 
@@ -36,7 +28,6 @@ export function DataModelSegmentDetailPage({
 
   return (
     <SegmentDetailPage
-      route={route}
       segment={segment}
       tabUrls={tabUrls}
       breadcrumbs={

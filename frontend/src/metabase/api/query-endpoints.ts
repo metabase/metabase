@@ -81,6 +81,7 @@ export function maybeUsePivotEndpoint<Arg>(
   if (!shouldUsePivotEndpoint(card, metadata)) {
     return endpoint;
   }
+  // Unjustified type cast. FIXME
   return (PIVOT_ENDPOINTS.get(endpoint) as QueryEndpoint<Arg>) ?? endpoint;
 }
 
@@ -100,8 +101,8 @@ export function dispatchQueryEndpoint<Arg>(
   // RTK's initiate() returns a thunk; dispatching it yields a result that
   // carries abort/unwrap/unsubscribe.
   const action = dispatch(
-    endpoint.initiate(requestBody, { forceRefetch: true }) as never,
-  ) as unknown as {
+    endpoint.initiate(requestBody, { forceRefetch: true }),
+  ) as {
     abort?: () => void;
     unsubscribe?: () => void;
     unwrap: () => Promise<Dataset>;

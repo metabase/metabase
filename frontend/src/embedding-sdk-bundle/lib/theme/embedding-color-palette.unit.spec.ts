@@ -11,6 +11,7 @@ describe("Embedding Color Palette", () => {
       "accent3-dark": "#666",
     };
 
+    // Unjustified type cast. FIXME
     const palette = getEmbeddingColorPalette({
       charts: [
         expected.accent0,

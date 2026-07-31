@@ -27,6 +27,7 @@ export function setupEntityIdEndpoint(
   fetchMock.post(
     "path:/api/eid-translation/translate",
     async (_url: string, options: RequestInit) => {
+      // Unjustified type cast. FIXME
       const body = JSON.parse(options.body as string) as {
         entity_ids: TranslateEntityIdRequest;
       };
@@ -47,6 +48,7 @@ export function setupEntityIdEndpoint(
           entityId: BaseEntityId;
         }) => {
           const mappedValue =
+            // Unjustified type cast. FIXME
             entityIdMappings[entityType as keyof SUPPORTED_ENTITIES]?.[
               entityId
             ];

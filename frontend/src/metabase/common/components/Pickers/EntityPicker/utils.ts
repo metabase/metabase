@@ -227,6 +227,7 @@ export const allCollectionModels = Array.from(validCollectionModels);
 const isValidModel = (
   model: OmniPickerItem["model"],
 ): model is CollectionItemModel =>
+  // Unjustified type cast. FIXME
   validCollectionModels.has(model as CollectionItemModel);
 
 export const getValidCollectionItemModels = (

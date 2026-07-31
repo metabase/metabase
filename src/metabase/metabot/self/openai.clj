@@ -14,9 +14,30 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private translated-chunk-type?
-  "Output item types we translate into AI SDK chunks.
-  Other types (e.g. reasoning summaries) are ignored."
-  #{:text :function_call})
+  "Output item types we translate into AI SDK chunks."
+  #{:text :function_call :reasoning})
+
+(defn- openai-usage->aisdk-usage
+  "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
+
+  Unlike Anthropic's disjoint input buckets (see [[metabase.metabot.self.claude/claude-usage->aisdk-usage]]), OpenAI
+  reports cached tokens as a subset breakdown of the input total:
+
+      input_tokens                             — total input, cached portion included
+      input_tokens_details.cached_tokens       — the cached subset of input_tokens
+      input_tokens_details.cache_write_tokens  — should always be 0 (see below)
+      output_tokens                            — completion tokens
+
+  cache_write_tokens is absent from the Responses API docs, but present in live responses. We pass it through
+  as :cacheCreationTokens so a count would surface in usage tracking if OpenAI ever starts populating it.
+
+  Nested *_details maps are otherwise dropped: the result must stay flat so downstream `merge-with +` usage
+  accumulation is safe."
+  [u]
+  {:promptTokens        (:input_tokens u 0)
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
+   :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
 
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
@@ -39,11 +60,11 @@
           model-name   (volatile! nil)
           payload      (volatile! {})
           close!       (fn [result]
-                         ;; only emit an end marker for chunk types we translate; reasoning and other
-                         ;; output item types are ignored.
+                         ;; only emit an end marker for chunk types we translate.
                          (u/prog1 (if-let [end-type (case @current-type
                                                       :text          :text-end
                                                       :function_call :tool-input-available
+                                                      :reasoning     :reasoning-end
                                                       nil)]
                                     (rf result (merge {:type end-type} @payload))
                                     result)
@@ -70,11 +91,14 @@
                             "content_part"            :text
                             "output_text"             :text
                             "function_call_arguments" :function_call
+                            "reasoning_summary_text"  :reasoning
+                            "reasoning_summary_part"  :reasoning
                             (keyword middle))
                chunk-id   (or (case chunk-type
                                 ;; chunks that have natural id in API response go here
                                 :function_call (:call_id item)
                                 :text          (:id chunk)
+                                :reasoning     (:id item)
                                 nil)
                               @current-id
                               (core/mkid))]
@@ -82,13 +106,24 @@
              (= t "response.created")           (-> (rf {:type :start :messageId (:id response)})
                                                     (u/prog1
                                                       (vreset! model-name (:model response))))
+             ;; a finished reasoning item carries the encrypted content that lets us
+             ;; replay it next round-trip — ride it out on the reasoning-end's metadata
+             (and (= t "response.output_item.done")
+                  (= "reasoning" (:type item))
+                  (= @current-id (:id item))
+                  (:encrypted_content item))
+             (u/prog1
+               (vswap! payload assoc :providerMetadata
+                       {:openai {:itemId           (:id item)
+                                 :encryptedContent (:encrypted_content item)}}))
+
              ;; time to finish previous chunk
              ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
              (or (= t "response.output_item.done")
                  (and @current-id
                       (not= chunk-id
                             @current-id)))      (close!)
-             ;; start of a new chunk — only for types we translate; reasoning items are ignored
+             ;; start of a new chunk — only for types we translate
              (and (= t "response.output_item.added")
                   (translated-chunk-type? chunk-type)) (-> (u/prog1
                                                              (vreset! current-type chunk-type)
@@ -99,16 +134,27 @@
                                                                         :text          {:id chunk-id}
                                                                         :function_call {:toolCallId chunk-id
                                                                                         :toolName   (:name item)}
+                                                                        :reasoning     {:id chunk-id}
                                                                         nil)))
                                                            (rf (merge (case @current-type
                                                                         :text          {:type :text-start}
                                                                         :function_call {:type :tool-input-start}
+                                                                        :reasoning     {:type :reasoning-start}
                                                                         nil)
                                                                       @payload)))
-             ;; just a middle of a chunk — ignore deltas for types we don't translate (e.g. reasoning summaries)
+             ;; a 2nd+ summary part is a new paragraph within the same reasoning item
+             (and (= t "response.reasoning_summary_part.added")
+                  (= @current-type :reasoning)
+                  (pos? (:summary_index chunk 0)))
+             (rf {:type :reasoning-delta :id @current-id :delta "\n\n"})
+
+             ;; just a middle of a chunk — ignore deltas for types we don't translate
              (and delta
                   (translated-chunk-type? @current-type)) (rf (case @current-type
                                                                 :text          {:type  :text-delta
+                                                                                :id    @current-id
+                                                                                :delta delta}
+                                                                :reasoning     {:type  :reasoning-delta
                                                                                 :id    @current-id
                                                                                 :delta delta}
                                                                 :function_call {:type           :tool-input-delta
@@ -119,9 +165,7 @@
              ;; still has valid partial output, so we record its usage rather than treating it as an error.
              (contains? #{"response.completed" "response.incomplete"} t)
              (rf {:type  :usage
-                  :usage (let [u (:usage response)]
-                           {:promptTokens     (:input_tokens u 0)
-                            :completionTokens (:output_tokens u 0)})
+                  :usage (openai-usage->aisdk-usage (:usage response))
                   ;; non-standard extension, not in AISDK5
                   :id    (:id response)
                   :model @model-name})
@@ -142,26 +186,36 @@
   Input: flat sequence of AISDK parts and user messages.
   Output: OpenAI Responses API input array."
   [parts]
-  (mapv (fn [part]
-          (case (:type part)
-            :text        {:type    "message"
-                          :role    "assistant"
-                          :content [{:type "output_text"
-                                     :text (:text part)}]}
-            :tool-input  {:type      "function_call"
-                          :call_id   (:id part)
-                          :name      (:function part)
-                          :arguments (let [args (:arguments part)]
-                                       (if (string? args) args (json/encode args)))}
-            :tool-output {:type    "function_call_output"
-                          :call_id (:id part)
-                          :output  (or (get-in part [:result :output])
-                                       (when-let [err (:error part)]
-                                         (str "Error: " (:message err)))
-                                       (pr-str (:result part)))}
-            ;; User messages
-            {:role    (name (or (:role part) "user"))
-             :content (or (:content part) "")}))
+  (into []
+        (keep (fn [part]
+                (case (:type part)
+                  ;; with store:false the API keeps nothing server-side, so reasoning
+                  ;; items ride along as encrypted content ahead of their tool calls;
+                  ;; parts without it (bare summaries, foreign providers) drop
+                  :reasoning   (when-let [content (get-in part [:provider-metadata :openai :encryptedContent])]
+                                 {:type              "reasoning"
+                                  :id                (or (get-in part [:provider-metadata :openai :itemId])
+                                                         (:id part))
+                                  :summary           []
+                                  :encrypted_content content})
+                  :text        {:type    "message"
+                                :role    "assistant"
+                                :content [{:type "output_text"
+                                           :text (:text part)}]}
+                  :tool-input  {:type      "function_call"
+                                :call_id   (:id part)
+                                :name      (:function part)
+                                :arguments (let [args (:arguments part)]
+                                             (if (string? args) args (json/encode args)))}
+                  :tool-output {:type    "function_call_output"
+                                :call_id (:id part)
+                                :output  (or (get-in part [:result :output])
+                                             (when-let [err (:error part)]
+                                               (str "Error: " (:message err)))
+                                             (pr-str (:result part)))}
+                  ;; user messages
+                  {:role    (name (or (:role part) "user"))
+                   :content (or (:content part) "")})))
         parts))
 
 ;;; Tool definition format
@@ -199,14 +253,16 @@
       (tru "OpenAI API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "OpenAI chat models offered in the Metabot model picker.
-  `list-models` returns the intersection of this set with the account's `/v1/models` catalog."
-  #{"gpt-5.5"
-    "gpt-5.5-pro"
-    "gpt-5.4"
-    "gpt-5.4-pro"
-    "gpt-5.4-mini"
-    "gpt-5"})
+  "OpenAI chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"gpt-5.6-sol"   "GPT-5.6 Sol"
+   "gpt-5.6-terra" "GPT-5.6 Terra"
+   "gpt-5.6-luna"  "GPT-5.6 Luna"
+   "gpt-5.5"       "GPT-5.5"
+   "gpt-5.5-pro"   "GPT-5.5 Pro"
+   "gpt-5.4"       "GPT-5.4"
+   "gpt-5.4-pro"   "GPT-5.4 Pro"
+   "gpt-5.4-mini"  "GPT-5.4 Mini"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -219,8 +275,6 @@
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (when (and credentials (str/blank? (:api-key credentials)))
-    (throw (core/missing-api-key-ex "OpenAI")))
   (try
     (let [auth (core/resolve-auth "openai" "OpenAI"
                                   (when-let [k (or (not-empty (:api-key credentials))
@@ -246,7 +300,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
-                         {:id id :display_name id})))}))
+                         {:id id :display_name (supported-models id)})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
@@ -257,11 +311,19 @@
     (not (or (str/starts-with? model "gpt-5")
              (re-find #"^o\d" model)))))
 
+(defn reasoning-model?
+  "Whether `model` is a reasoning model that can emit reasoning summaries — the
+  same GPT-5 / o-series set that rejects an explicit temperature."
+  [model]
+  (not (model-supports-temperature? model)))
+
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
-  (let [all-tools (or (when schema
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+    :or   {model "gpt-5.4" reasoning? true}} :- core/LLMRequestOpts]
+  (let [input     (cond->> input
+                    (not reasoning?) (remove #(= :reasoning (:type %))))
+        all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type        "function"
                           :name        "structured_output"
@@ -279,6 +341,12 @@
                                         :else       "auto")
                          :tools       all-tools)
       max-tokens  (assoc :max_output_tokens max-tokens)
+
+      ;; encrypted_content lets us replay reasoning items across tool-call
+      ;; round-trips despite store:false — see [[parts->openai-input]]
+      (and reasoning? (reasoning-model? model))
+      (assoc :reasoning {:summary "auto"}
+             :include   ["reasoning.encrypted_content"])
 
       (and temperature (model-supports-temperature? model))
       (assoc :temperature temperature))))

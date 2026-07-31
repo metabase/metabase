@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
@@ -12,6 +11,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Box,
   Button,
@@ -100,7 +100,7 @@ export const TenantsListing = ({
                 gap="md"
               >
                 <UserAvatar
-                  user={{ first_name: tenant.name }}
+                  user={{ name: tenant.name }}
                   bg={tenantIdToColor(tenant.id)}
                 />
                 <Box component="span" fw={700} c="core-brand">
@@ -153,7 +153,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
         </Menu.Item>
         {tenant.is_active ? (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.deactivateTenant(tenant.id)}
           >
@@ -161,7 +161,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
           </Menu.Item>
         ) : (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.reactivateTenant(tenant.id)}
           >

@@ -3,7 +3,7 @@
 }
 
 .NodeListItemIcon {
-  color: var(--mb-color-focus);
+  color: var(--mb-color-input-focus);
   margin-top: 1px;
   width: 1rem;
 

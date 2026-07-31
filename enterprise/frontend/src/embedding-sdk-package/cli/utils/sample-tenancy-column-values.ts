@@ -103,8 +103,10 @@ export async function sampleTenantIds(
 
   await propagateErrorResponse(res);
 
+  // Unjustified type cast. FIXME
   const dataset = (await res.json()) as Dataset;
 
+  // Unjustified type cast. FIXME
   return dataset.data.rows
     .flat()
     .filter((value) => value !== null) as TenantId[];

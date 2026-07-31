@@ -51,6 +51,7 @@ describe("Reference utils.js", () => {
     const segment = createMockSegment({ table_id: tableId });
     const segmentId = segment.id;
     const field = createMockField({ table_id: tableId });
+    // Unjustified type cast. FIXME
     const fieldId = field.id as number;
     const table = createMockTable({
       id: tableId,

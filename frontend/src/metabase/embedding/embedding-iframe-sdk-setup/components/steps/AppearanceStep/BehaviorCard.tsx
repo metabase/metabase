@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
 import {

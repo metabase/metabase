@@ -123,6 +123,8 @@
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
+      (do (perms/prime-db-perms-cache (into #{} (map :db_id) tables))
+          tables)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
                      (if can-write (filter mi/can-write?) identity)
@@ -226,8 +228,8 @@
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -462,19 +464,25 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by
-  uploading a CSV file."
-  {:multipart true}
+  uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
+   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
+   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                  ["collection_id" {:optional true} :string]]]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -486,19 +494,25 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
-  been created by uploading a CSV file."
-  {:multipart true}
+  been created by uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
+   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
+   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                  ["collection_id" {:optional true} :string]]]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -539,8 +553,8 @@
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
-                    (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
-                                              (:name database) (:name table)))
+                    (log/warn (u/format-color :red "Cannot connect to database %s in order to sync table '%s'"
+                                              (:id database) (:name table)))
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do

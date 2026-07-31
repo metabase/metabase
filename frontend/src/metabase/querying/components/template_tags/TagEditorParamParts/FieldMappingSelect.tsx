@@ -28,7 +28,7 @@ export function FieldMappingSelect({
       <ContainerLabel>
         {t`Field to map to`}
         {tag.dimension == null && (
-          <Text c="error" component="span" ml="xs">
+          <Text c="feedback-negative" component="span" ml="xs">
             {t`(required)`}
           </Text>
         )}
@@ -37,11 +37,8 @@ export function FieldMappingSelect({
       {(!dimension || (dimension && field != null)) && (
         <SchemaTableAndFieldDataSelector
           databases={databases}
-          selectedDatabase={database || null}
           selectedDatabaseId={database?.id || null}
-          selectedTable={field?.table || null}
           selectedTableId={field?.table?.id || null}
-          selectedField={field || null}
           selectedFieldId={dimension ? dimension?.[1] : null}
           setFieldFn={setFieldFn}
           fieldFilter={getFieldFilter(tag)}

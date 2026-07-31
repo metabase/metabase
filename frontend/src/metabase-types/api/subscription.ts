@@ -6,11 +6,11 @@ import type { Channel } from "./notification-channels";
 import type { Parameter } from "./parameters";
 import type { User } from "./user";
 
-export interface ListSubscriptionsRequest {
+export type ListSubscriptionsRequest = {
   archived?: boolean;
   dashboard_id?: DashboardId;
   creator_or_recipient?: boolean;
-}
+};
 
 export interface DashboardSubscription {
   archived: boolean;

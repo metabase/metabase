@@ -39,13 +39,13 @@ export function NotificationChannelConfigModal({
       await save();
       sendToast({
         message: t`Notification settings saved`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
       onClose();
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to save notification settings`,
       });
     } finally {
@@ -59,12 +59,12 @@ export function NotificationChannelConfigModal({
       await sendTestNotification(serializeNotificationConfig(config)).unwrap();
       sendToast({
         message: t`Test notification sent`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to send test notification`,
       });
     } finally {

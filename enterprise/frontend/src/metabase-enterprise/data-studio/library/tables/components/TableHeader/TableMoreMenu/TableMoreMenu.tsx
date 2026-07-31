@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { collectionApi } from "metabase/api";
@@ -8,6 +7,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useSetCollection } from "metabase/common/hooks/use-set-collection";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId, CollectionItem, Table } from "metabase-types/api";

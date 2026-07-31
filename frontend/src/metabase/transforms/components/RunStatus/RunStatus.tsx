@@ -56,7 +56,7 @@ export function RunStatus({
     case "succeeded":
       return (
         <Group gap="sm" data-testid="run-status">
-          <Icon c="success" name="check_filled" />
+          <Icon c="feedback-positive" name="check_filled" />
           <Box>
             {endTimeText
               ? t`Last ran ${endTimeText} successfully.`
@@ -68,7 +68,7 @@ export function RunStatus({
     case "failed":
       return (
         <Group gap={0} data-testid="run-status">
-          <Icon c="error" name="warning" mr="sm" />
+          <Icon c="feedback-negative" name="warning" mr="sm" />
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run failed ${endTimeText}.`
@@ -99,7 +99,7 @@ export function RunStatus({
     case "timeout":
       return (
         <Group gap={0} data-testid="run-status">
-          <Icon c="error" name="warning" mr="sm" />
+          <Icon c="feedback-negative" name="warning" mr="sm" />
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run timed out ${endTimeText}.`

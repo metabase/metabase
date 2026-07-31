@@ -18,6 +18,7 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useMaybeLocation } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex, Loader } from "metabase/ui";
@@ -36,6 +37,8 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
+  // The SDK renders the dashboard header outside the app router.
+  const location = useMaybeLocation() ?? undefined;
   const { isGuestEmbed } = useDashboardContext();
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
@@ -82,7 +85,7 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
         options: { preserveParameters: true },
       }),
     );
-    dispatch(cancelEditingDashboard());
+    dispatch(cancelEditingDashboard(location));
     closeModal();
   };
 

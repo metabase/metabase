@@ -202,6 +202,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
       if (isEditMode) {
         result = await updateNotification(
+          // Unjustified type cast. FIXME
           notification as UpdateAlertNotificationRequest, // TODO: remove typecast
         );
       } else {
@@ -215,7 +216,7 @@ export const CreateOrEditQuestionAlertModal = ({
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Failed save alert. ${errorText}`,
           }),
         );
@@ -247,7 +248,7 @@ export const CreateOrEditQuestionAlertModal = ({
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
@@ -443,7 +444,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            bg={hasError ? "error" : "core-brand"}
+            bg={hasError ? "feedback-negative" : "core-brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

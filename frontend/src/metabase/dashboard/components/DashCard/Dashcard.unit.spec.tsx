@@ -18,13 +18,13 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
   createMockActionDashboardCard,

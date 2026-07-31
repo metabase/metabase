@@ -10,7 +10,7 @@ import {
   collection as collectionUrl,
   dashboard as dashboardUrl,
 } from "metabase/urls";
-import type { Collection, SearchResult } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 export type InfoTextData = {
   link?: string | null;
@@ -80,7 +80,7 @@ const getCollectionInfoText = (result: SearchResult): InfoTextData => {
 
 const getCollectionResult = (result: SearchResult): InfoTextData => {
   const collection = getCollection(result);
-  const colUrl = collectionUrl(collection as Collection);
+  const colUrl = collectionUrl(collection);
   const collectionName = collection.name;
   return collectionName
     ? {

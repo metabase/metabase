@@ -75,6 +75,7 @@ export function MappedFieldPicker({
         }}
         hasValue={!!selectedField}
         tabIndex={tabIndex}
+        // Unjustified type cast. FIXME
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >
@@ -114,7 +115,6 @@ export function MappedFieldPicker({
         selectedFieldId={selectedFieldId}
         getTriggerElementContent={renderTriggerElement}
         hasTriggerExpandControl={false}
-        triggerTabIndex={tabIndex}
         setFieldFn={onFieldChange}
         onClose={focusSelectButton}
       />

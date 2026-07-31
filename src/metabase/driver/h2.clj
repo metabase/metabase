@@ -1,7 +1,6 @@
 (ns metabase.driver.h2
   (:refer-clojure :exclude [some every?])
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -21,8 +20,6 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
-   [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -32,7 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [every? some]])
   (:import
-   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)
@@ -43,7 +40,7 @@
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
+(driver/register! :h2, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -79,9 +76,6 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              ;; (Ngoc - 2026-01-27) we have the code to support workspace isolation but since workspace
-                              ;; is useless with out transforms, so we disable it for now
-                              :workspace                 false
                               :database-routing          true
                               :describe-is-generated     true
                               :describe-is-nullable      true
@@ -181,7 +175,7 @@
     (when (= (keyword query-type) :native)
       (let [details (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
             user              (db-details->user details)]
-        (when (and config/is-prod? ;; we elevated permissions in workspace tests
+        (when (and config/is-prod? ;; permissions are elevated in some tests
                    (or (str/blank? user)
                        (= user "sa")))        ; "sa" is the default USER
           (throw
@@ -732,71 +726,6 @@
 (defmethod sql/default-schema :h2
   [_]
   "PUBLIC")
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- replace-credentials
-  "Replace USER and PASSWORD in an H2 connection string."
-  [connection-string new-user new-password]
-  (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (assoc options "USER" new-user "PASSWORD" new-password))))
-
-(defn- get-user-from-connection-string
-  "Extract the USER from an H2 connection string."
-  [connection-string]
-  (let [[_file options] (connection-string->file+options connection-string)]
-    (get options "USER")))
-
-(defmethod driver/init-workspace-isolation! :h2
-  [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
-        password    (driver.u/random-workspace-password)
-        ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (:db (driver.conn/effective-details database))
-        new-db      (replace-credentials original-db username password)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
-                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
-                     (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/scrub-exceptions t [password]))))))
-    {:schema           schema-name
-     :database_details {:db new-db}}))
-
-(defmethod driver/destroy-workspace-isolation! :h2
-  [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
-                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
-                     (format "DROP USER IF EXISTS \"%s\"" username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
-
-(defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace schemas]
-  (let [username (-> workspace :database_details :db get-user-from-connection-string)
-        qu       (sql.u/quote-name :h2 :field username)
-        schemas  (distinct schemas)]
-    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
-    ;; Schema-wide grant covers existing + future tables. Per-table grants
-    ;; are not emitted: workspace input shape is per-namespace, not per-table.
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [schema schemas]
-          (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
-                                     (sql.u/quote-name :h2 :schema schema) qu)))
-        (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

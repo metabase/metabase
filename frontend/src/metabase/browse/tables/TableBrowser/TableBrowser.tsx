@@ -53,7 +53,7 @@ const getDatabaseId = (
   } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
     return undefined;
   } else {
-    return dbId as DatabaseId;
+    return dbId;
   }
 };
 
@@ -89,7 +89,9 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
     { pollingInterval: reloadInterval || undefined },
   );
   const databaseResult = useGetDatabaseMetadataQuery(
-    dbId != null && !useSchemaTables ? { id: dbId } : skipToken,
+    dbId != null && !useSchemaTables
+      ? { id: dbId, skip_fields: true }
+      : skipToken,
     { pollingInterval: reloadInterval || undefined },
   );
 

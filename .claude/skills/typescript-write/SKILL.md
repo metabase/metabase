@@ -13,7 +13,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 - **New code must not introduce `any`, explicit or implicit.** No `any` annotations, no `as any` / `as unknown as`, no untyped parameters or returns that infer `any`, no implicitly-`any` destructures or array/object literals.
 - **Untyped third-party / boundary values** must be typed at the boundary (a declared type, `unknown` + type guard, or a small typed wrapper) — never let `any` propagate inward.
-- **Mandatory LSP verification.** After writing or editing any TS/TSX, inspect the changed symbols with the TypeScript Language Server (hover to read inferred types; `goToDefinition` to confirm sources) and run the project type-check.
+- **Mandatory type verification.** Before finishing a TS/TSX change, run `bun run type-check-pure`. If TypeScript LSP tools are available, also inspect changed symbols with hover and go-to-definition; otherwise skip LSP check.
 
 ## Type tightening
 
@@ -26,6 +26,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Avoid non-null assertions (`!`)**. Prefer a guard, early return, or `?.`. Use `!` only when non-nullness is provably true and localized, with a comment.
 - **No redundant runtime coercion** — don't wrap already-typed values in `Number()` / `String()` / `Boolean()`.
 - **Type guards belong in `frontend/src/metabase-types/guards/`**. Do not redefine them locally.
+- **A cast you can't avoid needs a real justification comment.** The `metabase/no-unjustified-type-casts` rule accepts any preceding comment — state the actual reason the cast is safe. NEVER write the legacy `// Unjustified type cast. FIXME` placeholder; it exists only on casts that predated the rule, and copying it sneaks an unjustified cast past the linter. If you can't articulate why the cast is correct, the cast is wrong — fix the types.
 
 ## Type modeling
 

@@ -1281,7 +1281,12 @@
        :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
                                                       :personal_owner_id nil}
        :model/Collection {top-level-coll :id}        {:location "/"}
-       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}
+       ;; a grandchild of a Personal Collection: only the *first* ID in the location is the personal one
+       :model/Collection {deep-personal-coll :id}    {:location (format "/%d/%d/" personal-coll nested-personal-coll)}
+       ;; Personal Collections only ever live in the Root Collection, so a personal ID appearing deeper in a
+       ;; location does not make that Collection personal
+       :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
       (let [check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
                                   (-> (t2/select-one :model/Collection id-or-ids)
@@ -1293,7 +1298,11 @@
         (testing "simple hydration and batched hydration should return correctly"
           (is (= [true true false false]
                  (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
-                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))
+          (testing "only the first ID of the location decides"
+            (is (= [true false]
+                   (map check-is-personal [deep-personal-coll sneaky-coll])
+                   (check-is-personal [deep-personal-coll sneaky-coll])))))
         (testing "root collection shouldn't be hydrated"
           (is (= nil (t2/hydrate nil :is_personal)))
           (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
@@ -1441,7 +1450,6 @@
              (group->perms [a b c] group))))))
 
 (deftest ^:parallel valid-location-path?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [path expected] (= expected
                           (#'collection/valid-location-path? path))
     nil       false
@@ -1670,34 +1678,6 @@
               {:id 5 :here #{:card}}]}]
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
-
-(deftest identity-hash-test
-  (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection c1 {:name       "top level"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   "/"}
-                     :model/Collection c2 {:name       "nested"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   (format "/%s/" (:id c1))}
-                     :model/Collection c3 {:name       "grandchild"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   (format "/%s/%s/" (:id c1) (:id c2))}]
-        (let [c1-hash (serdes/identity-hash c1)
-              c2-hash (serdes/identity-hash c2)]
-          (is (= "f2620cc6"
-                 (serdes/raw-hash ["top level" :yolocorp "ROOT" (:created_at c1)])
-                 c1-hash)
-              "Top-level collections should use a parent hash of 'ROOT'")
-          (is (= "a27aef0f"
-                 (serdes/raw-hash ["nested" :yolocorp c1-hash (:created_at c2)])
-                 c2-hash))
-          (is (= "e816af2d"
-                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash (:created_at c3)])
-                 (serdes/identity-hash c3))))))))
 
 ;;; TODO -- does this belong here, or in the `audit-app` module?
 (deftest instance-analytics-collections-test

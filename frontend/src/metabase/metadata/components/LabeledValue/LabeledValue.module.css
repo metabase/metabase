@@ -1,6 +1,6 @@
 .badge {
   height: auto;
-  min-height: 2rem;
+  min-height: var(--badge-height);
 }
 
 /* override Badge's single-line ellipsis truncation */

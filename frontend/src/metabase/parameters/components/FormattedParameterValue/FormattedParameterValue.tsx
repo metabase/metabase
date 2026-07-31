@@ -55,7 +55,8 @@ function FormattedParameterValue({
 
   const first = getValue(value);
   const label = isBooleanParameter(parameter)
-    ? getBooleanLabel(first as boolean)
+    ? // Unjustified type cast. FIXME
+      getBooleanLabel(first as boolean)
     : undefined;
 
   const renderContent = () => {

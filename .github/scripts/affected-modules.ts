@@ -1,3 +1,5 @@
+import micromatch from "micromatch";
+
 export type ModuleDef = { type: string; pattern: string };
 export type Rule = { from: string[]; allow: string[] };
 
@@ -5,21 +7,12 @@ export type ModuleNode = { type: string; regex: RegExp };
 
 export type FileDependency = { source: string; dependencies: string[] };
 
-/**
- * Compiles a glob pattern to an anchored RegExp.
- */
-function globToRegex(glob: string): RegExp {
-  const escapeSegment = (seg: string) =>
-    seg.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*");
-  const body = glob.split("**").map(escapeSegment).join(".*");
-  return new RegExp(`^${body}$`);
-}
-
 /** First match wins, so element order matters for nested patterns. */
 export function buildNodes(elements: ModuleDef[]): ModuleNode[] {
   return elements.map((el) => ({
     type: el.type,
-    regex: globToRegex(el.pattern),
+    // dot:true so files in dot-directories (e.g. .storybook) still match.
+    regex: micromatch.makeRe(el.pattern, { dot: true }),
   }));
 }
 

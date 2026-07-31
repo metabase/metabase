@@ -13,6 +13,7 @@ import {
   type EditableDashboardProps,
 } from "./EditableDashboard";
 
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 type CustomArgs = {

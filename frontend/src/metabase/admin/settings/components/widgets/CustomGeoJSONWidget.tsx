@@ -10,7 +10,7 @@ import {
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
+import { useLazyLoadGeoJSONQuery } from "metabase/admin/settings/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -56,7 +56,7 @@ export const CustomGeoJSONWidget = () => {
     settingDetails,
   } = useAdminSetting("custom-geojson");
 
-  const customGeoJsonSetting = settingValue as CustomGeoJSONSetting;
+  const customGeoJsonSetting = settingValue;
   const mapsExcludingBuiltIns = getMapsExcludingBuiltIns(customGeoJsonSetting);
 
   const handleSave = useCallback(async (): Promise<void> => {
@@ -228,7 +228,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="danger"
+                    color="feedback-negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>

@@ -39,6 +39,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
                 trackClickEvent: () =>
                   trackSegmentCreateStarted(
                     "data_studio_segments",
+                    // Unjustified type cast. FIXME
                     table.id as ConcreteTableId,
                   ),
               }

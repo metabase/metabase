@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
-import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
-import type { OnboardingStepperHandle } from "metabase/common/components/OnboardingStepper/types";
+import { Link } from "metabase/common/components/Link";
+import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
+import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
 import {
   type CreatedTenantData,
   PLUGIN_TENANTS,

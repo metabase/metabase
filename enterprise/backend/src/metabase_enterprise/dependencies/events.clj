@@ -26,12 +26,13 @@
     (deps.dependency-status/mark-stale! entity-type [entity-id])
     (task.backfill/trigger-backfill-job!)
     (catch Throwable e
-      (log/error e "Failed to mark entity stale" {:entity-type entity-type :entity-id entity-id}))))
+      (log/error "Failed to mark entity stale" {:entity-type entity-type :entity-id entity-id :error (ex-message e)}))))
 
 ;; ### Cards
 (derive ::card-deps :metabase/event)
 (derive :event/card-create ::card-deps)
 (derive :event/card-update ::card-deps)
+(derive :event/metric-dimensions-update ::card-deps)
 
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]
@@ -344,7 +345,7 @@
 ;; ### Database Deletion (orphans transforms)
 ;; Transforms whose `source_database_id` matches the database being deleted survive the delete
 ;; but their existing `analysis_finding` rows still say "OK". Mark them stale here so the entity-check
-;; job re-runs and surfaces them on `/data-studio/dependency-diagnostics/broken`.
+;; job re-runs and surfaces them on `/monitor/dependency-diagnostics/broken`.
 (defenterprise mark-transforms-stale-on-database-delete!
   "Enterprise implementation: mark all transforms whose source database is being deleted as stale
    for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."

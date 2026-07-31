@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { WritableConnectionInfoPage } from "./pages/WritableConnectionInfoPage";
 
@@ -6,7 +6,7 @@ export function getWritableConnectionInfoRoutes() {
   return (
     <Route
       path=":databaseId/write-data"
-      component={WritableConnectionInfoPage}
+      element={<WritableConnectionInfoPage />}
     />
   );
 }

@@ -114,6 +114,14 @@
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
+(deftest public-document-endpoint-is-read-only-test
+  (testing "PUT /api/public/document/:uuid does not exist -- public document sharing is read-only"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})]
+        (is (= 404
+               (:status (mt/client-full-response :put (str "public/document/" (:public_uuid document))
+                                                 {:name "hacked"}))))))))
+
 ;;; ------------------------------ GET /api/public/document/:uuid/card/:card-id ---------------------------------------
 
 (deftest fetch-public-document-card-test

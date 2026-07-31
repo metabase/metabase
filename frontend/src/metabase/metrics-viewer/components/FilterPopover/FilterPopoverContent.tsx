@@ -222,7 +222,7 @@ function MetricGroupList({
                   <Flex align="center" gap="xs" fw={700}>
                     <span>{group.metricName}</span>
                     {(group.metricCount ?? 0) > 1 && (
-                      <Badge circle c="text-brand-hover">
+                      <Badge circle color="brand" variant="light">
                         {group.metricCount}
                       </Badge>
                     )}

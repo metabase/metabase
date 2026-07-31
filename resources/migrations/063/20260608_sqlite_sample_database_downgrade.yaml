@@ -1,12 +1,10 @@
-## On downgrade from a SQLite-sample-database version to an H2-sample-database version, remove the
-## SQLite sample database and the content left dangling by it. Does nothing on rollforward; the
-## H2 -> SQLite upgrade replacement is handled at startup in metabase.sample-data.impl.
+## No-op; superseded by the in-place sample-database engine swap at startup (metabase.sample-data.impl).
 
 databaseChangeLog:
   - changeSet:
       id: v63.2026-06-08T00:00:00
       author: bgrabow
-      comment: Remove the SQLite sample database (and content it leaves empty) on downgrade to an H2 version
+      comment: No-op; sample database engine swap is handled at startup
       validCheckSum: ANY
       changes:
         - customChange:

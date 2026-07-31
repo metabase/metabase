@@ -169,6 +169,7 @@ function useSourceEntityCollectionId(query: Lib.Query) {
   const sourceTable = useSourceTable(query);
   const isCard =
     sourceTable?.type &&
+    // Unjustified type cast. FIXME
     (["model", "question"] as CardType[]).includes(sourceTable.type);
   const cardId = isCard
     ? getQuestionIdFromVirtualTableId(sourceTable?.id)

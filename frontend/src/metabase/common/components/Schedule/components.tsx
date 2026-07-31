@@ -228,6 +228,7 @@ export const SelectMinute = ({
   updateSchedule: UpdateSchedule;
   range?: typeof minutes;
 }) => {
+  // Unjustified type cast. FIXME
   const minuteOfHour = isNaN(schedule_minute as number) ? 0 : schedule_minute;
   const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (

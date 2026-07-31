@@ -403,9 +403,3 @@ Where:
 
 </csv_uploads>
 {% endif %}
-
-<<<METABOT_CACHE_BREAKPOINT>>>
-
-# Runtime Context
-
-Current date and time: {{ current_time }}

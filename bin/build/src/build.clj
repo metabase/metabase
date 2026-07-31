@@ -36,7 +36,8 @@
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition
-                     "EMIT_BUNDLE_STATS" (or (env/env :emit-bundle-stats) "false")}}
+                     "EMIT_BUNDLE_STATS" (or (env/env :emit-bundle-stats) "false")
+                     "INSTRUMENT_COVERAGE" (or (env/env :instrument-coverage) "false")}}
               "bun" "run" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory

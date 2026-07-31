@@ -601,6 +601,7 @@ describe("dataset transform functions", () => {
 
     describe("ordinal series", () => {
       it("should stringify x values if they're objects (metabase#52684)", () => {
+        // Unjustified type cast. FIXME
         const dataset = [
           {
             [X_AXIS_DATA_KEY]: null,

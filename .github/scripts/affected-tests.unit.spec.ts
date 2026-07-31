@@ -28,8 +28,10 @@ const baseInput = {
   rules: RULES,
   fileDependencies: null,
   testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
+  e2eSpecFiles: null,
   unitInfraTouched: false,
   lokiInfraTouched: false,
+  e2eInfraTouched: false,
   sharedSourcesTouched: false,
   feFilesChanged: 0,
   beFilesChanged: 0,
@@ -95,12 +97,125 @@ describe("createTestPlan", () => {
     expect(plan.stats.loki_stories_to_run_rules).toBe(0);
   });
 
-  it("always runs the full e2e suite", () => {
+  it("runs the full e2e suite when no coverage manifest is available", () => {
     const plan = createTestPlan({ ...baseInput, changedFiles: ["src/foo/x.ts"] });
 
     expect(plan.stats.e2e_specs_to_run_rules).toBe(E2E_FILES.length);
     expect(plan.stats.e2e_specs_to_run_usage).toBe(E2E_FILES.length);
     expect(plan.e2e_specs_to_run).toEqual(E2E_FILES);
+  });
+
+  it("narrows e2e to specs covering affected feature modules", () => {
+    const e2e = [
+      "e2e/test/scenarios/foo.cy.spec.ts",
+      "e2e/test/scenarios/bar.cy.spec.ts",
+      "e2e/test/scenarios/new.cy.spec.ts",
+    ];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"], // affects feature/foo only
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: {
+        "e2e/test/scenarios/foo.cy.spec.ts": ["src/foo/a.ts"], // feature/foo
+        "e2e/test/scenarios/bar.cy.spec.ts": ["src/bar/b.ts"], // feature/bar
+        // new.cy.spec.ts intentionally absent from the manifest
+      },
+    });
+
+    // foo's feature module is affected; bar's is not; the unmapped new spec
+    // always runs.
+    expect(plan.e2e_specs_to_run.sort()).toEqual([
+      "e2e/test/scenarios/foo.cy.spec.ts",
+      "e2e/test/scenarios/new.cy.spec.ts",
+    ]);
+    expect(plan.stats.e2e_specs_all).toBe(3);
+  });
+
+  it("runs a spec that maps to no feature module (unknown scope)", () => {
+    const e2e = ["e2e/test/scenarios/lib-only.cy.spec.ts"];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"], // affects feature/foo, NOT lib/utils
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: {
+        // Covers only a non-feature module (e.g. a home/auth spec whose feature
+        // the baseline subtracted), so its feature scope is unknown.
+        "e2e/test/scenarios/lib-only.cy.spec.ts": ["src/utils/colors.ts"],
+      },
+    });
+
+    // No feature module to gate on -> can't bound scope -> always runs.
+    expect(plan.e2e_specs_to_run).toEqual(e2e);
+  });
+
+  it("force-runs all e2e on a backend change (invisible to FE coverage)", () => {
+    const e2e = ["e2e/test/scenarios/foo.cy.spec.ts"];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/metabase/api/card.clj"],
+      beFilesChanged: 1,
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: { "e2e/test/scenarios/bar.cy.spec.ts": ["src/bar/b.ts"] },
+    });
+
+    expect(plan.e2e_specs_to_run).toEqual(e2e);
+  });
+
+  it("force-runs all e2e when e2e infra (support/runner) changes", () => {
+    const e2e = ["e2e/test/scenarios/foo.cy.spec.ts"];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["e2e/support/commands/api/createQuestion.js"],
+      e2eInfraTouched: true,
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: { "e2e/test/scenarios/bar.cy.spec.ts": ["src/bar/b.ts"] },
+    });
+
+    expect(plan.e2e_specs_to_run).toEqual(e2e);
+  });
+
+  it("runs an edited spec even when no app module changed", () => {
+    const spec = "e2e/test/scenarios/foo.cy.spec.ts";
+    const e2e = [spec, "e2e/test/scenarios/bar.cy.spec.ts"];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: [spec], // only the spec itself changed
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: {
+        [spec]: ["src/bar/b.ts"], // covers feature/bar, which is NOT affected
+        "e2e/test/scenarios/bar.cy.spec.ts": ["src/bar/b.ts"],
+      },
+    });
+
+    // No module is affected, but the edited spec must still run.
+    expect(plan.e2e_specs_to_run).toEqual([spec]);
+  });
+
+  it("runs a spec whose coverage was fully baseline-subtracted (empty files)", () => {
+    const e2e = ["e2e/test/scenarios/empty.cy.spec.ts"];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"], // affects feature/foo
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: { "e2e/test/scenarios/empty.cy.spec.ts": [] },
+    });
+
+    // Empty coverage means unknown scope, so the spec runs.
+    expect(plan.e2e_specs_to_run).toEqual(e2e);
+  });
+
+  it("forces a full e2e run when shared (cljc) sources change", () => {
+    const e2e = ["e2e/test/scenarios/foo.cy.spec.ts"];
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+      sharedSourcesTouched: true,
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e },
+      e2eSpecFiles: { "e2e/test/scenarios/bar.cy.spec.ts": ["src/bar/b.ts"] },
+    });
+
+    // Manifest is present but cljc is invisible to JS coverage, so run all.
+    expect(plan.e2e_specs_to_run).toEqual(e2e);
   });
 
   it("passes the FE/BE file counts through to stats", () => {

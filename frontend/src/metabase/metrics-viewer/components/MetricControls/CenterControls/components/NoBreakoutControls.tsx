@@ -19,7 +19,7 @@ export function NoBreakoutControls() {
             aria-label={t`No breakout`}
             variant="subtle"
             color="text-primary"
-            leftSection={<Icon c="brand" name="unreferenced" size={16} />}
+            leftSection={<Icon c="core-brand" name="unreferenced" size={16} />}
             onClick={openSidebar}
           >
             {t`No breakout`}

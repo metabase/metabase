@@ -107,6 +107,7 @@ export const getAdaptiveStrategyValidationSchema = () => {
   });
 };
 
+// Unjustified type cast. FIXME
 export const strategies = {
   inherit: {
     // NOTE: We use functions for labels because otherwise t doesn't work properly
@@ -143,6 +144,7 @@ export const strategies = {
 } as Record<string, StrategyData>;
 
 export const getPerformanceTabMetadata = () =>
+  // Unjustified type cast. FIXME
   [
     {
       name: t`Database caching`,
@@ -162,22 +164,31 @@ export const getPerformanceTabMetadata = () =>
 
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
+  // Unjustified type cast. FIXME
   StrategyFormLauncherPanel: PluginPlaceholder as any,
+  // Unjustified type cast. FIXME
   GranularControlsExplanation: PluginPlaceholder as any,
   SidebarCacheSection:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
+  // Unjustified type cast. FIXME
   SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
+  // Unjustified type cast. FIXME
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
+  // Unjustified type cast. FIXME
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
   MetricCachingModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<MetricCachingModalProps>,
 });
 
