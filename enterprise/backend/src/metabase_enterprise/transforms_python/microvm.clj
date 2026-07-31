@@ -176,6 +176,30 @@
   [region name]
   (str "arn:aws:lambda:" region ":aws:network-connector:aws-network-connector:" name))
 
+(def ^:private launch-timeout-ms 120000)
+
+(defn- await-running!
+  "RunMicrovm returns while the VM is still PENDING, and its endpoint answers 502 until the
+  application inside is serving. Block until it is."
+  [vm-id]
+  (let [deadline (+ (System/currentTimeMillis) launch-timeout-ms)]
+    (loop []
+      (let [{:keys [state stateReason]} (control-plane-call! :get (str "/2025-09-09/microvms/" vm-id) nil)]
+        (cond
+          (= state "RUNNING")
+          state
+
+          (contains? #{"SUSPENDING" "SUSPENDED" "TERMINATING" "TERMINATED"} state)
+          (throw (ex-info "MicroVM stopped before it could run the job"
+                          {:microvm-id vm-id :state state :reason stateReason}))
+
+          (> (System/currentTimeMillis) deadline)
+          (throw (ex-info "Timed out waiting for the MicroVM to start"
+                          {:microvm-id vm-id :state state :reason stateReason}))
+
+          :else
+          (do (Thread/sleep 1000) (recur)))))))
+
 (defmethod launch! :aws
   [{:keys [run-id]}]
   (let [image (transforms-python.settings/python-microvm-image)
@@ -194,6 +218,7 @@
                                     :egressNetworkConnectors  [(or (transforms-python.settings/python-microvm-egress-connector)
                                                                    (managed-connector region "INTERNET_EGRESS"))]})
         vm-id (:microvmId vm)
+        _     (await-running! vm-id)
         ;; a map of header name -> value
         ;; the token has to outlive the VM: it authenticates the status and log polling too
         token (:authToken (control-plane-call! :post (str "/2025-09-09/microvms/" vm-id "/auth-token")
