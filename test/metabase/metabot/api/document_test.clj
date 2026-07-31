@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.llm.test-util :as lct]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -18,7 +18,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest generate-content-backwards-compatible-route-test
-  (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
     (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                 (fn [_]
@@ -35,7 +35,7 @@
                                    {:instructions "Show me sales data"}))))))
 
 (deftest generate-content-prometheus-test
-  (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -64,7 +64,7 @@
     ;; resolve the test database *before* process-query gets redefed below, so DB sync (which
     ;; itself calls process-query) isn't affected by the mock
     (let [db-id (mt/id)]
-      (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider test-provider]
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                     (fn [_]
@@ -100,7 +100,7 @@
                     response))))))))
 
 (deftest generate-content-snowplow-test
-  (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (let [rasta-id (mt/user->id :rasta)]

@@ -12,7 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.settings :as llm.settings]
-   [metabase.llm.test-util :as lct]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
@@ -39,7 +39,7 @@
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
 
 (deftest native-agent-streaming-test
-  (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+  (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                      metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (with-redefs [config/is-dev? true]
@@ -249,7 +249,7 @@
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
-            (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+            (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                                metabot.settings/llm-metabot-provider test-provider]
               (let [real-http-post http/post]
                 (with-redefs [llm.settings/llm-openrouter-api-key            (constantly "fake-key")
@@ -305,7 +305,7 @@
             the reducible is constructed) finalizes the placeholder with
             :finished? true + a structured :error payload — distinguishable from
             both a successful turn (error nil) and a client abort (finished false)."
-    (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                        metabot.settings/llm-metabot-provider test-provider]
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [stored-parts  (atom nil)
@@ -353,7 +353,7 @@
 
 (deftest metabot-provider-without-api-key-is-configured-test
   (mt/with-premium-features #{:metabase-ai-managed}
-    (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                        metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
                                        llm.settings/llm-proxy-base-url      "https://proxy.example.com"
                                        llm.settings/llm-anthropic-api-key    nil
@@ -418,7 +418,7 @@
           (t2/delete! :model/MetabotConversation :id conversation-id))))))
 
 (deftest metabot-enabled-setting-test
-  (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+  (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                      metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (let [base-request {:message         "Test"
@@ -509,7 +509,7 @@
   ([thunk] (with-mock-streaming-provider! [] thunk))
   ([responses thunk]
    (let [queue (atom (vec responses))]
-     (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+     (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                         metabot.settings/llm-metabot-provider test-provider]
        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
          (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -734,7 +734,7 @@
   "Runs `thunk` with the provider mocked, appending each provider-call opts map
   to `requests` and replying with `reply-text`."
   [requests reply-text thunk]
-  (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+  (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                      metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -820,7 +820,7 @@
 
 (deftest agent-streaming-reconstructs-state-from-db-test
   (testing "the loop is seeded from DB-reconstructed state — no client echo — and a retry rewinds it"
-    (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                        metabot.settings/llm-metabot-provider test-provider]
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [seeded-states (atom [])
@@ -926,7 +926,7 @@
   (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
     (let [conv-id (str (random-uuid))]
       (try
-        (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+        (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                            metabot.settings/llm-metabot-provider provider]
           (let [{:keys [assistant-msg-id]} (metabot.persistence/start-turn!
                                             conv-id "internal"
@@ -962,7 +962,7 @@
     (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
       (let [conv-id (str (random-uuid))]
         (try
-          (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+          (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                              metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
             (let [{:keys [assistant-msg-id]} (metabot.persistence/start-turn!
                                               conv-id "internal"
@@ -1275,7 +1275,7 @@
 (deftest agent-streaming-endpoint-captures-embed-referrer-test
   (testing "POST /metabot/agent-streaming captures x-metabase-embed-referrer as embedding_hostname/embedding_path"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+      (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                          metabot.settings/llm-metabot-provider test-provider]
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
@@ -1350,7 +1350,7 @@
                       (is (nil? (:sanitized_user_agent convo))))))))))))))
 
 (deftest agent-streaming-returns-free-trial-limit-error-when-managed-provider-is-locked-test
-  (mt/with-temporary-setting-values [llm.settings/llm-providers lct/default-connections
+  (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                      metabot.settings/llm-metabot-provider
                                      "metabase/anthropic/claude-sonnet-4-6"]
     (mt/with-dynamic-fn-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
