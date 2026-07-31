@@ -31,7 +31,8 @@ describe("Cross-version questions - nested model", () => {
       cy.log("-- Turn question into a model --");
       H.openQuestionActions();
       X.selectFromPopover("Turn into a model");
-      cy.findByTestId("modal").button("Turn this into a model").click();
+      // Doesn't use modal() helper from e2e-ui-elements-helpers.js because the modal change significantly between v60 -> v63.
+      cy.findByRole("dialog").button("Turn this into a model").click();
       cy.location("pathname").should("contain", "model");
 
       cy.log("-- Edit model metadata --");
