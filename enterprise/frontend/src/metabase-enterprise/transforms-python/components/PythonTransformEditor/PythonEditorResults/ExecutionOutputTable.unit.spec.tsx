@@ -9,8 +9,9 @@ import { ExecutionOutputTable } from "./ExecutionOutputTable";
 
 const OUTPUT = '{"value":"test"}';
 
+// cell-data is not unique, headers render it too, so keep the gridcell scope
 const getBodyCell = () =>
-  within(screen.getByRole("gridcell")).getByTestId("body-cell-container");
+  within(screen.getByRole("gridcell")).getByTestId("cell-data");
 
 describe("ExecutionOutputTable", () => {
   beforeEach(() => {
