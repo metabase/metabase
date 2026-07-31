@@ -14,6 +14,7 @@
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
@@ -188,15 +189,20 @@
             "get_content, or replace the whole body with content_markdown.")})))
 
 (defn- document-response
+  "The written document echoed to the caller: the `:document` concise read projection, so the echo
+   and a concise `get_content` read name the body identically and a read-modify-write needs no
+   renaming, plus the write-only fields — `:entity_id` (a portable id to update by),
+   `:collection_position`, and the comment threads this write orphaned.
+
+   The body is re-serialized from the stored AST rather than taken from the projection, so it
+   reflects post-clone card ids: the next edit's `old_str` is matched against this exact text."
   [document orphaned-threads]
-  (merge {:id                       (:id document)
-          :entity_id                (:entity_id document)
-          :name                     (:name document)
-          :collection_id            (:collection_id document)
-          :collection_position      (:collection_position document)
-          :archived                 (boolean (:archived document))
-          :orphaned_comment_threads orphaned-threads}
-         (body-projection (:document document))))
+  (-> (projections/project :document :concise document)
+      (merge {:entity_id                (:entity_id document)
+              :collection_position      (:collection_position document)
+              :archived                 (boolean (:archived document))
+              :orphaned_comment_threads orphaned-threads}
+             (body-projection (:document document)))))
 
 ;;; ------------------------------------------------------ Edits ---------------------------------------------------
 
@@ -401,19 +407,27 @@
    ;; `:error/message` on the `:or` itself is ignored by Malli's humanizer.
    [:collection_id {:optional true} [:maybe [:or ms/PositiveInt :string]]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:archived {:optional true} [:maybe :boolean]]])
+   [:archived {:optional true} [:maybe :boolean]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description (str "Update only: property names to unset "
+                                                   "(collection_position). A null cannot say this — "
+                                                   "strict clients fill every unset property with "
+                                                   "null, so nulls are stripped at the boundary.")}
+                          "collection_position"]]]]])
 
 (registry/deftool document-write-tool
-  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (\"root\" or omit for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). The response lists orphaned_comment_threads. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
+  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (\"root\" or omit for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). The response lists orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened; read that document with get_content and rewrite it with content_markdown rather than edits. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
   {:name        "document_write"
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
    :args        document-write-args-schema}
-  [args _context]
+  [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write
-                  {:create-required [:name :content_markdown]}
+                  {:create-required [:name :content_markdown]
+                   :clearable       #{:collection_position}}
                   args)
-        payload  (case op
-                   :create (create! a)
-                   :update (update! a b))]
+        payload  (common/readback token-scopes [metabot.scope/agent-content-read]
+                                  (case op
+                                    :create (create! a)
+                                    :update (update! a b)))]
     (common/success-content payload)))

@@ -69,7 +69,7 @@
               (is (nil? (t2/select-one-fn :document_id :model/Card :id card-id))))
             (testing "get_content returns the same Markdown body the tool returned"
               (is (= (:content_markdown payload)
-                     (:markdown (#'v2.content/fetch-document (:id payload))))))))))))
+                     (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
 
 (deftest dangling-card-embed-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -450,3 +450,74 @@
                                          :content_markdown "x" :edits []})))
             (is (thrown-with-msg? Exception #"exactly one of content_markdown"
                                   (call {:method "update" :id doc-id})))))))))
+
+(deftest write-scope-is-not-a-read-scope-test
+  (testing "GHY-4217: a document body is content, so a write must not hand it back to a token whose
+            read scopes get_content would refuse. `edits: []` is the documented way to touch nothing,
+            which made it a clean read oracle over any document the caller could write to."
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [existing (documents/create-document!
+                        {:name          "someone elses doc"
+                         :document      (documents/parse "PRE-EXISTING SECRET")
+                         :collection_id nil})
+              call!    (fn [scopes]
+                         (-> (registry/call-tool scopes nil "document_write"
+                                                 {:method "update" :id (:id existing) :edits []})
+                             :content first :text))]
+          (testing "without the read scope the body is withheld, leaving the minimal ack"
+            (let [txt (call! #{"agent:content:write"})]
+              (is (not (re-find #"PRE-EXISTING SECRET" txt)))
+              (is (re-find #"agent:content:read" txt))))
+          (testing "with it, the body comes back as before — the write still reports its result"
+            (let [txt (call! #{"agent:content:write" "agent:content:read"})]
+              (is (re-find #"PRE-EXISTING SECRET" txt)))))))))
+
+(deftest clear-unsets-collection-position-test
+  (testing "GHY-4191: a null cannot mean \"unset this\" — the boundary strips nulls because strict
+            clients fill every declared property with one — so `clear` names the property instead.
+            collection_position is the only unsettable field here: collection_id has the \"root\"
+            sentinel, and name and the body are required rather than clearable."
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [doc   (documents/create-document!
+                     {:name                "pinned doc"
+                      :document            (documents/parse "body")
+                      :collection_id       nil
+                      :collection_position 1})
+              call! (fn [args]
+                      (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
+                                          "document_write"
+                                          (merge {:method "update" :id (:id doc)} args)))]
+          (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))
+              "precondition: the document is pinned")
+          (testing "a null leaves it alone, as it does everywhere else"
+            (call! {:edits [] :collection_position nil})
+            (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+          (testing "clear unsets it"
+            (call! {:edits [] :clear ["collection_position"]})
+            (is (nil? (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+          (testing "a property outside the clearable set is refused at the boundary"
+            (let [txt (-> (call! {:edits [] :clear ["name"]}) :content first :text)]
+              (is (re-find #"clear" txt))
+              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
+
+(deftest write-echo-and-read-name-the-body-alike-test
+  (testing "the write echo and a concise get_content read call the body `content_markdown`. They
+            used to disagree — the read said `markdown` — so an agent doing the read-modify-write
+            this tool's `edits`/`old_str` design encourages had to rename the field in between."
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [echo (-> (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
+                                           "document_write"
+                                           {:method "create" :name "shared name"
+                                            :content_markdown "BODY TEXT"})
+                       :content first :text json/decode+kw)
+              read (-> (registry/call-tool #{"agent:content:read"} nil "get_content"
+                                           {:items [{:type "document" :id (:id echo)}]})
+                       :content first :text json/decode+kw :results first)]
+          (is (= "BODY TEXT" (:content_markdown echo)))
+          (is (= (:content_markdown echo) (:content_markdown read)))
+          (testing "and neither side still carries the old key"
+            (is (not (contains? echo :markdown)))
+            (is (not (contains? read :markdown)))))))))
