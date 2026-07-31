@@ -25,8 +25,10 @@
    [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
-   (com.mongodb MongoCommandException MongoSecurityException)
+   (com.mongodb ConnectionString MongoCommandException MongoSecurityException)
    (com.mongodb.client MongoClient MongoDatabase)
+   (com.mongodb.spi.dns DnsClient)
+   (javax.naming.directory Attribute Attributes InitialDirContext)
    (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +49,51 @@
   (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
+
+(def ^DnsClient ^:private no-op-dns-client
+  ;; `ConnectionString` resolves TXT records while parsing an SRV URI. Host extraction must be deterministic and
+  ;; side-effect free. The actual client performs TXT/SRV discovery later, and every discovered server address
+  ;; ultimately goes through the guarded transport resolver.
+  (reify DnsClient
+    (getResourceRecordData [_ _ _] [])))
+
+(defn- srv-target-hosts
+  "Resolve the `_mongodb._tcp.<host>` SRV record that a `mongodb+srv://` connection string expands to, returning the
+  target hostnames. `mongodb+srv` puts a layer of caller-controlled DNS indirection in front of the real servers, so
+  checking only the SRV name itself would leave the hosts actually connected to unchecked. Returns nil when this
+  preflight lookup fails; Mongo's guarded transport resolver remains the enforcement point for addresses discovered
+  when the client connects."
+  [host]
+  (try
+    (let [^InitialDirContext context (InitialDirContext.)]
+      (try
+        (let [^Attributes attrs (.getAttributes context
+                                                ^String (str "dns:/_mongodb._tcp." host)
+                                                ^"[Ljava.lang.String;" (into-array String ["SRV"]))]
+          (when-let [^Attribute attr (.get attrs "SRV")]
+            (into []
+                  ;; each record reads "<priority> <weight> <port> <target>."
+                  (keep #(last (str/split (str (.get attr (int %))) #"\s+")))
+                  (range (.size attr)))))
+        (finally
+          (.close context))))
+    (catch Throwable _ nil)))
+
+(defmethod driver/connection-hosts :mongo
+  [_driver details]
+  ;; Mongo takes its hosts from `:host` *or*, when `use-conn-uri` is set, from anywhere inside `:conn-uri` -- and
+  ;; either may name several hosts (a replica set). Parsing the connection string the driver itself will use is the
+  ;; only way to be sure we see the same hosts it will connect to.
+  (let [conn-string (try (mongo.connection/db-details->connection-string details) (catch Throwable _ nil))
+        hosts       (try
+                      (vec (.getHosts (ConnectionString. conn-string no-op-dns-client)))
+                      (catch Throwable _
+                        ;; an unparseable connection string never connects anywhere; fall back to the plain host field
+                        (filterv string? [(:host details)])))
+        hosts       (cond-> hosts
+                      (some-> conn-string (str/starts-with? "mongodb+srv://"))
+                      (into (mapcat srv-target-hosts hosts)))]
+    (driver/hosts-from-details {:host (str/join "," hosts)} [:host])))
 
 (defmethod driver/can-connect? :mongo
   [_ db-details]

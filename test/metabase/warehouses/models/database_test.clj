@@ -738,6 +738,26 @@
 
 (driver/register! ::test, :abstract? true)
 
+(driver/register! ::host-details-driver, :abstract? true)
+(driver/register! ::alternate-details-driver, :abstract? true)
+
+(defmethod driver/connection-hosts ::host-details-driver
+  [_driver details]
+  (driver/hosts-from-details details [:host]))
+
+(defmethod driver/connection-hosts ::alternate-details-driver
+  [_driver details]
+  (driver/hosts-from-details details [:alternate-host]))
+
+(deftest engine-change-validates-existing-details-with-new-driver-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
+                                       :details {:host "8.8.8.8" :alternate-host "127.0.0.1"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"private or internal network address"
+           (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
+
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]

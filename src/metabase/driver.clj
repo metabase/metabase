@@ -21,6 +21,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -276,6 +277,38 @@
   :hierarchy #'hierarchy)
 
 (defmethod validate-db-details! :default [_driver _details] nil)
+
+(def default-host-detail-keys
+  "Detail keys that hold a warehouse host across the drivers we ship. `:host` is the near-universal one;
+  `:hostname` is Athena's."
+  [:host :hostname])
+
+(defmulti connection-hosts
+  "Return a collection of the hosts (hostnames or IP literals) that Metabase will open a network connection to
+  when connecting to a database with `details`.
+
+  The default implementation reads the usual `:host`/`:hostname` detail keys, tolerating values written as a URL, a
+  `host:port` pair, a bracketed IPv6 literal, or a comma-separated list. Concrete drivers should implement this
+  explicitly so their complete connection behavior remains auditable, including hosts from connection URIs and fixed
+  or derived vendor endpoints."
+  {:added "0.58.23" :arglists '([driver details])}
+  dispatch-on-initialized-driver-safe-keys
+  :hierarchy #'hierarchy)
+
+(defn hosts-from-details
+  "Extract and normalize hostnames from the values of `detail-keys` in `details`. Helper for
+  [[connection-hosts]] implementations."
+  [details detail-keys]
+  (into []
+        (comp (map details)
+              (filter string?)
+              (mapcat #(str/split % #","))
+              (keep u.http/->hostname))
+        detail-keys))
+
+(defmethod connection-hosts :default
+  [_driver details]
+  (hosts-from-details details default-host-detail-keys))
 
 (defmulti dbms-version
   "Return a map containing information that describes the version of the DBMS. This typically includes a

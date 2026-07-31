@@ -18,6 +18,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -120,6 +121,51 @@
        (or (instance? java.net.ConnectException throwable)
            (recur (.getCause throwable)))))
 
+(def ^:private auth-provider-url-detail-keys
+  "Detail keys holding a URL that Metabase fetches over plain HTTP -- not through the warehouse connection and not
+  through the SSH tunnel -- while resolving an auth provider (see [[fetch-and-incorporate-auth-provider-details]])."
+  [:http-auth-url :oauth-token-url])
+
+(defn- hosts-metabase-will-connect-to
+  "The hosts Metabase itself resolves and connects to for `details`. With an SSH tunnel enabled Metabase connects to
+  the tunnel server and the tunnel server resolves the warehouse host on the far side, so `:host` is (legitimately)
+  often `localhost` there and only `:tunnel-host` is ours to check."
+  [driver details]
+  (concat
+   (if (:tunnel-enabled details)
+     (driver/hosts-from-details details [:tunnel-host])
+     ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could turn
+     ;; a bug in a driver's implementation into an unchecked connection.
+     (driver/connection-hosts driver details))
+   (when (:use-auth-provider details)
+     (driver/hosts-from-details details auth-provider-url-detail-keys))))
+
+(defn- blocked-network-address-exception []
+  (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]
+    (ex-info message
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}})))
+
+(defn validate-resolved-addresses!
+  "Throw when any of the already-resolved `addresses` is disallowed by [[driver.settings/warehouse-allowed-networks]].
+  Used by connection transports, such as Mongo's `InetAddressResolver`, that can enforce the policy on the exact
+  addresses used to open a socket."
+  [addresses]
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (when (some #(not (u.http/address-allowed-for-network-policy? policy %)) addresses)
+      (throw (blocked-network-address-exception)))))
+
+(defn validate-connection-hosts!
+  "Throw a 400 if `details` would have Metabase open a connection to an address disallowed by
+  [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
+  [driver details]
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (when (and (not= policy :allow-all)
+               (some #(not (u.http/host-allowed-for-network-policy? policy %))
+                     (hosts-metabase-will-connect-to driver details)))
+      (throw (blocked-network-address-exception)))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -129,6 +175,9 @@
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   ^Boolean [driver details-map & [throw-exceptions]]
   {:pre [(keyword? driver) (map? details-map)]}
+  ;; deliberately outside the `try` below: this error is already the message we want the caller to see, and running it
+  ;; through `humanize-connection-error-message` would let a driver turn it into something more revealing
+  (validate-connection-hosts! driver details-map)
   (if throw-exceptions
     (try
       (u/with-timeout (driver.settings/db-connection-timeout-ms)

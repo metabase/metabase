@@ -197,6 +197,18 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
 
+## Metabase 0.58.23
+
+- `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the hosts Metabase itself
+  opens a network connection to for a set of connection details. Metabase refuses to connect to a host that
+  resolves to an address disallowed by `MB_WAREHOUSE_ALLOWED_NETWORKS`, so a driver that
+  accepts a host somewhere other than the
+  `:host`/`:hostname` details must implement this or that host goes unchecked. The default implementation reads
+  `:host` and `:hostname`, accepting values written as a bare hostname, a `host:port` pair, a bracketed IPv6
+  literal, a URL, or a comma-separated list of any of those. Every concrete driver should implement the method explicitly,
+  including drivers that derive a fixed vendor endpoint. The SSH tunnel host is handled by the caller and should not
+  be returned here.
+
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields

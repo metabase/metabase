@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -606,3 +607,109 @@
           (is (some? group-info))
           (is (= "Group info message" (:placeholder group-info)))
           (is (nil? (:getter group-info)) "Getter should be removed"))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            SSRF: blocking connections to private network addresses                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel connection-hosts-test
+  (testing "the default implementation picks the host out of the usual detail keys"
+    (are [details expected] (= expected (set (driver/connection-hosts :sql details)))
+      {}                                              #{}
+      {:host "db.example.com"}                        #{"db.example.com"}
+      {:host "  db.example.com  "}                    #{"db.example.com"}
+      {:host ""}                                      #{}
+      {:host nil}                                     #{}
+      {:hostname "athena.example.com"}                #{"athena.example.com"}
+      {:host "a.example.com" :hostname "b.example.com"} #{"a.example.com" "b.example.com"}))
+  (testing "hosts given as URLs or host:port pairs are normalized (BigQuery, Databricks and Druid all accept these)"
+    (are [details expected] (= expected (set (driver/connection-hosts :sql details)))
+      {:host "https://db.example.com:8443"}           #{"db.example.com"}
+      {:host "http://10.0.0.1"}                       #{"10.0.0.1"}
+      {:host "db.example.com:5432"}                   #{"db.example.com"}
+      {:host "[::1]:5432"}                            #{"::1"}
+      {:host "::1"}                                   #{"::1"}
+      {:host "https://user:pw@10.0.0.1:8443/path"}    #{"10.0.0.1"}))
+  (testing "comma-separated host lists are split (Mongo accepts a replica-set list here)"
+    (is (= #{"a.example.com" "b.example.com"}
+           (set (driver/connection-hosts :sql {:host "a.example.com,b.example.com"}))))))
+
+(defn- ssrf-error [thunk]
+  (try (thunk) nil (catch clojure.lang.ExceptionInfo e (ex-data e))))
+
+(deftest validate-connection-hosts!-hosted-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (testing "connections to non-public addresses are refused"
+      (doseq [details [{:host "127.0.0.1" :port 5432}
+                       {:host "localhost" :port 5432}
+                       {:host "10.224.7.141" :port 5432}
+                       {:host "169.254.169.254"}
+                       {:host "https://192.168.0.1:8443"}]]
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres details)))
+            (str "should be refused: " (pr-str details)))))
+    (testing "the error is the same for every blocked host, so it cannot be used as a reachability oracle"
+      (is (= (:message (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))
+             (:message (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
+    (testing "public and unresolvable hosts are left alone"
+      (doseq [details [{}
+                       {:host "8.8.8.8"}
+                       {:host "metabase-ssrf-test.invalid"}
+                       {:db "/tmp/whatever.db"}]]
+        (is (nil? (driver.u/validate-connection-hosts! :postgres details))
+            (str "should be allowed: " (pr-str details)))))
+    (testing "auth-provider URLs are fetched by Metabase itself, so they are checked too"
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            :postgres
+                            {:host "db.example.com" :use-auth-provider true :auth-provider "oauth"
+                             :oauth-token-url "http://169.254.169.254/latest/meta-data/"}))))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            :postgres
+                            {:host "db.example.com" :use-auth-provider true :auth-provider "http"
+                             :http-auth-url "http://127.0.0.1:8080/token"}))))
+      (testing "...but a public auth URL is fine, and the keys are ignored when the provider is off"
+        (is (nil? (driver.u/validate-connection-hosts!
+                   :postgres
+                   {:host "db.example.com" :use-auth-provider true :oauth-token-url "https://login.example.com/token"})))
+        (is (nil? (driver.u/validate-connection-hosts!
+                   :postgres
+                   {:host "db.example.com" :oauth-token-url "http://127.0.0.1:8080/token"})))))
+    (testing "with an SSH tunnel the warehouse host is resolved by the tunnel server, so only the tunnel host matters"
+      (is (nil? (driver.u/validate-connection-hosts!
+                 :postgres
+                 {:tunnel-enabled true :tunnel-host "bastion.example.com" :host "127.0.0.1" :port 5432})))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            :postgres
+                            {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"})))))))
+
+(deftest validate-connection-hosts!-allowed-test
+  (testing "allow-private permits private networks but still rejects loopback and link-local addresses"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "169.254.169.254"}))))))
+  (testing "allow-all permits every network -- the normal self-hosted case"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1" :port 5432})))
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
+
+(deftest warehouse-allowed-networks-default-test
+  (testing "with nothing configured, all networks are allowed"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))))
+  (testing "an explicit setting overrides the default"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Unknown network policy"
+                            (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))

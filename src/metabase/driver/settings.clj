@@ -5,9 +5,26 @@
    [metabase.events.core :as events]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting warehouse-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
+                     "Options:\n"
+                     "- external-only (only globally routable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (default - no restrictions).\n"
+                     "Also covers the SSH tunnel host and the database auth-provider URLs."))
+  :type       :keyword
+  :visibility :internal
+  :default    :allow-all
+  :export?    false
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru "Invalid warehouse-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
+                (setting/set-value-of-type! :keyword :warehouse-allowed-networks new-value)))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")

@@ -1341,3 +1341,35 @@
                (->> (qp.compile/compile-with-inline-parameters query)
                     :query
                     (driver/prettify-native-form :mongo))))))))
+
+(deftest ^:parallel connection-hosts-test
+  (testing "hosts are read out of the connection string Mongo will actually use, `conn-uri` included"
+    (are [details expected] (= expected (driver/connection-hosts :mongo details))
+      {:host "db.example.com" :port 27017}
+      ["db.example.com"]
+
+      ;; a replica-set list in the plain host field
+      {:host "a.example.com,b.example.com"}
+      ["a.example.com" "b.example.com"]
+
+      ;; `conn-uri` can smuggle in a host the `:host` field never mentions
+      {:host "db.example.com" :use-conn-uri true
+       :conn-uri "mongodb://user:pw@10.0.0.5:27017,internal.corp:27018/db"}
+      ["10.0.0.5" "internal.corp"]
+
+      {:use-conn-uri true :conn-uri "mongodb+srv://user:pw@cluster.example.com/db"}
+      ["cluster.example.com"]
+
+      ;; a connection string that does not parse cannot connect anywhere
+      {:use-conn-uri true :conn-uri "not a connection string"}
+      [])))
+
+(deftest connection-hosts-are-validated-test
+  (testing "a `conn-uri` pointing at a private address is refused"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"private or internal network address"
+                            (driver.u/validate-connection-hosts!
+                             :mongo
+                             {:host "db.example.com" :use-conn-uri true
+                              :conn-uri "mongodb://10.224.7.141:27017/db"}))))))

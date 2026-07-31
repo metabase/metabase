@@ -493,9 +493,34 @@
     (throw (ex-info (tru "Cannot change router_database_id; a destination database is established at creation, not by updating an existing database.")
                     {:status-code 400}))))
 
+(def ^:private details-keys
+  "Every place a Database stores a set of connection details."
+  [:details :write_data_details :admin_details])
+
+(defn- validate-connection-hosts!
+  "Refuse to store details pointing at a private/internal network address . Enforcing this on the model, and not just on the endpoints
+  that test a connection, covers the routes that write a Database without ever testing it: serialization import,
+  config-file provisioning, and destination databases."
+  [engine database]
+  (when-let [engine (some-> engine keyword)]
+    (doseq [k     details-keys
+            :let  [details (get database k)]
+            :when (map? details)]
+      (driver.u/validate-connection-hosts! engine details))))
+
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
+  (let [changes  (t2/changes database)
+        original (t2/original database)
+        engine   (or (:engine changes) (:engine original))]
+    ;; An engine change can make existing detail keys acquire new meaning, so validate the complete candidate database
+    ;; under the new driver. Otherwise validate only details being written so an unrelated update to a grandfathered
+    ;; database does not start failing.
+    (validate-connection-hosts! engine
+                                (if (contains? changes :engine)
+                                  (merge original changes)
+                                  (select-keys changes details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -552,7 +577,8 @@
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database
-  [{:keys [details initial_sync_status], :as database}]
+  [{:keys [details initial_sync_status engine], :as database}]
+  (validate-connection-hosts! engine database)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
