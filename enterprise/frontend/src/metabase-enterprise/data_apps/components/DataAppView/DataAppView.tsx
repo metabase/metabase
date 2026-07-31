@@ -177,7 +177,7 @@ export function DataAppView() {
         event.blockedURI.startsWith(window.location.origin)
       ) {
         setLoadError(
-          t`Framing ${event.blockedURI} was blocked by the browser’s content security policy.`,
+          t`Frame ${event.blockedURI} was blocked by the browser’s content security policy.`,
         );
       }
     };
