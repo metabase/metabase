@@ -52,6 +52,14 @@ import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
+export function hasMetabaseManagedProviderDetails() {
+  return (
+    !!hasPremiumFeature(METABASE_MANAGED_AI_FEATURE) ||
+    (!!hasPremiumFeature(METABOT_V3_FEATURE) &&
+      !!hasPremiumFeature(OFFER_METABASE_MANAGED_AI_FEATURE))
+  );
+}
+
 export function MetabaseAIProviderSetup({
   onConnect,
   onCancel,
