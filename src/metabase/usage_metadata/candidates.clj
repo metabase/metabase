@@ -22,7 +22,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  10)
+  11)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
@@ -586,6 +586,11 @@
       (:suggested_name candidate))
      254)))
 
+(defn- ordered-atom-details
+  [candidate atom-order]
+  (let [details-by-signature (u/index-by :signature (candidate-atom-details candidate))]
+    (mapv details-by-signature atom-order)))
+
 (defn- ordered-family
   [root children-index candidates-by-id]
   (letfn [(walk [candidate depth parent-order]
@@ -635,6 +640,9 @@
              (fn [family-position {:keys [candidate depth atom-order]}]
                {:candidate-id    (:id candidate)
                 :display-name    (family-display-name candidate atom-order)
+                :semantic-details (assoc (:semantic_details candidate)
+                                         :display-atoms
+                                         (ordered-atom-details candidate atom-order))
                 :family-key      (:signature_hash root)
                 :family-order    family-order
                 :family-position family-position
@@ -655,6 +663,7 @@
                   (-> family
                       (dissoc :candidate-id)
                       (set/rename-keys {:display-name    :display_name
+                                        :semantic-details :semantic_details
                                         :family-key      :family_key
                                         :family-order    :family_order
                                         :family-position :family_position

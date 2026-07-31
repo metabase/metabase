@@ -33,7 +33,10 @@
      :signature_hash         (apply str (repeat 64 "b"))
      :signature              "[\"segment-api\"]"
      :definition             {:lib/type :mbql/query}
-     :semantic_details       {:atom-count 1}
+     :semantic_details       {:atom-count 1
+                              :display-atoms [{:signature "recent"
+                                               :display-name "Created At is recent"
+                                               :kind :temporal}]}
      :display_name           "Recent orders"
      :suggested_name         "Recent orders"
      :suggested_description  "Recent orders on Orders"
@@ -104,6 +107,9 @@
                  :data [{:id (:id candidate)
                          :candidate_type "segment"
                          :definition {:lib/type "mbql/query"}
+                         :presentation {:predicates [{:signature "recent"
+                                                      :display_name "Created At is recent"
+                                                      :kind "temporal"}]}
                          :modeling_status "missing"
                          :dismissed false}]}
                 (mt/user-http-request :crowberto :get 200

@@ -35,6 +35,10 @@ const candidate: UsageMetadataCandidateDetail = {
   display_name: "Total revenue",
   suggested_name: "Total revenue",
   suggested_description: "Sum of order totals",
+  presentation: {
+    aggregation: { display_name: "Sum of Total" },
+    predicates: [],
+  },
   family: { key: "family", position: 0, depth: 0 },
   definition: createMockStructuredDatasetQuery({
     query: {

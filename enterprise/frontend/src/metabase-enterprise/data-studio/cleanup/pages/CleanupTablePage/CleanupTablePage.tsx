@@ -50,6 +50,7 @@ import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
 import { getCandidateIcon } from "../../components/CandidateDefinition";
 import { CandidatePanel } from "../../components/CandidatePanel";
+import { CandidatePills } from "../../components/CandidatePills";
 import {
   CleanupFilters,
   CleanupQueueTabs,
@@ -479,9 +480,7 @@ function CandidateRow({
             }
           />
           <Stack gap={4} flex={1} miw={0}>
-            <Text fw="bold" lineClamp={2}>
-              {candidate.display_name}
-            </Text>
+            <CandidatePills presentation={candidate.presentation} />
             <Evidence candidate={candidate} />
           </Stack>
           <Icon name="chevronright" c="text-secondary" />
