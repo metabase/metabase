@@ -337,6 +337,27 @@
             (is (re-find #"`target.database`" error))
             (is (re-find #"follows the query" error))))))))
 
+(deftest transform-write-update-target-conflict-test
+  (testing "GHY-4240: renaming onto a table that already exists is refused on update with the same
+            teaching error create gives — REST only reports \"A table with that name already exists.\",
+            which names neither the table nor the fix"
+    (with-transforms
+      (with-target-db-support
+        (let [table-name (t2/select-one-fn :name :model/Table :id (mt/id :venues))]
+          (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_conflict")]
+            (let [error (tool-error (write! {:method "update" :id id :target {:name table-name}}))]
+              (is (re-find #"already exists" error))
+              (is (re-find (re-pattern table-name) error))
+              (is (re-find #"Pick a different `target.name`" error))))
+          (testing "but a target that isn't moving is left alone, so a transform that has already built
+                    its own output table stays editable"
+            (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults table-name)]
+              (let [result (tool-result (write! {:method      "update" :id id
+                                                 :description "touched"
+                                                 :target      {:name table-name}}))]
+                (is (= "touched" (:description result)))
+                (is (= table-name (-> result :target :name)))))))))))
+
 (deftest transform-write-update-fields-test
   (testing "GHY-4240: only the fields passed change, and `clear` unsets description"
     (with-transforms

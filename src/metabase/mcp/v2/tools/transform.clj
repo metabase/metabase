@@ -143,6 +143,27 @@
                    :name (or target-name (:name existing)))
       schema (assoc :schema schema))))
 
+(defn- check-target-free!
+  "Refuse a target table that already exists, as the REST create and update check stacks both do.
+   Restated as a teaching error naming the fix — the REST 403 (\"A table with that name already
+   exists.\") says neither which table clashed nor what to do about it."
+  [{:keys [target] :as body}]
+  (when (transforms/target-table-exists? body)
+    (common/throw-teaching-error
+     (format (str "A table named %s already exists in the target database. Pick a different `target.name` "
+                  "(or schema) — a transform creates its output table, it doesn't adopt one.")
+             (pr-str (str (when-let [s (:schema target)] (str s ".")) (:name target)))))))
+
+(defn- check-target-move!
+  "Run [[check-target-free!]] over the transform `updates` would produce, but only when the target is
+   actually moving — REST guards on the same condition, and it is load-bearing: a transform that has
+   already built its own output table would otherwise clash with itself and become uneditable."
+  [transform updates]
+  (when (contains? updates :target)
+    (let [where #(select-keys (:target %) [:schema :name])]
+      (when (not= (where transform) (where updates))
+        (check-target-free! (merge transform updates))))))
+
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- write-result
@@ -164,17 +185,6 @@
          :tag_ids   (vec (:tag_ids transform))))
 
 ;;; --------------------------------------------------- Create -----------------------------------------------------
-
-(defn- check-target-free!
-  "Refuse a target table that already exists, as REST create does. Restated as a teaching error
-   naming the fix — the REST 403 (\"A table with that name already exists.\") doesn't say which
-   table or what to do about it."
-  [{:keys [target] :as body}]
-  (when (transforms/target-table-exists? body)
-    (common/throw-teaching-error
-     (format (str "A table named %s already exists in the target database. Pick a different `target.name` "
-                  "(or schema) — a transform creates its output table, it doesn't adopt one.")
-             (pr-str (str (when-let [s (:schema target)] (str s ".")) (:name target)))))))
 
 (defn- create!
   "Run the shared REST create check stack on the resolved source and target, then save the
@@ -248,6 +258,7 @@
       (common/throw-teaching-error
        (str "Nothing to update — pass at least one of name, description, definition, query_handle, target, "
             "collection_id, or tag_ids.")))
+    (check-target-move! transform updates)
     (write-result (transforms/update-transform! (:id transform) updates))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
