@@ -2,6 +2,7 @@
   "Running one transform in one AWS Lambda MicroVM: launched for the job, terminated after it."
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -21,12 +22,17 @@
 
 ;;; ------------------------------------------------- The VM's HTTP protocol -------------------------------------------------
 
+(defn- vm-url
+  "RunMicrovm returns a bare hostname; the local stand-in is configured as a full URL."
+  [endpoint path]
+  (str (if (str/includes? endpoint "://") endpoint (str "https://" endpoint)) "/v1" path))
+
 (defn- vm-request
   "Call the VM's HTTP surface. `:auth-headers` is the map from `CreateMicrovmAuthToken`, checked
   by AWS before traffic reaches the VM."
   [endpoint method path {:keys [auth-headers] :as opts}]
   (http/request (merge {:method           method
-                        :url              (str endpoint "/v1" path)
+                        :url              (vm-url endpoint path)
                         :content-type     :json
                         :accept           :json
                         :as               :json
