@@ -1,20 +1,8 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
-import type { LlmProviderTypeName } from "metabase-types/api";
 
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
-
-export const LLM_PROVIDER_LOGOS: Record<LlmProviderTypeName, string | null> = {
-  anthropic: "anthropic.svg",
-  openai: "openai.svg",
-  openrouter: "openrouter.svg",
-  mistral: "mistral.svg",
-  zai: "zai.svg",
-  azure: "azure.svg",
-  bedrock: "bedrock.svg",
-  metabase: null,
-};
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
 export const FIXED_METABOT_IDS = {

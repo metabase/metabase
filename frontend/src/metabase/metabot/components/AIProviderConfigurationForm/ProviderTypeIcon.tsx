@@ -1,9 +1,27 @@
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { getLlmProviderLogo } from "metabase/metabot/utils/llm-provider";
 import { Flex, Icon } from "metabase/ui";
 import type { IconName, LlmProviderTypeName } from "metabase-types/api";
 
 import S from "./ProviderTypeIcon.module.css";
+import AnthropicLogo from "./logos/anthropic.svg";
+import AzureLogo from "./logos/azure.svg";
+import BedrockLogo from "./logos/bedrock.svg";
+import MistralLogo from "./logos/mistral.svg";
+import OpenAiLogo from "./logos/openai.svg";
+import OpenRouterLogo from "./logos/openrouter.svg";
+import ZaiLogo from "./logos/zai.svg";
+
+// null where the mark is not an image: Metabase draws LogoIcon, which follows whitelabelling
+const PROVIDER_LOGOS: Record<LlmProviderTypeName, string | null> = {
+  anthropic: AnthropicLogo,
+  openai: OpenAiLogo,
+  openrouter: OpenRouterLogo,
+  mistral: MistralLogo,
+  zai: ZaiLogo,
+  azure: AzureLogo,
+  bedrock: BedrockLogo,
+  metabase: null,
+};
 
 export function ProviderTypeIcon({
   type,
@@ -34,7 +52,7 @@ function ProviderTypeMark({
     return <LogoIcon height={size} />;
   }
 
-  const logo = getLlmProviderLogo(type);
+  const logo = PROVIDER_LOGOS[type];
 
   return logo ? (
     <img src={logo} alt="" width={size} height={size} />
