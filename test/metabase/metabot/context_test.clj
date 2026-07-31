@@ -10,7 +10,7 @@
    [metabase.metabot.context :as context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -391,8 +391,8 @@
         (is (empty? (mbql-viewing-context-used-tables (mt/id :orders)))))))
   (testing "query-builder access is enough — the notebook editor does not imply native access"
     (mt/with-no-data-perms-for-all-users!
-      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
-      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
         (is (= [(mt/id :orders)] (map :id (mbql-viewing-context-used-tables (mt/id :orders)))))))))
 

@@ -111,34 +111,23 @@
            (similar? uschema tschema))))
 
 (defn- visible-filter-clause
-  []
+  "Honey SQL fragment (`:where` plus an optional `:with`) restricting a Table select to tables visible to the current
+  user at `create-queries-level`.
+
+  Native-SQL paths pass `:query-builder-and-native`, because seeing a table named in hand-written SQL implies native
+  access. MBQL/notebook paths pass `:query-builder`: building a question in the notebook editor does not imply native
+  access, and demanding it there would hide tables the user is legitimately querying.
+
+  `:include-published-via-collection?` mirrors the corresponding branch of [[mi/can-read?]] for `:model/Table` so
+  library-published tables stay visible. It is a no-op at `:query-builder-and-native`, since that branch only ever
+  synthesizes a `:query-builder` grant."
+  [create-queries-level]
   (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
                                                                                :id
                                                                                {:user-id       api/*current-user-id*
                                                                                 :is-superuser? api/*is-superuser?*}
                                                                                {:perms/view-data      :unrestricted
-                                                                                :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
-
-(defn query-builder-visible-filter-clause
-  "Honey SQL fragment (`:where` plus an optional `:with`) restricting a Table select to tables the current user can
-  see through the *query builder*.
-
-  Same shape as the private [[visible-filter-clause]] used by the native-SQL paths, but one notch less restrictive:
-  `:perms/create-queries :query-builder` rather than `:query-builder-and-native`. Native-query paths need the
-  stricter level because seeing a table named in hand-written SQL implies native access; MBQL/notebook paths do not,
-  and requiring `:query-builder-and-native` there would hide tables the user is legitimately building queries against.
-
-  `:include-published-via-collection?` mirrors the corresponding branch of [[mi/can-read?]] for `:model/Table`, so
-  library-published tables readable via their collection stay visible."
-  []
-  (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                               :id
-                                                                               {:user-id       api/*current-user-id*
-                                                                                :is-superuser? api/*is-superuser?*}
-                                                                               {:perms/view-data      :unrestricted
-                                                                                :perms/create-queries :query-builder}
+                                                                                :perms/create-queries create-queries-level}
                                                                                {:include-published-via-collection? true})]
     (cond-> {:where table-where-clause}
       table-cte (assoc :with table-cte))))
@@ -148,17 +137,17 @@
 
   Uses [[mi/can-read?]] rather than a SQL visibility clause so the result matches exactly what a per-table
   [[api/read-check]] would allow — including the `:perms/manage-table-metadata` branch, which the SQL clause does not
-  synthesize. Selects whole rows because [[mi/can-read?]]'s published-collection branch reads `:is_published` and
-  `:collection_id`.
+  synthesize. Selects only the columns [[mi/can-read?]] consults.
 
-  One query regardless of how many ids are passed: the per-table permission lookups behind [[mi/can-read?]] are
-  served from the request-scoped permissions cache."
+  One query for the rows, plus whatever the permission checks themselves need: those are normally served from the
+  request-scoped permissions cache, but on EE a table whose `:perms/create-queries` resolves to `:no` falls back to
+  a published-table lookup that costs a query of its own."
   [table-ids]
   (if-let [ids (not-empty (set table-ids))]
     (into #{}
           (comp (filter mi/can-read?)
                 (map :id))
-          (t2/select :model/Table :id [:in ids]))
+          (t2/select [:model/Table :id :db_id :is_published :collection_id] :id [:in ids]))
     #{}))
 
 (defn find-matching-tables
@@ -185,7 +174,7 @@
                              :db_id database-id
                              :active true
                              :visibility_type nil
-                             (cond-> (assoc (visible-filter-clause)
+                             (cond-> (assoc (visible-filter-clause :query-builder-and-native)
                                             :limit 10000)
                                (seq used-ids) (update :where #(if %
                                                                 [:and % [:not-in :id used-ids]]
@@ -194,16 +183,21 @@
 (defn used-tables-from-ids
   "Return table info for `table-ids` in the same shape as [[used-tables]].
 
-  Useful for cases where you don't have a native query (e.g. python transforms), but do have a seq of used table ids."
-  [database-id table-ids]
-  (if-not (seq table-ids)
-    []
-    (t2/select [:model/Table :id :name :schema :description]
-               :db_id database-id
-               :id [:in table-ids]
-               :active true
-               :visibility_type nil
-               (visible-filter-clause))))
+  Useful for cases where you don't have a native query (e.g. python transforms), but do have a seq of used table ids.
+
+  `create-queries-level` defaults to `:query-builder-and-native`, the right bar for native-SQL-derived ids. MBQL
+  callers pass `:query-builder` — see [[visible-filter-clause]]."
+  ([database-id table-ids]
+   (used-tables-from-ids database-id table-ids :query-builder-and-native))
+  ([database-id table-ids create-queries-level]
+   (if-not (seq table-ids)
+     []
+     (t2/select [:model/Table :id :name :schema :description]
+                :db_id database-id
+                :id [:in table-ids]
+                :active true
+                :visibility_type nil
+                (visible-filter-clause create-queries-level)))))
 
 (defn used-tables
   "Return all tables used in the query, including fuzzy-matched ones.
