@@ -264,7 +264,7 @@
   (let [markdown   (:markdown row)
         spans      (::spans row)
         span-by-id (into {} (map (juxt :node-id identity)) spans)
-        ancestors  (node-id->ancestor-ids row)
+        ancestor-ids (node-id->ancestor-ids row)
         threads    (->> (comments/comments-for-document (:id row))
                         (group-by :child_target_id)
                         (sort-by (fn [[_ cs]] ((juxt :created_at :id) (first cs))))
@@ -272,7 +272,7 @@
                                 (compact
                                  {:child_target_id child-id
                                   :anchor          (when-let [{:keys [start end]}
-                                                              (some span-by-id (cons child-id (ancestors child-id)))]
+                                                              (some span-by-id (cons child-id (ancestor-ids child-id)))]
                                                      {:start start
                                                       :end   end
                                                       :text  (subs markdown start end)})
