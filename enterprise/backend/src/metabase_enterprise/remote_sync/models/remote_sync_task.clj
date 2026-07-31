@@ -211,11 +211,29 @@
                               [:id :desc]]})))
 
 (defn last-version
-  "Gets the version that any changes are built off of, within `worktree-id` (nil is the main app).
+  "Gets the version local content actually reflects, within `worktree-id` (nil is the main app).
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist."
+  tasks exist. Conflicted tasks are excluded: they record the version they collided with, not one that was applied."
   ([] (last-version nil))
+  ([worktree-id]
+   (:version (t2/select-one :model/RemoteSyncTask
+                            {:where [:and
+                                     [:<> nil :ended_at]
+                                     [:= false :cancelled]
+                                     [:= nil :error_message]
+                                     [:= nil :conflicts]
+                                     [:<> nil :version]
+                                     [:= :worktree_id worktree-id]]
+                             :limit 1
+                             :order-by [[:started_at :desc]
+                                        [:id :desc]]}))))
+
+(defn last-attempted-version
+  "Like [[last-version]], but counting conflicted tasks too: the version of the most recent task that ran to the
+  end, applied or not. Exists so the auto-import job can avoid re-running conflict detection against a branch tip
+  that already conflicted; every other consumer wants [[last-version]]."
+  ([] (last-attempted-version nil))
   ([worktree-id]
    (:version (t2/select-one :model/RemoteSyncTask
                             {:where [:and

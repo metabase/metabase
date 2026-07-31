@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -272,14 +273,75 @@
       (testing "the main app's remote-synced content is read-only"
         (is (not (mi/can-write? (t2/select-one :model/Card :id main-synced-card))))))))
 
+(deftest worktree-transforms-are-editable-in-read-only-mode-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-transforms-editable"}
+                 :model/Collection {collection :id} {:worktree_id worktree :namespace "transforms"}
+                 :model/Transform {worktree-transform :id} {:name          "Worktree transform"
+                                                            :collection_id collection
+                                                            :source        {:type  :query
+                                                                            :query (let [mp (mt/metadata-provider)]
+                                                                                     (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                                                            :target        {:type   "table"
+                                                                            :schema "public"
+                                                                            :name   "worktree_editable_target"}}
+                 :model/Transform {main-transform :id} {:name   "Main transform"
+                                                        :source {:type  :query
+                                                                 :query (let [mp (mt/metadata-provider)]
+                                                                          (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                                                        :target {:type   "table"
+                                                                 :schema "public"
+                                                                 :name   "main_editable_target"}}]
+    (mt/with-premium-features #{:remote-sync :hosting :transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-type :read-only]
+        (testing "a worktree transform is a working copy of its branch, so it stays writable for an admin"
+          (is (mi/can-write? (t2/select-one :model/Transform :id worktree-transform))))
+        (testing "a transform can still be created into the worktree, explicitly or via its collection"
+          (let [source {:type  :query
+                        :query (let [mp (mt/metadata-provider)]
+                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
+            (is (mi/can-create? :model/Transform {:worktree_id worktree :source source}))
+            (is (mi/can-create? :model/Transform {:collection_id collection :source source}))))
+        (testing "main-app transforms are read-only"
+          (is (not (mi/can-write? (t2/select-one :model/Transform :id main-transform))))
+          (is (not (mi/can-create? :model/Transform
+                                   {:source {:type  :query
+                                             :query (let [mp (mt/metadata-provider)]
+                                                      (lib/query mp (lib.metadata/table mp (mt/id :venues))))}}))))))))
+
+(deftest worktree-snippets-can-be-created-in-read-only-mode-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-snippets-editable"}]
+    (try
+      (mt/with-premium-features #{:remote-sync}
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-type :read-only]
+          (testing "an admin can create a snippet at the worktree's root"
+            (is (=? {:worktree_id worktree}
+                    (mt/user-http-request :crowberto :post 200 "native-query-snippet"
+                                          {:name        "worktree snippet"
+                                           :content     "1 = 1"
+                                           :worktree_id worktree}))))
+          (testing "worktree content stays admin-only"
+            (mt/user-http-request :rasta :post 403 "native-query-snippet"
+                                  {:name        "rasta worktree snippet"
+                                   :content     "1 = 1"
+                                   :worktree_id worktree}))))
+      (finally
+        (t2/delete! :model/NativeQuerySnippet :worktree_id worktree)))))
+
 (deftest worktree-sync-outcome-reports-the-worktree-branch-test
-  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-outcome"}]
-    (testing "a worktree operation's outcome reports the worktree's own branch"
-      (binding [serdes/*worktree-id* worktree]
-        (is (= "feature-outcome" (#'impl/outcome-branch)))))
-    (testing "a main-app operation's outcome reports the remote-sync-branch setting"
-      (mt/with-temporary-setting-values [remote-sync-branch "main"]
-        (is (= "main" (#'impl/outcome-branch)))))))
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-outcome"}
+                 :model/RemoteSyncTask {task-id :id} {:sync_task_type "import"
+                                                      :initiated_by   (mt/user->id :crowberto)
+                                                      :worktree_id    worktree}]
+    (mt/with-temporary-setting-values [remote-sync-branch "main"]
+      (impl/handle-task-result! {:status :success :outcome {:kind "pulled" :count 1}} task-id
+                                :branch "feature-outcome" :worktree-id worktree)
+      (testing "a worktree task's outcome reports the worktree's own branch"
+        (is (=? {:kind "pulled" :branch "feature-outcome"}
+                (t2/select-one-fn :outcome :model/RemoteSyncTask :id task-id))))
+      (testing "and never touches the main app's remote-sync-branch setting"
+        (is (= "main" (remote-sync.settings/remote-sync-branch)))))))
 
 (deftest worktree-transforms-never-run-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-k"}

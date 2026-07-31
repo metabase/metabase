@@ -4,6 +4,7 @@ import * as Errors from "metabase/utils/errors";
 import { slugify } from "metabase/visualizations/lib/formatting/url";
 import type {
   CreateTransformRequest,
+  RemoteSyncWorktreeId,
   TransformSource,
 } from "metabase-types/api";
 
@@ -50,6 +51,7 @@ export const convertTransformFormToCreateRequest = (
   source: TransformSource,
   values: NewTransformValues,
   databaseId: number,
+  worktreeId: RemoteSyncWorktreeId | null = null,
 ): CreateTransformRequest => {
   const transformSource = buildIncrementalSource(source, values);
   const transformTarget = buildIncrementalTarget(
@@ -66,5 +68,6 @@ export const convertTransformFormToCreateRequest = (
     source: transformSource,
     target: transformTarget,
     collection_id: values.collection_id,
+    ...(worktreeId != null && { worktree_id: worktreeId }),
   };
 };

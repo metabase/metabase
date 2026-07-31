@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import {
   Alert,
   Autocomplete,
@@ -30,6 +31,7 @@ export const CreateWorktreeModal = ({ onClose }: CreateWorktreeModalProps) => {
   const [branch, setBranch] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [sendToast] = useToast();
 
   const { data: branchesData } = useGetBranchesQuery();
   const { data: worktrees = [] } = useListWorktreesQuery();
@@ -58,25 +60,35 @@ export const CreateWorktreeModal = ({ onClose }: CreateWorktreeModalProps) => {
   const handleCreate = useCallback(async () => {
     setErrorMessage(null);
     setIsCreating(true);
+    let worktree;
     try {
       if (isNewBranch) {
         await createBranch({ name: branchName }).unwrap();
         trackBranchCreated({ triggeredFrom: "branch-picker" });
       }
-      const worktree = await createWorktree({ branch: branchName }).unwrap();
-      onClose();
-      // Materialize the branch's content into the worktree right away; progress is
-      // surfaced by the global sync progress modal.
+      worktree = await createWorktree({ branch: branchName }).unwrap();
+    } catch (error) {
+      const { errorMessage: message } = parseSyncError(error);
+      setErrorMessage(message || t`Failed to create the worktree`);
+      setIsCreating(false);
+      return;
+    }
+    onClose();
+    // Materialize the branch's content into the worktree right away; progress is
+    // surfaced by the global sync progress modal. The modal is closed by now, so
+    // failures go to a toast.
+    try {
       await importChanges({
         branch: branchName,
         expected_branch: branchName,
         worktree_id: worktree.id,
-      });
+      }).unwrap();
     } catch (error) {
       const { errorMessage: message } = parseSyncError(error);
-      setErrorMessage(message || t`Failed to create the worktree`);
-    } finally {
-      setIsCreating(false);
+      sendToast({
+        message: message || t`Failed to pull into the worktree`,
+        icon: "warning",
+      });
     }
   }, [
     branchName,
@@ -85,6 +97,7 @@ export const CreateWorktreeModal = ({ onClose }: CreateWorktreeModalProps) => {
     importChanges,
     isNewBranch,
     onClose,
+    sendToast,
   ]);
 
   return (

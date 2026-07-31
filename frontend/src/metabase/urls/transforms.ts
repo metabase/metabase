@@ -4,6 +4,7 @@ import type {
   CardId,
   CollectionId,
   DatabaseId,
+  RemoteSyncWorktreeId,
   SortDirection,
   TableId,
   TransformGraphRunSortColumn,
@@ -30,12 +31,19 @@ export type TransformPythonLibraryParams = {
 
 export type TransformListParams = {
   collectionId?: CollectionId;
+  worktreeId?: RemoteSyncWorktreeId;
 };
 
-export function transformList({ collectionId }: TransformListParams = {}) {
+export function transformList({
+  collectionId,
+  worktreeId,
+}: TransformListParams = {}) {
   const searchParams = new URLSearchParams();
   if (collectionId != null) {
     searchParams.set("collectionId", String(collectionId));
+  }
+  if (worktreeId != null) {
+    searchParams.set("worktreeId", String(worktreeId));
   }
 
   const queryString = searchParams.toString();
@@ -44,20 +52,37 @@ export function transformList({ collectionId }: TransformListParams = {}) {
     : TRANSFORMS_ROOT_URL;
 }
 
-export function newQueryTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/query`;
+export type NewTransformParams = {
+  worktreeId?: RemoteSyncWorktreeId;
+};
+
+function withNewTransformParams(
+  url: string,
+  { worktreeId }: NewTransformParams,
+) {
+  return worktreeId != null ? `${url}?worktreeId=${worktreeId}` : url;
 }
 
-export function newNativeTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/native`;
+export function newQueryTransform(params: NewTransformParams = {}) {
+  return withNewTransformParams(`${TRANSFORMS_ROOT_URL}/new/query`, params);
 }
 
-export function newPythonTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/python`;
+export function newNativeTransform(params: NewTransformParams = {}) {
+  return withNewTransformParams(`${TRANSFORMS_ROOT_URL}/new/native`, params);
 }
 
-export function newTransformFromCard(cardId: CardId) {
-  return `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`;
+export function newPythonTransform(params: NewTransformParams = {}) {
+  return withNewTransformParams(`${TRANSFORMS_ROOT_URL}/new/python`, params);
+}
+
+export function newTransformFromCard(
+  cardId: CardId,
+  params: NewTransformParams = {},
+) {
+  return withNewTransformParams(
+    `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`,
+    params,
+  );
 }
 
 export function transform(transformId: TransformId) {

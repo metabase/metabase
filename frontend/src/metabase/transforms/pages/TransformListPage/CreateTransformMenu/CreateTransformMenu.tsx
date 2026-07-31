@@ -16,13 +16,20 @@ import { push } from "metabase/router";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { trackTransformCreate } from "../../../analytics";
 import { CreateTransformCollectionModal } from "../../../components/CreateTransformCollectionModal";
 
 import { shouldDisableItem } from "./utils";
 
-export const CreateTransformMenu = () => {
+type CreateTransformMenuProps = {
+  worktreeId?: RemoteSyncWorktreeId | null;
+};
+
+export const CreateTransformMenu = ({
+  worktreeId = null,
+}: CreateTransformMenuProps) => {
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
@@ -55,15 +62,19 @@ export const CreateTransformMenu = () => {
     metabot.setVisible(true);
   };
 
+  const isWorktreeView = worktreeId != null;
+  const newTransformParams = { worktreeId: worktreeId ?? undefined };
+
   const handlePythonClick = () => {
-    dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
+    dispatch(push(Urls.newPythonTransform(newTransformParams))); // Route will show upsell modal if feature is not enabled
 
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
     }
   };
 
-  if (isRemoteSyncReadOnly) {
+  // A worktree is an admin's working copy of its branch, so read-only sync does not apply inside it.
+  if (isRemoteSyncReadOnly && !isWorktreeView) {
     return (
       <Tooltip
         label={t`Transforms can't be created when Remote Sync is in read-only mode`}
@@ -100,7 +111,7 @@ export const CreateTransformMenu = () => {
           ) : (
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
-              {hasMetabotAccess && (
+              {hasMetabotAccess && !isWorktreeView && (
                 <Menu.Item
                   leftSection={<Icon name="metabot" />}
                   onClick={handleMetabotClick}
@@ -112,7 +123,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "query" });
-                  dispatch(push(Urls.newQueryTransform()));
+                  dispatch(push(Urls.newQueryTransform(newTransformParams)));
                 }}
               >
                 {t`Query builder`}
@@ -121,7 +132,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "native" });
-                  dispatch(push(Urls.newNativeTransform()));
+                  dispatch(push(Urls.newNativeTransform(newTransformParams)));
                 }}
               >
                 {t`SQL query`}
@@ -147,13 +158,17 @@ export const CreateTransformMenu = () => {
               >
                 {t`Copy of a saved question`}
               </Menu.Item>
-              <Menu.Divider />
-              <Menu.Item
-                leftSection={<Icon name="folder" />}
-                onClick={openCollectionModal}
-              >
-                {t`Transform folder`}
-              </Menu.Item>
+              {!isWorktreeView && (
+                <>
+                  <Menu.Divider />
+                  <Menu.Item
+                    leftSection={<Icon name="folder" />}
+                    onClick={openCollectionModal}
+                  >
+                    {t`Transform folder`}
+                  </Menu.Item>
+                </>
+              )}
             </>
           )}
         </Menu.Dropdown>
@@ -165,7 +180,9 @@ export const CreateTransformMenu = () => {
           models={["card", "dataset"]}
           isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            dispatch(push(Urls.newTransformFromCard(item.id)));
+            dispatch(
+              push(Urls.newTransformFromCard(item.id, newTransformParams)),
+            );
             closePicker();
           }}
           onClose={closePicker}

@@ -53,7 +53,7 @@
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
   [instance & args]
-  (and (remote-sync/transforms-editable?)
+  (and (remote-sync/transforms-editable? instance)
        (transforms.u/check-feature-enabled instance)
        (remote-sync/model-readable? instance)
        (or api/*is-superuser?*
@@ -87,15 +87,20 @@
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (and (remote-sync/transforms-editable?)
-       (transforms.u/check-feature-enabled instance)
-       (remote-sync/model-readable? instance)
-       (or api/*is-superuser?*
-           (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
-             (and api/*is-data-analyst?*
-                  (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
-                  (native-transform-write-allowed? instance source-db-id))))))
+  ;; The worktree the row will land in may be implied by the target collection rather than passed
+  ;; explicitly (before-insert derives it the same way), so resolve it before the checks.
+  (let [instance (cond-> instance
+                   (and (nil? (:worktree_id instance)) (:collection_id instance))
+                   (assoc :worktree_id (remote-sync/worktree-id-of :model/Collection (:collection_id instance))))]
+    (and (remote-sync/transforms-editable? instance)
+         (transforms.u/check-feature-enabled instance)
+         (remote-sync/model-readable? instance)
+         (or api/*is-superuser?*
+             (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
+               (and api/*is-data-analyst?*
+                    (transforms.u/source-tables-readable? instance)
+                    (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
+                    (native-transform-write-allowed? instance source-db-id)))))))
 
 (defn- orphan-query?
   "True when the query map has its `:database` key explicitly set to nil — the
@@ -569,13 +574,16 @@
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
 (defn transforms-with-tags
-  "Returns all transforms associated with the given tag IDs.
+  "Returns all main-app transforms associated with the given tag IDs; worktree copies are excluded so a tag
+  shared with a worktree transform doesn't inherit the worktree's admin-only writability.
   Return empty list if no tag IDs are provided or no transforms are associated with the tags."
   [tag-ids]
   (or (when (seq tag-ids)
         (when-let [transform-ids (t2/select-fn-set :transform_id [:model/TransformTransformTag :transform_id]
                                                    :tag_id [:in tag-ids])]
-          (t2/select :model/Transform :id [:in transform-ids])))
+          (t2/select :model/Transform {:where [:and
+                                               [:in :id transform-ids]
+                                               (remote-sync/exclude-worktrees-clause)]})))
       []))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------

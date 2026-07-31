@@ -11,7 +11,8 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { replace, useRouter } from "metabase/router";
 import {
   Card,
   Flex,
@@ -21,6 +22,7 @@ import {
   TreeTable,
   TreeTableSkeleton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId, RemoteSyncWorktreeId } from "metabase-types/api";
 
@@ -47,13 +49,25 @@ export function LibraryPage() {
 
 function LibraryPageContent() {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const dispatch = useDispatch();
+  const { location } = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  // Non-null when an admin is viewing a remote-sync worktree's copy of the
-  // library instead of the main app's.
-  const [worktreeId, setWorktreeId] = useState<RemoteSyncWorktreeId | null>(
-    null,
-  );
+  // Non-null when an admin is viewing a remote-sync worktree's copy of the library instead of
+  // the main app's. URL-backed so the selection survives navigating to a create page and back.
+  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
   const isWorktreeView = worktreeId != null;
+  const handleWorktreeChange = useCallback(
+    (nextWorktreeId: RemoteSyncWorktreeId | null) => {
+      dispatch(
+        replace(
+          Urls.dataStudioLibrary(
+            nextWorktreeId != null ? { worktreeId: nextWorktreeId } : {},
+          ),
+        ),
+      );
+    },
+    [dispatch],
+  );
   const [
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
@@ -161,17 +175,16 @@ function LibraryPageContent() {
                 {isLibrarySynced && (
                   <PLUGIN_REMOTE_SYNC.WorktreeSwitcher
                     value={worktreeId}
-                    onChange={setWorktreeId}
+                    onChange={handleWorktreeChange}
                   />
                 )}
-                {!isWorktreeView && (
-                  <CreateMenu
-                    metricCollectionId={writableMetricCollection?.id}
-                    canWriteToMetricCollection={!!writableMetricCollection}
-                    dataCollectionId={tableCollection?.id}
-                    canWriteToDataCollection={!!tableCollection?.can_write}
-                  />
-                )}
+                <CreateMenu
+                  metricCollectionId={writableMetricCollection?.id}
+                  canWriteToMetricCollection={!!writableMetricCollection}
+                  dataCollectionId={tableCollection?.id}
+                  canWriteToDataCollection={!!tableCollection?.can_write}
+                  worktreeId={worktreeId}
+                />
               </Flex>
               <Card withBorder p={0}>
                 {isLoading ? (

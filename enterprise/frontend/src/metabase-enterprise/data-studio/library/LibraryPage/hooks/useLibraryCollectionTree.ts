@@ -47,6 +47,10 @@ export function useLibraryCollectionTree(
   );
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  // A worktree collection is an admin's working copy of its branch; read-only sync
+  // only gates the main app's collections.
+  const hideCreateAction =
+    isRemoteSyncReadOnly && collection?.worktree_id == null;
 
   // 2. Lazy-loaded subcollection items
   const [loadedCollections, setLoadedCollections] = useState<
@@ -120,7 +124,7 @@ export function useLibraryCollectionTree(
               createEmptyStateItem(
                 sectionType,
                 metricCollectionId,
-                isRemoteSyncReadOnly,
+                hideCreateAction,
               ),
             ],
       },
@@ -133,7 +137,7 @@ export function useLibraryCollectionTree(
     getIcon,
     sectionType,
     metricCollectionId,
-    isRemoteSyncReadOnly,
+    hideCreateAction,
   ]);
 
   // 4. Watch rows for expanded-but-empty collections → trigger fetch

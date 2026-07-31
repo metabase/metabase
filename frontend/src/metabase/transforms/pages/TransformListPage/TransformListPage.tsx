@@ -23,8 +23,8 @@ import {
   PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { Outlet, useRouter } from "metabase/router";
+import { useDispatch, useSelector } from "metabase/redux";
+import { Outlet, replace, useRouter } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -126,13 +126,24 @@ export const TransformListPage = () => {
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
+  const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
-  // Non-null when an admin is viewing a remote-sync worktree's transforms
-  // instead of the main app's.
-  const [worktreeId, setWorktreeId] = useState<RemoteSyncWorktreeId | null>(
-    null,
-  );
+  // Non-null when an admin is viewing a remote-sync worktree's transforms instead of the main
+  // app's. URL-backed so the selection survives navigating to a new-transform page and back.
+  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
   const isWorktreeView = worktreeId != null;
+  const handleWorktreeChange = useCallback(
+    (nextWorktreeId: RemoteSyncWorktreeId | null) => {
+      dispatch(
+        replace(
+          Urls.transformList(
+            nextWorktreeId != null ? { worktreeId: nextWorktreeId } : {},
+          ),
+        ),
+      );
+    },
+    [dispatch],
+  );
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -359,12 +370,12 @@ export const TransformListPage = () => {
           />
           <PLUGIN_REMOTE_SYNC.WorktreeSwitcher
             value={worktreeId}
-            onChange={setWorktreeId}
+            onChange={handleWorktreeChange}
           />
-          {transformsDatabases.length > 0 && !isWorktreeView && (
+          {transformsDatabases.length > 0 && (
             <>
-              <CreateTransformMenu />
-              <PLUGIN_REPLACEMENT.TransformToolsMenu />
+              <CreateTransformMenu worktreeId={worktreeId} />
+              {!isWorktreeView && <PLUGIN_REPLACEMENT.TransformToolsMenu />}
             </>
           )}
         </Flex>

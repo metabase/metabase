@@ -144,6 +144,22 @@
     (remapped-entity-id :source_entity_id :target_entity_id entity-id)
     entity-id))
 
+(defn local-entity-ids
+  "Batch [[local-entity-id]] over `entity-ids`, returned as a set. Ids this worktree has no remapping for pass
+  through unchanged -- they name content the worktree has not checked out, so they cannot match any local row.
+  Returns the ids untouched outside a worktree."
+  [entity-ids]
+  (if (and *worktree-id* (seq entity-ids))
+    (let [source->local (into {}
+                              (mapcat (fn [chunk]
+                                        (t2/select-fn->fn :source_entity_id :target_entity_id
+                                                          :model/RemoteSyncWorktreeRemapping
+                                                          :worktree_id *worktree-id*
+                                                          :source_entity_id [:in chunk])))
+                              (partition-all query-batch-size entity-ids))]
+      (into #{} (map #(source->local % %)) entity-ids))
+    (set entity-ids)))
+
 (defn ensure-remapping!
   "Records that this worktree's copy of an entity is `local-entity-id`, known to the branch as `source`, and returns
   `source`. When `source` is nil -- content created inside the worktree, which the branch has never seen -- a fresh

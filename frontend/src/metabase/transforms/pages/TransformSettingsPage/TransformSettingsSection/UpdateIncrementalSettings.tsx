@@ -45,6 +45,7 @@ const IncrementalTransformSettingsWrapper = ({
       variant="standalone"
       readOnly={readOnly}
       targetTableId={transform.table?.id}
+      worktreeId={transform.worktree_id}
       extraActions={
         !readOnly && transform.last_checkpoint_value != null ? (
           <ResetCheckpointSection transform={transform} />

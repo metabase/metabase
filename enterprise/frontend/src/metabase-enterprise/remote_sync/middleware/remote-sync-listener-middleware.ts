@@ -126,6 +126,17 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.importChanges.matchFulfilled,
+  effect: async (action, { dispatch }) => {
+    // "No changes since last import": no task was started, so clear the optimistic
+    // task state instead of leaving the progress modal polling for a task forever.
+    if (action.payload.task_id == null) {
+      dispatch(taskCleared());
+    }
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
   effect: async (_action, { dispatch }) => {
     dispatch(taskCleared());

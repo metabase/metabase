@@ -2,7 +2,11 @@ import { useMemo } from "react";
 
 import { useCreateTransformMutation } from "metabase/api";
 import { trackTransformCreated } from "metabase/transforms/analytics";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  RemoteSyncWorktreeId,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import {
   type NewTransformValues,
@@ -14,6 +18,7 @@ import {
 export const useCreateTransform = (
   schemas: string[],
   defaultValues: Partial<NewTransformValues>,
+  worktreeId: RemoteSyncWorktreeId | null = null,
 ) => {
   const [createTransformMutation] = useCreateTransformMutation();
   const initialValues: NewTransformValues = useMemo(
@@ -30,6 +35,7 @@ export const useCreateTransform = (
       source,
       values,
       databaseId,
+      worktreeId,
     );
     const transform = await createTransformMutation(request).unwrap();
     trackTransformCreated({
