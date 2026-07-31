@@ -342,7 +342,8 @@
   incremental (checkpoint/append/merge) loading are authored in Metabase, and an update that would rewrite either is
   refused rather than degrading it. There is no archive or delete here either — transforms have no trash, so removing
   one is done in Metabase. Running a transform is separate from writing it. Requires transforms permission on the
-  source database and the transforms feature enabled."
+  source database and the transforms feature enabled. Before your first transform_write, read learn(\"transforms\")
+  unless already in context — the source shapes, what patching `target` renames, and the refusals above in full."
   {:name        "transform_write"
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
