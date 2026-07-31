@@ -472,3 +472,32 @@
           (testing "with it, the body comes back as before — the write still reports its result"
             (let [txt (call! #{"agent:content:write" "agent:content:read"})]
               (is (re-find #"PRE-EXISTING SECRET" txt)))))))))
+
+(deftest clear-unsets-collection-position-test
+  (testing "GHY-4191: a null cannot mean \"unset this\" — the boundary strips nulls because strict
+            clients fill every declared property with one — so `clear` names the property instead.
+            collection_position is the only unsettable field here: collection_id has the \"root\"
+            sentinel, and name and the body are required rather than clearable."
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [doc   (documents/create-document!
+                     {:name                "pinned doc"
+                      :document            (documents/parse "body")
+                      :collection_id       nil
+                      :collection_position 1})
+              call! (fn [args]
+                      (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
+                                          "document_write"
+                                          (merge {:method "update" :id (:id doc)} args)))]
+          (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))
+              "precondition: the document is pinned")
+          (testing "a null leaves it alone, as it does everywhere else"
+            (call! {:edits [] :collection_position nil})
+            (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+          (testing "clear unsets it"
+            (call! {:edits [] :clear ["collection_position"]})
+            (is (nil? (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+          (testing "a property outside the clearable set is refused at the boundary"
+            (let [txt (-> (call! {:edits [] :clear ["name"]}) :content first :text)]
+              (is (re-find #"clear" txt))
+              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
