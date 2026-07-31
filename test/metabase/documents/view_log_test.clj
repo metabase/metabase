@@ -131,8 +131,8 @@
 
 (deftest document-event-derivation-test
   (testing "Document events are properly derived from base events"
-    (is (isa? :metabase.documents.view-log/document-read :metabase/event))
-    (is (isa? :event/document-read :metabase.documents.view-log/document-read))))
+    (is (events/isa? :metabase.documents.view-log/document-read :metabase/event))
+    (is (events/isa? :event/document-read :metabase.documents.view-log/document-read))))
 
 (deftest document-read-error-handling-test
   (testing "Document read event handles missing document gracefully"
