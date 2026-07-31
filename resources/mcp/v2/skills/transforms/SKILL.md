@@ -23,9 +23,9 @@ The alternative is inline `definition`, which is the transform's **source map**,
 "definition": {"type": "query", "query": {"lib/type": "mbql/query", "stages": [...]}}
 ```
 
-That is the shape `get_content`'s `"definition"` include returns for a transform, so a read-modify-write round-trips. The inner query is the portable dialect `execute_query` takes (`learn("query-dialect")`), or MBQL 5 with numeric ids.
+That is the shape `get_content`'s `"definition"` include returns for a transform, so a read-modify-write round-trips. The inner query is the same dialect `execute_query` takes (`learn("query-dialect")`) — numeric ids.
 
-Pass **exactly one** of `definition` or `query_handle` — never both. Passing a bare query straight into `definition` is the common miss and a teaching error: legacy transforms stored it that way, so the shapes look alike.
+Pass **exactly one** of `definition` or `query_handle` — never both. Passing a bare query straight into `definition` is the common miss and a teaching error: older transforms stored it that way, so the shapes look alike.
 
 ## The target table
 

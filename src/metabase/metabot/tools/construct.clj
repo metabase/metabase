@@ -15,6 +15,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -123,6 +124,18 @@
                (string? (nth fk 0)))
       fk)))
 
+(defn- first-stage-numeric-source-table
+  "Pull the numeric table id out of `stages[0].source-table`, or `nil` if not numeric."
+  [parsed-query]
+  (let [st (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (pos-int? st) st)))
+
+(defn- first-stage-numeric-source-card
+  "Pull the numeric card id out of `stages[0].source-card`, or `nil` if not numeric."
+  [parsed-query]
+  (let [sc (get-in parsed-query ["stages" 0 "source-card"])]
+    (when (pos-int? sc) sc)))
+
 (def ^:private metabase-uri-source-table-pattern
   "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
   `metabase://<entity-type>/<id>` URIs (which appear in prompts as a way to read entities)
@@ -143,32 +156,13 @@
   (let [raw (get-in parsed-query ["stages" 0 "source-table"])]
     (when (string? raw)
       (when-let [[_ entity-type entity-id] (re-find metabase-uri-source-table-pattern raw)]
-        (let [hint (case entity-type
-                     "metric"
-                     (str "Metrics are aggregations, not sources. To use metric " entity-id
-                          ", put its base table into `source-table:` — combine the `database_name` "
-                          "and `base_table_fully_qualified_name` attributes from its search result "
-                          "or `read_resource metabase://metric/" entity-id "` — and reference the "
-                          "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
-                     ("question" "model" "card")
-                     (str "To reference saved " entity-type " " entity-id
-                          " as a query source, put its `portable_entity_id` (the 21-char "
-                          "string from its search result or `read_resource`) into "
-                          "`source-card:` — not a URI.")
-                     "table"
-                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
-                          "`source-table:` — not a URI. `read_resource metabase://table/" entity-id
-                          "` reports the exact names.")
-                     (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
-                          "or, via `source-card:`, a saved-card `portable_entity_id`."))]
-          (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
-                               raw hint)
-                          {:agent-error? true
-                           :status-code  400
-                           :error        :uri-in-source-table
-                           :source-table raw
-                           :entity-type  entity-type
-                           :entity-id    entity-id})))))))
+        (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`." raw)
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :uri-in-source-table
+                         :source-table raw
+                         :entity-type  entity-type
+                         :entity-id    entity-id}))))))
 
 (defn- first-stage-source-card-eid
   "Pull the `source-card:` entity_id string from `stages[0]`, or `nil` if not present."
@@ -190,11 +184,13 @@
   permissions. Before any repair pass can inspect fields/FKs on the requested source table,
   resolve the portable table FK and run the normal API query permission check."
   [metadata-provider parsed-query]
-  (when-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
-          table-id (serdes.resolve/import-table-fk resolver table-fk)]
-      (api/query-check :model/Table table-id)
-      nil)))
+  (when-let [table-id (if-let [table-fk (first-stage-source-table-fk parsed-query)]
+                        (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+                          (serdes.resolve/import-table-fk resolver table-fk))
+                        (when serdes.resolve/*numeric-ids-allowed?*
+                          (first-stage-numeric-source-table parsed-query)))]
+    (api/query-check :model/Table table-id)
+    nil))
 
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
@@ -204,8 +200,11 @@
     * If `stages[0].source-table` is a portable FK `[db schema table]`, look up the database
       by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
       agent-errors.
+    * On a surface that accepts numeric ids, a numeric `stages[0].source-table` resolves through
+      the table row's `:db_id`. Unknown / inactive ids surface `:unknown-table`.
     * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
-      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`.
+      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`. On a numeric-id
+      surface a numeric `source-card` resolves the same way, behind a read check.
     * Otherwise, surface `:missing-source-in-first-stage`.
 
   All error paths are raised with `:agent-error? true` so the tool wrapper can relay a clean
@@ -217,15 +216,12 @@
   step 14 follow-up."
   [parsed-query]
   (detect-metabase-uri-source-table! parsed-query)
-  (if-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [db-name (nth table-fk 0)
+  (cond
+    (first-stage-source-table-fk parsed-query)
+    (let [db-name (nth (first-stage-source-table-fk parsed-query) 0)
           ids     (t2/select-pks-vec :model/Database :name db-name)]
       (case (count ids)
-        0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                    "reported by search / `read_resource` (it appears "
-                                    "as the first element of every portable FK, e.g. "
-                                    "`source-table: [<db-name>, <schema>, <table>]`).")
-                               db-name)
+        0 (throw (ex-info (tru "Unknown database: `{0}`." db-name)
                           {:agent-error? true
                            :status-code  400
                            :error        :unknown-database
@@ -240,25 +236,50 @@
                          :error        :ambiguous-database-name
                          :database     db-name
                          :database-ids (vec (sort ids))}))))
-    (if-let [eid (first-stage-source-card-eid parsed-query)]
+
+    (and serdes.resolve/*numeric-ids-allowed?*
+         (first-stage-numeric-source-table parsed-query))
+    (let [table-id (first-stage-numeric-source-table parsed-query)]
+      (or (t2/select-one-fn :db_id :model/Table :id table-id :active true)
+          ;; the id renders via str, not as a number — tru's MessageFormat would add locale
+          ;; digit grouping ("999,999,999")
+          (throw (ex-info (tru "No table found with id {0}."
+                               (str table-id))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table
+                           :table-id     table-id}))))
+
+    (first-stage-source-card-eid parsed-query)
+    (let [eid (first-stage-source-card-eid parsed-query)]
       (if-let [card (tools.u/get-card-by-entity-id eid)]
         (:database_id card)
-        (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
-                                  "or guess entity_ids: call `read_resource` with "
-                                  "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
-                                  "first, then copy the exact `portable_entity_id` from the response "
-                                  "into `source-card:`.")
-                             (pr-str eid))
+        (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str eid))
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-card
-                         :entity-id    eid})))
-      (throw (ex-info (tru (str "First stage must have either `source-table:` (as a portable FK "
-                                "`[<db-name>, <schema>, <table>]`) or `source-card:` (as an "
-                                "entity_id string). Neither was found in `stages[0]`."))
-                      {:agent-error? true
-                       :status-code  400
-                       :error        :missing-source-in-first-stage})))))
+                         :entity-id    eid}))))
+
+    (and serdes.resolve/*numeric-ids-allowed?*
+         (first-stage-numeric-source-card parsed-query))
+    (let [card-id (first-stage-numeric-source-card parsed-query)
+          card    (t2/select-one :model/Card :id card-id)]
+      (when-not card
+        (throw (ex-info (tru "No saved question or model found with id {0}."
+                             (str card-id))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :unknown-card
+                         :card-id      card-id})))
+      (when api/*current-user-id*
+        (api/read-check card))
+      (:database_id card))
+
+    :else
+    (throw (ex-info (tru "First stage must have either `source-table:` or `source-card:`; neither was found in `stages[0]`.")
+                    {:agent-error? true
+                     :status-code  400
+                     :error        :missing-source-in-first-stage}))))
 
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
@@ -293,7 +314,7 @@
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
       (me/humanize explanation))))
 
-(defn execute-representations-query
+(defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
 
   `external-query` is a keyword-keyed Clojure map matching [[metabase.lib.schema/external-query]]
@@ -389,6 +410,33 @@
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 
+(defn- with-recovery-hint
+  "Return `e` with the caller's recovery sentence appended to its message, or unchanged when
+  `recovery-hint` is absent or has nothing to say about this error."
+  [^clojure.lang.ExceptionInfo e recovery-hint]
+  (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
+    (ex-info (str (ex-message e) " " hint) (ex-data e) (ex-cause e))
+    e))
+
+(defn execute-representations-query
+  "Run `external-query` through the representations pipeline. See
+  [[execute-representations-query*]] for the pipeline itself.
+
+  `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to the sentence
+  telling *this* caller's agent how to recover — the pipeline states what went wrong, the
+  caller supplies the vocabulary, because only the caller knows which tools its agent has.
+  Surfaces pass [[metabase.metabot.tools.recovery-hints/recovery-hint]] or
+  [[metabase.mcp.v2.recovery-hints/recovery-hint]]; omitting it yields bare statements."
+  ([external-query]
+   (execute-representations-query external-query nil))
+  ([external-query {:keys [recovery-hint]}]
+   (try
+     (execute-representations-query* external-query)
+     (catch clojure.lang.ExceptionInfo e
+       (throw (if (:agent-error? (ex-data e))
+                (with-recovery-hint e recovery-hint)
+                e))))))
+
 (defn- chart-type->keyword
   [chart-type]
   (cond
@@ -453,7 +501,9 @@
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
                                       :table)
-          query-result            (execute-representations-query query)
+          query-result            (execute-representations-query
+                                   query
+                                   {:recovery-hint recovery-hints/recovery-hint})
           structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart

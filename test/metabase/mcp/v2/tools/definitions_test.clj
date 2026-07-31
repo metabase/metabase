@@ -293,30 +293,32 @@
                                                          :archived false :revision_message "restore"})))))))))
 
 (deftest ^:parallel measure-rejects-mbql4-test
-  (testing "GHY-4137: measure definitions are MBQL 5 only; MBQL 4 gets a teaching error, never a silent conversion"
-    (testing "a bare aggregation fragment"
-      (let [msg (tool-error (call-tool! :crowberto nil "measure_write"
-                                        {:method "create" :table_id (mt/id :venues) :name "m"
-                                         :definition {:aggregation [["count"]]}}))]
-        (is (re-find #"MBQL 5" msg))
-        (is (re-find #"not auto-converted" msg))))
-    (testing "a legacy full query — rejected even though it names a source table"
-      (is (re-find #"MBQL 5"
-                   (tool-error (call-tool! :crowberto nil "measure_write"
-                                           {:method "create" :table_id (mt/id :venues) :name "m"
-                                            :definition {:database (mt/id)
-                                                         :type     "query"
-                                                         :query    {:source-table (mt/id :venues)
-                                                                    :aggregation [["count"]]}}})))))
-    (testing "the update path enforces the same rule"
-      (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test mbql4 update"
-                                                      :table_id   (mt/id :venues)
-                                                      :creator_id (mt/user->id :crowberto)
-                                                      :definition {}}]
-        (is (re-find #"MBQL 5"
+  (testing (str "GHY-4137: an MBQL 4 measure definition gets a teaching error naming the one supported "
+                "full-query shape — never a silent conversion, and never version talk the agent can't act on")
+    (let [shape-sentence #"\"lib/type\": \"mbql/query\""]
+      (testing "a bare aggregation fragment"
+        (let [msg (tool-error (call-tool! :crowberto nil "measure_write"
+                                          {:method "create" :table_id (mt/id :venues) :name "m"
+                                           :definition {:aggregation [["count"]]}}))]
+          (is (re-find shape-sentence msg))
+          (is (not (re-find #"MBQL \d" msg)))))
+      (testing "a legacy full query — rejected even though it names a source table"
+        (is (re-find shape-sentence
                      (tool-error (call-tool! :crowberto nil "measure_write"
-                                             {:method "update" :id measure-id :revision_message "x"
-                                              :definition {:aggregation [["count"]]}}))))))))
+                                             {:method "create" :table_id (mt/id :venues) :name "m"
+                                              :definition {:database (mt/id)
+                                                           :type     "query"
+                                                           :query    {:source-table (mt/id :venues)
+                                                                      :aggregation [["count"]]}}})))))
+      (testing "the update path enforces the same rule"
+        (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test mbql4 update"
+                                                        :table_id   (mt/id :venues)
+                                                        :creator_id (mt/user->id :crowberto)
+                                                        :definition {}}]
+          (is (re-find shape-sentence
+                       (tool-error (call-tool! :crowberto nil "measure_write"
+                                               {:method "update" :id measure-id :revision_message "x"
+                                                :definition {:aggregation [["count"]]}})))))))))
 
 ;;; --------------------------------------------- Round-tripping ---------------------------------------------------
 

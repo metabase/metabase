@@ -5,8 +5,8 @@
    OR data-analyst-with-unrestricted-view-data on the table, plus the table's remote-sync
    editability — is inherited, never reimplemented. The tools' own work is id resolution behind
    read checks, definition-shape handling (the bare clause form `get_content` returns, full
-   queries in the portable external dialect, and MBQL 4 auto-convert for segments), and
-   translating the model layer's raw validation exceptions into teaching errors."
+   MBQL 5 queries, and MBQL 4 auto-convert for segments), and translating the model layer's
+   raw validation exceptions into teaching errors."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -115,12 +115,11 @@
   (case kind
     :segment (str "`definition` accepts either the bare clause form — the array of filter clauses get_content's "
                   "\"definition\" include returns for a segment, reassembled onto `table_id` — or a full "
-                  "single-stage query holding only filters (MBQL 5, or MBQL 4 which is auto-converted).")
+                  "single-stage query holding only filters.")
     :measure (str "`definition` accepts either the bare clause form — the aggregation clause get_content's "
                   "\"definition\" include returns for a measure, as the one-element array or the bare clause, "
-                  "reassembled onto `table_id` — or a full single-stage MBQL 5 query holding exactly one "
-                  "aggregation. MBQL 4 is not accepted for measures and is not auto-converted (unlike "
-                  "segment_write).")))
+                  "reassembled onto `table_id` — or a full single-stage query holding exactly one "
+                  "aggregation.")))
 
 (defn- check-normalizable!
   "Probe `definition` against strict MBQL normalization before handing it to the domain layer.
@@ -143,14 +142,9 @@
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
     (common/throw-teaching-error
-     (str "This `definition` is not MBQL 5 — a full query must be a map with "
+     (str "A full-query `definition` must be a map with "
           "\"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". "
           (accepted-shapes :measure)))))
-
-(defn- portable-table-fk
-  "The portable FK path `[db-name schema table-name]` the external dialect names a source table by."
-  [{table-name :name, schema :schema, db-id :db_id}]
-  [(t2/select-one-fn :name :model/Database :id db-id) schema table-name])
 
 (defn- clause-form->definition
   "Reassemble the bare clause form onto `table` and resolve it. The clause form names no source of
@@ -162,7 +156,7 @@
     (common/resolve-external-query
      {:lib/type "mbql/query"
       :stages   [(assoc {:lib/type     "mbql.stage/mbql"
-                         :source-table (portable-table-fk table)}
+                         :source-table (:id table)}
                         (case kind :segment :filters :measure :aggregation)
                         clauses)]}
      (accepted-shapes kind))))
@@ -306,12 +300,10 @@
   (write-args-schema
    {:entity          "segment"
     :name-desc       "Create only (editable on update): display name of the segment."
-    :definition-desc (str "Either (a) an array of filter clauses in the external dialect — what get_content's "
+    :definition-desc (str "Either (a) an array of filter clauses — what get_content's "
                           "\"definition\" include returns for a segment and what execute_query takes in "
                           "stages[0].filters — reassembled onto `table_id`; or (b) a full single-stage query. "
-                          "Filters only: no aggregations, breakouts, joins, expressions, or limits. MBQL 5 is "
-                          "the stored shape; MBQL 4 full queries and bare filter fragments (e.g. {\"filter\": "
-                          "[\"=\", [\"field\", 10, null], \"active\"]}) are auto-converted on write. May "
+                          "Filters only: no aggregations, breakouts, joins, expressions, or limits. May "
                           "reference other segments; cycles are rejected.")}))
 
 (def ^:private segment-write-entry
@@ -324,8 +316,7 @@
   accepts name, description, definition, archived (true trashes, false restores — no hard delete). definition holds
   only filters, in either shape: the array of filter clauses get_content's \"definition\" include returns for a
   segment (the same clauses execute_query takes in stages[0].filters), reassembled onto table_id; or a full
-  single-stage query — MBQL 4 full queries and bare filter fragments are auto-converted to MBQL 5 on write, and
-  reads always return MBQL 5. For a full query table_id must name the definition's own source table; a mismatch is
+  single-stage query. For a full query table_id must name the definition's own source table; a mismatch is
   a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the
   table, and the table must not live in a read-only remote-synced collection."
   {:name        "segment_write"
@@ -371,12 +362,11 @@
   (write-args-schema
    {:entity          "measure"
     :name-desc       "Create only (editable on update): display name of the measure."
-    :definition-desc (str "Either (a) the aggregation clause in the external dialect — what get_content's "
+    :definition-desc (str "Either (a) the aggregation clause — what get_content's "
                           "\"definition\" include returns for a measure (one-element array or bare clause) and "
                           "what execute_query takes in stages[0].aggregation — reassembled onto `table_id`; or "
-                          "(b) a full single-stage MBQL 5 query (\"lib/type\": \"mbql/query\") holding exactly "
-                          "one aggregation — MBQL 4 is rejected, no auto-conversion (unlike segment_write). "
-                          "No filters, breakouts, joins, expressions, or limits. May reference other measures "
+                          "(b) a full single-stage query (\"lib/type\": \"mbql/query\") holding exactly "
+                          "one aggregation. No filters, breakouts, joins, expressions, or limits. May reference other measures "
                           "but not metrics; cycles are rejected.")}))
 
 (def ^:private measure-write-entry
@@ -391,7 +381,7 @@
   definition, archived (true trashes, false restores — no hard delete). definition holds exactly one aggregation, in
   either shape: the aggregation clause get_content's \"definition\" include returns for a measure (the same clause
   execute_query takes in stages[0].aggregation), as the one-element array or bare clause, reassembled onto table_id;
-  or a full single-stage MBQL 5 query — MBQL 4 is rejected with no auto-conversion (unlike segment_write). For a
+  or a full single-stage query. For a
   full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only:
   writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live
   in a read-only remote-synced collection."

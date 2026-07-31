@@ -15,7 +15,6 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
-   [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -59,7 +58,7 @@
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
        (str "Pass exactly one of query | query_handle: `query_handle` for a query you already ran "
-            "(preferred — no re-resolution), `query` for a fresh portable MBQL 5 query.")))
+            "(preferred — no re-resolution), `query` for a fresh query.")))
     (if query_handle
       (do (resolve-visualizable-handle! session-id query_handle)
           query_handle)
@@ -68,7 +67,7 @@
         (common/mint-query-handle!
          session-id
          api/*current-user-id*
-         (-> (metabot.construct/execute-representations-query query)
+         (-> (common/execute-representations-query query)
              (get-in [:structured-output :query])
              lib/prepare-for-serialization
              common/encode-serialized-query)
@@ -85,7 +84,7 @@
 (def ^:private visualize-query-args-schema
   [:map {:closed true}
    [:query {:optional true}
-    [:maybe [:map {:description "A fresh query in the portable MBQL 5 dialect (same shape execute_query takes): named refs, not numeric ids, never base64. Exactly one of query | query_handle."}]]]
+    [:maybe [:map {:description "A fresh query in the same dialect execute_query takes: numeric table/field ids from browse_data, never base64. Exactly one of query | query_handle."}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description "A query_handle from a previous execute_query / execute_sql call — visualizes the exact stored query, MBQL or native SQL. Preferred over query. Exactly one of query | query_handle."}]]]
    [:display {:optional true}
@@ -102,7 +101,7 @@
     [:maybe :string]]])
 
 (registry/deftool visualize-query
-  "Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh portable MBQL 5 query, same dialect execute_query takes). Optionally pass display to pick the chart type; omit it and the chart type is inferred from the result shape.
+  "Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). Optionally pass display to pick the chart type; omit it and the chart type is inferred from the result shape.
 
 Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI."
   {:name                "visualize_query"

@@ -7,7 +7,7 @@
    missing file fails at startup rather than on the first fetch; the slurp itself is delayed.
 
    Packs carry the knowledge tool descriptions cannot: shapes the input schemas don't fully
-   type (template tags, visualization settings), dialects (portable MBQL), and conventions
+   type (template tags, visualization settings), the MBQL query dialect, and conventions
    (dashboard grids, parameter wiring). Tool descriptions point here with trigger-conditioned
    sentences, and teaching errors embed the short contract snippets defined at the bottom of
    this namespace — so a miss recovers within one round trip even when no pack was read."
@@ -34,7 +34,7 @@
   "The pack catalog, in the order `learn()` lists it. `:description` doubles as the catalog line
    and must say when to read the pack, not just what it is."
   [{:name        "query-dialect"
-    :description "Portable MBQL 5 for execute_query and question_write's `query`: name-based refs, clause grammar, joins, expressions, multi-stage queries. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
+    :description "The query dialect for execute_query and question_write's `query`: numeric-id refs, clause grammar, joins, expressions, multi-stage queries. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
     :references  ["operators"]}
    {:name        "native-parameters"
     :description "Template tags for native SQL (question_write's `native`): tag kinds, field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks. Read before first passing template_tags."

@@ -1,15 +1,18 @@
 (ns metabase.mcp.v2.tools.question-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -164,6 +167,58 @@
           (is (int? card-id))
           (is (= "Agent Q" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= :question (t2/select-one-fn :type :model/Card :id card-id))))))))
+
+(defn- mint-handle-via-execute!
+  "Run `query` through `execute_query` with `validate_only` under `session-id` and return the
+   minted query_handle — the exact handle-store round-trip (pMBQL → JSON → string-valued map)
+   the save path must survive."
+  [session-id query]
+  (let [result (registry/call-tool #{"agent:query:run"} session-id "execute_query"
+                                   {:query query :validate_only true})]
+    (when (:isError result)
+      (throw (ex-info "expected execute_query success" {:result result})))
+    (-> result :content first :text str/split-lines first json/decode+kw :query_handle)))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest create-question-via-query-handle-test
+  (mt/with-model-cleanup [:model/Card :model/McpQueryHandle]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [sid    (str (random-uuid))
+            handle (mint-handle-via-execute!
+                    sid
+                    {:lib/type "mbql/query"
+                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                 :source-table (mt/id :orders)
+                                 :aggregation  [["count" {}]]
+                                 :breakout     [["field" {:temporal-unit "month"}
+                                                 (mt/id :orders :created_at)]]}]})
+            result (registry/call-tool #{"agent:content:write"} sid "question_write"
+                                       {:method "create" :name "From Handle" :query_handle handle})]
+        (is (not (:isError result)) (-> result :content first :text))
+        (let [card-id (:id (:structuredContent result))]
+          (is (int? card-id))
+          (is (=? {:lib/type :mbql/query
+                   :stages   [{:lib/type    :mbql.stage/mbql
+                               :aggregation [[:count {}]]}]}
+                  (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest create-question-via-native-query-handle-test
+  (mt/with-model-cleanup [:model/Card :model/McpQueryHandle]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a native handle — the shape execute_sql mints — is saveable"
+        (let [sid    (str (random-uuid))
+              mp     (mt/metadata-provider)
+              handle (common/mint-query-handle!
+                      sid (mt/user->id :crowberto)
+                      (common/encode-serialized-query
+                       (lib/prepare-for-serialization (lib/native-query mp "SELECT 1"))))
+              result (registry/call-tool #{"agent:content:write"} sid "question_write"
+                                         {:method "create" :name "From SQL Handle" :query_handle handle})]
+          (is (not (:isError result)) (-> result :content first :text))
+          (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                  (t2/select-one-fn :dataset_query :model/Card
+                                    :id (:id (:structuredContent result))))))))))
 
 (deftest create-question-name-required-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -328,6 +383,23 @@
         (is (not (:isError result)) (-> result :content first :text))
         (is (=? {:stages [{:source-table (mt/id :products)}]}
                 (t2/select-one-fn :dataset_query :model/Card :id (:id card))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest update-question-swap-query-via-query-handle-test
+  (mt/with-model-cleanup [:model/McpQueryHandle]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
+        (let [sid    (str (random-uuid))
+              handle (mint-handle-via-execute!
+                      sid
+                      {:lib/type "mbql/query"
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table (mt/id :products)}]})
+              result (registry/call-tool #{::scope/unrestricted} sid "question_write"
+                                         {:method "update" :id (:id card) :query_handle handle})]
+          (is (not (:isError result)) (-> result :content first :text))
+          (is (=? {:stages [{:source-table (mt/id :products)}]}
+                  (t2/select-one-fn :dataset_query :model/Card :id (:id card)))))))))
 
 (deftest update-model-column-metadata-test
   (mt/with-model-cleanup [:model/Card]

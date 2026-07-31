@@ -445,3 +445,248 @@
   (testing "GHY-4142: the tool advertises itself read-only"
     (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools nil)))]
       (is (true? (get-in tool [:annotations :readOnlyHint]))))))
+
+;;; --------------------------------------------- Numeric-id dialect -----------------------------------------------
+
+(defn- numeric-orders-query
+  "A fresh MBQL 5 query over ORDERS in the numeric-id dialect, optionally with extra stage
+   clauses merged in."
+  ([] (numeric-orders-query nil))
+  ([stage-extra]
+   {:lib/type "mbql/query"
+    :stages   [(merge {:lib/type     "mbql.stage/mbql"
+                       :source-table (mt/id :orders)}
+                      stage-extra)]}))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-ids-happy-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query (numeric-orders-query
+                                       {:filters [["<=" {} ["field" {} (mt/id :orders :id)] 3]]})})
+            body   (payload result)]
+        (testing "a numeric-id query body executes and mints a query_handle"
+          (is (= 3 (:returned body)))
+          (is (string? (:query_handle body)))
+          (is (= [1 2 3] (sort (row-ids body)))))
+        (testing "the minted handle re-runs the same query"
+          (is (= [1 2 3] (sort (row-ids (payload (call! sid {:query_handle (:query_handle body)})))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-ids-implicit-join-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query (numeric-orders-query
+                                       {:aggregation [["count" {}]]
+                                        :breakout    [["field" {} (mt/id :products :category)]]})})
+            body   (payload result)]
+        (testing "a numeric field ref on an FK-related table gets its implicit join wired by repair"
+          (is (= 4 (:returned body)))
+          (is (some #(= "CATEGORY" (:name %)) (:cols body))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-ids-validate-only-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            result (call! sid {:query         (numeric-orders-query {:limit 2})
+                               :validate_only true})
+            body   (payload result)]
+        (testing "validate_only accepts the numeric dialect and mints a handle without executing"
+          (is (= 0 (:returned body)))
+          (is (string? (:query_handle body))))
+        (testing "the handle then executes the validated query"
+          (is (= 2 (:returned (payload (call! sid {:query_handle (:query_handle body)}))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-source-card-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {:limit 5})}]
+        (let [sid    (str (random-uuid))
+              result (call! sid {:query {:lib/type "mbql/query"
+                                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                                     :source-card (:id card)
+                                                     :limit       2}]}})
+              body   (payload result)]
+          (testing "a numeric source-card id resolves to the saved card"
+            (is (= 2 (:returned body)))))))))
+
+(deftest ^:parallel numeric-unknown-table-teaching-error-test
+  ;; Error paths mint nothing — call through registry/call-tool directly, like the other
+  ;; ^:parallel error-path tests above.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query {:lib/type "mbql/query"
+                                                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                   :source-table 999999999}]}}))]
+      (testing "an unknown numeric table id is a teaching error steering to browse_data"
+        (is (str/includes? msg "No table found with id 999999999"))
+        (is (str/includes? msg "browse_data"))))))
+
+(deftest ^:parallel error-hints-name-v2-tools-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          mp  (lib-be/application-database-metadata-provider (mt/id))
+          db  (:name (lib.metadata/database mp))]
+      (testing "a name-resolution miss steers to browse_data, never to the v1 read_resource surface"
+        (let [msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                                  {:query {:lib/type "mbql/query"
+                                                           :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                       :source-table [db "PUBLIC" "NO_SUCH_TABLE"]}]}}))]
+          (is (str/includes? msg "No table found matching portable FK"))
+          (is (str/includes? msg "browse_data"))
+          (is (not (str/includes? msg "read_resource")))
+          (is (not (str/includes? msg "metabase://"))))))))
+
+;;; -------------------------------- Numeric metric / measure / segment refs ---------------------------------------
+
+;; The numeric-id dialect documents `["measure", {}, 7]`, `["segment", {}, 3]` and
+;; `["metric", {}, 42]`, but nothing in the PR exercises them. These pin the happy path and
+;; the unknown-id recovery message, which is the one an agent that guessed an id actually reads.
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-measure-ref-executes-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Measure {measure-id :id}
+                     {:name       "query-test order count"
+                      :table_id   (mt/id :orders)
+                      :creator_id (mt/user->id :crowberto)
+                      :definition {:lib/type :mbql/query
+                                   :database (mt/id)
+                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                               :source-table (mt/id :orders)
+                                               :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+        (let [sid  (str (random-uuid))
+              body (payload (call! sid {:query (numeric-orders-query
+                                                {:aggregation [["measure" {} measure-id]]})}))]
+          (testing "a numeric measure ref executes"
+            (is (= 1 (:returned body)))
+            (is (pos-int? (ffirst (:rows body))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-segment-ref-executes-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Segment {segment-id :id}
+                     {:name       "query-test first three orders"
+                      :table_id   (mt/id :orders)
+                      :creator_id (mt/user->id :crowberto)
+                      :definition {:lib/type :mbql/query
+                                   :database (mt/id)
+                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                               :source-table (mt/id :orders)
+                                               :filters      [[:<= {:lib/uuid (str (random-uuid))}
+                                                               [:field {:lib/uuid (str (random-uuid))}
+                                                                (mt/id :orders :id)]
+                                                               3]]}]}}]
+        (let [sid  (str (random-uuid))
+              body (payload (call! sid {:query (numeric-orders-query
+                                                {:filters [["segment" {} segment-id]]})}))]
+          (testing "a numeric segment ref executes and filters"
+            (is (= 3 (:returned body)))
+            (is (= [1 2 3] (sort (row-ids body))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest numeric-metric-ref-executes-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Card {metric-id :id}
+                     {:type          :metric
+                      :name          "query-test order count metric"
+                      :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+        (let [sid  (str (random-uuid))
+              body (payload (call! sid {:query (numeric-orders-query
+                                                {:aggregation [["metric" {} metric-id]]})}))]
+          (testing "a numeric metric (card) ref executes"
+            (is (= 1 (:returned body)))
+            (is (pos-int? (ffirst (:rows body))))))))))
+
+;; An id the agent guessed is echoed back to it, so it has to survive the round trip verbatim.
+;; `tru` formats a bare number through MessageFormat, which applies locale digit grouping and
+;; turns 999999999 into "999,999,999" — an id the agent cannot retry with. The v2 unknown-table
+;; error already guards this by passing `(str table-id)`; these three paths do not.
+(deftest ^:parallel numeric-unknown-measure-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:aggregation [["measure" {} 999999999]]})}))]
+      (testing "the unknown id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers to the v2 discovery tool"
+        (is (str/includes? msg "browse_data"))
+        (is (not (str/includes? msg "read_resource")))))))
+
+(deftest ^:parallel numeric-unknown-segment-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:filters [["segment" {} 999999999]]})}))]
+      (testing "the unknown id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers to the v2 discovery tool"
+        (is (str/includes? msg "browse_data"))
+        (is (not (str/includes? msg "read_resource")))))))
+
+(deftest ^:parallel numeric-unknown-metric-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:aggregation [["metric" {} 999999999]]})}))]
+      (testing "the unknown id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers the agent at a v2 tool, never v1's read_resource"
+        (is (or (str/includes? msg "search") (str/includes? msg "browse_data")))
+        (is (not (str/includes? msg "read_resource")))))))
+
+;; Field refs are the highest-traffic numeric ref in the new dialect, so the unknown-field-id
+;; message is the one an agent hits most often after guessing.
+(deftest ^:parallel numeric-unknown-field-teaching-error-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:filters [[">" {} ["field" {} 999999999] 0]]})}))]
+      (testing "the unknown field id is echoed verbatim, not locale-grouped"
+        (is (str/includes? msg "999999999"))
+        (is (not (str/includes? msg "999,999,999"))))
+      (testing "and the message steers to the v2 discovery tool"
+        (is (str/includes? msg "browse_data"))
+        (is (not (str/includes? msg "read_resource")))))))
+
+;; The pipeline states the miss; this surface supplies the recovery sentence. These assert the
+;; two halves actually meet — a v2 caller gets v2 vocabulary and never v1's.
+(deftest ^:parallel recovery-hints-reach-the-agent-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:filters [[">" {} ["field" {} 999999999] 0]]})}))]
+      (testing "the base statement and this surface's hint arrive as one message"
+        (is (str/includes? msg "No field found with id 999999999."))
+        (is (str/includes? msg "browse_data")))
+      (testing "and never v1's vocabulary"
+        (is (not (str/includes? msg "read_resource")))
+        (is (not (str/includes? msg "metabase://")))))))
+
+(deftest ^:parallel uri-in-source-table-hint-is-v2-flavored-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query {:lib/type "mbql/query"
+                                                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                   :source-table "metabase://metric/76"}]}}))]
+      (testing "the URI rejection carries v2's numeric-id recovery, not v1's portable_entity_id one"
+        (is (str/includes? msg "does not accept URIs"))
+        (is (str/includes? msg "aggregation"))
+        (is (not (str/includes? msg "portable_entity_id")))))))

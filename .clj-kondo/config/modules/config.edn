@@ -1258,7 +1258,6 @@
                     :model/McpToolCallLog}
    :uses #{activity-feed
            agent-api
-           agent-lib
            ai-tracing
            api
            app-db
@@ -1336,8 +1335,7 @@
               metabase.metabot.settings
               metabase.metabot.tools.construct
               metabase.metabot.tools.entity-details
-              metabase.metabot.tools.search
-              metabase.metabot.tools.shared.content-store}
+              metabase.metabot.tools.search}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics

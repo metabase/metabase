@@ -16,7 +16,9 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
    [metabase.metabot.tools.construct :as metabot.construct]
+   [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -402,6 +404,19 @@
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
 
+;;; -------------------------------------------- Representations pipeline ------------------------------------------
+
+(defn execute-representations-query
+  "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
+   the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
+   dialect on, and supplies v2's recovery sentences so a resolution failure names `browse_data` /
+   `search` rather than v1's `read_resource` / `metabase://` URIs."
+  [external-query]
+  (binding [serdes.resolve/*numeric-ids-allowed?* true]
+    (metabot.construct/execute-representations-query
+     external-query
+     {:recovery-hint v2.recovery-hints/recovery-hint})))
+
 ;;; ------------------------------------------------ Shared schemas ------------------------------------------------
 
 (def card-display-values
@@ -446,7 +461,9 @@
    failures and anything unrecognized pass through."
   [external-query hint]
   (try
-    (-> (metabot.construct/execute-representations-query external-query)
+    ;; Through the v2 entry point, not the raw pipeline: a `definition` gets the same numeric-id
+    ;; dialect and the same v2 recovery sentences a fresh `execute_query` body would.
+    (-> (execute-representations-query external-query)
         (get-in [:structured-output :query])
         lib/prepare-for-serialization)
     (catch clojure.lang.ExceptionInfo e

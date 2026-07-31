@@ -26,7 +26,7 @@
   "The sentence every source-shape teaching error ends with, naming what `definition` accepts."
   (str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — exactly what "
        "get_content's \"definition\" include returns for a transform. The query inside is either "
-       "the portable external dialect execute_query takes or MBQL 5 with numeric ids. "
+       "the same numeric-id dialect execute_query takes. "
        "Alternatively pass a query_handle from execute_query or execute_sql instead of "
        "`definition`."))
 
@@ -278,8 +278,8 @@
    [:definition {:optional true}
     [:maybe [:map {:description (str "The transform's source: {\"type\": \"query\", \"query\": …}, the shape "
                                      "get_content's \"definition\" include returns for a transform. The query "
-                                     "inside is either the portable external dialect — what execute_query takes "
-                                     "— or MBQL 5 with numeric ids, and may be native SQL. Pass this or "
+                                     "inside is the same numeric-id dialect execute_query takes, and may be "
+                                     "native SQL. Pass this or "
                                      "query_handle, not both.")}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description (str "A query_handle from execute_query or execute_sql — saves exactly "
@@ -332,7 +332,7 @@
   warehouse, which questions and other transforms can then query. method: \"create\" requires name, target, and one
   query source; method: \"update\" requires id and changes only the fields you pass. Pass the query as definition
   ({\"type\": \"query\", \"query\": …} — the shape get_content's \"definition\" include returns, with the query in the
-  portable external dialect execute_query takes or MBQL 5 with numeric ids) or as a query_handle from execute_query or
+  same numeric-id dialect execute_query takes) or as a query_handle from execute_query or
   execute_sql — one or the other, not both. Native SQL is fine: save an execute_sql handle. target is the output table,
   {name, schema?}; a schema is required on databases that have schemas, and on update target patches the current one,
   so passing only name renames the table. The target database always follows the query's database. Creating a transform

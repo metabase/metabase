@@ -193,10 +193,9 @@
     [:maybe [:string {:min 1 :description "Create only (editable on update): display name of the metric."}]]]
    [:definition {:optional true}
     [:maybe [:map {:description (str "The metric's query: a full single-stage query holding exactly one aggregation "
-                                     "and at most one breakout. Accepts the portable external dialect "
-                                     "— what get_content's \"definition\" include returns for a metric and what "
-                                     "execute_query takes — or MBQL 5 with numeric ids. Pass this or query_handle, "
-                                     "not both.")}]]]
+                                     "and at most one breakout. Accepts the same numeric-id shape get_content's "
+                                     "\"definition\" include returns for a metric and execute_query takes. "
+                                     "Pass this or query_handle, not both.")}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description (str "A query_handle from execute_query — saves exactly the query that ran. "
                                                "Pass this or definition, not both.")}]]]
@@ -224,8 +223,8 @@
   or referenced from other queries. A metric is not a measure — a measure belongs to one table and is only usable
   inside a query against that table, while a metric is standalone content. method: \"create\" requires name and one
   query source; method: \"update\" requires id and accepts archived (true trashes, false restores — there is no hard
-  delete). Pass the query as definition (a full single-stage query in the portable external dialect execute_query
-  takes and get_content's \"definition\" include returns, or MBQL 5 with numeric ids) or as a query_handle from
+  delete). Pass the query as definition (a full single-stage query in the same numeric-id shape execute_query
+  takes and get_content's \"definition\" include returns) or as a query_handle from
   execute_query — one or the other, not both. The query must have exactly one aggregation (count, sum, average…) and
   at most one grouping; anything else is a teaching error, so build it with execute_query first. Native
   SQL cannot be a metric — save it with question_write. Optional: description, collection_id (omit to save to your

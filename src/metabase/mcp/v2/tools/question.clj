@@ -118,7 +118,12 @@
 
 (defn- resolve-query-source
   "Resolve exactly one query source to a `dataset_query` map. `query_handle` re-runs the
-   save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL."
+   save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL.
+
+   Every branch returns genuine normalized pMBQL: the save path feeds `dataset_query` into
+   strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
+   the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
+   by the JSON round-trip — must be restored first."
   [{:keys [query_handle query native]} session-id]
   (let [sources (cond-> []
                   query_handle (conj :query_handle)
@@ -126,17 +131,20 @@
                   native       (conj :native))]
     (when-not (= 1 (count sources))
       (common/throw-teaching-error
-       "Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (inline MBQL 5), or `native` ({database_id, sql})."))
+       "Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (an inline query), or `native` ({database_id, sql})."))
     (cond
       query_handle
-      (:query (common/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+      (lib-be/normalize-query
+       nil
+       (:query (common/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+       {:strict? true})
 
       query
       (try
         (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
         (catch clojure.lang.ExceptionInfo e
           (common/throw-teaching-error
-           (str "Invalid inline query — pass a well-formed MBQL 5 query. " (ex-message e)))))
+           (str "Invalid inline query — see learn(\"query-dialect\"). " (ex-message e)))))
 
       native
       (let [{:keys [database_id sql template_tags]} native
@@ -376,7 +384,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (inline MBQL 5, the same portable dialect execute_query takes — learn(\"query-dialect\")), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
    :scope        metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
