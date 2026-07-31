@@ -521,3 +521,20 @@
           (testing "and neither side still carries the old key"
             (is (not (contains? echo :markdown)))
             (is (not (contains? read :markdown)))))))))
+
+(deftest ^:parallel tools-list-discoverability-test
+  (testing "a dynamically-registered client can discover and call document_write. Registration is
+            not enough on its own: the tool's scope also has to reach the DCR default grant, or the
+            client lists a tool every call then 403s on."
+    (let [grant (set (registry/registered-scopes))
+          named (fn [scopes] (some #(= "document_write" (:name %)) (registry/list-tools scopes)))]
+      (testing "its scope is in the default grant"
+        (is (contains? grant "agent:content:write")))
+      (testing "so a default-grant client sees it"
+        (is (named grant)))
+      (testing "and it is hidden from a token holding only the read scope"
+        (is (not (named #{"agent:content:read"}))))
+      (testing "the manifest carries a description and an input schema that advertises `clear`"
+        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
+          (is (seq (:description tool)))
+          (is (get-in tool [:inputSchema :properties :clear])))))))
