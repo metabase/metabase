@@ -25,6 +25,7 @@ import type {
 export type { RenderChartOptions, RenderedChart } from "./types";
 
 export {
+  clearCustomVizRegistrations,
   initializeContext,
   registerCustomVizPlugin,
 } from "metabase/static-viz/lib/entrypoint";

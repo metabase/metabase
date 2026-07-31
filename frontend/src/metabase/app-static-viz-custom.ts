@@ -1,6 +1,7 @@
 import "metabase/static-viz/polyfill";
 
 import {
+  clearCustomVizRegistrations,
   initializeContext,
   registerCustomVizPlugin as registerCustomVizPluginImpl,
   renderChart,
@@ -13,6 +14,7 @@ export function renderChartJSON(inputJSON: string): string {
 
 export function initializeContextJSON(optionsJSON: string): void {
   initializeContext(JSON.parse(optionsJSON));
+  clearCustomVizRegistrations();
 }
 
 /**

@@ -41,6 +41,10 @@ export function registerCustomVizPlugin(
   PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, pluginId);
 }
 
+export function clearCustomVizRegistrations() {
+  PLUGIN_CUSTOM_VIZ.customVizRegistry.clear();
+}
+
 export function getRawSeriesWithDashcardSettings(
   rawSeries: RawSeries,
   dashcardSettings: DashCardVisualizationSettings,

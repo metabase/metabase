@@ -1,6 +1,7 @@
 import "metabase/static-viz/polyfill";
 
 import {
+  clearCustomVizRegistrations,
   getCellBackgroundColors,
   initializeContext,
   registerCustomVizPlugin as registerCustomVizPluginImpl,
@@ -18,6 +19,7 @@ export function getCellBackgroundColorsJSON(inputJSON: string): string {
 
 export function initializeContextJSON(optionsJSON: string): void {
   initializeContext(JSON.parse(optionsJSON));
+  clearCustomVizRegistrations();
 }
 
 /**

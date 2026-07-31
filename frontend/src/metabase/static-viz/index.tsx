@@ -53,6 +53,7 @@ export type {
 } from "./types";
 
 export {
+  clearCustomVizRegistrations,
   initializeContext,
   registerCustomVizPlugin,
 } from "metabase/static-viz/lib/entrypoint";
