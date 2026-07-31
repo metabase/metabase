@@ -95,8 +95,10 @@
 
 (mu/defn zai-raw
   "Perform a streaming request to the Z.AI Chat Completions API.
+  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); the configured Z.AI settings are used
+  for whatever it doesn't carry.
   `:ai-proxy?` is not supported for Z.AI and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -107,10 +109,12 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-zai-api-key))
+        (let [api-key  (or (not-empty (:api-key credentials))
+                           (not-empty (llm/llm-zai-api-key)))
               auth     (core/resolve-auth "zai" "Z.AI"
                                           (when api-key
-                                            {:url     (llm/llm-zai-api-base-url)
+                                            {:url     (or (not-empty (:base-url credentials))
+                                                          (llm/llm-zai-api-base-url))
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth
