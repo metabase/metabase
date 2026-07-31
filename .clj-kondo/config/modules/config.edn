@@ -3462,7 +3462,8 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :module-exports #{enterprise/metabot.analytics
+   :module-exports #{enterprise/metabot.agent-api
+                     enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
    :uses    #{api
               lib.be
