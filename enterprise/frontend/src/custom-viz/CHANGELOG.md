@@ -8,7 +8,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 - `column` and `column_settings` are now reserved setting ids, contributed to every visualization by Metabase to power the built-in per-column formatting popover. Plugins that declared their own settings under these ids must rename them — the `Settings` type now rejects those keys with a type error ([#78128](https://github.com/metabase/metabase/pull/78128)).
 - The top-level `colorScheme` visualization prop moved into the new `renderingContext` prop (see Features below). Read `props.renderingContext.colorScheme` instead of `props.colorScheme` ([#78429](https://github.com/metabase/metabase/pull/78429)).
-- The module-level `measureText`, `measureTextWidth`, and `measureTextHeight` exports are removed. They were stubs that always returned zero-size measurements — for real ones, use `measureTextWidth` and `measureTextHeight` on the new `renderingContext` prop (see Features below) ([#78429](https://github.com/metabase/metabase/pull/78429)).
+- The module-level `measureText`, `measureTextWidth`, and `measureTextHeight` exports and the `TextMeasurer` and `TextSize` types are removed. The functions were stubs that always returned zero-size measurements — for real ones, use `measureTextWidth` and `measureTextHeight` on the new `renderingContext` prop (see Features below) ([#78429](https://github.com/metabase/metabase/pull/78429)).
 
 ### Features
 
