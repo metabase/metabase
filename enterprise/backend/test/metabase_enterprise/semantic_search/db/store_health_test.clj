@@ -74,6 +74,24 @@
       (is (=? {"appdb" {:available #(== 1 %), :connected zero?}}
               (readiness-gauges system))))))
 
+(deftest unresolved-probe-leaves-the-gauges-alone-test
+  (mt/with-prometheus-system! [_ system]
+    (mt/with-dynamic-fn-redefs
+      [semantic.db.datasource/dedicated-url-configured?   (constantly true)
+       semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+      (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+    (is (=? {"dedicated" {:available #(== 1 %), :connected #(== 1 %)}}
+            (readiness-gauges system)))
+    (testing "a probe that couldn't find out holds the last values -- zero would claim there is no store"
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/dedicated-url-configured? (constantly false)
+         mdb/db-is-set-up?                                (constantly false)]
+        (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+      (is (=? {"dedicated" {:available #(== 1 %), :connected #(== 1 %)}}
+              (readiness-gauges system)))
+      (testing "and it is recorded as unresolved, so the next scrape retries rather than holding the hour"
+        (is (=? {:resolved? false, :storage nil} @@#'semantic.store-health/last-readiness-probe))))))
+
 (def ^:private last-success-sample-re
   #"^metabase_pgvector_store_last_success_timestamp_seconds\{storage=\"([^\"]+)\",?\} (\S+)")
 
