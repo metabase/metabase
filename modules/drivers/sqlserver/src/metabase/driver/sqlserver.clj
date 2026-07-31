@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
@@ -63,6 +64,7 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
+                              :native-pivot-tables                    true
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
@@ -170,7 +172,9 @@
 (defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Number [_] [:bigint])
 (defmethod type->database-type :type/BigInteger [_] [:bigint])
-(defmethod type->database-type :type/Text [_] [:text])
+;; not `text` -- SQL Server forbids comparing, sorting, or grouping text/ntext columns
+;; (IS NULL and LIKE only); nvarchar(max) is equally unbounded without the restriction.
+(defmethod type->database-type :type/Text [_] [[:raw "nvarchar(max)"]])
 (defmethod type->database-type :type/Time [_] [:time])
 (defmethod type->database-type :type/UUID [_] [:uniqueidentifier])
 
@@ -230,6 +234,11 @@
   (let [parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])]
     (binding [*field-options* options]
       (parent-method driver field-clause))))
+
+;; SQL Server's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
+(defmethod sql-mbql5.pivot/pivot-grouping-hsql :sqlserver
+  [_driver exprs]
+  (into [::sql-mbql5.pivot/grouping-id-fn] exprs))
 
 (defn- maybe-inline-number [x]
   (if (number? x)
@@ -1139,8 +1148,8 @@
 
 (defmethod driver/create-schema-if-needed! :sqlserver
   [driver conn-spec schema]
-  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s;');"
-                      (sql.u/escape-sql schema :ansi)
+  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = %s) EXEC('CREATE SCHEMA %s;');"
+                      (sql.u/quote-literal schema :ansi)
                       (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
@@ -1148,9 +1157,9 @@
   [_driver db-id old-table-name new-table-name]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
-      (let [sql (format "EXEC sp_rename '%s', '%s';"
-                        (sql.u/escape-sql (name old-table-name) :ansi)
-                        (sql.u/escape-sql (name new-table-name) :ansi))]
+      (let [sql (format "EXEC sp_rename %s, %s;"
+                        (sql.u/quote-literal (name old-table-name) :ansi)
+                        (sql.u/quote-literal (name new-table-name) :ansi))]
         (.execute stmt sql)))))
 
 (defmethod driver/table-name-length-limit :sqlserver
@@ -1203,7 +1212,7 @@
 (defn- sql-string-literal
   "A SQL Server `N'...'` string literal for trusted `s`, escaping embedded quotes."
   [s]
-  (str "N'" (sql.u/escape-sql s :ansi) \'))
+  (str "N" (sql.u/quote-literal s :ansi)))
 
 (defmethod driver/compile-create-index :sqlserver
   [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]

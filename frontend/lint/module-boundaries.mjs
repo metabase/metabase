@@ -44,6 +44,7 @@ const elements = [
   }),
 
   // basic
+  createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
 
   // shared
@@ -151,7 +152,6 @@ const elements = [
   createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "route-guards" }),
-  createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
     name: "schema",
@@ -318,7 +318,7 @@ const elements = [
     mode: "full",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "routes-stable-id-aware",
     pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
     mode: "full",
@@ -326,7 +326,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "redux-store",
-    pattern: "frontend/src/metabase/store.js",
+    pattern: "frontend/src/metabase/store.ts",
     mode: "full",
   }),
 ];

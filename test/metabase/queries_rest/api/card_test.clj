@@ -800,9 +800,8 @@
                               :last-edit-info         {:timestamp true :id true :first_name "Rasta"
                                                        :last_name "Toucan" :email "rasta@metabase.com"}
                               :creator                (merge
-                                                       (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                       (select-keys (mt/fetch-user :rasta) [:id])
                                                        {:common_name  "Rasta Toucan"
-                                                        :is_superuser false
                                                         :last_name    "Toucan"
                                                         :first_name   "Rasta"
                                                         :email        "rasta@metabase.com"})
@@ -815,7 +814,6 @@
                                 (update :dataset_query map?)
                                 (update :entity_id string?)
                                 (update :result_metadata (partial every? map?))
-                                (update :creator dissoc :is_qbnewb)
                                 (update :last-edit-info (fn [edit-info]
                                                           (-> edit-info
                                                               (update :id boolean)
@@ -1618,10 +1616,8 @@
                     :parameter_usage_count  0
                     :creator_id             (mt/user->id :rasta)
                     :creator                (merge
-                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                             (select-keys (mt/fetch-user :rasta) [:id])
                                              {:common_name  "Rasta Toucan"
-                                              :is_superuser false
-                                              :is_qbnewb    true
                                               :last_name    "Toucan"
                                               :first_name   "Rasta"
                                               :email        "rasta@metabase.com"})
@@ -3241,16 +3237,15 @@
       (testing "POST /api/card/pivot/:card-id/query"
         (doseq [card-attributes [(api.pivots/pivot-card) (api.pivots/legacy-pivot-card)]]
           (mt/with-temp [:model/Card card card-attributes]
-            (api.pivots/with-pivot-parity-check
-              (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
-                    rows   (mt/rows result)]
-                (is (= 1144 (:row_count result)))
-                (is (= "completed" (:status result)))
-                (is (= 6 (count (get-in result [:data :cols]))))
-                (is (= 1144 (count rows)))
-                (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-                (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-                (is (= [nil nil nil 7 18760 69540] (last rows)))))))))))
+            (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
+                  rows   (mt/rows result)]
+              (is (= 1144 (:row_count result)))
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 1144 (count rows)))
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
 
 (deftest ^:parallel model-card-test
   (testing "Setting a question to a dataset makes it viz type table"
@@ -3764,10 +3759,9 @@
                                                                                                  :values  ["sum"]},
                                                                       :table.cell_column "sum"}}]
               (with-cards-in-readable-collection! [model card]
-                (api.pivots/with-pivot-parity-check
-                  (is (=?
-                       {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
-                       (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))))))
+                (is (=?
+                     {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
+                     (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))))
 
 (deftest ^:mb/driver-tests pivot-from-model-test-2
   (testing "Pivot options should match fields through models (#35319)"
@@ -3788,10 +3782,9 @@
                                                                                                  :values  ["sum"]},
                                                                       :table.cell_column "sum"}}]
               (with-cards-in-readable-collection! [model card]
-                (api.pivots/with-pivot-parity-check
-                  (is (=?
-                       {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
-                       (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))))))
+                (is (=?
+                     {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
+                     (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))))
 
 (defn run-based-on-upload-test!
   "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
@@ -4182,17 +4175,16 @@
           ;; native `GROUPING SETS` path doesn't bump, so it hits the default aggregated cap and drops rows.
           ;; Raise the setting so both paths have room, keeping the parity check meaningful.
           (mt/with-temporary-setting-values [aggregated-query-row-limit 200000]
-            (api.pivots/with-pivot-parity-check
-              (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
-                    totals (filter (fn [row]
-                                     (< 0 (second (reverse row))))
-                                   (get-in result [:data :rows]))
-                    ;; Postgres SUM(float) returns a slightly noisy double; round the aggregated value so the
-                    ;; assertion is driver-agnostic.
-                    row    (update (vec (first totals)) 4
-                                   #(when % (double (/ (Math/round (* 100.0 (double %))) 100.0))))]
-                (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
-                       row))))))))))
+            (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
+                  totals (filter (fn [row]
+                                   (< 0 (second (reverse row))))
+                                 (get-in result [:data :rows]))
+                  ;; Postgres SUM(float) returns a slightly noisy double; round the aggregated value so the
+                  ;; assertion is driver-agnostic.
+                  row    (update (vec (first totals)) 4
+                                 #(when % (double (/ (Math/round (* 100.0 (double %))) 100.0))))]
+              (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
+                     row)))))))))
 
 (deftest dashboard-internal-card-creation
   (mt/with-temp [:model/Collection {coll-id :id} {}

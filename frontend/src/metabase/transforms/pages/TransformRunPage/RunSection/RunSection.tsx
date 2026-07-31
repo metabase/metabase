@@ -12,11 +12,11 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import {

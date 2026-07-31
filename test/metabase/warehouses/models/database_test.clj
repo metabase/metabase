@@ -71,6 +71,35 @@
     (testing "All permissions are deleted when we delete the database"
       (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
+(deftest ^:synchronized delete-empty-database-does-not-run-field-delete-test
+  (testing "Deleting a Database with no Fields avoids the locking bulk-delete query"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (let [original-query-one @#'t2/query-one
+            delete-queries     (atom [])]
+        ;; A dynamic redef permanently proxies this hot var. This test is synchronized, so a temporary root swap is
+        ;; both safe and cheaper for the rest of the test JVM.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [t2/query-one (fn [& args]
+                                     (swap! delete-queries into (filter :delete-from args))
+                                     (apply original-query-one args))]
+          (#'database/delete-database-fields! db-id))
+        (is (empty? @delete-queries))))))
+
+(deftest ^:parallel delete-database-fields-test
+  (testing "Fields, including nested Fields, are deleted when the Database has Fields"
+    (mt/with-temp [:model/Database {db-id :id}     {}
+                   :model/Table    {table-id :id}  {:db_id db-id}
+                   :model/Field    {parent-id :id} {:table_id table-id}
+                   :model/Field    _               {:table_id table-id :parent_id parent-id}]
+      (t2/with-call-count [call-count]
+        ;; This only deletes the test-local Database Fields created above.
+        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+        (#'database/delete-database-fields! db-id)
+        (is (= 4 (call-count))
+            "One existence check, two successful DELETEs, and one terminating DELETE"))
+      (is (not (t2/exists? :model/Field :id parent-id)))
+      (is (not (t2/exists? :model/Field :table_id table-id))))))
+
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!

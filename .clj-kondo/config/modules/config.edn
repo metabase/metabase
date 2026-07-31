@@ -146,6 +146,7 @@
            config
            events
            models
+           permissions
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1215,6 +1216,7 @@
            premium-features
            request
            settings
+           setup
            sql-tools
            sync
            util
@@ -1938,6 +1940,7 @@
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
+           events
            models
            premium-features}
    :model-imports #{:model/Collection}}
@@ -2079,7 +2082,8 @@
            metabase.server.middleware.session
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
-   :uses #{analytics
+   :uses #{agent-api
+           analytics
            analytics-interface
            api
            api-keys
@@ -2519,6 +2523,7 @@
            metabot
            metrics
            models
+           permissions
            system
            types
            util}
@@ -3069,6 +3074,7 @@
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.api.sandbox-host
            metabase-enterprise.custom-viz-plugin.init
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
@@ -3406,6 +3412,7 @@
            config
            events
            premium-features
+           request
            settings
            sso
            util}

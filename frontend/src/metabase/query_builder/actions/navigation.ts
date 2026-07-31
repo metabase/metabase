@@ -3,7 +3,7 @@ import _ from "underscore";
 import { createThunkAction } from "metabase/redux";
 import { resetUIControls } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
-import type { Location } from "metabase/router";
+import type { Action, Location } from "metabase/router";
 
 import {
   getCard,
@@ -30,9 +30,10 @@ export const popState = createThunkAction(
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
       // The POP has already committed, so `location` is the entry we navigated
-      // to; its state/query hold the object we were previously zoomed into.
+      // to; its state/search hold the object we were previously zoomed into.
       const previouslyZoomedObjectId =
-        location.state?.objectId || location.query?.objectId;
+        location.state?.objectId ||
+        new URLSearchParams(location.search).get("objectId");
 
       if (
         previouslyZoomedObjectId &&
@@ -100,7 +101,12 @@ const getURL = (location: Location, { includeMode = false } = {}) =>
 
 // Logic for handling location changes, dispatched by top-level QueryBuilder component
 export const locationChanged =
-  (location: Location, nextLocation: Location, nextParams: QueryParams) =>
+  (
+    location: Location,
+    nextLocation: Location,
+    nextParams: QueryParams,
+    navigationType: Action,
+  ) =>
   (dispatch: Dispatch) => {
     if (location !== nextLocation) {
       // Treat both undefined and null as "no state" — the browser leaves
@@ -111,7 +117,7 @@ export const locationChanged =
       const urlChanged =
         getURL(nextLocation, { includeMode: true }) !==
         getURL(location, { includeMode: true });
-      if (nextLocation.action === "POP") {
+      if (navigationType === "POP") {
         if (urlChanged) {
           // the browser forward/back button was pressed
           dispatch(popState(nextLocation));
@@ -124,7 +130,7 @@ export const locationChanged =
           }
         }
       } else if (
-        (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
+        (navigationType === "PUSH" || navigationType === "REPLACE") &&
         // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
         isExternalUrlChange
       ) {

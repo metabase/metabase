@@ -349,8 +349,8 @@
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
-(derive ::dimensions-event :metabase/event)
-(derive :event/metric-dimensions-update ::dimensions-event)
+(events/derive! ::dimensions-event :metabase/event)
+(events/derive! :event/metric-dimensions-update ::dimensions-event)
 
 (defn- notify-dimensions-changed!
   "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
@@ -426,7 +426,8 @@
 
 (api.macros/defendpoint :post "/:id/dimension/:dimension-key"
   :- :map
-  "Update a metric dimension's `display_name`, `description`, and/or source column.
+  "Update a metric dimension's `display_name`, `description`, `default_temporal_unit`, and/or source
+  column.
 
   `source` is a `{type, field-id}`; the new column must have the same effective type."
   [{:keys [id dimension-key]} :- [:map
@@ -436,6 +437,7 @@
    body :- [:map
             [:display_name {:optional true} ms/NonBlankString]
             [:description  {:optional true} [:maybe :string]]
+            [:default_temporal_unit {:optional true} ms/NonBlankString]
             [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
   (write-check-metric! id)
   (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)

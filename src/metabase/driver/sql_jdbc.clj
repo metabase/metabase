@@ -13,7 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+   [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-columns quote-identifier
                                              quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -160,11 +160,14 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
 
+(defn- drop-table-sql [driver table-name]
+  (first (sql/format {:drop-table [:if-exists (dot-qualified table-name)]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (drop-table-sql driver table-name)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
@@ -225,25 +228,36 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defn- lift-boolean [v] (if (boolean? v) [:lift v] v))
+(defn- lift-booleans
+  "Wraps all boolean in `[:lift v]` for HoneySQL to bind it as a parameter."
+  [row]
+  (mapv lift-boolean row))
+
 (defn- insert-into!-sqls [driver table-name column-names values inline?]
-  (let [;; We need to partition the insert into multiple statements for both performance and correctness.
-        ;;
-        ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
-        ;; little faster but not by much (3.63m), and 10,000 threw an error:
-        ;;     PreparedStatement can have at most 65,535 parameters
-        ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
-        ;; across all drivers. With that in mind, 100 seems like a safe compromise.
-        ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
-        chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
-        dialect    (sql.qp/quote-style driver)
-        sqls       (map #(sql/format {:insert-into (keyword table-name)
-                                      :columns     (quote-columns driver column-names)
-                                      :values      %}
-                                     :inline inline?
-                                     :quoted true
-                                     :dialect dialect)
-                        chunks)]
-    sqls))
+  ;; We need to partition the insert into multiple statements for both performance and correctness.
+  ;;
+  ;; Tim Macdonald (April 2023) -- On Postgres with a large file:
+  ;; tested 1000 (3.63m), 100 (3.76m), 50 (4.03m), and 25 (4.27m).
+  ;; 10,000 threw an error: `PreparedStatement can have at most 65,535 parameters`
+  ;; `(long (/ 65535 (count columns)))` might be best, but the 65K limit may not apply on all drivers.
+  ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+  (let [dialect        (sql.qp/quote-style driver)
+        columns-quoted (quote-columns driver column-names)
+        table-name-k   (keyword table-name)
+        chunk-size     (or driver/*insert-chunk-rows* 100)]
+    (->> values
+         (sequence (comp
+                    (partition-all chunk-size)
+                    (map (fn chunk-sql [row-chunk]
+                           (sql/format {:insert-into table-name-k
+                                        :columns     columns-quoted
+                                        ;; HoneySQL inlines true/false unless we do this, even when
+                                        ;; the rest of the query is parameterized.
+                                        :values      (mapv lift-booleans row-chunk)}
+                                       :inline inline?
+                                       :quoted true
+                                       :dialect dialect))))))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]

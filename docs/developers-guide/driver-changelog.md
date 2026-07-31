@@ -21,6 +21,10 @@ title: Driver interface changelog
   `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
   derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
 
+- `metabase.driver.sql-mbql5.pivot/pivot-grouping-hsql` `[driver exprs]` -- produces the HoneySQL
+  form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
+  multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
+
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
 

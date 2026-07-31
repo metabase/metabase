@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -32,9 +32,13 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Location } from "metabase/router";
-import { Outlet, replace, useRouter } from "metabase/router";
+import { Outlet, replace, useLocation, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
+import {
+  parseHashOptions,
+  parseSearchQuery,
+  stringifyHashOptions,
+} from "metabase/utils/browser";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -74,17 +78,21 @@ export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = () => {
-  const { location, params, router } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
 
-  const parameterQueryParams = location.query;
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location.search),
+    [location.search],
+  );
   // Unjustified type cast. FIXME
   const dashboardId = Urls.extractEntityId(params.slug) as DashboardId;
 
   useRegisterDashboardMetabotContext();
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(location);
 
   const extractHashOption = async (
     key: string,
