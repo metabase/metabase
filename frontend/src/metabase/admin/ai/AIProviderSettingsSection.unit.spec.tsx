@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  findRequests,
   setupBillingEndpoints,
   setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
@@ -88,6 +89,10 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  mistral: {
+    value: "mistral/mistral-medium-3-5",
+    models: [{ id: "mistral-medium-3-5", display_name: "Mistral Medium 3.5" }],
+  },
   openai: {
     value: "openai/gpt-5.4",
     models: [
@@ -104,6 +109,10 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
         group: "OpenAI",
       },
     ],
+  },
+  zai: {
+    value: "zai/glm-5.2",
+    models: [{ id: "glm-5.2", display_name: "GLM-5.2" }],
   },
 };
 
@@ -123,12 +132,24 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | "llm-mistral-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
+  | "llm-zai-api-key"
   | "llm-bedrock-access-key-id"
   | "llm-bedrock-secret-access-key"
   | "llm-bedrock-region"
   | "llm-bedrock-session-token";
+
+const API_KEY_SETTING_BY_PROVIDER: Partial<
+  Record<MetabotProvider, MetabotSettingKey>
+> = {
+  anthropic: "llm-anthropic-api-key",
+  mistral: "llm-mistral-api-key",
+  openai: "llm-openai-api-key",
+  openrouter: "llm-openrouter-api-key",
+  zai: "llm-zai-api-key",
+};
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
@@ -216,8 +237,10 @@ async function setup({
     anthropic: "**********45",
     azure: null,
     bedrock: null,
+    mistral: null,
     openai: null,
     openrouter: null,
+    zai: null,
     ...apiKeyValues,
   };
 
@@ -272,6 +295,10 @@ async function setup({
         ? "https://my-resource.services.ai.azure.com/anthropic"
         : undefined,
     }),
+    "llm-mistral-api-key": createMockSettingDefinition({
+      key: "llm-mistral-api-key",
+      value: mergedApiKeyValues.mistral ?? undefined,
+    }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
       value: mergedApiKeyValues.openai ?? undefined,
@@ -279,6 +306,10 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-zai-api-key": createMockSettingDefinition({
+      key: "llm-zai-api-key",
+      value: mergedApiKeyValues.zai ?? undefined,
     }),
     "llm-bedrock-access-key-id": createMockSettingDefinition({
       key: "llm-bedrock-access-key-id",
@@ -376,13 +407,9 @@ async function setup({
       String(call.options?.body ?? "{}"),
     ) as MetabotSettingsUpdateBody;
 
-    if ("api-key" in body) {
-      const apiKeySettingKey =
-        body.provider === "anthropic"
-          ? "llm-anthropic-api-key"
-          : body.provider === "openai"
-            ? "llm-openai-api-key"
-            : "llm-openrouter-api-key";
+    const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[body.provider];
+
+    if ("api-key" in body && apiKeySettingKey) {
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -550,6 +577,27 @@ async function confirmDisconnectProvider() {
   );
 }
 
+const METABOT_SETTINGS_PATH = "/api/metabot/settings";
+const SETTING_PATH = "/api/setting";
+
+async function findPutRequests() {
+  const requests = await findRequests("PUT");
+  return requests.map(({ url, body }) => ({
+    path: new URL(url, location.origin).pathname,
+    body,
+  }));
+}
+
+async function findPutBodies(path: string) {
+  return (await findPutRequests())
+    .filter((request) => request.path === path)
+    .map(({ body }) => body);
+}
+
+const findMetabotSettingsUpdates = () => findPutBodies(METABOT_SETTINGS_PATH);
+
+const findSettingUpdates = () => findPutBodies(SETTING_PATH);
+
 describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
@@ -572,40 +620,25 @@ describe("AIProviderSettingsSection", () => {
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
-  it("shows Anthropic as selectable in the provider dropdown", async () => {
+  it("shows the providers as selectable in the provider dropdown", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
 
-    const anthropicOption = await screen.findByRole("option", {
-      name: "Anthropic",
-    });
-    expect(anthropicOption).toBeInTheDocument();
-    expect(anthropicOption).not.toHaveAttribute("aria-disabled", "true");
-  });
-
-  it("shows OpenAI as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const openaiOption = await screen.findByRole("option", {
-      name: /OpenAI/,
-    });
-    expect(openaiOption).toBeInTheDocument();
-    expect(openaiOption).not.toHaveAttribute("data-combobox-disabled");
-  });
-
-  it("shows OpenRouter as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const openrouterOption = await screen.findByRole("option", {
-      name: /OpenRouter/,
-    });
-    expect(openrouterOption).toBeInTheDocument();
-    expect(openrouterOption).not.toHaveAttribute("data-combobox-disabled");
+    for (const name of [
+      /Anthropic/,
+      /OpenAI/,
+      /OpenRouter/,
+      /Mistral/,
+      /Z\.AI/,
+      /Microsoft Azure/,
+      /Amazon Bedrock/,
+    ]) {
+      const option = await screen.findByRole("option", { name });
+      expect(option).toBeInTheDocument();
+      expect(option).not.toHaveAttribute("aria-disabled", "true");
+      expect(option).not.toHaveAttribute("data-combobox-disabled");
+    }
 
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
@@ -665,7 +698,10 @@ describe("AIProviderSettingsSection", () => {
 
   it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
     await setup();
-    await screen.findByLabelText("API key");
+    // Wait for the saved key from the setting-details
+    await waitFor(() =>
+      expect(screen.getByLabelText("API key")).not.toHaveValue(""),
+    );
 
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
@@ -684,22 +720,11 @@ describe("AIProviderSettingsSection", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
-        true,
-      );
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "anthropic", "api-key": "sk-ant-rotated" },
+      ]);
     });
-
-    const request = fetchMock.callHistory
-      .calls("path:/api/metabot/settings")
-      .find(
-        (call) =>
-          call.request?.method === "PUT" || call.options?.method === "PUT",
-      );
-
-    expect(request?.options?.body).toBe(
-      JSON.stringify({ provider: "anthropic", "api-key": "sk-ant-rotated" }),
-    );
 
     await waitFor(() => {
       expect(
@@ -752,7 +777,10 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    expect(await screen.findByLabelText("API key")).toBeDisabled();
+    // Wait for the env-backed state from setting-details
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toBeDisabled();
+    });
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
     ).toBeInTheDocument();
@@ -1508,22 +1536,11 @@ describe("AIProviderSettingsSection", () => {
     await openModelSelector();
     await userEvent.click(await screen.findByText("Claude Sonnet 4.5"));
 
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
-        true,
-      );
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "anthropic", model: "claude-sonnet-4-5" },
+      ]);
     });
-
-    const [request] = fetchMock.callHistory.calls(
-      "path:/api/metabot/settings",
-      {
-        method: "PUT",
-      },
-    );
-
-    expect(request?.options?.body).toBe(
-      JSON.stringify({ provider: "anthropic", model: "claude-sonnet-4-5" }),
-    );
 
     await waitFor(() => {
       expect(
@@ -1555,39 +1572,22 @@ describe("AIProviderSettingsSection", () => {
     await userEvent.type(screen.getByLabelText("API key"), "sk-openai-test");
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/metabot/settings", {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openai", "api-key": "sk-openai-test" },
+      ]);
     });
-
-    const connectRequest = fetchMock.callHistory
-      .calls("path:/api/metabot/settings", { method: "PUT" })
-      .at(-1);
-    expect(connectRequest?.options?.body).toBe(
-      JSON.stringify({ provider: "openai", "api-key": "sk-openai-test" }),
-    );
 
     await screen.findByLabelText("Model");
     await openModelSelector();
     await userEvent.click(await screen.findByText("gpt-5.4"));
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/metabot/settings", {
-          method: "PUT",
-        }),
-      ).toHaveLength(2);
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openai", "api-key": "sk-openai-test" },
+        { provider: "openai", model: "gpt-5.4" },
+      ]);
     });
-
-    const modelRequest = fetchMock.callHistory
-      .calls("path:/api/metabot/settings", { method: "PUT" })
-      .at(-1);
-    expect(modelRequest?.options?.body).toBe(
-      JSON.stringify({ provider: "openai", model: "gpt-5.4" }),
-    );
 
     expect(
       screen.queryByRole("button", { name: "Connect" }),
@@ -1605,16 +1605,11 @@ describe("AIProviderSettingsSection", () => {
     await screen.findByLabelText("API key");
     await confirmDisconnectProvider();
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", {
-          method: "PUT",
-          body: {
-            "llm-metabot-provider": null,
-            "llm-openai-api-key": null,
-          },
-        }),
-      ).toBe(true);
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-openai-api-key": null,
+      });
     });
 
     expect(
@@ -1641,45 +1636,22 @@ describe("AIProviderSettingsSection", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/metabot/settings", {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openrouter", "api-key": "sk-or-v1-openrouter-test" },
+      ]);
     });
-
-    expect(
-      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
-        method: "PUT",
-        body: {
-          provider: "openrouter",
-          "api-key": "sk-or-v1-openrouter-test",
-        },
-      }),
-    ).toBeDefined();
 
     await screen.findByLabelText("Model");
     await openModelSelector();
     await userEvent.click(await screen.findByText("OpenAI: GPT-5.4 Mini"));
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/metabot/settings", {
-          method: "PUT",
-        }),
-      ).toHaveLength(2);
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openrouter", "api-key": "sk-or-v1-openrouter-test" },
+        { provider: "openrouter", model: "openai/gpt-5.4-mini" },
+      ]);
     });
-
-    expect(
-      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
-        method: "PUT",
-        body: {
-          provider: "openrouter",
-          model: "openai/gpt-5.4-mini",
-        },
-      }),
-    ).toBeDefined();
 
     expect(
       screen.queryByRole("button", { name: "Connect" }),
@@ -1697,16 +1669,133 @@ describe("AIProviderSettingsSection", () => {
     await screen.findByLabelText("API key");
     await confirmDisconnectProvider();
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", {
-          method: "PUT",
-          body: {
-            "llm-metabot-provider": null,
-            "llm-openrouter-api-key": null,
-          },
-        }),
-      ).toBe(true);
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-openrouter-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Mistral by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { mistral: null },
+      updateResponse: {
+        value: "mistral/mistral-medium-3-5",
+        models: DEFAULT_RESPONSES.mistral.models,
+      },
+    });
+
+    await selectProvider("Mistral");
+    await userEvent.type(screen.getByLabelText("API key"), "mistral-key.test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "mistral", "api-key": "mistral-key.test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("Mistral Medium 3.5"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "mistral", "api-key": "mistral-key.test" },
+        { provider: "mistral", model: "mistral-medium-3-5" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Mistral by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "mistral/mistral-medium-3-5",
+      isConfigured: true,
+      apiKeyValues: { mistral: "**********st" },
+    });
+
+    await screen.findByText("Connected to Mistral");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-mistral-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Z.AI by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { zai: null },
+      updateResponse: {
+        value: "zai/glm-5.2",
+        models: DEFAULT_RESPONSES.zai.models,
+      },
+    });
+
+    await selectProvider("Z.AI");
+    await userEvent.type(screen.getByLabelText("API key"), "zai-key.test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "zai", "api-key": "zai-key.test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("GLM-5.2"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "zai", "api-key": "zai-key.test" },
+        { provider: "zai", model: "glm-5.2" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Z.AI by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "zai/glm-5.2",
+      isConfigured: true,
+      apiKeyValues: { zai: "**********st" },
+    });
+
+    await screen.findByText("Connected to Z.AI");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-zai-api-key": null,
+      });
     });
 
     expect(
@@ -1729,24 +1818,17 @@ describe("AIProviderSettingsSection", () => {
         "This will disconnect your AI provider and disable AI features across your instance until you connect a provider again.",
       ),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/setting", { method: "PUT" }),
-    ).toHaveLength(0);
+    expect(await findSettingUpdates()).toEqual([]);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Disconnect provider" }),
     );
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", {
-          method: "PUT",
-          body: {
-            "llm-metabot-provider": null,
-            "llm-anthropic-api-key": null,
-          },
-        }),
-      ).toBe(true);
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-anthropic-api-key": null,
+      });
     });
 
     expect(
@@ -1774,15 +1856,10 @@ describe("AIProviderSettingsSection", () => {
 
     await confirmDisconnectProvider();
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", {
-          method: "PUT",
-          body: {
-            "llm-metabot-provider": null,
-          },
-        }),
-      ).toBe(true);
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+      });
     });
 
     expect(
@@ -1976,18 +2053,6 @@ describe("AIProviderSettingsSection", () => {
   });
 
   describe("Microsoft Azure", () => {
-    it("shows Microsoft Azure as selectable in the provider dropdown", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await userEvent.click(screen.getByLabelText("Provider"));
-
-      const azureOption = await screen.findByRole("option", {
-        name: "Microsoft Azure",
-      });
-      expect(azureOption).toBeInTheDocument();
-      expect(azureOption).not.toHaveAttribute("data-combobox-disabled");
-    });
-
     it("shows the Azure fields without a model dropdown when selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -2034,29 +2099,18 @@ describe("AIProviderSettingsSection", () => {
       expect(connectButton).toBeEnabled();
       await userEvent.click(connectButton);
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "azure",
-          model: "openai/my-deployment",
-          credentials: {
-            "api-key": "azure-key",
-            "base-url": "https://my-resource.services.ai.azure.com/openai",
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "azure",
+            model: "openai/my-deployment",
+            credentials: {
+              "api-key": "azure-key",
+              "base-url": "https://my-resource.services.ai.azure.com/openai",
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("shows the saved family, base URL, and deployment for a connected Azure provider", async () => {
@@ -2065,11 +2119,17 @@ describe("AIProviderSettingsSection", () => {
         apiKeyValues: { azure: "**********ey" },
       });
 
-      expect(await screen.findByLabelText("Model provider")).toHaveValue(
-        "Anthropic",
+      // The saved values hydrate from the async setting-details fetch, so
+      // wait for them rather than asserting synchronously.
+      await waitFor(() =>
+        expect(screen.getByLabelText("Model provider")).toHaveValue(
+          "Anthropic",
+        ),
       );
-      expect(screen.getByLabelText("Base URL")).toHaveValue(
-        "https://my-resource.services.ai.azure.com/anthropic",
+      await waitFor(() =>
+        expect(screen.getByLabelText("Base URL")).toHaveValue(
+          "https://my-resource.services.ai.azure.com/anthropic",
+        ),
       );
       expect(screen.getByLabelText("Deployment name")).toHaveValue(
         "claude-sonnet-4-5",
@@ -2091,36 +2151,30 @@ describe("AIProviderSettingsSection", () => {
       });
 
       const deploymentInput = await screen.findByLabelText("Deployment name");
+      // Wait for the saved deployment to hydrate before editing it — clearing
+      // the still-empty input is a no-op the arriving value then overwrites.
+      await waitFor(() =>
+        expect(deploymentInput).toHaveValue("claude-sonnet-4-5"),
+      );
       await userEvent.clear(deploymentInput);
       await userEvent.type(deploymentInput, "renamed-deployment");
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // The untouched key and base URL round-trip as displayed values in the form, but must be
       // sent as null so the backend keeps the real saved values.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "azure",
-          model: "anthropic/renamed-deployment",
-          credentials: {
-            "api-key": null,
-            "base-url": null,
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "azure",
+            model: "anthropic/renamed-deployment",
+            credentials: {
+              "api-key": null,
+              "base-url": null,
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("disconnects Azure by clearing the credentials before the provider setting", async () => {
@@ -2132,41 +2186,19 @@ describe("AIProviderSettingsSection", () => {
       await screen.findByLabelText("Deployment name");
       await confirmDisconnectProvider();
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
+      // The credentials must be cleared before the provider setting.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
             body: { provider: "azure", credentials: null },
-          }),
-        ).toBe(true);
-      });
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/setting", {
-            method: "PUT",
+          },
+          {
+            path: SETTING_PATH,
             body: { "llm-metabot-provider": null },
-          }),
-        ).toBe(true);
+          },
+        ]);
       });
-
-      const callHistory = fetchMock.callHistory.calls();
-      const [credentialsRequest] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-      const [providerRequest] = fetchMock.callHistory.calls(
-        "path:/api/setting",
-        { method: "PUT" },
-      );
-
-      if (!credentialsRequest || !providerRequest) {
-        throw new Error("Expected credentials and provider requests to exist");
-      }
-
-      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
-        callHistory.indexOf(providerRequest),
-      );
 
       expect(
         await screen.findByText("Connect to an AI provider"),
@@ -2175,18 +2207,6 @@ describe("AIProviderSettingsSection", () => {
   });
 
   describe("Amazon Bedrock", () => {
-    it("shows Amazon Bedrock as selectable in the provider dropdown", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await userEvent.click(screen.getByLabelText("Provider"));
-
-      const bedrockOption = await screen.findByRole("option", {
-        name: "Amazon Bedrock",
-      });
-      expect(bedrockOption).toBeInTheDocument();
-      expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
-    });
-
     it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -2215,30 +2235,19 @@ describe("AIProviderSettingsSection", () => {
       await userEvent.type(screen.getByLabelText("Region"), "us-east-2");
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // The untouched session token field is omitted entirely — only changed fields are sent.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "bedrock",
-          credentials: {
-            "access-key-id": "AKIDEXAMPLE",
-            "secret-access-key": "test-secret",
-            region: "us-east-2",
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "bedrock",
+            credentials: {
+              "access-key-id": "AKIDEXAMPLE",
+              "secret-access-key": "test-secret",
+              region: "us-east-2",
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("does not echo obfuscated credentials when editing only the region of a connected Bedrock provider", async () => {
@@ -2253,29 +2262,18 @@ describe("AIProviderSettingsSection", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // The untouched access key, secret, and session token round-trip as obfuscated placeholders
       // in the form, and must be omitted so the backend leaves the real saved values intact.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "bedrock",
-          credentials: {
-            region: "us-west-2",
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "bedrock",
+            credentials: {
+              region: "us-west-2",
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("clears the session token by sending an explicit null without touching the other fields", async () => {
@@ -2289,28 +2287,17 @@ describe("AIProviderSettingsSection", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // null means an explicit clear; the untouched fields are omitted so the saved keys survive.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "bedrock",
-          credentials: {
-            "session-token": null,
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "bedrock",
+            credentials: {
+              "session-token": null,
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("shows the grouped model picker for a connected Bedrock provider", async () => {
@@ -2337,41 +2324,19 @@ describe("AIProviderSettingsSection", () => {
       await screen.findByLabelText("Access key ID");
       await confirmDisconnectProvider();
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
+      // The credentials must be cleared before the provider setting.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
             body: { provider: "bedrock", credentials: null },
-          }),
-        ).toBe(true);
-      });
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/setting", {
-            method: "PUT",
+          },
+          {
+            path: SETTING_PATH,
             body: { "llm-metabot-provider": null },
-          }),
-        ).toBe(true);
+          },
+        ]);
       });
-
-      const callHistory = fetchMock.callHistory.calls();
-      const [credentialsRequest] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-      const [providerRequest] = fetchMock.callHistory.calls(
-        "path:/api/setting",
-        { method: "PUT" },
-      );
-
-      if (!credentialsRequest || !providerRequest) {
-        throw new Error("Expected credentials and provider requests to exist");
-      }
-
-      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
-        callHistory.indexOf(providerRequest),
-      );
 
       expect(
         await screen.findByText("Connect to an AI provider"),
@@ -2398,11 +2363,7 @@ describe("AIProviderSettingsSection", () => {
         ).toBe(true);
       });
 
-      expect(
-        fetchMock.callHistory
-          .calls("path:/api/setting")
-          .some((call) => call.request?.method === "PUT"),
-      ).toBe(false);
+      expect(await findSettingUpdates()).toEqual([]);
       expect(
         screen.getByRole("button", { name: "Disconnect" }),
       ).toBeInTheDocument();
@@ -2572,6 +2533,18 @@ describe("AIProviderSettingsSection with divergent settings reads", () => {
       expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.6");
     });
 
+    // Let the session-properties refetch land before arming the one-shot stale marker.
+    // Otherwise that in-flight refetch consumes it and the model-pick refetch below
+    // gets fresh data instead of stale.
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties"),
+      ).toHaveLength(2);
+    });
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+
     markNextSessionPropertiesReadStale();
 
     await userEvent.click(screen.getByLabelText("Model"));
@@ -2583,8 +2556,10 @@ describe("AIProviderSettingsSection with divergent settings reads", () => {
       expect(backend.providerRow).toBe("anthropic/claude-sonnet-5");
     });
 
+    // Wait for the stale refetch to flip the section back to the setup layout
+    // then check the form kept the new selection instead of resetting to the stale snapshot.
+    expect(await screen.findByLabelText("Provider")).toHaveValue("Anthropic");
     expect(screen.getByLabelText("API key")).toBeInTheDocument();
     expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 5");
-    expect(screen.getByLabelText("Provider")).toHaveValue("Anthropic");
   });
 });

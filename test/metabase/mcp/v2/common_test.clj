@@ -247,6 +247,40 @@
       (is (thrown-with-msg? Exception #"create.*update"
                             (common/dispatch-write entry {:method "delete"}))))))
 
+(deftest ^:parallel dispatch-write-clear-test
+  (testing "GHY-4191: `clear` expands to explicit nils, the only way to say \"unset this\" — a null
+            can't, since the boundary strips nulls that strict clients flood every property with"
+    (let [entry {:create-required [:name] :clearable #{:description :cache_ttl}}]
+      (testing "a cleared property arrives as a present nil, which the update paths read as \"set to nil\""
+        (let [[_ _ args] (common/dispatch-write entry {:method "update" :id 3 :clear ["description"]})]
+          (is (contains? args :description))
+          (is (nil? (:description args)))
+          (is (not (contains? args :clear)))))
+      (testing "clearing several at once, alongside an ordinary set"
+        (is (= [:update 3 {:name "Y" :description nil :cache_ttl nil}]
+               (common/dispatch-write entry {:method "update" :id 3 :name "Y"
+                                             :clear ["description" "cache_ttl"]}))))
+      (testing "a property that isn't clearable is refused, and the message names what is"
+        (is (thrown-with-msg? Exception #"`name` can't be cleared. This tool can clear: cache_ttl, description"
+                              (common/dispatch-write entry {:method "update" :id 3 :clear ["name"]}))))
+      (testing "setting and clearing the same property in one call is a contradiction"
+        (is (thrown-with-msg? Exception #"both set and cleared"
+                              (common/dispatch-write entry {:method "update" :id 3
+                                                            :description "x" :clear ["description"]}))))
+      (testing "clear is update-only — a new object has nothing set to clear"
+        (is (thrown-with-msg? Exception #"applies to method \"update\" only"
+                              (common/dispatch-write entry {:method "create" :name "X"
+                                                            :clear ["description"]}))))
+      (testing "an empty or absent clear is a no-op, and never leaves :clear on the args"
+        (is (= [:update 3 {:name "Y"}]
+               (common/dispatch-write entry {:method "update" :id 3 :name "Y" :clear []})))
+        (is (= [:create {:name "X"}]
+               (common/dispatch-write entry {:method "create" :name "X" :clear []})))))
+    (testing "a tool declaring nothing clearable says so rather than listing an empty set"
+      (is (thrown-with-msg? Exception #"no clearable properties"
+                            (common/dispatch-write {:create-required []}
+                                                   {:method "update" :id 3 :clear ["description"]}))))))
+
 ;;; ------------------------------------------------ Query handles (GHY-4136) -------------------------------------
 
 (defn- thrown

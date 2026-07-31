@@ -38,15 +38,6 @@ describe("DataStudioLayout", () => {
     });
   });
 
-  describe("workspaces tab", () => {
-    it("does not render the Workspaces tab on OSS", async () => {
-      setup({ remoteSyncBranch: "main" });
-
-      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
-    });
-  });
-
   describe("transforms nav tabs", () => {
     it("shows Transforms but not Jobs or Runs when setup is incomplete", async () => {
       setup({ transformsSetupComplete: false, transformsEnabled: false });

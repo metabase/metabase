@@ -27,7 +27,6 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -40,7 +39,7 @@
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -97,21 +96,20 @@
                               :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true
-                              :workspace                              true}]
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :mysql
   [_driver]
   ;; MySQL's "schema" doesn't exist; its "database" is what other engines call a schema and
   ;; what JDBC calls a catalog. We populate the `:db` AST slot (= SQLGlot `Table.catalog`)
-  ;; with the connection's bound DB so workspace remap can record both canonical and iso
+  ;; with the connection's bound DB so table remapping can record both canonical and remapped
   ;; DB names on `TableRemapping` rows and the QP can rewrite identifiers across DBs.
   ;; Production SELECTs continue to emit unqualified `t` because the SQL compiler reads
   ;; the per-driver `quote-name` rules, not this multimethod.
   [:db])
 
-;;; MySQL has no schema layer. Workspace remap stores `:db.table` -- the `:db`
+;;; MySQL has no schema layer. Table remapping stores `:db.table` -- the `:db`
 ;;; slot carries the connection's bound DB so cross-DB routing works. Production
 ;;; SELECTs emit unqualified `t` because the SQL compiler reads `quote-name`
 ;;; rules, not this multimethod.
@@ -1299,109 +1297,6 @@
 (defmethod driver/extra-info :mysql
   [_driver]
   nil)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- quote-schema [s] (sql.u/quote-name :mysql :schema s))
-(defn- quote-field  [s] (sql.u/quote-name :mysql :field s))
-
-(defn- mysql-user-exists?
-  "Check if a MySQL user exists."
-  [conn username]
-  (seq (jdbc/query conn ["SELECT 1 FROM mysql.user WHERE user = ?" username])))
-
-(defmethod driver/init-workspace-isolation! :mysql
-  [driver database workspace]
-  ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
-  ;; We create a separate database for workspace isolation.
-  (let [db-name          (:schema workspace)
-        {:keys [user password]} (:database_details workspace)
-        escaped-password (sql.u/escape-sql password :ansi)
-        quoted-db        (quote-schema db-name)
-        quoted-user      (quote-field user)]
-    ;; No transaction: MySQL DDL (CREATE DATABASE/USER, GRANT) implicitly commits
-    ;; per statement, so a transaction wrapper would be decorative. Failure
-    ;; recovery is compensation via the idempotent destroy, not rollback.
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (let [user-sql (if (mysql-user-exists? {:connection conn} user)
-                        (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
-                                quoted-user escaped-password)
-                        (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'"
-                                quoted-user escaped-password))]
-         (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [sql [;; Create the isolated database
-                        (format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
-                        user-sql
-                        ;; Least-privilege grant on the workspace's own DB (vs. ALL PRIVILEGES,
-                        ;; dropping GRANT OPTION, CREATE VIEW/ROUTINE, TRIGGER, etc.):
-                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML on its own tables
-                        ;;   CREATE - transform target / CTAS
-                        ;;   DROP   - swap/cleanup
-                        ;;   ALTER  - required (with DROP/CREATE) for RENAME TABLE swaps
-                        (format "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON %s.* TO %s@'%%'"
-                                quoted-db quoted-user)]]
-             (.addBatch ^Statement stmt ^String sql))
-           (try
-             (.executeBatch ^Statement stmt)
-             (catch Throwable t
-               (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))))))
-    nil))
-
-(defmethod driver/destroy-workspace-isolation! :mysql
-  [driver database workspace]
-  (let [db-name     (:schema workspace)
-        username    (-> workspace :database_details :user)
-        quoted-db   (quote-schema db-name)
-        quoted-user (quote-field username)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
-                       (mysql-user-exists? {:connection conn} username)
-                       (conj (format "DROP USER IF EXISTS %s@'%%'" quoted-user)))]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
-
-(defn- grant-workspace-read-access-sqls
-  "Build SQL statements that grant `username` SELECT on all tables in each database
-  named in `schemas`. MySQL has no schema layer — `qualified-name-components`
-  is `[]` — so each entry in `schemas` is interpreted as a database name.
-  Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
-  [username schemas]
-  (let [quoted-user      (quote-field username)
-        source-databases (set schemas)]
-    (mapv (fn [db]
-            (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                    (quote-schema db) quoted-user))
-          source-databases)))
-
-(defmethod driver/grant-workspace-read-access! :mysql
-  [driver database workspace schemas]
-  ;; Each entry in `schemas` is interpreted as a MySQL database name. The
-  ;; workspace SA gets database-wide SELECT via `GRANT SELECT ON db.*`. The
-  ;; Metabase `Database` row's `:details.db` is the bound database, but MySQL
-  ;; itself allows `GRANT SELECT ON other_db.*` as long as the admin has it,
-  ;; so we don't reject inputs that don't equal `:details.db`.
-  (let [username (-> workspace :database_details :user)
-        sqls     (grant-workspace-read-access-sqls username schemas)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql sqls]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |

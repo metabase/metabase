@@ -357,6 +357,27 @@
           (let [t (t2/select-one :model/Transform transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
+(deftest lookback-round-trips-with-keyword-keys-test
+  (testing "the nested lookback map comes back from the app DB with keyword keys"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Transform {transform-id :id}
+                     {:source {:type "query"
+                               :query {:database db-id
+                                       :type "native"
+                                       :native {:query "SELECT 1"
+                                                :template-tags {}}}
+                               :source-incremental-strategy {:type "checkpoint"
+                                                             :checkpoint-filter-field-id 100
+                                                             :lookback {:value 4 :unit "day"}}}
+                      :target {:type "table-incremental"
+                               :schema "public"
+                               :name "test_lookback"
+                               :db_id db-id}}]
+        (is (= {:value 4 :unit "day"}
+               (get-in (t2/select-one :model/Transform transform-id)
+                       [:source :source-incremental-strategy :lookback])))))))
+
 (deftest schedules-for-transforms-test
   (testing "returns the schedules of the active jobs that run a transform via shared tags"
     (mt/with-temp [:model/TransformTag          tag      {}

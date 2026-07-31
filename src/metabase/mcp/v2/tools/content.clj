@@ -23,7 +23,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -446,18 +445,13 @@
                    :includes {"parameters" (fn [row] {:parameters (vec (get-in row [::dashboard :parameters]))})
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
-                   :scope metabot.scope/agent-document-read
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})
                               "comments" document-comments}}
    "collection"   {:fetch fetch-collection}
-   "snippet"      {:fetch fetch-snippet
-                   :scope metabot.scope/agent-snippets-read}
-   "alert"        {:fetch #(fetch-notification "alert" :notification/card %)
-                   :scope metabot.scope/agent-notification-read}
-   "subscription" {:fetch fetch-subscription
-                   :scope metabot.scope/agent-notification-read}
+   "snippet"      {:fetch fetch-snippet}
+   "alert"        {:fetch #(fetch-notification "alert" :notification/card %)}
+   "subscription" {:fetch fetch-subscription}
    "transform"    {:fetch fetch-transform
-                   :scope metabot.scope/agent-transforms-read
                    :includes {"definition" (definition-include transform-definition)}}})
 
 (def ^:private content-types
@@ -475,14 +469,6 @@
                  (update acc inc-name (fnil conj #{}) type)))
    {}
    type->spec))
-
-(defn- check-type-scope!
-  [token-scopes type]
-  (when-let [scope (get-in type->spec [type :scope])]
-    (when-not (mcp.scope/matches? token-scopes scope)
-      (throw (ex-info (format "Reading %s content requires the %s scope, which this token was not granted."
-                              type scope)
-                      {:status-code 403})))))
 
 (defn- check-includes!
   "Reject an `include` section that no item in the batch can supply — a caller typo, rather than
@@ -512,9 +498,8 @@
   "Build one batch item's result: its projection (with `include` sections or `fields`
    narrowing), or the `{type, id, error}` object that keeps a failing item from sinking the
    rest of the batch."
-  [{:keys [include] :as args} token-scopes {:keys [type id fields] :as _item}]
+  [{:keys [include] :as args} {:keys [type id fields] :as _item}]
   (try
-    (check-type-scope! token-scopes type)
     (let [{:keys [proj fetch]} (type->spec type)
           proj (or proj (keyword type))
           row  (fetch id)]
@@ -556,12 +541,12 @@
 (registry/deftool get-content
   "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags, and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's comment threads, each anchored to the exact character range of its block in the returned markdown. Reading alerts/subscriptions additionally requires the agent:notification:read scope, transforms agent:transforms:read, snippets agent:snippets:read, documents agent:document:read."
   {:name         "get_content"
-   :scope        metabot.scope/agent-resource-read
-   :extra-scopes [metabot.scope/agent-notification-read metabot.scope/agent-transforms-read
-                  metabot.scope/agent-snippets-read metabot.scope/agent-document-read]
+   :scope        metabot.scope/agent-content-read
+   :extra-scopes [metabot.scope/agent-content-read metabot.scope/agent-content-read
+                  metabot.scope/agent-content-read metabot.scope/agent-content-read]
    :annotations  {:readOnlyHint true :idempotentHint true}
    :args         get-content-args-schema}
-  [{:keys [items include] :as args} {:keys [token-scopes]}]
+  [{:keys [items include] :as args} _]
   (when (> (count items) max-items)
     (common/throw-teaching-error
      (format "`items` accepts at most %d entries per call — you passed %d; split the batch."
@@ -572,4 +557,4 @@
   (when (seq include)
     (check-includes! (into #{} (map :type) items) (distinct include)))
   (common/success-content
-   (json/encode {:results (mapv #(content-item-result args token-scopes %) items)})))
+   (json/encode {:results (mapv #(content-item-result args %) items)})))

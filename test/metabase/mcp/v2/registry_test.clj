@@ -27,7 +27,7 @@
 
 (deftest ^:parallel list-tools-scope-filtering-test
   (testing "tools/list filters on token scopes"
-    (is (some #(= "ping_v2" (:name %)) (registry/list-tools #{"agent:search"})))
+    (is (some #(= "ping_v2" (:name %)) (registry/list-tools #{"agent:content:read"})))
     (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools #{"agent:metadata:read"})))))
   (testing "the unrestricted sentinel (cookie sessions) sees every tool"
     (is (some #(= "ping_v2" (:name %)) (registry/list-tools #{::scope/unrestricted})))))
@@ -40,7 +40,7 @@
 
 (deftest ^:parallel call-tool-success-test
   (testing "a valid call dispatches to the handler; top-level nils are stripped first"
-    (let [result (registry/call-tool #{"agent:search"} nil "ping_v2" {:message nil})]
+    (let [result (registry/call-tool #{"agent:content:read"} nil "ping_v2" {:message nil})]
       (is (not (:isError result)))
       (is (= {:ok true :message "pong"} (:structuredContent result)))
       (testing "the internal error-code marker never reaches the client"
@@ -73,7 +73,7 @@
                             ["ex-info with no status" (ex-info "SELECT ssn FROM secret_accounts" {:query {}})]]]
       (testing label
         (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _] (throw thrown))]
-          (let [result (registry/call-tool #{"agent:search"} nil "ping_v2" {})]
+          (let [result (registry/call-tool #{"agent:content:read"} nil "ping_v2" {})]
             (is (:isError result))
             (is (= "Internal error" (-> result :content first :text))
                 "the raw exception message must not reach the client")))))))
@@ -89,24 +89,20 @@
 
 (deftest ^:parallel registered-scopes-test
   (testing "every registered tool's :scope flows through registered-scopes into the default DCR grant"
-    (is (set/subset? #{"agent:search"} (set (registry/registered-scopes)))))
+    (is (set/subset? #{"agent:content:read"} (set (registry/registered-scopes)))))
   (testing "GHY-4137: :extra-scopes are opt-in — a handler gates a mode on them, so they must be
             advertised for a token to request them, but they must NOT be in the default grant, or
-            the gate is dead (every dynamically-registered client would hold them already)"
-    (testing "the opt-in scope is kept out of the default grant"
-      (is (not (contains? (set (registry/registered-scopes)) "agent:snippets:read"))))
-    (testing "the opt-in scope is advertised via registered-opt-in-scopes"
-      (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-opt-in-scopes))))))
-  (testing "GHY-4151: :required-scopes are mandatory, not opt-in — the handler hard-fails without
-            them, so they must reach the default grant or the tool advertises a capability no
-            default-grant client can reach. `agent:document:create` is the canary: duplicate_content
-            is the only v2 tool that needs it, so nothing else puts it in the grant."
-    (is (set/subset? #{"agent:question:create" "agent:dashboard:create" "agent:document:create"}
-                     (set (registry/registered-scopes))))
-    (testing "and they stay out of the opt-in set, which would leave them ungranted"
-      (is (empty? (set/intersection #{"agent:question:create" "agent:dashboard:create"
-                                      "agent:document:create"}
-                                    (set (registry/registered-opt-in-scopes))))))))
+            the gate is dead (every dynamically-registered client would hold them already).
+            GHY-4225 left `agent:query:run` as the only such scope: alert_write and
+            subscription_write gate scheduled execution on it beyond their own write scope."
+    (is (set/subset? #{"agent:query:run"} (set (registry/registered-opt-in-scopes)))))
+  ;; GHY-4225 retired :required-scopes from v2: duplicate_content's per-type create scopes all
+  ;; collapsed into the single `agent:content:write` it already gates on, so there is no longer a
+  ;; mandatory-but-separate scope to keep in the default grant.
+  (testing "the five rationalized scopes all reach the default grant"
+    (is (set/subset? #{"agent:content:read" "agent:content:write" "agent:query:run"
+                       "agent:sql:run" "agent:delivery:write"}
+                     (set (registry/registered-scopes))))))
 
 (deftest ^:parallel tools-hash-test
   (testing "tools-hash is a stable 8-char hex string that reflects scope-visible tools"
@@ -127,7 +123,7 @@
 (deftest usage-logging-contract-test
   (testing "every tools/call outcome writes exactly one usage record with the right status/error-code"
     (testing "success → status \"success\", no error"
-      (let [records (capture-usage-records! #(registry/call-tool #{"agent:search"} nil "ping_v2" {}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:content:read"} nil "ping_v2" {}))]
         (is (= 1 (count records)))
         (let [r (first records)]
           (is (= "ping_v2" (:tool-name r)))
@@ -151,7 +147,7 @@
           (is (= common/error-code-method-not-found (:error-code r)))
           (is (= "Unknown tool: does_not_exist" (:error-message r))))))
     (testing "validation failure → status \"error\", invalid-params code"
-      (let [records (capture-usage-records! #(registry/call-tool #{"agent:search"} nil "ping_v2" {:message 42}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:content:read"} nil "ping_v2" {:message 42}))]
         (is (= 1 (count records)))
         (let [r (first records)]
           (is (= "ping_v2" (:tool-name r)))
@@ -164,7 +160,7 @@
   (testing "an EE :feature hides the tool from list/call when absent, exposes it when present"
     (let [tool-name "throwaway_feature_tool"
           tool      {:name        tool-name
-                     :scope       "agent:search"
+                     :scope       "agent:content:read"
                      :feature     :content-verification
                      :description "throwaway feature-gated tool"
                      :args        [:map]
@@ -173,53 +169,53 @@
         (registry/register-tool! tool)
         (testing "feature absent → hidden from tools/list and rejected by tools/call as unknown"
           (mt/with-premium-features #{}
-            (is (not (some #(= tool-name (:name %)) (registry/list-tools #{"agent:search"}))))
-            (let [result (registry/call-tool #{"agent:search"} nil tool-name {})]
+            (is (not (some #(= tool-name (:name %)) (registry/list-tools #{"agent:content:read"}))))
+            (let [result (registry/call-tool #{"agent:content:read"} nil tool-name {})]
               (is (:isError result))
               (is (= (str "Unknown tool: " tool-name) (-> result :content first :text))))))
         (testing "feature present → visible in tools/list and callable"
           (mt/with-premium-features #{:content-verification}
-            (is (some #(= tool-name (:name %)) (registry/list-tools #{"agent:search"})))
-            (let [result (registry/call-tool #{"agent:search"} nil tool-name {})]
+            (is (some #(= tool-name (:name %)) (registry/list-tools #{"agent:content:read"})))
+            (let [result (registry/call-tool #{"agent:content:read"} nil tool-name {})]
               (is (not (:isError result))))))
         (finally
           (swap! @#'registry/tools* dissoc tool-name)
           (reset! @#'registry/manifest-cache nil)))
       (testing "cleanup removed the throwaway tool"
-        (is (not (some #(= tool-name (:name %)) (registry/list-tools #{"agent:search"}))))))))
+        (is (not (some #(= tool-name (:name %)) (registry/list-tools #{"agent:content:read"}))))))))
 
 ;; not ^:parallel: exercises register-tool!'s load-time guards
 (deftest registration-validation-test
   (testing "a blank :name fails loudly"
     (is (thrown-with-msg? Exception #":name"
                           (registry/register-tool! {:name        ""
-                                                    :scope       "agent:search"
+                                                    :scope       "agent:content:read"
                                                     :description "x"
                                                     :args        [:map]
                                                     :handler     (fn [_ _] nil)}))))
   (testing "a missing :description fails loudly"
     (is (thrown-with-msg? Exception #"without a :description"
                           (registry/register-tool! {:name        "no_desc"
-                                                    :scope       "agent:search"
+                                                    :scope       "agent:content:read"
                                                     :args        [:map]
                                                     :handler     (fn [_ _] nil)}))))
   (testing "a missing :args schema fails loudly"
     (is (thrown-with-msg? Exception #":args Malli schema"
                           (registry/register-tool! {:name        "no_args"
-                                                    :scope       "agent:search"
+                                                    :scope       "agent:content:read"
                                                     :description "x"
                                                     :handler     (fn [_ _] nil)}))))
   (testing "a non-fn :handler fails loudly"
     (is (thrown-with-msg? Exception #":handler fn"
                           (registry/register-tool! {:name        "bad_handler"
-                                                    :scope       "agent:search"
+                                                    :scope       "agent:content:read"
                                                     :description "x"
                                                     :args        [:map]
                                                     :handler     "not-a-fn"}))))
   (testing "an optional non-nullable field fails the strict-tool nullability check"
     (is (thrown-with-msg? Exception #"optional non-nullable field"
                           (registry/register-tool! {:name        "bad_schema"
-                                                    :scope       "agent:search"
+                                                    :scope       "agent:content:read"
                                                     :description "x"
                                                     :args        [:map [:x {:optional true} :string]]
                                                     :handler     (fn [_ _] nil)})))))

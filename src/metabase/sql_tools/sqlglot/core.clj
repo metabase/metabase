@@ -161,7 +161,7 @@
     ;; No dialect available from caller, use nil for SQLGlot's default dialect
     (sql-parsing/simple-query? nil sql-string)
     (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
 (defmethod sql-tools/add-into-clause-impl :sqlglot

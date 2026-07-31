@@ -364,15 +364,25 @@
               assoc-slug)))
 
 (defmethod apply-op "update_parameter"
-  [state idx {:keys [parameter_id] :as op}]
+  [state idx {:keys [parameter_id clear] :as op}]
   (resolve-parameter! state idx parameter_id)
-  (update state :parameters
-          (partial mapv #(if (= parameter_id (:id %))
-                           ;; only re-slug on a rename, so an unrelated edit can't rewrite the
-                           ;; slug of a parameter created in the editor and break its existing URLs
-                           (cond-> (merge % (dissoc op :op :parameter_id))
-                             (contains? op :name) assoc-slug)
-                           %))))
+  (let [cleared (map keyword clear)]
+    (doseq [field cleared
+            :when (contains? op field)]
+      (op-error! idx (format "update_parameter): `%s` is both set and cleared — pass one or the other."
+                             (name field))))
+    (update state :parameters
+            (partial mapv #(if (= parameter_id (:id %))
+                             ;; A parameter is a map, so clearing removes the key rather than
+                             ;; setting it to nil — `merge` can only add, and a stored explicit
+                             ;; null is not the same as an absent property to the REST shape.
+                             (cond-> (apply dissoc
+                                            (merge % (dissoc op :op :parameter_id :clear))
+                                            cleared)
+                               ;; only re-slug on a rename, so an unrelated edit can't rewrite the
+                               ;; slug of a parameter created in the editor and break its existing URLs
+                               (contains? op :name) assoc-slug)
+                             %)))))
 
 (defmethod apply-op "remove_parameter"
   [state idx {:keys [parameter_id]}]

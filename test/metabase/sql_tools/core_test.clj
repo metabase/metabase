@@ -241,4 +241,14 @@
         (str "SELECT 1; " values-query) false false
         (str "SET ROLE none; " values-query) false false
         (str values-query "; SELECT 1") false false
-        (str values-query "; SET ROLE none") false false))))
+        (str values-query "; SET ROLE none") false false)))
+  (testing "we don't remove large IN lists, tuple lists, or arrays when validating impersonated queries"
+    (doseq [query [(str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
+                   (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
+                   (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")]]
+      (are [sql is-single-stmt? allowed-stmt-type?]
+           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
+              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+        query true true
+        (str "SELECT 1; " query) false false
+        (str query "; SELECT 1") false false))))

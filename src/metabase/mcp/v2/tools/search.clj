@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -287,15 +286,6 @@
          "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
     args))
 
-(defn- check-snippet-scope!
-  [token-scopes types]
-  (when (and (contains? (set types) "snippet")
-             (not (mcp.scope/matches? token-scopes metabot.scope/agent-snippets-read)))
-    (common/throw-teaching-error
-     (str "type: [\"snippet\"] requires the " metabot.scope/agent-snippets-read
-          " scope, which this token does not have.")
-     {:status-code 403})))
-
 (defn- resolve-collection-filter
   "Resolve the `collection_id` argument to a numeric collection id behind the collection's read
    check, or nil when it means the root (no scoping). Sentinel handling is delegated to
@@ -387,7 +377,7 @@
 
 (def ^:private type-desc
   (str "Restrict results to these entity types. \"snippet\" is served by a separate listing "
-       "(snippets aren't in the search index), requires the " metabot.scope/agent-snippets-read
+       "(snippets aren't in the search index), requires the " metabot.scope/agent-content-read
        " scope, and must be requested on its own — combining it with other types is an error. "
        "Omit to search every type this tool supports except snippets."))
 
@@ -438,12 +428,10 @@
   other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace:
   \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
   limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
-                                                                             :scope        metabot.scope/agent-search
-                                                                             :extra-scopes #{metabot.scope/agent-snippets-read}
+                                                                             :scope        metabot.scope/agent-content-read
                                                                              :annotations  {:readOnlyHint true :idempotentHint true}
                                                                              :args         search-args-schema}
-  [{:keys [term_queries semantic_queries recent type collection_id archived] :as args}
-   {:keys [token-scopes]}]
+  [{:keys [term_queries semantic_queries recent type collection_id archived] :as args} _]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
         filters?  (boolean (or (seq type)
                                (collection-scoping? args)
@@ -453,7 +441,6 @@
         offset    (or (:offset args) 0)]
     (validate-modes! args queries? filters?)
     (validate-filters! args)
-    (check-snippet-scope! token-scopes type)
     (if (true? recent)
       (let [fmt (if (:fields args)
                   (common/throw-teaching-error

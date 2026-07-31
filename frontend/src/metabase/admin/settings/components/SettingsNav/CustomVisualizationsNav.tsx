@@ -2,8 +2,7 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/common/components/upsells/components";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -15,7 +14,7 @@ export const CustomVisualizationsNav = () => {
     "custom-viz-plugin-dev-mode-enabled",
   );
 
-  const pathname = useSelector(getLocation).pathname;
+  const pathname = useLocation().pathname;
   const hasSubNav = hasCustomVizAvailable && customVizDevModeEnabled;
   const isManageVisualizationsActive =
     pathname.startsWith(Urls.customVizAdd()) ||

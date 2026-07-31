@@ -1510,7 +1510,17 @@
                                query
                                -1
                                join-condition
-                               :year)))))))
+                               :year)))))
+    (testing ":default (explicit 'Don't bin') propagates to both sides"
+      (is (=? [:= {}
+               [:field {:temporal-unit :default} (meta/id :orders :created-at)]
+               [:field {:temporal-unit :default} (meta/id :products :created-at)]]
+              (lib/join-condition-update-temporal-bucketing
+               query
+               -1
+               (lib/= orders-created-at
+                      products-created-at)
+               :default))))))
 
 (deftest ^:parallel default-join-alias-test
   (testing "default join-alias set without overwriting other aliases (#32897)"

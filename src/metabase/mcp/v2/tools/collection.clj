@@ -104,6 +104,9 @@
                                     "21-character entity_id, or \"root\" for the top level. Omitted on create means "
                                     "the root collection. You need write access to the parent.")}
              :int :string]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, authority_level). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "authority_level"]]]]
    [:archived {:optional true}
     [:maybe [:boolean {:description (str "Update only: true moves the collection and its contents to the trash, false "
                                          "restores them. Archiving is the only removal path — there is no hard "
@@ -118,7 +121,8 @@
              "official"]]]])
 
 (def ^:private collection-write-entry
-  {:create-required [:name]})
+  {:create-required [:name]
+   :clearable       #{:description :authority_level}})
 
 (registry/deftool collection-write
   "Create, rename, move, archive, or restore a collection — the folders that hold questions, dashboards, models, and
@@ -134,14 +138,14 @@
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
   Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
   {:name        "collection_write"
-   :scope       metabot.scope/agent-collection-write
+   :scope       metabot.scope/agent-content-write
    ;; `archived: true` trashes the collection and everything under it, so this is not the
    ;; additive-only update `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
    :args        collection-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write collection-write-entry args)
-        payload  (common/readback token-scopes [metabot.scope/agent-resource-read]
+        payload  (common/readback token-scopes [metabot.scope/agent-content-read]
                                   (case op
                                     :create (create! a)
                                     :update (update! a b)))]

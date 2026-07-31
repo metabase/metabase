@@ -135,8 +135,8 @@
   (testing "GHY-4152: the tool requires agent:bookmark:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
       (is (= "Insufficient scope to call tool: bookmark_content"
-             (tool-error (call-tool! :rasta #{metabot.scope/agent-search}
+             (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
                                      {:type "question" :id card-id :bookmarked true}))))
       (is (=? {:bookmarked true}
-              (tool-result (call-tool! :rasta #{metabot.scope/agent-bookmark-write}
+              (tool-result (call-tool! :rasta #{metabot.scope/agent-content-write}
                                        {:type "question" :id card-id :bookmarked true})))))))

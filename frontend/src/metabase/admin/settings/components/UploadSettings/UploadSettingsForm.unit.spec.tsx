@@ -150,6 +150,16 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show the supported databases in a tooltip on the dropdown label", async () => {
+    setup();
+    await userEvent.hover(screen.getByTestId("uploads-db-info-icon"));
+    expect(
+      await screen.findByText(
+        "PostgreSQL, MySQL, Redshift, ClickHouse, and Snowflake databases are supported for file storage.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should show an empty state if there are no databases", async () => {
     setup({ databases: [] });
     expect(

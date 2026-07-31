@@ -257,50 +257,32 @@
         (is (re-find #"at most 10" error))
         (is (re-find #"you passed 11" error))))))
 
-(deftest get-content-extra-scope-gates-test
-  (testing "GHY-4140: alert reads require agent:notification:read on top of the base scope"
-    (notification.tu/with-card-notification
-      [notification {:card              {:dataset_query (venues-query)}
-                     :notification      {:creator_id (mt/user->id :crowberto)}
-                     :handlers          []}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"}
-                               {:items [{:type "alert" :id (:id notification)}]})]
-          (is (re-find #"agent:notification:read" (:error row))))
-        (testing "granting the scope lets the same read through"
-          (let [row (content-one #{"agent:resource:read" "agent:notification:read"}
-                                 {:items [{:type "alert" :id (:id notification)}]})]
-            (is (nil? (:error row))))))))
-  (testing "GHY-4140: transform reads require agent:transforms:read"
-    (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                              :source {:type  :query
-                                                       :query {:database (mt/id)
-                                                               :type     "query"
-                                                               :query    {:source-table (mt/id :venues)}}}
-                                              :target {:type   :table
-                                                       :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                                       :name   "t1_out"}}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"} {:items [{:type "transform" :id id}]})]
-          (is (re-find #"agent:transforms:read" (:error row)))))))
-  (testing "snippet reads require agent:snippets:read — a snippet body is not readable on the base scope"
-    (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name "snip" :content "wow" :creator_id (mt/user->id :lucky)}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"} {:items [{:type "snippet" :id id}]})]
-          (is (re-find #"agent:snippets:read" (:error row))))
-        (testing "granting the scope lets the same read through"
-          (let [row (content-one #{"agent:resource:read" "agent:snippets:read"} {:items [{:type "snippet" :id id}]})]
+(deftest get-content-reads-formerly-gated-types-test
+  (testing "GHY-4225: alerts, transforms, snippets and documents each used to need their own read
+            scope on top of the base one. Those folded into `agent:content:read`, so the single
+            scope now carries them — the per-type gate is gone, not merely renamed."
+    (testing "alert"
+      (notification.tu/with-card-notification
+        [notification {:card         {:dataset_query (venues-query)}
+                       :notification {:creator_id (mt/user->id :crowberto)}
+                       :handlers     []}]
+        (mt/with-test-user :crowberto
+          (is (nil? (:error (content-one #{"agent:content:read"}
+                                         {:items [{:type "alert" :id (:id notification)}]})))))))
+    (testing "snippet, including its body"
+      (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name "snip" :content "wow"
+                                                         :creator_id (mt/user->id :lucky)}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one #{"agent:content:read"} {:items [{:type "snippet" :id id}]})]
             (is (nil? (:error row)))
-            (is (= "wow" (:content row))))))))
-  (testing "document reads require agent:document:read"
-    (mt/with-temp [:model/Document {id :id}
-                   {:document     {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "hello"}]}]}
-                    :content_type "application/json+vnd.prose-mirror"}]
-      (mt/with-test-user :crowberto
-        (let [row (content-one #{"agent:resource:read"} {:items [{:type "document" :id id}]})]
-          (is (re-find #"agent:document:read" (:error row))))
-        (testing "granting the scope lets the same read through"
-          (let [row (content-one #{"agent:resource:read" "agent:document:read"} {:items [{:type "document" :id id}]})]
+            (is (= "wow" (:content row)))))))
+    (testing "document, including its body"
+      (mt/with-temp [:model/Document {id :id}
+                     {:document     {:type "doc" :content [{:type "paragraph"
+                                                            :content [{:type "text" :text "hello"}]}]}
+                      :content_type "application/json+vnd.prose-mirror"}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
             (is (re-find #"hello" (:markdown row)))))))))
 

@@ -305,6 +305,9 @@
    [:visualization_settings {:optional true} [:maybe :map]]
    [:cache_ttl {:optional true} [:maybe :int]]
    [:archived {:optional true} [:maybe :boolean]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "collection_position" "cache_ttl"]]]]
    [:column_metadata {:optional true}
     [:maybe [:sequential
              [:map
@@ -317,16 +320,17 @@
 (registry/deftool question-write-tool
   "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (a handle from an execute tool — MBQL or native SQL), query (inline MBQL 5), or native ({database_id, sql, template_tags?}). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit to save to your personal collection; pass \"root\" to save to the root collection) or dashboard_id (saves the question inside that dashboard; its collection is inferred from the dashboard — pass one or the other, not both), display, visualization_settings, cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets the card's result_metadata; typically used with card_type \"model\"). On update, pass id and any fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (its collection follows the dashboard's — pass with collection_id and you'll get an error; a question already saved in another dashboard can't be moved into a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
-   :scope        metabot.scope/agent-question-write
+   :scope        metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
    :annotations  {:readOnlyHint false :destructiveHint true}
    :args         question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (common/dispatch-write
-                  {:create-required [:name]}
+                  {:create-required [:name]
+                   :clearable       #{:description :collection_position :cache_ttl}}
                   args)
-        payload (common/readback token-scopes [metabot.scope/agent-resource-read]
+        payload (common/readback token-scopes [metabot.scope/agent-content-read]
                                  (case op
                                    :create (create! a session-id)
                                    :update (update! a b session-id)))]

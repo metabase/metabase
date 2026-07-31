@@ -316,7 +316,7 @@
         (is (= "Insufficient scope to call tool: run_saved_question"
                (tool-error (call-run-saved-question #{"agent:metadata:read"} {:id card-id})))))
       (testing "the identical call succeeds once the token carries the scope"
-        (is (pos? (:returned (tool-result (call-run-saved-question #{"agent:query:execute"}
+        (is (pos? (:returned (tool-result (call-run-saved-question #{"agent:query:run"}
                                                                    {:id card-id :row_limit 5})))))))))
 
 (deftest ^:parallel row-limit-validation-test

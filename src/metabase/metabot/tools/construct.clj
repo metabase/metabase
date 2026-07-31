@@ -502,9 +502,8 @@
         ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
         ;; is the tool's result and the LLM is expected to self-correct on the next turn.
         (do
-          (log/debug e "construct_notebook_query returned agent-error to the LLM")
+          (log/debugf "construct_notebook_query returned agent-error to the LLM: %s" (ex-message e))
           {:output (ex-message e)})
-        ;; Genuine unexpected failure — keep full stacktrace.
         (do
-          (log/error e "Failed to construct notebook query")
+          (log/errorf "Failed to construct notebook query: %s" (ex-message e))
           {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))

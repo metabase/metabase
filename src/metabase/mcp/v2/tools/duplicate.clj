@@ -9,7 +9,6 @@
    [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.documents.core :as documents]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -85,28 +84,18 @@
   (documents/copy-document! (:id document) {:name new-name :collection_id collection-id}))
 
 (def ^:private type->spec
-  "Per-type fetch, copy, and the create scope duplicating that type requires — duplicating is
-   creating, so the tool's own scope is not enough on its own."
+  "Per-type fetch and copy. GHY-4225 collapsed the per-type create scopes into the single
+   `agent:content:write` this tool already gates on, so there is no longer a second scope to check."
   {"question"  {:fetch fetch-question
-                :scope metabot.scope/agent-question-create
                 :copy! (fn [source collection-id new-name _deep-copy?]
                          (copy-question! source collection-id new-name))}
    "dashboard" {:fetch fetch-dashboard
-                :scope metabot.scope/agent-dashboard-create
                 :copy! copy-dashboard!}
    "document"  {:fetch fetch-document
-                :scope metabot.scope/agent-document-create
                 :copy! (fn [source collection-id new-name _deep-copy?]
                          (copy-document! source collection-id new-name))}})
 
 ;;; ---------------------------------------------------- handler ---------------------------------------------------
-
-(defn- check-type-scope!
-  [token-scopes type scope]
-  (when-not (mcp.scope/matches? token-scopes scope)
-    (throw (ex-info (format "Duplicating %s content requires the %s scope, which this token was not granted."
-                            type scope)
-                    {:status-code 403}))))
 
 (defn- destination-collection-id
   "The copy's collection: the caller's `collection_id` when they passed one (`\"root\"` included),
@@ -136,16 +125,11 @@
 (registry/deftool duplicate-content
   "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into the source's own collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection."
   {:name            "duplicate_content"
-   :scope           metabot.scope/agent-content-duplicate
-   ;; Mandatory, not opt-in: [[check-type-scope!]] hard-fails the call without the type's create
-   ;; scope, so these must reach the default grant or `type: "document"` is unreachable.
-   :required-scopes [metabot.scope/agent-question-create metabot.scope/agent-dashboard-create
-                     metabot.scope/agent-document-create]
+   :scope           metabot.scope/agent-content-write
    :annotations     {:readOnlyHint false :destructiveHint false}
    :args            duplicate-content-args-schema}
-  [{:keys [type id new_name is_deep_copy] :as args} {:keys [token-scopes]}]
-  (let [{:keys [fetch scope copy!]} (type->spec type)]
-    (check-type-scope! token-scopes type scope)
+  [{:keys [type id new_name is_deep_copy] :as args} _]
+  (let [{:keys [fetch copy!]} (type->spec type)]
     (when (and (some? is_deep_copy) (not= type "dashboard"))
       (common/throw-teaching-error
        (format "`is_deep_copy` applies to dashboards only — omit it when duplicating a %s." type)))
