@@ -30,6 +30,7 @@
    [metabase.mcp.v2.tools.question]
    [metabase.mcp.v2.tools.search]
    [metabase.mcp.v2.tools.subscription]
+   [metabase.mcp.v2.tools.transform]
    [metabase.mcp.v2.tools.visualize]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util.i18n :refer [tru]]))
