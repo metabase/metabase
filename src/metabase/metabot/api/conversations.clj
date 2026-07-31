@@ -28,15 +28,16 @@
 
 (def ^:private ConversationSummary
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:title           [:maybe :string]]
+   [:conversation_id             ms/UUIDString]
+   [:created_at                  ms/TemporalInstant]
+   [:title                       [:maybe :string]]
    ;; Wire compatibility: keep the field name `user_id`, but it now means the
    ;; conversation originator (first writer), not "the only allowed reader".
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:profile_id      [:maybe :string]]
-   [:message_count   ms/IntGreaterThanOrEqualToZero]
-   [:last_message_at [:maybe ms/TemporalInstant]]])
+   [:user_id                     [:maybe ms/PositiveInt]]
+   [:profile_id                  [:maybe :string]]
+   [:message_count               ms/IntGreaterThanOrEqualToZero]
+   [:last_message_at             [:maybe ms/TemporalInstant]]
+   [:forked_from_conversation_id [:maybe ms/UUIDString]]])
 
 (def ^:private ListConversationsResponse
   [:map
@@ -47,16 +48,17 @@
 
 (def ^:private ConversationDetail
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:title           [:maybe :string]]
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:state           {:optional true} [:maybe ::metabot.schema/state]]
-   [:saved_entities  [:sequential
-                      [:map
-                       [:card_id  ms/PositiveInt]
-                       [:chart_id [:maybe :string]]]]]
-   [:messages        [:sequential :map]]])
+   [:conversation_id             ms/UUIDString]
+   [:created_at                  ms/TemporalInstant]
+   [:title                       [:maybe :string]]
+   [:user_id                     [:maybe ms/PositiveInt]]
+   [:forked_from_conversation_id [:maybe ms/UUIDString]]
+   [:state                       {:optional true} [:maybe ::metabot.schema/state]]
+   [:saved_entities              [:sequential
+                                  [:map
+                                   [:card_id  ms/PositiveInt]
+                                   [:chart_id [:maybe :string]]]]]
+   [:messages                    [:sequential :map]]])
 
 (def ^:private ConversationTitleResponse
   [:map
@@ -70,6 +72,11 @@
   [:maybe
    [:map
     [:profile_id {:optional true} [:maybe ms/NonBlankString]]]])
+
+(def ^:private ForkConversationBody
+  [:map
+   ;; the `external_id` of the assistant message to fork at (the FE's message id)
+   [:message_id ms/UUIDString]])
 
 (def ^:private SaveEntityCard
   [:map
@@ -181,7 +188,7 @@
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
         rows    (t2/select :model/MetabotConversation
-                           {:select   [:c.id :c.created_at :c.title :c.user_id
+                           {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
                                        [(live-message-count-subquery) :message_count]
                                        [(last-live-message-at-subquery) :last_message_at]
                                        [(last-live-message-profile-id-subquery) :profile_id]]
@@ -191,7 +198,8 @@
                             :limit    limit
                             :offset   offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at])
+                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
+                                      :forked_from_conversation_id])
                         (assoc :conversation_id (:id %)))
                    rows)
      :total  total
@@ -213,6 +221,25 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
   (metabot.persistence/conversation-detail id))
+
+(api.macros/defendpoint :post "/:id/fork" :- ConversationDetail
+  "Fork a conversation at an assistant message, returning a brand-new conversation
+  that copies the thread from the start up to and including that message.
+
+  Only the conversation's originator may fork it, for now. `message_id` is the
+  `external_id` of the message to fork at, which must be a live, finished,
+  non-errored assistant message. The clone gets fresh conversation/message ids,
+  fresh timestamps, the current user as owner, and zeroed token usage so the fork
+  does not double-count tokens in the analytics views."
+  [{:keys [id]} :- ConversationIdParams
+   _query-params
+   {:keys [message_id]} :- ForkConversationBody]
+  (let [conversation (api/check-404 (t2/select-one [:model/MetabotConversation :id :user_id] :id id))]
+    (api/check-403 (= (:user_id conversation) api/*current-user-id*))
+    (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
+      (api/check-400 (some? new-conversation-id)
+                     (tru "Can only fork from a completed Metabot response."))
+      (metabot.persistence/conversation-detail new-conversation-id))))
 
 (api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the

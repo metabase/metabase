@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Button, Icon } from "metabase/ui";
 
 export const CopyAnalyticsDashboardButton = () => {
-  const { location } = useRouter();
+  const location = useLocation();
 
   return (
     <Button

@@ -1,8 +1,9 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
@@ -11,7 +12,8 @@ type MonitorGuard =
   | "CanAccessMonitor"
   | "CanAccessMonitorDiagnostics"
   | "CanAccessMonitoringTools"
-  | "CanAccessAlertsManagement";
+  | "CanAccessAlertsManagement"
+  | "CanAccessAiAuditing";
 
 /**
  * These specs assert route-tree structure, not access policy, so the guards are
@@ -37,6 +39,7 @@ jest.mock("./route-guards", () => {
     CanAccessMonitorDiagnostics: stubGuard("CanAccessMonitorDiagnostics"),
     CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
     CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
+    CanAccessAiAuditing: stubGuard("CanAccessAiAuditing"),
   };
 });
 
@@ -153,6 +156,16 @@ const setup = ({
   );
 };
 
+const enableAiAuditingRoutes = () => {
+  PLUGIN_AUDIT.isAiAuditingEnabled = true;
+  PLUGIN_AUDIT.getAiAuditingRoutes = () => (
+    <Route
+      path="usage"
+      element={<div data-testid="ai-auditing-page">AI Auditing</div>}
+    />
+  );
+};
+
 describe("monitor routes", () => {
   afterEach(() => {
     reinitialize();
@@ -260,6 +273,22 @@ describe("monitor routes", () => {
         ).not.toBeInTheDocument();
       });
 
+      it("blocks the AI Auditing route when its own guard denies", async () => {
+        enableAiAuditingRoutes();
+
+        setup({
+          initialRoute: Urls.monitorAiAuditingUsage(),
+          deny: ["CanAccessAiAuditing"],
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("ai-auditing-page"),
+        ).not.toBeInTheDocument();
+      });
+
       it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
         setup({
           initialRoute: "/monitor/does-not-exist",
@@ -275,25 +304,37 @@ describe("monitor routes", () => {
   });
 
   describe("Tools sections (migrated from /admin/tools)", () => {
-    it("renders the Logs section at /monitor/logs", async () => {
-      setup({ initialRoute: "/monitor/logs" });
+    it.each([["/monitor/logs"], ["/monitor/logs/levels"]])(
+      "renders the Logs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Jobs section at /monitor/jobs", async () => {
-      setup({ initialRoute: "/monitor/jobs" });
+    it.each([["/monitor/jobs"], ["/monitor/jobs/sync"]])(
+      "renders the Jobs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Model persistence log section at /monitor/model-persistence-log", async () => {
-      setup({ initialRoute: "/monitor/model-persistence-log" });
+    it.each([
+      ["/monitor/model-persistence-log"],
+      ["/monitor/model-persistence-log/9"],
+    ])(
+      "renders the Model persistence log section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(
-        await screen.findByTestId("model-persistence-log-page"),
-      ).toBeInTheDocument();
-    });
+        expect(
+          await screen.findByTestId("model-persistence-log-page"),
+        ).toBeInTheDocument();
+      },
+    );
 
     it("renders the Erroring questions upsell at /monitor/errors without the audit_app feature", async () => {
       setup({ initialRoute: "/monitor/errors" });

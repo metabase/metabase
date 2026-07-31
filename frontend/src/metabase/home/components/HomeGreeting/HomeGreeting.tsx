@@ -9,23 +9,24 @@ import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Flex, Tooltip } from "metabase/ui";
 
-import { getHasMetabotLogo } from "../../selectors";
+import { getShowMetabotLogoAndGreeting } from "../../selectors";
 
 import S from "./HomeGreeting.module.css";
 
-export const HomeGreeting = (): JSX.Element => {
+export const HomeGreeting = (): JSX.Element | null => {
   const user = useSelector(getUser);
-  const showLogo = useSelector(getHasMetabotLogo);
+  const showGreeting = useSelector(getShowMetabotLogoAndGreeting);
   const name = user?.first_name;
   const message = useMemo(() => getMessage(name), [name]);
 
+  if (!showGreeting) {
+    return null;
+  }
+
   return (
     <Flex align="center">
-      {showLogo && <MetabotGreeting />}
-      <span
-        data-testid="greeting-message"
-        className={cx(S.greetingMessage, showLogo ? S.withLogo : S.withoutLogo)}
-      >
+      <MetabotGreeting />
+      <span data-testid="greeting-message" className={S.greetingMessage}>
         {message}
       </span>
     </Flex>

@@ -354,6 +354,7 @@
                          {:type     :tool-output
                           :function "search"
                           :result   {:structured-output {:total_count 1}}}
+                         {:type :data :data-type "search_results"}
                          {:type :start}
                          {:type :tool-input :function "construct_notebook_query"}
                          ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion

@@ -4,7 +4,7 @@ import type {
   ConversationDetail,
   ConversationSummary,
   ConversationsResponse,
-} from "metabase-enterprise/audit_app/metabot-analytics/types";
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 
 export function setupMetabotConversationEndpoint(
   conversation: ConversationDetail,

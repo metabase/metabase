@@ -1,6 +1,6 @@
 (ns metabase-enterprise.sandbox.api.metric
   "Enterprise sandbox filtering for metric dimensions.
-   Overrides `metabase.metrics.permissions/sandbox-restricted-fields` to restrict
+   Overrides `metabase.permissions.metric/sandbox-restricted-fields` to restrict
    dimensions from sandboxed tables to only fields in the sandbox source card."
   (:require
    [metabase.permissions.core :as perms]

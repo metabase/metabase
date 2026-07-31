@@ -18,7 +18,6 @@ import {
 } from "metabase/documents/selectors";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
-import type { AppBarProps } from "metabase/nav/components/AppBar/AppBar";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -26,11 +25,9 @@ import {
   getOriginalQuestion,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { connect, useDispatch, useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
-import type { State } from "metabase/redux/store";
-import { push, withRouteProps } from "metabase/router";
-import type { RouterProps } from "metabase/selectors/app";
+import { push, useLocation, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -56,32 +53,43 @@ export function getSearchResultSelection(
   return { type: "navigate", url: modelToUrl(result) };
 }
 
-const mapStateToProps = (state: State, props: RouterProps) => ({
-  currentUser: getUser(state),
-  isNavBarOpen: getIsNavbarOpen(state),
-  isNavBarEnabled: getIsNavBarEnabled(state, props),
-  isMetabotVisible: getMetabotVisible(state, "omnibot"),
-  isDocumentSidebarOpen: getSidebarOpen(state),
-  isCommentSidebarOpen: getCommentSidebarOpen(state),
-  isLogoVisible: getIsLogoVisible(state),
-  isSearchVisible: getIsSearchVisible(state),
-  isEmbeddingIframe: getIsEmbeddingIframe(state),
-  isNewButtonVisible: getIsNewButtonVisible(state),
-  isAppSwitcherVisible: getIsAppSwitcherVisible(state),
-  isCollectionPathVisible: getIsCollectionPathVisible(state, props),
-  isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
-  detailView: getDetailViewState(state),
-  isMetricsViewer: getIsMetricsViewer(state, props),
-});
-
-const mapDispatchToProps = {
-  onToggleNavbar: toggleNavbar,
-  onCloseNavbar: closeNavbar,
-};
-
-function AppBarContainerInner(props: AppBarProps & RouterProps) {
-  const collectionId = useInitialCollectionId(props) ?? undefined;
+export function AppBarContainer() {
   const dispatch = useDispatch();
+
+  // These selectors derive app-bar visibility from the URL, so they take the
+  // router props rather than reading them from the store.
+  const location = useLocation();
+  const params = useParams();
+  const routerProps = { location };
+  const collectionId =
+    useInitialCollectionId({ location, params }) ?? undefined;
+
+  const currentUser = useSelector(getUser);
+  const isNavBarOpen = useSelector(getIsNavbarOpen);
+  const isNavBarEnabled = useSelector((state) =>
+    getIsNavBarEnabled(state, routerProps),
+  );
+  const isMetabotVisible = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const isDocumentSidebarOpen = useSelector(getSidebarOpen);
+  const isCommentSidebarOpen = useSelector(getCommentSidebarOpen);
+  const isLogoVisible = useSelector(getIsLogoVisible);
+  const isSearchVisible = useSelector(getIsSearchVisible);
+  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isNewButtonVisible = useSelector(getIsNewButtonVisible);
+  const isAppSwitcherVisible = useSelector(getIsAppSwitcherVisible);
+  const isCollectionPathVisible = useSelector((state) =>
+    getIsCollectionPathVisible(state, routerProps),
+  );
+  const isQuestionLineageVisible = useSelector((state) =>
+    getIsQuestionLineageVisible(state, routerProps),
+  );
+  const detailView = useSelector(getDetailViewState);
+  const isMetricsViewer = useSelector((state) =>
+    getIsMetricsViewer(state, routerProps),
+  );
+
   const question = useSelector(getQuestion);
   const originalQuestion = useSelector(getOriginalQuestion);
   // The breadcrumbs' current collection is derived from the active
@@ -90,7 +98,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   // app tier, so the app-tier AppBar resolves it and passes it down.
   const breadcrumbCollectionId = useSelector(getCollectionId);
 
-  const { pathname } = props.location;
+  const { pathname } = location;
   const isOnQuestionPage = pathname && isQuestionPath(pathname);
   const dashboardId = isOnQuestionPage ? question?.dashboard()?.id : undefined;
   const { data: dashboard } = useGetDashboardQuery(
@@ -98,7 +106,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   );
 
   // Unjustified type cast. FIXME
-  const locationState = props.location.state as { cardId?: number } | undefined;
+  const locationState = location.state as { cardId?: number } | undefined;
 
   const onSearchItemSelect = (result: SearchResult) => {
     const selection = getSearchResultSelection(result, locationState?.cardId);
@@ -111,7 +119,23 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
 
   return (
     <AppBarView
-      {...props}
+      currentUser={currentUser}
+      isNavBarOpen={isNavBarOpen}
+      isNavBarEnabled={isNavBarEnabled}
+      isMetabotVisible={isMetabotVisible}
+      isDocumentSidebarOpen={isDocumentSidebarOpen}
+      isCommentSidebarOpen={isCommentSidebarOpen}
+      isLogoVisible={isLogoVisible}
+      isSearchVisible={isSearchVisible}
+      isEmbeddingIframe={isEmbeddingIframe}
+      isNewButtonVisible={isNewButtonVisible}
+      isAppSwitcherVisible={isAppSwitcherVisible}
+      isCollectionPathVisible={isCollectionPathVisible}
+      isQuestionLineageVisible={isQuestionLineageVisible}
+      detailView={detailView}
+      isMetricsViewer={isMetricsViewer}
+      onToggleNavbar={() => dispatch(toggleNavbar())}
+      onCloseNavbar={() => dispatch(closeNavbar())}
       collectionId={collectionId}
       collectionBreadcrumbs={
         <CollectionBreadcrumbs
@@ -129,7 +153,3 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     />
   );
 }
-
-export const AppBarContainer = withRouteProps(
-  connect(mapStateToProps, mapDispatchToProps)(AppBarContainerInner),
-);

@@ -14,7 +14,7 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SetupEventSchema>, never>,
 > = T;
 
-export type SetupVersion = "1.4.0";
+export type SetupVersion = "1.5.0";
 
 export type StepSeenEvent = ValidateEvent<{
   event: "step_seen";
@@ -24,6 +24,7 @@ export type StepSeenEvent = ValidateEvent<{
     | "language"
     | "user_info"
     | "db_connection"
+    | "ai_config"
     | "usage_question"
     | "license_token"
     | "db_scheduling"
