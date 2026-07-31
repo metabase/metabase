@@ -5,6 +5,7 @@ import { usePrevious } from "react-use";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
@@ -15,21 +16,22 @@ import type { ClearStateProps, FetchProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
-  getDatabaseId,
   getField,
   getIsEditing,
   getTable,
+  getTableId,
 } from "../selectors";
 
 import FieldSidebar from "./FieldSidebar";
 
 const mapDispatchToProps = {
   ...metadataActions,
+  fetchTableMetadataAndForeignKeys,
   ...actions,
 };
 
 interface FieldDetailContainerProps extends FetchProps, ClearStateProps {
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
+  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
 }
 
 function FieldDetailContainer(props: FieldDetailContainerProps) {
@@ -40,7 +42,7 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   const database = useSelector((state) => getDatabase(state, { params }));
   const table = useSelector((state) => getTable(state, { params }));
   const field = useSelector((state) => getField(state, { params }));
-  const databaseId = useSelector((state) => getDatabaseId(state, { params }));
+  const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
   // `FieldDetail` reads `metadata` but doesn't select it itself.
   const metadata = useSelector(getMetadata);
@@ -53,7 +55,7 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   const didFetch = useRef(false);
   if (!didFetch.current) {
     didFetch.current = true;
-    actions.wrappedFetchDatabaseMetadata(props, databaseId);
+    actions.wrappedFetchTableMetadata(props, tableId);
   }
 
   useEffect(() => {

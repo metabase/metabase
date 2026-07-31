@@ -212,6 +212,12 @@ function setup({
   setupEnterprisePlugins();
 
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
+  // useAuditTable pulls the table's fields (and its FK targets') from here.
+  fetchMock.post("path:/api/dataset/query_metadata", {
+    databases: [auditDatabase],
+    tables: auditDatabase.tables ?? [],
+    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  });
   fetchMock.post(
     "path:/api/dataset",
     (call) => buildDatasetResponse(call?.options.body),

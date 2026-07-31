@@ -12,7 +12,7 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { fetchDatabaseMetadata, updateMetadata } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -321,10 +321,6 @@ async function handleQBInit(
     const table = getMetadata(getState()).table(slugEntityId);
     if (!table) {
       dispatch(setErrorPage(NOT_FOUND_ERROR));
-      return;
-    }
-    await dispatch(fetchDatabaseMetadata(table.db_id));
-    if (isStale()) {
       return;
     }
     // The /table URL only carries the table id; resolve its db so the QB can
