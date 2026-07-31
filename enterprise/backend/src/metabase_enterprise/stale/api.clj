@@ -20,8 +20,6 @@
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection _permissions-set]
-  ;; `visible-collection-ids` used to apply `default-visibility-config`, which excludes archived collections and the
-  ;; Trash. `descendants-flat` filters neither, so both are spelled out here.
   (into []
         (comp (map :id)
               (remove #(= % (collection/trash-collection-id)))

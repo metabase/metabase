@@ -978,7 +978,6 @@
                                        [:= :visibility_type nil]
                                        [:= :active true]]
                                 schema (conj [:= :schema schema])))]
-     ;; the readable check below runs once per table, so load the whole database's table permissions in one go
      (perms/prime-table-perms-cache {:db-ids #{(u/the-id database)}})
      (->> tables
           (filter mi/can-read?)
