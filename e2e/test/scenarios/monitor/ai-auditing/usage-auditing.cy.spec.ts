@@ -102,11 +102,14 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     H.main()
       .findByRole("treegrid", { name: "Conversations" })
       .within(() => {
+        // The IP column sits behind horizontal scroll in the treegrid, so scroll
+        // each match into view before asserting visibility.
         ["Bobby Tables", "Robert Tableton", "NLQ", "10.0.0.1"].forEach(
           (label) => {
             cy.findAllByText(label)
-              .filter(":visible")
-              .should("have.length.greaterThan", 0);
+              .first()
+              .scrollIntoView()
+              .should("be.visible");
           },
         );
       });
