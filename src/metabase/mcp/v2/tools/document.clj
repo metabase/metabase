@@ -249,7 +249,9 @@
     (loop [ast ast, ser first-ser, bound Long/MAX_VALUE, iterations 0]
       (when (> iterations (+ 100 (* 2 (count first-matches))))
         (common/throw-teaching-error
-         (format "replace_all could not converge for old_str %s — the replacement keeps re-creating text that matches. Use distinct old_str/new_str pairs or edit the surrounding blocks individually."
+         (format (str "replace_all could not converge for old_str %s — the replacement keeps re-creating "
+                      "text that matches. Use distinct old_str/new_str pairs or edit the surrounding "
+                      "blocks individually.")
                  (snippet old_str))))
       (let [matches (match-indexes (:markdown ser) old_str)
             idx     (last (filter #(< % bound) matches))]
@@ -274,12 +276,15 @@
     (cond
       (empty? matches)
       (common/throw-teaching-error
-       (format "old_str %s matches 0 places in the document's current Markdown. The document may have changed since you read it — copy the snippet exactly from the content_markdown this tool (or get_content) returns."
+       (format (str "old_str %s matches 0 places in the document's current Markdown. The document may "
+                    "have changed since you read it — copy the snippet exactly from the content_markdown "
+                    "this tool (or get_content) returns.")
                (snippet old_str)))
 
       (and (> (count matches) 1) (not replace_all))
       (common/throw-teaching-error
-       (format "old_str %s matches %d places — extend the snippet with more surrounding context so it matches exactly once, or set replace_all: true."
+       (format (str "old_str %s matches %d places — extend the snippet with more surrounding context so "
+                    "it matches exactly once, or set replace_all: true.")
                (snippet old_str) (count matches)))
 
       replace_all
@@ -317,7 +322,8 @@
      "Pass exactly one of content_markdown (a deliberate full-body rewrite) or edits (surgical text edits), not both."))
   (when-not (or content_markdown edits)
     (common/throw-teaching-error
-     "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text edits). To change only collection_id/collection_position/archived, pass edits: []."))
+     (str "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text "
+          "edits). To change only collection_id/collection_position/archived, pass edits: [].")))
   (let [existing (common/resolve-and-read :model/Document id
                                           (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
