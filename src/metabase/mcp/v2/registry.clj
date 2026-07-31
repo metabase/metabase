@@ -66,7 +66,7 @@
     (deftool ping-v2
       \"Health-check tool for the v2 MCP surface.\"
       {:name        \"ping_v2\"
-       :scope       metabot.scope/agent-search
+       :scope       metabot.scope/agent-content-read
        :annotations {:readOnlyHint true}
        :args        [:map …]}
       [arguments context]

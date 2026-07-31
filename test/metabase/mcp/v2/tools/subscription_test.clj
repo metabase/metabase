@@ -600,15 +600,15 @@
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                           :schedule_type :daily :schedule_hour 15}]
-      (let [write-only #{"agent:subscription:write"}]
+      (let [write-only #{"agent:delivery:write"}]
         (testing "create with only the write scope is refused, naming the missing scope"
-          (is (re-find #"agent:query:execute"
+          (is (re-find #"agent:query:run"
                        (tool-error (call-tool! :crowberto write-only
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     {:schedule_type "hourly"}}))))))
         (testing "redirecting delivery with only the write scope is refused"
-          (is (re-find #"agent:query:execute"
+          (is (re-find #"agent:query:run"
                        (tool-error (call-tool! :crowberto write-only
                                                (wire {:method "update" :id pulse-id
                                                       :recipients ["someone@example.com"]}))))))
@@ -620,13 +620,13 @@
                                                                :archived true}))))))
           (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))))))
   (testing "the extra scope is advertised as opt-in, so tokens can request it"
-    (is (contains? (registry/registered-opt-in-scopes) "agent:query:execute"))))
+    (is (contains? (registry/registered-opt-in-scopes) "agent:query:run"))))
 
 (deftest scope-gates-the-tool-test
   (testing "GHY-4156: a token without the subscribe scope can't call the tool at all"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}]
       (is (re-find #"Insufficient scope"
-                   (tool-error (call-tool! :crowberto #{"agent:search"}
+                   (tool-error (call-tool! :crowberto #{"agent:content:read"}
                                            (wire {:method       "create"
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}}))))))))
@@ -644,11 +644,11 @@
                      :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                      :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                             :schedule_type :daily :schedule_hour 15}]
-        (let [write-scope #{"agent:subscription:write"}]
+        (let [write-scope #{"agent:delivery:write"}]
           (testing "create"
             ;; create additionally needs query:execute (it establishes scheduled execution);
             ;; the write scope under test still gates the method itself.
-            (is (pos-int? (:id (tool-result (call-tool! :crowberto (conj write-scope "agent:query:execute")
+            (is (pos-int? (:id (tool-result (call-tool! :crowberto (conj write-scope "agent:query:run")
                                                         (wire {:method       "create"
                                                                :dashboard_id dash-id
                                                                :schedule     {:schedule_type "hourly"}})))))))

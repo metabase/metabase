@@ -433,7 +433,7 @@
   follow-up read is needed. Requires write permission on the dashboard and read permission on every card
   referenced."
   {:name         "dashboard_write"
-   :scope        metabot.scope/agent-dashboard-write
+   :scope        metabot.scope/agent-content-write
    ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
    ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
    ;; would assert.
@@ -442,7 +442,7 @@
   [args {:keys [token-scopes]}]
   (let [dispatched (common/dispatch-write dashboard-write-entry args)]
     (common/success-content
-     (common/readback token-scopes [metabot.scope/agent-resource-read]
+     (common/readback token-scopes [metabot.scope/agent-content-read]
                       (projections/project
                        :dashboard :concise
                        (case (first dispatched)

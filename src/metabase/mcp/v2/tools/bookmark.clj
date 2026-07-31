@@ -67,7 +67,7 @@
 (registry/deftool bookmark-content
   "Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller."
   {:name        "bookmark_content"
-   :scope       metabot.scope/agent-bookmark-write
+   :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false :idempotentHint true}
    :args        bookmark-content-args-schema}
   [{:keys [type id bookmarked]} _context]

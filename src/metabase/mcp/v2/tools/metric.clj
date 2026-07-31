@@ -231,12 +231,12 @@
   question or a model is refused rather than retyping it. Requires write permission on the metric and curate
   permission on the target collection."
   {:name         "metric_write"
-   :scope        metabot.scope/agent-metric-write
+   :scope        metabot.scope/agent-content-write
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         metric-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [dispatched (common/dispatch-write metric-write-entry args)
-        payload    (common/readback token-scopes [metabot.scope/agent-resource-read]
+        payload    (common/readback token-scopes [metabot.scope/agent-content-read]
                                     (case (first dispatched)
                                       :create
                                       (let [[_ body] dispatched]

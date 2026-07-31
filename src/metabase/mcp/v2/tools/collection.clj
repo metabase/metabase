@@ -138,14 +138,14 @@
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
   Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
   {:name        "collection_write"
-   :scope       metabot.scope/agent-collection-write
+   :scope       metabot.scope/agent-content-write
    ;; `archived: true` trashes the collection and everything under it, so this is not the
    ;; additive-only update `destructiveHint false` would assert.
    :annotations {:readOnlyHint false :destructiveHint true}
    :args        collection-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (common/dispatch-write collection-write-entry args)
-        payload  (common/readback token-scopes [metabot.scope/agent-resource-read]
+        payload  (common/readback token-scopes [metabot.scope/agent-content-read]
                                   (case op
                                     :create (create! a)
                                     :update (update! a b)))]

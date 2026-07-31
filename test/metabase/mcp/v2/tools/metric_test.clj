@@ -13,13 +13,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tools the assertions below drive.
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.metric :as tools.metric]
    [metabase.mcp.v2.tools.query :as tools.query]
-   [metabase.metabot.scope :as metabot.scope]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -71,7 +69,7 @@
   "The single scope metric_write is gated on, create and update alike — matching segment_write and
    measure_write rather than question_write's create/update split. resource:read rides along so
    these tests get full responses back; without it the tool answers with the GHY-4217 minimal ack."
-  #{"agent:metric:write" "agent:resource:read"})
+  #{"agent:content:write" "agent:content:read"})
 
 ;;; ------------------------------------------------ Definitions ---------------------------------------------------
 
@@ -450,7 +448,7 @@
 (deftest ^:parallel scope-gating-test
   (testing "GHY-4146: a bearer token without the write scope can't call the tool at all"
     (is (= "Insufficient scope to call tool: metric_write"
-           (tool-error (call-tool! :crowberto #{"agent:search"} "metric_write"
+           (tool-error (call-tool! :crowberto #{"agent:content:read"} "metric_write"
                                    {:method "update" :id 13371337 :name "x"})))))
   (testing "GHY-4146: the one write scope covers update as well as create — there is no second method-level gate"
     (is (re-find #"not found"
@@ -460,26 +458,20 @@
     (is (= "Insufficient scope to call tool: metric_write"
            (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
                                    {:method "update" :id 13371337 :name "x"})))))
-  (testing "GHY-4146: the wildcard the metabot permission bucket grants passes too"
-    (is (re-find #"not found"
-                 (tool-error (call-tool! :crowberto #{"agent:metric:*"} "metric_write"
-                                         {:method "update" :id 13371337 :name "x"}))))))
+  ;; GHY-4225: the metabot permission wildcards no longer bear on v2. In-app callers reach
+  ;; v2 through cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw
+  ;; their scopes from the tool registry (`registered-scopes`), not from
+  ;; `user-metabot-perms->scopes` — so the old wildcard coupling was already vestigial here.
+  )
 
 (deftest ^:parallel metric-write-scope-registered-test
   (testing "GHY-4146: the scope the tool checks is grantable — advertised through registered-scopes"
-    (is (contains? (registry/registered-scopes) "agent:metric:write")))
-  (testing "GHY-4146: the metabot NLQ permission bucket covers it via its agent:metric:* wildcard"
-    (is (mcp.scope/matches? (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})
-                            "agent:metric:write")))
-  (testing "GHY-4146: and the sql-generation bucket does not"
-    (is (not (mcp.scope/matches? (metabot.scope/user-metabot-perms->scopes
-                                  {:permission/metabot-sql-generation :yes})
-                                 "agent:metric:write")))))
+    (is (contains? (registry/registered-scopes) "agent:content:write"))))
 
 (deftest ^:parallel tools-list-visibility-test
   (testing "GHY-4146: the tool is visible exactly to tokens carrying its write scope"
     (is (some #(= "metric_write" (:name %)) (registry/list-tools write-scope)))
-    (is (not (some #(= "metric_write" (:name %)) (registry/list-tools #{"agent:search"}))))))
+    (is (not (some #(= "metric_write" (:name %)) (registry/list-tools #{"agent:content:read"}))))))
 
 (deftest ^:parallel internal-caller-bypasses-scopes-test
   (testing "GHY-4146: a cookie-session caller (the unrestricted sentinel) is not scope-gated"
