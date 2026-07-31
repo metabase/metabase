@@ -237,7 +237,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe? data-app-connect-hosts]
+  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -305,18 +305,22 @@
                   :img-src      (let [restricted (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
                                                                (map-tile-server->hosts))
                                                    config/is-dev? (conj frontend-address))]
-                                  (cond
-                                    ;; A sandboxed data-app document NEVER gets `*`: an ungated
-                                    ;; `new Image()`/`<img>` under `img-src *` would beacon the viewing
-                                    ;; user's data off-origin (the `img` tag can't be blocked — the SDK
-                                    ;; uses it). Always use the restricted allowlist: `'self'` (the
-                                    ;; instance) + the admin's "Allowed domains for images"
-                                    ;; (`csp-img-allowed-hosts`, so custom viz still renders) + blob:, plus
-                                    ;; the app's own `allowed_hosts` (mirroring connect-src/frame-src —
-                                    ;; the app can already fetch those, so this adds no exfil channel).
-                                    data-app-iframe?                  (-> restricted (conj "blob:") (into data-app-connect-hosts))
-                                    (server.settings/csp-img-enabled) restricted
-                                    :else                             (into ["*"] always-allowed-resource-hosts)))
+                                  (cond-> (cond
+                                            ;; A sandboxed data-app document NEVER gets `*`: an ungated
+                                            ;; `new Image()`/`<img>` under `img-src *` would beacon the viewing
+                                            ;; user's data off-origin (the `img` tag can't be blocked — the SDK
+                                            ;; uses it). Always use the restricted allowlist: `'self'` (the
+                                            ;; instance) + the admin's "Allowed domains for images"
+                                            ;; (`csp-img-allowed-hosts`, so custom viz still renders) + blob:, plus
+                                            ;; the app's own `allowed_hosts` (mirroring connect-src/frame-src —
+                                            ;; the app can already fetch those, so this adds no exfil channel).
+                                            data-app-iframe?                  (into restricted data-app-connect-hosts)
+                                            (server.settings/csp-img-enabled) restricted
+                                            :else                             (into ["*"] always-allowed-resource-hosts))
+                                    ;; Data apps and the EAJS embed page both load custom viz icons
+                                    ;; as blob: <img> URLs (see the callers of `:allow-blob-img?`).
+                                    ;; `*` does not cover the blob: scheme, so it is listed either way.
+                                    allow-blob-img? (conj "blob:")))
                   :connect-src  (into
                                  ["'self'"
                                   ;; Google Identity Services
@@ -360,8 +364,8 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts]
-  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
+  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
     ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
@@ -480,12 +484,12 @@
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
    embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts]
-      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false}}]
+  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false, allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -573,7 +577,10 @@
                  ;; doc) and `frame-src` (both the iframe doc and the top page,
                  ;; whose `frame-src` gates the iframe's own navigations).
                  :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (drop-instance-origin (data-app-connect-src-hosts slug))))
+                                                (drop-instance-origin (data-app-connect-src-hosts slug)))
+                 ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
+                 :allow-blob-img?             (or (data-app-iframe-request? request)
+                                                  (request/embed-sdk-eajs-entrypoint? request)))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
