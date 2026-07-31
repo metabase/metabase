@@ -167,17 +167,18 @@
         (is (= :ok (call-through (constantly :ok))))
         (is (= :closed (circuit-state)))))))
 
-(deftest ^:sequential local-bookkeeping-failure-does-not-trip-breaker-test
+(deftest ^:synchronized local-bookkeeping-failure-does-not-trip-breaker-test
   (testing "a token-tracking failure propagates without being attributed to the embedding service"
     (with-redefs [semantic.embedding/embedder-circuit-breakers
                   (atom {"https://example.test/v1/embeddings"
                          (dh.cb/circuit-breaker
                           {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
-      (mt/with-dynamic-fn-redefs
-        [http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
-                                                              "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
-         analytics/inc!               (constantly nil)
-         token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
+      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+      (with-redefs
+       [http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
+                                                             "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
+        analytics/inc!               (constantly nil)
+        token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"appdb unavailable"

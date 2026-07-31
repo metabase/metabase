@@ -165,7 +165,7 @@
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
 
-(deftest views-checksum-works-for-jar-resources-test
+(deftest ^:synchronized views-checksum-works-for-jar-resources-test
   (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
         resource "migrations/instance_analytics_views"
         entries  [["users/v1/postgres-users.sql"           "select 1;"]
@@ -181,14 +181,15 @@
           (.putNextEntry out (JarEntry. (str resource "/" rel)))
           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
           (.closeEntry out)))
-      (mt/with-dynamic-fn-redefs [io/resource (fn [path]
-                                                (when (= path resource)
-                                                  jar-url))]
+      ;; `io/resource` is a hot, cheap function; permanently proxying it would tax the rest of the test JVM.
+      (with-redefs [io/resource (fn [path]
+                                  (when (= path resource)
+                                    jar-url))]
         (is (= expected (#'ee-audit/views-checksum))))
       (finally
         (Files/deleteIfExists jar-path)))))
 
-(deftest views-checksum-detects-rename-test
+(deftest ^:synchronized views-checksum-detects-rename-test
   (testing "renaming a file changes the checksum (path is part of the hash)"
     (let [make-jar (fn [entries]
                      (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar"
@@ -206,9 +207,10 @@
           [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
           [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
       (try
-        (let [checksum-a (mt/with-dynamic-fn-redefs [io/resource (constantly url-a)]
+        ;; `io/resource` is a hot, cheap function; permanently proxying it would tax the rest of the test JVM.
+        (let [checksum-a (with-redefs [io/resource (constantly url-a)]
                            (#'ee-audit/views-checksum))
-              checksum-b (mt/with-dynamic-fn-redefs [io/resource (constantly url-b)]
+              checksum-b (with-redefs [io/resource (constantly url-b)]
                            (#'ee-audit/views-checksum))]
           (is (not= checksum-a checksum-b)))
         (finally

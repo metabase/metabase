@@ -2047,8 +2047,9 @@
   (testing "Prometheus counters get incremented for error responses"
     (let [calls    (atom nil)
           observed (atom [])]
-      (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [metric & _] (swap! calls conj metric))
-                                  analytics/observe! (fn [& args] (swap! observed conj (vec args)))]
+      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+      (with-redefs [analytics/inc!     (fn [metric & _] (swap! calls conj metric))
+                    analytics/observe! (fn [& args] (swap! observed conj (vec args)))]
         (testing "Success response"
           (let [response (search-request :crowberto :q "test")]
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))

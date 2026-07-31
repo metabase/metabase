@@ -194,7 +194,7 @@
   (cond-> {:id id :name name :model model}
     score (assoc :score score)))
 
-(deftest test-semantic-search-fallback-supplementation
+(deftest ^:synchronized test-semantic-search-fallback-supplementation
   (testing "semantic search results below threshold are supplemented with fallback results"
     (mt/with-premium-features #{:semantic-search}
       (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
@@ -207,24 +207,25 @@
               metrics (atom {:metabase-search/semantic-fallback-results-usage 0
                              :metabase-search/semantic-fallback-triggered 0
                              :metabase-search/semantic-results-before-fallback 0})]
-          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & _args]
-                                                       (case metric
-                                                         :metabase-search/semantic-fallback-triggered
-                                                         (swap! metrics update
-                                                                :metabase-search/semantic-fallback-triggered
-                                                                inc))
-                                                       nil)
-                                      analytics/observe! (fn [metric cnt]
-                                                           (case metric
-                                                             :metabase-search/semantic-fallback-results-usage
-                                                             (swap! metrics update
-                                                                    :metabase-search/semantic-fallback-results-usage
-                                                                    + cnt)
-                                                             :metabase-search/semantic-results-before-fallback
-                                                             (swap! metrics update
-                                                                    :metabase-search/semantic-results-before-fallback
-                                                                    + cnt))
-                                                           nil)]
+          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+          (with-redefs [analytics/inc! (fn [metric & _args]
+                                         (case metric
+                                           :metabase-search/semantic-fallback-triggered
+                                           (swap! metrics update
+                                                  :metabase-search/semantic-fallback-triggered
+                                                  inc))
+                                         nil)
+                        analytics/observe! (fn [metric cnt]
+                                             (case metric
+                                               :metabase-search/semantic-fallback-results-usage
+                                               (swap! metrics update
+                                                      :metabase-search/semantic-fallback-results-usage
+                                                      + cnt)
+                                               :metabase-search/semantic-results-before-fallback
+                                               (swap! metrics update
+                                                      :metabase-search/semantic-results-before-fallback
+                                                      + cnt))
+                                             nil)]
             (with-search-engine-mocks! [semantic-result] fallback-results
               (fn []
                 (let [results (semantic.core/results search-ctx)]

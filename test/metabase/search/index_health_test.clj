@@ -60,11 +60,12 @@
   (testing "health is linear between the warning and critical thresholds"
     (is (=? {:health 50} (index-health/staleness-result 330 60 600 nil)))))
 
-(deftest ^:sequential run-measure!-test
+(deftest ^:synchronized run-measure!-test
   (let [calls (atom [])
         live  (atom #{})]
     (with-redefs [index-health/live-gauge-series live]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
         (testing "a collector result updates the gauge and returns the health row"
           (is (= {:health 75 :message "ok"}
                  (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
@@ -101,27 +102,30 @@
                                              :index     :interrupted-test
                                              :collect   #(throw (InterruptedException.))}))))
 
-(deftest ^:sequential inapplicable-measure-does-not-create-series-test
+(deftest ^:synchronized inapplicable-measure-does-not-create-series-test
   (testing "an inapplicable measure does not create a NaN-only series"
     (let [calls (atom [])]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
         (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
                                       :index    :never-emitted-test-engine
                                       :collect   (constantly nil)}))
       (is (empty? @calls)))))
 
-(deftest ^:sequential failed-first-write-does-not-mark-series-live-test
+(deftest ^:synchronized failed-first-write-does-not-mark-series-live-test
   (testing "a failed first gauge write does not make later clears create a NaN-only series"
     (let [set-index-gauge! @#'index-health/set-index-gauge!
           live             @#'index-health/live-gauge-series
           series           [:metabase-search/index-coverage-ratio :failed-write-test-engine]
           calls            (atom [])]
       (try
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
-                                                           (throw (ex-info "prometheus down" {})))]
+        ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+        (with-redefs [analytics/set-gauge! (fn [& _]
+                                             (throw (ex-info "prometheus down" {})))]
           (is (thrown? Exception (apply set-index-gauge! (conj series 1.0))))
           (is (not (contains? @live series))))
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
           (apply set-index-gauge! (conj series nil))
           (is (empty? @calls))
           (apply set-index-gauge! (conj series 0.5))
@@ -129,7 +133,7 @@
         (finally
           (swap! live disj series))))))
 
-(deftest ^:sequential refresh-isolates-measure-failures-test
+(deftest ^:synchronized refresh-isolates-measure-failures-test
   (testing "one collector failure does not stop later measures from refreshing"
     (let [calls (atom [])
           live  (atom #{})
@@ -142,8 +146,9 @@
                  :index     :refresh-isolation-test
                  :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
       (with-redefs [index-health/live-gauge-series live]
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge!       (fn [& args] (swap! calls conj (vec args)))
-                                    health-inspector/enabled? (constantly false)]
+        ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+        (with-redefs [analytics/set-gauge!       (fn [& args] (swap! calls conj (vec args)))
+                      health-inspector/enabled? (constantly false)]
           (#'index-health/run-measure! (assoc boom :collect
                                               (constantly {:value 5 :health 100 :message "was fine"})))
           (reset! calls [])
