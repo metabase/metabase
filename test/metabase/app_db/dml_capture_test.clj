@@ -208,6 +208,20 @@
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 110)))))
 
+(deftest unsupported-delete-snapshots-skip-capture-test
+  (testing "SQL-args deletes run once without being reused as a pre-image query"
+    (reset-capture!)
+    (t2/insert! ::bird [(bird 111 0 "a") (bird 111 0 "b")])
+    (reset! captured [])
+    (is (= 2 (t2/delete! ::bird [(str "DELETE FROM " table-name " WHERE group_id = ?") 111])))
+    (is (empty? (events)))
+    (is (= 0 (t2/count ::bird :group_id 111))))
+  (testing "DELETE ... USING maps are explicitly rejected before pipeline compilation"
+    (is (nil? (#'dml-capture/delete-query->select-query
+               {:delete-from (keyword table-name)
+                :using       [:other_table]
+                :where       [:= :group_id 112]})))))
+
 (deftest uncaptured-ops-fire-nothing-test
   (reset-capture!)
   (testing "inserts and updates are out of scope for this seam and deliver no events"
