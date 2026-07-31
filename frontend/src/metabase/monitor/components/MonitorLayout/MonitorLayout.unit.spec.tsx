@@ -488,7 +488,7 @@ describe("MonitorLayout", () => {
   it.each([
     { label: "Usage stats", icon: "lineandbar" },
     { label: "Conversations", icon: "comment" },
-    { label: "MCP analytics", icon: "metabot" },
+    { label: "MCP analytics", icon: "mcp" },
     { label: "CLI analytics", icon: "code_block" },
   ])("shows the $icon icon for $label", async ({ label, icon }) => {
     setup({ tokenFeatures: { audit_app: true, ai_controls: true } });

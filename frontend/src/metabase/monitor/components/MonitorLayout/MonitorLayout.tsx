@@ -198,7 +198,7 @@ export function MonitorLayout() {
           )}
           <AreaTab
             label={t`MCP analytics`}
-            icon="metabot"
+            icon="mcp"
             to={Urls.monitorAiAuditingMcp()}
             isSelected={activeSection === "ai-auditing-mcp"}
             showLabel={isNavbarOpened}
