@@ -83,7 +83,7 @@
   (let [preprocessed (-> transform :source :query
                          transforms-base.u/massage-sql-query
                          qp.preprocess/preprocess)]
-    (when (<= (count (:stages preprocessed)) 1)
+    (when (<= (count (:stages preprocessed)) 1) ; <- locked-query violation
       {:preprocessed-query preprocessed
        :from-table-id      (lib/primary-source-table-id preprocessed)
        :join-structure     (extract-mbql-join-structure preprocessed)

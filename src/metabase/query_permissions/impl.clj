@@ -120,7 +120,7 @@
   ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
     parent-source-card-id :- [:maybe ::lib.schema.id/card]
     in-sandbox?           :- :any]
-   (if (:lib/type query)
+   (if (:lib/type query) ; <- locked query violation
      ;; convert MBQL 5 to legacy
      ;;
      ;; legacy usage -- don't do things like this going forward
@@ -299,7 +299,7 @@
   "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (let [mp (when (lib/metadata-provider? (:lib/metadata query))
+  (let [mp (when (lib/metadata-provider? (:lib/metadata query)) ; <- locked query violation
              (:lib/metadata query))]
     (-> query
         lib/normalize
@@ -312,7 +312,7 @@
   "Returns a map representing the permissions required to run `query`. The map has the optional keys
   :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
-  (if (empty? query)
+  (if (empty? query) ; <- locked-query violation
     {}
     (let [query-type (lib/normalized-query-type query)]
       (case query-type

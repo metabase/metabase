@@ -16,19 +16,34 @@
     "metabase.lib"
     "metabase.lib_be"
     "metabase.query_processor"
+    "metabase_enterprise.advanced_permissions.query_processor"
+    "metabase_enterprise.audit_app.query_processor"
+    "metabase_enterprise.sandbox.query_processor"
+    "metabase_enterprise.advanced_permissions.models.permissions.block_permissions"
+    "metabase_enterprise.impersonation.middleware"
+    "metabase_enterprise.database_routing.middleware"
     "metabase.driver"
-    ;; these are allowed as a kind of "ratchet"; we'd like to remove access but
-    ;; our main priority is preventing access from spreading
-    "metabase.util.malli.registry" ; which functions?
+    "metabase.util.malli" ; mu/defn needs to be able to look into args from anywhere
+    ;; these are allowed for now as a kind of ratchet; we'd like to remove access
+    ;; but our main priority is preventing access from spreading
+    "metabase.query_permissions.impl"
     "metabase.models.interface$elide_data"
-    "metabase_enterprise.impersonation.middleware" ; apply-impersonation-postprocessing
-    })
+    "metabase_enterprise.advanced_permissions.models.permissions.data_permissions"
+    "metabase_enterprise.transforms_inspector.query_analysis$analyze_mbql_query"
+    "metabase_enterprise.permission_debug.impl$check_table_permissions"
+    ;; this is allowed because it's coming from tests to make human-readable messages
+    "metabase.util$pprint_to_str"})
 
 (defn- relevant-frame [^StackTraceElement frame]
   (let [class-name (.getClassName frame)]
     (when (and (str/starts-with? class-name "metabase")
                ;; m.u.performance functions should be treated like clojure.core
                (not (str/starts-with? class-name "metabase.util.performance"))
+               ;; pretend pattern matching is part of Clojure (it should be!)
+               (not (str/starts-with? class-name "metabase.util.match.impl"))
+               ;; failed HTTP requests may encode query map
+               (not (str/starts-with? class-name "metabase.util.json$encode_to"))
+               (not (str/starts-with? class-name "metabase.server.streaming_response$write_error"))
                (not (str/starts-with? class-name "metabase.lib_be.locked_query_map")))
       class-name)))
 
@@ -36,7 +51,7 @@
   (when-let [mb-class-name (some relevant-frame
                                  (.getStackTrace (Thread/currentThread)))]
     (or (some (partial str/starts-with? mb-class-name) allowed-class-name-prefixes)
-        (re-find #"test" mb-class-name)
+        (str/includes? mb-class-name "test")
         (throw (ex-info "No raw MBQL manipulation outside of Lib or the QP!"
                         {:disallowed-class-name mb-class-name})))))
 
