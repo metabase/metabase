@@ -192,6 +192,22 @@
              #"AI proxy is not supported for Azure"
              (azure/list-models {:model "openai/gpt-4.1-mini" :ai-proxy? true})))))))
 
+(deftest azure-raw-forwards-credentials-test
+  (testing "credentials passed to azure-raw reach the request, without requiring saved settings"
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key      nil
+                                       llm.settings/llm-azure-api-base-url nil]
+      (with-redefs [http/request (fn [req]
+                                   (is (=? {:url     (str test-base-url "/v1/responses")
+                                            :headers {"Authorization" "Bearer override-key"}}
+                                           req))
+                                   (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (azure/azure-raw {:model       "openai/gpt-4.1-mini"
+                               :input       [{:role :user :content "hi"}]
+                               :credentials {:api-key "override-key" :base-url test-base-url}})))))))
+
 (deftest azure-raw-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
     (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key      nil
