@@ -10,6 +10,8 @@
    [metabase.metabot.context :as context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -369,6 +371,30 @@
             (str "Should include source table " table-id " in used_tables"))
         (is (not-any? #(contains? % :fields) tables)
             "used_tables are lightweight stubs — columns are fetched at render time by entity-details")))))
+
+(defn- mbql-viewing-context-used-tables
+  "Run the viewing-context enrichment for an adhoc MBQL query over `table-id` and return the resulting `used_tables`."
+  [table-id]
+  (-> {:user_is_viewing [{:type  "adhoc"
+                          :query {:database (mt/id)
+                                  :lib/type "mbql/query"
+                                  :stages   [{:lib/type     "mbql.stage/mbql"
+                                              :source-table table-id}]}}]}
+      (->> (#'context/enhance-context-with-schema))
+      (get-in [:user_is_viewing 0 :used_tables])))
+
+(deftest enhance-context-with-schema-mbql-permission-filter-test
+  (testing (str "the :source-table ids come straight from the client-supplied viewing context, so they are not "
+                "evidence of access — tables the user cannot read must not be enriched")
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (is (empty? (mbql-viewing-context-used-tables (mt/id :orders)))))))
+  (testing "query-builder access is enough — the notebook editor does not imply native access"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (is (= [(mt/id :orders)] (map :id (mbql-viewing-context-used-tables (mt/id :orders)))))))))
 
 (deftest enhance-context-mbql-viewing-context-rendering-test
   (testing "MBQL adhoc query viewing context includes table name for LLM"

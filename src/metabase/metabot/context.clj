@@ -191,21 +191,20 @@
 (defn- mbql-source-tables-for-context
   "Get source tables for an MBQL query, formatted for metabot context.
 
-  Uses a direct table lookup without native-query permission checks. The user is already
-  viewing these tables in the notebook editor, so they have at least query-builder access.
-  The standard `used-tables-from-ids` requires `:query-builder-and-native` permissions
-  which is too restrictive for MBQL viewing context enrichment."
+  Uses the same [[table-utils/used-tables-from-ids]] lookup as the native-SQL and Python-transform
+  branches, but at `:perms/create-queries :query-builder` rather than the default
+  `:query-builder-and-native` — the stricter bar is too restrictive here, since building an MBQL
+  question in the notebook editor doesn't imply native access.
+
+  The `table-ids` reaching this function are *not* trustworthy: they come from the `:source-table`
+  clauses of a client-supplied `:query` in the request's viewing context, so a caller can name any
+  table id. Filtering is what keeps that from being a table-metadata oracle."
   [[database-id table-ids]]
   (try
-    (let [raw-tables (t2/select [:model/Table :id :name :schema :description]
-                                :db_id database-id
-                                :id [:in table-ids]
-                                :active true
-                                :visibility_type nil)]
-      (into []
-            (comp (m/distinct-by :id)
-                  (map table-stub))
-            raw-tables))
+    (into []
+          (comp (m/distinct-by :id)
+                (map table-stub))
+          (table-utils/used-tables-from-ids database-id table-ids :query-builder))
     (catch Exception e
       (log/errorf "Error getting MBQL source tables for context: %s" (ex-message e))
       nil)))

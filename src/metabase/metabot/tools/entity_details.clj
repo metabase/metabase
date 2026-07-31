@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metrics.core :as metrics]
@@ -162,10 +163,7 @@
                                       (filter pos-int?)
                                       (concat (keep :table-id columns)
                                               (keep :table_id referenced-fields)))
-        readable-table-ids      (->> (t2/select :model/Table :id [:in table-ids])
-                                     (filter mi/can-read?)
-                                     (map :id)
-                                     set)
+        readable-table-ids      (table-utils/readable-table-ids table-ids)
         sandbox-restricted-ids  (metrics/sandbox-restricted-fields table-ids)
         field-readable?         (fn [table-id field]
                                   (and (contains? readable-table-ids table-id)
@@ -188,6 +186,23 @@
                    (and fk-target-field-id
                         (not (referenced-field-readable? fk-target-field-id)))
                    (dissoc :fk-target-field-id)))))))
+
+(defn- readable-metrics
+  "Filter lib `:metadata/metric` maps down to those whose Card the current user can read.
+
+  [[lib/available-metrics]] reads metric Cards straight off the app-DB metadata provider, filtered only on
+  `archived` / `type` / `table_id` — nothing about who may see them. A metric Card is readable through **collection**
+  permissions, so without this anyone who can read a Table learns the name and description of every metric defined on
+  it, including metrics sitting in collections they cannot open.
+
+  Selects only `:collection_id`, the single column [[mi/can-read?]] consults for a Card."
+  [metrics]
+  (when (seq metrics)
+    (let [readable (into #{}
+                         (comp (filter mi/can-read?)
+                               (map :id))
+                         (t2/select [:model/Card :id :collection_id] :id [:in (set (map :id metrics))]))]
+      (filterv (comp readable :id) metrics))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -283,6 +298,8 @@
                                                 (map #(metabot.tools.u/->result-column metric-query %)))
                                           queryable-columns))
 
+       ;; No readability filter needed on these segments: `source-table` is nil unless the base Table is
+       ;; readable, and `available-segments` only ever returns segments belonging to that same table.
        (and source-table with-segments?)
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
                           (mapv #(convert-measure-or-segment % :filters) segments)
@@ -319,6 +336,13 @@
   50)
 
 (defn- table-details
+  "Details for the table with `id`.
+
+  PERMISSIONS: the two lookup branches below are *not* equivalent. Without `:metadata-provider` the table is fetched
+  through [[metabot.tools.u/get-table]], which [[api/read-check]]s it. With `:metadata-provider` the lookup goes
+  through [[lib.metadata/table]] on the app-DB provider, which applies no permission filtering at all — callers
+  passing a provider must have already established that the current user can read `id`. [[related-tables]], the only
+  such caller, pre-filters its FK targets with [[table-utils/readable-table-ids]]."
   ([id] (table-details id nil))
   ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
                with-measures? with-segments?]
@@ -349,6 +373,10 @@
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
+                       ;; Before `field-values-fn`, so we never fetch values for a column we are about to drop.
+                       ;; Also strips `:fk-target-field-id`, which is what stops `:fields` leaking the name and
+                       ;; schema of an FK target that [[related-tables]] just filtered out.
+                       permission-filter-columns
                        field-values-fn
                        (map #(metabot.tools.u/add-table-reference table-query %))))
            related (when with-related-tables?
@@ -367,10 +395,13 @@
             ;; Portable table FK path matching the representations-format expectation:
             ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
             :portable_fk (when db-name [db-name (:schema base) (:name base)])}
+           ;; No readability filter on `:measures` / `:segments` here: `available-measures` and `available-segments`
+           ;; only return items belonging to the query's own source table, and that table was read-checked on the way
+           ;; in (see the PERMISSIONS note above), so a filter could never drop anything.
            (m/assoc-some :description (:description base)
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
-                                                     (lib/available-metrics table-query))))
+                                                     (readable-metrics (lib/available-metrics table-query)))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                                       (lib/available-measures table-query))))
@@ -409,7 +440,8 @@
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys. We surface
   up to [[max-related-tables]] FK paths; only the first [[max-related-tables-with-fields]] carry their column set to
-  keep memory usage bounded (metabase#76493), even when `with-fields?` is true. Returns nil when the query has no
+  keep memory usage bounded (metabase#76493), even when `with-fields?` is true. FK targets the current user cannot
+  read are dropped — see the permissions note on [[table-details]]. Returns nil when the query has no readable
   FK-related tables, otherwise a map:
 
     :related_tables                vector of related-table maps, one per FK path. When `with-fields?` is true they
@@ -425,8 +457,13 @@
                                    that total exceeds [[max-related-tables]] (i.e. some were dropped entirely), so
                                    the LLM knows the surfaced set is truncated."
   [query with-fields? field-values-fn]
-  (let [fk-groups (fk-related-table-groups query)
-        total     (count fk-groups)]
+  (let [all-groups (fk-related-table-groups query)
+        ;; Drop unreadable FK targets *before* the caps below: they must neither be rendered nor consume the
+        ;; surfaced-table budget, and `total` (surfaced to the LLM as :related_tables_total) must count only what the
+        ;; user may see, so it can't be read as an oracle for how many tables were hidden.
+        readable   (table-utils/readable-table-ids (map first all-groups))
+        fk-groups  (filterv (comp readable first) all-groups)
+        total      (count fk-groups)]
     (when (pos? total)
       (when (and with-fields? (> total max-related-tables-with-fields))
         (log/infof "Capping related-tables column expansion to %d of %d." max-related-tables-with-fields total))
@@ -484,6 +521,7 @@
                                                      card-metadata)))
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
+                                permission-filter-columns
                                 field-values-fn))
          related (when with-related-tables?
                    (related-tables card-query with-fields? field-values-fn))]
@@ -528,7 +566,16 @@
                          shared.content-store/default-store))
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
-                                      (lib/available-metrics card-query))))
+                                      (readable-metrics (lib/available-metrics card-query)))))
+          ;; Always empty as things stand, on both branches above. [[lib/query]] wraps a card as a `:source-card`
+          ;; stage, and `available-measures`/`available-segments` only look at a stage-0 `:source-table`. The
+          ;; pivot-question branch would carry one, but its `(#{:query} (:type dataset-query))` guard never matches:
+          ;; `lib.metadata/card` hands back `:dataset-query` already converted to MBQL 5, so `:type` is nil and the
+          ;; branch is unreachable.
+          ;;
+          ;; If that guard is ever repaired, these two keys start emitting the *source table's* measures and
+          ;; segments while the only check performed is `api/read-check` on the Card — a collection permission that
+          ;; says nothing about data access to the table. Filter them on their parent table at that point.
           :measures (when with-measures?
                       (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                        (lib/available-measures card-query))))

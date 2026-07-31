@@ -165,6 +165,68 @@
                 (str "Products related table should have " expected-products-field-count
                      " fields (only its own fields, not implicitly joinable fields)"))))))))
 
+(deftest related-tables-are-permission-filtered-test
+  (testing (str "FK-related tables are fetched through the metadata provider, which applies no permission filtering, "
+                "so `related-tables` must drop the ones the current user cannot read")
+    (mt/with-no-data-perms-for-all-users!
+      ;; ORDERS is readable; its FK targets (PRODUCTS, PEOPLE) are not.
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [output (:structured-output (entity-details/get-table-details {:entity-type        :table
+                                                                            :entity-id          (mt/id :orders)
+                                                                            :with-field-values? false}))]
+          (testing "the requested table itself is still returned"
+            (is (= (mt/id :orders) (:id output))))
+          (testing "unreadable FK targets are not surfaced"
+            (is (empty? (:related_tables output)))
+            (is (empty? (:related_tables_without_fields output))))
+          (testing "and their names don't leak through the source table's own FK columns instead"
+            (is (not-any? :fk_target_portable_fk (:fields output)))
+            (is (not-any? #(some #{"PRODUCTS" "PEOPLE"} (or (:fk_target_portable_fk %) []))
+                          (:fields output))))))))
+  (testing "readable FK targets are still surfaced"
+    ;; Non-admin on purpose: `can-read?` short-circuits to true for admins, so a :crowberto run would
+    ;; pass even if the filter were never applied.
+    (mt/with-no-data-perms-for-all-users!
+      (doseq [table [:orders :products :people]]
+        (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/create-queries :query-builder))
+      (mt/with-test-user :rasta
+        (let [output (:structured-output (entity-details/get-table-details {:entity-type        :table
+                                                                            :entity-id          (mt/id :orders)
+                                                                            :with-field-values? false}))]
+          (is (some #(= (mt/id :products) (:id %)) (:related_tables output))))))))
+
+(deftest related-tables-total-counts-only-readable-tables-test
+  (testing ":related_tables_total must not become an oracle for how many FK targets were hidden"
+    ;; The cap is 50 and ORDERS has two FK targets, so the key is absent either way at the real cap —
+    ;; drop it to 1 to make the count observable at all.
+    (with-redefs-fn {#'entity-details/max-related-tables 1}
+      (fn []
+        (mt/with-no-data-perms-for-all-users!
+          (doseq [table [:orders :products :people]]
+            (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/create-queries :query-builder))
+          (mt/with-test-user :rasta
+            (testing "sanity: with both FK targets readable the total counts them"
+              (is (= 2 (:related_tables_total
+                        (:structured-output (entity-details/get-table-details
+                                             {:entity-type        :table
+                                              :entity-id          (mt/id :orders)
+                                              :with-field-values? false}))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (doseq [table [:orders :products]]
+            (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/create-queries :query-builder))
+          (mt/with-test-user :rasta
+            (testing "revoking PEOPLE drops the total rather than still counting it"
+              (is (nil? (:related_tables_total
+                         (:structured-output (entity-details/get-table-details
+                                              {:entity-type        :table
+                                               :entity-id          (mt/id :orders)
+                                               :with-field-values? false}))))))))))))
+
 (defn- measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [table-id field-id]
@@ -413,6 +475,60 @@
                     (constantly {:values (mapv vector raw-values)})]
         (is (= raw-values
                (#'entity-details/get-field-values {} field-id)))))))
+
+(deftest card-measures-and-segments-are-not-emitted-test
+  (testing (str "`card-details` can't reach measures/segments today: `lib/query` wraps a card as a `:source-card` "
+                "stage, and the pivot branch that would carry a `:source-table` is unreachable because "
+                "`lib.metadata/card` returns `:dataset-query` already in MBQL 5, so its `:type` is never `:query`. "
+                "Pinning that here — if it starts emitting, the values need a parent-table permission filter.")
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
+      (mt/with-temp [:model/Measure _ {:name "Orders Total" :table_id (mt/id :orders) :definition measure-def}
+                     :model/Segment _ {:name "Big Orders" :table_id (mt/id :orders) :definition segment-def}
+                     :model/Card {card-id :id} {:type          :question
+                                                :display       :pivot
+                                                :name          "Pivot over Orders"
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :orders)
+                                                :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+        (mt/with-test-user :crowberto
+          (let [output (:structured-output (entity-details/get-table-details
+                                            {:entity-type        :question
+                                             :entity-id          card-id
+                                             :with-field-values? false
+                                             :with-measures?     true
+                                             :with-segments?     true}))]
+            (is (= card-id (:id output)))
+            (is (nil? (:measures output)))
+            (is (nil? (:segments output)))))))))
+
+(deftest table-metrics-are-permission-filtered-test
+  (testing (str "available-metrics reads metric Cards straight off the metadata provider with no permission "
+                "filtering, so reading a Table must not hand out metrics from collections the user can't open")
+    ;; Outside `with-temp`: a new collection inherits the root collection's grants at creation time, so revoking
+    ;; them afterwards would leave the temp collection readable and make the negative case vacuous.
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
+                     :model/Card _ {:type          :metric
+                                    :name          "Secret Orders Metric"
+                                    :collection_id coll-id
+                                    :database_id   (mt/id)
+                                    :table_id      (mt/id :orders)
+                                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+        (letfn [(metric-names []
+                  (->> (entity-details/get-table-details {:entity-type        :table
+                                                          :entity-id          (mt/id :orders)
+                                                          :with-field-values? false})
+                       :structured-output :metrics (map :name) set))]
+          ;; Both halves run as a non-admin: `can-read?` short-circuits to true for admins, so a :crowberto
+          ;; sanity check would pass whether or not the filter is applied.
+          (testing "a user who can read ORDERS but not the metric's collection does not see it"
+            (mt/with-test-user :rasta
+              (is (not (contains? (metric-names) "Secret Orders Metric")))))
+          (testing "granting read on that collection brings it back"
+            (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+            (mt/with-test-user :rasta
+              (is (contains? (metric-names) "Secret Orders Metric")))))))))
 
 ;;; ============================================================
 ;;; Base-table surfacing on get-metric-details (regression)
