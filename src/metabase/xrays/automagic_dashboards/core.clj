@@ -153,6 +153,7 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -971,12 +972,15 @@
    interestingness of tables they contain (see above)."
   ([database] (candidate-tables database nil))
   ([database schema]
-   (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])]
-     (->> (load-tables-with-enhanced-table-stats
-           (cond-> [[:= :db_id (u/the-id database)]
-                    [:= :visibility_type nil]
-                    [:= :active true]]
-             schema (conj [:= :schema schema])))
+   (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])
+         tables              (load-tables-with-enhanced-table-stats
+                              (cond-> [[:= :db_id (u/the-id database)]
+                                       [:= :visibility_type nil]
+                                       [:= :active true]]
+                                schema (conj [:= :schema schema])))]
+     ;; the readable check below runs once per table, so load their permissions in one go
+     (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
+     (->> tables
           (filter mi/can-read?)
           (map (fn [table]
                  (let [root      (->root table)

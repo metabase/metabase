@@ -5,6 +5,7 @@
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.api.common :as common]
    [metabase.typed-schemas.api.schema.common :as schema.common]
    [metabase.typed-schemas.api.schema.table :as schema.table]
@@ -150,6 +151,7 @@
   "Returns readable table rows for table-backed metric dimensions."
   [table-ids]
   (when (seq table-ids)
+    (perms/prime-table-perms-cache {:table-ids (set table-ids)})
     (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
          (filter mi/can-read?))))
 
