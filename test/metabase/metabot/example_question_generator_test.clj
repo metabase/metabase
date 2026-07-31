@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.llm.test-util :as lct]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as test-util]
@@ -112,7 +112,7 @@
     ;; Mocks openrouter/openrouter rather than native-generator/call-llm to exercise the path through
     ;; self/call-llm-structured and parse-provider-model.
     (let [captured-opts (atom [])]
-      (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [opts]
                                                             (swap! captured-opts conj opts)
@@ -149,7 +149,7 @@
 
 (deftest call-llm-prometheus-test
   (mt/with-prometheus-system! [_ system]
-    (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider "openrouter/test-model"]
       (let [labels {:model "openrouter/test-model" :source "example-question-generation"}]
         (testing "increments llm-requests and observes duration on success"
@@ -167,7 +167,7 @@
 (deftest call-llm-snowplow-test
   (testing "fires token_usage snowplow event for call-llm"
     (let [rasta-id (mt/user->id :rasta)]
-      (mt/with-temporary-setting-values [llm-providers        lct/default-connections
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider "openrouter/test-model"]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                     (constantly (test-util/mock-llm-response

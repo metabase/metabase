@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.internal-stats.metabot :as sut]
-   [metabase.llm.test-util :as lct]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.example-question-generator :as eqg]
    [metabase.metabot.self.claude :as claude]
@@ -20,7 +20,7 @@
 
 (use-fixtures :each (fn [thunk]
                       (testing "with every provider type connected"
-                        (lct/with-default-connections
+                        (llm.tu/with-default-connections
                           (thunk)))))
 
 ;; ---------------------------------------------------------------------------
