@@ -192,7 +192,7 @@
   [{:keys [type config]} config-override model]
   (if-let [models (llm.provider/fixed-models type)]
     {:models (vec models)}
-    (let [config (or config-override config)]
+    (let [config (llm.provider/with-field-defaults type (or config-override config))]
       (try
         {:models (decorate-provider-models
                   type

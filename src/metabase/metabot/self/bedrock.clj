@@ -100,14 +100,6 @@
     (throw (invalid-region-ex region)))
   region)
 
-(defn- settings-credentials
-  "AWS credentials and region from the `llm-bedrock-*` settings."
-  []
-  {:access-key-id     (not-empty (llm/llm-bedrock-access-key-id))
-   :secret-access-key (not-empty (llm/llm-bedrock-secret-access-key))
-   :session-token     (not-empty (llm/llm-bedrock-session-token))
-   :region            (not-empty (llm/llm-bedrock-region))})
-
 (defn- missing-credentials-ex []
   (ex-info (tru "AWS Bedrock credentials are not configured")
            {:api-error   true
@@ -120,13 +112,12 @@
             :error-code :proxy-unsupported}))
 
 (defn- ensure-credentials
-  "Validate a Bedrock credentials map, falling back to [[settings-credentials]] when nil.
+  "Validate the credentials of the connection serving this request.
   Throws when the access key pair is incomplete or the region is unknown; the region defaults to us-east-1."
   [credentials]
-  (let [creds (or credentials (settings-credentials))]
-    (when-not (llm.provider/config-complete? "bedrock" creds)
-      (throw (missing-credentials-ex)))
-    (update creds :region #(validate-region (or (not-empty %) "us-east-1")))))
+  (when-not (llm.provider/config-complete? "bedrock" credentials)
+    (throw (missing-credentials-ex)))
+  (update credentials :region #(validate-region (or (not-empty %) "us-east-1"))))
 
 (defn- bedrock-error-msg
   "Canonical, status-specific Bedrock error message."
