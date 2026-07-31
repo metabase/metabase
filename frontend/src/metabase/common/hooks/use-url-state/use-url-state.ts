@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
 import _ from "underscore";
 
@@ -17,8 +17,18 @@ export type UrlStateConfig<State extends BaseState> = {
   serialize: (state: State) => UrlStateQuery;
 };
 
+type PatchUrlStateOptions = {
+  /**
+   * Sync this patch to the URL right away instead of waiting out the debounce.
+   */
+  immediate?: boolean;
+};
+
 type UrlStateActions<State extends BaseState> = {
-  patchUrlState: (patch: Partial<State>) => void;
+  patchUrlState: (
+    patch: Partial<State>,
+    options?: PatchUrlStateOptions,
+  ) => void;
 };
 
 export const URL_UPDATE_DEBOUNCE_DELAY = 300;
@@ -35,11 +45,29 @@ export function useUrlState<State extends BaseState>(
   const [state, setState] = useState(() =>
     parse(parseSearchQuery(location.search)),
   );
-  const urlState = useDebouncedValue(state, URL_UPDATE_DEBOUNCE_DELAY);
 
-  const patchUrlState = useCallback((patch: Partial<State>) => {
-    setState((state) => ({ ...state, ...patch }));
+  const immediateRef = useRef(false);
+  const shouldDebounce = useCallback(() => {
+    const isImmediate = immediateRef.current;
+    immediateRef.current = false;
+    return !isImmediate;
   }, []);
+  const urlState = useDebouncedValue(
+    state,
+    URL_UPDATE_DEBOUNCE_DELAY,
+    shouldDebounce,
+  );
+
+  const patchUrlState = useCallback(
+    (
+      patch: Partial<State>,
+      { immediate = false }: PatchUrlStateOptions = {},
+    ) => {
+      immediateRef.current = immediate;
+      setState((state) => ({ ...state, ...patch }));
+    },
+    [],
+  );
 
   const updateUrl = useCallback(
     (state: State) => {

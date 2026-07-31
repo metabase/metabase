@@ -75,6 +75,7 @@
    direction). A vector lets a single sort key emit multiple ORDER BY terms that
    share the same direction (e.g. user sort orders by first_name then last_name)."
   {"created_at"        [:c.created_at]
+   "title"             [:c.title]
    "message_count"     [:message_count]
    "total_tokens"      [:total_tokens]
    "cache_read_tokens" [:cache_read_tokens]

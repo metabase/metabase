@@ -92,7 +92,7 @@ export const TaskListPage = () => {
         />
       )}
 
-      {!isLoading && error == null && (
+      {!isLoading && !error && (
         <Flex justify="end">
           <PaginationControls
             page={page}
@@ -100,8 +100,12 @@ export const TaskListPage = () => {
             itemsLength={tasks.length}
             total={total}
             showTotal
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
+            onPreviousPage={() =>
+              patchUrlState({ page: page - 1 }, { immediate: true })
+            }
+            onNextPage={() =>
+              patchUrlState({ page: page + 1 }, { immediate: true })
+            }
           />
         </Flex>
       )}
