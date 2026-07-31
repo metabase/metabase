@@ -25,6 +25,8 @@ import {
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
 
+import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data_apps/sandbox/types";
+
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
 import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
@@ -68,7 +70,7 @@ if (!root) {
 
 const appRoot = createRoot(root);
 
-const sandbox = createDataAppSandbox({
+const sandboxPromise = createDataAppSandbox({
   label: "dev",
   targetWindow: window,
   allowedHosts,
@@ -86,6 +88,7 @@ const sandbox = createDataAppSandbox({
 });
 
 async function loadAndRender() {
+  const sandbox = await sandboxPromise;
   const res = await fetch(bundleUrl, { cache: "no-store" });
 
   if (!res.ok) {
@@ -97,11 +100,18 @@ async function loadAndRender() {
   const code = await res.text();
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
+  const rawProviderProps = providerProps ?? {};
+  const safeProviderProps = Object.fromEntries(
+    DATA_APP_PROVIDER_PROP_KEYS.filter((key) => key in rawProviderProps).map(
+      (key) => [key, rawProviderProps[key]],
+    ),
+  );
+
   appRoot.render(
     <DataAppDevProvider
       appSlug={appSlug}
       authConfig={authConfig}
-      {...providerProps}
+      {...safeProviderProps}
     >
       <Component />
     </DataAppDevProvider>,

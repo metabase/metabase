@@ -38,31 +38,34 @@
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
   Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
 
   Optional:
-    :system      - System prompt string
-    :input       - Sequence of AISDK parts and user messages
-    :tools       - Sequence of tool definition maps
-    :tool_choice - \"auto\" or \"required\"
-    :temperature - Sampling temperature
-    :max-tokens  - Maximum tokens in the response
-    :schema      - JSON Schema map for structured output; each provider forces a
-                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
-    :reasoning?  - When false, don't request thinking/reasoning and strip
-                   :reasoning parts from the replayed input (defaults true)"
+    :system           - System prompt string
+    :input            - Sequence of AISDK parts and user messages
+    :tools            - Sequence of tool definition maps
+    :tool_choice      - \"auto\" or \"required\"
+    :temperature      - Sampling temperature
+    :max-tokens       - Maximum tokens in the response
+    :schema           - JSON Schema map for structured output; each provider forces a
+                        tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
+    :reasoning?       - When false, don't request thinking/reasoning and strip
+                        :reasoning parts from the replayed input (defaults true)
+    :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
+                        provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
-   [:model       {:optional true} :string]
-   [:system      {:optional true} [:maybe :string]]
-   [:input       {:optional true} [:sequential :map]]
-   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
-   [:temperature {:optional true} [:maybe number?]]
-   [:max-tokens  {:optional true} [:maybe :int]]
-   [:schema      {:optional true} :any]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]
-   [:reasoning?  {:optional true} [:maybe :boolean]]])
+   [:model            {:optional true} :string]
+   [:system           {:optional true} [:maybe :string]]
+   [:input            {:optional true} [:sequential :map]]
+   [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
+   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:temperature      {:optional true} [:maybe number?]]
+   [:max-tokens       {:optional true} [:maybe :int]]
+   [:schema           {:optional true} :any]
+   [:ai-proxy?        {:optional true} [:maybe :boolean]]
+   [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
   "Generate a random id"

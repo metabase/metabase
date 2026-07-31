@@ -1191,32 +1191,38 @@
                           :attributes {:user_id 1, :user_cat "Widget"}}
           (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
           (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
-          (is (= (->> [["Twitter" nil 0 401.51]
-                       ["Twitter" "Widget" 0 498.59]
-                       [nil nil 1 401.51]
-                       [nil "Widget" 1 498.59]
-                       ["Twitter" nil 2 900.1]
-                       [nil nil 3 900.1]]
-                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
-                                     sort-str (fn [s]
-                                                (cond
-                                                  (some? s) s
-                                                  nil-first? "A"
-                                                  :else "Z"))]
-                                 (fn [[x y group]]
-                                   [group (sort-str x) (sort-str y)]))))
-                 (mt/formatted-rows
-                  [str str int 2.0]
-                  (qp.pivot/run-pivot-query
-                   (mt/mbql-query orders
-                     {:joins [{:source-table $$people
-                               :fields :all
-                               :condition [:= $user_id &P.people.id]
-                               :alias "P"}]
-                      :aggregation [[:sum $total]]
-                      :breakout [&P.people.source
-                                 $product_id->products.category]
-                      :limit 5}))))))))))
+          ;; The query carries `:limit 5`. The multi-query path applies the limit per sub-query (each
+          ;; grouping combination), so all six rows survive; the native `GROUPING SETS` path applies it
+          ;; across the union of grouping sets and truncates the pivot-grouping=3 grand-total row. This
+          ;; asymmetry is intentional (see `pivot-query-without-limit-test` below for the parity-checked
+          ;; version), so opt this test out of the default parity check.
+          (qp.pivot.test-util/without-pivot-parity-check
+           (is (= (->> [["Twitter" nil 0 401.51]
+                        ["Twitter" "Widget" 0 498.59]
+                        [nil nil 1 401.51]
+                        [nil "Widget" 1 498.59]
+                        ["Twitter" nil 2 900.1]
+                        [nil nil 3 900.1]]
+                       (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
+                                      sort-str (fn [s]
+                                                 (cond
+                                                   (some? s) s
+                                                   nil-first? "A"
+                                                   :else "Z"))]
+                                  (fn [[x y group]]
+                                    [group (sort-str x) (sort-str y)]))))
+                  (mt/formatted-rows
+                   [str str int 2.0]
+                   (qp.pivot/run-pivot-query
+                    (mt/mbql-query orders
+                      {:joins [{:source-table $$people
+                                :fields :all
+                                :condition [:= $user_id &P.people.id]
+                                :alias "P"}]
+                       :aggregation [[:sum $total]]
+                       :breakout [&P.people.source
+                                  $product_id->products.category]
+                       :limit 5})))))))))))
 
 (deftest pivot-query-without-limit-test
   (testing "Pivot table queries under sandboxing return identical results from the multi-query and native paths"
@@ -1238,9 +1244,8 @@
                          (lib.tu.notebook/add-breakout {:display-name #"(Test Data )?People"} "Source")
                          (lib.tu.notebook/add-breakout "Product" "Category")
                          (merge {:pivot-rows [0] :pivot-cols [1]}))]
-          (qp.pivot.test-util/with-pivot-parity-check
-            (is (=? {:status :completed}
-                    (qp.pivot/run-pivot-query query)))))))))
+          (is (=? {:status :completed}
+                  (qp.pivot/run-pivot-query query))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"

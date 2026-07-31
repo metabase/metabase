@@ -19,8 +19,10 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
@@ -35,8 +37,10 @@
     "anthropic"  claude/claude
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
+    "mistral"    mistral/mistral
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -46,8 +50,10 @@
     "anthropic"  claude/list-models
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
+    "mistral"    mistral/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -402,9 +408,10 @@
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
-                                system-msg        (assoc :system system-msg)
+                                system-msg                    (assoc :system system-msg)
                                 (and (seq tools)
-                                     tool-choice) (assoc :tool_choice tool-choice))
+                                     tool-choice)             (assoc :tool_choice tool-choice)
+                                (:session-id tracking-opts)   (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)
                                                 (core/lite-aisdk-xf)
@@ -476,8 +483,9 @@
                                 :temperature temperature
                                 :max-tokens  max-tokens
                                 :ai-proxy?   ai-proxy?}
-                         system-msg               (assoc :system system-msg)
-                         (contains? opts :cache?) (assoc :cache? (:cache? opts)))]
+                         system-msg                  (assoc :system system-msg)
+                         (contains? opts :cache?)    (assoc :cache? (:cache? opts))
+                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}

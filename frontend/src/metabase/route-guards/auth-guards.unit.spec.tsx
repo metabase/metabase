@@ -52,10 +52,9 @@ describe("route-guards", () => {
       });
 
       const location = history!.getCurrentLocation();
-      expect(location.query).toEqual(
-        expect.objectContaining({ redirect: "/dashboard/123" }),
+      expect(new URLSearchParams(location.search).get("redirect")).toBe(
+        "/dashboard/123",
       );
-      expect(location.search).toContain("redirect");
     });
 
     it("keeps the URL hash in ?redirect= so deep links (e.g. shared comment links) survive the login bounce", async () => {

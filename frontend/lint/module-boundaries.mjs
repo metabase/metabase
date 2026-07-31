@@ -319,7 +319,7 @@ const elements = [
     mode: "full",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "routes-stable-id-aware",
     pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
     mode: "full",

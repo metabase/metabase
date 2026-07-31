@@ -38,7 +38,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { Outlet, push, replace, useParams, useRouter } from "metabase/router";
+import { Outlet, push, replace, useLocation, useParams } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -113,7 +113,7 @@ const DocumentPrintContextProvider = ({
 };
 
 export const DocumentPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { entityId, childTargetId: paramsChildTargetId } = useParams<{
     entityId: string;
     childTargetId: string;

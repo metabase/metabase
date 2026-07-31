@@ -1,17 +1,15 @@
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
+  push,
   useLocation,
   useNavigate,
   useParams,
-  useRouter,
+  useSearchParams,
 } from "metabase/router";
-
-import { V7RouterTree } from "./RouterProviderV7";
 
 function Layout() {
   return (
@@ -26,14 +24,15 @@ function ThingPage() {
   const { pathname, search } = useLocation();
   const params = useParams();
   const navigate = useNavigate();
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
 
   return (
     <div>
       <span data-testid="pathname">{pathname}</span>
       <span data-testid="search">{search}</span>
       <span data-testid="thing-id">{params.thingId}</span>
-      <span data-testid="query-tab">{String(location.query.tab)}</span>
+      <span data-testid="splat">{String(params["*"])}</span>
+      <span data-testid="query-tab">{searchParams.get("tab")}</span>
       <button onClick={() => navigate("/other")}>go absolute</button>
       <button onClick={() => navigate("..")}>go up</button>
     </div>
@@ -48,11 +47,7 @@ const tree = (
 );
 
 function setup(initialRoute: string) {
-  renderWithProviders(
-    <MemoryRouter initialEntries={[initialRoute]}>
-      <V7RouterTree>{tree}</V7RouterTree>
-    </MemoryRouter>,
-  );
+  return renderWithProviders(tree, { withRouter: true, initialRoute });
 }
 
 describe("v7 engine (facade over real react-router v7)", () => {
@@ -65,9 +60,28 @@ describe("v7 engine (facade over real react-router v7)", () => {
     expect(screen.getByTestId("thing-id")).toHaveTextContent("42");
   });
 
-  it("exposes a v3-shaped location.query", () => {
+  it("exposes the search params through useSearchParams", () => {
     setup("/things/42?tab=x");
     expect(screen.getByTestId("query-tab")).toHaveTextContent("x");
+  });
+
+  // The tree is wrapped in a pathless layout route for the app shell. Pathless
+  // means it must contribute nothing to matching, so no route below it should
+  // see params it did not declare itself.
+  it("the host's layout route contributes no params of its own", () => {
+    setup("/things/42");
+    expect(screen.getByTestId("splat")).toHaveTextContent("undefined");
+  });
+
+  // Redux navigation carries no route context, and history@3 resolved a pathname
+  // without a leading slash against the root. Resolving it against the deepest
+  // match instead would send `{ pathname: "other" }` to `/things/other`.
+  it("resolves a relative redux push from the root", async () => {
+    const { store } = setup("/things/42");
+
+    store.dispatch(push({ pathname: "other" }));
+
+    expect(await screen.findByTestId("other")).toBeInTheDocument();
   });
 
   it("navigates to an absolute path via useNavigate", async () => {
