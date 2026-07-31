@@ -300,9 +300,17 @@
     (is (= #{:api-key} (llm.provider/secret-field-keys "azure")))
     (is (= #{:access-key-id :secret-access-key :session-token} (llm.provider/secret-field-keys "bedrock")))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
-  (testing "azure has no default model because its models are deployment names the admin chooses"
-    (is (= "claude-sonnet-4-6" (llm.provider/default-model "anthropic")))
-    (is (nil? (llm.provider/default-model "azure")))
+  (testing "every type's default model, which is what a first connection of that type gets selected for it"
+    (is (= {"anthropic"  "claude-sonnet-4-6"
+            "openai"     "gpt-5.4"
+            "openrouter" "anthropic/claude-sonnet-4.6"
+            "mistral"    "mistral-medium-3-5"
+            "zai"        "glm-5.2"
+            ;; azure's models are deployment names the admin chooses, so there is nothing to default to
+            "azure"      nil
+            "bedrock"    "anthropic.claude-opus-4-8"
+            "metabase"   "anthropic/claude-sonnet-4-6"}
+           (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "gemini"))))
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
