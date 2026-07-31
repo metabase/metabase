@@ -34,8 +34,13 @@
      :signature              "[\"segment-api\"]"
      :definition             {:lib/type :mbql/query}
      :semantic_details       {:atom-count 1}
+     :display_name           "Recent orders"
      :suggested_name         "Recent orders"
      :suggested_description  "Recent orders on Orders"
+     :family_key             (apply str (repeat 64 "f"))
+     :family_order           0
+     :family_position        0
+     :family_depth           0
      :modeling_status        :missing
      :verified_source_count  1
      :official_source_count  0
@@ -155,6 +160,47 @@
                  :data [{:id (:id second-candidate), :candidate_type "measure"}]}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?candidate-type=measure&search=zulu")))))))
+
+(deftest candidate-priority-order-keeps-recommendation-families-together-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version candidates/algorithm-version
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate root
+                   (candidate-row (:id run)
+                                  {:suggested_name "Shared concept"
+                                   :display_name "Shared concept"
+                                   :signature_hash (apply str (repeat 64 "1"))
+                                   :family_key (apply str (repeat 64 "1"))
+                                   :family_order 0
+                                   :family_position 0})
+                   :model/UsageMetadataCandidate child
+                   (candidate-row (:id run)
+                                  {:suggested_name "Shared concept with detail"
+                                   :display_name "Shared concept with detail"
+                                   :signature_hash (apply str (repeat 64 "2"))
+                                   :family_key (apply str (repeat 64 "1"))
+                                   :family_order 0
+                                   :family_position 1
+                                   :family_depth 1})
+                   :model/UsageMetadataCandidate other
+                   (candidate-row (:id run)
+                                  {:suggested_name "Other concept"
+                                   :display_name "Other concept"
+                                   :signature_hash (apply str (repeat 64 "3"))
+                                   :family_key (apply str (repeat 64 "3"))
+                                   :family_order 1
+                                   :family_position 0
+                                   :verified_source_count 10
+                                   :distinct_source_count 100})]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           "ee/data-studio/usage-metadata/candidates")]
+        (is (= [(:id root) (:id child) (:id other)]
+               (mapv :id (:data response))))
+        (is (= {:key (apply str (repeat 64 "1")), :position 1, :depth 1}
+               (:family (second (:data response)))))))))
 
 (deftest candidate-queue-filtering-test
   (mt/with-premium-features #{:library}

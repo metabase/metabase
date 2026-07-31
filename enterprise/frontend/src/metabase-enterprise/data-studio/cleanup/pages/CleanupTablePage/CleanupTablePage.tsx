@@ -462,10 +462,13 @@ function CandidateRow({
       bd={isLast ? undefined : "0 0 1px 0 solid var(--mb-color-border-neutral)"}
     >
       <UnstyledButton
-        aria-label={candidate.suggested_name}
+        aria-label={candidate.display_name}
         p="md"
         flex={1}
         onClick={onOpen}
+        style={{
+          paddingInlineStart: `${1 + Math.min(candidate.family.depth, 3) * 1.25}rem`,
+        }}
       >
         <Flex gap="md" align="center" wrap="nowrap">
           <Icon
@@ -477,7 +480,7 @@ function CandidateRow({
           />
           <Stack gap={4} flex={1} miw={0}>
             <Text fw="bold" lineClamp={2}>
-              {candidate.suggested_name}
+              {candidate.display_name}
             </Text>
             <Evidence candidate={candidate} />
           </Stack>

@@ -10,7 +10,9 @@
    [metabase.usage-metadata.models.candidate]
    [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -20,7 +22,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  9)
+  10)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
@@ -197,7 +199,7 @@
      :definition             (:definition observation)
      :semantic_details       (case type
                                :measure (:aggregation observation)
-                               :segment (select-keys observation [:predicate :fields :composite? :atom-count]))
+                               :segment (select-keys observation [:predicate :fields :atoms :composite? :atom-count]))
      :suggested_name         (:suggested-name observation)
      :suggested_description  (:suggested-description observation)
      :modeling_status        :missing
@@ -514,6 +516,150 @@
       (when (seq candidate-ids)
         (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))))
 
+(defn- candidate-atom-details
+  [{:keys [candidate_type semantic_details]}]
+  (case candidate_type
+    :segment (:atoms semantic_details)
+    :measure (:condition-atoms semantic_details)
+    nil))
+
+(defn- candidate-priority-key
+  [{:keys [verified_source_count official_source_count distinct_source_count
+           complexity total_view_count signature id]}]
+  [(if (pos? verified_source_count) 0 1)
+   (if (pos? official_source_count) 0 1)
+   (- distinct_source_count)
+   complexity
+   (- total_view_count)
+   signature
+   id])
+
+(defn- candidate-family-domain
+  [{:keys [table_id candidate_type modeling_status definition]}]
+  [table_id
+   candidate_type
+   (if (= modeling_status :modeled) :modeled :suggested)
+   (when (= candidate_type :measure)
+     (measure-base definition))])
+
+(defn- candidate-primary-parent
+  [candidate candidates]
+  (let [candidate-atoms (::atom-signatures candidate)]
+    (when (seq candidate-atoms)
+      (->> candidates
+           (filter (fn [other]
+                     (let [other-atoms (::atom-signatures other)]
+                       (and (< (count other-atoms) (count candidate-atoms))
+                            (set/subset? other-atoms candidate-atoms)))))
+           (sort-by (fn [other]
+                      (into [(- (count (::atom-signatures other)))]
+                            (candidate-priority-key other))))
+           first))))
+
+(defn- candidate-root-id
+  [candidate-id parent-index]
+  (loop [id candidate-id]
+    (if-let [parent-id (parent-index id)]
+      (recur parent-id)
+      id)))
+
+(defn- ordered-candidate-atoms
+  [candidate parent-order]
+  (let [atom-signatures (::atom-signatures candidate)
+        inherited       (filterv atom-signatures parent-order)
+        remaining       (->> atom-signatures (remove (set inherited)) sort vec)]
+    (into inherited remaining)))
+
+(defn- family-display-name
+  [candidate atom-order]
+  (let [details-by-signature (u/index-by :signature (candidate-atom-details candidate))
+        atom-names           (mapv (comp :display-name details-by-signature) atom-order)
+        condition-name       (when (every? some? atom-names)
+                               (i18n/join-strings-with-conjunction (tru "and") atom-names))]
+    (u.str/elide
+     (or
+      (when condition-name
+        (case (:candidate_type candidate)
+          :segment condition-name
+          :measure (when-let [base-name (get-in candidate [:semantic_details :base-name])]
+                     (tru "{0} where {1}" base-name condition-name))))
+      (:suggested_name candidate))
+     254)))
+
+(defn- ordered-family
+  [root children-index candidates-by-id]
+  (letfn [(walk [candidate depth parent-order]
+            (let [atom-order (ordered-candidate-atoms candidate parent-order)
+                  children   (sort-by
+                              (fn [child]
+                                [(candidate-priority-key child)
+                                 (->> (::atom-signatures child)
+                                      (remove (::atom-signatures candidate))
+                                      sort
+                                      vec)])
+                              (map candidates-by-id (children-index (:id candidate))))]
+              (into [{:candidate candidate, :depth depth, :atom-order atom-order}]
+                    (mapcat #(walk % (inc depth) atom-order))
+                    children)))]
+    (walk root 0 [])))
+
+(defn- candidate-families
+  [candidates]
+  (let [candidates          (mapv #(assoc % ::atom-signatures
+                                          (into #{} (map :signature) (candidate-atom-details %)))
+                                  candidates)
+        candidates-by-id    (u/index-by :id candidates)
+        candidates-by-domain (group-by candidate-family-domain candidates)
+        parent-index        (into {}
+                                  (keep (fn [candidate]
+                                          (when-let [parent (candidate-primary-parent
+                                                             candidate
+                                                             (get candidates-by-domain
+                                                                  (candidate-family-domain candidate)))]
+                                            [(:id candidate) (:id parent)])))
+                                  candidates)
+        children-index      (update-vals (group-by val parent-index)
+                                         #(mapv key %))
+        families-by-root-id (group-by #(candidate-root-id (:id %) parent-index) candidates)]
+    (->> families-by-root-id
+         (map (fn [[root-id members]]
+                {:root    (candidates-by-id root-id)
+                 :members members}))
+         (sort-by (fn [{:keys [root members]}]
+                    [(candidate-priority-key (first (sort-by candidate-priority-key members)))
+                     (:signature root)
+                     (:id root)]))
+         (map-indexed
+          (fn [family-order {:keys [root]}]
+            (map-indexed
+             (fn [family-position {:keys [candidate depth atom-order]}]
+               {:candidate-id    (:id candidate)
+                :display-name    (family-display-name candidate atom-order)
+                :family-key      (:signature_hash root)
+                :family-order    family-order
+                :family-position family-position
+                :family-depth    depth})
+             (ordered-family root children-index candidates-by-id))))
+         (into [] cat))))
+
+(defn- materialize-candidate-families!
+  [run-id]
+  (let [candidates (t2/select [:model/UsageMetadataCandidate
+                               :id :table_id :candidate_type :modeling_status
+                               :signature_hash :signature :definition :semantic_details
+                               :suggested_name :verified_source_count :official_source_count
+                               :distinct_source_count :complexity :total_view_count]
+                              :run_id run-id)]
+    (doseq [{:keys [candidate-id] :as family} (candidate-families candidates)]
+      (t2/update! :model/UsageMetadataCandidate candidate-id
+                  (-> family
+                      (dissoc :candidate-id)
+                      (set/rename-keys {:display-name    :display_name
+                                        :family-key      :family_key
+                                        :family-order    :family_order
+                                        :family-position :family_position
+                                        :family-depth    :family_depth}))))))
+
 (defn- run-summary
   [run-id]
   (let [measure-count (t2/count :model/UsageMetadataCandidate
@@ -556,6 +702,7 @@
       (prune-ineligible-candidates! run-id)
       (prune-non-closed-segment-candidates! run-id)
       (prune-non-closed-measure-candidates! run-id)
+      (materialize-candidate-families! run-id)
       (let [summary (run-summary run-id)]
         (t2/update! :model/UsageMetadataCandidateRun run-id
                     {:status :succeeded, :finished_at (mi/now), :summary summary})

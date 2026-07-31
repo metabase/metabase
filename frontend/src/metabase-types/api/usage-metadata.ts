@@ -102,8 +102,14 @@ export type UsageMetadataCandidateSummary = {
   id: number;
   candidate_type: UsageMetadataCandidateType;
   table: UsageMetadataTable;
+  display_name: string;
   suggested_name: string;
   suggested_description: string | null;
+  family: {
+    key: string;
+    position: number;
+    depth: number;
+  };
   definition: DatasetQuery;
   modeling_status: UsageMetadataModelingStatus;
   dismissed: boolean;

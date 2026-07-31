@@ -32,8 +32,10 @@ const candidate: UsageMetadataCandidateDetail = {
     collection_id: 2,
     database: { id: 1, name: "Sample Database" },
   },
+  display_name: "Total revenue",
   suggested_name: "Total revenue",
   suggested_description: "Sum of order totals",
+  family: { key: "family", position: 0, depth: 0 },
   definition: createMockStructuredDatasetQuery({
     query: {
       "source-table": 1,
