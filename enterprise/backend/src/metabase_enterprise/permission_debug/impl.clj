@@ -176,7 +176,7 @@
   [user-id card permissions-blocking permissions-granting]
   (let [query (-> card :dataset_query qp.preprocess/preprocess)
         query-tables (lib/all-source-table-ids query)
-        native? (match/match-one query {:native &truthy} true)]
+        native? (match/match-one query {:native &truthy} true)] ; <- locked-query violation
     (->>
      (cond
        native?
