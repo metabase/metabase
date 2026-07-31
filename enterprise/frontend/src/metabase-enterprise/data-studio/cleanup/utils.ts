@@ -7,7 +7,7 @@ import type {
   UsageMetadataModelingStatus,
 } from "metabase-types/api";
 
-const CANDIDATE_TYPES = ["measure", "segment"] as const;
+const CANDIDATE_TYPES = ["table", "metric", "measure", "segment"] as const;
 const MODELING_STATUSES = ["missing", "partially-modeled", "modeled"] as const;
 const SIGNALS = ["verified", "official", "popular"] as const;
 const SORTS = ["priority", "name", "source-count", "view-count"] as const;

@@ -40,6 +40,8 @@ const snapshot: UsageMetadataSnapshot = {
     "candidate-count": 42,
     "measure-count": 42,
     "segment-count": 0,
+    "metric-count": 0,
+    "publish-table-count": 0,
     "table-count": 1,
   },
 };
@@ -66,6 +68,7 @@ const candidate: UsageMetadataCandidateDetail = {
   display_name: "Total revenue",
   suggested_name: "Total revenue",
   suggested_description: "Sum of order totals",
+  required_tables: [],
   presentation: {
     aggregation: { display_name: "Sum of Total" },
     predicates: [],
@@ -98,6 +101,16 @@ const tableDetail: UsageMetadataTableDetail = {
   candidate_count: 42,
   dismissed_count: 0,
   counts: {
+    table: {
+      missing: 0,
+      "partially-modeled": 0,
+      modeled: 0,
+    },
+    metric: {
+      missing: 0,
+      "partially-modeled": 0,
+      modeled: 0,
+    },
     measure: {
       missing: 40,
       "partially-modeled": 2,
@@ -250,6 +263,64 @@ describe("CleanupTablePage", () => {
       screen.queryByText("Active accounts with recent activity"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Total revenue")).not.toBeInTheDocument();
+  });
+
+  it("renders table recommendations as first-class suggestions", async () => {
+    setup({
+      ...candidate,
+      candidate_type: "table",
+      display_name: "Publish Orders",
+      suggested_name: "Publish Orders",
+      suggested_description: "Saved content depends on this table",
+      presentation: { predicates: [] },
+    });
+
+    expect(await screen.findByText("Publish Orders")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Table" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tables" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Metrics" })).toBeInTheDocument();
+  });
+
+  it("shows a read-only report for metric-shaped questions", async () => {
+    const metricCandidate: UsageMetadataCandidateDetail = {
+      ...candidate,
+      candidate_type: "metric",
+      display_name: "Large order trend",
+      suggested_name: "Large order trend",
+      suggested_description: "Count large orders over time",
+      presentation: { predicates: [] },
+      required_tables: [
+        {
+          id: 2,
+          "database-id": 1,
+          "database-name": "Sample Database",
+          schema: "PUBLIC",
+          name: "customers",
+          "display-name": "Customers",
+          description: null,
+          "data-layer": null,
+          "data-authority": null,
+          "view-count": 10,
+          "published?": false,
+        },
+      ],
+    };
+    setupUsageMetadataCandidateEndpoint(metricCandidate.id, metricCandidate);
+    setup(metricCandidate);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Large order trend" }),
+    );
+
+    expect(
+      await screen.findByText("Question could be a reusable Metric"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Required tables")).toBeInTheDocument();
+    expect(screen.getByText("Customers")).toBeInTheDocument();
+    expect(screen.getByText("Unpublished")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Create/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a focused candidate review without repeated or technical details", async () => {

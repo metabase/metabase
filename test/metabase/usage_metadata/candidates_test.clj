@@ -11,6 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidates :as candidates]
    [metabase.usage-metadata.insights :as insights]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -206,7 +207,10 @@
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
     (mt/with-dynamic-fn-redefs [insights/qualified-card-ids (constantly [])
-                                insights/cleanup-candidates (constantly {:measures [], :segments []})]
+                                insights/cleanup-candidates (constantly {:measures [], :segments []})
+                                insights/candidate-tables (constantly {:candidates []
+                                                                       :unsupported-source-items []})
+                                insights/candidate-metrics (constantly [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidates/run-refresh! run))))
         (is (= (:id run) (:id (candidates/latest-successful-run))))
@@ -222,7 +226,10 @@
                                      [1])
        insights/cleanup-candidates (fn [opts]
                                      (reset! cleanup-opts opts)
-                                     {:measures [], :segments []})]
+                                     {:measures [], :segments []})
+       insights/candidate-tables (constantly {:candidates []
+                                              :unsupported-source-items []})
+       insights/candidate-metrics (constantly [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidates/run-refresh! run))))
         (is (= {:kind                      "qualified-cards"
@@ -236,6 +243,79 @@
                (:source_config (t2/select-one :model/UsageMetadataCandidateRun :id (:id run)))))
         (is (= 10 (:min-view-count @cleanup-opts)))
         (is (= 90 (:view-count-window-days @cleanup-opts)))))))
+
+(deftest persisted-refresh-materializes-table-and-metric-recommendations-test
+  (let [table-id          (mt/id :orders)
+        metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        table             (lib.metadata/table metadata-provider table-id)
+        subtotal          (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+        definition        (-> (lib/query metadata-provider table)
+                              (lib/filter (lib/> subtotal 10))
+                              (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card card {:name "Important orders question"
+                                     :type :question}]
+      (let [source-item {:id (:id card)
+                         :name (:name card)
+                         :type :question
+                         :verified? true
+                         :official-collection? false
+                         :popular? true
+                         :view-count 20}]
+        (mt/with-dynamic-fn-redefs
+          [insights/qualified-card-ids (constantly [(:id card)])
+           insights/cleanup-candidates (constantly {:measures [], :segments []})
+           insights/candidate-tables
+           (constantly {:candidates
+                        [{:table {:id table-id
+                                  :database-id (mt/id)
+                                  :database-name "Test Database"
+                                  :schema "PUBLIC"
+                                  :name "ORDERS"
+                                  :display-name "Orders"
+                                  :description nil
+                                  :data-layer nil
+                                  :data-authority nil
+                                  :view-count 0}
+                          :evidence {:source-items [(assoc source-item
+                                                           :dependency-paths
+                                                           [{:direct? true, :models []}])]
+                                     :distinct-source-count 1
+                                     :verified-source-count 1
+                                     :official-source-count 0
+                                     :popular-source-count 1
+                                     :total-view-count 20}}]
+                        :unsupported-source-items []})
+           insights/candidate-metrics
+           (constantly [{:definition definition
+                         :suggested-name "Large order count"
+                         :suggested-description "Count large orders"
+                         :aggregation (first (lib/aggregations definition 0))
+                         :required-tables [{:id table-id, :published? false}]
+                         :evidence {:source-items [(assoc source-item
+                                                          :stage-numbers [0]
+                                                          :joined? false)]
+                                    :distinct-source-count 1
+                                    :verified-source-count 1
+                                    :official-source-count 0
+                                    :popular-source-count 1
+                                    :total-view-count 20}}])]
+          (let [run     (candidates/queue-refresh! :manual (mt/user->id :crowberto))
+                result  (candidates/run-refresh! run)
+                rows    (t2/select :model/UsageMetadataCandidate :run_id (:id run))
+                by-type (u/index-by :candidate_type rows)]
+            (is (= :succeeded (:status result)))
+            (is (= {:candidate-count 2
+                    :measure-count 0
+                    :segment-count 0
+                    :metric-count 1
+                    :publish-table-count 1
+                    :table-count 1}
+                   (:summary result)))
+            (is (= "Publish Orders" (:suggested_name (by-type :table))))
+            (is (= [{:card-id (:id card)
+                     :dependency-paths [{:direct? true, :models []}]}]
+                   (get-in (by-type :table) [:semantic_details :source-dependencies])))
+            (is (= definition (:definition (by-type :metric))))))))))
 
 (deftest fixed-candidate-evidence-cutoffs-test
   (let [base {:candidate_type         :segment

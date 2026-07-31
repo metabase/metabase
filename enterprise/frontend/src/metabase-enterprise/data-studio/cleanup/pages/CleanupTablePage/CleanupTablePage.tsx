@@ -322,7 +322,10 @@ export function CleanupTablePage() {
                   updateParams({
                     ...params,
                     candidateType:
-                      value === "measure" || value === "segment"
+                      value === "table" ||
+                      value === "metric" ||
+                      value === "measure" ||
+                      value === "segment"
                         ? value
                         : undefined,
                     page: undefined,
@@ -332,6 +335,8 @@ export function CleanupTablePage() {
               >
                 <Tabs.List>
                   <Tabs.Tab value="all">{t`All`}</Tabs.Tab>
+                  <Tabs.Tab value="table">{t`Tables`}</Tabs.Tab>
+                  <Tabs.Tab value="metric">{t`Metrics`}</Tabs.Tab>
                   <Tabs.Tab value="measure">{t`Measures`}</Tabs.Tab>
                   <Tabs.Tab value="segment">{t`Segments`}</Tabs.Tab>
                 </Tabs.List>
@@ -475,12 +480,17 @@ function CandidateRow({
           <Icon
             name={getCandidateIcon(candidate)}
             c="text-secondary"
-            aria-label={
-              candidate.candidate_type === "measure" ? t`Measure` : t`Segment`
-            }
+            aria-label={getCandidateTypeLabel(candidate.candidate_type)}
           />
           <Stack gap={4} flex={1} miw={0}>
-            <CandidatePills presentation={candidate.presentation} />
+            {candidate.candidate_type === "measure" ||
+            candidate.candidate_type === "segment" ? (
+              <CandidatePills presentation={candidate.presentation} />
+            ) : (
+              <Text fw="bold" truncate>
+                {candidate.display_name}
+              </Text>
+            )}
             <Evidence candidate={candidate} />
           </Stack>
           <Icon name="chevronright" c="text-secondary" />
@@ -505,6 +515,21 @@ function CandidateRow({
       </Flex>
     </Flex>
   );
+}
+
+function getCandidateTypeLabel(
+  candidateType: UsageMetadataCandidateSummary["candidate_type"],
+) {
+  switch (candidateType) {
+    case "table":
+      return t`Table`;
+    case "metric":
+      return t`Metric`;
+    case "measure":
+      return t`Measure`;
+    case "segment":
+      return t`Segment`;
+  }
 }
 
 function Evidence({ candidate }: { candidate: UsageMetadataCandidateSummary }) {

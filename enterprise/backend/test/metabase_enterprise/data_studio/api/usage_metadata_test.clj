@@ -167,6 +167,50 @@
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?candidate-type=measure&search=zulu")))))))
 
+(deftest table-and-metric-recommendations-are-listable-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version candidates/algorithm-version
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate table-candidate
+                   (candidate-row (:id run)
+                                  {:candidate_type :table
+                                   :suggested_name "Publish Orders"
+                                   :signature_hash (apply str (repeat 64 "4"))
+                                   :signature "[\"publish-orders\"]"
+                                   :semantic_details {:table {:id (mt/id :orders)}}})
+                   :model/UsageMetadataCandidate metric-candidate
+                   (candidate-row (:id run)
+                                  {:candidate_type :metric
+                                   :suggested_name "Large order trend"
+                                   :signature_hash (apply str (repeat 64 "5"))
+                                   :signature "[\"large-order-trend\"]"
+                                   :semantic_details {:required-tables
+                                                      [{:id (mt/id :orders)
+                                                        :display-name "Orders"
+                                                        :published? false}]}})]
+      (is (=? {:total 1
+               :data [{:id (:id table-candidate)
+                       :candidate_type "table"
+                       :creation_blockers []}]}
+              (mt/user-http-request :crowberto :get 200
+                                    "ee/data-studio/usage-metadata/candidates?candidate-type=table")))
+      (is (=? {:total 1
+               :data [{:id (:id metric-candidate)
+                       :candidate_type "metric"
+                       :required_tables [{:id (mt/id :orders)
+                                          :display-name "Orders"
+                                          :published? false}]
+                       :creation_blockers []}]}
+              (mt/user-http-request :crowberto :get 200
+                                    "ee/data-studio/usage-metadata/candidates?candidate-type=metric")))
+      (is (=? {:data [{:counts {:table {:missing 1}
+                                :metric {:missing 1}}}]}
+              (mt/user-http-request :crowberto :get 200
+                                    "ee/data-studio/usage-metadata/tables"))))))
+
 (deftest candidate-priority-order-keeps-recommendation-families-together-test
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded

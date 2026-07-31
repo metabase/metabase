@@ -7,7 +7,11 @@ import type { Segment } from "./segment";
 import type { TableDataLayer, TableId } from "./table";
 import type { UserId } from "./user";
 
-export type UsageMetadataCandidateType = "measure" | "segment";
+export type UsageMetadataCandidateType =
+  | "table"
+  | "metric"
+  | "measure"
+  | "segment";
 export type UsageMetadataModelingStatus =
   | "missing"
   | "partially-modeled"
@@ -35,6 +39,8 @@ export type UsageMetadataSnapshotSummary = {
   "candidate-count": number;
   "measure-count": number;
   "segment-count": number;
+  "metric-count": number;
+  "publish-table-count": number;
   "table-count": number;
 };
 
@@ -116,6 +122,20 @@ export type UsageMetadataCandidatePresentation = {
   }[];
 };
 
+export type UsageMetadataRequiredTable = {
+  id: TableId;
+  "database-id": DatabaseId;
+  "database-name": string | null;
+  schema: string | null;
+  name: string | null;
+  "display-name": string | null;
+  description: string | null;
+  "data-layer": TableDataLayer | null;
+  "data-authority": string | null;
+  "view-count": number;
+  "published?": boolean;
+};
+
 export type UsageMetadataCandidateSummary = {
   id: number;
   candidate_type: UsageMetadataCandidateType;
@@ -123,6 +143,7 @@ export type UsageMetadataCandidateSummary = {
   display_name: string;
   suggested_name: string;
   suggested_description: string | null;
+  required_tables: UsageMetadataRequiredTable[];
   presentation: UsageMetadataCandidatePresentation;
   family: {
     key: string;
@@ -141,6 +162,12 @@ export type UsageMetadataModelLineageItem = {
   name: string;
 };
 
+export type UsageMetadataTableDependencyPath = {
+  direct?: boolean;
+  "direct?"?: boolean;
+  models: UsageMetadataModelLineageItem[];
+};
+
 export type UsageMetadataCandidateSource = {
   id: number;
   candidate_id: number;
@@ -154,6 +181,7 @@ export type UsageMetadataCandidateSource = {
   joined: boolean;
   stage_numbers: number[];
   model_lineage: UsageMetadataModelLineageItem[] | null;
+  dependency_paths?: UsageMetadataTableDependencyPath[];
 };
 
 export type UsageMetadataCandidateMatch =

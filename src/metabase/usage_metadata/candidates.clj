@@ -1,5 +1,5 @@
 (ns metabase.usage-metadata.candidates
-  "Durable snapshots of deterministic Measure and Segment cleanup observations."
+  "Durable snapshots of deterministic Library cleanup observations."
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
@@ -22,7 +22,7 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  11)
+  12)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
@@ -181,6 +181,44 @@
   [observation]
   (get-in observation [:source :id]))
 
+(defn- table-candidate-observation
+  [{:keys [table evidence]}]
+  (let [table-id (:id table)]
+    {:candidate-type        :table
+     :source                {:id table-id}
+     :signature             (insights/canonical-signature [:publish-table table-id])
+     :definition            {:table-id table-id}
+     :semantic-details      {:table table
+                             :source-dependencies
+                             (mapv (fn [{:keys [id dependency-paths]}]
+                                     {:card-id id, :dependency-paths dependency-paths})
+                                   (:source-items evidence))}
+     :suggested-name        (tru "Publish {0}" (:display-name table))
+     :suggested-description (tru "Saved content depends on this unpublished table.")
+     :evidence              (update evidence :source-items
+                                    (fn [source-items]
+                                      (mapv #(assoc % :joined? false, :stage-numbers [0]) source-items)))}))
+
+(defn- metric-primary-table-id
+  [{:keys [definition required-tables]}]
+  (or (some-> definition lib/normalize lib/primary-source-table-id)
+      (:id (first required-tables))))
+
+(defn- metric-candidate-observation
+  [{:keys [definition aggregation temporal-breakout required-tables evidence
+           suggested-name suggested-description] :as metric}]
+  (when-let [table-id (metric-primary-table-id metric)]
+    {:candidate-type        :metric
+     :source                {:id table-id}
+     :signature             (insights/canonical-signature definition)
+     :definition            definition
+     :semantic-details      (cond-> {:aggregation aggregation
+                                     :required-tables required-tables}
+                              temporal-breakout (assoc :temporal-breakout temporal-breakout))
+     :suggested-name        suggested-name
+     :suggested-description suggested-description
+     :evidence              evidence}))
+
 (defn- observation-row
   [run-id observation]
   (let [{:keys [verified-source-count official-source-count popular-source-count
@@ -188,7 +226,9 @@
         type       (:candidate-type observation)
         complexity (case type
                      :segment (:atom-count observation)
-                     :measure (or (get-in observation [:aggregation :condition-atom-count]) 0))
+                     :measure (or (get-in observation [:aggregation :condition-atom-count]) 0)
+                     :metric  (count (get-in observation [:definition :stages 0 :filters]))
+                     :table   0)
         signature  (:signature observation)]
     {:run_id                 run-id
      :candidate_type         type
@@ -199,7 +239,8 @@
      :definition             (:definition observation)
      :semantic_details       (case type
                                :measure (:aggregation observation)
-                               :segment (select-keys observation [:predicate :fields :atoms :composite? :atom-count]))
+                               :segment (select-keys observation [:predicate :fields :atoms :composite? :atom-count])
+                               (:metric :table) (:semantic-details observation))
      :suggested_name         (:suggested-name observation)
      :suggested_description  (:suggested-description observation)
      :modeling_status        :missing
@@ -303,35 +344,55 @@
 
 (defn- reconcile-candidate!
   [{:keys [id candidate_type table_id] :as candidate} published?]
-  (let [relation-fn (case candidate_type
-                      :measure relation-for-measure
-                      :segment relation-for-segment)
-        matches     (when published?
-                      (keep (fn [entity]
-                              (when-let [relation (relation-fn candidate entity)]
-                                {:relation relation, :entity entity}))
-                            (existing-entities candidate_type table_id)))
-        status      (cond
-                      (some #(= :exact (:relation %)) matches) :modeled
-                      (seq matches)                            :partially-modeled
-                      :else                                    :missing)]
-    (doseq [{:keys [relation entity]} matches]
-      (t2/insert! :model/UsageMetadataCandidateMatch
-                  (cond-> {:candidate_id id, :relation relation}
-                    (= candidate_type :measure) (assoc :measure_id (:id entity))
-                    (= candidate_type :segment) (assoc :segment_id (:id entity)))))
-    (t2/update! :model/UsageMetadataCandidate id {:modeling_status status})
-    status))
+  (if-let [relation-fn (case candidate_type
+                         :measure relation-for-measure
+                         :segment relation-for-segment
+                         nil)]
+    (let [matches (when published?
+                    (keep (fn [entity]
+                            (when-let [relation (relation-fn candidate entity)]
+                              {:relation relation, :entity entity}))
+                          (existing-entities candidate_type table_id)))
+          status  (cond
+                    (some #(= :exact (:relation %)) matches) :modeled
+                    (seq matches)                            :partially-modeled
+                    :else                                    :missing)]
+      (doseq [{:keys [relation entity]} matches]
+        (t2/insert! :model/UsageMetadataCandidateMatch
+                    (cond-> {:candidate_id id, :relation relation}
+                      (= candidate_type :measure) (assoc :measure_id (:id entity))
+                      (= candidate_type :segment) (assoc :segment_id (:id entity)))))
+      (t2/update! :model/UsageMetadataCandidate id {:modeling_status status})
+      status)
+    :missing))
+
+(defn- merged-source-dependencies
+  [candidate observation]
+  (->> (concat (get-in candidate [:semantic_details :source-dependencies])
+               (get-in observation [:semantic-details :source-dependencies]))
+       (group-by :card-id)
+       (map (fn [[card-id dependencies]]
+              {:card-id card-id
+               :dependency-paths (->> dependencies
+                                      (mapcat :dependency-paths)
+                                      distinct
+                                      vec)}))
+       (sort-by :card-id)
+       vec))
 
 (defn- add-evidence
   [candidate observation]
   (let [{:keys [verified-source-count official-source-count popular-source-count
                 distinct-source-count total-view-count]} (:evidence observation)]
-    {:verified_source_count (+ (:verified_source_count candidate) verified-source-count)
-     :official_source_count (+ (:official_source_count candidate) official-source-count)
-     :popular_source_count  (+ (:popular_source_count candidate) popular-source-count)
-     :distinct_source_count (+ (:distinct_source_count candidate) distinct-source-count)
-     :total_view_count      (+ (:total_view_count candidate) total-view-count)}))
+    (cond-> {:verified_source_count (+ (:verified_source_count candidate) verified-source-count)
+             :official_source_count (+ (:official_source_count candidate) official-source-count)
+             :popular_source_count  (+ (:popular_source_count candidate) popular-source-count)
+             :distinct_source_count (+ (:distinct_source_count candidate) distinct-source-count)
+             :total_view_count      (+ (:total_view_count candidate) total-view-count)}
+      (= :table (:candidate_type candidate))
+      (assoc :semantic_details
+             (assoc (:semantic_details candidate)
+                    :source-dependencies (merged-source-dependencies candidate observation))))))
 
 (defn- persist-observation!
   [run-id observation table]
@@ -364,7 +425,16 @@
           :min-view-count source-minimum-recent-view-count
           :view-count-window-days source-usage-window-days
           :include-ineligible? true})
-        observations (concat measures segments)
+        opts         {:query-source (query-source/card-id-set card-ids)
+                      :min-view-count source-minimum-recent-view-count
+                      :view-count-window-days source-usage-window-days
+                      :limit 1000}
+        table-report (insights/candidate-tables opts)
+        metrics      (insights/candidate-metrics opts)
+        observations (concat measures
+                             segments
+                             (map table-candidate-observation (:candidates table-report))
+                             (keep metric-candidate-observation metrics))
         tables       (usable-table-index (into #{} (map observation-table-id) observations))]
     (doseq [observation observations
             :let [table (tables (observation-table-id observation))]
@@ -389,6 +459,9 @@
           (pos? verified_source_count)
           (pos? official_source_count)
           (>= distinct_source_count 2))
+
+      (:table :metric)
+      true
 
       false)))
 
@@ -675,14 +748,20 @@
                                 :run_id run-id :candidate_type :measure)
         segment-count (t2/count :model/UsageMetadataCandidate
                                 :run_id run-id :candidate_type :segment)
+        metric-count  (t2/count :model/UsageMetadataCandidate
+                                :run_id run-id :candidate_type :metric)
+        publish-table-count (t2/count :model/UsageMetadataCandidate
+                                      :run_id run-id :candidate_type :table)
         table-count   (:total
                        (t2/query-one
                         {:select [[[:count [:distinct :table_id]] :total]]
                          :from   [(t2/table-name :model/UsageMetadataCandidate)]
                          :where  [:= :run_id run-id]}))]
-    {:candidate-count (+ measure-count segment-count)
+    {:candidate-count (+ measure-count segment-count metric-count publish-table-count)
      :measure-count measure-count
      :segment-count segment-count
+     :metric-count metric-count
+     :publish-table-count publish-table-count
      :table-count table-count}))
 
 (defn- prune-old-snapshots!

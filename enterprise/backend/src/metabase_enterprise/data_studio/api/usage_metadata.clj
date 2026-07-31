@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-studio.api.usage-metadata
-  "Superuser workflow for reviewing and curating mined Measure and Segment usage."
+  "Superuser workflow for reviewing deterministic Library recommendations."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -86,12 +86,13 @@
   [candidate]
   (case (:candidate_type candidate)
     :measure :model/Measure
-    :segment :model/Segment))
+    :segment :model/Segment
+    nil))
 
 (defn- table-editable-for-candidate?
   [candidate table]
-  (mi/can-create? (candidate-entity-model candidate)
-                  {:table table, :table_id (:id table)}))
+  (when-let [model (candidate-entity-model candidate)]
+    (mi/can-create? model {:table table, :table_id (:id table)})))
 
 (defn- presented-atom
   [{:keys [signature display-name kind]}]
@@ -115,7 +116,9 @@
 
 (defn- candidate-summary
   [candidate table dismissals]
-  (let [editable? (table-editable-for-candidate? candidate table)]
+  (let [creation-candidate? (contains? #{:measure :segment} (:candidate_type candidate))
+        editable?           (and creation-candidate?
+                                 (table-editable-for-candidate? candidate table))]
     {:id                    (:id candidate)
      :candidate_type        (:candidate_type candidate)
      :table                 (assoc (select-keys table [:id :db_id :schema :name :display_name :description
@@ -125,6 +128,7 @@
      :display_name          (or (:display_name candidate) (:suggested_name candidate))
      :suggested_name        (:suggested_name candidate)
      :suggested_description (:suggested_description candidate)
+     :required_tables       (or (:required-tables (:semantic_details candidate)) [])
      :presentation          (candidate-presentation candidate)
      :family                {:key      (or (:family_key candidate) (:signature_hash candidate))
                              :position (or (:family_position candidate) 0)
@@ -138,16 +142,21 @@
                              :distinct_source_count (:distinct_source_count candidate)
                              :total_view_count (:total_view_count candidate)}
      :creation_blockers     (cond-> []
-                              (not (:is_published table)) (conj :table-not-published)
-                              (not (:active table))       (conj :table-inactive)
-                              (not editable?)             (conj :table-uneditable))}))
+                              (and creation-candidate? (not (:is_published table)))
+                              (conj :table-not-published)
+
+                              (and creation-candidate? (not (:active table)))
+                              (conj :table-inactive)
+
+                              (and creation-candidate? (not editable?))
+                              (conj :table-uneditable))}))
 
 (def ^:private list-query-schema
   [:map
    [:table-id        {:optional true} [:maybe ms/PositiveInt]]
    [:database-id     {:optional true} [:maybe ms/PositiveInt]]
    [:schema          {:optional true} [:maybe :string]]
-   [:candidate-type  {:optional true} [:maybe [:enum :measure :segment]]]
+   [:candidate-type  {:optional true} [:maybe [:enum :table :metric :measure :segment]]]
    [:modeling-status {:optional true} [:maybe [:enum :missing :partially-modeled :modeled]]]
    [:signal          {:optional true} [:maybe [:enum :verified :official :popular]]]
    [:queue           {:default :suggested} [:enum :suggested :used-raw :discarded]]
@@ -281,7 +290,7 @@
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/candidates"
-  "List mined Measure and Segment cleanup candidates."
+  "List mined Library cleanup candidates."
   [_route
    {:keys [sort direction] :as opts} :- list-query-schema]
   (api/check-superuser)
@@ -315,6 +324,8 @@
                                     :select [[[:count [:distinct :candidate.table_id]] :total]])))
          select     [[:candidate.table_id :table_id]
                      [[:count :candidate.id] :candidate_count]
+                     [(status-count-expression :table :missing) :table_missing]
+                     [(status-count-expression :metric :missing) :metric_missing]
                      [(status-count-expression :measure :missing) :measure_missing]
                      [(status-count-expression :measure :partially-modeled) :measure_partially_modeled]
                      [(status-count-expression :measure :modeled) :measure_modeled]
@@ -335,10 +346,17 @@
 (defn- table-summary
   [table row]
   (let [{:keys [candidate_count
+                table_missing metric_missing
                 measure_missing measure_partially_modeled measure_modeled
                 segment_missing segment_partially_modeled segment_modeled]} row]
     {:table (dissoc table :collection)
-     :counts {:measure {:missing (or measure_missing 0)
+     :counts {:table {:missing (or table_missing 0)
+                      :partially-modeled 0
+                      :modeled 0}
+              :metric {:missing (or metric_missing 0)
+                       :partially-modeled 0
+                       :modeled 0}
+              :measure {:missing (or measure_missing 0)
                         :partially-modeled (or measure_partially_modeled 0)
                         :modeled (or measure_modeled 0)}
               :segment {:missing (or segment_missing 0)
@@ -348,7 +366,7 @@
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tables"
-  "List physical tables with mined Measure and Segment cleanup activity."
+  "List physical tables with mined Library cleanup activity."
   [_route
    opts :- list-query-schema]
   (api/check-superuser)
@@ -414,13 +432,20 @@
                       (t2/select-pk->fn identity [:model/Segment :id :name :description :archived]
                                         :id [:in segment-ids])
                       {})
-        dismissal   (dismissals (dismissal-key candidate))]
+        dismissal   (dismissals (dismissal-key candidate))
+        dependency-paths (into {}
+                               (map (juxt :card-id :dependency-paths))
+                               (get-in candidate [:semantic_details :source-dependencies]))]
     (assoc (candidate-summary candidate table dismissals)
            :definition (:definition candidate)
            :semantic_details (:semantic_details candidate)
            :dismissal (some-> dismissal
                               (select-keys [:id :dismissed_by :dismissed_at :reason]))
-           :sources sources
+           :sources (mapv (fn [source]
+                            (cond-> source
+                              (contains? dependency-paths (:card_id source))
+                              (assoc :dependency_paths (dependency-paths (:card_id source)))))
+                          sources)
            :matches (mapv (fn [{:keys [relation measure_id segment_id]}]
                             {:relation relation
                              :entity_type (if measure_id :measure :segment)
@@ -456,6 +481,9 @@
 
 (defn- create-candidate!
   [candidate {:keys [name description] :as overrides}]
+  (when-not (contains? #{:measure :segment} (:candidate_type candidate))
+    (throw (ex-info "This recommendation does not support direct creation"
+                    {:status-code 409, :reason :unsupported-candidate-action})))
   (let [table (api/check-404 (t2/select-one :model/Table :id (:table_id candidate)))]
     (when-not (:active table)
       (throw (ex-info "Candidate table is inactive"

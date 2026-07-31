@@ -94,6 +94,9 @@ export function CandidatePanel({
 
   const handleCreated = (type: UsageMetadataCandidateType, id: number) => {
     setShowCreateModal(false);
+    if (type !== "measure" && type !== "segment") {
+      return;
+    }
     const url =
       type === "measure"
         ? Urls.dataStudioPublishedTableMeasure(candidate!.table.id, id)
@@ -224,14 +227,17 @@ export function CandidatePanel({
       </Stack>
       {candidate && (
         <>
-          <CreateCandidateModal
-            key={`create-${candidate.id}`}
-            candidate={candidate}
-            opened={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-            onCreated={handleCreated}
-            onStale={handleStale}
-          />
+          {(candidate.candidate_type === "measure" ||
+            candidate.candidate_type === "segment") && (
+            <CreateCandidateModal
+              key={`create-${candidate.id}`}
+              candidate={candidate}
+              opened={showCreateModal}
+              onClose={() => setShowCreateModal(false)}
+              onCreated={handleCreated}
+              onStale={handleStale}
+            />
+          )}
           <DismissCandidateModal
             key={`dismiss-${candidate.id}`}
             candidate={candidate}
@@ -269,6 +275,9 @@ function CandidatePanelBody({
   onRestore,
   onPublish,
 }: CandidatePanelBodyProps) {
+  const isCreationCandidate =
+    candidate.candidate_type === "measure" ||
+    candidate.candidate_type === "segment";
   const hasPublishedBlocker = candidate.creation_blockers.includes(
     "table-not-published",
   );
@@ -302,6 +311,31 @@ function CandidatePanelBody({
 
         <EvidenceSection candidate={candidate} />
 
+        {candidate.required_tables.length > 0 && (
+          <Stack gap="sm">
+            <Text fw="bold">{t`Required tables`}</Text>
+            {candidate.required_tables.map((table) => (
+              <Card key={table.id} withBorder p="sm">
+                <Group justify="space-between" wrap="nowrap">
+                  <Stack gap={2} miw={0}>
+                    <Text fw="bold" truncate>
+                      {table["display-name"] ?? table.name}
+                    </Text>
+                    <Text size="sm" c="text-secondary" truncate>
+                      {[table["database-name"], table.schema]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </Stack>
+                  <Badge color={table["published?"] ? "positive" : "neutral"}>
+                    {table["published?"] ? t`Published` : t`Unpublished`}
+                  </Badge>
+                </Group>
+              </Card>
+            ))}
+          </Stack>
+        )}
+
         {candidate.matches.length > 0 && (
           <Stack gap="sm">
             <Text fw="bold">{t`Related Library entities`}</Text>
@@ -318,7 +352,11 @@ function CandidatePanelBody({
         <Stack gap="sm">
           <Text fw="bold">{t`Used by saved content`}</Text>
           {candidate.sources.map((source) => (
-            <SourceRow key={source.id} source={source} />
+            <SourceRow
+              key={source.id}
+              source={source}
+              candidateType={candidate.candidate_type}
+            />
           ))}
         </Stack>
 
@@ -345,9 +383,12 @@ function CandidatePanelBody({
                 {t`Dismiss`}
               </Button>
             )}
-            {hasPublishedBlocker ? (
+            {candidate.candidate_type === "table" &&
+            !candidate.table.is_published ? (
+              <Button onClick={onPublish}>{t`Publish table`}</Button>
+            ) : isCreationCandidate && hasPublishedBlocker ? (
               <Button onClick={onPublish}>{t`Publish table first`}</Button>
-            ) : (
+            ) : isCreationCandidate ? (
               <Tooltip
                 label={
                   hasHardBlocker
@@ -364,7 +405,7 @@ function CandidatePanelBody({
                     : t`Create Segment`}
                 </Button>
               </Tooltip>
-            )}
+            ) : null}
           </Group>
         </Box>
       )}
@@ -395,6 +436,26 @@ function CandidateStatusCard({
 }
 
 function getCandidateStatusCopy(candidate: UsageMetadataCandidateDetail) {
+  if (candidate.candidate_type === "table") {
+    if (candidate.table.is_published) {
+      return {
+        title: t`Table is now published`,
+        description: t`This table was published after the analysis. Refresh the analysis to remove this recommendation.`,
+      };
+    }
+    return {
+      title: t`Table is used by important saved content`,
+      description: t`This physical table is not published in the Library, but curated or frequently used content depends on it.`,
+    };
+  }
+
+  if (candidate.candidate_type === "metric") {
+    return {
+      title: t`Question could be a reusable Metric`,
+      description: t`This question has a complete Metric-shaped definition that can be traced to publishable physical tables.`,
+    };
+  }
+
   const entityType =
     candidate.candidate_type === "measure" ? t`Measure` : t`Segment`;
 
@@ -475,7 +536,13 @@ function getMatchUrl(
     : Urls.dataStudioPublishedTableSegment(tableId, match.entity.id);
 }
 
-function SourceRow({ source }: { source: UsageMetadataCandidateSource }) {
+function SourceRow({
+  source,
+  candidateType,
+}: {
+  source: UsageMetadataCandidateSource;
+  candidateType: UsageMetadataCandidateType;
+}) {
   return (
     <Card withBorder p="sm">
       <Stack gap="xs">
@@ -500,10 +567,14 @@ function SourceRow({ source }: { source: UsageMetadataCandidateSource }) {
           {source.verified && <Badge>{t`Verified`}</Badge>}
           {source.official && <Badge>{t`Official`}</Badge>}
           {source.popular && <Badge>{t`Popular`}</Badge>}
-          {source.joined && <Badge variant="light">{t`Joined`}</Badge>}
-          <Badge variant="light">
-            {t`Stages ${source.stage_numbers.join(", ")}`}
-          </Badge>
+          {candidateType !== "table" && (
+            <>
+              {source.joined && <Badge variant="light">{t`Joined`}</Badge>}
+              <Badge variant="light">
+                {t`Stages ${source.stage_numbers.join(", ")}`}
+              </Badge>
+            </>
+          )}
         </Group>
         {source.model_lineage && source.model_lineage.length > 0 && (
           <Text size="sm" c="text-secondary">
@@ -516,6 +587,25 @@ function SourceRow({ source }: { source: UsageMetadataCandidateSource }) {
             ))}
           </Text>
         )}
+        {source.dependency_paths?.map((path, pathIndex) => (
+          <Text key={pathIndex} size="sm" c="text-secondary">
+            {path["direct?"] || path.direct ? (
+              t`Direct table dependency`
+            ) : path.models.length > 0 ? (
+              <>
+                {t`Through models:`}{" "}
+                {path.models.map((model, index) => (
+                  <span key={model.id}>
+                    {index > 0 && " → "}
+                    <Link to={Urls.model(model)}>{model.name}</Link>
+                  </span>
+                ))}
+              </>
+            ) : (
+              t`Table dependency`
+            )}
+          </Text>
+        ))}
       </Stack>
     </Card>
   );
