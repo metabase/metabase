@@ -155,6 +155,26 @@
         (is (= :ok (plugins/load-plugin! plugin-b-name))
             "a plugin can load after the active load releases its claim")))))
 
+(deftest nested-plugin-load-on-one-thread-is-allowed-test
+  (let [calls         (atom [])
+        plugin-a-name (str "test nested plugin A " (random-uuid))
+        plugin-b-name (str "test nested plugin B " (random-uuid))
+        plugin        (fn [plugin-name marker]
+                        {:metabase-plugin-api-version initialize/plugin-api-version
+                         :info                       {:name plugin-name :version "1.0.0"}
+                         :init                       [{:step "test" :marker marker}]})]
+    (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                deps/update-unsatisfied-deps!    (constantly [])
+                                init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
+                                                                   (swap! calls conj marker)
+                                                                   (when (= marker :plugin-a)
+                                                                     (plugins/load-plugin! plugin-b-name)))]
+      (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
+      (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-b-name :plugin-b))))
+      (is (= :ok (plugins/load-plugin! plugin-a-name))))
+    (is (= [:plugin-a :plugin-b] @calls)
+        "an init step that loads another plugin is nesting on one thread, not concurrent loading")))
+
 (deftest load-plugin-requires-registered-plugin-test
   (let [plugin-name (str "test missing plugin " (random-uuid))]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

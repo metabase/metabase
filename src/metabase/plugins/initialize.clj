@@ -9,13 +9,39 @@
    [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (java.util.concurrent.locks ReentrantLock)))
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:private registered-plugins (atom {}))
-(defonce ^:private loaded-plugin-names (atom #{}))
-(defonce ^:private active-plugin-load (atom nil))
+(defonce ^:private ^ReentrantLock
+  ^{:doc "Guards every write to [[plugins]] and the running of a plugin's init steps.
+
+  Registration waits for the lock, but loading refuses to wait: a caller that breaks the serialization
+  contract gets an error rather than a silently blocked thread.
+
+  Both paths take this one lock. The eager driver path registers a plugin while its own init steps run,
+  so the lock has to be reentrant."}
+  plugin-lock
+  (ReentrantLock.))
+
+(defonce ^:private
+  ^{:doc "Plugin name -> registry entry, where an entry holds:
+
+    `:info`    the parsed manifest, present once the plugin is registered
+    `:loaded?` whether the plugin's init steps have run
+
+  The eager driver path loads a plugin before registering it, so an entry can hold either key alone."}
+  plugins
+  (atom {}))
+
+(defonce ^:private
+  ^{:doc "Names the plugin whose load holds [[plugin-lock]], so a rejected load can say what beat it.
+
+  Diagnostic only: the lock, not this, decides who may load."}
+  active-plugin-load
+  (atom nil))
 
 ;; `:info :name` predates generic plugins and is currently both the human-readable name and the identifier used by
 ;; `load-plugin!` and `dependencies: [{plugin: ...}]`. Plugin authors must therefore treat it as unique and stable.
@@ -41,21 +67,27 @@
                      :plugin-api-version    declared-version
                      :supported-api-version plugin-api-version}))))
 
-(defn- loaded? [plugin-name]
-  (contains? @loaded-plugin-names plugin-name))
+(defn- registered-info [plugin-name]
+  (get-in @plugins [plugin-name :info]))
 
-(defn- claim-plugin-load! [plugin-name]
-  (let [claim {:plugin-name plugin-name
-               :thread      (.getName ^Thread (Thread/currentThread))}]
-    (loop []
-      (if-let [active-load @active-plugin-load]
-        (throw (ex-info (format "Cannot load plugin %s while plugin %s is loading; concurrent plugin loading is not supported."
-                                (pr-str plugin-name) (pr-str (:plugin-name active-load)))
-                        {:plugin-name        plugin-name
-                         :active-plugin-load active-load}))
-        (if (compare-and-set! active-plugin-load nil claim)
-          claim
-          (recur))))))
+(defn- registered-plugin-names []
+  (for [[plugin-name {:keys [info]}] @plugins
+        :when info]
+    plugin-name))
+
+(defn- loaded? [plugin-name]
+  (boolean (get-in @plugins [plugin-name :loaded?])))
+
+(defn- claim-plugin-load!
+  "Take `plugin-lock` for the duration of a load, or throw if another thread is already loading. A thread that already
+  holds the lock claims it again; that is nesting, not concurrency."
+  [plugin-name]
+  (when-not (.tryLock plugin-lock)
+    (let [active-load @active-plugin-load]
+      (throw (ex-info (format "Cannot load plugin %s while plugin %s is loading; concurrent plugin loading is not supported."
+                              (pr-str plugin-name) (pr-str (:plugin-name active-load)))
+                      {:plugin-name        plugin-name
+                       :active-plugin-load active-load})))))
 
 (defn- load-plugin-info!
   [{:keys [add-to-classpath!], init-steps :init, {plugin-name :name} :info}]
@@ -65,16 +97,20 @@
     ;;
     ;; We mark a plugin loaded only after every init step succeeds. A failed activation can therefore be retried, so
     ;; initialization steps should tolerate retry after a partially completed attempt.
-    (let [claim (claim-plugin-load! plugin-name)]
+    (claim-plugin-load! plugin-name)
+    (let [outer-load @active-plugin-load]
       (try
-        ;; A competing call can finish after the fast-path check but before this call claims the loader.
+        (reset! active-plugin-load {:plugin-name plugin-name
+                                    :thread      (.getName ^Thread (Thread/currentThread))})
+        ;; A competing call can finish after the fast-path check but before this call takes the lock.
         (when-not (loaded? plugin-name)
           (when add-to-classpath!
             (add-to-classpath!))
           (init-steps/do-init-steps! init-steps)
-          (swap! loaded-plugin-names conj plugin-name))
+          (swap! plugins update plugin-name assoc :loaded? true))
         (finally
-          (compare-and-set! active-plugin-load claim nil)))))
+          (reset! active-plugin-load outer-load)
+          (.unlock plugin-lock)))))
   :ok)
 
 (defn load-plugin!
@@ -85,16 +121,16 @@
   point where a configured plugin is first needed; calling it during startup would defeat lazy loading."
   [plugin-name]
   {:pre [(string? plugin-name)]}
-  (if-let [info (@registered-plugins plugin-name)]
+  (if-let [info (registered-info plugin-name)]
     (load-plugin-info! info)
     (throw (ex-info (format "Plugin %s is not registered." (pr-str plugin-name))
                     {:plugin-name              plugin-name
-                     :registered-plugin-names (set (keys @registered-plugins))}))))
+                     :registered-plugin-names (set (registered-plugin-names))}))))
 
 (defn- register!
   [{{plugin-name :name} :info, driver-or-drivers :driver, :as info}]
   {:pre [(string? plugin-name)]}
-  (when (deps/all-dependencies-satisfied? (keys @registered-plugins) info)
+  (when (deps/all-dependencies-satisfied? (registered-plugin-names) info)
     ;; for each driver, if it's lazy load, register a lazy-loaded placeholder driver
     (let [drivers (u/one-or-many driver-or-drivers)]
       (doseq [{:keys [lazy-load], :or {lazy-load true}, :as driver} drivers]
@@ -108,9 +144,10 @@
         (load-plugin-info! info)))
     ;; Record this plugin as registered and find plugins that can now be registered because they depend on it.
     ;;
-    ;; We already hold the plugin registration lock here, so recursively registering newly unblocked plugins is safe.
-    (swap! registered-plugins assoc plugin-name info)
-    (let [plugins-ready-to-register (deps/update-unsatisfied-deps! (keys @registered-plugins))]
+    ;; We already hold `plugin-lock` here, and it is reentrant, so recursively registering newly unblocked plugins is
+    ;; safe.
+    (swap! plugins update plugin-name assoc :info info)
+    (let [plugins-ready-to-register (deps/update-unsatisfied-deps! (registered-plugin-names))]
       (when (seq plugins-ready-to-register)
         (log/debug (u/format-color 'yellow (format "Dependencies satisfied; these plugins will now be registered: %s"
                                                    (mapv (comp :name :info) plugins-ready-to-register)))))
@@ -119,7 +156,7 @@
     :ok))
 
 (defn- registered? [{{plugin-name :name} :info}]
-  (contains? @registered-plugins plugin-name))
+  (some? (registered-info plugin-name)))
 
 (mu/defn register-plugin-with-info!
   "Register a plugin using parsed info from its manifest. Returns truthy if the plugin was successfully registered;
@@ -131,6 +168,10 @@
                     [:version :string]]]]]
   (validate-plugin-api-version! info)
   (or (registered? info)
-      (locking registered-plugins
-        (or (registered? info)
-            (register! info)))))
+      (do
+        (.lock plugin-lock)
+        (try
+          (or (registered? info)
+              (register! info))
+          (finally
+            (.unlock plugin-lock))))))
