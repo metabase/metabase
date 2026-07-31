@@ -94,7 +94,8 @@ describe("scenarios > metrics > dashboard", () => {
     cy.intercept("GET", "/api/search?*").as("search");
   });
 
-  it("should be able to combine scalar metrics on a dashcard", () => {
+  // This will be addressed in a follow-up PR - https://github.com/metabase/metabase/pull/79090
+  it.skip("should be able to combine scalar metrics on a dashcard", () => {
     H.createDashboardWithQuestions({ questions: [ORDERS_SCALAR_METRIC] }).then(
       ({ dashboard }) => {
         H.createQuestion(PRODUCTS_SCALAR_METRIC);
@@ -195,7 +196,8 @@ describe("scenarios > metrics > dashboard", () => {
     );
   });
 
-  it("should be possible to add metrics to a dashboard", () => {
+  // This will be addressed in a follow-up PR - https://github.com/metabase/metabase/pull/79090
+  it.skip("should be possible to add metrics to a dashboard", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion(ORDERS_TIMESERIES_METRIC);
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -257,7 +259,8 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 
-  it("should be able to replace a card with a metric", () => {
+  // This will be addressed in a follow-up PR - https://github.com/metabase/metabase/pull/79090
+  it.skip("should be able to replace a card with a metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();

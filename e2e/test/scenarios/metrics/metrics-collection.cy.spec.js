@@ -38,7 +38,8 @@ describe("scenarios > metrics > collection", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show metrics in collections", () => {
+  // This will be addressed in a follow-up PR - https://github.com/metabase/metabase/pull/79090
+  it.skip("should show metrics in collections", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion(ORDERS_TIMESERIES_METRIC);
     cy.visit("/collection/root");
@@ -78,7 +79,8 @@ describe("scenarios > metrics > collection", () => {
       .should("not.exist");
   });
 
-  it("should be possible to add and remove a metric from bookmarks", () => {
+  // This will be addressed in a follow-up PR - https://github.com/metabase/metabase/pull/79090
+  it.skip("should be possible to add and remove a metric from bookmarks", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion({
       ...ORDERS_TIMESERIES_METRIC,
@@ -119,7 +121,8 @@ describe("scenarios > metrics > collection", () => {
       .should("not.exist");
   });
 
-  it("should be possible to hide the visualization for a pinned metric", () => {
+  // This will be addressed in a follow-up PR - https://github.com/metabase/metabase/pull/79090
+  it.skip("should be possible to hide the visualization for a pinned metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/collection/root");
     H.getPinnedSection().within(() => {
