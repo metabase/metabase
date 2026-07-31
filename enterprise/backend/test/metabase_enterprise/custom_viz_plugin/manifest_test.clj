@@ -95,6 +95,30 @@
              (map :type (manifest/warnings {:metabase_version ">=1.99"
                                             :manifest         {:sdk {:version "1.0.5"}}})))))))
 
+(deftest validation-error-test
+  (testing "well-formed manifests produce no error, extra keys and nils included"
+    (is (nil? (manifest/validation-error {:name "viz"})))
+    (is (nil? (manifest/validation-error {:name     "viz"
+                                          :icon     "icon.svg"
+                                          :metabase {:version ">=1.60"}
+                                          :sdk      {:version "2.0.0"}
+                                          :extra    123})))
+    (is (nil? (manifest/validation-error {:name nil :icon nil :metabase nil :sdk nil}))))
+  (testing "wrong field types are reported"
+    (is (= {:name ["should be a string"]}
+           (manifest/validation-error {:name 123})))
+    (is (= {:icon ["should be a string"]}
+           (manifest/validation-error {:name "viz" :icon 5})))
+    (is (= {:metabase {:version ["should be a string"]}}
+           (manifest/validation-error {:name "viz" :metabase {:version 1.62}})))
+    (is (= {:sdk {:version ["should be a string"]}}
+           (manifest/validation-error {:name "viz" :sdk {:version 2}}))))
+  (testing "non-object values for nested keys and the manifest itself are reported"
+    (is (= {:metabase ["invalid type"]}
+           (manifest/validation-error {:name "viz" :metabase "1.62"})))
+    (is (= ["invalid type"]
+           (manifest/validation-error [1 2 3])))))
+
 ;;; ------------------------------------------------ Path Safety ------------------------------------------------
 
 (deftest safe-relative-path?-test

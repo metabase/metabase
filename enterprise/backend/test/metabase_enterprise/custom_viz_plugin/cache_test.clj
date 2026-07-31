@@ -99,6 +99,23 @@
             res   (cache/validate-bundle! bytes)]
         (is (= ">=1.99.0" (:version-str res)))))))
 
+(deftest validate-bundle-rejects-malformed-manifest-test
+  (testing "manifest fields with wrong JSON types are rejected with a 400"
+    (doseq [opts [{:sdk-version 2}
+                  {:metabase-version 1.62}
+                  {:icon 5}]]
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-types" opts)
+            e     (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
+                                        (cache/validate-bundle! bytes))
+                      (pr-str opts))]
+        (is (= 400 (:status-code (ex-data e))) (pr-str opts)))))
+  (testing "a non-string name is rejected before the blank-name check can choke on it"
+    (let [bytes (cvp.tu/make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name 123})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
+                            (cache/validate-bundle! bytes))))))
+
 ;;; ------------------------------------------------ dev-base-url URL validation ------------------------------------------------
 
 (deftest dev-base-url-test

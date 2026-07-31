@@ -294,6 +294,16 @@
           (is (= ["sdk-version-mismatch"]
                  (map :type (:warnings resp)))))))))
 
+(deftest register-plugin-malformed-manifest-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when a manifest field has the wrong JSON type"
+        (let [zip  (cvp.tu/valid-bundle-bytes "malformed-viz" {:sdk-version 2})
+              resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
+          (is (re-find #"metabase-plugin\.json is invalid" (or (:message resp) (str resp))))
+          (is (not (t2/exists? :model/CustomVizPlugin :identifier "malformed-viz"))
+              "nothing is persisted"))))))
+
 (deftest register-plugin-missing-manifest-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]

@@ -2,10 +2,12 @@
   "Parsing and validation for custom visualization plugin manifest files (metabase-plugin.json)."
   (:require
    [clojure.string :as str]
+   [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr])
   (:import
    (org.semver4j Semver)))
 
@@ -26,6 +28,22 @@
     (catch Exception e
       (log/warnf "Failed to parse %s: %s" manifest-filename (ex-message e))
       nil)))
+
+(def ^:private ManifestFieldTypes
+  "Type requirements for the manifest fields Metabase reads. The map is open —
+   extra keys pass through — and every field is optional here; `name` presence
+   is enforced separately with a friendlier message."
+  [:map
+   [:name     {:optional true} [:maybe :string]]
+   [:icon     {:optional true} [:maybe :string]]
+   [:metabase {:optional true} [:maybe [:map [:version {:optional true} [:maybe :string]]]]]
+   [:sdk      {:optional true} [:maybe [:map [:version {:optional true} [:maybe :string]]]]]])
+
+(defn validation-error
+  "Humanized description of `manifest`'s type violations (e.g. a numeric
+   `sdk.version`), or nil when the manifest is well-formed."
+  [manifest]
+  (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
