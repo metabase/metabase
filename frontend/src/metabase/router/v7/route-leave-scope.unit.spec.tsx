@@ -1,24 +1,16 @@
-import { useEffect } from "react";
-
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
   push,
   useLocation,
-  useRoute,
-  useRouter,
+  useRouteLeaveHook,
 } from "metabase/router";
 
 // Registers an always-blocking leave hook scoped to the route it is rendered on,
 // exactly as the leave-confirm modals do (guard on a parent layout route).
 function Guard() {
-  const { router } = useRouter();
-  const route = useRoute();
-  useEffect(
-    () => router.setRouteLeaveHook(route, () => false),
-    [router, route],
-  );
+  useRouteLeaveHook(() => false);
   return null;
 }
 
@@ -43,7 +35,7 @@ const tree = (
   </Route>
 );
 
-// v3's `setRouteLeaveHook` is scoped to the guarded route: it fires only when a
+// A leave hook is scoped to the route it is registered on: it fires only when a
 // navigation leaves that route's subtree. So moving between sibling child routes
 // under the guarded layout is allowed, and only leaving the layout is blocked.
 describe("route-scoped leave hook", () => {

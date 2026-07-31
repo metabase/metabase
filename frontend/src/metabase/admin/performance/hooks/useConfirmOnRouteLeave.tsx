@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 import { useDispatch } from "metabase/redux";
-import { push, useRouter } from "metabase/router";
+import { push, useNavigate, useRouteLeaveHook } from "metabase/router";
 
 type Props = {
   shouldConfirm: boolean;
@@ -10,35 +10,30 @@ type Props = {
 
 export const useConfirmOnRouteLeave = ({ shouldConfirm, confirm }: Props) => {
   const dispatch = useDispatch();
-  const { router, routes } = useRouter();
+  const navigate = useNavigate();
   /**
    * to prevent endless loop
    */
   const confirmedRef = useRef<boolean>(false);
-  const currentRoute = routes.at(-1);
 
-  useEffect(
-    () =>
-      router.setRouteLeaveHook(currentRoute, (nextLocation) => {
-        if (confirmedRef.current || !shouldConfirm) {
-          return true;
-        }
-        /**
-         * This will roll browser's URL back.
-         * Returning false from this function cancels routing on the redux level, but browser's URL changes anyway.
-         * So we need to roll this change back and then roll forward if user confirms.
-         *
-         * Unfortunately it won't work if user somewhere in the middle of history (e.g. has forward button available)
-         */
-        router.goForward();
-        confirm(() => {
-          confirmedRef.current = true;
-          if (nextLocation) {
-            dispatch(push(nextLocation));
-          }
-        });
-        return false;
-      }),
-    [router, currentRoute, shouldConfirm, confirm, dispatch],
-  );
+  useRouteLeaveHook((nextLocation) => {
+    if (confirmedRef.current || !shouldConfirm) {
+      return true;
+    }
+    /**
+     * This will roll browser's URL back.
+     * Returning false from this function cancels routing on the redux level, but browser's URL changes anyway.
+     * So we need to roll this change back and then roll forward if user confirms.
+     *
+     * Unfortunately it won't work if user somewhere in the middle of history (e.g. has forward button available)
+     */
+    navigate(1);
+    confirm(() => {
+      confirmedRef.current = true;
+      if (nextLocation) {
+        dispatch(push(nextLocation));
+      }
+    });
+    return false;
+  });
 };

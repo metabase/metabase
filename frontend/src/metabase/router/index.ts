@@ -12,7 +12,7 @@ export * from "./use-location";
 export * from "./use-navigate";
 export * from "./use-navigation-type";
 export * from "./use-params";
-export * from "./use-router";
+export * from "./use-route-leave-hook";
 export * from "./use-search-params";
 export { getRawBrowserHistory } from "./v7/blocking-history";
 export { queryToSearch, toFacadeLocation } from "./v7/location";

@@ -16,10 +16,10 @@ import { toFacadeLocation } from "./location";
 type History = HistoryRouterProps["history"];
 
 /**
- * A route-leave hook, matching v3's `setRouteLeaveHook` callback: it receives
- * the attempted destination and how it was reached, and returns `false` to
- * cancel the navigation. The navigation type is a second argument rather than a
- * field on the location, which carries only the URL parts on v7.
+ * A route-leave hook: it receives the attempted destination and how it was
+ * reached, and returns `false` to cancel the navigation. The navigation type is
+ * a second argument rather than a field on the location, which carries only the
+ * URL parts on v7.
  */
 type LeaveHook = (
   nextLocation?: HistoryLocation,
@@ -28,9 +28,9 @@ type LeaveHook = (
 
 interface Registration {
   hook: LeaveHook;
-  // The matched pathname of the guarded route. v3's `setRouteLeaveHook` is scoped
-  // to a route and only fires when a navigation leaves that route's subtree, so a
-  // hook with a base path does not fire for destinations that stay under it.
+  // The matched pathname of the guarded route. A leave hook is scoped to a route
+  // and only fires when a navigation leaves that route's subtree, so a hook with
+  // a base path does not fire for destinations that stay under it.
   basePath?: string;
 }
 
@@ -51,11 +51,11 @@ export function getRawBrowserHistory(): History {
 }
 
 /**
- * Register a leave hook. The v7 `setRouteLeaveHook` shim calls this, so the
- * leave-confirm modals block navigation on v7 the same way they do on v3.
- * `basePath` scopes the hook to a route: it fires only when the destination
- * leaves that route's subtree, matching v3's `listenBeforeLeavingRoute`. Returns
- * the unregister function the caller uses as effect cleanup.
+ * Register a leave hook, so the leave-confirm modals block navigation the way
+ * they did on v3. `useRouteLeaveHook` is the call site; `basePath` scopes the
+ * hook to a route, so it fires only when the destination leaves that route's
+ * subtree, matching v3's `listenBeforeLeavingRoute`. Returns the unregister
+ * function the caller uses as effect cleanup.
  */
 export function registerLeaveHook(
   hook: LeaveHook,
@@ -113,7 +113,7 @@ function toBlockedLocation(to: To, state: unknown): HistoryLocation {
 
 /**
  * Wrap a history so a registered leave hook can cancel navigation, restoring the
- * v3 `setRouteLeaveHook` behavior on the declarative v7 engine. react-router
+ * v3 route-leave behavior on the declarative v7 engine. react-router
  * funnels `Link`, `Navigate`, `useNavigate`, and redux `push` through the
  * history's `push`/`replace`, so checking there covers every in-app navigation.
  * Browser back/forward arrives as a `POP` in the listener and is reverted a step
