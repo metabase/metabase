@@ -1,0 +1,124 @@
+import { renderHook } from "@testing-library/react";
+import type { WidgetMountHandle } from "custom-viz";
+
+import type { CustomVizPluginRuntime } from "metabase-types/api";
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
+
+import { usePluginMount } from "./use-plugin-mount";
+
+type Props = { value: number };
+
+function renderPluginMount(
+  performMount: (container: Element, props: Props) => WidgetMountHandle<Props>,
+  plugin?: CustomVizPluginRuntime,
+) {
+  const { rerender } = renderHook(
+    ({ props }) => {
+      const containerRef = usePluginMount(performMount, props, plugin);
+      // usePluginMount only mounts once the ref is attached to an element.
+      containerRef.current = document.createElement("div");
+      return containerRef;
+    },
+    { initialProps: { props: { value: 1 } } },
+  );
+
+  return {
+    update: (props: Props) => rerender({ props }),
+  };
+}
+
+describe("usePluginMount", () => {
+  let consoleError: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleError.mockRestore();
+  });
+
+  it("logs a mount error when a plugin is given", () => {
+    const error = new Error("mount failed");
+
+    renderPluginMount(() => {
+      throw error;
+    }, createMockCustomVizPluginRuntime());
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to render plugin "My Viz":',
+      error,
+    );
+  });
+
+  it("logs the plugin's version warnings alongside the error", () => {
+    renderPluginMount(
+      () => {
+        throw new Error("mount failed");
+      },
+      createMockCustomVizPluginRuntime({
+        warnings: [
+          {
+            type: "sdk-version-mismatch",
+            sdk_version: null,
+            tested_sdk_range: ">=2.0.0 <=2.0.0",
+          },
+        ],
+      }),
+    );
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "The plugin has version warnings that may explain the failure:",
+      "Built with SDK version 1.x, which hasn't been tested with this version of Metabase.",
+    );
+  });
+
+  it("logs an update error when a plugin is given", () => {
+    const error = new Error("update failed");
+    const handle: WidgetMountHandle<Props> = {
+      update: () => {
+        throw error;
+      },
+      unmount: jest.fn(),
+    };
+
+    const { update } = renderPluginMount(
+      () => handle,
+      createMockCustomVizPluginRuntime(),
+    );
+    expect(consoleError).not.toHaveBeenCalled();
+
+    update({ value: 2 });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to render plugin "My Viz":',
+      error,
+    );
+  });
+
+  it("rethrows without a plugin", () => {
+    expect(() =>
+      renderPluginMount(() => {
+        throw new Error("mount failed");
+      }),
+    ).toThrow("mount failed");
+  });
+
+  it("mounts and updates normally when nothing throws", () => {
+    const mounted: Props[] = [];
+    const updated: Props[] = [];
+
+    const { update } = renderPluginMount((_container, props) => {
+      mounted.push(props);
+      return {
+        update: (nextProps) => updated.push(nextProps),
+        unmount: jest.fn(),
+      };
+    });
+    update({ value: 2 });
+
+    expect(mounted).toEqual([{ value: 1 }]);
+    expect(updated).toEqual([{ value: 2 }]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+});

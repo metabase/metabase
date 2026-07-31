@@ -1,4 +1,7 @@
-import type { CustomVizPlugin } from "metabase-types/api";
+import type {
+  CustomVizPlugin,
+  CustomVizPluginRuntime,
+} from "metabase-types/api";
 
 export const createMockCustomVizPlugin = (
   opts?: Partial<CustomVizPlugin>,
@@ -15,5 +18,18 @@ export const createMockCustomVizPlugin = (
   warnings: [],
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
+  ...opts,
+});
+
+export const createMockCustomVizPluginRuntime = (
+  opts?: Partial<CustomVizPluginRuntime>,
+): CustomVizPluginRuntime => ({
+  id: 1,
+  identifier: "my-viz",
+  display_name: "My Viz",
+  icon: "icon.svg",
+  bundle_url: "/api/ee/custom-viz-plugin/1/bundle",
+  bundle_hash: "0123456789abcdef",
+  warnings: [],
   ...opts,
 });

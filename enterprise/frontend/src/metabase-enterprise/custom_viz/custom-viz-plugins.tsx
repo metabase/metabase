@@ -398,7 +398,7 @@ export async function loadCustomVizPlugin(
     const Wrapper = createCustomVizWrapper(
       vizDef.mount,
       vizDef.VisualizationComponent,
-      plugin.id,
+      plugin,
     );
 
     // core app resolves these to a plain same-origin url like
@@ -501,7 +501,7 @@ function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
 function createCustomVizWrapper(
   mount: GenericVizMount,
   VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
-  pluginId: CustomVizPluginId,
+  plugin: CustomVizPluginRuntime,
 ) {
   return function CustomVizWrapper({
     width,
@@ -536,12 +536,13 @@ function createCustomVizWrapper(
     const containerRef = usePluginMount<GenericVizPluginProps>(
       (container, props) => mount(VisualizationComponent, container, props),
       pluginProps,
+      plugin,
     );
 
     return (
       <div
         ref={containerRef}
-        data-plugin-sandbox={pluginId}
+        data-plugin-sandbox={plugin.id}
         style={{ width: "100%", height: "100%" }}
       />
     );
