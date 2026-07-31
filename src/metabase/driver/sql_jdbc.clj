@@ -13,7 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+   [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-columns quote-identifier
                                              quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -160,11 +160,14 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
 
+(defn- drop-table-sql [driver table-name]
+  (first (sql/format {:drop-table [:if-exists (dot-qualified table-name)]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (drop-table-sql driver table-name)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
