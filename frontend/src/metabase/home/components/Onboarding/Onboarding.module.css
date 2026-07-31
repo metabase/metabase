@@ -15,7 +15,7 @@
 .accordion .item[data-active="true"] {
   border: 0;
   margin-top: 0;
-  /* Keeps an item scrolled to via `block: "start"` clear of the app bar, and
+  /* Keeps an item scrolled to via `block: "nearest"` clear of the app bar, and
      leaves its header near the top so the panel below it stays visible. */
   scroll-margin-top: 6rem;
 }
@@ -31,7 +31,7 @@
 
 .accordion .control {
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 0.5rem;
+  border-radius: var(--mantine-radius-md);
   color: var(--mb-color-text-primary);
   height: 3rem;
   padding-inline-start: 0;
@@ -54,7 +54,8 @@
  */
 .accordion .icon {
   background-color: var(--mb-color-background_surface-brand-subtle);
-  border-radius: 0.5rem;
+  border-top-left-radius: 0.4375rem;
+  border-bottom-left-radius: 0.4375rem;
   color: var(--mb-color-core-brand);
   flex: 0 0 auto;
   height: 2.875rem;
@@ -67,7 +68,7 @@
 }
 
 .accordion .control[data-active] .icon {
-  background-color: var(--mb-color-background_surface-brand-strong);
+  background-color: var(--mb-color-core-brand);
   color: var(--mb-color-text-primary-inverse);
 }
 
@@ -86,7 +87,7 @@
 .support {
   align-items: center;
   background-color: var(--mb-color-background_surface-hover);
-  border-radius: 0.5rem;
+  border-radius: var(--mantine-radius-md);
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
@@ -99,34 +100,65 @@
 .video {
   aspect-ratio: 16 / 9;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 0.5rem;
+  border-radius: var(--mantine-radius-md);
   width: 100%;
 }
 
-.image {
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 0.5rem;
-}
-
 /*
- * The keyhole is line art, so it's inlined and tinted from these custom
- * properties. They resolve through theme-aware tokens, which is what makes the
- * illustration work in both color schemes.
+ * Every checklist illustration sits in this frame. The artwork ships as
+ * a bare leaf with no backdrop of its own, so the tint comes from a theme token
+ * here and follows the color scheme; the screenshots inside stay light-mode.
+ *
+ * `container-type: inline-size` makes `--media-unit` one design pixel of
+ * Figma's 560x316 frame. Each item then places its artwork by passing the
+ * `--leaf-*` numbers straight off the Figma inspector, as the inline
+ * `ChecklistImageStyles` object documented in `ChecklistItem.tsx`.
+ *
+ * Those properties are read below through a `var()` fallback rather than being
+ * declared here, so that an item supplying none of them still gets sensible
+ * geometry.
  */
-.illustration {
-  --permissions-illustration-line: var(--mb-color-core-brand);
-  --permissions-illustration-line-soft: var(--mb-color-core-brand);
-  --permissions-illustration-surface: var(
-    --mb-color-illustration-tertiary-brand
-  );
+.media {
+  --media-unit: calc(100cqw / 560);
+
+  /*
+   * Tints for inlined SVG artwork. Line art ships with no colors of its own and
+   * is authored against these names, so it follows the color scheme and a
+   * whitelabeled brand color. Declaring them here means a new illustration
+   * needs no CSS module of its own.
+   */
+  --illustration-brand: var(--mb-color-core-brand);
+  --illustration-brand-subtle: var(--mb-color-illustration-tertiary-brand);
+  --illustration-ink: var(--mb-color-text-primary);
+  --illustration-surface: var(--mb-color-background_page-primary);
+
+  /* Shared by the leaves that sit proud of the frame. */
+  --media-leaf-elevation: 0 calc(6 * var(--media-unit))
+    calc(24 * var(--media-unit)) var(--mb-color-shadow);
 
   aspect-ratio: 560 / 316;
   background-color: var(--mb-color-illustration-secondary-brand);
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 0.5rem;
+  border-radius: var(--mantine-radius-md);
+  container-type: inline-size;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 }
 
-.illustration svg {
-  height: auto;
-  max-width: 100%;
+.media img,
+.media svg {
+  border: var(--leaf-border, 0 none);
+  border-radius: var(--leaf-radius, 0);
+  box-shadow: var(--leaf-shadow, none);
+  height: calc(var(--leaf-h, 316) * var(--media-unit));
+  inset-block-end: var(--leaf-block-end, auto);
+  inset-block-start: var(
+    --leaf-block-start,
+    calc(var(--leaf-y, 0) * var(--media-unit))
+  );
+  inset-inline-start: calc(var(--leaf-x, 0) * var(--media-unit));
+  max-width: none;
+  position: absolute;
+  width: calc(var(--leaf-w, 560) * var(--media-unit));
 }

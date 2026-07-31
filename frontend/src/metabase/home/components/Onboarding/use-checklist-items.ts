@@ -22,34 +22,31 @@ export const useChecklistItems = () => {
     const groups: ChecklistItemGroup[] = [];
 
     if (isAdmin) {
-      const adminGroup: ChecklistItemGroup = {
-        key: "1",
+      const setupGroup: ChecklistItemGroup = {
         title: t`Set things up`,
         items: [
-          { key: "database", Component: DatabaseItem },
-          { key: "invite", Component: InviteItem },
+          { value: "database", Component: DatabaseItem },
+          { value: "invite", Component: InviteItem },
+          ...(areAiFeaturesEnabled
+            ? [{ value: "ai" as const, Component: AiItem }]
+            : []),
         ],
       };
 
-      if (areAiFeaturesEnabled) {
-        adminGroup.items.push({ key: "ai", Component: AiItem });
-      }
-
-      groups.push(adminGroup);
+      groups.push(setupGroup);
     }
 
-    groups.push({
-      key: "2",
+    const exploreGroup: ChecklistItemGroup = {
       title: t`Explore your data`,
       items: [
-        { key: "query", Component: QueryItem },
-        { key: "dashboard", Component: DashboardItem },
-        { key: "alert", Component: AlertItem },
-        { key: "data-studio", Component: DataStudioItem },
-        { key: "permissions", Component: PermissionsItem },
+        { value: "query", Component: QueryItem },
+        { value: "dashboard", Component: DashboardItem },
+        { value: "alert", Component: AlertItem },
+        { value: "data-studio", Component: DataStudioItem },
+        { value: "permissions", Component: PermissionsItem },
       ],
-    });
+    };
 
-    return groups;
+    return groups.concat(exploreGroup);
   }, [isAdmin, areAiFeaturesEnabled]);
 };

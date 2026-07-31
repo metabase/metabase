@@ -8,15 +8,15 @@ import { ChecklistItem } from "../ChecklistItem";
 import { VideoTutorial } from "../VideoTutorial";
 import type { OnboardingItemProps } from "../types";
 
-export const AlertItem = ({ itemRef }: OnboardingItemProps) => {
+export const AlertItem = ({ value, itemRef }: OnboardingItemProps) => {
   const applicationName = useSelector(getApplicationName);
 
   return (
     <ChecklistItem
-      value="alert"
+      value={value}
+      itemRef={itemRef}
       icon="alert"
       label={t`Get notified when data changes`}
-      itemRef={itemRef}
     >
       <VideoTutorial
         id="MPw5__mVg58"

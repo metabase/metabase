@@ -7,15 +7,15 @@ import { Text } from "metabase/ui";
 import { ChecklistImage, ChecklistItem } from "../ChecklistItem";
 import type { OnboardingItemProps } from "../types";
 
-export const DatabaseItem = ({ itemRef }: OnboardingItemProps) => {
+export const DatabaseItem = ({ value, itemRef }: OnboardingItemProps) => {
   const applicationName = useSelector(getApplicationName);
 
   return (
     <ChecklistItem
-      value="database"
+      value={value}
+      itemRef={itemRef}
       icon="add_data"
       label={t`Connect ${applicationName} to your data`}
-      itemRef={itemRef}
       actions={[
         {
           label: t`Add database`,

@@ -6,12 +6,12 @@ import { ChecklistItem } from "../ChecklistItem";
 import { VideoTutorial } from "../VideoTutorial";
 import type { OnboardingItemProps } from "../types";
 
-export const DashboardItem = ({ itemRef }: OnboardingItemProps) => (
+export const DashboardItem = ({ value, itemRef }: OnboardingItemProps) => (
   <ChecklistItem
-    value="dashboard"
+    value={value}
+    itemRef={itemRef}
     icon="dashboard"
     label={t`Create a dashboard`}
-    itemRef={itemRef}
   >
     <VideoTutorial
       id="FAst1nabBck"

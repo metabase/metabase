@@ -1,21 +1,25 @@
 import { jt, t } from "ttag";
 
+import QueryMethodsIllustration from "assets/img/onboarding_query_methods.svg?component";
 import { Text } from "metabase/ui";
 
-import { ChecklistImage, ChecklistItem } from "../ChecklistItem";
+import { ChecklistItem, ChecklistMedia } from "../ChecklistItem";
 import type { OnboardingItemProps } from "../types";
 
-export const QueryItem = ({ itemRef }: OnboardingItemProps) => (
+export const QueryItem = ({ value, itemRef }: OnboardingItemProps) => (
   <ChecklistItem
-    value="query"
+    value={value}
+    itemRef={itemRef}
     icon="insight"
     label={t`Query your data`}
-    itemRef={itemRef}
   >
-    <ChecklistImage
-      alt={t`The three ways to query your data, each producing a chart`}
-      src="app/assets/img/onboarding_query_methods.svg"
-    />
+    {/* The art fills the frame exactly, so it needs no `--leaf-*` geometry. */}
+    <ChecklistMedia>
+      <QueryMethodsIllustration
+        aria-label={t`The three ways to query your data, each producing a chart`}
+        role="img"
+      />
+    </ChecklistMedia>
     <Text>
       {jt`Hit the ${(
         <b key="new">{t`+ New`}</b>

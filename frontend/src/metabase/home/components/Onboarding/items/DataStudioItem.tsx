@@ -5,18 +5,29 @@ import { useSelector } from "metabase/redux";
 import { Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import type { ChecklistImageStyles } from "../ChecklistItem";
 import { ChecklistImage, ChecklistItem } from "../ChecklistItem";
 import type { OnboardingItemProps } from "../types";
 
-export const DataStudioItem = ({ itemRef }: OnboardingItemProps) => {
+const ILLUSTRATION_STYLE: ChecklistImageStyles = {
+  "--leaf-x": 47,
+  "--leaf-y": 44,
+  "--leaf-w": 767,
+  "--leaf-h": 427,
+  "--leaf-border": "1px solid var(--mb-color-border-neutral)",
+  "--leaf-radius": "calc(8 * var(--media-unit))",
+  "--leaf-shadow": "var(--media-leaf-elevation)",
+};
+
+export const DataStudioItem = ({ value, itemRef }: OnboardingItemProps) => {
   const canAccess = useSelector(canAccessDataStudio);
 
   return (
     <ChecklistItem
-      value="data-studio"
+      value={value}
+      itemRef={itemRef}
       icon="repository"
       label={t`Build your semantic layer in Data Studio`}
-      itemRef={itemRef}
       actions={
         canAccess
           ? [
@@ -26,13 +37,14 @@ export const DataStudioItem = ({ itemRef }: OnboardingItemProps) => {
                 cta: "primary",
               },
             ]
-          : undefined
+          : []
       }
     >
       <ChecklistImage
         alt={t`A table in the Data Studio library`}
         src="app/assets/img/onboarding_data_studio.png"
         srcSet="app/assets/img/onboarding_data_studio@2x.png 2x"
+        style={ILLUSTRATION_STYLE}
       />
       <Text>
         {jt`${(

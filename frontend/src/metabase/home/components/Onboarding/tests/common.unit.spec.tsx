@@ -10,15 +10,10 @@ const getItem = (checklistItem: ChecklistItemValue) => {
 };
 
 const getItemControl = (label: string) => {
-  // Labels can contain regex metacharacters, e.g. "Set up AI (optional)"
-  const labelRegex = new RegExp(
-    label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-    "i",
-  );
-
-  return screen.getByRole("button", {
-    name: labelRegex,
-  });
+  // A substring match — the control's accessible name also picks up its icon.
+  // A matcher function rather than a regex, so labels containing regex
+  // metacharacters (e.g. "Set up AI (optional)") need no escaping.
+  return screen.getByRole("button", { name: (name) => name.includes(label) });
 };
 
 describe("Onboarding", () => {
@@ -353,6 +348,26 @@ describe("Onboarding", () => {
         ),
       ).toBeInTheDocument();
       expect(screen.queryByTestId("permissions-cta")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("illustrations", () => {
+    // Some illustrations are <img>, others are inlined SVG so they can be
+    // tinted per color scheme. Both expose the `img` role, so this stays
+    // honest if one is ever converted to the other.
+    it.each<[ChecklistItemValue, string]>([
+      ["database", "Metabase data stack"],
+      ["invite", 'Admin panel with the "Invite someone" button'],
+      ["ai", "Connecting an AI provider in the admin settings"],
+      ["query", "The three ways to query your data, each producing a chart"],
+      ["data-studio", "A table in the Data Studio library"],
+      ["permissions", "A key unlocking a keyhole"],
+    ])("'%s' item should render its illustration", (item, name) => {
+      setup({ openItem: item });
+
+      expect(
+        within(getItem(item)).getByRole("img", { name }),
+      ).toBeInTheDocument();
     });
   });
 

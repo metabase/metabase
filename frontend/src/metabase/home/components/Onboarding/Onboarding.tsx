@@ -3,8 +3,6 @@ import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useLearnUrl, useTempStorage } from "metabase/common/hooks";
-import { useChecklistItems } from "metabase/home/components/Onboarding/use-checklist-items";
-import { createItemsRefs } from "metabase/home/components/Onboarding/utils";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
@@ -14,7 +12,12 @@ import { Accordion, Box, Button, Stack, Text, Title, rem } from "metabase/ui";
 
 import S from "./Onboarding.module.css";
 import { trackChecklistItemExpanded } from "./analytics";
-import { useScrollIntoItemView } from "./use-scroll-into-item-view";
+import { useChecklistItems } from "./use-checklist-items";
+import {
+  ACCORDION_TRANSITION_DURATION,
+  useScrollIntoItemView,
+} from "./use-scroll-into-item-view";
+import { createItemsRefs } from "./utils";
 
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);
@@ -26,9 +29,9 @@ export const Onboarding = () => {
     "last-opened-onboarding-checklist-item",
   );
   const defaultItem =
-    !!lastItemOpened && lastItemOpened in itemsRefs
+    lastItemOpened && lastItemOpened in itemsRefs
       ? lastItemOpened
-      : itemsGroups[0].items[0].key;
+      : itemsGroups[0].items[0].value;
 
   useScrollIntoItemView(itemsRefs, lastItemOpened);
 
@@ -66,6 +69,7 @@ export const Onboarding = () => {
         <Accordion
           className={S.accordion}
           defaultValue={defaultItem}
+          transitionDuration={ACCORDION_TRANSITION_DURATION}
           classNames={{
             chevron: S.chevron,
             content: S.content,
@@ -80,12 +84,16 @@ export const Onboarding = () => {
           }
         >
           {itemsGroups.map((group) => (
-            <Box key={group.key} mb={60}>
+            <Box key={group.title} mb={60}>
               <Title order={3} mb="lg">
                 {group.title}
               </Title>
-              {group.items.map(({ Component, key }) => (
-                <Component key={key} itemRef={itemsRefs[key]} />
+              {group.items.map(({ Component, value }) => (
+                <Component
+                  key={value}
+                  value={value}
+                  itemRef={itemsRefs[value]}
+                />
               ))}
             </Box>
           ))}
@@ -131,13 +139,12 @@ export const Onboarding = () => {
   );
 };
 
+const STOP_VIDEO_COMMAND = JSON.stringify({
+  event: "command",
+  func: "stopVideo",
+  args: [],
+});
+
 const stopVideo = (iframe: HTMLIFrameElement) => {
-  iframe.contentWindow?.postMessage(
-    JSON.stringify({
-      event: "command",
-      func: "stopVideo",
-      args: [],
-    }),
-    "*",
-  );
+  iframe.contentWindow?.postMessage(STOP_VIDEO_COMMAND, "*");
 };
