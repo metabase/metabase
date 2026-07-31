@@ -119,7 +119,7 @@
           (let [row (content-one {:items [{:type "snippet" :id id}]})]
             (is (nil? (:error row)))
             (is (= "wow" (:content row))))))
-      (testing "document returns flattened body text"
+      (testing "document returns the serialized Markdown body"
         (mt/with-temp [:model/Document {id :id}
                        {:document     {:type    "doc"
                                        :content [{:type    "paragraph"
@@ -285,6 +285,227 @@
           (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
             (is (re-find #"hello" (:markdown row)))))))))
+
+(defn- comment-content
+  [text]
+  {:type    "doc"
+   :content [{:type "paragraph" :content [{:type "text" :text text}]}]})
+
+(def ^:private commented-doc
+  "Four top-level blocks with fixed node ids: a plain paragraph, a blockquote whose inner
+   paragraph has its own id (nested blocks carry no span of their own), an empty paragraph
+   (zero-width span), and a closing paragraph."
+  {:type    "doc"
+   :content [{:type    "paragraph" :attrs {:_id "para-1"}
+              :content [{:type "text" :text "First paragraph."}]}
+             {:type    "blockquote" :attrs {:_id "quote-1"}
+              :content [{:type    "paragraph" :attrs {:_id "quote-para"}
+                         :content [{:type "text" :text "Quoted text."}]}]}
+             {:type "paragraph" :attrs {:_id "empty-1"}}
+             {:type    "paragraph" :attrs {:_id "para-2"}
+              :content [{:type "text" :text "Last paragraph."}]}]})
+
+(deftest get-content-document-comments-include-test
+  (testing "GHY-4159: the comments include anchors each thread to the exact markdown slice of its block"
+    (mt/with-temp [:model/Document {doc-id :id} {:document     commented-doc
+                                                 :content_type "application/json+vnd.prose-mirror"}
+                   :model/Comment  {root-id :id} {:target_id       doc-id
+                                                  :child_target_id "para-1"
+                                                  :content         (comment-content "make this punchier")}
+                   :model/Comment  {reply-id :id} {:target_id         doc-id
+                                                   :child_target_id   "para-1"
+                                                   :parent_comment_id root-id
+                                                   :content           (comment-content "agreed")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "quote-para"
+                                      :content         (comment-content "on a nested block")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "empty-1"
+                                      :content         (comment-content "on an empty paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "para-2"
+                                      :is_resolved     true
+                                      :content         (comment-content "resolved note")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "para-2"
+                                      :deleted_at      :%now
+                                      :content         (comment-content "deleted note")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "gone-0000"
+                                      :content         (comment-content "my block was rewritten")}]
+      (mt/with-test-user :crowberto
+        (let [row      (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})
+              markdown (:markdown row)
+              threads  (:comments row)
+              by-id    (into {} (map (juxt :child_target_id identity)) threads)]
+          (is (nil? (:error row)))
+          (testing "every live anchored thread is present, in document order"
+            (is (= ["para-1" "quote-para" "empty-1" "para-2"] (mapv :child_target_id threads))))
+          (testing "the anchor is the exact [start, end) slice of the commented block"
+            (let [{:keys [start end text]} (:anchor (by-id "para-1"))]
+              (is (= "First paragraph." text))
+              (is (= text (subs markdown start end)))))
+          (testing "threads are flat and ordered, replies carrying parent_comment_id"
+            (is (= [{:id root-id :text "make this punchier"}
+                    {:id reply-id :parent_comment_id root-id :text "agreed"}]
+                   (mapv #(select-keys % [:id :parent_comment_id :text])
+                         (:thread (by-id "para-1"))))))
+          (testing "a comment on a block nested in a blockquote anchors to the outermost block's span"
+            (is (= "> Quoted text." (get-in (by-id "quote-para") [:anchor :text]))))
+          (testing "an empty paragraph is a legal zero-width anchor"
+            (let [{:keys [start end text]} (:anchor (by-id "empty-1"))]
+              (is (= start end))
+              (is (= "" text))))
+          (testing "is_resolved is surfaced and deleted comments are excluded"
+            (is (= [{:is_resolved true :text "resolved note"}]
+                   (mapv #(select-keys % [:is_resolved :text]) (:thread (by-id "para-2"))))))
+          (testing "the creator is the user's display name"
+            (is (= "Rasta Toucan" (-> (by-id "para-1") :thread first :creator))))
+          (testing "a thread whose block no longer exists lands in orphaned_comments, text readable"
+            (is (= [{:child_target_id "gone-0000" :text "my block was rewritten"}]
+                   (mapv #(assoc (select-keys % [:child_target_id])
+                                 :text (-> % :thread first :text))
+                         (:orphaned_comments row))))))))))
+
+(def ^:private layout-commented-doc
+  "A layout container holding a list. `resizeNode`/`flexContainer` carry no `_id` at all, so a
+   block nested inside one has to resolve its anchor past them; the paragraph inside the list item
+   is the block with no span of its own — the list re-renders it with a `- ` prefix."
+  {:type    "doc"
+   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
+              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
+                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
+                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
+                                               :content [{:type    "listItem"
+                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
+                                                                     :content [{:type "text"
+                                                                                :text "Nested in a list."}]}]}]}]}
+                                   {:type    "supportingText" :attrs {:_id "support-2"}
+                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
+                                               :content [{:type "text" :text "Beside it."}]}]}]}]}
+             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
+
+(deftest get-content-document-comments-inside-a-layout-container-test
+  (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
+            with no span of its own rolls up to the nearest ancestor that has one, and the
+            id-less resizeNode/flexContainer wrappers in between must not break the chain"
+    (mt/with-temp [:model/Document {doc-id :id} {:document     layout-commented-doc
+                                                 :content_type "application/json+vnd.prose-mirror"}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "list-para"
+                                      :content         (comment-content "on a list paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "support-para"
+                                      :content         (comment-content "on a supporting paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "support-1"
+                                      :content         (comment-content "on the supporting block")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "gone-0000"
+                                      :content         (comment-content "my block was rewritten")}]
+      (mt/with-test-user :crowberto
+        (let [row      (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})
+              markdown (:markdown row)
+              by-id    (into {} (map (juxt :child_target_id identity)) (:comments row))]
+          (is (nil? (:error row)))
+          (testing "every block that still exists is anchored, whatever it is nested in"
+            (is (= #{"support-1" "list-para" "support-para"} (set (keys by-id)))))
+          (testing "a paragraph the list re-renders anchors to its list's span"
+            (is (= "- Nested in a list." (get-in (by-id "list-para") [:anchor :text]))))
+          (testing "a block that has its own span still uses it rather than an ancestor's"
+            (is (= "Beside it." (get-in (by-id "support-para") [:anchor :text])))
+            (is (str/starts-with? (get-in (by-id "support-1") [:anchor :text]) "::: supporting")))
+          (testing "every anchor is a true slice of the returned markdown"
+            (doseq [[id thread] by-id
+                    :let [{:keys [start end text]} (:anchor thread)]]
+              (is (= text (subs markdown start end)) id)))
+          (testing "a thread whose block is genuinely gone is still orphaned"
+            (is (= ["gone-0000"] (mapv :child_target_id (:orphaned_comments row))))))))))
+
+(deftest get-content-document-comments-scope-and-batch-test
+  (mt/with-temp [:model/Document {doc-id :id} {:document     commented-doc
+                                               :content_type "application/json+vnd.prose-mirror"}
+                 :model/Comment  _ {:target_id       doc-id
+                                    :child_target_id "para-1"
+                                    :content         (comment-content "hi")}
+                 :model/Card     {card-id :id} {:dataset_query (venues-query)}]
+    (mt/with-test-user :crowberto
+      (testing "GHY-4159/GHY-4225: comment threads are document content, so the tool's own
+                agent:content:read carries them — they used to need agent:document:read on top,
+                and that per-type gate is gone rather than renamed"
+        (let [row (content-one #{"agent:content:read"}
+                               {:items [{:type "document" :id doc-id}] :include ["comments"]})]
+          (is (nil? (:error row)))
+          (is (= 1 (count (:comments row))))))
+      (testing "GHY-4159: in a mixed batch the section applies to the document and is skipped for the question"
+        (let [[doc question] (content-results {:items   [{:type "document" :id doc-id}
+                                                         {:type "question" :id card-id}]
+                                               :include ["comments"]})]
+          (is (nil? (:error doc)))
+          (is (seq (:comments doc)))
+          (is (nil? (:error question)))
+          (is (nil? (:comments question))))))))
+
+(deftest get-content-document-comments-serializer-fallback-test
+  (testing "GHY-4159: on the flattened-text fallback read, threads come back unanchored under
+            comments — absence of anchors means unknown, never orphaned"
+    (mt/with-temp [:model/Document {doc-id :id} {:document     {:type    "doc"
+                                                                :content [{:type    "mysteryBlock"
+                                                                           :attrs   {:_id "m-1"}
+                                                                           :content [{:type "text" :text "odd"}]}]}
+                                                 :content_type "application/json+vnd.prose-mirror"}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "m-1"
+                                      :content         (comment-content "still here")}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})]
+          (is (nil? (:error row)))
+          (is (= "odd" (:markdown row)))
+          (is (= [{:child_target_id "m-1" :thread-texts ["still here"]}]
+                 (mapv #(-> (select-keys % [:child_target_id :anchor])
+                            (assoc :thread-texts (mapv :text (:thread %))))
+                       (:comments row))))
+          (is (nil? (:orphaned_comments row))))))))
+
+(defn- deeply-nested-ast
+  "A prose-mirror body nested `n` levels deep."
+  [n]
+  {:type    "doc"
+   :content [(reduce (fn [inner i]
+                       {:type    "blockquote"
+                        :attrs   {:_id (str "bq-" i)}
+                        :content [inner]})
+                     {:type    "paragraph"
+                      :attrs   {:_id "leaf"}
+                      :content [{:type "text" :text "buried"}]}
+                     (range n))]})
+
+(deftest get-content-deepest-storable-document-still-serializes-test
+  (testing "the app DB's JSON nesting ceiling sits below the serializer's, so any document that can
+            be read back is shallow enough to render as Markdown. This is why a deeply nested body
+            is a write-path concern only: the storage layer refuses a document around 600 levels
+            deep, while serializing does not run out of stack until roughly 2000. The margin is
+            load-bearing — if the JSON limit were ever raised, reads could start hitting a
+            StackOverflowError, which is an Error and so escapes the per-item `catch Exception`
+            that keeps one bad document from sinking a whole batch."
+    (mt/with-temp [:model/Document {doc-id :id} {:document     (deeply-nested-ast 400)
+                                                 :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}]})]
+          (is (nil? (:error row)))
+          (testing "rendered as real Markdown, not the flattened-text fallback"
+            (is (str/includes? (str (:markdown row)) "> buried"))))))
+    (testing "past that ceiling the write does not succeed, so no such document exists to read"
+      ;; Throwable, not Exception: which mechanism stops the write depends on how much stack the
+      ;; running thread has. The JSON nesting limit raises an ordinary exception, but on a smaller
+      ;; stack — CI's parallel test threads, say — a recursive walk over the body can overflow
+      ;; first, and a StackOverflowError is an Error. Either outcome satisfies what this pins,
+      ;; which is that the write does not land; asserting one of them made the test
+      ;; environment-dependent.
+      (is (thrown? Throwable
+                   (mt/with-temp [:model/Document _ {:document     (deeply-nested-ast 600)
+                                                     :content_type "application/json+vnd.prose-mirror"}]
+                     nil))))))
 
 (defn- migrate-notification-to-dashboard!
   "Repoint a payload-less notification row to :notification/dashboard via raw SQL, bypassing the

@@ -19,7 +19,8 @@
    [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
@@ -209,7 +210,12 @@
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
    collection and resolve to nil without a DB translation; `\"trash\"` resolves to
    `:trash-collection-id` when the caller allows it (the tool passes the id from the
-   collections module) and is a teaching error otherwise."
+   collections module) and is a teaching error otherwise.
+
+   A numeric id is checked for existence here. [[resolve-id-or-404]] translates entity_ids but
+   passes numbers straight through, so without this an id for no collection at all travelled on
+   into the write, where it fails a `mu/defn` schema or a permission check and reaches the caller
+   as the sanitized \"Internal error\". Permissions stay the caller's job afterwards, unchanged."
   ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
   ([id-or-sentinel {:keys [trash-collection-id]}]
    (cond
@@ -221,7 +227,10 @@
          (throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
 
      :else
-     (resolve-id-or-404 :model/Collection id-or-sentinel))))
+     (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
+       (when-not (t2/exists? :model/Collection :id id)
+         (throw-not-found :model/Collection id-or-sentinel))
+       id))))
 
 ;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
 

@@ -35,20 +35,24 @@
                                                           :name "In Document Root Card"}
                    :model/Dashboard {dash-id :id} {:collection_id nil
                                                    :name "Root Dashboard"}]
-      (testing "Normal cards and dashboards in root appear, but in_document cards do not"
-        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
-              root-test-items (filter #(#{normal-card-id dash-id in-document-card-id} (:id %))
-                                      (:data items))]
+      ;; Root holds every model, and ids are per-table — a card and a dashboard can share one, so
+      ;; these rows are picked out by [id model] pair rather than by id alone.
+      (let [of-interest #{[normal-card-id "card"]
+                          [in-document-card-id "card"]
+                          [dash-id "dashboard"]}
+            root-items  (fn [url]
+                          (into #{}
+                                (filter of-interest)
+                                (map (juxt :id :model)
+                                     (:data (mt/user-http-request :rasta :get 200 url)))))]
+        (testing "Normal cards and dashboards in root appear, but in_document cards do not"
           (is (= #{[normal-card-id "card"]
                    [dash-id "dashboard"]}
-                 (set (map (juxt :id :model) root-test-items))))))
-      (testing "Even with show_dashboard_questions=true, in_document cards do not appear"
-        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items?show_dashboard_questions=true")
-              root-test-items (filter #(#{normal-card-id dash-id in-document-card-id} (:id %))
-                                      (:data items))]
+                 (root-items "collection/root/items"))))
+        (testing "Even with show_dashboard_questions=true, in_document cards do not appear"
           (is (= #{[normal-card-id "card"]
                    [dash-id "dashboard"]}
-                 (set (map (juxt :id :model) root-test-items)))))))))
+                 (root-items "collection/root/items?show_dashboard_questions=true"))))))))
 
 (deftest documents-appear-in-collection-items
   (testing "GET /api/collection/:id/items includes documents"
@@ -74,15 +78,14 @@
                    :model/Dashboard {dash-id :id} {:collection_id nil
                                                    :name "Root Dashboard"}]
       (testing "Documents appear alongside cards and dashboards in root"
-        (let [items         (mt/user-http-request :rasta :get 200 "collection/root/items")
-              test-ids      (set [doc-id card-id dash-id])
-              root-test-items (filter #(and (test-ids (:id %))
-                                            (#{"document" "card" "dashboard"} (:model %)))
-                                      (:data items))]
-          (is (= #{[doc-id "document"]
-                   [card-id "card"]
-                   [dash-id "dashboard"]}
-                 (set (map (juxt :id :model) root-test-items)))))))))
+        (let [items       (mt/user-http-request :rasta :get 200 "collection/root/items")
+              of-interest #{[doc-id "document"]
+                            [card-id "card"]
+                            [dash-id "dashboard"]}]
+          (is (= of-interest
+                 (into #{}
+                       (filter of-interest)
+                       (map (juxt :id :model) (:data items))))))))))
 
 (deftest archived-documents-appear-in-trash-items
   (testing "GET /api/collection/trash/items includes documents with archived_directly true"
@@ -102,9 +105,12 @@
                                                             :archived true
                                                             :archived_directly true}]
       (testing "Archived documents appear alongside other archived items in trash"
-        (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (collection/trash-collection-id)))
-              trash-test-items (filter #(#{archived-doc-id normal-doc-id archived-card-id archived-dash-id} (:id %))
-                                       (:data items))]
+        (let [items            (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (collection/trash-collection-id)))
+              of-interest      #{[archived-doc-id "document"]
+                                 [normal-doc-id "document"]
+                                 [archived-card-id "card"]
+                                 [archived-dash-id "dashboard"]}
+              trash-test-items (filter #(of-interest [(:id %) (:model %)]) (:data items))]
           (is (= #{[archived-doc-id "document" true true]
                    [archived-card-id "card" true true]
                    [archived-dash-id "dashboard" true true]}

@@ -22,6 +22,7 @@
    [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.dashboard]
    [metabase.mcp.v2.tools.definitions]
+   [metabase.mcp.v2.tools.document]
    [metabase.mcp.v2.tools.duplicate]
    [metabase.mcp.v2.tools.metric]
    [metabase.mcp.v2.tools.parameters]
