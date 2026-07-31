@@ -125,7 +125,7 @@
             version-str   (get-in parsed [:metabase :version])]
         (when-let [error (manifest/validation-error parsed)]
           (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                          {:status-code 400 :error error})))
+                          {:status-code 400})))
         (when (str/blank? (:name parsed))
           (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
                           {:status-code 400})))
