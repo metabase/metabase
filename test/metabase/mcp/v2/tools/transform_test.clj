@@ -228,6 +228,45 @@
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
+(deftest transform-write-update-swaps-source-test
+  (testing "GHY-4240: an update carrying a `definition` replaces the stored query and leaves everything
+            else — the read-modify-write flow the definition round-trip exists for"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Transform {id :id} (assoc (temp-transform-defaults "mcp_swap")
+                                                        :description "unchanged")]
+          (let [result (tool-result (write! {:method     "update" :id id
+                                             :definition {:type  "query"
+                                                          :query {:database (mt/id) :type "query"
+                                                                  :query {:source-table (mt/id :checkins)}}}}))
+                stored (t2/select-one :model/Transform :id id)]
+            (is (= "mbql" (:source_type result)))
+            (testing "the new query really landed, normalized to what the transform stores"
+              (is (= (mt/id :checkins)
+                     (-> stored :source :query :stages first :source-table))))
+            (testing "and the fields the call didn't name are untouched"
+              (is (= "unchanged" (:description result)))
+              (is (= "mcp_swap" (-> result :target :name)))
+              (is (= (venues-schema) (-> result :target :schema))))))))))
+
+(deftest transform-write-update-swaps-source-from-handle-test
+  (testing "GHY-4240: a query_handle works on update too, so an agent can re-run execute_sql and save the
+            corrected SQL over an existing transform — which also retypes it from mbql to native"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_swap_handle")]
+          (let [session-id (str (random-uuid))
+                handle     (-> (call-tool! :crowberto nil "execute_sql"
+                                           {:database_id (mt/id) :sql "SELECT 2 AS n" :validate_only true}
+                                           session-id)
+                               tool-result
+                               :query_handle)
+                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                    {:method "update" :id id :query_handle handle}
+                                                    session-id))]
+            (is (= "native" (:source_type result)))
+            (is (= :native (:source_type (t2/select-one :model/Transform :id id))))))))))
+
 (deftest transform-write-update-patches-target-test
   (testing "GHY-4240: a target rename keeps the schema — update patches the stored target, it doesn't replace it"
     (with-transforms
