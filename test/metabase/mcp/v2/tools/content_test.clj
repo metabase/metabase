@@ -385,6 +385,61 @@
                                  :text (-> % :thread first :text))
                          (:orphaned_comments row))))))))))
 
+(def ^:private layout-commented-doc
+  "A layout container holding a list. `resizeNode`/`flexContainer` carry no `_id` at all, so a
+   block nested inside one has to resolve its anchor past them; the paragraph inside the list item
+   is the block with no span of its own — the list re-renders it with a `- ` prefix."
+  {:type    "doc"
+   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
+              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
+                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
+                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
+                                               :content [{:type    "listItem"
+                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
+                                                                     :content [{:type "text"
+                                                                                :text "Nested in a list."}]}]}]}]}
+                                   {:type    "supportingText" :attrs {:_id "support-2"}
+                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
+                                               :content [{:type "text" :text "Beside it."}]}]}]}]}
+             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
+
+(deftest get-content-document-comments-inside-a-layout-container-test
+  (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
+            with no span of its own rolls up to the nearest ancestor that has one, and the
+            id-less resizeNode/flexContainer wrappers in between must not break the chain"
+    (mt/with-temp [:model/Document {doc-id :id} {:document     layout-commented-doc
+                                                 :content_type "application/json+vnd.prose-mirror"}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "list-para"
+                                      :content         (comment-content "on a list paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "support-para"
+                                      :content         (comment-content "on a supporting paragraph")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "support-1"
+                                      :content         (comment-content "on the supporting block")}
+                   :model/Comment  _ {:target_id       doc-id
+                                      :child_target_id "gone-0000"
+                                      :content         (comment-content "my block was rewritten")}]
+      (mt/with-test-user :crowberto
+        (let [row      (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})
+              markdown (:markdown row)
+              by-id    (into {} (map (juxt :child_target_id identity)) (:comments row))]
+          (is (nil? (:error row)))
+          (testing "every block that still exists is anchored, whatever it is nested in"
+            (is (= #{"support-1" "list-para" "support-para"} (set (keys by-id)))))
+          (testing "a paragraph the list re-renders anchors to its list's span"
+            (is (= "- Nested in a list." (get-in (by-id "list-para") [:anchor :text]))))
+          (testing "a block that has its own span still uses it rather than an ancestor's"
+            (is (= "Beside it." (get-in (by-id "support-para") [:anchor :text])))
+            (is (str/starts-with? (get-in (by-id "support-1") [:anchor :text]) "::: supporting")))
+          (testing "every anchor is a true slice of the returned markdown"
+            (doseq [[id thread] by-id
+                    :let [{:keys [start end text]} (:anchor thread)]]
+              (is (= text (subs markdown start end)) id)))
+          (testing "a thread whose block is genuinely gone is still orphaned"
+            (is (= ["gone-0000"] (mapv :child_target_id (:orphaned_comments row))))))))))
+
 (deftest get-content-document-comments-scope-and-batch-test
   (mt/with-temp [:model/Document {doc-id :id} {:document     commented-doc
                                                :content_type "application/json+vnd.prose-mirror"}

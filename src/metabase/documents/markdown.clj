@@ -987,8 +987,9 @@
 (defn serialize
   "ProseMirror AST -> `{:markdown string, :spans [{:node-id string, :start int, :end int} …]}`.
   `:spans` covers every node carrying an `:_id` whose text appears verbatim in `:markdown`
-  (blocks nested inside blockquotes/lists are re-rendered with line prefixes and are covered
-  by their outermost block's span instead), in document order; offsets are character indexes,
+  (blocks nested inside blockquotes/lists are re-rendered with line prefixes and get no span of
+  their own — their text falls inside the span of the nearest enclosing block that has one, which
+  is not necessarily a top-level one), in document order; offsets are character indexes,
   end exclusive. Deterministic: the same AST always serializes to the same string, which is
   what makes untouched-node reuse in [[splice]] well-defined. Transient metabot nodes are
   skipped entirely — no token, no span.

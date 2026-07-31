@@ -237,41 +237,43 @@
             :is_resolved       (:is_resolved comment-row)
             :text              (prose-mirror/ast->text (:content comment-row))}))
 
-(defn- node-id->outermost-id
-  "Every `_id` in the document mapped to its top-level block's `_id`. Blocks nested inside
-   lists/blockquotes carry no span of their own (their text is re-rendered with line prefixes),
-   so a comment anchored to one resolves to the outermost block's span through this map."
+(defn- node-id->ancestor-ids
+  "Every `_id` in the document mapped to its ancestors' `_id`s, nearest first. Blocks nested inside
+   lists/blockquotes carry no span of their own (their text is re-rendered with line prefixes), so
+   a comment anchored to one resolves to the nearest ancestor that does have a span. The chain has
+   to be walked rather than jumping to the top-level block: layout containers (`resizeNode`,
+   `flexContainer`) carry no `_id` at all, so a top-level lookup finds nothing for anything nested
+   in one, while their `supportingText` children are emitted verbatim and do have spans."
   [row]
-  (into {}
-        (mapcat (fn [top]
-                  (when-let [top-id (get-in top [:attrs :_id])]
-                    (for [node (tree-seq :content :content top)
-                          :let [id (get-in node [:attrs :_id])]
-                          :when id]
-                      [id top-id]))))
-        (get-in row [::document :document :content])))
+  (letfn [(walk [node ancestors]
+            (let [id       (get-in node [:attrs :_id])
+                  inherited (cond->> ancestors id (cons id))]
+              (concat (when id [[id ancestors]])
+                      (mapcat #(walk % inherited) (:content node)))))]
+    (into {} (mapcat #(walk % [])) (get-in row [::document :document :content]))))
 
 (defn- document-comments
   "The `comments` include: the document's live comment threads, grouped by the block node id
    (`child_target_id`) they anchor to, each with an `anchor` locating that block in the returned
    `markdown` — the exact `[start, end)` slice of the anchored block, joined via the serializer's
-   node-id spans (a nested block rolls up to its outermost block's span). Threads whose anchor id
-   matches nothing (their block was rewritten or deleted) land in `orphaned_comments` instead. On
+   node-id spans (a nested block rolls up to the nearest enclosing block that has one). Threads
+   whose anchor id matches nothing (their block was rewritten or deleted) land in
+   `orphaned_comments` instead. On
    the serializer-fallback read there are no spans at all, so every thread is returned unanchored
    under `comments` — absence of anchors there means \"unknown\", not \"orphaned\"."
   [row]
   (let [markdown   (:markdown row)
         spans      (::spans row)
         span-by-id (into {} (map (juxt :node-id identity)) spans)
-        outermost  (node-id->outermost-id row)
+        ancestors  (node-id->ancestor-ids row)
         threads    (->> (comments/comments-for-document (:id row))
                         (group-by :child_target_id)
                         (sort-by (fn [[_ cs]] ((juxt :created_at :id) (first cs))))
                         (mapv (fn [[child-id cs]]
                                 (compact
                                  {:child_target_id child-id
-                                  :anchor          (when-let [{:keys [start end]} (or (span-by-id child-id)
-                                                                                      (span-by-id (outermost child-id)))]
+                                  :anchor          (when-let [{:keys [start end]}
+                                                              (some span-by-id (cons child-id (ancestors child-id)))]
                                                      {:start start
                                                       :end   end
                                                       :text  (subs markdown start end)})
@@ -545,7 +547,7 @@
              [:fields {:optional true}
               [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the fields catalog resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to its outermost block's span, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
                           "definition" "fields" "parameters" "layout" "dimensions" "comments"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}
