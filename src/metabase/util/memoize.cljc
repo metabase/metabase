@@ -125,3 +125,23 @@
                   (.clear cache))
                 (.computeIfAbsent cache k mapping-fn)))
       :cljs (bounded f tkey threshold))))
+
+(defonce ^:private cache-registry
+  ;; cache name (string) -> 0-arg fn returning the cache's current entry count.
+  ;; See [[register-monitored-cache!]].
+  (atom {}))
+
+(defn register-monitored-cache!
+  "Register a named cache for size telemetry. `count-fn` is a 0-arg fn returning the cache's current entry count.
+
+  Cache owners call this at load time; the (enterprise) memoize monitor reads the registry and exports each cache's
+  size as a metric, without needing to depend on the owning namespace. Registering a name again replaces the previous
+  `count-fn`, so it is safe under namespace reload."
+  [cache-name count-fn]
+  (swap! cache-registry assoc cache-name count-fn)
+  nil)
+
+(defn monitored-caches
+  "Map of cache name -> 0-arg entry-count fn. See [[register-monitored-cache!]]."
+  []
+  @cache-registry)
