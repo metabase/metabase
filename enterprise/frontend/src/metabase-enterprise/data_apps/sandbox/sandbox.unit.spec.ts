@@ -141,6 +141,9 @@ describe("createDataAppSandbox", () => {
       // The prelude is the first thing evaluated — before any bundle code.
       expect(evaluate).toHaveBeenCalledTimes(1);
       const [preludeCode] = evaluate.mock.calls[0];
+      if (typeof preludeCode !== "string") {
+        throw new Error("expected a prelude string to be evaluated");
+      }
 
       // Run the prelude against a throwaway `Error` stand-in and assert the
       // behaviour it installs, not just its source text. The prelude references a
