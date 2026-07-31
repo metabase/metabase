@@ -149,6 +149,19 @@
         (is (false? (llm.provider/config-complete? "metabase" {})))
         (is (false? (llm.provider/type-available? "metabase")))))))
 
+(deftest managed-type-is-available-to-instances-that-can-buy-it-test
+  (testing "Harbormaster injects the proxy URL into every hosted instance, so availability follows the subscription"
+    (mt/with-temp-env-var-value! [mb-llm-proxy-base-url "https://proxy.example.com"]
+      (testing "an instance that is only offered the add-on can still reach the purchase flow"
+        (mt/with-premium-features #{:offer-metabase-ai-managed}
+          (is (true? (llm.provider/type-available? "metabase")))))
+      (testing "an instance that already bought the add-on keeps it"
+        (mt/with-premium-features #{:metabase-ai-managed}
+          (is (true? (llm.provider/type-available? "metabase")))))
+      (testing "an instance with no claim on the managed provider cannot select it"
+        (mt/with-premium-features #{}
+          (is (false? (llm.provider/type-available? "metabase"))))))))
+
 (deftest connections-test
   (testing "stored connections are returned with a :db source"
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
