@@ -239,6 +239,65 @@
             (is (= (venues-schema) (-> result :target :schema)))
             (is (= "table" (-> result :target :type)))))))))
 
+(deftest transform-write-target-round-trips-test
+  (testing "GHY-4240: the target a read (or a previous write) hands back can be passed straight back in.
+            `type` and `database` are derived rather than authored, but they are on every target an
+            agent ever sees, so refusing them at the schema boundary breaks read-modify-write."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_roundtrip")]
+          (let [echoed (:target (tool-result (write! {:method "update" :id id :description "touch"})))]
+            (is (= #{:type :schema :name :database} (set (keys echoed)))
+                "the echo carries the derived keys the input schema therefore has to tolerate")
+            (let [after (:target (tool-result (write! {:method "update" :id id
+                                                       :target (assoc echoed :name "mcp_roundtrip2")})))]
+              (is (= "mcp_roundtrip2" (:name after)))
+              (is (= (venues-schema) (:schema after)))
+              (is (= (mt/id) (:database after))))))))))
+
+(deftest transform-write-target-tolerates-nested-nulls-test
+  (testing "GHY-4240: nulls are only stripped at the top level, so a strict client's fully-populated
+            `target` arrives with nulls inside it — those must read as \"didn't touch it\" and not
+            clear the stored schema"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_nested_nulls")]
+          (let [after (:target (tool-result (write! {:method "update" :id id
+                                                     :target {:name                        "mcp_nested_nulls2"
+                                                              :schema                      nil
+                                                              :type                        nil
+                                                              :database                    nil
+                                                              :target-incremental-strategy nil}})))]
+            (is (= "mcp_nested_nulls2" (:name after)))
+            (is (= (venues-schema) (:schema after)))))))))
+
+(deftest transform-write-target-refuses-unauthorable-type-test
+  (testing "GHY-4240: a target type this tool can't author is a teaching error naming it, not a
+            schema rejection the agent can't act on"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_bad_type")]
+          (let [error (tool-error (write! {:method "update" :id id
+                                           :target {:name "mcp_bad_type" :type "table-incremental"}}))]
+            (is (re-find #"`target.type`" error))
+            (is (re-find #"table-incremental" error)))
+          (testing "as is an incremental strategy on the target"
+            (let [error (tool-error (write! {:method "update" :id id
+                                             :target {:name "mcp_bad_type"
+                                                      :target-incremental-strategy {:type "append"}}}))]
+              (is (re-find #"target-incremental-strategy" error)))))))))
+
+(deftest transform-write-target-refuses-foreign-database-test
+  (testing "GHY-4240: the target database follows the query, so a `target.database` that disagrees is
+            refused rather than silently ignored"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_foreign_db")]
+          (let [error (tool-error (write! {:method "update" :id id
+                                           :target {:name "mcp_foreign_db" :database (inc (mt/id))}}))]
+            (is (re-find #"`target.database`" error))
+            (is (re-find #"follows the query" error))))))))
+
 (deftest transform-write-update-fields-test
   (testing "GHY-4240: only the fields passed change, and `clear` unsets description"
     (with-transforms
@@ -270,7 +329,15 @@
                                      :target-incremental-strategy {:type "append"}})]
         (let [error (tool-error (write! {:method "update" :id id :target {:name "mcp_renamed"}}))]
           (is (re-find #"table-incremental target" error))
-          (is (re-find #"omit `target`" error)))))))
+          (is (re-find #"omit `target`" error)))
+        (testing "including when the agent passes the stored target back verbatim, which is how it
+                  would actually arrive — the refusal has to survive the round-trip shape"
+          (let [error (tool-error (write! {:method "update" :id id
+                                           :target {:name                        "mcp_renamed"
+                                                    :schema                      (venues-schema)
+                                                    :type                        "table-incremental"
+                                                    :target-incremental-strategy {:type "append"}}}))]
+            (is (re-find #"table-incremental target" error))))))))
 
 (deftest transform-write-update-refuses-incremental-source-test
   (testing "GHY-4240: replacing the query of an incrementally-loading transform would drop the strategy

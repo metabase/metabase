@@ -104,19 +104,44 @@
   "The `target` to store: the caller's fields laid over `existing` (nil on create), so
    `target: {\"name\": …}` on update renames the output table without dropping its schema. Always a
    plain `table` target — an incremental target carries a load strategy this tool can't author, and
-   overwriting one would silently turn an incremental transform into a full rebuild."
-  [existing {target-name :name, :keys [schema] :as target}]
-  (let [existing-type (some-> (:type existing) name)]
+   overwriting one would silently turn an incremental transform into a full rebuild.
+
+   `type`, `database`, and the incremental strategy are derived rather than authored, but a read
+   hands them back on every target, so they are accepted to keep read-modify-write working and
+   refused only when they disagree with what this tool would write. `source-db-id` is the database
+   the query runs on, which the target always follows.
+
+   Nils are stripped first: [[metabase.mcp.v2.common/drop-nil-args]] only reaches the top level, so
+   a strict client's nulls arrive inside `target` and would otherwise read as \"set this to nil\"."
+  [existing target source-db-id]
+  (let [{target-name :name, :keys [schema database] :as target} (u/remove-nils target)
+        existing-type (some-> (:type existing) name)
+        target-type   (some-> (:type target) name)]
     (when (and existing (not= "table" existing-type))
       (common/throw-teaching-error
        (format (str "This transform writes to a %s target, which transform_write can't edit — change it in "
                     "Metabase, or omit `target` to leave it alone.")
                existing-type)))
+    (when (and target-type (not= "table" target-type))
+      (common/throw-teaching-error
+       (format (str "`target.type` is %s — transform_write authors plain \"table\" targets, rebuilt in full on "
+                    "every run. Incremental targets are configured in Metabase; omit `target.type`.")
+               (pr-str target-type))))
+    (when (:target-incremental-strategy target)
+      (common/throw-teaching-error
+       (str "`target.target-incremental-strategy` sets up incremental (append/merge) loading, which "
+            "transform_write can't author — configure it in Metabase, and edit the transform here without it.")))
+    (when (and database source-db-id (not= database source-db-id))
+      (common/throw-teaching-error
+       (format (str "`target.database` is %d but the query reads from database %d — a transform writes to the "
+                    "database its query reads, so the target database follows the query rather than being set "
+                    "separately. Omit `target.database`, or point the query at database %d.")
+               database source-db-id database)))
     (when (and (nil? existing) (nil? target-name))
       (common/throw-teaching-error "`target.name` is required when method is \"create\" — it names the table the transform writes."))
     (cond-> (assoc (select-keys existing [:schema :database]) :type "table"
                    :name (or target-name (:name existing)))
-      (contains? target :schema) (assoc :schema schema))))
+      schema (assoc :schema schema))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
@@ -159,7 +184,7 @@
                 {:name          name
                  :description   description
                  :source        source
-                 :target        (resolve-target nil (:target args))
+                 :target        (resolve-target nil (:target args) (-> source :query :database))
                  :collection_id (when (contains? args :collection_id)
                                   (common/resolve-collection-id (:collection_id args)))
                  :tag_ids       tag_ids})]
@@ -205,12 +230,15 @@
         _          (when (or (:definition args) (:query_handle args))
                      (check-source-replaceable! transform))
         new-source (resolve-source args session-id)
+        ;; The target follows the query being stored — the new one when the source is changing in
+        ;; this same call, otherwise the one already there.
+        source-db  (-> (or new-source (:source transform)) :query :database)
         updates    (cond-> {}
                      (contains? args :name)          (assoc :name name)
                      (contains? args :description)   (assoc :description description)
                      (contains? args :collection_id) (assoc :collection_id (common/resolve-collection-id (:collection_id args)))
                      (contains? args :tag_ids)       (assoc :tag_ids (vec tag_ids))
-                     (contains? args :target)        (assoc :target (resolve-target (:target transform) (:target args)))
+                     (contains? args :target)        (assoc :target (resolve-target (:target transform) (:target args) source-db))
                      new-source                      (assoc :source new-source))]
     (when (empty? updates)
       (common/throw-teaching-error
@@ -245,16 +273,26 @@
     [:maybe [:map {:closed true
                    :description (str "The table the transform writes, recreated on every run. On update this "
                                      "patches the current target, so passing only `name` renames the table and "
-                                     "keeps its schema.")}
+                                     "keeps its schema. A target read back from get_content can be passed back "
+                                     "unchanged.")}
              [:name {:optional true}
               [:maybe [:string {:min 1 :description "Name of the output table. Required on create."}]]]
              [:schema {:optional true}
               [:maybe [:string {:min 1 :description (str "Schema to write the table into. Required on databases "
                                                          "that have schemas.")}]]]
+             ;; `type`, `database`, and the incremental strategy are derived, not authored — but a read
+             ;; hands all three back, so the schema tolerates them and resolve-target does the teaching.
              [:type {:optional true}
-              [:maybe [:enum {:description (str "Always \"table\" — a full rebuild each run. Incremental targets "
-                                                "are configured in Metabase, not here.")}
-                       "table"]]]]]]
+              [:maybe [:string {:min 1 :description (str "Always \"table\" — a full rebuild each run. Incremental "
+                                                         "targets are configured in Metabase, not here.")}]]]
+             [:database {:optional true}
+              [:maybe [:int {:description (str "Numeric id of the database the table is written to. Not a choice — "
+                                               "it always follows the query's database. Accepted so a target can "
+                                               "be passed back unchanged.")}]]]
+             [:target-incremental-strategy {:optional true}
+              [:maybe [:map {:description (str "Incremental (append/merge) loading, configured in Metabase, not "
+                                               "here. Accepted only so passing a target back unchanged reports "
+                                               "what can't be edited rather than a schema error.")}]]]]]]
    [:description {:optional true}
     [:maybe [:string {:description "Optional human-readable description."}]]]
    [:collection_id {:optional true}
