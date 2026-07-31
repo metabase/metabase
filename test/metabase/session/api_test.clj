@@ -680,7 +680,8 @@
   (testing "LDAP login - no fallback when password login disabled"
     (ldap.test/with-ldap-server!
       (mt/with-premium-features #{:disable-password-login}
-        (mt/with-temporary-setting-values [enable-password-login false]
+        (mt/with-temporary-setting-values [enable-password-login false
+                                           mfa-enforcement       :off]
           (is (= "Password login is disabled for this instance."
                  (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))))
 

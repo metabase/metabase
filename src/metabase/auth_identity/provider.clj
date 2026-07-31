@@ -255,7 +255,7 @@
                                [:id ms/PositiveInt]
                                [:is_active :boolean]]]]]]
   (cond-> request
-    (and (nil? (:errors request))
+    (and (nil? (:error request))
          (not (get-in request [:user :is_active]))) (assoc :success? false
                                                            :error disabled-account-snippet
                                                            :message disabled-account-message)))
