@@ -84,6 +84,38 @@
                      :type      :text
                      :advanced? true
                      :default   "https://openrouter.ai/api"}]}
+   {:type          "mistral"
+    :label         (deferred-tru "Mistral")
+    :icon          "ai"
+    :default-model "mistral-medium-3-5"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     ;; Mistral keys have no recognizable prefix.
+                     :placeholder (deferred-tru "Enter your Mistral API key")
+                     :docs-url    "https://console.mistral.ai/api-keys"}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.mistral.ai/v1"}]}
+   {:type          "zai"
+    :label         (deferred-tru "Z.AI")
+    :icon          "ai"
+    :default-model "glm-5.2"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     ;; Z.AI keys are `{id}.{secret}` pairs with no documented prefix.
+                     :placeholder (deferred-tru "Enter your Z.AI API key")
+                     :docs-url    "https://z.ai/manage-apikey/apikey-list"}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.z.ai/api/paas/v4"}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
     :icon          "ai"
@@ -240,6 +272,12 @@
    "openrouter" {:type     "openrouter"
                  :settings {:api-key  {:setting :llm-openrouter-api-key :credential? true}
                             :base-url {:setting :llm-openrouter-api-base-url}}}
+   "mistral"    {:type     "mistral"
+                 :settings {:api-key  {:setting :llm-mistral-api-key :credential? true}
+                            :base-url {:setting :llm-mistral-api-base-url}}}
+   "zai"        {:type     "zai"
+                 :settings {:api-key  {:setting :llm-zai-api-key :credential? true}
+                            :base-url {:setting :llm-zai-api-base-url}}}
    "azure"      {:type     "azure"
                  :settings {:api-key  {:setting :llm-azure-api-key :credential? true}
                             :base-url {:setting :llm-azure-api-base-url :credential? true}}}
