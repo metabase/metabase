@@ -36,6 +36,7 @@
 (def ^:private canonical-signature         @#'insights/canonical-signature)
 (def ^:private add-measure-suggestions     @#'insights/add-measure-suggestions)
 (def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
+(def ^:private column-predicate-kind       @#'insights/column-predicate-kind)
 (def ^:private predicate-candidates        @#'insights/predicate-candidates)
 (def ^:private merge-candidates            @#'insights/merge-candidates)
 (def ^:private card-table-dependencies     @#'insights/card-table-dependencies)
@@ -1408,22 +1409,35 @@
         base-candidate {:source {:name "Products"}
                         :metabase.usage-metadata.insights/metadata-provider mp}]
     (testing "segment names include the selected values"
-      (is (= {:suggested-name "Category is one of Gadget or Widget"
-              :suggested-description "Filtered by Category is one of Gadget or Widget on Products"}
-             (-> (assoc base-candidate
-                        :definition (lib/filter definition predicate)
-                        :predicate predicate)
-                 add-segment-suggestions
-                 (select-keys [:suggested-name :suggested-description])))))
+      (is (=? {:suggested-name "Category is one of Gadget or Widget"
+               :suggested-description "Filtered by Category is one of Gadget or Widget on Products"
+               :atoms [{:display-name "Category is one of Gadget or Widget"
+                        :kind :category}]}
+              (-> (assoc base-candidate
+                         :definition (lib/filter definition predicate)
+                         :predicate predicate)
+                  add-segment-suggestions))))
     (testing "conditional measure names include the selected values"
       (let [measure-predicate (lib/in category "Gadget" "Widget")]
-        (is (= "Count where Category is one of Gadget or Widget"
-               (-> (assoc base-candidate
-                          :definition (lib/aggregate definition (lib/count-where measure-predicate))
-                          :aggregation {:type :count-where
-                                        :condition measure-predicate})
-                   add-measure-suggestions
-                   :suggested-name)))))))
+        (is (=? {:suggested-name "Count where Category is one of Gadget or Widget"
+                 :aggregation {:base-name "Count"
+                               :condition-atoms [{:display-name "Category is one of Gadget or Widget"
+                                                  :kind :category}]}}
+                (-> (assoc base-candidate
+                           :definition (lib/aggregate definition (lib/count-where measure-predicate))
+                           :aggregation {:type :count-where
+                                         :condition measure-predicate})
+                    add-measure-suggestions)))))))
+
+(deftest predicate-kind-follows-field-metadata-test
+  (are [expected column] (= expected (column-predicate-kind column))
+    :boolean  {:base-type :type/Boolean}
+    :temporal {:base-type :type/DateTime}
+    :category {:base-type :type/Text}
+    :category {:base-type :type/Integer, :semantic-type :type/Category}
+    :category {:base-type :type/Integer, :semantic-type :type/PK}
+    :number   {:base-type :type/Float}
+    :other    {:base-type :type/*}))
 
 (deftest candidate-suggestions-are-bounded-and-fall-back-safely-test
   (let [candidate {:definition {}

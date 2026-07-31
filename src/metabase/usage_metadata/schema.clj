@@ -168,7 +168,8 @@
 (mr/def ::candidate-atom
   [:map {:closed true}
    [:signature    :string]
-   [:display-name ::lib.schema.common/non-blank-string]])
+   [:display-name ::lib.schema.common/non-blank-string]
+   [:kind         [:enum :boolean :category :number :temporal :other]]])
 
 (mr/def ::candidate-measure
   [:map {:closed true}

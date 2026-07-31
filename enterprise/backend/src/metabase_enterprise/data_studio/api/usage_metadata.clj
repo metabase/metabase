@@ -93,6 +93,26 @@
   (mi/can-create? (candidate-entity-model candidate)
                   {:table table, :table_id (:id table)}))
 
+(defn- presented-atom
+  [{:keys [signature display-name kind]}]
+  {:signature    signature
+   :display_name display-name
+   :kind         kind})
+
+(defn- candidate-presentation
+  [{:keys [candidate_type semantic_details display_name suggested_name]}]
+  (let [predicates (or (:display-atoms semantic_details)
+                       (case candidate_type
+                         :segment (:atoms semantic_details)
+                         :measure (:condition-atoms semantic_details)
+                         nil)
+                       [])]
+    (cond-> {:predicates (mapv presented-atom predicates)}
+      (= candidate_type :measure)
+      (assoc :aggregation {:display_name (or (:base-name semantic_details)
+                                             display_name
+                                             suggested_name)}))))
+
 (defn- candidate-summary
   [candidate table dismissals]
   (let [editable? (table-editable-for-candidate? candidate table)]
@@ -105,6 +125,7 @@
      :display_name          (or (:display_name candidate) (:suggested_name candidate))
      :suggested_name        (:suggested_name candidate)
      :suggested_description (:suggested_description candidate)
+     :presentation          (candidate-presentation candidate)
      :family                {:key      (or (:family_key candidate) (:signature_hash candidate))
                              :position (or (:family_position candidate) 0)
                              :depth    (or (:family_depth candidate) 0)}

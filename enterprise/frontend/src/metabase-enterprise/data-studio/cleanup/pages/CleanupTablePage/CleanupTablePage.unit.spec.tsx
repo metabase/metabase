@@ -66,6 +66,10 @@ const candidate: UsageMetadataCandidateDetail = {
   display_name: "Total revenue",
   suggested_name: "Total revenue",
   suggested_description: "Sum of order totals",
+  presentation: {
+    aggregation: { display_name: "Sum of Total" },
+    predicates: [],
+  },
   family: { key: "family", position: 0, depth: 0 },
   definition: createMockStructuredDatasetQuery({
     query: {
@@ -175,7 +179,9 @@ describe("CleanupTablePage", () => {
     });
     setup();
 
-    expect(await screen.findByText("Total revenue")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("Aggregation: Sum of Total"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Measure" })).toBeInTheDocument();
     expect(screen.getByTestId("pagination-total")).toHaveTextContent("42");
     expect(screen.queryByText("Sum of order totals")).not.toBeInTheDocument();
@@ -205,10 +211,25 @@ describe("CleanupTablePage", () => {
     });
   });
 
-  it("uses the family display name and indents related recommendations", async () => {
+  it("uses typed presentation pills and indents related recommendations", async () => {
     setup({
       ...candidate,
       display_name: "Active accounts with recent activity",
+      presentation: {
+        aggregation: { display_name: "Count" },
+        predicates: [
+          {
+            signature: "active",
+            display_name: "Is Active is true",
+            kind: "boolean",
+          },
+          {
+            signature: "recent",
+            display_name: "Created At is in the previous month",
+            kind: "temporal",
+          },
+        ],
+      },
       family: { key: "active-accounts", position: 2, depth: 2 },
     });
 
@@ -216,6 +237,18 @@ describe("CleanupTablePage", () => {
       name: "Active accounts with recent activity",
     });
     expect(row).toHaveStyle({ paddingInlineStart: "3.5rem" });
+    expect(screen.getByLabelText("Aggregation: Count")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Boolean predicate: Is Active is true"),
+    ).toHaveAttribute("data-kind", "boolean");
+    expect(
+      screen.getByLabelText(
+        "Time predicate: Created At is in the previous month",
+      ),
+    ).toHaveAttribute("data-kind", "temporal");
+    expect(
+      screen.queryByText("Active accounts with recent activity"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Total revenue")).not.toBeInTheDocument();
   });
 

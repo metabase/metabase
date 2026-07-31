@@ -59,7 +59,9 @@
     :signature             (str "[\"candidate-" id "\"]")
     :definition            {}
     :semantic_details      {:atoms (mapv (fn [[signature display-name]]
-                                           {:signature signature, :display-name display-name})
+                                           {:signature signature
+                                            :display-name display-name
+                                            :kind :category})
                                          atoms)}
     :suggested_name        (str "Candidate " id)
     :verified_source_count 0
@@ -95,6 +97,9 @@
              (str/index-of display-name "Deployment")
              (str/index-of display-name "Email")
              (str/index-of display-name "Created"))))
+    (testing "the presentation atoms use that same inherited order"
+      (is (= ["Trial complete" "Deployment is cloud" "Email is present" "Created recently"]
+             (mapv :display-name (get-in child-row [:semantic-details :display-atoms])))))
     (testing "each candidate appears exactly once"
       (is (= [1 3 2] (mapv :candidate-id families))))))
 

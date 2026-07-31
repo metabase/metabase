@@ -9,6 +9,7 @@
    [metabase.collections.models.collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
@@ -1107,13 +1108,37 @@
     (mapcat conjunction-atoms subclauses)
     [predicate]))
 
+(defn- column-predicate-kind
+  [column]
+  (cond
+    (lib.types.isa/boolean? column) :boolean
+    (lib.types.isa/temporal? column) :temporal
+    (or (lib.types.isa/category? column)
+        (lib.types.isa/string-or-string-like? column)
+        (lib.types.isa/foreign-key? column)
+        (lib.types.isa/primary-key? column)) :category
+    (lib.types.isa/numeric? column) :number
+    :else :other))
+
+(defn- atom-predicate-kind
+  [definition atom]
+  (let [field-ids (lib/all-field-ids atom)
+        columns   (mapv #(lib.metadata/field definition %) field-ids)
+        kinds     (into #{} (map column-predicate-kind) columns)]
+    (if (and (seq field-ids)
+             (every? some? columns)
+             (= 1 (count kinds)))
+      (first kinds)
+      :other)))
+
 (defn- candidate-atom-details
   [definition predicate]
   (->> (conjunction-atoms predicate)
        (sort-by canonical-signature)
        (mapv (fn [atom]
                {:signature    (canonical-signature atom)
-                :display-name (detailed-candidate-display-name definition atom (tru "Filter"))}))))
+                :display-name (detailed-candidate-display-name definition atom (tru "Filter"))
+                :kind         (atom-predicate-kind definition atom)}))))
 
 (defn- source-display-name
   [source]
@@ -1144,11 +1169,13 @@
         (tru "{0} where {1}" base-name condition-name))
       (safe-display-name definition clause (tru "Measure")))))
 
-(defn- conditional-measure-base-name
+(defn- measure-base-name
   [definition {:keys [type condition]}]
-  (when (and (contains? conditional-aggregation-operators type) condition)
+  (let [clause (get-in definition [:stages 0 :aggregation 0])]
     (safe-display-name definition
-                       (conditional-base-aggregation (get-in definition [:stages 0 :aggregation 0]))
+                       (if (and (contains? conditional-aggregation-operators type) condition)
+                         (conditional-base-aggregation clause)
+                         clause)
                        (tru "Measure"))))
 
 (defn- candidate-naming-definition
@@ -1160,7 +1187,7 @@
   [{:keys [aggregation source] :as candidate}]
   (let [naming-definition (candidate-naming-definition candidate)
         suggested-name    (measure-suggested-name naming-definition aggregation)
-        base-name         (conditional-measure-base-name naming-definition aggregation)
+        base-name         (measure-base-name naming-definition aggregation)
         condition-atoms   (some->> (:condition aggregation)
                                    (candidate-atom-details naming-definition))
         description    (if (contains? conditional-aggregation-operators (:type aggregation))
@@ -1168,9 +1195,8 @@
                          (safe-definition-description naming-definition :aggregation suggested-name))]
     (-> candidate
         (dissoc ::metadata-provider)
-        (assoc :aggregation (cond-> aggregation
-                              (seq condition-atoms) (assoc :condition-atoms condition-atoms
-                                                           :base-name base-name))
+        (assoc :aggregation (cond-> (assoc aggregation :base-name base-name)
+                              (seq condition-atoms) (assoc :condition-atoms condition-atoms))
                :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
 

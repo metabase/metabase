@@ -98,6 +98,24 @@ export type UsageMetadataEvidence = {
   total_view_count: number;
 };
 
+export type UsageMetadataPredicateKind =
+  | "boolean"
+  | "category"
+  | "number"
+  | "temporal"
+  | "other";
+
+export type UsageMetadataCandidatePresentation = {
+  aggregation?: {
+    display_name: string;
+  };
+  predicates: {
+    signature: string;
+    display_name: string;
+    kind: UsageMetadataPredicateKind;
+  }[];
+};
+
 export type UsageMetadataCandidateSummary = {
   id: number;
   candidate_type: UsageMetadataCandidateType;
@@ -105,6 +123,7 @@ export type UsageMetadataCandidateSummary = {
   display_name: string;
   suggested_name: string;
   suggested_description: string | null;
+  presentation: UsageMetadataCandidatePresentation;
   family: {
     key: string;
     position: number;
