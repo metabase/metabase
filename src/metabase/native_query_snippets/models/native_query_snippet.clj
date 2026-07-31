@@ -81,7 +81,9 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (add-template-tags snippet)
+  (u/prog1 (-> snippet
+               add-template-tags
+               (remote-sync/inherit-worktree-id :model/Collection :collection_id))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
@@ -93,6 +95,8 @@
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
+  (remote-sync/check-worktree-id-unchanged snippet)
+  (remote-sync/check-parent-same-worktree snippet :model/Collection :collection_id)
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
@@ -111,20 +115,28 @@
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
+  ([snippet]
+   (and (remote-sync/model-readable? snippet)
+        (snippet.perms/can-read? snippet)))
+  ([model id]
+   (mi/can-read? (t2/select-one [model :collection_id :worktree_id] :id id))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-write? args))
+  ([snippet]
+   (and (remote-sync/model-readable? snippet)
+        (snippet.perms/can-write? snippet)))
+  ([model id]
+   (mi/can-write? (t2/select-one [model :collection_id :worktree_id] :id id))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-create? args))
+  [model m]
+  (and (remote-sync/model-readable? m)
+       (snippet.perms/can-create? model m)))
 
 (defmethod mi/can-update? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-update? args))
+  [snippet changes]
+  (and (remote-sync/model-readable? snippet)
+       (snippet.perms/can-update? snippet changes)))
 
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
@@ -161,20 +173,22 @@
   ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
-                                                                  (when skip-archived [:not :archived])
-                                                                  [:or
-                                                                   (when-let [collection-ids (not-empty (remove nil? collection-set))]
-                                                                     [:in :collection_id collection-ids])
-                                                                   (when (some nil? collection-set)
-                                                                     [:= :collection_id nil])]]
-                                                          ;; stable filename de-dup suffixes across exports, see GHY-3754
-                                                          :order-by serdes/stable-storage-order}
-                                                   where (sql.helpers/where :or where))))
+  (let [worktree-clause (serdes/worktree-scope-clause "NativeQuerySnippet")]
+    (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
+                                                                    (when skip-archived [:not :archived])
+                                                                    [:or
+                                                                     (when-let [collection-ids (not-empty (remove nil? collection-set))]
+                                                                       [:in :collection_id collection-ids])
+                                                                     (when (some nil? collection-set)
+                                                                       [:= :collection_id nil])]]
+                                                            ;; stable filename de-dup suffixes across exports, see GHY-3754
+                                                            :order-by serdes/stable-storage-order}
+                                                     where           (sql.helpers/where :or where)
+                                                     worktree-clause (sql.helpers/where worktree-clause)))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [:worktree_id]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

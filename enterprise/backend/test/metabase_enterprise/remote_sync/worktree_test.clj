@@ -3,10 +3,13 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.jobs :as transforms.jobs]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -22,40 +25,58 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (f)))))
 
-(defn- worktree-id [collection-id]
-  (t2/select-one-fn :worktree_id :model/Collection :id collection-id))
+(defn- worktree-id [model id]
+  (t2/select-one-fn :worktree_id model :id id))
 
-(deftest worktree-id-is-inherited-from-the-parent-collection-test
+(deftest worktree-id-is-inherited-from-the-parent-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-a"}
                  :model/Collection {main-collection :id} {}
                  :model/Collection {collection :id} {:worktree_id worktree}]
+    (testing "content created under a worktree collection joins that worktree"
+      (mt/with-temp [:model/Card {card :id} {:collection_id collection}
+                     :model/Dashboard {dashboard :id} {:collection_id collection}
+                     :model/DashboardCard {dashcard :id} {:dashboard_id dashboard :card_id card}
+                     :model/DashboardTab {tab :id} {:dashboard_id dashboard :position 0}]
+        (is (= [worktree worktree worktree worktree]
+               [(worktree-id :model/Card card)
+                (worktree-id :model/Dashboard dashboard)
+                (worktree-id :model/DashboardCard dashcard)
+                (worktree-id :model/DashboardTab tab)]))))
+    (testing "the parent wins over an explicitly passed worktree_id"
+      (mt/with-temp [:model/Card {card :id} {:collection_id main-collection :worktree_id worktree}]
+        (is (nil? (worktree-id :model/Card card)))))
     (testing "a sub-collection joins its parent's worktree"
       (mt/with-temp [:model/Collection {child :id} {:location (format "/%d/" collection)}]
-        (is (= worktree (worktree-id child)))))
-    (testing "the parent wins over an explicitly passed worktree_id"
-      (mt/with-temp [:model/Collection {child :id} {:location    (format "/%d/" main-collection)
-                                                    :worktree_id worktree}]
-        (is (nil? (worktree-id child)))))
-    (testing "a collection created in the main app has no worktree"
-      (mt/with-temp [:model/Collection {child :id} {}]
-        (is (nil? (worktree-id child)))))))
+        (is (= worktree (worktree-id :model/Collection child)))))
+    (testing "content created in the main app has no worktree"
+      (mt/with-temp [:model/Card {card :id} {:collection_id main-collection}]
+        (is (nil? (worktree-id :model/Card card)))))))
 
 (deftest worktree-membership-is-immutable-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-b"}
                  :model/Collection {main-collection :id} {}
-                 :model/Collection {collection :id} {:worktree_id worktree}]
+                 :model/Collection {collection :id} {:worktree_id worktree}
+                 :model/Card {card :id} {:collection_id collection}]
     (testing "worktree_id cannot be written directly"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"worktree_id cannot be changed"
-           (t2/update! :model/Collection collection {:worktree_id nil}))))
+           (t2/update! :model/Card card {:worktree_id nil}))))
+    (testing "content cannot be moved out of its worktree"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Cannot move content into or out of a remote sync worktree"
+           (t2/update! :model/Card card {:collection_id main-collection}))))
+    (testing "content cannot be moved into a worktree"
+      (mt/with-temp [:model/Card {main-card :id} {:collection_id main-collection}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Cannot move content into or out of a remote sync worktree"
+             (t2/update! :model/Card main-card {:collection_id collection})))))
     (testing "a collection cannot be moved out of its worktree"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Cannot move content into or out of a remote sync worktree"
            (t2/update! :model/Collection collection {:location (format "/%d/" main-collection)}))))
-    (testing "a main-app collection cannot be moved into one"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"Cannot move content into or out of a remote sync worktree"
-           (t2/update! :model/Collection main-collection {:location (format "/%d/" collection)}))))))
+    (testing "moves within the same worktree are fine"
+      (mt/with-temp [:model/Collection {other :id} {:worktree_id worktree}]
+        (is (pos? (t2/update! :model/Card card {:collection_id other})))))))
 
 (deftest entity-ids-are-remapped-per-worktree-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree-1 :id} {:branch "feature-c"}
@@ -73,11 +94,12 @@
               checkout-2 (pull! worktree-2 "Checked out twice")]
           (testing "each worktree checks the branch entity out into a row of its own, in that worktree"
             (is (not= checkout-1 checkout-2))
-            (is (= [worktree-1 worktree-2] [(worktree-id checkout-1) (worktree-id checkout-2)])))
+            (is (= [worktree-1 worktree-2]
+                   [(worktree-id :model/Collection checkout-1) (worktree-id :model/Collection checkout-2)])))
           (testing "with a fresh entity_id, so the main app's row keeps the one the branch knows"
             (is (= source (t2/select-one-fn :entity_id :model/Collection :id main-collection)))
-            (is (not (contains? #{source} (t2/select-one-fn :entity_id :model/Collection :id checkout-1))))
-            (is (not (contains? #{source} (t2/select-one-fn :entity_id :model/Collection :id checkout-2)))))
+            (is (not= source (t2/select-one-fn :entity_id :model/Collection :id checkout-1)))
+            (is (not= source (t2/select-one-fn :entity_id :model/Collection :id checkout-2))))
           (testing "a lookup resolves to the copy belonging to the worktree being loaded"
             (is (= checkout-1 (binding [serdes/*worktree-id* worktree-1]
                                 (:id (serdes/lookup-by-id :model/Collection source)))))
@@ -91,33 +113,37 @@
 
 (deftest worktree-content-created-locally-gets-a-branch-id-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-l"}
-                 :model/Collection {collection :id} {:worktree_id worktree}]
-    (let [local (t2/select-one-fn :entity_id :model/Collection :id collection)
-          entry #(t2/select-one :model/RemoteSyncWorktreeRemapping :worktree_id worktree :target_entity_id local)]
-      (testing "a collection made inside the worktree starts with no remapping"
+                 :model/Collection {collection :id} {:worktree_id worktree}
+                 :model/Card {card :id} {:collection_id collection}]
+    (let [local (t2/select-one-fn :entity_id :model/Card :id card)
+          entry #(t2/select-one :model/RemoteSyncWorktreeRemapping :worktree_id worktree :target_entity_id local)
+          push! #(binding [serdes/*worktree-id* worktree]
+                   (:entity_id (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card))))]
+      (testing "a card made inside the worktree starts with no remapping"
         (is (nil? (entry))))
-      (binding [serdes/*worktree-id* worktree]
-        (let [exported (:entity_id (serdes/extract-one "Collection" {}
-                                                       (t2/select-one :model/Collection :id collection)))]
-          (testing "exporting it mints an id for the branch rather than pushing the local one"
-            (is (not= local exported))
-            (is (=? {:source_entity_id exported} (entry))))
-          (testing "and the id is stable across exports"
-            (is (= exported (:entity_id (serdes/extract-one "Collection" {}
-                                                            (t2/select-one :model/Collection :id collection)))))))))))
+      (let [exported (push!)]
+        (testing "exporting it mints an id for the branch rather than pushing the local one"
+          (is (not= local exported))
+          (is (=? {:source_entity_id exported} (entry))))
+        (testing "and the id is stable across exports"
+          (is (= exported (push!))))))))
 
-(deftest worktree-collections-are-admin-only-test
+(deftest worktree-content-is-admin-only-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-e"}
-                 :model/Collection {collection-id :id} {:worktree_id worktree}]
-    (let [collection (t2/select-one :model/Collection :id collection-id)]
-      (testing "admins can read and write a worktree's collections"
+                 :model/Collection {collection-id :id} {:worktree_id worktree}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (let [collection (t2/select-one :model/Collection :id collection-id)
+          card       (t2/select-one :model/Card :id card-id)]
+      (testing "admins can read and write worktree content"
         (mt/with-current-user (mt/user->id :crowberto)
           (is (mi/can-read? collection))
-          (is (mi/can-write? collection))))
+          (is (mi/can-write? collection))
+          (is (mi/can-read? card))))
       (testing "everyone else cannot"
         (mt/with-current-user (mt/user->id :rasta)
           (is (not (mi/can-read? collection)))
-          (is (not (mi/can-write? collection))))))))
+          (is (not (mi/can-write? collection)))
+          (is (not (mi/can-read? card))))))))
 
 (deftest worktree-collections-are-hidden-from-listings-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-g"}
@@ -131,23 +157,35 @@
         (testing "they are when explicitly asked for"
           (is (contains? (visible {:include-worktrees? true}) worktree-collection)))))))
 
+(deftest serdes-ignores-an-ingested-worktree-id-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-i"}]
+    (mt/with-model-cleanup [:model/Collection]
+      (let [load! (fn [name worktree-id-in-yaml]
+                    (:id (serdes/load-insert! "Collection" {:name        name
+                                                            :location    "/"
+                                                            :entity_id   (u/generate-nano-id)
+                                                            :worktree_id worktree-id-in-yaml})))]
+        (testing "a pull puts the content in the worktree it is loading, whatever the incoming data claims"
+          (is (= worktree (binding [mi/*deserializing?*  true
+                                    serdes/*worktree-id* worktree]
+                            (worktree-id :model/Collection (load! "Pulled" 999999))))))
+        (testing "the plain serdes API only ever loads into the main app"
+          (is (nil? (binding [mi/*deserializing?* true]
+                      (worktree-id :model/Collection (load! "Imported" worktree))))))))))
+
 (deftest serdes-extraction-is-scoped-to-the-worktree-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-j"}
                  :model/Collection {main-collection :id} {}
-                 :model/Collection {worktree-collection :id} {:worktree_id worktree}
-                 :model/Card {main-card :id} {:collection_id main-collection}
-                 :model/Card {worktree-card :id} {:collection_id worktree-collection}]
-    (let [extract (fn [model ids]
-                    (into #{} (map :id) (serdes/extract-query model {:where [:in :id ids]})))
-          collections #(extract "Collection" [main-collection worktree-collection])
-          cards       #(extract "Card" [main-card worktree-card])]
+                 :model/Collection {worktree-collection :id} {:worktree_id worktree}]
+    (let [extracted #(into #{}
+                           (map :id)
+                           (serdes/extract-query "Collection"
+                                                 {:where [:in :id [main-collection worktree-collection]]}))]
       (testing "the plain serdes API exports main-app content only"
-        (is (= #{main-collection} (collections)))
-        (is (= #{main-card} (cards))))
+        (is (= #{main-collection} (extracted))))
       (testing "a worktree push exports that worktree's content only"
         (binding [serdes/*worktree-id* worktree]
-          (is (= #{worktree-collection} (collections)))
-          (is (= #{worktree-card} (cards))))))))
+          (is (= #{worktree-collection} (extracted))))))))
 
 (deftest worktree-collection-children-match-the-worktree-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-h"}
@@ -158,6 +196,31 @@
       (is (= #{child} (set (map :id (collection/effective-children parent))))))
     (testing "the children of a main-app collection never include worktree collections"
       (is (empty? (collection/effective-children (t2/select-one :model/Collection :id main-collection)))))))
+
+(deftest worktree-transforms-never-run-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-k"}
+                 :model/Collection {collection :id} {:worktree_id worktree :namespace "transforms"}
+                 :model/Transform {transform :id} {:name          "Worktree transform"
+                                                   :collection_id collection
+                                                   :source        {:type  :query
+                                                                   :query (let [mp (mt/metadata-provider)]
+                                                                            (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                                                   :target        {:type   "table"
+                                                                   :schema "public"
+                                                                   :name   "worktree_target"}}
+                 :model/TransformTag {tag :id} {:name "worktree-tag"}
+                 :model/TransformJob {job :id} {:name "worktree-job" :schedule "0 0 0 * * ?"}
+                 :model/TransformJobTransformTag _ {:job_id job :tag_id tag :position 0}
+                 :model/TransformTransformTag _ {:transform_id transform :tag_id tag :position 0}]
+    (mt/with-premium-features #{:remote-sync :transforms-basic}
+      (mt/with-temporary-setting-values [transforms-enabled true]
+        (testing "tags can still be attached, but the transform is left out of the job's run"
+          (is (empty? (transforms.jobs/job-transforms job))))
+        (testing "and it cannot be run by hand"
+          (is (= "Transforms in a remote sync worktree cannot be run."
+                 (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" transform)))))
+        (testing "the UI is told as much"
+          (is (false? (:can_execute (t2/hydrate (t2/select-one :model/Transform :id transform) :can_execute)))))))))
 
 (deftest delete-worktree!-removes-its-content-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-f"}

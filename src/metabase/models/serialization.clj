@@ -99,40 +99,25 @@
   nil)
 
 (def worktree-scoped-models
-  "Serdes model names a worktree checks out. `worktree_id` sits on Collection alone; the rest take their worktree
-  from the collection they live in. Their `entity_id`s are translated through `remote_sync_worktree_remapping`, so
-  a worktree can hold its own copy of an entity the main app already has."
-  #{"Action" "Card" "Collection" "Dashboard" "DashboardCard" "DashboardTab" "Document" "Timeline"})
+  "Serdes model names whose table carries a `worktree_id` column. Extraction for these is scoped by
+  [[*worktree-id*]], loads stamp it, and their `entity_id`s are translated through
+  `remote_sync_worktree_remapping` -- so a worktree holds its own copy of an entity the main app already has,
+  under an id of its own."
+  #{"Action" "Card" "Collection" "Dashboard" "DashboardCard" "DashboardTab" "Document" "NativeQuerySnippet"
+    "ParameterCard" "Timeline" "Transform" "TransformTransformTag"})
 
 (defn worktree-scoped?
-  "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is one a worktree checks out."
+  "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."
   [model]
   (contains? worktree-scoped-models (if (string? model) model (name model))))
 
 (defn worktree-scope-clause
   "HoneySQL predicate restricting a worktree-scoped `model`'s rows to [[*worktree-id*]], the worktree being
-  exported; `nil` for models a worktree never checks out. Every extraction query for such a model needs it, so an
-  export only ever contains one worktree's content -- the main app's, for the plain serdes API.
-
-  Collection carries `worktree_id` itself. Everything else takes its worktree from the Collection
-  `collection-id-column` points at -- qualify it, since it is correlated into a subquery. Content in no collection
-  is the main app's: a worktree materializes collections, and everything it checks out lands inside one."
-  ([model]
-   (worktree-scope-clause model :collection_id))
-  ([model collection-id-column]
-   (when (worktree-scoped? model)
-     (let [table  (name (t2/table-name :model/Collection))
-           column #(keyword table %)]
-       (if (= (name model) "Collection")
-         [:= :worktree_id *worktree-id*]
-         (let [checked-out [:exists {:select [[[:inline 1]]]
-                                     :from   [(keyword table)]
-                                     :where  [:and
-                                              [:= (column "id") collection-id-column]
-                                              (if *worktree-id*
-                                                [:= (column "worktree_id") *worktree-id*]
-                                                [:not= (column "worktree_id") nil])]}]]
-           (if *worktree-id* checked-out [:not checked-out])))))))
+  exported; `nil` for models that aren't worktree-scoped. Every extraction query for such a model needs it, so an
+  export only ever contains one worktree's content -- the main app's, for the plain serdes API."
+  [model]
+  (when (worktree-scoped? model)
+    [:= :worktree_id *worktree-id*]))
 
 (defn- remapped-entity-id
   "The counterpart of `entity-id` in this worktree's remapping table: `from` and `to` are `:source_entity_id` /
@@ -491,7 +476,7 @@
   (try
     (let [spec     (*make-spec* model-name opts)
           instance (cond-> instance
-                     (worktree-scoped? model-name) (update :entity_id ensure-remapping!))]
+                     (worktree-scoped? model-name) (m/update-existing :entity_id ensure-remapping!))]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
@@ -596,8 +581,7 @@
         ;; rather than written to their own files, so they keep their natural order and are left untouched.
         order-by (when-not (::nested-fetch opts)
                    (stable-storage-order-by spec))
-        scope    (when (or (= (name model) "Collection") (-> spec :transform :collection_id))
-                   (worktree-scope-clause model (keyword (name (t2/table-name model)) "collection_id")))
+        scope    (worktree-scope-clause model)
         where    (cond
                    (and where scope) [:and where scope]
                    scope             scope
@@ -813,24 +797,24 @@
   (fn [model _] model))
 
 (defn- worktree-load-insert!
-  "Inserts `ingested` as this worktree's own copy of the entity: the incoming `entity_id` names the branch's entity,
-  which the main app may already hold, so the row is inserted without one -- the insert hook mints a fresh id -- and
-  the pair is recorded in the remapping table for every later export and load to resolve through.
+  "Inserts `ingested` stamped with the worktree being loaded into, whatever `worktree_id` the incoming data claims --
+  `nil` for the plain serdes API, which only ever loads into the main app.
 
-  A Collection is stamped with the worktree being pulled into, whatever the incoming data claims. Everything else
-  takes its worktree from the collection it lands in, so it needs no stamp."
-  [model-name model ingested]
+  Inside a worktree the incoming `entity_id` names the branch's entity, which the main app may already hold, so the
+  row is inserted without one -- the insert hook mints a fresh id -- and the pair is recorded in the remapping table
+  for every later export and load to resolve through."
+  [model ingested]
   (let [source (:entity_id ingested)
-        row    (cond-> (dissoc ingested :entity_id)
-                 (= model-name "Collection") (assoc :worktree_id *worktree-id*))]
+        row    (cond-> (assoc ingested :worktree_id *worktree-id*)
+                 *worktree-id* (dissoc :entity_id))]
     (u/prog1 (first (t2/insert-returning-instances! model row))
       (ensure-remapping! (:entity_id <>) source))))
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
   (let [model (t2.model/resolve-model (symbol model-name))]
-    (if (and *worktree-id* (worktree-scoped? model-name))
-      (worktree-load-insert! model-name model ingested)
+    (if (worktree-scoped? model-name)
+      (worktree-load-insert! model ingested)
       (first (t2/insert-returning-instances! model ingested)))))
 
 (defmulti load-one!

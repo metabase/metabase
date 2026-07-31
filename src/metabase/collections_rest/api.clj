@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -113,7 +114,7 @@
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
                        (when-not include-worktrees?
-                         [:= :worktree_id nil])
+                         (remote-sync/exclude-worktrees-clause))
                        [:or
                         (when (contains? namespaces nil)
                           [:= :namespace nil])

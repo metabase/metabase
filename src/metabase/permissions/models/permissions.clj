@@ -294,11 +294,16 @@
 
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+  (cond
+    (and (remote-sync/model-readable? instance)
+         (or (= read-or-write :read)
+             (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance)))))
     (perms-objects-set-for-parent-collection instance read-or-write)
+
     ;; We need to return a dummy permissions string that cannot possibly belong to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
+    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode,
+    ;; or is checked out into a worktree, which only an admin may touch
+    :else
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
@@ -313,9 +318,10 @@
 
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
-  (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
-    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
+  (and (remote-sync/model-readable? m)
+       (if-let [collection-id (:collection_id m)]
+         (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+         (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
@@ -460,8 +466,10 @@
              (audit/is-parent-collection-audit? instance)))
     false
     (case model
-      :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
+      :model/Collection (and (remote-sync/model-readable? instance)
+                             (mi/current-user-has-full-permissions? :read instance))
+      (and (remote-sync/model-readable? instance)
+           (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read))))))
 
 ;;; ---- Collection-based visibility registration ----
 
@@ -517,7 +525,8 @@
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+         ([instance#] (and (remote-sync/model-readable? instance#)
+                           (can-read-via-parent-collection? (:collection_id instance#))))
          ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
