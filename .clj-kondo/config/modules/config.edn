@@ -2081,7 +2081,8 @@
            metabase.server.middleware.session
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
-   :uses #{analytics
+   :uses #{agent-api
+           analytics
            analytics-interface
            api
            api-keys

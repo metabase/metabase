@@ -1,9 +1,15 @@
 (ns metabase.agent-api.usage
   "Agent API (CLI) usage logging.
 
-  One write point feeds the analytics table: a lean `agent_api_call_log` row per direct Agent
-  API HTTP call, recorded from the `routes` respond callback in `metabase.agent-api.api`. The
-  write is a `defenterprise` no-op in OSS — an OSS instance records nothing — with the real
+  Two write points feed the `agent_api_call_log` table:
+
+  1. **Agent API routes** — the `routes` respond callback in `metabase.agent-api.api` records
+     direct `/api/agent/*` HTTP calls (skipping MCP's synthetic in-process dispatch).
+  2. **REST API middleware** — [[wrap-record-cli-usage]] records regular `/api/*` calls from the
+     Metabase CLI (identified by User-Agent), since the CLI calls the standard REST API, not the
+     Agent API. It skips `/api/agent/` requests to avoid double-counting.
+
+  The write is a `defenterprise` no-op in OSS — an OSS instance records nothing — with the real
   insert in `metabase-enterprise.agent-api.usage`. Like `ai_usage_log`, collection runs on every
   EE instance (`:feature :none`); the `:audit-app` feature gates the surfaces that read these
   rows (the audit view + page), not the writing.
@@ -14,7 +20,9 @@
   the caller's self-reported `User-Agent` (analytics only — never used to gate access)."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.util :as u]))
 
 (def supported-client-keys
@@ -43,3 +51,53 @@
   metabase-enterprise.agent-api.usage
   [_call-info]
   nil)
+
+(defn- cli-user-agent?
+  "True when `user-agent` identifies the Metabase CLI (`metabase-cli/<version>`)."
+  [user-agent]
+  (and (some? user-agent)
+       (str/starts-with? (u/lower-case-en user-agent) "metabase-cli")))
+
+(def ^:private uuid-re
+  "Matches a UUID v4 path segment (8-4-4-4-12 hex)."
+  #"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+(defn templatize-uri
+  "Replace variable path segments in `uri` with `:id` (numeric) or `:uuid` (UUID v4) to reduce
+  cardinality for analytics. `/api/card/134` → `/api/card/:id`,
+  `/api/card/abc-def-…/query` → `/api/card/:uuid/query`."
+  [^String uri]
+  (-> uri
+      (str/replace #"(?<=/)\d+(?=/|$)" ":id")
+      (str/replace uuid-re ":uuid")))
+
+(defn wrap-record-cli-usage
+  "Ring middleware that records one `agent_api_call_log` row for every regular REST API call made
+  by the Metabase CLI. The CLI calls `/api/card/`, `/api/search/`, etc. — NOT the Agent API — so
+  the recorder in `metabase.agent-api.api/routes` never fires for it. This middleware fills that
+  gap. It skips `/api/agent/` requests (already recorded there) and non-CLI callers (zero
+  overhead: a single header check)."
+  [handler]
+  (fn [request respond raise]
+    (let [user-agent (get-in request [:headers "user-agent"])
+          uri        (:uri request)]
+      (if-not (and (cli-user-agent? user-agent)
+                   (not (str/starts-with? uri "/api/agent/")))
+        (handler request respond raise)
+        (let [timer (u/start-timer)]
+          (handler request
+                   (fn [response]
+                     (let [status-code (:status response)
+                           error?      (or (nil? status-code) (>= status-code 400))]
+                       (record-agent-api-call!
+                        {:user-id       api/*current-user-id*
+                         :tenant-id     nil
+                         :user-agent    user-agent
+                         :operation     (str (some-> (:request-method request) name u/upper-case-en)
+                                             " " (templatize-uri uri))
+                         :status        (if error? "error" "success")
+                         :duration-ms   (long (u/since-ms timer))
+                         :ip-address    (request/ip-address request)
+                         :error-message nil}))
+                     (respond response))
+                   raise))))))
