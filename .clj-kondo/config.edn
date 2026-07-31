@@ -183,6 +183,8 @@
      dev.kondo-ratchet/fix!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
+     ;; each test registers its own distinct :provider/test-* keyword, so the additions never overlap
+     metabase.auth-identity.core/derive!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!

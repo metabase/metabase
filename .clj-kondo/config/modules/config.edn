@@ -3408,6 +3408,7 @@
            metabase-enterprise.mfa.routes}
    :uses #{api
            appearance
+           auth-identity
            channel
            config
            events

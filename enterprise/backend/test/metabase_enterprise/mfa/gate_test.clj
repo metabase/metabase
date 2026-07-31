@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]))
 
@@ -109,7 +110,7 @@
                         :provider/totp                          :exempt}]
     (testing "every registered provider has a deliberate MFA classification"
       (is (= (set (keys classification))
-             (set (descendants :metabase.auth-identity.provider/provider)))))
+             (set (auth-identity/descendants :metabase.auth-identity.provider/provider)))))
     (testing "the gate's behavior matches each classification for an enrolled user"
       (mt/with-premium-features #{:multi-factor-auth}
         (mt/with-temporary-setting-values [mfa-enforcement :optional]
