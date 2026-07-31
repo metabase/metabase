@@ -65,6 +65,10 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
           idTag("user", user_id),
         ]),
     }),
+    // The `/api/session/*` MFA endpoints run before a session exists. `noEvent` keeps their 401s
+    // away from the global handler in app-main.js, which only exempts an exact `/api/session` and
+    // would otherwise `push("/auth/login")` and remount the login page mid-flow — killing the
+    // retry-on-a-wrong-code path.
     verifyMfa: builder.mutation<
       { id: string },
       { challenge_token: string; code: string; remember?: boolean }
@@ -73,6 +77,18 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/session/mfa/verify",
         body,
+        noEvent: true,
+      }),
+    }),
+    enrollMfaOnLogin: builder.mutation<
+      { id: string; recovery_codes: string[] },
+      { enrollment_token: string; code: string; remember?: boolean }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/enroll",
+        body,
+        noEvent: true,
       }),
     }),
     getMfaStatus: builder.query<MfaStatus, void>({
@@ -116,6 +132,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/session/mfa/send-email-otp",
         body,
+        noEvent: true,
       }),
     }),
     regenerateRecoveryCodes: builder.mutation<
@@ -138,6 +155,7 @@ export const {
   useListUnenrolledMfaUsersQuery,
   useRemoveUserMfaMutation,
   useVerifyMfaMutation,
+  useEnrollMfaOnLoginMutation,
   useGetMfaStatusQuery,
   useEnrollMfaMutation,
   useConfirmMfaEnrollmentMutation,
