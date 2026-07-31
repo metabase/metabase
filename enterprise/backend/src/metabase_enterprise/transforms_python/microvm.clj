@@ -165,20 +165,27 @@
       (throw (ex-info "MicroVM control plane call failed"
                       {:status status, :path path, :body (str body)})))))
 
+(defn- managed-connector
+  "ARN of an AWS-managed network connector, e.g. ALL_INGRESS or INTERNET_EGRESS."
+  [region name]
+  (str "arn:aws:lambda:" region ":aws:network-connector:aws-network-connector:" name))
+
 (defmethod launch! :aws
   [{:keys [run-id]}]
   (let [image (transforms-python.settings/python-microvm-image)
         _     (when-not image
                 (throw (ex-info "python-microvm-image must be set to use the lambda MicroVM backend"
                                 {:error-type :configuration-error})))
+        region (transforms-python.settings/python-microvm-region)
         ;; No execution role: the VM reaches everything by presigned URL, and user code inside it
         ;; can read whatever role it is given.
         vm    (control-plane-call! :post "/2025-09-09/microvms"
-                                   (cond-> {:imageIdentifier          image
-                                            :maximumDurationInSeconds (transforms-python.settings/python-runner-timeout-seconds)}
-                                     (transforms-python.settings/python-microvm-egress-connector)
-                                     (assoc :egressNetworkConnectors
-                                            [(transforms-python.settings/python-microvm-egress-connector)])))
+                                   {:imageIdentifier          image
+                                    :maximumDurationInSeconds (transforms-python.settings/python-runner-timeout-seconds)
+                                    :ingressNetworkConnectors [(or (transforms-python.settings/python-microvm-ingress-connector)
+                                                                   (managed-connector region "ALL_INGRESS"))]
+                                    :egressNetworkConnectors  [(or (transforms-python.settings/python-microvm-egress-connector)
+                                                                   (managed-connector region "INTERNET_EGRESS"))]})
         vm-id (:microvmId vm)
         ;; a map of header name -> value
         token (:authToken (control-plane-call! :post (str "/2025-09-09/microvms/" vm-id "/auth-token")

@@ -224,8 +224,18 @@
   :encryption :when-encryption-key-set
   :audit      :never)
 
+(setting/defsetting python-microvm-ingress-connector
+  (deferred-tru "ARN of the network connector governing inbound traffic to a MicroVM. Leave empty for the AWS-managed ALL_INGRESS connector, which is what lets Metabase reach the VM.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
 (setting/defsetting python-microvm-egress-connector
-  (deferred-tru "ARN of the network connector governing MicroVM outbound traffic. Leave empty to accept the AWS default, which permits unrestricted internet access.")
+  (deferred-tru "ARN of the network connector governing MicroVM outbound traffic. Leave empty for the AWS-managed INTERNET_EGRESS connector; point it at a VPC connector to confine ingestion traffic.")
   :type       :string
   :visibility :admin
   :feature    :transforms-python
