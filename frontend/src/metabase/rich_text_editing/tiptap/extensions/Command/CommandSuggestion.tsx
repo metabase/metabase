@@ -11,7 +11,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useMetabotName } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -105,7 +105,7 @@ export const CommandSuggestion = forwardRef<
   const host = useEditorHost();
   const document = useSelector(host.selectors.getCurrentDocument);
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);

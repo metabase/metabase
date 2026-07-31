@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useMetabotName } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
   useMetabotAgent,
@@ -15,7 +15,7 @@ import { getMetabotNotConfiguredToastProps } from "./AIProviderConfigurationNoti
 export const AIQuestionAnalysisButton = () => {
   const { hasMetabotAccess, canUseMetabot } = useUserMetabotPermissions();
   const { submitInput } = useMetabotAgent("omnibot");
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const [sendToast] = useToast();
 
   if (!hasMetabotAccess) {

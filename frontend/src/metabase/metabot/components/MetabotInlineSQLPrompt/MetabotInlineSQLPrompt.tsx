@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
-import { useMetabotName } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
@@ -52,7 +52,7 @@ export const MetabotInlineSQLPrompt = ({
     },
   ] = useDisclosure(false);
   const { canUseSqlGeneration } = useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
 
   const isSubmitDisabled = !canUseSqlGeneration || !value.trim() || isLoading;
 
