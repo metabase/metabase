@@ -8,9 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Blocker, BlockerFunction, NavigateFunction } from "react-router";
-import { NavigationType, useBlocker, useNavigate } from "react-router";
-import { match } from "ts-pattern";
+import type { Blocker, BlockerFunction } from "react-router";
+import { useBlocker } from "react-router";
 
 type BlockerArgs = Parameters<BlockerFunction>[0];
 
@@ -52,21 +51,6 @@ function findBlockingGuard(
   return null;
 }
 
-/**
- * Reissue the navigation the user agreed to, the way the leave-confirm call
- * sites used to once their hook had cancelled it. A POP cannot be replayed by
- * destination, so it goes back a step, which is the guess they made too.
- */
-function reissue(navigate: NavigateFunction, args: BlockerArgs): void {
-  match(args.historyAction)
-    .with(NavigationType.Pop, () => navigate(-1))
-    .with(NavigationType.Replace, () =>
-      navigate(args.nextLocation, { replace: true }),
-    )
-    .with(NavigationType.Push, () => navigate(args.nextLocation))
-    .exhaustive();
-}
-
 /** The navigation a guard is currently prompting about. */
 interface HeldNavigation {
   guardId: string;
@@ -105,14 +89,11 @@ const RouteLeaveGuardsContext = createContext<RouteLeaveGuardsValue | null>(
  * navigation that no mounted component is able to release.
  */
 export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
-  const navigate = useNavigate();
   const guardsRef = useRef(new Map<string, Guard>());
   // Guards that already had their say about the navigation being held.
   const answeredRef = useRef(new Set<string>());
-  const skipNextRef = useRef(false);
   // The navigation the user is being asked about, kept for as long as a prompt
-  // is up. `blocker.location` is not a substitute: react-router holds one pending
-  // navigation, so anything navigating meanwhile overwrites it.
+  // is up.
   //
   // The ref is the one source of truth, because the blocker callback writes it
   // from outside React. Syncing it back from the state during a render would
@@ -121,6 +102,16 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
   const heldRef = useRef<HeldNavigation | null>(null);
   const [held, setHeld] = useState<HeldNavigation | null>(null);
 
+  // react-router's `proceed` closes over the navigation it was made for, so the
+  // one captured when the prompt went up resumes that navigation even if a later
+  // one has replaced what the router reports as pending. `blocker.proceed` is not
+  // a substitute: the router keeps one pending navigation, so anything navigating
+  // meanwhile overwrites it, and resuming would go somewhere never asked about.
+  const answerRef = useRef<Pick<Blocker, "proceed" | "reset">>({
+    proceed: undefined,
+    reset: undefined,
+  });
+
   const hold = useCallback((next: HeldNavigation | null) => {
     heldRef.current = next;
     setHeld(next);
@@ -128,6 +119,7 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
 
   const release = useCallback(() => {
     answeredRef.current.clear();
+    answerRef.current = { proceed: undefined, reset: undefined };
     hold(null);
   }, [hold]);
 
@@ -140,8 +132,9 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
         // The guard holding the navigation has gone, so nothing can answer for
         // it any more. Drop the navigation rather than leave it stuck.
         if (heldRef.current?.guardId === id) {
+          const drop = answerRef.current.reset;
           release();
-          blockerRef.current.reset?.();
+          drop?.();
         }
       };
     },
@@ -150,13 +143,6 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
 
   const shouldBlock = useCallback<BlockerFunction>(
     (args) => {
-      // The navigation we just reissued on the user's behalf. They already said
-      // yes to it, so it goes through.
-      if (skipNextRef.current) {
-        skipNextRef.current = false;
-        return false;
-      }
-
       // A prompt is already up. Keep blocking, and keep asking about the
       // destination the user was originally shown.
       if (heldRef.current) {
@@ -181,8 +167,16 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
 
   const blocker = useBlocker(shouldBlock);
 
-  const blockerRef = useRef(blocker);
-  blockerRef.current = blocker;
+  // The first render after the block is the one that still sees the blocker for
+  // the held navigation, so its answers are captured before anything else can
+  // navigate and replace them.
+  if (
+    heldRef.current &&
+    blocker.state === "blocked" &&
+    !answerRef.current.proceed
+  ) {
+    answerRef.current = { proceed: blocker.proceed, reset: blocker.reset };
+  }
 
   const proceedFrom = useCallback(
     (id: string) => {
@@ -205,28 +199,18 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
         return;
       }
 
-      const prompted = args.nextLocation;
-      const parked = blocker.location;
+      const resume = answerRef.current.proceed;
       release();
-
-      if (prompted && parked && parked.key !== prompted.key) {
-        // Something navigated while the prompt was up, and react-router holds
-        // that navigation now. Resuming would send the user somewhere they were
-        // never asked about, so reissue the one they agreed to instead.
-        skipNextRef.current = true;
-        blocker.reset?.();
-        reissue(navigate, args);
-      } else {
-        blocker.proceed?.();
-      }
+      resume?.();
     },
-    [blocker, navigate, release, hold],
+    [release, hold],
   );
 
   const resetAll = useCallback(() => {
+    const drop = answerRef.current.reset;
     release();
-    blocker.reset?.();
-  }, [blocker, release]);
+    drop?.();
+  }, [release]);
 
   const value = useMemo(
     () => ({ registerGuard, held, proceedFrom, resetAll }),
