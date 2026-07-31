@@ -20,7 +20,8 @@
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (def supported-client-keys
   "Canonical client keys [[detect-client]] classifies callers into for analytics. Keep in sync
@@ -49,16 +50,6 @@
   [_call-info]
   nil)
 
-(defn- cli-user-agent?
-  "True when `user-agent` identifies the Metabase CLI (`metabase-cli/<version>`)."
-  [user-agent]
-  (and (some? user-agent)
-       (str/starts-with? (u/lower-case-en user-agent) "metabase-cli")))
-
-(def ^:private uuid-re
-  "Matches a UUID v4 path segment (8-4-4-4-12 hex)."
-  #"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
-
 (defn templatize-uri
   "Replace variable path segments in `uri` with `:id` (numeric) or `:uuid` (UUID v4) to reduce
   cardinality for analytics. `/api/card/134` → `/api/card/:id`,
@@ -66,14 +57,21 @@
   [^String uri]
   (-> uri
       (str/replace #"(?<=/)\d+(?=/|$)" ":id")
-      (str/replace uuid-re ":uuid")))
+      (str/replace u/uuid-regex ":uuid")))
 
 (defn- error-message-from-response
   "Best-effort human-readable error string from a response, for the gated `error_message` column.
-  Keyword lookups are nil-safe, so a streaming/opaque body just yields nil."
-  [response]
-  (let [body (:body response)]
-    (or (:message body) (:error body))))
+  The body may be a Clojure map (inside the handler), a JSON string, or a bare string (after
+  serialization). Handles all three; returns nil for streaming/opaque bodies."
+  [{:keys [body]}]
+  (cond
+    (map? body)    (or (:message body) (:error body))
+    (string? body) (or (try
+                         (let [parsed (json/decode body keyword)]
+                           (or (:message parsed) (:error parsed)))
+                         (catch Exception _ nil))
+                       body)
+    :else          nil))
 
 (defn wrap-record-cli-usage
   "Ring middleware that records one `agent_api_call_log` row for every `/api/*` call whose
@@ -83,14 +81,14 @@
   [handler]
   (fn [request respond raise]
     (let [user-agent (get-in request [:headers "user-agent"])
-          uri        (:uri request)]
-      (if-not (cli-user-agent? user-agent)
+          ^String uri (:uri request)]
+      (if-not (and (= "metabase-cli" (detect-client user-agent))
+                   (str/starts-with? uri "/api/"))
         (handler request respond raise)
         (let [timer (u/start-timer)]
           (handler request
-                   (fn [response]
-                     (let [status-code (:status response)
-                           error?      (or (nil? status-code) (>= status-code 400))]
+                   (fn [{:keys [status] :as response}]
+                     (let [error? (or (nil? status) (>= status 400))]
                        (record-agent-api-call!
                         {:user-id       (or (:metabase-user-id request) api/*current-user-id*)
                          :tenant-id     (some-> api/*current-user* deref :tenant_id)
