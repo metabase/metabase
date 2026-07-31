@@ -611,6 +611,18 @@
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :query-builder)
           (is (= :no (data-perms/full-schema-permission-for-user
+                      user-id-1 :perms/create-queries database-id-1 "schema_1"))))
+        (testing "A schema with no table-level rows falls back to the database-level grant"
+          (data-perms/set-database-permission! all-users-group-id database-id-1 :perms/create-queries :no)
+          (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :query-builder)
+          (is (= :query-builder (data-perms/full-schema-permission-for-user
+                                 user-id-1 :perms/create-queries database-id-1 "schema_with_no_tables"))))
+        (testing "A database-level grant is combined with the schema's own table rows, per group"
+          ;; group-1 keeps the db-level :query-builder from above, but one table in schema_1 is restricted, so the
+          ;; schema as a whole is not fully accessible for that group.
+          (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :no)
+          (is (= :no (data-perms/full-schema-permission-for-user
                       user-id-1 :perms/create-queries database-id-1 "schema_1"))))))))
 
 (deftest schema-permission-for-user-test

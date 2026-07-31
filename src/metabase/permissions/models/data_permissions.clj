@@ -546,62 +546,31 @@
 
 ;;; -------------------------------- full-schema-permission-for-user --------------------------------------------------
 
-(def ^:dynamic *full-schema-permission-cache*
-  "Request cache for [[full-schema-permission-for-user]]: `{:db-ids #{} :perms {user-id {perm-type {db-id entry}}}}`
-  where each entry is `{:default v, :schemas {schema v}}` — per schema, each group's most restrictive value across
-  the schema's table rows unioned with the group's db-level rows, coalesced most-permissively across groups (the
-  nested query expands db-level rows into every schema to keep the per-group pairing). `:default` — the same
-  aggregation over db-level rows alone — answers schemas with no rows of their own. Schema names are exact. Loaded
-  per database, all permission types at once."
-  (atom {:db-ids #{} :perms {}}))
+(defn- full-schema-permission-rank-pair
+  "The `[min max]` rank pair summarizing one `(db-id, schema-name, perm-type)`: within each group, the most
+  restrictive rank across the schema's table rows and that group's database-level rows; then min/max of those
+  per-group values. Returns nil when the user has no rows at all.
 
-(defn- load-full-schema-permission-perms
-  [user-id db-ids]
-  (let [base        (perm-rows-query-base user-id db-ids)
-        with-where  (fn [q extra-clause]
-                      (cond-> q extra-clause (update :where conj extra-clause)))
-        branch      (fn [bucket schema-expr extra-clause]
-                      (-> base
-                          (assoc :select [:p.perm_type :p.db_id [schema-expr :schema_name]
-                                          [[:inline bucket] :bucket] :p.group_id
-                                          [value-rank-case :r]])
-                          (with-where extra-clause)))
-        schemas-sub {:select-distinct [[:p.perm_type :perm_type] [:p.db_id :db_id] [:p.schema_name :schema_name]]
-                     :from      (:from base)
-                     :join      (:join base)
-                     :left-join (:left-join base)
-                     :where     (conj (:where base) [:not= :p.table_id nil])}
-        expanded    (-> base
-                        (update :join conj [schemas-sub :s] [:and
-                                                             [:= :s.perm_type :p.perm_type]
-                                                             [:= :s.db_id :p.db_id]])
-                        (assoc :select [:p.perm_type :p.db_id [:s.schema_name :schema_name]
-                                        [[:inline "schema"] :bucket] :p.group_id
-                                        [value-rank-case :r]])
-                        (update :where conj [:= :p.table_id nil]))]
-    (reduce (fn [m {:keys [perm_type db_id schema_name bucket mn mx]}]
-              (let [perm-type (keyword perm_type)
-                    value     (ranks->most-permissive-value perm-type [mn mx])]
-                (case bucket
-                  "schema" (assoc-in m [perm-type db_id :schemas schema_name] value)
-                  "db"     (assoc-in m [perm-type db_id :default] value))))
-            {}
-            (t2/query {:select   [:i.perm_type :i.db_id :i.schema_name :i.bucket
-                                  [[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
-                       :from     [[{:select   [:u.perm_type :u.db_id :u.schema_name :u.bucket :u.group_id
-                                               [[:max :u.r] :gmax]]
-                                    :from     [[{:union-all [(branch "schema" :p.schema_name [:not= :p.table_id nil])
-                                                             expanded
-                                                             (branch "db" nil [:= :p.table_id nil])]}
-                                                :u]]
-                                    :group-by [:u.perm_type :u.db_id :u.schema_name :u.bucket :u.group_id]}
-                                   :i]]
-                       :group-by [:i.perm_type :i.db_id :i.schema_name :i.bucket]}))))
+  Selecting the schema's table rows and the database-level rows together is what keeps this a single flat aggregate:
+  a database-level row applies to every schema, so restricting to one schema needs no expansion step."
+  [user-id perm-type database-id schema-name]
+  (let [per-group   (-> (perm-rows-query-base user-id [database-id])
+                        (assoc :select   [:p.group_id [[:max value-rank-case] :gmax]]
+                               :group-by [:p.group_id])
+                        (update :where conj [:= :p.perm_type (u/qualified-name perm-type)])
+                        (update :where conj [:or
+                                             [:= :p.table_id nil]
+                                             [:= :p.schema_name schema-name]]))
+        {:keys [mn mx]} (first (t2/query {:select [[[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
+                                          :from   [[per-group :i]]}))]
+    (when mn [mn mx])))
 
 (mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
-  single value. The schema-level permission is the *most* restrictive table-level permission within that schema."
+  single value. The schema-level permission is the *most* restrictive table-level permission within that schema.
+
+  Deliberately uncached: the sole caller asks about one schema of one database, so a request cache could never hit."
   [user-id perm-type database-id schema-name]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
@@ -615,13 +584,10 @@
     (most-permissive-value perm-type)
 
     :else
-    (let [{:keys [default schemas]} (get-in (cached-db-perms *full-schema-permission-cache*
-                                                             load-full-schema-permission-perms
-                                                             user-id [database-id])
-                                            [perm-type database-id])]
-      (or (get schemas schema-name)
-          default
-          (least-permissive-value perm-type)))))
+    (or (ranks->most-permissive-value
+         perm-type
+         (full-schema-permission-rank-pair user-id perm-type database-id schema-name))
+        (least-permissive-value perm-type))))
 
 ;;; ------------------- most-permissive-database-permission-for-user / user-has-any-perms-of-type? --------------------
 
@@ -723,7 +689,6 @@
              *database-permission-cache*    (atom {:db-ids #{} :perms {}})
              *schema-permission-cache*      (atom {:db-ids #{} :perms {}})
              *full-db-permission-cache*     (atom {:db-ids #{} :perms {}})
-             *full-schema-permission-cache* (atom {:db-ids #{} :perms {}})
              *most-permissive-permission-cache* (atom {})
              *sandboxes-for-user*           (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
@@ -732,7 +697,10 @@
   "Eagerly load every per-database permission cache for the given database IDs for the current user. The checks fill
   their caches one database at a time, so call this before checking permissions across many databases to pay a
   handful of small aggregate queries instead of some per database. A no-op for superusers (their checks never read
-  the caches) and when the request cache is unavailable."
+  the caches) and when the request cache is unavailable.
+
+  [[full-schema-permission-for-user]] has no cache to prime: it answers one `(db-id, schema-name)` question for the
+  upload path, which no caller of this function reaches."
   [db-ids]
   (when (and (use-cache? api/*current-user-id*)
              (not api/*is-superuser?*)
@@ -740,8 +708,7 @@
     (doseq [[cache-atom load-fn] [[*table-permission-cache* load-table-permission-perms]
                                   [*database-permission-cache* load-database-permission-perms]
                                   [*schema-permission-cache* load-schema-permission-perms]
-                                  [*full-db-permission-cache* load-full-db-permission-perms]
-                                  [*full-schema-permission-cache* load-full-schema-permission-perms]]]
+                                  [*full-db-permission-cache* load-full-db-permission-perms]]]
       (cached-db-perms cache-atom load-fn api/*current-user-id* db-ids))
     nil))
 
