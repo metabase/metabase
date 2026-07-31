@@ -1,4 +1,4 @@
-(ns dev.modules-config-test
+(ns metabase.dev.modules-config-test
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]

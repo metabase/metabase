@@ -151,11 +151,13 @@
           (str/starts-with? (name ns-symb) prefix))
         ["build-drivers."
          "build."
+         "hooks." ; clj-kondo hook tests, outside the module system
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
          "mage."
          "main-test" ; bin/release-list
          "metabase.deps-edn-test"
+         "metabase.dev." ; tests for dev/src tooling, which lives outside the module system
          "metabase.driver."
          "metabase.test."
          "metabase.test.data."
