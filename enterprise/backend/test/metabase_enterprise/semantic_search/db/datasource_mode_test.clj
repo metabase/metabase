@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [next.jdbc :as jdbc])
   (:import
    (clojure.lang ExceptionInfo)
@@ -27,22 +28,36 @@
 
 (deftest probe-connection-restores-its-timeout-test
   (testing "the probe's socket bound is lifted before check-in, so the next borrower keeps the app db's own"
-    (let [with-probe-connection @#'semantic.db.datasource/with-probe-connection
-          probe-bound           @#'semantic.db.datasource/probe-network-timeout-ms]
+    (let [with-bounded-connection @#'semantic.db.datasource/with-bounded-connection
+          probe-bound             (:network-ms @#'semantic.db.datasource/probe-bounds)]
       (doseq [initial-ms [0 300000]]
         (testing (format "from an existing timeout of %dms" initial-ms)
           (let [timeouts (atom [])]
             (with-redefs [mdb/data-source     (constantly ::app-pool)
                           jdbc/get-connection (fn [_] (stub-connection initial-ms timeouts))]
-              (is (= ::probed (with-probe-connection (constantly ::probed))))
+              (is (= ::probed (with-bounded-connection @#'semantic.db.datasource/probe-bounds
+                                (constantly ::probed))))
               (is (= [probe-bound initial-ms] @timeouts))))))
       (testing "and when the probe throws, which is how a stuck read ends"
         (let [timeouts (atom [])]
           (with-redefs [mdb/data-source     (constantly ::app-pool)
                         jdbc/get-connection (fn [_] (stub-connection 300000 timeouts))]
             (is (thrown? ExceptionInfo
-                         (with-probe-connection (fn [_] (throw (ex-info "stuck" {}))))))
+                         (with-bounded-connection @#'semantic.db.datasource/probe-bounds
+                           (fn [_] (throw (ex-info "stuck" {}))))))
             (is (= [probe-bound 300000] @timeouts))))))))
+
+(deftest support-check-outwaits-the-probe-test
+  (testing "the cached support check gets a longer leash than the readiness probe, whose callers are a search
+            request and an indexer tick rather than a metric scrape"
+    (let [{probe-statement :statement-seconds probe-network :network-ms} @#'semantic.db.datasource/probe-bounds
+          {check-statement :statement-seconds check-network :network-ms}
+          @#'semantic.db.datasource/support-check-bounds]
+      (is (< probe-statement check-statement))
+      (is (< probe-network check-network))
+      (testing "and the socket bound outlasts the statement bound on both, or it would end the query first"
+        (is (< (* 1000 probe-statement) probe-network))
+        (is (< (* 1000 check-statement) check-network))))))
 
 (defmacro ^:private with-support-cache
   "Run body with all three pieces of app-db probe state rebound to fresh atoms: the support cache (holding
@@ -50,6 +65,7 @@
   [init & body]
   `(with-redefs [semantic.db.datasource/app-db-pgvector-support (atom ~init)
                  semantic.db.datasource/probe-cooldown-timer (atom nil)
+                 semantic.db.datasource/app-db-support-check-errored? (atom false)
                  semantic.db.datasource/logged-pgvector-absent? (atom false)]
      ~@body))
 
@@ -102,21 +118,21 @@
         (testing "installed but schema missing → probe schema creation only, not the extension"
           (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema-exists false})
                         semantic.db.datasource/app-db-can-provision-pgvector?
-                        (fn [_ create-extension? create-schema?]
+                        (fn [_ _ create-extension? create-schema?]
                           (is (= [false true] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
         (testing "available but not installed → probe both extension and schema creation"
           (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists false})
                         semantic.db.datasource/app-db-can-provision-pgvector?
-                        (fn [_ create-extension? create-schema?]
+                        (fn [_ _ create-extension? create-schema?]
                           (is (= [true true] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
         (testing "available but not installed, schema pre-created → probe the extension only"
           (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists true})
                         semantic.db.datasource/app-db-can-provision-pgvector?
-                        (fn [_ create-extension? create-schema?]
+                        (fn [_ _ create-extension? create-schema?]
                           (is (= [true false] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
@@ -124,6 +140,33 @@
           (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists false})
                         semantic.db.datasource/app-db-can-provision-pgvector? (fn [& _] false)]
             (is (false? (check)))))))))
+
+(deftest probe-app-db-store-test
+  (testing "the readiness probe asks what the store has now, where the support check asks what it could have"
+    (letfn [(probe [] (semantic.db.datasource/probe-app-db-store!))
+            (catalog [m] (fn [& _] m))]
+      (with-redefs [mdb/data-source     (constantly ::app-pool)
+                    jdbc/get-connection (fn [_] (stub-connection))]
+        (testing "store provisioned here and the extension is installed → reachable"
+          (with-support-cache true
+            (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema-exists true})]
+              (is (true? (probe))))))
+        (testing "store provisioned here but the extension was dropped → unreachable, latch notwithstanding"
+          (with-support-cache true
+            (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists true})
+                          semantic.db.datasource/app-db-can-provision-pgvector?
+                          (fn [& _] (throw (AssertionError. "re-creating the extension answers nothing here")))]
+              (is (false? (probe))))))
+        (testing "never provisioned → the cached support answer, and the DDL behind it runs once"
+          (with-support-cache nil
+            (let [calls (atom 0)]
+              (with-redefs [mdb/db-is-set-up?   (constantly true)
+                            jdbc/execute-one!   (catalog {:installed false :available true :schema-exists false})
+                            semantic.db.datasource/check-app-db-pgvector-support
+                            (fn [] (swap! calls inc) true)]
+                (is (true? (probe)))
+                (is (true? (probe)))
+                (is (= 1 @calls) "the second probe reads the latch rather than re-running the rolled-back DDL")))))))))
 
 (deftest support-check-caching-test
   (with-redefs [semantic.db.datasource/db-url nil
@@ -193,6 +236,23 @@
                         semantic.db.datasource/check-app-db-pgvector-support
                         (fn [] (throw (AssertionError. "must not re-probe after a confirmed true")))]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))))
+
+(deftest errored-support-check-retries-sooner-test
+  (testing "a check that couldn't answer is retried on its own short cooldown, not the five-minute one an
+            answered no earns"
+    (let [probe-due?     @#'semantic.db.datasource/probe-due?
+          error-cooldown @#'semantic.db.datasource/probe-error-cooldown-ms
+          cooldown       @#'semantic.db.datasource/probe-cooldown-ms
+          elapsed-ms     (quot (+ error-cooldown cooldown) 2)]
+      (is (< error-cooldown elapsed-ms cooldown))
+      (with-redefs [semantic.db.datasource/probe-cooldown-timer (atom (u/start-timer))
+                    u/since-ms (constantly elapsed-ms)]
+        (testing "an answered no is still trusted at this point"
+          (with-redefs [semantic.db.datasource/app-db-support-check-errored? (atom false)]
+            (is (false? (probe-due?)))))
+        (testing "an errored check is not: search is on the appdb engine over a question nobody answered"
+          (with-redefs [semantic.db.datasource/app-db-support-check-errored? (atom true)]
+            (is (true? (probe-due?)))))))))
 
 (deftest unlicensed-availability-check-does-not-probe-test
   (testing "without the :semantic-search feature, the availability gate never probes the app db"

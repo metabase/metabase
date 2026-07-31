@@ -170,7 +170,11 @@
             (finally
               (semantic.db.datasource/shutdown-db!))))))))
 
-(def ^:private can-provision? #'semantic.db.datasource/app-db-can-provision-pgvector?)
+(defn- can-provision?
+  "[[app-db-can-provision-pgvector?]] under a statement timeout these tests never reach, since every
+  connection here fails before a statement runs."
+  [datasource create-extension? create-schema?]
+  (#'semantic.db.datasource/app-db-can-provision-pgvector? datasource 10 create-extension? create-schema?))
 
 (defn- failing-datasource
   "A datasource whose every connection attempt throws `e`, so the provisioning check fails before it can
