@@ -42,53 +42,48 @@
   (is (= [1 1] (#'data-perms/combine-rank-pairs nil [1 1])))
   (is (nil? (#'data-perms/combine-rank-pairs nil nil))))
 
-(deftest db-permission-cache-loads-once-test
+(deftest db-permission-cache-loads-per-database-test
   (let [user-id 1
-        loads   (atom 0)
+        loads   (atom [])
         cache   (atom {:db-ids #{} :perms {}})]
-    (binding [api/*current-user-id*            user-id
-              data-perms/*db-permission-cache* cache]
+    (binding [api/*current-user-id*                user-id
+              data-perms/*db-permission-cache*     cache
+              data-perms/*all-db-permission-cache* (atom {})]
       (mt/with-dynamic-fn-redefs [data-perms/load-db-perms
-                                  (fn [_user-id _db-ids]
-                                    (swap! loads inc)
+                                  (fn [_user-id db-ids]
+                                    (swap! loads conj (some-> db-ids set))
                                     {:perms/manage-database {10 {:database :yes :every-table :yes :any-table :yes}
                                                              11 {:database :no  :every-table :no  :any-table :no}}
                                      :perms/create-queries  {10 {:every-table :query-builder
                                                                  :any-table   :query-builder-and-native}}})]
-        (testing "every whole-database question is served by one load"
-          (is (true?  (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 10)))
-          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 11)))
+        (testing "one load per database serves all three of its values"
+          (is (true? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 10)))
           (is (= :query-builder
                  (data-perms/full-db-permission-for-user user-id :perms/create-queries 10)))
           (is (= :query-builder-and-native
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
-          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (= 1 @loads) "one query serves :database, :full-db and :any for every database"))
-        (testing "databases with no rows fall back to the least permissive value"
+          (is (= [#{10}] @loads)))
+        (testing "a different database is its own load"
+          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 11)))
+          (is (= [#{10} #{11}] @loads)))
+        (testing "priming a list of databases takes them in one go, skipping those already loaded"
+          (reset! loads [])
+          (data-perms/prime-db-perms-cache {:db-ids #{10 12 13}})
+          (is (= [#{12 13}] @loads)))
+        (testing "a database with no rows still counts as loaded, and is not re-queried"
+          (reset! loads [])
           (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 12)))
-          (is (= :no (data-perms/full-db-permission-for-user user-id :perms/create-queries 99))))
+          (is (= [] @loads)))
+        (testing "the all-databases question uses its own cache, loaded whole"
+          (reset! loads [])
+          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
+          (is (= [nil] @loads) "loaded with no database scope")
+          (reset! loads [])
+          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
+          (is (= [] @loads) "and only once"))
         (testing "exclude-db-ids is honoured"
           (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
                                                               :exclude-db-ids [10]))))))))
-
-(deftest db-permission-cache-covers-databases-created-later-test
-  (testing "a Database created after the cache loaded is fetched, not read as having no permissions"
-    ;; the first load covers every database that exists at the time; `mt/with-temp` then makes more, and several
-    ;; driver tests create one (or a loop of them) after a permission check has already run.
-    (mt/with-test-user :rasta
-      (let [view-data #(data-perms/full-db-permission-for-user (mt/user->id :rasta) :perms/view-data %)]
-        (is (not= :blocked (view-data (mt/id))) "baseline, and warms the cache")
-        (mt/with-temp [:model/Database {db-1 :id} {}]
-          (is (not= :blocked (view-data db-1))))
-        (mt/with-temp [:model/Database {db-2 :id} {}]
-          (is (not= :blocked (view-data db-2)) "and a second one, as a loop of temp databases would"))
-        (testing "the whole-instance question still works after those scoped loads"
-          (is (true? (data-perms/user-has-any-perms-of-type? (mt/user->id :rasta) :perms/view-data))))
-        (testing "a database already loaded is not re-queried"
-          (let [db-id (mt/id)]
-            (t2/with-call-count [call-count]
-              (dotimes [_ 5] (view-data db-id))
-              (is (zero? (call-count))))))))))
 
 (deftest table-permission-cache-scope-test
   (let [user-id 1
@@ -136,7 +131,7 @@
 (deftest table-permission-cache-batches-large-table-id-sets-test
   (testing "a table-id set larger than the parameter budget is split across queries rather than failing"
     (let [user-id    1
-          batch-size @#'data-perms/max-table-ids-per-query
+          batch-size @#'data-perms/max-ids-per-query
           table-ids  (set (range 1 (+ 1 (* 2 batch-size) 10)))
           loads      (atom [])]
       (binding [api/*current-user-id*               user-id
@@ -383,10 +378,10 @@
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
               (is (zero? (call-count))))
-            (testing "that one fetch covers every database, so another database is a cache hit too"
+            (testing "a different database is a cache miss"
               (t2/with-call-count [call-count]
                 (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)
-                (is (zero? (call-count)))))))))))
+                (is (pos? (call-count)))))))))))
 
 (deftest table-permission-for-user-absent-table-still-sees-database-grant-test
   (testing "a check against a table that doesn't exist still sees the database-level grant"

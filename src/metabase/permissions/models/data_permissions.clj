@@ -303,9 +303,9 @@
   `:db-ids`."
   (atom {:db-ids #{} :table-ids #{} :perms {}}))
 
-(def ^:private max-table-ids-per-query
-  "How many table IDs to list in one load. Each is a bound parameter and Postgres caps a statement at 65535 of them,
-  so a caller passing a very large `:table-ids` set is split across several queries rather than failing outright."
+(def ^:private max-ids-per-query
+  "How many IDs to list in one load. Each is a bound parameter and Postgres caps a statement at 65535 of them, so a
+  caller passing a very large set is split across several queries rather than failing outright."
   5000)
 
 (defn- load-table-permission-perms
@@ -361,7 +361,7 @@
     (let [user-id api/*current-user-id*
           cache   @*table-permission-cache*]
       (if (seq table-ids)
-        (doseq [batch (partition-all max-table-ids-per-query
+        (doseq [batch (partition-all max-ids-per-query
                                      (into #{} (remove (:table-ids cache)) table-ids))]
           (load-table-perms! user-id {:table-ids (set batch)}))
         (when-let [missing-db-ids (not-empty (into #{} (remove (:db-ids cache)) db-ids))]
@@ -456,15 +456,18 @@
   before they coalesce across groups — a user can hold `:unrestricted` on every table without any single group
   granting it on all of them.
 
-  All three are aggregations of the same rows (see [[perm-rows-query-base]]), so one query computes them for every
-  database and permission type at once. That is what keeps checks looping over databases to a single query, however many
-  databases and permission rows the instance has.
+  All three are aggregations of the same rows (see [[perm-rows-query-base]]), so one query computes all of them, for
+  every database it is asked about, at once. `:db-ids` records which those were: this cache only ever answers for a
+  database it actually loaded, so one created later is fetched rather than read as having no permissions.
 
-  `:db-ids` is the set of databases those values can answer for. One created after the load -- which tests do
-  constantly -- is not among them, so it is fetched rather than read as having no permissions. A user with no
-  permission rows at all leaves the set empty and reloads on each check, which costs a query against what is
-  effectively an empty table and does not arise outside tests that strip permissions."
+  Checks that walk a list of databases should [[prime-db-perms-cache]] first, exactly as table checks do."
   (atom {:db-ids #{} :perms {}}))
+
+(def ^:dynamic *all-db-permission-cache*
+  "Request cache for the questions that scan *every* database rather than asking about one --
+  [[user-has-any-perms-of-type?]]. Shaped like [[*db-permission-cache*]]'s `:perms`, but loaded in full, so it needs
+  no record of what it covers."
+  (atom {}))
 
 (defn- load-db-perms
   "Whole-database values for `db-ids`, or for every database when nil."
@@ -491,26 +494,50 @@
                        :from     [[per-group :i]]
                        :group-by [:i.perm_type :i.db_id]}))))
 
+(defn- load-db-perms!
+  "Load `db-ids` into [[*db-permission-cache*]] and return the resulting per-user map."
+  [user-id db-ids]
+  (let [loaded (load-db-perms user-id db-ids)]
+    (-> (swap! *db-permission-cache*
+               (fn [cache]
+                 (-> cache
+                     (update :db-ids into db-ids)
+                     (update-in [:perms user-id] #(merge-with merge % loaded)))))
+        (get-in [:perms user-id]))))
+
+(defn prime-db-perms-cache
+  "Eagerly load whole-database permissions for `:db-ids` for the current user, so that a run of per-database checks
+  costs one query instead of one per database. A no-op for superusers, whose checks never read the cache.
+
+  The counterpart of [[prime-table-perms-cache]], for the checks that walk a list of databases."
+  [{:keys [db-ids]}]
+  (when (and (use-cache? api/*current-user-id*)
+             (not api/*is-superuser?*))
+    (let [missing (into #{} (remove (:db-ids @*db-permission-cache*)) db-ids)]
+      (doseq [batch (partition-all max-ids-per-query missing)]
+        (load-db-perms! api/*current-user-id* (set batch))))
+    nil))
+
 (defn- cached-db-perms
   "The `{perm-type {db-id {:database v :every-table v :any-table v}}}` map for `user-id`, able to answer for
-  `database-id` -- nil asks for all of them. The first call loads every database in one query; anything created after
-  it is loaded one at a time. Loads straight through without caching when the request cache doesn't apply."
+  `database-id`, loading it if this request hasn't yet. Loads straight through without caching when the request cache
+  doesn't apply."
   [user-id database-id]
   (if (use-cache? user-id)
-    (let [{:keys [db-ids perms]} @*db-permission-cache*]
-      (if (or (contains? db-ids database-id)
-              (and (seq db-ids) (nil? database-id)))
-        (get perms user-id)
-        ;; nothing loaded yet? take every database at once. Otherwise this one postdates that load, so fetch just it.
-        (let [loaded (load-db-perms user-id (when (seq db-ids) [database-id]))]
-          (-> (swap! *db-permission-cache*
-                     (fn [cache]
-                       (-> cache
-                           (update :db-ids into (cond-> (into #{} (mapcat keys) (vals loaded))
-                                                  database-id (conj database-id)))
-                           (update-in [:perms user-id] #(merge-with merge % loaded)))))
-              (get-in [:perms user-id])))))
-    (load-db-perms user-id (when database-id [database-id]))))
+    (if (contains? (:db-ids @*db-permission-cache*) database-id)
+      (get-in @*db-permission-cache* [:perms user-id])
+      (load-db-perms! user-id #{database-id}))
+    (load-db-perms user-id [database-id])))
+
+(defn- all-db-perms
+  "Like [[cached-db-perms]] but for every database at once, for the questions that scan them all."
+  [user-id]
+  (if (use-cache? user-id)
+    (or (get @*all-db-permission-cache* user-id)
+        (let [loaded (load-db-perms user-id nil)]
+          (swap! *all-db-permission-cache* assoc user-id loaded)
+          loaded))
+    (load-db-perms user-id nil)))
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
 
@@ -746,7 +773,7 @@
         (boolean (some (fn [[db-id vals]]
                          (and (= (:any-table vals) value)
                               (not (exclude? db-id))))
-                       (get (cached-db-perms user-id nil) perm-type))))))
+                       (get (all-db-perms user-id) perm-type))))))
 
 ;;; --------------------------------------- cache assembly ------------------------------------------------------------
 
@@ -773,6 +800,7 @@
   `(binding [*table-permission-cache*  (atom {:db-ids #{} :table-ids #{} :perms {}})
              *schema-permission-cache* (atom {:db-ids #{} :perms {}})
              *db-permission-cache*     (atom {:db-ids #{} :perms {}})
+             *all-db-permission-cache* (atom {})
              *sandboxes-for-user*           (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 

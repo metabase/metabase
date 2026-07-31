@@ -292,10 +292,12 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
-  (let [dbs (->> (t2/select [:model/Database :id :name :engine :description :is_audit]
-                            :is_audit false
-                            :router_database_id nil
-                            {:order-by [[:%lower.name :asc]]})
+  (let [all (t2/select [:model/Database :id :name :engine :description :is_audit]
+                       :is_audit false
+                       :router_database_id nil
+                       {:order-by [[:%lower.name :asc]]})
+        _   (perms/prime-db-perms-cache {:db-ids (into #{} (map :id) all)})
+        dbs (->> all
                  (filter mi/can-read?)
                  (mapv present-database))]
     (list-result :databases dbs query-params)))
