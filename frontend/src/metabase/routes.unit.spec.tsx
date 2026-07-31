@@ -49,7 +49,7 @@ jest.mock("metabase/AppComponent", () => {
   const { Outlet } = jest.requireActual("metabase/router");
   return {
     __esModule: true,
-    default: () => <Outlet />,
+    App: () => <Outlet />,
   };
 });
 
