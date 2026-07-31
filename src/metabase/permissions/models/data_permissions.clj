@@ -535,14 +535,17 @@
     (most-permissive-value perm-type)
 
     :else
-    (let [table-perm (coalesce perm-type
-                               (into #{}
-                                     (remove nil?)
-                                     [(get-in (cached-db-perms user-id) [perm-type database-id :database])
-                                      (get-in (cached-table-perms user-id database-id table-id)
-                                              [perm-type database-id table-id])
-                                      (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                        perm-type)]))]
+    (let [db-perm    (get-in (cached-db-perms user-id) [perm-type database-id :database])
+          table-perm (if (= db-perm (most-permissive-value perm-type))
+                       db-perm
+                       (coalesce perm-type
+                                 (into #{}
+                                       (remove nil?)
+                                       [db-perm
+                                        (get-in (cached-table-perms user-id database-id table-id)
+                                                [perm-type database-id table-id])
+                                        (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                          perm-type)])))]
       (or (when-not (= table-perm (least-permissive-value perm-type))
             table-perm)
           (when (pos-int? table-id)
