@@ -1,9 +1,20 @@
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import type { LlmProviderTypeName } from "metabase-types/api";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 
 describe("ProviderTypeIcon", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("renders the Metabase logo for the managed provider", () => {
     renderWithProviders(<ProviderTypeIcon type="metabase" icon="metabot" />);
 
@@ -33,5 +44,23 @@ describe("ProviderTypeIcon", () => {
     renderWithProviders(<ProviderTypeIcon type={unknownType} icon="ai" />);
 
     expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Metabase mark on a whitelabelled instance", () => {
+    // mockSettings feeds the settings singleton hasPremiumFeature reads, so the token has to
+    // land before the plugin initializes or it never registers its logo
+    const settingsState = mockSettings(
+      createMockSettings({
+        "application-logo-url": "https://example.com/customer-logo.svg",
+        "token-features": createMockTokenFeatures({ whitelabel: true }),
+      }),
+    );
+    setupEnterpriseOnlyPlugin("whitelabel");
+
+    renderWithProviders(<ProviderTypeIcon type="metabase" icon="metabot" />, {
+      storeInitialState: { settings: settingsState },
+    });
+
+    expect(screen.getByTestId("main-logo")).toBeInTheDocument();
   });
 });

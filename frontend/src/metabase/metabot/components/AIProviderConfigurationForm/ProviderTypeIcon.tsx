@@ -1,4 +1,4 @@
-import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
 import { Flex, Icon } from "metabase/ui";
 import type { IconName, LlmProviderTypeName } from "metabase-types/api";
 
@@ -11,7 +11,7 @@ import OpenAiLogo from "./logos/openai.svg";
 import OpenRouterLogo from "./logos/openrouter.svg";
 import ZaiLogo from "./logos/zai.svg";
 
-// null where the mark is not an image: Metabase draws LogoIcon, which follows whitelabelling
+// null where the mark is not an image: Metabase is drawn from its own logo component
 const PROVIDER_LOGOS: Record<LlmProviderTypeName, string | null> = {
   anthropic: AnthropicLogo,
   openai: OpenAiLogo,
@@ -49,7 +49,9 @@ function ProviderTypeMark({
   size: number;
 }) {
   if (type === "metabase") {
-    return <LogoIcon height={size} />;
+    // this provider is Metabase's own hosted service, so it keeps the Metabase mark on a
+    // whitelabelled instance rather than taking on the customer's logo
+    return <DefaultLogoIcon height={size} />;
   }
 
   const logo = PROVIDER_LOGOS[type];
