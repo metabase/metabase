@@ -138,3 +138,12 @@ ${tableAliases
 
   return script + functionTemplate;
 }
+
+const TRANSFORM_SIGNATURE_REGEX = /^def\s+transform\s*\([^)]*\)\s*:/m;
+
+export function setIngestionSignature(script: string): string {
+  return script.replace(
+    TRANSFORM_SIGNATURE_REGEX,
+    "def transform(secrets=None, state=None):",
+  );
+}

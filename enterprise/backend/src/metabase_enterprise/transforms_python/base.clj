@@ -8,9 +8,9 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.executor :as executor]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -18,10 +18,12 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
@@ -238,14 +240,6 @@
       :else
       (transfer-with-drop-create-fallback-strategy! driver db-id table-name metadata indexes data-source))))
 
-;;; ------------------------------------------------- Cancellation -------------------------------------------------
-
-(defn- start-cancellation-process!
-  "Starts a core.async process that sends a cancellation request to the python executor if cancel-chan receives a value."
-  [server-url run-id cancel-chan]
-  (a/go (when (a/<! cancel-chan)
-          (python-runner/cancel-python-code-http-call! server-url run-id))))
-
 ;;; ------------------------------------------------- Core Execution -------------------------------------------------
 
 (defn- count-jsonl-rows
@@ -264,9 +258,10 @@
   [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
-    (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
+    (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)
+                _registered        (executor/register-run-closeable!
+                                    run-id {:ingestion? (transforms-base.u/ingestion-transform? transform)})]
       (let [driver          (:engine db)
-            server-url      (transforms-python.settings/python-runner-url)
             _               (python-runner/copy-tables-to-s3! {:run-id              run-id
                                                                :shared-storage      @shared-storage-ref
                                                                :source              (assoc source :source-tables resolved-source-tables)
@@ -274,14 +269,19 @@
                                                                :limit               (:limit source)
                                                                :transform-id        (:id transform)
                                                                :source-range-params source-range-params})
-            _               (start-cancellation-process! server-url run-id cancel-chan)
+            ingestion?      (transforms-base.u/ingestion-transform? transform)
             {:keys [status body] :as response}
-            (python-runner/execute-python-code-http-call!
-             {:server-url     server-url
-              :code           (:body source)
+            (executor/run-python-code!
+             {:code           (:body source)
               :run-id         run-id
+              :ingestion?     ingestion?
               :source-tables  resolved-source-tables
-              :shared-storage @shared-storage-ref})
+              :shared-storage @shared-storage-ref
+              :cancel-chan    cancel-chan
+              ;; secrets are never on the instance; fetched explicitly for the run
+              :secrets        (some-> (:id transform) transforms.core/secrets-for-run)
+              :state          (when ingestion?
+                                (some-> (:incremental_state transform) json/decode))})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)
             events          (python-runner/read-events @shared-storage-ref)]
@@ -313,6 +313,12 @@
                     (with-stage-timing-fn run-id [:import :file-to-dwh] do-transfer)
                     (do-transfer))
                   (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size rows-written)
+                  ;; Persist the sync state only after the data is durably in the target table,
+                  ;; so a failed transfer re-runs from the previous state.
+                  (when-some [new-state (and ingestion? (:state output-manifest))]
+                    (when-let [transform-id (:id transform)]
+                      (t2/update! :model/Transform transform-id
+                                  {:incremental_state (json/encode new-state)})))
                   (assoc response :rows-affected rows-written))
                 (finally
                   (.delete temp-file))))

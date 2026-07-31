@@ -20,7 +20,9 @@ export function getPythonSourceValidationResult(
     };
   }
 
-  if (source["source-tables"].length === 0) {
+  // An ingestion transform fetches its own data over the network, so it must not have any
+  // source tables; every other python transform needs at least one.
+  if (!source.ingestion && source["source-tables"].length === 0) {
     return {
       isValid: false,
       errorMessage: t`Select at least one table to alias`,

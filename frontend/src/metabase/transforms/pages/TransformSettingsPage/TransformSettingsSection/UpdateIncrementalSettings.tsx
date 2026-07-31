@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useFormikContext } from "formik";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +12,7 @@ import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
 } from "metabase/transforms/components/IncrementalTransform";
+import { hasCodeManagedSyncState } from "metabase/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { ResetCheckpointSection } from "./ResetCheckpointSection";
@@ -37,6 +38,8 @@ const IncrementalTransformSettingsWrapper = ({
     }
   };
 
+  const hasResettableState = transform.incremental_state != null;
+
   return (
     <IncrementalTransformSettings
       source={transform.source}
@@ -46,7 +49,7 @@ const IncrementalTransformSettingsWrapper = ({
       readOnly={readOnly}
       targetTableId={transform.table?.id}
       extraActions={
-        !readOnly && transform.last_checkpoint_value != null ? (
+        !readOnly && hasResettableState ? (
           <ResetCheckpointSection transform={transform} />
         ) : undefined
       }
@@ -97,10 +100,18 @@ export function UpdateIncrementalSettings({
   const { initialValues, validationSchema, updateIncrementalSettings } =
     useUpdateIncrementalSettings(transform);
 
+  const validationContext = useMemo(
+    () => ({
+      hasCodeManagedSyncState: hasCodeManagedSyncState(transform.source),
+    }),
+    [transform.source],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
+      validationContext={validationContext}
       onSubmit={_.noop}
       enableReinitialize
     >
@@ -136,7 +147,9 @@ function useCheckpointChangeInterceptor(transform: Transform) {
       const waitingForCheckpointSelection =
         values.incremental &&
         values.sourceStrategy === "checkpoint" &&
-        values.checkpointFilterFieldId == null;
+        values.checkpointFilterFieldId == null &&
+        // No checkpoint field is expected when the transform code manages the sync state.
+        !hasCodeManagedSyncState(transform.source);
 
       if (waitingForCheckpointSelection) {
         return false;
@@ -147,7 +160,7 @@ function useCheckpointChangeInterceptor(transform: Transform) {
         values.checkpointFilterFieldId != null &&
         String(currentFieldId) !== values.checkpointFilterFieldId;
 
-      if (fieldChanged && transform.last_checkpoint_value != null) {
+      if (fieldChanged && transform.incremental_state != null) {
         return new Promise<boolean>((resolve) => {
           pendingResolve.current = resolve;
           openModal();

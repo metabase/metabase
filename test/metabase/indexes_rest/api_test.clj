@@ -167,7 +167,7 @@
 
 (deftest incremental-mutations-force-next-run-to-rebuild-test
   (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
-                                                            :last_checkpoint_value "100")]
+                                                            :incremental_state "100")]
     (letfn [(full-run? []
               (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform transform-id)))]
       (testing "no index changes: the watermark alone decides, so the next run appends"
@@ -175,7 +175,7 @@
       (testing "POST leaves the watermark alone; the pending row forces the rebuild"
         (let [created (mt/user-http-request :crowberto :post 200 "index/request"
                                             {:transform_id transform-id :structured btree})]
-          (is (= "100" (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id)))
+          (is (= "100" (t2/select-one-fn :incremental_state :model/Transform transform-id)))
           (is (full-run?))
           (testing "PUT keeps forcing it (update-pending)"
             (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))

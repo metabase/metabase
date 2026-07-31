@@ -99,6 +99,13 @@
             (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
                            (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
 
+(defn validate-ingestion-source!
+  "An ingestion transform materializes its own input, so it must declare no source tables."
+  [{:keys [source] :as transform}]
+  (when (transforms-base.u/ingestion-transform? transform)
+    (api/check-400 (empty? (:source-tables source))
+                   (deferred-tru "An ingestion transform fetches its own data and cannot have source tables."))))
+
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
   the incremental range filter to target.
@@ -151,6 +158,8 @@
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
         (assoc :requestable_indexes (requestable-indexes transform))
+        ;; names only — secret values never leave the server
+        (assoc :secret_keys (vec (sort (map name (keys (transform.model/secrets-for-run id))))))
         transforms.u/add-source-readable)))
 
 (defn create-transform!
@@ -162,6 +171,7 @@
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
    (validate-target-schema! body)
+   (validate-ingestion-source! body)
    (validate-incremental-table-tag! body)
    (validate-lookback! body)
    (let [creator-id (or creator-id api/*current-user-id*)
@@ -172,7 +182,7 @@
                                             (or (:owner_user_id body) creator-id))
                             transform     (t2/insert-returning-instance!
                                            :model/Transform
-                                           (assoc (select-keys body [:name :description :source :target :run_trigger
+                                           (assoc (select-keys body [:name :description :source :target :run_trigger :secrets
                                                                      :collection_id :owner_email])
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]
@@ -200,7 +210,8 @@
                       (when (contains? body :target)
                         (validate-target-schema! new))
                       (when (contains? body :source)
-                        (validate-incremental-column-type! new))
+                        (validate-incremental-column-type! new)
+                        (validate-ingestion-source! new))
                       (when (or (contains? body :source) (contains? body :target))
                         (validate-incremental-table-tag! new)
                         (validate-lookback! new))
@@ -213,7 +224,15 @@
                                            (transforms-base.u/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/update! :model/Transform id (dissoc body :tag_ids))
+                    ;; :secrets is a per-key merge (nil value = remove) so callers can edit
+                    ;; individual secrets without knowing the other values
+                    (t2/update! :model/Transform id
+                                (cond-> (dissoc body :tag_ids)
+                                  (contains? body :secrets)
+                                  (assoc :secrets (->> (merge (update-keys (transform.model/secrets-for-run id) name)
+                                                              (:secrets body))
+                                                       (into {} (remove (comp nil? val)))
+                                                       not-empty))))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))

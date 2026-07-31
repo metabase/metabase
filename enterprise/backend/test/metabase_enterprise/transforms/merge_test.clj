@@ -305,7 +305,7 @@
                                                              (sql.u/quote-name driver/*driver* :table schema tbl)
                                                              (q "order_id") order-id)]
                                     (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
-                  watermark    (fn [id] (t2/select-one-fn :last_checkpoint_value :model/Transform id))]
+                  watermark    (fn [id] (t2/select-one-fn :incremental_state :model/Transform id))]
               (mt/with-temp [:model/Transform transform payload]
                 (testing "first run builds the full target and records the watermark"
                   (transforms.execute/execute! transform {:run-method :manual})
@@ -407,7 +407,7 @@
                   (transforms.tu/wait-for-table (:name target-table) 10000)
                   (is (= {:by-order {1 "created", 2 "created", 3 "created"} :count 3}
                          (read-target)))
-                  (let [wm (t2/select-one-fn :last_checkpoint_value :model/Transform (:id transform))]
+                  (let [wm (t2/select-one-fn :incremental_state :model/Transform (:id transform))]
                     (is (re-find #"T" (str wm))
                         "the watermark encodes as a temporal value, not the raw epoch number")))
                 (testing "a late-arriving epoch inside the lookback window is upserted on rerun"

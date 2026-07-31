@@ -40,6 +40,8 @@
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]
+ [metabase.transforms.models.transform
+  secrets-for-run]
  [metabase.transforms.crud
   check-database-feature
   check-feature-enabled!

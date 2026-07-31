@@ -71,6 +71,14 @@
   [transform]
   (type-is? (:source transform) :python))
 
+(defn ingestion-transform?
+  "True if `transform` declares that it fetches its own data over the network, rather than reading
+  source tables. Such a transform may hold secrets, keeps its own incremental sync state, and runs
+  isolated from other transforms."
+  [transform]
+  (boolean (and (python-transform? transform)
+                (get-in transform [:source :ingestion]))))
+
 (defn table-target?
   "True if `transform` writes to a plain table, recreated on every run."
   [transform]
@@ -100,7 +108,7 @@
 
 (defn full-incremental-run?
   "True when an incremental transform should drop-and-recreate the target rather than append.
-  Fires when `last_checkpoint_value` is nil (first run, or after the before-update hook clears the watermark on
+  Fires when `incremental_state` is nil (first run, or after the before-update hook clears the resume point on
   a `checkpoint-filter-field-id` change), or when pending index changes require rebuilding the table to apply
   physical index state.
 
@@ -111,7 +119,7 @@
   (if (contains? transform :full-incremental-run?)
     (:full-incremental-run? transform)
     (and (incremental-target? transform)
-         (or (nil? (:last_checkpoint_value transform))
+         (or (nil? (:incremental_state transform))
              (table-index/pending-changes-for-transform? id)))))
 
 (defn full-create-run?
@@ -266,12 +274,16 @@
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
 (defn save-watermark!
-  "Commits the incremental transforms :hi watermark value to the appdb."
+  "Commits the incremental transforms :hi watermark value to the appdb.
+
+  A run with no source range has no watermark to commit, and must leave `incremental_state` alone:
+  an ingestion transform stores the state its own code returned in that same column."
   [transform-id source-range-params]
-  (let [hi-value (:value (:hi source-range-params))]
-    (t2/update! :model/Transform
-                transform-id
-                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+  (when source-range-params
+    (let [hi-value (:value (:hi source-range-params))]
+      (t2/update! :model/Transform
+                  transform-id
+                  {:incremental_state (some-> hi-value encode-checkpoint-value)}))))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -346,7 +358,9 @@
   native query without a table variable to inject the filter into, or no checkpoint field
   selected."
   [{:keys [source] :as transform}]
-  (when (incremental-target? transform)
+  (when (and (incremental-target? transform)
+             ;; an ingestion transform keeps its own sync state, so it needs no checkpoint field
+             (not (ingestion-transform? transform)))
     (when (and (native-query-transform? transform)
                (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))
@@ -415,15 +429,15 @@
   (let [{:keys [checkpoint-filter-field-id lookback]} (:source-incremental-strategy source)]
     (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
-      (let [{:keys [last_checkpoint_value]} (cond-> transform
-                                              (full-incremental-run? transform)
-                                              (assoc :last_checkpoint_value nil))
+      (let [{:keys [incremental_state]} (cond-> transform
+                                          (full-incremental-run? transform)
+                                          (assoc :incremental_state nil))
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (checkpoint-column metadata-provider checkpoint-filter-field-id)
             base-type         (lib.types.isa/column-type column)
             ;; `checkpoint-lo` is the stored watermark; `lo` is the scan bound, pushed back by any lookback.
-            checkpoint-lo     (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
+            checkpoint-lo     (when incremental_state (parse-checkpoint-value base-type incremental_state))
             lo                (cond-> checkpoint-lo
                                 (and checkpoint-lo lookback) (apply-lookback column lookback))
 

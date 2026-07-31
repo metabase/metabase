@@ -8,7 +8,10 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
-import { getLibQuery } from "metabase/transforms/utils";
+import {
+  getLibQuery,
+  hasCodeManagedSyncState,
+} from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -64,6 +67,7 @@ export const IncrementalTransformSettings = ({
 
   const isMultiTablePythonTransform =
     getIsPythonTransformWithMultipleTables(source);
+  const isCodeManagedCursor = hasCodeManagedSyncState(source);
   const isNativeWithoutTableTags = getIsNativeWithoutTableVariables(
     libQuery,
     transformType,
@@ -83,7 +87,7 @@ export const IncrementalTransformSettings = ({
       if (isNativeWithoutTableTags) {
         return t`Incremental transforms for native queries require a table variable.`;
       }
-      if (!hasCheckpointOptions) {
+      if (!hasCheckpointOptions && !isCodeManagedCursor) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;
       }
       return t`Only process new data`;
@@ -91,7 +95,7 @@ export const IncrementalTransformSettings = ({
 
     const transformHasIssues =
       isNativeWithoutTableTags ||
-      !hasCheckpointOptions ||
+      (!hasCheckpointOptions && !isCodeManagedCursor) ||
       isMultiTablePythonTransform;
 
     const switchContent = (
@@ -152,15 +156,19 @@ export const IncrementalTransformSettings = ({
         <Group p="lg">{renderIncrementalSwitch()}</Group>
         {incremental && (
           <>
-            <Divider />
-            <Group p="lg">
-              <SourceStrategyFields
-                source={source}
-                query={libQuery}
-                transformType={transformType}
-                readOnly={readOnly}
-              />
-            </Group>
+            {!isCodeManagedCursor && (
+              <>
+                <Divider />
+                <Group p="lg">
+                  <SourceStrategyFields
+                    source={source}
+                    query={libQuery}
+                    transformType={transformType}
+                    readOnly={readOnly}
+                  />
+                </Group>
+              </>
+            )}
             {extraActions && (
               <>
                 <Divider />
@@ -189,11 +197,13 @@ export const IncrementalTransformSettings = ({
       </Box>
       {incremental && (
         <>
-          <SourceStrategyFields
-            source={source}
-            query={libQuery}
-            transformType={transformType}
-          />
+          {!isCodeManagedCursor && (
+            <SourceStrategyFields
+              source={source}
+              query={libQuery}
+              transformType={transformType}
+            />
+          )}
           <TargetStrategyFields
             variant={variant}
             targetTableId={targetTableId}
@@ -285,18 +295,22 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {transformType === "python" && "source-tables" in source && (
-            <PythonKeysetColumnSelect
-              name="checkpointFilterFieldId"
-              label={t`Field to check for new values`}
-              placeholder={t`Pick a field`}
-              description={t`Pick the input field we should scan to determine which records are new or changed`}
-              descriptionProps={{ lh: "1rem" }}
-              sourceTables={source["source-tables"]}
-              disabled={readOnly}
-            />
+          {transformType === "python" &&
+            "source-tables" in source &&
+            !hasCodeManagedSyncState(source) && (
+              <PythonKeysetColumnSelect
+                name="checkpointFilterFieldId"
+                label={t`Field to check for new values`}
+                placeholder={t`Pick a field`}
+                description={t`Pick the input field we should scan to determine which records are new or changed`}
+                descriptionProps={{ lh: "1rem" }}
+                sourceTables={source["source-tables"]}
+                disabled={readOnly}
+              />
+            )}
+          {!hasCodeManagedSyncState(source) && (
+            <LookbackField readOnly={readOnly} />
           )}
-          <LookbackField readOnly={readOnly} />
         </>
       )}
     </>

@@ -18,8 +18,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "Cloning python-runner repository..."
-git clone --depth 1 https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-runner-container.git python-runner
+# The runner branch this Metabase branch expects. Point at `main` once the MicroVM work merges.
+PYTHON_RUNNER_BRANCH="${PYTHON_RUNNER_BRANCH:-microvm-executor}"
+
+echo "Cloning python-runner repository (branch: ${PYTHON_RUNNER_BRANCH})..."
+git clone --depth 1 --branch "${PYTHON_RUNNER_BRANCH}" \
+  https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-runner-container.git python-runner
 
 if [ "$SKIP_START" = false ]; then
   echo "Starting python-runner..."

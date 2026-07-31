@@ -40,6 +40,9 @@
      [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
+     ;; Declares that the transform fetches its own data over the network: it may hold secrets,
+     ;; manages its own incremental sync state, and is executed in isolation from other transforms.
+     [:ingestion {:optional true} :boolean]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
 (mr/def ::append-config

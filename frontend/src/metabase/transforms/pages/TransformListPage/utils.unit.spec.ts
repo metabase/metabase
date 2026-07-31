@@ -35,6 +35,7 @@ const dirtyEntity = (
   });
 
 jest.mock("metabase/transforms/utils", () => ({
+  ...jest.requireActual("metabase/transforms/utils"),
   getLibQuery: jest.fn(),
 }));
 

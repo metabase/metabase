@@ -545,7 +545,7 @@
     (testing "First incremental run (no watermark) → {full-incremental-run=true}, both types bumped from the same scan"
       (analytics/clear! :metabase-transforms/incremental-rows)
       (run-cancelable-with-mocks!
-       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+       {:id 1 :target {:type "table-incremental"} :incremental_state nil}
        {:checkpoint-filter-field-id 42 :rows-available 1000}
        {:rows-affected 1000})
       (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
@@ -559,7 +559,7 @@
     (testing "Subsequent incremental run (watermark present) → {full-incremental-run=false}, attrition surfaces as sum mismatch"
       (analytics/clear! :metabase-transforms/incremental-rows)
       (run-cancelable-with-mocks!
-       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:id 1 :target {:type "table-incremental"} :incremental_state "42"}
        {:checkpoint-filter-field-id 42 :rows-available 500}
        {:rows-affected 120})
       (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
@@ -573,7 +573,7 @@
     (testing "Driver result missing :rows-affected (defensive contract) → no emission on either side"
       (analytics/clear! :metabase-transforms/incremental-rows)
       (run-cancelable-with-mocks!
-       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:id 1 :target {:type "table-incremental"} :incremental_state "42"}
        {:checkpoint-filter-field-id 42 :rows-available 999}
        {:some-other-shape "no rows-affected here"})
       (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
@@ -583,7 +583,7 @@
     (testing "Python-shaped driver result (clj-http response augmented with :rows-affected by run-python-transform-impl!) emits the metric"
       (analytics/clear! :metabase-transforms/incremental-rows)
       (run-cancelable-with-mocks!
-       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:id 1 :target {:type "table-incremental"} :incremental_state "42"}
        {:checkpoint-filter-field-id 42 :rows-available 800}
        {:status 200 :body {:exit_code 0} :rows-affected 750})
       (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
@@ -597,7 +597,7 @@
     (testing "Incremental run whose source-range-params lacks :rows-available → no emission on either side"
       (analytics/clear! :metabase-transforms/incremental-rows)
       (run-cancelable-with-mocks!
-       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:id 1 :target {:type "table-incremental"} :incremental_state "42"}
        {:checkpoint-filter-field-id 42}
        {:rows-affected 100})
       (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
@@ -609,7 +609,7 @@
       (try
         (analytics/clear! :metabase-transforms/incremental-rows)
         (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :last_checkpoint_value nil}
+         {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :incremental_state nil}
          {:checkpoint-filter-field-id 42 :rows-available 1000}
          {:rows-affected 0})
         (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
@@ -625,7 +625,7 @@
       (try
         (analytics/clear! :metabase-transforms/incremental-rows)
         (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+         {:id 1 :target {:type "table-incremental"} :incremental_state "42"}
          {:checkpoint-filter-field-id 42 :rows-available 500}
          {:rows-affected 120})
         (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
@@ -639,7 +639,7 @@
                                   (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
         (is (= {:status :succeeded :result {:rows-affected 1000}}
                (run-cancelable-with-mocks!
-                {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+                {:id 1 :target {:type "table-incremental"} :incremental_state nil}
                 {:checkpoint-filter-field-id 42 :rows-available 1000}
                 {:rows-affected 1000}))
             "run-cancelable-transform! returns the success envelope; the emission throw is swallowed.")))))

@@ -830,6 +830,17 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-container-endpoint"?: string | null;
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
+  "python-execution-backend"?: string | null;
+  "python-ingestion-execution-backend"?: string | null;
+  "python-microvm-control-plane"?: string | null;
+  "python-microvm-endpoint"?: string | null;
+  "python-microvm-image"?: string | null;
+  "python-microvm-region"?: string | null;
+  "python-microvm-access-key"?: string | null;
+  "python-microvm-secret-key"?: string | null;
+  "python-microvm-control-plane-endpoint"?: string | null;
+  "python-microvm-ingress-connector"?: string | null;
+  "python-microvm-egress-connector"?: string | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;

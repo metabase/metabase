@@ -128,6 +128,122 @@
   :encryption :no
   :audit      :getter)
 
+(setting/defsetting python-execution-backend
+  (deferred-tru "Backend used to execute python transforms that read source tables: http-runner (the python-runner container service) or microvm.")
+  :type       :keyword
+  :visibility :admin
+  :default    :http-runner
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-ingestion-execution-backend
+  (deferred-tru "Backend used to execute ingestion python transforms: those with no source tables, which fetch their own data over the network.")
+  :type       :keyword
+  :visibility :admin
+  :default    :http-runner
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-control-plane
+  (deferred-tru "How MicroVMs are created: aws, or local to target a stand-in container during development.")
+  :type       :keyword
+  :visibility :admin
+  :default    (if config/is-prod? :aws :local)
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-endpoint
+  (deferred-tru "Base URL of the MicroVM stand-in used by the local control plane.")
+  :type       :string
+  :visibility :admin
+  :default    (when (not config/is-prod?) "http://localhost:8085")
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-image
+  (deferred-tru "ARN of the MicroVM image transforms are executed from.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-control-plane-endpoint
+  (deferred-tru "Endpoint override for the MicroVM control plane API. Leave empty for the regional AWS endpoint.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-region
+  (deferred-tru "AWS region MicroVMs run in. Independent of where object storage lives: MicroVMs are only offered in a few regions, so the bucket may well be elsewhere.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-access-key
+  (deferred-tru "AWS access key ID for the MicroVM control plane. Leave empty to use ambient credentials (instance profile, IRSA, environment), which is the recommended setup.")
+  :type       :string
+  :visibility :admin
+  :sensitive? true
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-secret-key
+  (deferred-tru "AWS secret access key for the MicroVM control plane. Leave empty to use ambient credentials.")
+  :type       :string
+  :visibility :admin
+  :sensitive? true
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
+
+(setting/defsetting python-microvm-ingress-connector
+  (deferred-tru "ARN of the network connector governing inbound traffic to a MicroVM. Leave empty for the AWS-managed ALL_INGRESS connector, which is what lets Metabase reach the VM.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-microvm-egress-connector
+  (deferred-tru "ARN of the network connector governing MicroVM outbound traffic. Leave empty for the AWS-managed INTERNET_EGRESS connector; point it at a VPC connector to confine ingestion traffic.")
+  :type       :string
+  :visibility :admin
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
 (setting/defsetting python-runner-test-run-timeout-seconds
   (deferred-tru "Timeout in seconds for Python script test runs. Defaults to 1 minute (60 seconds).")
   :type :integer

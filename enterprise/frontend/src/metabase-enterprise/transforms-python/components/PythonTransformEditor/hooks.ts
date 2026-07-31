@@ -6,6 +6,7 @@ import { useExecutePythonMutation } from "metabase-enterprise/api/transform-pyth
 import type {
   PythonTransformSourceDraft,
   TestPythonTransformResponse,
+  TransformId,
 } from "metabase-types/api";
 
 type TestPythonScriptState = {
@@ -18,6 +19,7 @@ type TestPythonScriptState = {
 
 export function useTestPythonTransform(
   source: PythonTransformSourceDraft,
+  transformId?: TransformId,
 ): TestPythonScriptState {
   const [
     executePython,
@@ -35,6 +37,8 @@ export function useTestPythonTransform(
     const request = executePython({
       code: source.body,
       source_tables: source["source-tables"],
+      ingestion: source.ingestion ?? false,
+      transform_id: transformId,
     });
 
     abort.current = () => request.abort();

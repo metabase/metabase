@@ -3,7 +3,6 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -16,7 +15,6 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -197,10 +195,10 @@
      [~job-run-id]
      (^:once fn* [] ~@body)))
 
-(defn execute-python-code-http-call!
-  "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
-  the response from the server."
-  [{:keys [server-url code request-id run-id source-tables shared-storage timeout-secs]}]
+(defn execute-payload
+  "The `/execute` request body, shared by every execution backend: user code, library files,
+  timeout, the presigned URLs for inputs and outputs, plus secrets and sync state."
+  [{:keys [code request-id run-id source-tables shared-storage timeout-secs secrets state]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
         url-for-path             (fn [path] (:url (get objects path)))
@@ -209,18 +207,27 @@
                                        source-tables)
         table-name->manifest-url (into {} (map (fn [{:keys [alias table_id]}]
                                                  [alias (url-for-path [:table table_id :manifest])]))
-                                       source-tables)
-        payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
-                                  :request_id          (or request-id run-id)
-                                  :output_url          (:url output)
-                                  :output_manifest_url (:url output-manifest)
-                                  :events_url          (:url events)
-                                  :table_mapping       table-name->url
-                                  :manifest_mapping    table-name->manifest-url}
-        response                 (with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+                                       source-tables)]
+    (cond-> {:code                code
+             :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
+             :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+             :request_id          (or request-id run-id)
+             :output_url          (:url output)
+             :output_manifest_url (:url output-manifest)
+             :events_url          (:url events)
+             :table_mapping       table-name->url
+             :manifest_mapping    table-name->manifest-url}
+      ;; decrypted from the transform row; keys are keywordized by the model transform
+      (seq secrets) (assoc :secrets (update-keys secrets name))
+      (some? state) (assoc :state state))))
+
+(defn execute-python-code-http-call!
+  "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
+  the response from the server."
+  [{:keys [server-url run-id] :as ctx}]
+  (let [payload  (execute-payload ctx)
+        response (with-python-api-timing [run-id]
+                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -334,72 +341,3 @@
         (finally
           (safe-delete tmp-data-file)
           (safe-delete tmp-meta-file))))))
-
-(defn execute-and-read-output!
-  "Execute Python code and return output rows without persisting to a database.
-   Used for dry-run/preview/test-run scenarios.
-
-   Args:
-     :code          - Python code to execute
-     :source-tables - Sequential of source-table entries [{:alias ... :table_id ...} ...]
-     :row-limit     - Max rows to return (also limits input rows)
-     :timeout-secs  - Optional timeout override
-
-   Returns:
-     {:status  :succeeded/:failed
-      :cols    [{:name ...} ...]      ; on success
-      :rows    [[...] ...]            ; on success, values in column order
-      :logs    [{:message ...} ...]   ; events from Python execution
-      :message \"error message\"}     ; on failure
-"
-  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
-  (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
-    (let [server-url (transforms-python.settings/python-runner-url)
-          _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
-                                          :source         {:source-tables source-tables}
-                                          :limit          (or per-input-limit row-limit)})
-          {:keys [status body]}
-          (execute-python-code-http-call!
-           {:server-url     server-url
-            :code           code
-            :request-id     (u/generate-nano-id)
-            :source-tables  source-tables
-            :timeout-secs   timeout-secs
-            :shared-storage @shared-storage-ref})
-          events (read-events @shared-storage-ref)]
-      (cond
-        (:timeout body)
-        {:status  :failed
-         :logs    events
-         :message (i18n/deferred-tru "Python execution timed out")}
-
-        (not= 200 status)
-        {:status  :failed
-         :logs    events
-         :message (i18n/deferred-tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
-
-        :else
-        (let [output-manifest (read-output-manifest @shared-storage-ref)
-              {:keys [fields]} output-manifest]
-          ;; TODO (Chris 2026-01-27) -- Disabled this check to match behavior in master, but *real* execution does it.
-          ;;      It seems we added the check as part of DRY-ing up transforms code to reuse with workspaces.
-          #_(if-not (seq fields)
-              {:status  :failed
-               :logs    events
-               :message (i18n/deferred-tru "No fields in output metadata")})
-          (with-open [in  (open-output @shared-storage-ref)
-                      rdr (io/reader in)]
-            (let [cols (mapv (fn [c]
-                               {:name      (:name c)
-                                :base_type (some-> c :base_type keyword)})
-                             fields)
-                  rows (into []
-                             (comp
-                              (remove str/blank?)
-                              (take row-limit)
-                              (map json/decode))
-                             (line-seq rdr))]
-              {:status :succeeded
-               :cols   cols
-               :rows   rows
-               :logs   events})))))))

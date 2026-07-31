@@ -37,12 +37,21 @@ export type IncrementalSettingsFormValues = {
 export const VALIDATION_SCHEMA = Yup.object({
   incremental: Yup.boolean().required(),
   sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
+  // `$hasCodeManagedSyncState` is threaded in via `FormProvider`'s `validationContext`;
+  // python transforms without source tables manage the sync state in code, so no
+  // checkpoint field is required.
   checkpointFilterFieldId: Yup.string()
     .nullable()
     .defined()
-    .when(["incremental", "sourceStrategy"], {
-      is: (incremental: boolean, sourceStrategy: "checkpoint") =>
-        incremental && sourceStrategy === "checkpoint",
+    .when(["incremental", "sourceStrategy", "$hasCodeManagedSyncState"], {
+      is: (
+        incremental: boolean,
+        sourceStrategy: "checkpoint",
+        hasCodeManagedSyncState: boolean | undefined,
+      ) =>
+        incremental &&
+        sourceStrategy === "checkpoint" &&
+        !hasCodeManagedSyncState,
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable().defined(),
     }),

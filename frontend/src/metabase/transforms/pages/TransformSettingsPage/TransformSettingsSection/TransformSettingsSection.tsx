@@ -19,8 +19,13 @@ import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName, Transform, UserId } from "metabase-types/api";
 
-import { isTransformRunning, sourceDatabaseId } from "../../../utils";
+import {
+  isIngestionSource,
+  isTransformRunning,
+  sourceDatabaseId,
+} from "../../../utils";
 
+import { SecretsSection } from "./SecretsSection";
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -60,6 +65,9 @@ export const TransformSettingsSection = ({
         )}
       </TitleSection>
       <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
+      {isIngestionSource(transform.source) && (
+        <SecretsSection transform={transform} readOnly={readOnly} />
+      )}
     </Stack>
   );
 };

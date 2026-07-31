@@ -10,9 +10,42 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
-import { isTransformRunning } from "metabase/transforms/utils";
+import {
+  hasCodeManagedSyncState,
+  isTransformRunning,
+} from "metabase/transforms/utils";
 import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+
+function SyncCursorSection({
+  transform,
+  onReset,
+  isResetting,
+}: {
+  transform: Transform;
+  onReset: () => void;
+  isResetting: boolean;
+}) {
+  const labelId = useId();
+
+  return (
+    <Group gap="md" align="center">
+      <Box c="text-secondary" role="group" aria-labelledby={labelId}>
+        <span id={labelId}>{t`Sync state`}: </span>
+        <Code bg="background_page-tertiary" style={{ whiteSpace: "pre-wrap" }}>
+          {transform.incremental_state}
+        </Code>
+      </Box>
+      <Button
+        leftSection={<Icon name="revert" aria-hidden />}
+        disabled={isTransformRunning(transform) || isResetting}
+        onClick={onReset}
+      >
+        {t`Reset state`}
+      </Button>
+    </Group>
+  );
+}
 
 export function ResetCheckpointSection({
   transform,
@@ -43,7 +76,34 @@ export function ResetCheckpointSection({
     }
   };
 
-  if (transform.last_checkpoint_value == null) {
+  // An ingestion transform has no checkpoint field: its state is whatever its code returned,
+  // so show that instead. Resetting it is the same endpoint — it clears both.
+  const isCodeManaged =
+    transform.source != null && hasCodeManagedSyncState(transform.source);
+  if (isCodeManaged) {
+    if (transform.incremental_state == null) {
+      return null;
+    }
+    return (
+      <>
+        <SyncCursorSection
+          transform={transform}
+          onReset={openModal}
+          isResetting={isLoading}
+        />
+        <ConfirmModal
+          title={t`Reset the sync state?`}
+          message={t`The next run will start from scratch instead of continuing from the stored position. Depending on the transform, this may re-fetch everything from the source.`}
+          opened={isModalOpen}
+          onClose={closeModal}
+          onConfirm={handleConfirm}
+          confirmButtonText={t`Reset state`}
+        />
+      </>
+    );
+  }
+
+  if (transform.incremental_state == null) {
     return null;
   }
 
@@ -62,7 +122,7 @@ export function ResetCheckpointSection({
         <span id={labelId}>{label}: </span>
         <Text component="span" fw="bold" c="text-primary">
           <CheckpointValue
-            value={transform.last_checkpoint_value}
+            value={transform.incremental_state}
             checkpointField={checkpointField}
           />
         </Text>

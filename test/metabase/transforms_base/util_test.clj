@@ -88,18 +88,18 @@
 (deftest ^:parallel full-incremental-run?-test
   (testing "true for an incremental transform with no checkpoint yet"
     (is (true? (transforms-base.u/full-incremental-run?
-                {:target {:type "table-incremental"} :last_checkpoint_value nil}))))
+                {:target {:type "table-incremental"} :incremental_state nil}))))
   (testing "false for an incremental transform that has already recorded a watermark"
     (is (false? (transforms-base.u/full-incremental-run?
-                 {:target {:type "table-incremental"} :last_checkpoint_value "42"}))))
+                 {:target {:type "table-incremental"} :incremental_state "42"}))))
   (testing "false for non-incremental targets regardless of checkpoint value"
     (is (false? (transforms-base.u/full-incremental-run?
-                 {:target {:type "table"} :last_checkpoint_value nil})))
+                 {:target {:type "table"} :incremental_state nil})))
     (is (false? (transforms-base.u/full-incremental-run?
-                 {:target {:type :table} :last_checkpoint_value nil}))))
+                 {:target {:type :table} :incremental_state nil}))))
   (testing "accepts both string and keyword target types"
     (is (true? (transforms-base.u/full-incremental-run?
-                {:target {:type :table-incremental} :last_checkpoint_value nil})))))
+                {:target {:type :table-incremental} :incremental_state nil})))))
 
 (deftest ^:parallel supported-checkpoint-column?-test
   (testing "numeric and date/datetime columns are supported"

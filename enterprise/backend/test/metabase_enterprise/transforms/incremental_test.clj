@@ -166,12 +166,12 @@
 
 (defn- get-checkpoint-value [transform-id]
   (let [transform (t2/select-one :model/Transform transform-id)
-        {:keys [last_checkpoint_value]} transform]
-    (when last_checkpoint_value
+        {:keys [incremental_state]} transform]
+    (when incremental_state
       (let [source-incremental-strategy (get-in transform [:source :source-incremental-strategy])
             field-id (:checkpoint-filter-field-id source-incremental-strategy)
             field (t2/select-one :model/Field field-id)]
-        (#'transforms-base.u/parse-checkpoint-value (:base_type field) last_checkpoint_value)))))
+        (#'transforms-base.u/parse-checkpoint-value (:base_type field) incremental_state)))))
 
 (defn- compare-checkpoint-values
   "Compare two checkpoint values with type-appropriate logic. "
@@ -540,7 +540,7 @@
                 (is (=? {:name target-table} (t2/select-one :model/Table :name target-table))))
               (testing "checkpoint is set from source table MAX even though query returned no rows"
                 (let [transform (t2/select-one :model/Transform (:id transform))]
-                  (is (some? (:last_checkpoint_value transform))
+                  (is (some? (:incremental_state transform))
                       "Checkpoint is computed from source table, not query output"))))))))))
 
 (deftest checkpoint-field-does-not-exist-test
