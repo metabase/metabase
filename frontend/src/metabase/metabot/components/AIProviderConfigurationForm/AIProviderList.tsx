@@ -47,20 +47,15 @@ export function AIProviderList() {
   const [deleteProvider] = useDeleteLlmProviderMutation();
   const { errorByConnectionKey } = useLlmConnectionModels();
 
-  const [isModalOpen, { open: openModal, close: closeModal }] =
+  const [isAdding, { open: startAdding, close: stopAdding }] =
     useDisclosure(false);
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
   const [sendToast] = useToast();
 
-  const handleAdd = () => {
+  const handleModalClose = () => {
+    stopAdding();
     setEditing(undefined);
-    openModal();
-  };
-
-  const handleEdit = (connection: LlmProviderConnection) => {
-    setEditing(connection);
-    openModal();
   };
 
   const handleConfirmDelete = async () => {
@@ -105,7 +100,7 @@ export function AIProviderList() {
                     (type) => type.type === connection.type,
                   )}
                   modelsError={errorByConnectionKey[connection.key]}
-                  onEdit={() => handleEdit(connection)}
+                  onEdit={() => setEditing(connection)}
                   onDelete={() => setDeleting(connection)}
                 />
               </Fragment>
@@ -118,7 +113,7 @@ export function AIProviderList() {
           p={hasConnections ? 0 : undefined}
           w="fit-content"
           leftSection={<Icon name="add" />}
-          onClick={handleAdd}
+          onClick={startAdding}
         >
           {hasConnections ? t`Add another provider` : t`Add a provider`}
         </Button>
@@ -126,13 +121,13 @@ export function AIProviderList() {
 
       {hasConnections && <LlmModelPicker />}
 
-      <ProviderConnectionModal
-        opened={isModalOpen}
-        providerTypes={editing ? providerTypes : addableProviderTypes}
-        connection={editing}
-        onClose={closeModal}
-        onClosed={() => setEditing(undefined)}
-      />
+      {(isAdding || editing) && (
+        <ProviderConnectionModal
+          providerTypes={editing ? providerTypes : addableProviderTypes}
+          connection={editing}
+          onClose={handleModalClose}
+        />
+      )}
 
       <ConfirmModal
         opened={deleting != null}
