@@ -11,7 +11,16 @@ import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
-import { Button, Card, Group, Icon, Menu, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Group,
+  Icon,
+  Menu,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type {
   LlmProviderConnection,
   LlmProviderType,
@@ -147,11 +156,18 @@ function ProviderConnectionCard({
           <Stack gap={0}>
             <Group gap="xs" wrap="nowrap">
               <Text fw="bold">{connection.name}</Text>
-              <Icon
-                name={connection.usable ? "check" : "warning"}
-                c={connection.usable ? "success" : "error"}
-                size={14}
-              />
+              {!connection.usable && (
+                <Tooltip
+                  label={t`Some required settings are missing, so Metabot can't use this provider.`}
+                >
+                  <Icon
+                    name="warning"
+                    c="error"
+                    size={14}
+                    aria-label={t`Incomplete configuration`}
+                  />
+                </Tooltip>
+              )}
             </Group>
             {typeLabel && (
               <Text size="sm" c="text-secondary">
