@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import { Group, SimpleGrid, Text, UnstyledButton } from "metabase/ui";
+import { Group, SimpleGrid, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { LlmProviderType } from "metabase-types/api";
 
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import S from "./ProviderTypePicker.module.css";
+import { canRecognizeApiKeys } from "./api-key";
 
 export function ProviderTypePicker({
   providerTypes,
@@ -14,35 +15,42 @@ export function ProviderTypePicker({
   onSelect: (type: string) => void;
 }) {
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-      {providerTypes.map((providerType) => (
-        <UnstyledButton
-          className={S.option}
-          key={providerType.type}
-          disabled={!providerType.available}
-          onClick={() => onSelect(providerType.type)}
-        >
-          <Group
-            className={S.content}
-            gap="sm"
-            justify="space-between"
-            wrap="nowrap"
+    <Stack gap="md">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        {providerTypes.map((providerType) => (
+          <UnstyledButton
+            className={S.option}
+            key={providerType.type}
+            disabled={!providerType.available}
+            onClick={() => onSelect(providerType.type)}
           >
-            <Group gap="sm" wrap="nowrap">
-              <ProviderTypeIcon
-                type={providerType.type}
-                icon={providerType.icon}
-              />
-              <Text fw="bold">{providerType.label}</Text>
+            <Group
+              className={S.content}
+              gap="sm"
+              justify="space-between"
+              wrap="nowrap"
+            >
+              <Group gap="sm" wrap="nowrap">
+                <ProviderTypeIcon
+                  type={providerType.type}
+                  icon={providerType.icon}
+                />
+                <Text fw="bold">{providerType.label}</Text>
+              </Group>
+              {!providerType.available && (
+                <Text c="text-disabled" size="sm">
+                  {t`Unavailable`}
+                </Text>
+              )}
             </Group>
-            {!providerType.available && (
-              <Text c="text-disabled" size="sm">
-                {t`Unavailable`}
-              </Text>
-            )}
-          </Group>
-        </UnstyledButton>
-      ))}
-    </SimpleGrid>
+          </UnstyledButton>
+        ))}
+      </SimpleGrid>
+      {canRecognizeApiKeys(providerTypes) && (
+        <Text c="text-secondary" size="sm">
+          {t`Already have an API key? Paste it here and we'll pick the provider for you.`}
+        </Text>
+      )}
+    </Stack>
   );
 }

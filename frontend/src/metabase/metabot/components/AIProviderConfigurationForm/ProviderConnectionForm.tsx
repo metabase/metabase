@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { FormEvent, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -29,6 +29,7 @@ import type {
 import { ProviderConfigFields } from "./ProviderConfigFields";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { ProviderTypePicker } from "./ProviderTypePicker";
+import { findProviderTypeForApiKey } from "./api-key";
 
 export function ProviderConnectionForm({
   providerTypes,
@@ -72,15 +73,43 @@ export function ProviderConnectionForm({
     hasStoredAdvancedValues(providerType, connection),
   );
 
+  const selectProviderType = useCallback(
+    (selected: LlmProviderType, nextConfig: LlmProviderConfig = {}) => {
+      setTypeName(selected.type);
+      setName(selected.label);
+      setConfig(nextConfig);
+      setError(undefined);
+    },
+    [],
+  );
+
   const handleTypeChange = (nextType: string) => {
-    setTypeName(nextType);
-    setError(undefined);
-    const nextProviderType = providerTypes.find(
-      (option) => option.type === nextType,
-    );
-    setName(nextProviderType?.label ?? "");
-    setConfig({});
+    const selected = providerTypes.find((option) => option.type === nextType);
+    if (selected) {
+      selectProviderType(selected);
+    }
   };
+
+  const isPickingType = !isEditing && providerType == null;
+
+  useEffect(() => {
+    if (!isPickingType) {
+      return;
+    }
+    const handlePaste = (event: ClipboardEvent) => {
+      const pasted = event.clipboardData?.getData("text").trim();
+      const match = pasted
+        ? findProviderTypeForApiKey(providerTypes, pasted)
+        : undefined;
+      if (!pasted || !match) {
+        return;
+      }
+      event.preventDefault();
+      selectProviderType(match.providerType, { [match.fieldKey]: pasted });
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [isPickingType, providerTypes, selectProviderType]);
 
   const handleBack = () => {
     setTypeName(undefined);
