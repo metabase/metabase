@@ -40,7 +40,7 @@ export function V7RouterTree({
 /**
  * react-router v7 hosting the app, declarative mode. Replaces the v3 `<Router>` +
  * `useRouterHistory` + `syncHistoryWithStore` stack. Hosted on a blocking history
- * so `setRouteLeaveHook` cancels navigation the way it did on v3.
+ * so a registered leave hook cancels navigation the way it did on v3.
  *
  * `onLocationChange` is how the location reaches redux: the app passes
  * `createLocationMirror(store.dispatch)`, so the router itself stays unaware of

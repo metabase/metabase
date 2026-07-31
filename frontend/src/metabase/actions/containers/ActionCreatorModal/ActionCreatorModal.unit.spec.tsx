@@ -13,7 +13,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route, useParams, useRoute, useRouter } from "metabase/router";
+import { Route, useLocation, useParams } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
@@ -27,15 +27,9 @@ import ActionCreatorModal from "./ActionCreatorModal";
 /** Feeds the modal its route props the way `modalRoute` does in the app. */
 function RoutedActionCreatorModal({ onClose }: { onClose: () => void }) {
   const params = useParams<{ slug: string; actionId: string }>();
-  const { location } = useRouter();
-  const route = useRoute() ?? undefined;
+  const location = useLocation();
   return (
-    <ActionCreatorModal
-      params={params}
-      location={location}
-      route={route}
-      onClose={onClose}
-    />
+    <ActionCreatorModal params={params} location={location} onClose={onClose} />
   );
 }
 

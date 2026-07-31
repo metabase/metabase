@@ -180,60 +180,15 @@ export interface RouteProps {
 }
 
 /**
- * A route object as v3 exposed it on the injected `routes` branch. The v7
- * `RouterBridge` republishes the matched branch in this shape, adding
- * `pathnameBase`, the URL prefix the route accounts for (v7's `match.pathname`).
- */
-export interface PlainRoute extends RouteProps {
-  childRoutes?: PlainRoute[];
-  indexRoute?: PlainRoute;
-  pathnameBase?: string;
-}
-
-/**
- * A route-leave hook, v3's `setRouteLeaveHook` callback: it receives the
- * attempted destination and how it was reached, and returns `false` to cancel
- * the navigation. The navigation type is a second argument rather than a field
- * on the location, which carries only the URL parts.
+ * A route-leave hook: it receives the attempted destination and how it was
+ * reached, and returns `false` to cancel the navigation. The navigation type is
+ * a second argument rather than a field on the location, which carries only the
+ * URL parts.
  */
 export type RouteHook = (
   nextLocation?: Location,
   navigationType?: Action,
 ) => unknown;
-
-/**
- * v3's imperative router, the `router` prop the facade injects. The v7
- * `RouterBridge` implements this shape over v7's `navigate`.
- */
-export interface InjectedRouter {
-  push(location: LocationDescriptor): void;
-  replace(location: LocationDescriptor): void;
-  go(n: number): void;
-  goBack(): void;
-  goForward(): void;
-  // `route` is the route to scope the hook to. v3 typed it `any` (callers pass a
-  // route stub, a `<Route>`, or nothing); the shim reads its `pathnameBase`.
-  setRouteLeaveHook(route: any, hook: RouteHook): () => void;
-  createPath(location: LocationDescriptor): string;
-  createHref(location: LocationDescriptor): string;
-  isActive(location: LocationDescriptor, indexOnly?: boolean): boolean;
-}
-
-/**
- * The router-injected props v3 passed to route components (`router`, `location`,
- * `params`, `routes`). The `RouterBridge` republishes them from the v7 match,
- * and the facade hooks read them from there.
- *
- * `params` defaults to v3's non-optional string map (not the facade's optional
- * `Params`), because the legacy route-prop readers were written against that and
- * treat matched params as always present.
- */
-export interface WithRouterProps<P = Record<string, string>> {
-  location: Location;
-  params: P;
-  router: InjectedRouter;
-  routes: PlainRoute[];
-}
 
 /**
  * v3's function form of a `<Link to>`, kept because `RouterLink` still handles it.

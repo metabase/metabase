@@ -4,23 +4,17 @@ import { match } from "ts-pattern";
 import { useDispatch } from "metabase/redux";
 import {
   type Action,
-  type InjectedRouter,
   type Location,
-  type PlainRoute,
-  type Route,
   goBack,
   push,
   replace,
+  useRouteLeaveHook,
+  useRoutePathname,
 } from "metabase/router";
 
 import { useBeforeUnload } from "./use-before-unload";
 
 interface UseConfirmLeaveModalInput {
-  router: InjectedRouter;
-  // The matched route handed to `setRouteLeaveHook` (typed `any`). Accepts the
-  // route object in either representation the app threads it as: the config
-  // object from `useRouter().routes` (`PlainRoute`) or the `Route` prop type.
-  route: Route | PlainRoute;
   isEnabled: boolean;
   isLocationAllowed?: (location: Location | undefined) => boolean;
 }
@@ -46,12 +40,11 @@ export const IS_LOCATION_ALLOWED = (location?: Location) => !location;
  * whenever they try to leave a route
  */
 export const useConfirmRouteLeaveModal = ({
-  router,
-  route,
   isEnabled,
   isLocationAllowed = IS_LOCATION_ALLOWED,
 }: UseConfirmLeaveModalInput): UseConfirmLeaveModalResult => {
   const dispatch = useDispatch();
+  const routePathname = useRoutePathname();
   const [nextNavigation, setNextNavigation] = useState<{
     location: Location;
     navigationType: Action;
@@ -65,24 +58,15 @@ export const useConfirmRouteLeaveModal = ({
 
   useBeforeUnload(isEnabled);
 
-  useEffect(() => {
-    const removeLeaveHook = router.setRouteLeaveHook(
-      route,
-      (location, navigationType) => {
-        if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
-          setOpened(true);
-          setNextNavigation(
-            location && navigationType
-              ? { location, navigationType }
-              : undefined,
-          );
-          return false;
-        }
-      },
-    );
-
-    return removeLeaveHook;
-  }, [isLocationAllowed, router, route, isEnabled, isConfirmed]);
+  useRouteLeaveHook((location, navigationType) => {
+    if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
+      setOpened(true);
+      setNextNavigation(
+        location && navigationType ? { location, navigationType } : undefined,
+      );
+      return false;
+    }
+  });
 
   useEffect(
     function confirmNavigation() {
@@ -118,7 +102,7 @@ export const useConfirmRouteLeaveModal = ({
       setIsConfirmed(false);
       setOpened(false);
     },
-    [route],
+    [routePathname],
   );
 
   return {

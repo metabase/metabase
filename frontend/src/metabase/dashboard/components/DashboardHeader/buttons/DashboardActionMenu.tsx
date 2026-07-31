@@ -7,7 +7,7 @@ import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
 
@@ -39,7 +39,7 @@ const DashboardActionMenuInner = ({
   canEdit,
   openSettingsSidebar,
 }: DashboardActionMenuProps) => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);

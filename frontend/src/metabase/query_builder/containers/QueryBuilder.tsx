@@ -53,9 +53,9 @@ import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import {
   type Location,
   push,
+  useLocation,
   useNavigationType,
-  useRoute,
-  useRouter,
+  useParams,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -346,8 +346,8 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
-  const { location, params } = useRouter();
-  const route = useRoute();
+  const location = useLocation();
+  const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
   const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
@@ -639,7 +639,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route ?? undefined}
       />
     </>
   );

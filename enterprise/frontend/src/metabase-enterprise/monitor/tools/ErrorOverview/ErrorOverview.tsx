@@ -16,7 +16,7 @@ import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Center, Flex } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
@@ -36,7 +36,7 @@ import {
 } from "./utils";
 
 export const ErrorOverview = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [{ page }, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [filters, setFilters] =
     useState<ErroringQuestionsFilters>(DEFAULT_FILTERS);
