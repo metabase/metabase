@@ -360,7 +360,6 @@
   update it."
   {:name         "subscription_write"
    :scope        metabot.scope/agent-delivery-write
-   :extra-scopes [metabot.scope/agent-query-run]
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         subscription-write-args-schema}
   [args {:keys [token-scopes]}]

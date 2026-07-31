@@ -619,8 +619,9 @@
                                                         (wire {:method "update" :id pulse-id
                                                                :archived true}))))))
           (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))))))
-  (testing "the extra scope is advertised as opt-in, so tokens can request it"
-    (is (contains? (registry/registered-opt-in-scopes) "agent:query:run"))))
+  (testing "the scope the gate needs is grantable — it reaches the default DCR grant as
+            execute_query's own scope, so a client holding the default grant can satisfy the gate"
+    (is (contains? (registry/registered-scopes) "agent:query:run"))))
 
 (deftest scope-gates-the-tool-test
   (testing "GHY-4156: a token without the subscribe scope can't call the tool at all"
