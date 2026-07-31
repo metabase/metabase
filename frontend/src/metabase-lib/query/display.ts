@@ -23,10 +23,6 @@ export const defaultDisplay = (
   const stageIndex = -1;
   const aggregations = Lib.aggregations(query, stageIndex);
   const breakouts = Lib.breakouts(query, stageIndex);
-  const resultBreakoutColumnTypes = getResultBreakoutColumnTypes(
-    resultColumns,
-    breakouts.length,
-  );
 
   if (aggregations.length === 0 && breakouts.length === 0) {
     return { display: "table" };
@@ -41,7 +37,7 @@ export const defaultDisplay = (
       query,
       stageIndex,
       breakouts,
-      resultBreakoutColumnTypes,
+      resultColumns,
     );
 
     if (column != null && Lib.isState(column)) {
@@ -70,7 +66,7 @@ export const defaultDisplay = (
       query,
       stageIndex,
       breakouts,
-      resultBreakoutColumnTypes,
+      resultColumns,
     );
 
     const breakoutInfo = Lib.displayInfo(query, stageIndex, breakout);
@@ -98,7 +94,7 @@ export const defaultDisplay = (
       query,
       stageIndex,
       breakouts,
-      resultBreakoutColumnTypes,
+      resultColumns,
     );
 
     const isAnyBreakoutTemporal = breakoutsWithColumns.some(({ column }) => {
@@ -150,12 +146,17 @@ const getBreakoutsWithColumns = (
   query: Lib.Query,
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
-  resultBreakoutColumnTypes: Lib.ColumnTypeInfo[],
+  resultColumns?: readonly DatasetColumn[],
 ) => {
+  const resultBreakoutColumnTypes = getResultBreakoutColumnTypes(
+    resultColumns,
+    breakouts.length,
+  );
+
   return breakouts.map((breakout, index) => {
     const column =
       Lib.breakoutColumn(query, stageIndex, breakout) ??
-      resultBreakoutColumnTypes[index] ??
+      resultBreakoutColumnTypes?.[index] ??
       null;
     return { breakout, column };
   });
@@ -164,9 +165,14 @@ const getBreakoutsWithColumns = (
 const getResultBreakoutColumnTypes = (
   resultColumns: readonly DatasetColumn[] | undefined,
   breakoutCount: number,
-): Lib.ColumnTypeInfo[] => {
-  const breakoutColumns =
-    resultColumns?.filter((column) => column.source === "breakout") ?? [];
+): Lib.ColumnTypeInfo[] | null => {
+  if (resultColumns == null) {
+    return null;
+  }
+
+  const breakoutColumns = resultColumns.filter(
+    (column) => column.source === "breakout",
+  );
 
   if (breakoutColumns.length !== breakoutCount) {
     return [];
