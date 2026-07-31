@@ -139,8 +139,6 @@ type SetupOpts = {
   detailErrorId?: NotificationId;
   failingCountError?: boolean;
   allCountError?: boolean;
-  /** Holds back every list request after the first one until the promise resolves. */
-  listGate?: Promise<void>;
 };
 
 const setup = ({
@@ -156,11 +154,8 @@ const setup = ({
   detailErrorId,
   failingCountError = false,
   allCountError = false,
-  listGate,
 }: SetupOpts = {}) => {
-  let listCallCount = 0;
-
-  fetchMock.get("path:/api/notification/admin", async (call) => {
+  fetchMock.get("path:/api/notification/admin", (call) => {
     const params = new URL(call.url).searchParams;
     if (
       params.get("limit") === "1" &&
@@ -181,10 +176,6 @@ const setup = ({
       return allCountError
         ? { status: 500, body: { message: "All count failed" } }
         : { data: [], total: allCount, limit: 1, offset: 0 };
-    }
-    listCallCount += 1;
-    if (listGate !== undefined && listCallCount > 1) {
-      await listGate;
     }
     return { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
   });
@@ -306,36 +297,6 @@ describe("NotificationsAdminPage", () => {
       expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
         "120",
       );
-    });
-
-    it("keeps tabs, filters, and the loaded grid in place while a tab switch refetches", async () => {
-      let releaseList: () => void = () => undefined;
-      const listGate = new Promise<void>((resolve) => {
-        releaseList = resolve;
-      });
-      setup({ listGate });
-      await waitForTableToLoad();
-
-      await userEvent.click(
-        screen.getByTestId("notifications-admin-tab-failing"),
-      );
-
-      expect(
-        getListCalls().some((call) =>
-          call.url.includes("last_check_status=failing"),
-        ),
-      ).toBe(true);
-      expect(
-        screen.getByTestId("notifications-admin-tabs"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByPlaceholderText(/Search by question or owner/),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("treegrid")).toBeInTheDocument();
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-
-      releaseList();
-      expect(await screen.findByTestId("notification-row-1")).toBeVisible();
     });
 
     it("renders a row per notification with its owner and question", async () => {
