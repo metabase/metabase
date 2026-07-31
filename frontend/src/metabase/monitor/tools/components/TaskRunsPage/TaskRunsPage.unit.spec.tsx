@@ -113,9 +113,12 @@ describe("TaskRunsPage", () => {
         offset: 0,
       }),
     });
-    await waitForLoaderToBeRemoved();
-
-    const pagination = screen.getByRole("navigation", { name: "pagination" });
+    // `findByRole` rather than waiting on the loader: the loader can mount a
+    // tick after render, so waiting for its absence can pass before the data
+    // (and with it the pagination) has arrived.
+    const pagination = await screen.findByRole("navigation", {
+      name: "pagination",
+    });
     expect(
       within(pagination).getByTestId("pagination-total"),
     ).toHaveTextContent("75");

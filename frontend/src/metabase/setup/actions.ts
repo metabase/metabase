@@ -2,6 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import {
+  refetchCurrentUser,
   refetchSiteSettings,
   settingsApi,
   setupApi,
@@ -19,7 +20,6 @@ import type {
   State,
   UserInfo,
 } from "metabase/redux/store";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import MetabaseSettings from "metabase/utils/settings";
@@ -122,7 +122,7 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
     dispatch(refetchSiteSettings());
     //  the AI config step needs to know the created user is an admin
-    dispatch(refreshCurrentUser());
+    dispatch(refetchCurrentUser());
   },
 );
 

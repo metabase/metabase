@@ -28,8 +28,10 @@ const TestComponent = () => {
 };
 
 const waitForElevenSeconds = async () => {
-  act(() => {
-    jest.advanceTimersByTime(11 * 1000);
+  await act(async () => {
+    // Async advance so the fired timer's invalidate/refetch chain (and the
+    // response delivery it waits on) runs to completion.
+    await jest.advanceTimersByTimeAsync(11 * 1000);
   });
   await screen.findByText("Test");
 };
@@ -126,6 +128,14 @@ const UntilTestComponent = ({
     skip,
     onSatisfied,
   });
+  // Surface the settings load state so tests can await the payload being
+  // applied (the hook arms/clears its polling timer off it) instead of
+  // guessing at async hop counts.
+  const { isFetching } = useGetSettingsQuery(undefined, { skip });
+
+  if (isFetching) {
+    return <div>Loading...</div>;
+  }
 
   return <div>Test</div>;
 };
@@ -138,7 +148,11 @@ const tokenRefreshPosts = () =>
 
 const advancePastInterval = async (intervals = 1) => {
   await act(async () => {
-    jest.advanceTimersByTime(intervals * UNTIL_INTERVAL_MS + 100);
+    // The async advance yields to pending microtasks before and between
+    // timer firings, so in-flight responses land (arming or clearing the
+    // hook's polling timer) before the clock reaches them, and each poll's
+    // own response/invalidate/refetch chain gets to run.
+    await jest.advanceTimersByTimeAsync(intervals * UNTIL_INTERVAL_MS + 100);
   });
 };
 
@@ -218,6 +232,13 @@ describe("useTokenRefreshUntil", () => {
       await advancePastInterval();
       expect(tokenRefreshPosts()).toBe(1);
 
+      // The refresh success invalidates session-properties; wait for that
+      // refetch, since its payload landing is what schedules the next
+      // polling timer.
+      await waitFor(() => {
+        expect(settingsGets()).toBeGreaterThan(1);
+      });
+
       await advancePastInterval();
       expect(tokenRefreshPosts()).toBeGreaterThan(1);
     });
@@ -225,9 +246,9 @@ describe("useTokenRefreshUntil", () => {
     it("does not refresh at all once the token already has the feature", async () => {
       setupUntil({ hasFeature: true });
 
-      await waitFor(() => {
-        expect(settingsGets()).toBeGreaterThan(0);
-      });
+      // Wait for the settings payload (with the feature) to be applied — that
+      // is what clears the refresh timer armed during the initial load.
+      await screen.findByText("Test");
       await advancePastInterval(3);
 
       expect(tokenRefreshPosts()).toBe(0);

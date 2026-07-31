@@ -48,7 +48,10 @@ export const userApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/user/current",
       }),
-      providesTags: (user) => (user ? provideUserTags(user) : []),
+      providesTags: (user) => (user ? [idTag("current-user", user.id)] : []),
+      // Don't garbage-collect the current user from the cache
+      // since it's used in many places and we don't want to refetch it unnecessarily.
+      keepUnusedDataFor: Infinity,
     }),
     createUser: builder.mutation<User, CreateUserRequest>({
       query: (body) => ({
@@ -102,8 +105,14 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
         body,
       }),
+      // The id-scoped `current-user` tag only matches when the edited user is
+      // the viewer, so an admin editing someone else refetches nothing.
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+        invalidateTags(error, [
+          listTag("user"),
+          idTag("user", id),
+          idTag("current-user", id),
+        ]),
     }),
     getPasswordResetUrl: builder.mutation<
       { password_reset_url: string },
@@ -124,16 +133,31 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/modal/qbnewb`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("user", id)]),
+        invalidateTags(error, [idTag("user", id), idTag("current-user", id)]),
     }),
   }),
 });
+
+/**
+ * Fetch the current user into the `getCurrentUser` cache (`getUser` reads come
+ * from it) unless it's already there.
+ */
+export const loadCurrentUser = () =>
+  userApi.endpoints.getCurrentUser.initiate();
+
+/**
+ * Force a refetch of the current user from non-React code. Dispatch it:
+ * `dispatch(refetchCurrentUser())`.
+ */
+export const refetchCurrentUser = () =>
+  userApi.endpoints.getCurrentUser.initiate(undefined, { forceRefetch: true });
 
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
   useGetCurrentUserQuery,
+  useLazyGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,

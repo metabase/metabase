@@ -1,9 +1,22 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { userApi } from "metabase/api/user";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import type { User } from "metabase-types/api";
 
-export const getUser = (state: State) => state.currentUser;
+// The current user lives in the `getCurrentUser` RTK Query cache — there is no
+// user slice. `loadCurrentUser` (dispatched on app entry) populates it, and the
+// user mutations in `metabase/api/user` patch it in place.
+//
+// The explicit annotation collapses the RTK-generated selector generics; left
+// inferred, they leak into every consumer of `getUser` and push deeply-nested
+// reducer files over TypeScript's instantiation-depth limit (TS2589).
+const selectCurrentUser: (state: State) => { data?: User } =
+  userApi.endpoints.getCurrentUser.select();
+
+export const getUser = (state: State): User | null =>
+  selectCurrentUser(state).data ?? null;
 
 export const getUserId = createSelector([getUser], (user) => user?.id);
 
