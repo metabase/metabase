@@ -46,6 +46,30 @@
         (testing scope
           (is (contains? granted scope)))))))
 
+(deftest v2-resource-advertises-only-the-v2-surface-test
+  (testing "RFC 9728 metadata answers \"what does *this* resource accept\", and the surfaces differ:
+            the v2 MCP resource accepts the rationalized scopes its tool registry gates on, while the
+            wider set also carries every agent-API endpoint scope. Advertising the union for v2 is
+            what makes a client's consent screen list per-entity v1 scopes the v2 tools never use."
+    (let [v2   (set (oauth-server/v2-resource-scopes))
+          wide (set (oauth-server/protected-resource-scopes))]
+      (testing "the five rationalized scopes are advertised for v2"
+        (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
+                       "agent:sql:run" "agent:delivery:write"]]
+          (testing scope
+            (is (contains? v2 scope)))))
+      (testing "v1 agent-API per-entity scopes are not"
+        (doseq [scope ["agent:collection:create" "agent:dashboard:create" "agent:dashboard:update"
+                       "agent:metric:create" "agent:metric:update" "agent:question:create"
+                       "agent:query:construct" "agent:query:execute" "agent:sql:construct"]]
+          (testing scope
+            (is (not (contains? v2 scope))))))
+      (testing "but they remain advertised on the wider set, since those resources do accept them"
+        (is (contains? wide "agent:collection:create"))
+        (is (contains? wide "agent:query:execute")))
+      (testing "so the v2 surface is strictly narrower"
+        (is (< (count v2) (count wide)))))))
+
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

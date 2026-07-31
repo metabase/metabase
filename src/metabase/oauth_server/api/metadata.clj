@@ -51,15 +51,19 @@
            [:bearer_methods_supported [:sequential :string]]]]])
 
 (defn- protected-resource-metadata
-  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource."
-  [resource-path]
-  (let [site-url (system/site-url)]
-    {:status  200
-     :headers {"Content-Type" "application/json"}
-     :body    {:resource                  (str site-url resource-path)
-               :authorization_servers     [site-url]
-               :scopes_supported          (vec (oauth-server/protected-resource-scopes))
-               :bearer_methods_supported  ["header"]}}))
+  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected
+   resource. `scopes-fn` supplies the scopes *this* resource accepts — the surfaces differ, so a v2
+   client is not told about scopes only the agent API or MCP v1 uses."
+  ([resource-path]
+   (protected-resource-metadata resource-path oauth-server/protected-resource-scopes))
+  ([resource-path scopes-fn]
+   (let [site-url (system/site-url)]
+     {:status  200
+      :headers {"Content-Type" "application/json"}
+      :body    {:resource                  (str site-url resource-path)
+                :authorization_servers     [site-url]
+                :scopes_supported          (vec (scopes-fn))
+                :bearer_methods_supported  ["header"]}})))
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
   :- resource-metadata-response-schema
@@ -77,7 +81,7 @@
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the v2 MCP endpoint."
   []
-  (protected-resource-metadata "/api/metabase-mcp/v2"))
+  (protected-resource-metadata "/api/metabase-mcp/v2" oauth-server/v2-resource-scopes))
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
 ;; request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617). Advertise the

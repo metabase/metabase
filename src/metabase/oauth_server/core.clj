@@ -52,6 +52,17 @@
   []
   (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
 
+(defn v2-resource-scopes
+  "The scopes advertised for the v2 MCP resource specifically. RFC 9728 metadata answers \"what
+   does *this* resource accept\", and the v2 surface accepts exactly the scopes its tool registry
+   gates on — the rationalized five — plus the resource scopes its UI tools render through.
+
+   [[protected-resource-scopes]] is deliberately wider: it also carries every scope declared by an
+   agent-API endpoint, because those resources do accept them. Advertising that union for v2 is
+   what makes a client's consent screen list per-entity v1 scopes the v2 tools no longer use."
+  []
+  (into (vec (mcp/v2-scopes)) (mcp/opt-in-scopes)))
+
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
   []
