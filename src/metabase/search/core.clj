@@ -5,6 +5,7 @@
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
@@ -247,6 +248,21 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn after-commit!
+  "Run `thunk` once the enclosing transaction commits; a rollback discards it.
+  It runs off the committing thread unless ingestion is forced synchronous, and a failure is logged, not thrown.
+  `description` names the work in that log line."
+  [description thunk]
+  (mdb/do-after-commit
+   (fn []
+     (let [run #(try
+                  (thunk)
+                  (catch Throwable e
+                    (log/errorf e "Failed search-index handoff: %s" description)))]
+       (if search.ingestion/*force-sync*
+         (run)
+         (future (run)))))))
 
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
