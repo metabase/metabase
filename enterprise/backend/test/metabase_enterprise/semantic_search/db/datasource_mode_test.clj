@@ -50,14 +50,29 @@
 (deftest support-check-outwaits-the-probe-test
   (testing "the cached support check gets a longer leash than the readiness probe, whose callers are a search
             request and an indexer tick rather than a metric scrape"
-    (let [{probe-statement :statement-seconds probe-network :network-ms} @#'semantic.db.datasource/probe-bounds
-          {check-statement :statement-seconds check-network :network-ms}
+    (let [{probe-budget :budget-seconds probe-network :network-ms} @#'semantic.db.datasource/probe-bounds
+          {check-budget :budget-seconds check-network :network-ms}
           @#'semantic.db.datasource/support-check-bounds]
-      (is (< probe-statement check-statement))
+      (is (< probe-budget check-budget))
       (is (< probe-network check-network))
-      (testing "and the socket bound outlasts the statement bound on both, or it would end the query first"
-        (is (< (* 1000 probe-statement) probe-network))
-        (is (< (* 1000 check-statement) check-network))))))
+      (testing "and the socket bound outlasts the whole budget on both, or it would end the check first"
+        (is (< (* 1000 probe-budget) probe-network))
+        (is (< (* 1000 check-budget) check-network))))))
+
+(deftest support-check-budget-is-cumulative-test
+  (testing "the budget covers the whole check, so its catalog read and two rolled-back CREATEs can't each
+            start the clock again and spend it three times over"
+    (let [start-budget      @#'semantic.db.datasource/start-budget
+          remaining-seconds @#'semantic.db.datasource/remaining-seconds
+          budget            (start-budget {:budget-seconds 30})]
+      (with-redefs [u/since-ms (constantly 0)]
+        (is (= 30 (remaining-seconds budget))))
+      (testing "a statement that already spent most of it leaves the rest only what is left"
+        (with-redefs [u/since-ms (constantly 25000)]
+          (is (= 5 (remaining-seconds budget)))))
+      (testing "and once it is gone the check throws rather than passing JDBC a zero, which means no limit"
+        (with-redefs [u/since-ms (constantly 30000)]
+          (is (thrown-with-msg? ExceptionInfo #"ran out of time" (remaining-seconds budget))))))))
 
 (defmacro ^:private with-support-cache
   "Run body with all three pieces of app-db probe state rebound to fresh atoms: the support cache (holding
@@ -144,29 +159,34 @@
 (deftest probe-app-db-store-test
   (testing "the readiness probe asks what the store has now, where the support check asks what it could have"
     (letfn [(probe [] (semantic.db.datasource/probe-app-db-store!))
-            (catalog [m] (fn [& _] m))]
-      (with-redefs [mdb/data-source     (constantly ::app-pool)
-                    jdbc/get-connection (fn [_] (stub-connection))]
-        (testing "store provisioned here and the extension is installed → reachable"
-          (with-support-cache true
-            (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema-exists true})]
-              (is (true? (probe))))))
-        (testing "store provisioned here but the extension was dropped → unreachable, latch notwithstanding"
-          (with-support-cache true
-            (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists true})
-                          semantic.db.datasource/app-db-can-provision-pgvector?
-                          (fn [& _] (throw (AssertionError. "re-creating the extension answers nothing here")))]
-              (is (false? (probe))))))
-        (testing "never provisioned → the cached support answer, and the DDL behind it runs once"
-          (with-support-cache nil
-            (let [calls (atom 0)]
-              (with-redefs [mdb/db-is-set-up?   (constantly true)
-                            jdbc/execute-one!   (catalog {:installed false :available true :schema-exists false})
-                            semantic.db.datasource/check-app-db-pgvector-support
-                            (fn [] (swap! calls inc) true)]
-                (is (true? (probe)))
-                (is (true? (probe)))
-                (is (= 1 @calls) "the second probe reads the latch rather than re-running the rolled-back DDL")))))))))
+            (catalog [m] (fn [& _] (merge {:installed false :available false
+                                           :schema-exists false :schema-in-catalog false}
+                                          m)))]
+      ;; A latched-true support cache throughout: the probe must not be answering from it.
+      (with-support-cache true
+        (with-redefs [mdb/data-source     (constantly ::app-pool)
+                      jdbc/get-connection (fn [_] (stub-connection))
+                      semantic.db.datasource/check-app-db-pgvector-support
+                      (fn [] (throw (AssertionError. "the probe must read the catalog, not the cache")))
+                      semantic.db.datasource/app-db-can-provision-pgvector?
+                      (fn [& _] (throw (AssertionError. "rolled-back DDL answers nothing about now")))]
+          (testing "store provisioned here and the extension is installed → reachable"
+            (with-redefs [jdbc/execute-one! (catalog {:installed true :available true
+                                                      :schema-exists true :schema-in-catalog true})]
+              (is (true? (probe)))))
+          (testing "store provisioned here but the extension was dropped → unreachable"
+            (with-redefs [jdbc/execute-one! (catalog {:available true :schema-exists true
+                                                      :schema-in-catalog true})]
+              (is (false? (probe)))))
+          (testing "the store's schema exists but this role can no longer see it → out of reach"
+            (with-redefs [jdbc/execute-one! (catalog {:installed true :available true
+                                                      :schema-in-catalog true})]
+              (is (false? (probe)))))
+          (testing "never provisioned anywhere → the extension being installable is the whole question"
+            (with-redefs [jdbc/execute-one! (catalog {:available true})]
+              (is (true? (probe))))
+            (with-redefs [jdbc/execute-one! (catalog {})]
+              (is (false? (probe))))))))))
 
 (deftest support-check-caching-test
   (with-redefs [semantic.db.datasource/db-url nil

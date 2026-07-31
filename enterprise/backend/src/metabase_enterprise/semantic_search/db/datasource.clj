@@ -312,24 +312,41 @@
                        (contains? provisioning-denied-sql-states (.getSQLState ^SQLException %)))
                  (exception-chain e))))
 
-;; Both bounds below pair a statement timeout with a socket-level one, because a statement timeout needs a
-;; working connection to carry its cancel and so does nothing for a host that stops answering mid-read.
+;; Both bounds below are a budget for the whole check rather than a per-statement timeout, and pair it with a
+;; socket-level one, because a statement timeout needs a working connection to carry its cancel and so does
+;; nothing for a host that stops answering mid-read.
 (def ^:private probe-bounds
   "What bounds the readiness probe's app-db work.
   Tight, because the probe cannot be interrupted out of a stuck read, and one left in that state blocks every
   later refresh for the life of the process."
-  {:statement-seconds probe-query-timeout-seconds
-   :network-ms        (int (* 15 1000))})
+  {:budget-seconds probe-query-timeout-seconds
+   :network-ms     (int (* 15 1000))})
 
 (def ^:private support-check-bounds
   "What bounds the cached support check, whose callers are search requests and indexer ticks.
   Looser than the probe's, because a slow answer is still an answer here: a timeout reads as unsupported and
   drops search to the appdb engine until the cooldown clears, which serves the user worse than waiting a
   moment.
-  Still bounded, because the caller waiting is a request: these are what a search is willing to spend finding
+  Still bounded, because the caller waiting is a request: this is what a search is willing to spend finding
   out, not how long the app db is allowed to take."
-  {:statement-seconds 30
-   :network-ms        (int (* 45 1000))})
+  {:budget-seconds 30
+   :network-ms     (int (* 45 1000))})
+
+(defn- start-budget
+  "Open `bounds`' budget for one check, for [[remaining-seconds]] to spend."
+  [{:keys [budget-seconds]}]
+  {:timer (u/start-timer), :budget-seconds budget-seconds})
+
+(defn- remaining-seconds
+  "Seconds left of `budget`, for the next statement of a check that must not outlive it.
+  Throws once the budget is spent: a statement timeout of zero reads to JDBC as no limit at all, and a check
+  that ran out of time hasn't answered anyway."
+  [{:keys [timer budget-seconds]}]
+  (let [left (- budget-seconds (quot (u/since-ms timer) 1000))]
+    (when-not (pos? left)
+      (throw (ex-info "pgvector support check ran out of time"
+                      {:budget-seconds budget-seconds})))
+    left))
 
 (def ^:private ^Executor same-thread-executor
   "For [[java.sql.Connection/setNetworkTimeout]], which requires an executor but only runs bookkeeping on it."
@@ -373,16 +390,18 @@
   them: the CREATEs run in a transaction that always rolls back.
   Attempts CREATE EXTENSION only when `create-extension?` and CREATE SCHEMA only when `create-schema?`, so
   an already-installed extension or existing schema needs no create privilege.
-  A refusal reads as false; a check that never got that far throws, so the caller can tell the two apart."
-  [conn statement-seconds create-extension? create-schema?]
+  A refusal reads as false; a check that never got that far throws, so the caller can tell the two apart.
+  Each statement gets what is left of `budget`, so the two CREATEs and the catalog read before them share one
+  bound rather than each starting the clock again."
+  [conn budget create-extension? create-schema?]
   (try
     (jdbc/with-transaction [tx conn {:rollback-only true}]
       (when create-extension?
         (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]
-                       {:timeout statement-seconds}))
+                       {:timeout (remaining-seconds budget)}))
       (when create-schema?
         (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))]
-                       {:timeout statement-seconds})))
+                       {:timeout (remaining-seconds budget)})))
     true
     (catch Exception e
       (when-not (provisioning-denied? e)
@@ -396,18 +415,22 @@
   ;; answers "a semantic_search schema this role can use exists", not mere catalog presence: a schema the
   ;; app-db role lacks USAGE on reads as absent, so the store degrades to unavailable rather than passing
   ;; here and crashing later when init creates tables it can't write.
+  ;; schema_in_catalog is the unfiltered question, and only the two together tell a schema this role has lost
+  ;; its grip on from one nobody has created yet.
   (str "SELECT"
        " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
        " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
-       " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists"))
+       " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists,"
+       " EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = ?) AS schema_in_catalog"))
 
 (defn- app-db-store-catalog
-  "What the app db's catalog says about the store's pieces: `{:installed :available :schema-exists}`."
-  [conn statement-seconds]
+  "What the app db's catalog says about the store's pieces, as
+  `{:installed :available :schema-exists :schema-in-catalog}`."
+  [conn budget]
   (jdbc/execute-one! conn
-                     [app-db-store-catalog-sql app-db-schema]
+                     [app-db-store-catalog-sql app-db-schema app-db-schema]
                      {:builder-fn jdbc.rs/as-unqualified-kebab-maps
-                      :timeout    statement-seconds}))
+                      :timeout    (remaining-seconds budget)}))
 
 (defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
@@ -418,18 +441,18 @@
   The probe persists nothing, so the unlicensed and disabled instances whose availability predicates reach
   here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
   path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]]).
-  Runs on one [[with-bounded-connection]], so a host that stops answering ends the check rather than pinning
-  its caller."
+  Runs on one [[with-bounded-connection]] under one [[start-budget]], so a slow app db ends the check rather
+  than pinning its caller for a multiple of the bound."
   []
-  (let [{:keys [statement-seconds] :as bounds} support-check-bounds]
-    (with-bounded-connection bounds
+  (let [budget (start-budget support-check-bounds)]
+    (with-bounded-connection support-check-bounds
       (fn [conn]
-        (let [{:keys [installed available schema-exists]} (app-db-store-catalog conn statement-seconds)]
+        (let [{:keys [installed available schema-exists]} (app-db-store-catalog conn budget)]
           (cond
             (not (or installed available)) false
             (and installed schema-exists)  true
             :else                          (app-db-can-provision-pgvector? conn
-                                                                           statement-seconds
+                                                                           budget
                                                                            (not installed)
                                                                            (not schema-exists))))))))
 
@@ -482,22 +505,22 @@
 
 (defn probe-app-db-store!
   "Whether the app db is a usable pgvector store right now: it answers, and its pieces are still there.
-  Reads the catalog uncached, so an extension dropped under a running instance shows up despite
-  [[app-db-pgvector-support]] latching true.
-  Once this instance has the store's schema, the extension itself has to be installed: rolled-back DDL only
-  shows that it could be created again, which says nothing about the tables that need the type now.
-  An instance without the schema has never provisioned the store and so has no extension to lose -- there the
-  question is whether it still could, which [[app-db-pgvector-supported?]] answers and caches. Asking it
-  directly instead would run its rolled-back CREATEs on every probe, past the cooldown that exists to keep
-  them out of a never-provisioned instance's DDL audit log."
+  Only reached once [[pgvector-mode]] has settled on `:app-db`, so whether this role may provision the store
+  is already established. What is left is whether what the store rests on is still there, which the catalog
+  answers on every probe -- no cache, so an extension dropped under a running instance shows up despite
+  [[app-db-pgvector-support]] latching true, and no rolled-back DDL, which would only show that the piece
+  could be created again rather than that it is there now.
+  A store whose schema this instance can no longer see is out of reach whatever else is true. One with no
+  schema anywhere has never been provisioned and so has nothing to have lost: there the extension being
+  installed or installable is the whole of the question."
   []
-  (let [{:keys [statement-seconds] :as bounds} probe-bounds
-        {:keys [installed schema-exists]}      (with-bounded-connection
-                                                 bounds
-                                                 #(app-db-store-catalog % statement-seconds))]
-    (if schema-exists
-      (boolean installed)
-      (app-db-pgvector-supported?))))
+  (let [{:keys [installed available schema-exists schema-in-catalog]}
+        (with-bounded-connection probe-bounds
+          #(app-db-store-catalog % (start-budget probe-bounds)))]
+    (cond
+      schema-exists     (boolean installed)
+      schema-in-catalog false
+      :else             (boolean (or installed available)))))
 
 (defn pgvector-mode
   "How this instance reaches its pgvector database:

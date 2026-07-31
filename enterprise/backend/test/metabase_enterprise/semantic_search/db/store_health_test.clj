@@ -90,7 +90,8 @@
       (is (=? {"dedicated" {:available #(== 1 %), :connected #(== 1 %)}}
               (readiness-gauges system)))
       (testing "and it is recorded as unresolved, so the next scrape retries rather than holding the hour"
-        (is (=? {:resolved? false, :storage nil} @@#'semantic.store-health/last-readiness-probe))))))
+        (is (=? {:resolved? false, :storage "dedicated"} @@#'semantic.store-health/last-readiness-probe)
+            "keeping the backing it last established, which a later switch is noticed against")))))
 
 (def ^:private last-success-sample-re
   #"^metabase_pgvector_store_last_success_timestamp_seconds\{storage=\"([^\"]+)\",?\} (\S+)")
@@ -135,6 +136,30 @@
            semantic.u/semantic-search-configured?           (constantly false)]
           (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
         (is (=? {"appdb" pos?} (exposed-last-success system)))))))
+
+(deftest storage-switch-through-an-unresolved-probe-test
+  (testing "a switch is still noticed when a probe that couldn't find out falls between the two backings"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-dynamic-fn-redefs
+        [semantic.store-health/submit-pgvector-readiness-refresh! (constantly nil)]
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/dedicated-url-configured?   (constantly true)
+           semantic.db.datasource/probe-dedicated-connection! (constantly {:one 1})]
+          (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+        (is (=? {"dedicated" pos?} (exposed-last-success system)))
+        (mt/with-dynamic-fn-redefs
+          [semantic.db.datasource/dedicated-url-configured? (constantly false)
+           mdb/db-is-set-up?                                (constantly false)]
+          (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up?                                (constantly true)
+           semantic.db.datasource/dedicated-url-configured? (constantly false)
+           semantic.u/semantic-search-configured?           (constantly true)
+           semantic.db.datasource/pgvector-mode             (constantly :app-db)
+           semantic.db.datasource/probe-app-db-store!       (constantly true)]
+          (@#'semantic.store-health/collect-pgvector-readiness-metrics!))
+        (is (= #{"appdb"} (set (keys (exposed-last-success system))))
+            "the dedicated timestamp is dropped, not left beside the app-db one")))))
 
 (deftest probe-store-test
   (let [probe @#'semantic.store-health/probe-store]
