@@ -190,17 +190,15 @@ export const CollectionBrowserInner = ({
         />
       )}
 
-      {effectiveCollectionId !== undefined && (
-        <CollectionItemsTable
-          collectionId={effectiveCollectionId}
-          onClick={onClickItem}
-          pageSize={pageSize}
-          models={collectionTypes}
-          showDashboardQuestions={showDashboardQuestions}
-          visibleColumns={visibleColumns}
-          EmptyContentComponent={EmptyContentComponent ?? undefined}
-        />
-      )}
+      <CollectionItemsTable
+        collectionId={effectiveCollectionId}
+        onClick={onClickItem}
+        pageSize={pageSize}
+        models={collectionTypes}
+        showDashboardQuestions={showDashboardQuestions}
+        visibleColumns={visibleColumns}
+        EmptyContentComponent={EmptyContentComponent ?? undefined}
+      />
     </Stack>
   );
 };
