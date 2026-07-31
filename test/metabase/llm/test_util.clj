@@ -11,6 +11,8 @@
   {"anthropic"  {:api-key "sk-ant-test"}
    "openai"     {:api-key "sk-test"}
    "openrouter" {:api-key "sk-or-v1-test"}
+   "mistral"    {:api-key "mistral-test-key"}
+   "zai"        {:api-key "zai-test-key"}
    "azure"      {:api-key "azure-test-key" :base-url azure-base-url}
    "bedrock"    {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                  :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
@@ -27,7 +29,7 @@
     :config (merge (get dummy-configs type-name) config-overrides)}))
 
 (def default-connections
-  (mapv connection ["anthropic" "openai" "openrouter" "azure" "bedrock" "metabase"]))
+  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "azure" "bedrock" "metabase"]))
 
 (defn do-with-connections!
   [connections thunk]
