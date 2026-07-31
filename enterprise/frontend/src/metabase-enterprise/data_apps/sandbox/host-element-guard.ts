@@ -1,6 +1,6 @@
 import DOMPurify from "dompurify";
 
-import { localName } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
+import { getXmlElementLocalName } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 /**
  * Blocks realm-creating elements for every creator in the data-app document: guest
@@ -30,10 +30,11 @@ class HostRealmElementGuard {
     FORBID_TAGS: Array.from(HostRealmElementGuard.REALM_CREATING_TAGS),
   };
 
-  // Raised only around the trusted chart PNG export (html2canvas needs a transient
-  // same-origin <iframe>). Not endowed, so the guest can't reach it — and any realm
-  // that iframe opens still collapses to the gated realm via the distortion.
-  private iframeGrantDepth = 0;
+  // `<iframe>`s the in-flight chart export may still create. A grant allows exactly
+  // one (html2canvas's transient clone), consumed on first use in `isBlocked` — so a
+  // guest render can't slip one through while the export's promise is still pending.
+  // Not endowed, so the guest can't raise it.
+  private iframeGrantAllowance = 0;
 
   // DOMPurify parses by assigning `innerHTML` on a detached node, re-entering the
   // setters we patch; pass the raw value through during that internal parse.
@@ -42,11 +43,12 @@ class HostRealmElementGuard {
   private readonly installed = new WeakSet<Document>();
 
   withIframeGrant = async <T>(callback: () => Promise<T>): Promise<T> => {
-    this.iframeGrantDepth += 1;
+    this.iframeGrantAllowance += 1;
     try {
       return await callback();
     } finally {
-      this.iframeGrantDepth -= 1;
+      // Reclaim the allowance if the export threw before creating its iframe.
+      this.iframeGrantAllowance = Math.max(0, this.iframeGrantAllowance - 1);
     }
   };
 
@@ -66,9 +68,12 @@ class HostRealmElementGuard {
   }
 
   private isBlocked(tag: string): boolean {
-    const name = localName(tag).toLowerCase();
+    const name = getXmlElementLocalName(tag).toLowerCase();
 
-    if (name === "iframe" && this.iframeGrantDepth > 0) {
+    if (name === "iframe" && this.iframeGrantAllowance > 0) {
+      // Consume the one-shot grant: only html2canvas's clone gets through, not a
+      // guest render racing the still-pending export.
+      this.iframeGrantAllowance -= 1;
       return false;
     }
 

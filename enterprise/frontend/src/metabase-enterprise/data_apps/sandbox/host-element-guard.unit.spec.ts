@@ -136,4 +136,33 @@ describe("HostRealmElementGuard", () => {
       host.remove();
     });
   });
+
+  describe("withIframeGrant", () => {
+    const createIframe = () => document.createElement("iframe");
+
+    it("allows exactly one iframe per grant (html2canvas's clone), blocking a second", async () => {
+      await hostRealmElementGuard.withIframeGrant(async () => {
+        // html2canvas's clone iframe: allowed, consuming the one-shot grant.
+        expect(createIframe).not.toThrow();
+        // A guest render racing the still-pending export must NOT get one.
+        expect(createIframe).toThrow(/blocked host createElement/);
+      });
+    });
+
+    it("blocks iframes again once the grant resolves", async () => {
+      await hostRealmElementGuard.withIframeGrant(async () => {});
+      expect(createIframe).toThrow(/blocked host createElement/);
+    });
+
+    it("reclaims the allowance if the export throws before creating its iframe", async () => {
+      await expect(
+        hostRealmElementGuard.withIframeGrant(async () => {
+          throw new Error("export failed");
+        }),
+      ).rejects.toThrow("export failed");
+
+      // The unused allowance must not leak into a later render.
+      expect(createIframe).toThrow(/blocked host createElement/);
+    });
+  });
 });

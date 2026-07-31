@@ -113,7 +113,7 @@ export function createElementDistortion(errorPrefix: string) {
  * Strip an XML namespace prefix from a qualified name (`svg:rect` -> `rect`).
  * `indexOf` is -1 when there's no prefix, so `slice` returns the whole name.
  */
-export function localName(qualifiedName: string): string {
+export function getXmlElementLocalName(qualifiedName: string): string {
   return qualifiedName.slice(qualifiedName.indexOf(":") + 1);
 }
 
@@ -124,7 +124,7 @@ export function createElementNSDistortion(errorPrefix: string) {
     qualifiedName: string,
     options?: ElementCreationOptions,
   ) {
-    if (BLOCKED_TAGS.has(localName(qualifiedName).toLowerCase())) {
+    if (BLOCKED_TAGS.has(getXmlElementLocalName(qualifiedName).toLowerCase())) {
       throw new Error(
         `[${errorPrefix}] blocked createElementNS: ${qualifiedName}`,
       );

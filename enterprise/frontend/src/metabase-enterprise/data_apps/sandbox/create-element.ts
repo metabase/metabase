@@ -1,13 +1,13 @@
 import {
   CREATE_ELEMENT,
   CREATE_ELEMENT_NS,
-  localName,
+  getXmlElementLocalName,
 } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 const isStyleTag = (tag: string) => tag.toLowerCase() === "style";
 
 function isStyleQualifiedName(qualifiedName: string) {
-  return isStyleTag(localName(qualifiedName));
+  return isStyleTag(getXmlElementLocalName(qualifiedName));
 }
 
 /** The shared sandbox distortion callback, as the membrane types it. */

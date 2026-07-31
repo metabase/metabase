@@ -132,6 +132,8 @@ export async function createDataAppSandbox({
   // (React dev sets it so, then restores). Must be an evaluate prelude, not a
   // distortion — it's a red-realm property the guest owns. (Host storage is handled
   // separately, in the shared distortion.)
+  // `prepareStackTrace` is a V8-only hook, so this vector (and this gate) only
+  // exists on Chromium — Safari/Firefox never expose the CallSite formatter.
   env.evaluate(`(() => {
     try {
       let stored;

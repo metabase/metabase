@@ -135,15 +135,33 @@ describe("createDataAppSandbox", () => {
   });
 
   describe("realm hardening", () => {
-    it("gates Error.prepareStackTrace in the guest realm before the bundle runs", async () => {
+    it("gates Error.prepareStackTrace before the bundle runs: drops functions, allows undefined", async () => {
       const { evaluate } = await setup();
 
+      // The prelude is the first thing evaluated — before any bundle code.
       expect(evaluate).toHaveBeenCalledTimes(1);
       const [preludeCode] = evaluate.mock.calls[0];
-      expect(preludeCode).toContain('"prepareStackTrace"');
-      expect(preludeCode).toContain("configurable: false");
-      // A non-configurable accessor whose setter drops functions.
-      expect(preludeCode).toContain('typeof value !== "function"');
+
+      // Run the prelude against a throwaway `Error` stand-in and assert the
+      // behaviour it installs, not just its source text. The prelude references a
+      // global `Error`, so shadow it with the stand-in.
+      const fakeError: { prepareStackTrace?: unknown } = {};
+      new Function("Error", preludeCode)(fakeError);
+
+      // A function formatter (the attack) is silently dropped.
+      fakeError.prepareStackTrace = () => "host-reference";
+      expect(fakeError.prepareStackTrace).toBeUndefined();
+
+      // `undefined` still passes through (React dev sets it, then restores).
+      fakeError.prepareStackTrace = undefined;
+      expect(fakeError.prepareStackTrace).toBeUndefined();
+
+      // The accessor is non-configurable, so the guest can't redefine it away.
+      expect(() =>
+        Object.defineProperty(fakeError, "prepareStackTrace", {
+          value: () => "host-reference",
+        }),
+      ).toThrow();
     });
   });
 
