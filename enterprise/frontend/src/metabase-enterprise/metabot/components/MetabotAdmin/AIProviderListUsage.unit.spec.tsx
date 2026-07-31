@@ -139,6 +139,17 @@ describe("AIProviderList managed provider usage", () => {
     expect(within(row).getByText("Current billing cycle")).not.toBeVisible();
   });
 
+  it("collapses the usage details when the provider name itself is clicked", async () => {
+    setup();
+
+    const row = await screen.findByTestId("provider-metabase");
+    expect(await within(row).findByText("Current billing cycle")).toBeVisible();
+
+    await userEvent.click(within(row).getByText("Metabase"));
+
+    expect(within(row).getByText("Current billing cycle")).not.toBeVisible();
+  });
+
   it("does not offer usage details for a self-managed provider", async () => {
     setup();
 

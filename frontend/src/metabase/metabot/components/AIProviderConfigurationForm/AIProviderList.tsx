@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Fragment, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -24,6 +24,7 @@ import {
   Stack,
   Text,
   Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 import type {
   LlmProviderConnection,
@@ -165,66 +166,69 @@ function ProviderConnectionRow({
     Boolean(providerType?.managed) &&
     PLUGIN_METABOT.hasMetabaseManagedProviderDetails();
   const [isShowingDetails, { toggle: toggleDetails }] = useDisclosure(true);
+  const detailsId = useId();
+
+  const summary = (
+    <Group gap="sm" wrap="nowrap" flex={1}>
+      <ProviderTypeIcon
+        type={connection.type}
+        icon={providerType?.icon ?? "ai"}
+        size={PROVIDER_ICON_SIZE}
+      />
+      <Stack gap={0} align="flex-start">
+        <Group gap="xs" wrap="nowrap">
+          <Text fw="bold">{connection.name}</Text>
+          {!connection.usable && (
+            <Tooltip
+              label={t`Some required settings are missing, so Metabot can't use this provider.`}
+            >
+              <Icon
+                name="warning"
+                c="error"
+                size={14}
+                aria-label={t`Incomplete configuration`}
+              />
+            </Tooltip>
+          )}
+        </Group>
+        {typeLabel && (
+          <Text size="sm" c="text-secondary">
+            {typeLabel}
+          </Text>
+        )}
+        {modelsError && (
+          <Text size="sm" c="error">
+            {modelsError}
+          </Text>
+        )}
+      </Stack>
+    </Group>
+  );
 
   return (
     <Stack gap={0} data-testid={`provider-${connection.key}`}>
       <Group justify="space-between" wrap="nowrap" py="sm">
-        <Group gap="sm" wrap="nowrap">
-          <ProviderTypeIcon
-            type={connection.type}
-            icon={providerType?.icon ?? "ai"}
-            size={PROVIDER_ICON_SIZE}
-          />
-          <Stack gap={0}>
-            <Group gap="xs" wrap="nowrap">
-              <Text fw="bold">{connection.name}</Text>
-              {!connection.usable && (
-                <Tooltip
-                  label={t`Some required settings are missing, so Metabot can't use this provider.`}
-                >
-                  <Icon
-                    name="warning"
-                    c="error"
-                    size={14}
-                    aria-label={t`Incomplete configuration`}
-                  />
-                </Tooltip>
-              )}
+        {hasUsageDetails ? (
+          <UnstyledButton
+            flex={1}
+            aria-label={t`Usage and pricing`}
+            aria-expanded={isShowingDetails}
+            aria-controls={detailsId}
+            onClick={toggleDetails}
+          >
+            <Group justify="space-between" wrap="nowrap">
+              {summary}
+              <Icon
+                name={isShowingDetails ? "chevronup" : "chevrondown"}
+                size={12}
+              />
             </Group>
-            {typeLabel && (
-              <Text size="sm" c="text-secondary">
-                {typeLabel}
-              </Text>
-            )}
-            {modelsError && (
-              <Text size="sm" c="error">
-                {modelsError}
-              </Text>
-            )}
-            {isEnvManaged &&
-              connection.env_vars.map((varName) => (
-                <SetByEnvVar key={varName} varName={varName} />
-              ))}
-          </Stack>
-        </Group>
+          </UnstyledButton>
+        ) : (
+          summary
+        )}
 
         <Group gap="xs" wrap="nowrap">
-          {hasUsageDetails && (
-            <Button
-              variant="subtle"
-              p="xs"
-              aria-label={t`Usage and pricing`}
-              aria-expanded={isShowingDetails}
-              onClick={toggleDetails}
-              leftSection={
-                <Icon
-                  name={isShowingDetails ? "chevronup" : "chevrondown"}
-                  size={12}
-                />
-              }
-            />
-          )}
-
           {!isEnvManaged && (
             <Menu position="bottom-end">
               <Menu.Target>
@@ -257,8 +261,13 @@ function ProviderConnectionRow({
         </Group>
       </Group>
 
+      {isEnvManaged &&
+        connection.env_vars.map((varName) => (
+          <SetByEnvVar key={varName} varName={varName} />
+        ))}
+
       {hasUsageDetails && (
-        <Collapse in={isShowingDetails}>
+        <Collapse id={detailsId} in={isShowingDetails}>
           <Box pl={PROVIDER_DETAILS_INDENT} pb="md">
             <MetabaseAIProviderSetup isConnected />
           </Box>
