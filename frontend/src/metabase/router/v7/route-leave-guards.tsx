@@ -156,6 +156,19 @@ const IDLE_BLOCKER: Blocker = {
 };
 
 /**
+ * Whether a leave prompt is holding a navigation right now.
+ *
+ * A page that syncs its own URL has to stand still while one is up. react-router
+ * keeps a single pending navigation, so navigating now replaces the one the user
+ * is being asked about, and letting them through would then take them somewhere
+ * they never agreed to.
+ */
+export function useIsNavigationHeld(): boolean {
+  const context = useContext(RouteLeaveGuardsContext);
+  return context?.blockedGuardId != null && context.blocker.state === "blocked";
+}
+
+/**
  * Registers a guard with the nearest `RouteLeaveGuards`, and reports the blocker
  * for as long as that guard is the one holding the navigation. Outside a router
  * there is no provider, so the guard registers nowhere and stays idle.

@@ -4,6 +4,8 @@ import { UNSAFE_RouteContext } from "react-router";
 
 import { useGuardedBlocker } from "./v7/route-leave-guards";
 
+export { useIsNavigationHeld } from "./v7/route-leave-guards";
+
 /**
  * Block navigation that leaves the route this component renders in, replacing
  * v3's `router.setRouteLeaveHook(route, hook)`.
