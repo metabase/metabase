@@ -4,13 +4,13 @@ import {
   Route,
   push,
   useLocation,
-  useRouteLeaveHook,
+  useRouteLeaveBlocker,
 } from "metabase/router";
 
-// Registers an always-blocking leave hook scoped to the route it is rendered on,
-// exactly as the leave-confirm modals do (guard on a parent layout route).
+// Blocks every navigation, scoped to the route it is rendered on, exactly as the
+// leave-confirm modals do (guard on a parent layout route).
 function Guard() {
-  useRouteLeaveHook(() => false);
+  useRouteLeaveBlocker(() => true);
   return null;
 }
 

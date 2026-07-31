@@ -10,7 +10,7 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
-import { push, replace } from "metabase/router";
+import { push, replace, useIsNavigationHeld } from "metabase/router";
 import { notifyLocationListeners } from "metabase/router/v7/navigator";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -28,6 +28,7 @@ jest.mock("metabase/router", () => ({
     type: "MOCK_REPLACE",
     payload: descriptor,
   })),
+  useIsNavigationHeld: jest.fn(() => false),
 }));
 
 jest.mock("metabase/embedding/config", () => ({
@@ -87,12 +88,12 @@ function setup({
     settings: createMockSettingsState({ "site-url": "" }),
   });
 
-  const { store, unmount } = renderHookWithProviders(
+  const { store, unmount, rerender } = renderHookWithProviders(
     () => useDashboardUrlQuery(location),
     { storeInitialState },
   );
 
-  return { store, unmount, location };
+  return { store, unmount, rerender, location };
 }
 
 describe("useDashboardUrlQuery", () => {
@@ -103,6 +104,46 @@ describe("useDashboardUrlQuery", () => {
     (replace as jest.Mock).mockClear();
     // Unjustified type cast. FIXME
     (isEmbedPreview as jest.Mock).mockReturnValue(false);
+    // Unjustified type cast. FIXME
+    (useIsNavigationHeld as jest.Mock).mockReturnValue(false);
+  });
+
+  // The router keeps one pending navigation. Syncing the URL while a leave
+  // prompt is up would replace the destination the user is being asked about,
+  // and confirming would then take them somewhere they never agreed to
+  // (metabase#53132).
+  describe("while a leave prompt holds a navigation", () => {
+    it("does not sync the query string", () => {
+      // Unjustified type cast. FIXME
+      (useIsNavigationHeld as jest.Mock).mockReturnValue(true);
+
+      setup({
+        parameters: [createMockParameter({ id: "1", slug: "text" })],
+        parameterValues: { "1": "bar" },
+      });
+
+      expect(replace).not.toHaveBeenCalled();
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("syncs once the prompt is answered", () => {
+      // Unjustified type cast. FIXME
+      (useIsNavigationHeld as jest.Mock).mockReturnValue(true);
+
+      const { rerender } = setup({
+        parameters: [createMockParameter({ id: "1", slug: "text" })],
+        parameterValues: { "1": "bar" },
+      });
+      expect(replace).not.toHaveBeenCalled();
+
+      // Unjustified type cast. FIXME
+      (useIsNavigationHeld as jest.Mock).mockReturnValue(false);
+      rerender();
+
+      expect(replace).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "?text=bar" }),
+      );
+    });
   });
 
   it("syncs a parameter-value change with replace (not push), writing the parameter slug values into the search string", () => {

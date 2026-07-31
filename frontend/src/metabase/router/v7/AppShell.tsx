@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 
 import { setV7Navigate } from "./navigator";
+import { RouteLeaveGuards } from "./route-leave-guards";
 
 /**
  * The element of the host's pathless layout route.
@@ -13,6 +14,8 @@ import { setV7Navigate } from "./navigator";
  * path and so resolves from the root. Redux navigation carries no route context
  * of its own, and history@3 resolved a relative push against the root, so root
  * is the behavior to keep (`SearchBar` pushes `{ pathname: "search" }`).
+ *
+ * It also owns the router's single blocker, which the route-leave guards share.
  */
 export function AppShell(): JSX.Element {
   const navigate = useNavigate();
@@ -22,5 +25,9 @@ export function AppShell(): JSX.Element {
     return () => setV7Navigate(null);
   }, [navigate]);
 
-  return <Outlet />;
+  return (
+    <RouteLeaveGuards>
+      <Outlet />
+    </RouteLeaveGuards>
+  );
 }

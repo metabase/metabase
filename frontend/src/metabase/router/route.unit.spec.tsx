@@ -5,7 +5,7 @@ import { checkNotNull } from "metabase/utils/types";
 
 import { Outlet } from "./Outlet";
 import { Route } from "./route";
-import { useRoutePathname } from "./use-route-leave-hook";
+import { useRoutePathname } from "./use-route-leave-blocker";
 
 const Parent = () => (
   <div>

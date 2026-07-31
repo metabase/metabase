@@ -1,4 +1,4 @@
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { History } from "metabase/router";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
@@ -47,7 +47,8 @@ describe("useConfirmOnRouteLeave", () => {
     expect(screen.getByText("Page B")).toBeInTheDocument();
     expect(history.getCurrentLocation().pathname).toBe("/b");
 
-    // Simulate browser back, which should trigger confirmation and roll URL forward
+    // Simulate browser back. The router parks the navigation and asks for
+    // confirmation, so the URL stays on /b until the answer comes back.
     act(() => history.goBack());
   };
 
@@ -64,7 +65,7 @@ describe("useConfirmOnRouteLeave", () => {
     expect(history.getCurrentLocation().pathname).toBe("/b");
   });
 
-  it("navigates to the previous route when clicking 'Yes' in the confirmation", () => {
+  it("navigates to the previous route when clicking 'Yes' in the confirmation", async () => {
     const { history } = setup();
 
     // Do confirm
@@ -73,8 +74,11 @@ describe("useConfirmOnRouteLeave", () => {
     // try to leave a page
     navigateToBAndTriggerBack(history);
 
-    // We should navigate to /a
-    expect(screen.getByText("Page A")).toBeInTheDocument();
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    // We should navigate to /a. The router resumes the parked navigation itself,
+    // which it does asynchronously.
+    expect(await screen.findByText("Page A")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(history.getCurrentLocation().pathname).toBe("/a"),
+    );
   });
 });
