@@ -15,7 +15,11 @@ inputs:
   bucket:
     required: true
   previous-step-outcome:
-    required: true
+    required: false
+    default: ""
+    description: >-
+      Outcome of the test step. Only read when `driver-status` is "info", to report the
+      real result of a job that was forced green.
   driver-status:
     required: false
     default: ""
