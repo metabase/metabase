@@ -20,6 +20,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -35,6 +36,7 @@
     "bedrock"    bedrock/bedrock
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -46,6 +48,7 @@
     "bedrock"    bedrock/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
