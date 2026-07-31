@@ -19,7 +19,6 @@
 // using lookaround, an extglob that matches nothing): those still need the
 // behavioral fixtures described in frontend/lint/oxlint-migration.md.
 
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -90,10 +89,12 @@ function inspect(label, configPath) {
   return { label, rules, unbacked };
 }
 
-// Keep the generated boundaries config current so its rules are checked too.
-execFileSync("node", [path.join(root, "bin/generate-oxlint-boundaries.mjs")], {
-  stdio: "ignore",
-});
+const mainConfig = JSON.parse(
+  fs.readFileSync(path.join(root, ".oxlintrc.json"), "utf8"),
+);
+const boundariesConfig = JSON.parse(
+  fs.readFileSync(path.join(root, ".oxlintrc.boundaries.json"), "utf8"),
+);
 
 const configs = [
   inspect("main", path.join(root, ".oxlintrc.json")),
@@ -101,6 +102,32 @@ const configs = [
 ];
 
 let failed = false;
+
+// The boundaries config is standalone (it does not `extends` the main config,
+// because oxlint's `extends` inherits neither `ignorePatterns` nor `settings`).
+// It restates the main config's ignore list and resolver, so guard against
+// drift: the boundaries pass must ignore everything main ignores (plus custom-viz)
+// and resolve imports the same way, or it silently lints the wrong files.
+const CUSTOM_VIZ_IGNORE = "enterprise/frontend/src/custom-viz/**";
+const expectedIgnores = [...mainConfig.ignorePatterns, CUSTOM_VIZ_IGNORE];
+const actualIgnores = boundariesConfig.ignorePatterns ?? [];
+if (JSON.stringify(actualIgnores) !== JSON.stringify(expectedIgnores)) {
+  failed = true;
+  console.error(
+    "\nboundaries: ignorePatterns drifted from the main config. Expected the " +
+      `main list plus "${CUSTOM_VIZ_IGNORE}". Sync .oxlintrc.boundaries.json.`,
+  );
+}
+const mainResolver = JSON.stringify(mainConfig.settings?.["import/resolver"]);
+const boundariesResolver = JSON.stringify(
+  boundariesConfig.settings?.["import/resolver"],
+);
+if (mainResolver !== boundariesResolver) {
+  failed = true;
+  console.error(
+    "\nboundaries: import/resolver drifted from the main config. Sync .oxlintrc.boundaries.json.",
+  );
+}
 
 for (const { label, unbacked } of configs) {
   if (unbacked.length > 0) {
