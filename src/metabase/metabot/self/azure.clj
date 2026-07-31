@@ -85,8 +85,8 @@
 
 (defn- azure-request
   "Perform an HTTP request against the Azure resource's compatible surface.
-  `credentials` is an optional `{:api-key ... :base-url ...}` map; when nil, the
-  `llm-azure-*` settings are used. `headers` are extra headers (e.g. `anthropic-version`).
+  `credentials` is the `{:api-key ... :base-url ...}` map of the connection serving this request.
+  `headers` are extra headers (e.g. `anthropic-version`).
   `ai-proxy?` is accepted for parity with the other provider adapters but is not supported:
   throws when true. Auth is resolved through [[core/resolve-auth]]/[[core/request]] so proxy
   redirection is already wired up should Azure proxying ever be supported."
@@ -166,8 +166,8 @@
 
 (mu/defn azure-raw
   "Perform a streaming request to an Azure-hosted model deployment.
-  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); when absent the `llm-azure-*` settings are used.
-  `:ai-proxy?` is not supported for Azure and throws when true."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
         opts   (assoc opts :model (model->deployment model) :reasoning? false)

@@ -133,9 +133,9 @@
 
 (defn- bedrock-request
   "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
-  `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is an optional
-  AWS credentials map; when nil, the `llm-bedrock-*` settings are used. `ai-proxy?` is accepted
-  for parity with the other provider adapters but is not supported: throws when true."
+  `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is the AWS credentials map of
+  the connection serving this request. `ai-proxy?` is accepted for parity with the other provider adapters but is
+  not supported: throws when true."
   [{:keys [method path body as headers credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -239,8 +239,8 @@
 
 (mu/defn bedrock-raw
   "Perform a streaming request to the Bedrock mantle endpoint.
-  Opts map supports `:credentials`, a map of `:access-key-id`, `:secret-access-key`, `:region`, and (for temporary
-  credentials) `:session-token`; when absent the `llm-bedrock-*` settings are used.
+  Opts map takes `:credentials` from the connection serving this request — `:access-key-id`, `:secret-access-key`,
+  `:region`, and (for temporary credentials) `:session-token` — and throws when they are missing.
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
