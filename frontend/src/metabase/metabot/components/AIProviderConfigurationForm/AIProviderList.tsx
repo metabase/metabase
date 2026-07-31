@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,7 +13,7 @@ import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import {
   Button,
-  Card,
+  Divider,
   Group,
   Icon,
   Menu,
@@ -80,17 +80,19 @@ export function AIProviderList() {
   return (
     <Stack gap="lg">
       {hasConnections && (
-        <Stack gap="sm">
-          {connections.map((connection) => (
-            <ProviderConnectionCard
-              key={connection.key}
-              connection={connection}
-              providerType={providerTypes.find(
-                (type) => type.type === connection.type,
-              )}
-              onEdit={() => setEditing(connection)}
-              onDelete={() => setDeleting(connection)}
-            />
+        <Stack gap={0}>
+          {connections.map((connection, index) => (
+            <Fragment key={connection.key}>
+              {index > 0 && <Divider />}
+              <ProviderConnectionRow
+                connection={connection}
+                providerType={providerTypes.find(
+                  (type) => type.type === connection.type,
+                )}
+                onEdit={() => setEditing(connection)}
+                onDelete={() => setDeleting(connection)}
+              />
+            </Fragment>
           ))}
         </Stack>
       )}
@@ -127,7 +129,7 @@ export function AIProviderList() {
   );
 }
 
-function ProviderConnectionCard({
+function ProviderConnectionRow({
   connection,
   providerType,
   onEdit,
@@ -146,71 +148,67 @@ function ProviderConnectionCard({
       : undefined;
 
   return (
-    <Card p="md" withBorder>
-      <Group justify="space-between" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap">
-          <ProviderTypeIcon
-            type={connection.type}
-            icon={providerType?.icon ?? "ai"}
-          />
-          <Stack gap={0}>
-            <Group gap="xs" wrap="nowrap">
-              <Text fw="bold">{connection.name}</Text>
-              {!connection.usable && (
-                <Tooltip
-                  label={t`Some required settings are missing, so Metabot can't use this provider.`}
-                >
-                  <Icon
-                    name="warning"
-                    c="error"
-                    size={14}
-                    aria-label={t`Incomplete configuration`}
-                  />
-                </Tooltip>
-              )}
-            </Group>
-            {typeLabel && (
-              <Text size="sm" c="text-secondary">
-                {typeLabel}
-              </Text>
-            )}
-            {isEnvManaged &&
-              connection.env_vars.map((varName) => (
-                <SetByEnvVar key={varName} varName={varName} />
-              ))}
-          </Stack>
-        </Group>
-
-        {!isEnvManaged && (
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Button
-                variant="subtle"
-                p="xs"
-                aria-label={t`Provider options`}
-                leftSection={<Icon name="ellipsis" />}
-              />
-            </Menu.Target>
-            <Menu.Dropdown>
-              {isEditable && (
-                <Menu.Item
-                  leftSection={<Icon name="pencil" />}
-                  onClick={onEdit}
-                >
-                  {t`Edit`}
-                </Menu.Item>
-              )}
-              <Menu.Item
-                leftSection={<Icon name="trash" />}
-                c="error"
-                onClick={onDelete}
+    <Group justify="space-between" wrap="nowrap" py="sm">
+      <Group gap="sm" wrap="nowrap">
+        <ProviderTypeIcon
+          type={connection.type}
+          icon={providerType?.icon ?? "ai"}
+          size={32}
+        />
+        <Stack gap={0}>
+          <Group gap="xs" wrap="nowrap">
+            <Text fw="bold">{connection.name}</Text>
+            {!connection.usable && (
+              <Tooltip
+                label={t`Some required settings are missing, so Metabot can't use this provider.`}
               >
-                {t`Remove`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        )}
+                <Icon
+                  name="warning"
+                  c="error"
+                  size={14}
+                  aria-label={t`Incomplete configuration`}
+                />
+              </Tooltip>
+            )}
+          </Group>
+          {typeLabel && (
+            <Text size="sm" c="text-secondary">
+              {typeLabel}
+            </Text>
+          )}
+          {isEnvManaged &&
+            connection.env_vars.map((varName) => (
+              <SetByEnvVar key={varName} varName={varName} />
+            ))}
+        </Stack>
       </Group>
-    </Card>
+
+      {!isEnvManaged && (
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <Button
+              variant="subtle"
+              p="xs"
+              aria-label={t`Provider options`}
+              leftSection={<Icon name="ellipsis" />}
+            />
+          </Menu.Target>
+          <Menu.Dropdown>
+            {isEditable && (
+              <Menu.Item leftSection={<Icon name="pencil" />} onClick={onEdit}>
+                {t`Edit`}
+              </Menu.Item>
+            )}
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              c="error"
+              onClick={onDelete}
+            >
+              {t`Remove`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      )}
+    </Group>
   );
 }
