@@ -118,10 +118,12 @@ export function ProviderConnectionForm({
     setError(undefined);
   };
 
+  // A required field the registry gives a default is already satisfied — the form shows that value pre-selected,
+  // and the backend fills it in for a connection that never touched it.
   const isComplete =
     providerType != null &&
     providerType.fields
-      .filter((field) => field.required)
+      .filter((field) => field.required && !field.default)
       .every((field) => (config[field.key] ?? "").trim() !== "");
 
   const handleSave = async () => {
@@ -208,25 +210,29 @@ export function ProviderConnectionForm({
               {error && <Text c="error">{error}</Text>}
               <Flex justify="end">
                 <Group gap="sm">
-                  {isEditing ? (
-                    onCancel && (
+                  {match({ isEditing, onCancel })
+                    .with(
+                      { isEditing: true, onCancel: P.nonNullable },
+                      ({ onCancel }) => (
+                        <Button
+                          type="button"
+                          onClick={onCancel}
+                          disabled={isSaving}
+                        >
+                          {t`Cancel`}
+                        </Button>
+                      ),
+                    )
+                    .with({ isEditing: false }, () => (
                       <Button
                         type="button"
-                        onClick={onCancel}
+                        onClick={handleBack}
                         disabled={isSaving}
                       >
-                        {t`Cancel`}
+                        {t`Back`}
                       </Button>
-                    )
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={handleBack}
-                      disabled={isSaving}
-                    >
-                      {t`Back`}
-                    </Button>
-                  )}
+                    ))
+                    .otherwise(() => null)}
                   <Button
                     type="submit"
                     variant="filled"
