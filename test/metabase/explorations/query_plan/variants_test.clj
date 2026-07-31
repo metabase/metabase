@@ -60,19 +60,19 @@
                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                        (lib/aggregate (lib/count))))})
 
-(defn- orders-count-by-month-card
-  "Count metric on ORDERS broken out by CREATED_AT month — carries the temporal
-  breakout that `time-facet` and `per-value-time-series` resolve their time
-  axis from."
+(defn- orders-count-with-default-time-dim-card
+  "Count metric on ORDERS with a curated default CREATED_AT dimension — the
+  curated default that `time-facet` and `per-value-time-series` resolve their
+  time axis from."
   [card-id]
-  (let [mp (mt/metadata-provider)]
-    {:id            card-id
-     :dataset_query (lib/->legacy-MBQL
-                     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/aggregate (lib/count))
-                         (lib/breakout (lib/with-temporal-bucket
-                                         (lib.metadata/field mp (mt/id :orders :created_at))
-                                         :month))))}))
+  (-> (orders-count-card card-id)
+      (assoc :dimensions         [{:id             "d-created-at"
+                                   :display-name   "Created At"
+                                   :effective-type :type/DateTimeWithLocalTZ
+                                   :status         :status/active
+                                   :default        true}]
+             :dimension_mappings [{:dimension-id "d-created-at"
+                                   :target       [:field (mt/id :orders :created_at) nil]}])))
 
 (def ^:private created-at-dim
   {:dimension-id   "d-created-at"
@@ -145,7 +145,7 @@
   (testing "time-facet orders by date desc then metric desc,
             so a fired cap keeps the most recent months across all dim values"
     (let [ctx {:mp      (mt/metadata-provider)
-               :card    (orders-count-by-month-card 9000005)
+               :card    (orders-count-with-default-time-dim-card 9000005)
                :target  (orders-category-target)
                :dim     category-dim
                :segment nil
@@ -171,7 +171,7 @@
 (deftest per-value-time-series-cap-test
   (testing "per-value-time-series carries a date-desc row cap (it previously had none)"
     (let [ctx {:mp      (mt/metadata-provider)
-               :card    (orders-count-by-month-card 9000006)
+               :card    (orders-count-with-default-time-dim-card 9000006)
                :target  (orders-category-target)
                :dim     category-dim
                :segment nil
