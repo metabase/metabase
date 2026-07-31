@@ -12,6 +12,7 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
   return (
     <SettingsSection
       id={id}
+      stackProps={{ gap: "md" }}
       title={hasConnections ? t`AI providers` : t`Connect to an AI provider`}
       description={
         !hasConnections

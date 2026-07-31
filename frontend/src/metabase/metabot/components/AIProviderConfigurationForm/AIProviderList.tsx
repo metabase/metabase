@@ -79,33 +79,35 @@ export function AIProviderList() {
 
   return (
     <Stack gap="lg">
-      {hasConnections && (
-        <Stack gap={0}>
-          {connections.map((connection, index) => (
-            <Fragment key={connection.key}>
-              {index > 0 && <Divider />}
-              <ProviderConnectionRow
-                connection={connection}
-                providerType={providerTypes.find(
-                  (type) => type.type === connection.type,
-                )}
-                onEdit={() => setEditing(connection)}
-                onDelete={() => setDeleting(connection)}
-              />
-            </Fragment>
-          ))}
-        </Stack>
-      )}
+      <Stack gap="sm">
+        {hasConnections && (
+          <Stack gap={0}>
+            {connections.map((connection, index) => (
+              <Fragment key={connection.key}>
+                {index > 0 && <Divider />}
+                <ProviderConnectionRow
+                  connection={connection}
+                  providerType={providerTypes.find(
+                    (type) => type.type === connection.type,
+                  )}
+                  onEdit={() => setEditing(connection)}
+                  onDelete={() => setDeleting(connection)}
+                />
+              </Fragment>
+            ))}
+          </Stack>
+        )}
 
-      <Group justify="space-between">
         <Button
           variant={hasConnections ? "subtle" : "filled"}
+          p={hasConnections ? 0 : undefined}
+          w="fit-content"
           leftSection={<Icon name="add" />}
           onClick={startAdding}
         >
           {hasConnections ? t`Add another provider` : t`Add a provider`}
         </Button>
-      </Group>
+      </Stack>
 
       {hasConnections && <LlmModelPicker />}
 
