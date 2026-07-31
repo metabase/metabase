@@ -127,7 +127,7 @@
                         :content_type "application/json+vnd.prose-mirror"}]
           (let [row (content-one {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
-            (is (re-find #"hello" (:markdown row)))))))))
+            (is (re-find #"hello" (:content_markdown row)))))))))
 
 (deftest get-content-dashboard-skeleton-test
   (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"
@@ -284,7 +284,7 @@
         (mt/with-test-user :crowberto
           (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
-            (is (re-find #"hello" (:markdown row)))))))))
+            (is (re-find #"hello" (:content_markdown row)))))))))
 
 (defn- comment-content
   [text]
@@ -335,7 +335,7 @@
                                       :content         (comment-content "my block was rewritten")}]
       (mt/with-test-user :crowberto
         (let [row      (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})
-              markdown (:markdown row)
+              markdown (:content_markdown row)
               threads  (:comments row)
               by-id    (into {} (map (juxt :child_target_id identity)) threads)]
           (is (nil? (:error row)))
@@ -405,7 +405,7 @@
                                       :content         (comment-content "my block was rewritten")}]
       (mt/with-test-user :crowberto
         (let [row      (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})
-              markdown (:markdown row)
+              markdown (:content_markdown row)
               by-id    (into {} (map (juxt :child_target_id identity)) (:comments row))]
           (is (nil? (:error row)))
           (testing "every block that still exists is anchored, whatever it is nested in"
@@ -460,7 +460,7 @@
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})]
           (is (nil? (:error row)))
-          (is (= "odd" (:markdown row)))
+          (is (= "odd" (:content_markdown row)))
           (is (= [{:child_target_id "m-1" :thread-texts ["still here"]}]
                  (mapv #(-> (select-keys % [:child_target_id :anchor])
                             (assoc :thread-texts (mapv :text (:thread %))))
@@ -494,7 +494,7 @@
         (let [row (content-one {:items [{:type "document" :id doc-id}]})]
           (is (nil? (:error row)))
           (testing "rendered as real Markdown, not the flattened-text fallback"
-            (is (str/includes? (str (:markdown row)) "> buried"))))))
+            (is (str/includes? (str (:content_markdown row)) "> buried"))))))
     (testing "past that ceiling the write does not succeed, so no such document exists to read"
       ;; Throwable, not Exception: which mechanism stops the write depends on how much stack the
       ;; running thread has. The JSON nesting limit raises an ordinary exception, but on a smaller

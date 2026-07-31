@@ -69,7 +69,7 @@
               (is (nil? (t2/select-one-fn :document_id :model/Card :id card-id))))
             (testing "get_content returns the same Markdown body the tool returned"
               (is (= (:content_markdown payload)
-                     (:markdown (#'v2.content/fetch-document (:id payload))))))))))))
+                     (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
 
 (deftest dangling-card-embed-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -501,3 +501,23 @@
             (let [txt (-> (call! {:edits [] :clear ["name"]}) :content first :text)]
               (is (re-find #"clear" txt))
               (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
+
+(deftest write-echo-and-read-name-the-body-alike-test
+  (testing "the write echo and a concise get_content read call the body `content_markdown`. They
+            used to disagree — the read said `markdown` — so an agent doing the read-modify-write
+            this tool's `edits`/`old_str` design encourages had to rename the field in between."
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [echo (-> (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
+                                           "document_write"
+                                           {:method "create" :name "shared name"
+                                            :content_markdown "BODY TEXT"})
+                       :content first :text json/decode+kw)
+              read (-> (registry/call-tool #{"agent:content:read"} nil "get_content"
+                                           {:items [{:type "document" :id (:id echo)}]})
+                       :content first :text json/decode+kw :results first)]
+          (is (= "BODY TEXT" (:content_markdown echo)))
+          (is (= (:content_markdown echo) (:content_markdown read)))
+          (testing "and neither side still carries the old key"
+            (is (not (contains? echo :markdown)))
+            (is (not (contains? read :markdown)))))))))

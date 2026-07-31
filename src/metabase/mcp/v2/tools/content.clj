@@ -185,7 +185,7 @@
 ;;; --------------------------------------------------- document ---------------------------------------------------
 
 (def ^:private document-concise-keys
-  [:id :name :collection_id :archived :markdown])
+  [:id :name :collection_id :archived :content_markdown])
 
 (def ^:private document-detailed-keys
   (into document-concise-keys
@@ -210,9 +210,9 @@
                 nil))]
     (-> (select-keys doc [:id :name :collection_id :archived :entity_id :creator_id
                           :created_at :updated_at])
-        (assoc :markdown (if ser
-                           (:markdown ser)
-                           (prose-mirror/ast->text (:document doc)))
+        (assoc :content_markdown (if ser
+                                   (:markdown ser)
+                                   (prose-mirror/ast->text (:document doc)))
                ::document doc
                ::spans (:spans ser)))))
 
@@ -261,7 +261,7 @@
    the serializer-fallback read there are no spans at all, so every thread is returned unanchored
    under `comments` — absence of anchors there means \"unknown\", not \"orphaned\"."
   [row]
-  (let [markdown   (:markdown row)
+  (let [markdown   (:content_markdown row)
         spans      (::spans row)
         span-by-id (into {} (map (juxt :node-id identity)) spans)
         ancestor-ids (node-id->ancestor-ids row)
@@ -532,14 +532,14 @@
              [:fields {:optional true}
               [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the fields catalog resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned in the external dialect the write/execute tools accept), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned content_markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
                           "definition" "fields" "parameters" "layout" "dimensions" "comments"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags, and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's comment threads, each anchored to the exact character range of its block in the returned markdown."
+  "Fetch content by {type, id} — the generic typed read for anything discovered via search or browse_collection. Batch up to 10 items of mixed types in one call; each item is permission-checked independently and a bad item returns a per-item {type, id, error} object without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids accept numeric ids or 21-char entity_ids. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template tags, and its materialized parameters (the same tags viewed as parameters — not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters) rather than the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming; alerts and subscriptions return condition, schedule, channels, and recipients (redacted for non-admins); a transform returns source type, target, and its latest run. Use include for on-demand sections — definition returns the query in the same external dialect execute_query and the write tools accept, so read-modify-write round-trips; comments returns a document's comment threads, each anchored to the exact character range of its block in the returned content_markdown."
   {:name         "get_content"
    :scope        metabot.scope/agent-content-read
    :annotations  {:readOnlyHint true :idempotentHint true}

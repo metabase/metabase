@@ -14,6 +14,7 @@
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
@@ -188,15 +189,20 @@
             "get_content, or replace the whole body with content_markdown.")})))
 
 (defn- document-response
+  "The written document echoed to the caller: the `:document` concise read projection, so the echo
+   and a concise `get_content` read name the body identically and a read-modify-write needs no
+   renaming, plus the write-only fields — `:entity_id` (a portable id to update by),
+   `:collection_position`, and the comment threads this write orphaned.
+
+   The body is re-serialized from the stored AST rather than taken from the projection, so it
+   reflects post-clone card ids: the next edit's `old_str` is matched against this exact text."
   [document orphaned-threads]
-  (merge {:id                       (:id document)
-          :entity_id                (:entity_id document)
-          :name                     (:name document)
-          :collection_id            (:collection_id document)
-          :collection_position      (:collection_position document)
-          :archived                 (boolean (:archived document))
-          :orphaned_comment_threads orphaned-threads}
-         (body-projection (:document document))))
+  (-> (projections/project :document :concise document)
+      (merge {:entity_id                (:entity_id document)
+              :collection_position      (:collection_position document)
+              :archived                 (boolean (:archived document))
+              :orphaned_comment_threads orphaned-threads}
+             (body-projection (:document document)))))
 
 ;;; ------------------------------------------------------ Edits ---------------------------------------------------
 
