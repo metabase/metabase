@@ -4,6 +4,7 @@
   Manifests are validated and registered at startup as soon as their dependencies are met. Plugin code is loaded only
   when [[load-plugin!]] is called. Driver manifests use the same loader through their lazy driver placeholders."
   (:require
+   [clojure.string :as str]
    [metabase.plugins.dependencies :as deps]
    [metabase.plugins.init-steps :as init-steps]
    [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
@@ -37,11 +38,12 @@
   (atom {}))
 
 (defonce ^:private
-  ^{:doc "Names the plugin whose load holds [[plugin-lock]], so a rejected load can say what beat it.
+  ^{:doc "The loads in progress, outermost first.
 
-  Diagnostic only: the lock, not this, decides who may load."}
-  active-plugin-load
-  (atom nil))
+  Only the thread holding [[plugin-lock]] touches it.
+  A name already on the stack is a cycle: its init steps have not finished, so loading it again would never stop."}
+  loading-plugins
+  (atom []))
 
 ;; `:info :name` predates generic plugins and is currently both the human-readable name and the identifier used by
 ;; `load-plugin!` and `dependencies: [{plugin: ...}]`. Plugin authors must therefore treat it as unique and stable.
@@ -78,16 +80,32 @@
 (defn- loaded? [plugin-name]
   (boolean (get-in @plugins [plugin-name :loaded?])))
 
+(defn- lock-holder-description []
+  (if-let [loading (peek @loading-plugins)]
+    (format "plugin %s is loading" (pr-str loading))
+    "another thread holds the plugin lock"))
+
 (defn- claim-plugin-load!
-  "Take `plugin-lock` for the duration of a load, or throw if another thread is already loading. A thread that already
-  holds the lock claims it again; that is nesting, not concurrency."
+  "Take [[plugin-lock]] and record `plugin-name` as loading.
+  Throws if another thread is loading, or if this would re-enter a plugin whose init steps have not finished."
   [plugin-name]
   (when-not (.tryLock plugin-lock)
-    (let [active-load @active-plugin-load]
-      (throw (ex-info (format "Cannot load plugin %s while plugin %s is loading; concurrent plugin loading is not supported."
-                              (pr-str plugin-name) (pr-str (:plugin-name active-load)))
-                      {:plugin-name        plugin-name
-                       :active-plugin-load active-load})))))
+    (throw (ex-info (format "Cannot load plugin %s while %s; concurrent plugin loading is not supported."
+                            (pr-str plugin-name) (lock-holder-description))
+                    {:plugin-name     plugin-name
+                     :loading-plugins @loading-plugins})))
+  (let [in-progress @loading-plugins]
+    (when (some #{plugin-name} in-progress)
+      (.unlock plugin-lock)
+      (throw (ex-info (format "Cannot load plugin %s while it is already loading: %s."
+                              (pr-str plugin-name) (str/join " -> " (conj in-progress plugin-name)))
+                      {:plugin-name     plugin-name
+                       :loading-plugins in-progress}))))
+  (swap! loading-plugins conj plugin-name))
+
+(defn- release-plugin-load! []
+  (swap! loading-plugins pop)
+  (.unlock plugin-lock))
 
 (defn- load-plugin-info!
   [{:keys [add-to-classpath!], init-steps :init, {plugin-name :name} :info}]
@@ -98,19 +116,15 @@
     ;; We mark a plugin loaded only after every init step succeeds. A failed activation can therefore be retried, so
     ;; initialization steps should tolerate retry after a partially completed attempt.
     (claim-plugin-load! plugin-name)
-    (let [outer-load @active-plugin-load]
-      (try
-        (reset! active-plugin-load {:plugin-name plugin-name
-                                    :thread      (.getName ^Thread (Thread/currentThread))})
-        ;; A competing call can finish after the fast-path check but before this call takes the lock.
-        (when-not (loaded? plugin-name)
-          (when add-to-classpath!
-            (add-to-classpath!))
-          (init-steps/do-init-steps! init-steps)
-          (swap! plugins update plugin-name assoc :loaded? true))
-        (finally
-          (reset! active-plugin-load outer-load)
-          (.unlock plugin-lock)))))
+    (try
+      ;; A competing call can finish after the fast-path check but before this call takes the lock.
+      (when-not (loaded? plugin-name)
+        (when add-to-classpath!
+          (add-to-classpath!))
+        (init-steps/do-init-steps! init-steps)
+        (swap! plugins update plugin-name assoc :loaded? true))
+      (finally
+        (release-plugin-load!))))
   :ok)
 
 (defn load-plugin!
