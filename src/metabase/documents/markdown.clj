@@ -46,8 +46,9 @@
   serializing prose can never manufacture an embed; a paragraph's leading
   indentation is not preserved (four or more columns would read back as an indented code
   block, so it collapses to at most three spaces, which CommonMark itself absorbs);
-  boundary whitespace inside a bold/italic run moves outside the mark; and spaces in link
-  hrefs percent-encode to `%20`.
+  boundary whitespace inside a bold/italic run moves outside the mark; spaces in link
+  hrefs percent-encode to `%20`; and a CR or CRLF inside a text node normalizes to a newline,
+  which re-parses as a space, since the parser ends a line on it either way.
 
   This namespace takes and returns plain data and touches no database. A `{% entity %}` token
   parses to a smartLink carrying only its `entityId`/`model`, with `label`/`href` left at their
@@ -648,13 +649,15 @@
   stored string reaches the output verbatim, so this is what keeps a text node that merely
   *looks* like markup from becoming markup on the next parse. Leading indentation of four or
   more columns (or any tab) would read as an indented code block, so it collapses to three
-  spaces."
+  spaces.
+
+  Both patterns are DOTALL: a line can still hold a separator the parser reads as ordinary text
+  (NEL, LINE SEPARATOR, PARAGRAPH SEPARATOR — routine in prose pasted from a PDF or a word
+  processor), and a bare `.` excludes exactly those, which would drop everything past one."
   ^String [^String line]
-  (let [[_ ws body] (re-matches #"([ \t]*)(.*)" line)
+  (let [[_ ws body] (re-matches #"(?s)([ \t]*)(.*)" line)
         ws (if (or (str/includes? ws "\t") (>= (count ws) 4)) "   " ws)]
     (cond
-      (nil? body) line
-
       ;; `card-token-line-body` is the same predicate the scanner uses, so a line is escaped
       ;; exactly when it would otherwise be read as a card embed — never more, never less.
       (or (re-find #"^(#{1,6}([ \t]|$)|>|[-+]([ \t]|$)|:::|~~~|=+[ \t]*$|-+[ \t]*$)" body)
@@ -662,14 +665,23 @@
       (str ws "\\" body)
 
       (re-find #"^\d{1,9}[.)]([ \t]|$)" body)
-      (let [[_ digits delim tail] (re-matches #"(\d{1,9})([.)])(.*)" body)]
+      (let [[_ digits delim tail] (re-matches #"(?s)(\d{1,9})([.)])(.*)" body)]
         (str ws digits "\\" delim tail))
 
       :else (str ws body))))
 
+(def ^:private line-ending-re
+  "The line endings the Markdown parser breaks a line on: CRLF, CR, LF (CommonMark 2.2). Prose
+  reaching the serializer is an arbitrary stored string, so it can hold any of them, and every
+  line the parser will see has to go through [[escape-line-start]] — a CR the serializer treats
+  as ordinary text is a line the parser reads as a fresh one, free to open a block."
+  #"\r\n|\r|\n")
+
 (defn- escape-block-starts
+  "Escape every line of `s` against being re-read as a block construct, normalizing the parser's
+  line endings to `\\n` on the way out."
   ^String [^String s]
-  (str/join "\n" (map escape-line-start (str/split s #"\n" -1))))
+  (str/join "\n" (map escape-line-start (str/split s line-ending-re -1))))
 
 (defn- code-span
   "Wrap `s` in a backtick run longer than any run it contains, space-padded when the content

@@ -352,6 +352,51 @@
         (is (empty? (filter #{"cardEmbed" "resizeNode" "flexContainer" "supportingText"} types))
             (format "%s in a %s manufactured structure: %s" label block-name (pr-str types)))))))
 
+(def ^:private parser-line-endings
+  "Line terminators the Markdown parser ends a line on, `\\n` aside. Prose holding one of these is
+  re-read as two lines, so the second one can open a block."
+  {"carriage return" "\r"
+   "CRLF"            "\r\n"})
+
+(def ^:private non-ending-separators
+  "Unicode separators the Markdown parser reads as ordinary text. They are line terminators to
+  Java's regex engine, where `.` excludes them, so line-oriented serialization has to keep them
+  out of a `.`-shaped pattern."
+  {"next line"           (str (char 0x85))
+   "line separator"      (str (char 0x2028))
+   "paragraph separator" (str (char 0x2029))})
+
+(defn- round-trip-block-types
+  "The block types `text` round-trips to when it is the prose of `block-name`."
+  [block-name text]
+  (let [node (get (text-bearing-blocks text) block-name)]
+    (mapv :type (:content (md/parse (reserialize {:type    "doc"
+                                                  :content [node {:type "paragraph" :attrs {:_id "z"}}]}))))))
+
+(deftest ^:parallel exotic-line-terminators-cannot-manufacture-structure-test
+  (testing "a line terminator other than \\n inside a text node serializes without failing and
+           cannot open a block on re-parse — the block structure has to come out the same as it
+           would for a plain space. `[:document :any]` on the REST write path lets any of these
+           reach the serializer, and text pasted from a PDF or a Word document routinely carries
+           one."
+    (doseq [[label separator] (merge parser-line-endings non-ending-separators)
+            block-name        (keys (text-bearing-blocks ""))]
+      (let [types (round-trip-block-types block-name (str "before" separator "# Injected"))]
+        (is (= (round-trip-block-types block-name "before # Injected") types)
+            (format "%s in a %s changed the block structure: %s" label block-name (pr-str types)))))))
+
+(deftest ^:parallel non-ending-separators-survive-round-trip-test
+  (testing "a separator the parser reads as text stays in the prose verbatim — it is not a line
+           boundary to the grammar, so nothing about it needs normalizing away. The prefixes are
+           the ones that send the line down an escaping branch, where a pattern that stops at the
+           separator would drop the rest of the line."
+    (doseq [[label separator] non-ending-separators
+            prefix            ["before" "1. before" "# before" "- before" "> before"]]
+      (let [text (str prefix separator "after")
+            ast  {:type "doc" :content [(para text) {:type "paragraph" :attrs {:_id "z"}}]}]
+        (is (= text (get-in (md/parse (reserialize ast)) [:content 0 :content 0 :text]))
+            (format "%s after %s did not survive the round trip" label (pr-str prefix)))))))
+
 (deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
   (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
            attr — serializes as its label rather than failing the whole document body"
