@@ -27,6 +27,8 @@ const snapshot: UsageMetadataSnapshot = {
     "candidate-count": 6,
     "measure-count": 3,
     "segment-count": 3,
+    "metric-count": 0,
+    "publish-table-count": 0,
     "table-count": 1,
   },
 };
@@ -64,6 +66,16 @@ const tableSummary: UsageMetadataTableSummary = {
   },
   candidate_count: 6,
   counts: {
+    table: {
+      missing: 0,
+      "partially-modeled": 0,
+      modeled: 0,
+    },
+    metric: {
+      missing: 0,
+      "partially-modeled": 0,
+      modeled: 0,
+    },
     measure: {
       missing: 2,
       "partially-modeled": 1,

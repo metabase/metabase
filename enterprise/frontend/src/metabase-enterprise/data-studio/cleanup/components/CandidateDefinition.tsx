@@ -6,7 +6,7 @@ import { MeasureAggregationPicker } from "metabase/querying/measures";
 import { SegmentFilterEditor } from "metabase/querying/segments";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Stack, Text } from "metabase/ui";
+import { Badge, Card, Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
   IconName,
@@ -94,9 +94,53 @@ function CandidateMeasureDefinition({ query }: { query: Lib.Query }) {
   );
 }
 
+function CandidateMetricDefinition({ query }: { query: Lib.Query }) {
+  const hasFilters = Lib.filters(query, -1).length > 0;
+  const breakouts = Lib.breakouts(query, -1);
+
+  return (
+    <Card withBorder p="xl">
+      <Stack gap="xl">
+        <MeasureAggregationPicker
+          query={query}
+          onChange={() => undefined}
+          readOnly
+        />
+        {hasFilters && (
+          <Stack gap="sm">
+            <Text fw="bold">{t`Where`}</Text>
+            <SegmentFilterEditor
+              query={query}
+              onChange={() => undefined}
+              readOnly
+              detailedFilterNames
+              inspectableFilters
+            />
+          </Stack>
+        )}
+        {breakouts.length > 0 && (
+          <Stack gap="sm">
+            <Text fw="bold">{t`Grouped by`}</Text>
+            <Group>
+              {breakouts.map((breakout, index) => (
+                <Badge key={index} variant="light">
+                  {Lib.displayInfo(query, -1, breakout).longDisplayName}
+                </Badge>
+              ))}
+            </Group>
+          </Stack>
+        )}
+      </Stack>
+    </Card>
+  );
+}
+
 export function CandidateDefinition({ candidate }: CandidateDefinitionProps) {
   const metadata = useSelector(getMetadata);
   const query = useMemo(() => {
+    if (candidate.candidate_type === "table") {
+      return undefined;
+    }
     const databaseId = candidate.definition.database;
     if (!databaseId) {
       return undefined;
@@ -106,29 +150,45 @@ export function CandidateDefinition({ candidate }: CandidateDefinitionProps) {
       Lib.metadataProvider(databaseId, metadata),
       candidate.definition,
     );
-  }, [candidate.definition, metadata]);
+  }, [candidate.candidate_type, candidate.definition, metadata]);
 
   if (!query) {
     return null;
   }
 
-  return candidate.candidate_type === "measure" ? (
-    <CandidateMeasureDefinition query={query} />
-  ) : (
-    <SegmentEditor
-      query={query}
-      description=""
-      readOnly
-      detailedFilterNames
-      inspectableFilters
-      onQueryChange={() => undefined}
-      onDescriptionChange={() => undefined}
-    />
-  );
+  switch (candidate.candidate_type) {
+    case "measure":
+      return <CandidateMeasureDefinition query={query} />;
+    case "metric":
+      return <CandidateMetricDefinition query={query} />;
+    case "segment":
+      return (
+        <SegmentEditor
+          query={query}
+          description=""
+          readOnly
+          detailedFilterNames
+          inspectableFilters
+          onQueryChange={() => undefined}
+          onDescriptionChange={() => undefined}
+        />
+      );
+    case "table":
+      return null;
+  }
 }
 
 export function getCandidateIcon(
   candidate: Pick<UsageMetadataCandidateSummary, "candidate_type">,
 ): IconName {
-  return candidate.candidate_type === "measure" ? "ruler" : "segment";
+  switch (candidate.candidate_type) {
+    case "table":
+      return "table";
+    case "metric":
+      return "metric";
+    case "measure":
+      return "ruler";
+    case "segment":
+      return "segment";
+  }
 }

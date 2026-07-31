@@ -198,7 +198,7 @@ function NoSnapshotState() {
         <Icon name="search_check" size={48} c="brand" />
         <Title order={2}>{t`Find cleanup opportunities`}</Title>
         <Text c="text-secondary">
-          {t`Analyze saved questions and models to find common Measures and Segments and compare them with your Library.`}
+          {t`Analyze saved questions and models to find tables, Metrics, Measures, and Segments that belong in your Library.`}
         </Text>
         <Badge size="lg" variant="light">
           {t`Read-only analysis`}
@@ -235,7 +235,7 @@ function EmptyQueueState({
               ? t`No Library Measures or Segments are still being expressed as raw query clauses.`
               : filtered
                 ? t`Try changing or clearing the filters.`
-                : t`No Measure or Segment candidates were found in this snapshot.`}
+                : t`No Library recommendations were found in this snapshot.`}
         </Text>
       </Stack>
     </Center>
