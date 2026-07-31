@@ -61,6 +61,7 @@
    "anthropic/claude-haiku-4.5"   "Claude Haiku 4.5"
    "deepseek/deepseek-v4-pro"     "DeepSeek V4 Pro"
    "mistralai/mistral-medium-3-5" "Mistral Medium 3.5"
+   "moonshotai/kimi-k3"           "Kimi K3"
    "openai/gpt-5.6-sol"           "GPT-5.6 Sol"
    "openai/gpt-5.6-terra"         "GPT-5.6 Terra"
    "openai/gpt-5.6-luna"          "GPT-5.6 Luna"
