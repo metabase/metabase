@@ -259,24 +259,6 @@ async function openModelPicker() {
   return await screen.findByRole("listbox");
 }
 
-const SETTING_PATH = "/api/setting";
-
-async function findPutRequests() {
-  const requests = await findRequests("PUT");
-  return requests.map(({ url, body }) => ({
-    path: new URL(url, location.origin).pathname,
-    body,
-  }));
-}
-
-async function findPutBodies(path: string) {
-  return (await findPutRequests())
-    .filter((request) => request.path === path)
-    .map(({ body }) => body);
-}
-
-const findSettingUpdates = () => findPutBodies(SETTING_PATH);
-
 describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
