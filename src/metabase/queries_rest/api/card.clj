@@ -884,7 +884,7 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(defn- card-without-metric-breakouts
+(defn- metric-card-without-query-breakouts
   [card]
   (if-not (= :metric (:type card))
     card
@@ -920,8 +920,9 @@
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
      :card-transform (cond
+                       ;; Collection previews start from the aggregate so no usable default stays scalar
                        collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                card-without-metric-breakouts)
+                                                metric-card-without-query-breakouts)
                        dashboard_id       qp.dashboard/card-with-default-metric-dimension)
      :context (cond
                 collection_preview :collection
