@@ -36,6 +36,7 @@ export const ApiKeyProviderFields = ({
 
   const { details } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-mistral-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
     "llm-zai-api-key",

@@ -124,6 +124,7 @@ function AIProviderConfigurationFormBody({
   const { details: providerApiKeyDetails, isLoading: areDetailsLoading } =
     useAdminSettings([
       "llm-anthropic-api-key",
+      "llm-mistral-api-key",
       "llm-openai-api-key",
       "llm-openrouter-api-key",
       "llm-zai-api-key",
@@ -324,6 +325,7 @@ function AIProviderConfigurationFormBody({
               ))
               .with(
                 "anthropic",
+                "mistral",
                 "openai",
                 "openrouter",
                 "zai",
