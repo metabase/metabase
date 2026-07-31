@@ -287,15 +287,15 @@
                (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
                (partition-all reindex-batch-size alive))))
       (when (seq gone)
-        (doseq [e (search.engine/active-engines)]
-          (search.engine/delete! e search-model (into #{} (map str) gone)))))))
+        (search.ingestion/ingest-maybe-async!
+         [(search.ingestion/tombstone search-model gone)])))))
 
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
-            search-model (->> (vals (search.spec/specifications))
-                              (filter (comp #{model} :model))
-                              (map :name))]
-      (search.engine/delete! e search-model ids))))
+    (search.ingestion/ingest-maybe-async!
+     (for [search-model (->> (vals (search.spec/specifications))
+                             (filter (comp #{model} :model))
+                             (map :name))]
+       (search.ingestion/tombstone search-model ids)))))

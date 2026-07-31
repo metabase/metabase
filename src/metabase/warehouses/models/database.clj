@@ -450,21 +450,24 @@
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
-        ;; mysql and h2 both do not support `returning`, so we do the correct thing for postgres and
-        ;; then some sad version for those two
-        (t2/reducible-query (if (= :postgres (mdb/db-type))
-                              {:delete-from (t2/table-name :model/Card)
-                               :where       [:= :database_id id]
-                               :returning   [:id]}
-                              {:from   [(t2/table-name :model/Card)]
-                               :select [:id]
-                               :where  [:= :database_id id]})))
+        ;; This intentionally bypasses Card's row-level delete hook. Capture the affected search documents
+        ;; first, then delete in bounded statements; database cascades remove Actions and ModelIndexValues
+        ;; before Toucan can observe them.
+        (t2/reducible-query {:from   [(t2/table-name :model/Card)]
+                             :select [:id]
+                             :where  [:= :database_id id]}))
        (run! (fn [batch]
-               ;; damn circular deps
-               ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
-  (when (not= :postgres (mdb/db-type))
-    (t2/query {:delete-from (t2/table-name :model/Card)
-               :where       [:= :database_id id]}))
+               (let [ids        (mapv :id batch)
+                     instances  (mapv #(t2/instance :model/Card %) batch)
+                     cascading  ((requiring-resolve 'metabase.search.core/cascading-documents) instances)
+                     delete!    (requiring-resolve 'metabase.search.core/delete!)
+                     reconcile! (requiring-resolve 'metabase.search.core/reconcile-cascading-documents!)]
+                 (t2/query {:delete-from (t2/table-name :model/Card)
+                            :where       [:in :id ids]})
+                 ;; Index mutations must see committed state. The shared ingestion queue serializes these
+                 ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
+                 (mdb/do-after-commit #(do (delete! :model/Card ids)
+                                           (reconcile! cascading)))))))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e

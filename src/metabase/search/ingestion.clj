@@ -399,13 +399,26 @@
   (when (seq ids)
     (doc-ids search-model (doc-id-selector search-model ids))))
 
+(defn tombstone
+  "A queue message that removes these document ids after all earlier re-index messages.
+  Tombstones share ingestion's single worker with updates: an update that read a row before its delete commits
+  is therefore applied before, never after, its corresponding removal."
+  [search-model ids]
+  {:op :delete, :search-model search-model, :ids (set (map str ids))})
+
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
   (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
     (lib-be/with-metadata-provider-cache
       (if (seq (search.engine/active-engines))
-        (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+        (let [[tombstones updates] (reduce (fn [[tombstones updates] update]
+                                             (if (= :delete (:op update))
+                                               [(conj tombstones update) updates]
+                                               [tombstones (conj updates update)]))
+                                           [[] []]
+                                           updates)
+              documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
                                (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
                              ;; init collection is only for clj-kondo, as we know that the list is non-empty
                              (reduce u/rconcat [])
@@ -419,7 +432,10 @@
               ;; This will not work for cases like indexed-entries with compound PKs,
               ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
-              to-delete (remove indexed-pairs passed-documents)]
+              to-delete (concat (remove indexed-pairs passed-documents)
+                                (mapcat (fn [{:keys [search-model ids]}]
+                                          (map (fn [id] [search-model id]) ids))
+                                        tombstones))]
           (update! documents to-delete))
         {}))))
 
