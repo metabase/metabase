@@ -182,8 +182,8 @@
 (deftest unsupported-family-throws-test
   (is (thrown-with-msg?
        clojure.lang.ExceptionInfo
-       #"Unsupported Azure model \"gemini/some-deployment\". Only anthropic/\* and openai/\* models are supported."
-       (captured-raw-request! {:model "gemini/some-deployment"
+       #"Unsupported Azure model \"evilai/some-deployment\". Only anthropic/\* and openai/\* models are supported."
+       (captured-raw-request! {:model "evilai/some-deployment"
                                :input [{:role :user :content "hi"}]}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
