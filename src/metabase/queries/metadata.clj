@@ -40,7 +40,6 @@
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (perms/prime-db-perms-cache ids)
     (into [] (comp (filter mi/can-read?)
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
           (t2/select :model/Database :id [:in ids]))))

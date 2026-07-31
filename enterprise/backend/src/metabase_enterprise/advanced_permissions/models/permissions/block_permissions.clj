@@ -26,6 +26,7 @@
   :feature :none
   [{database-id :database :as query}]
   (let [{:keys [table-ids]} (query-perms/query->source-ids query)
+        _                   (perms/prime-table-perms-cache {:table-ids table-ids})
         table-permissions   (map (partial perms/table-permission-for-user api/*current-user-id*
                                           :perms/view-data database-id)
                                  table-ids)]
