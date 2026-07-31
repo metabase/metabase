@@ -197,13 +197,13 @@
   (if-let [models (llm.provider/fixed-models type)]
     {:models (vec models)}
     (let [config           (llm.provider/with-field-defaults type (or config-override config))
-          configured-model (some->> (llm.provider/model-field type) (get config) not-empty)
+          configured-model (llm.provider/connection-model type config)
           model            (or model configured-model)]
       (try
         (let [listed (:models (metabot.self/list-models type (cond-> {:credentials config}
                                                                model (assoc :model model))))]
           {:models (if configured-model
-                     [{:id configured-model :display_name configured-model}]
+                     [{:id configured-model :display_name (last (str/split configured-model #"/"))}]
                      (decorate-provider-models type listed))})
         (catch clojure.lang.ExceptionInfo e
           (if (provider-client-error? e)
@@ -280,8 +280,10 @@
   "Point Metabot at a freshly created connection when it had nothing usable to run on, so connecting the first
   provider leaves the instance working rather than connected-but-with-no-model-selected. An existing selection that
   still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
-  [{conn-key :key :keys [type]} requested-model]
-  (when-let [model (or (not-empty requested-model) (llm.provider/default-model type))]
+  [{conn-key :key :keys [type config]} requested-model]
+  (when-let [model (or (not-empty requested-model)
+                       (llm.provider/connection-model type config)
+                       (llm.provider/default-model type))]
     (setting/set! :llm-metabot-provider (str conn-key "/" model))))
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------

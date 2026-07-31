@@ -161,9 +161,10 @@
 
 (deftest metabot-configured-with-azure-credentials-test
   (testing "returns true when azure has the API key, the base URL, and the deployment it serves"
-    (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
-                                                    :base-url "https://my-resource.services.ai.azure.com/anthropic"
-                                                    :model    "anthropic/claude-sonnet-4-5"})]
+    (with-connections [(connection "azure" "azure" {:api-key         "azure-key"
+                                                    :base-url        "https://my-resource.services.ai.azure.com/anthropic"
+                                                    :model-family    "anthropic"
+                                                    :deployment-name "claude-sonnet-4-5"})]
       (with-selected-model "azure/anthropic/claude-sonnet-4-5"
         (is (true? (metabot.settings/llm-metabot-configured?))))))
   (testing "returns false without a deployment, which leaves the model picker with nothing to offer"

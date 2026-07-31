@@ -404,9 +404,10 @@
 (deftest models-for-a-connection-that-names-its-own-model-test
   (testing "Azure serves a deployment its listing endpoint never returns, so the connection's own model is reported"
     (mt/with-temporary-setting-values [llm-providers [(connection "azure-prod" "azure"
-                                                                  {:api-key  "azure-key"
-                                                                   :base-url "https://r.services.ai.azure.com/openai"
-                                                                   :model    "openai/gpt-4.1-mini"})]]
+                                                                  {:api-key         "azure-key"
+                                                                   :base-url        "https://r.services.ai.azure.com/openai"
+                                                                   :model-family    "openai"
+                                                                   :deployment-name "gpt-4.1-mini"})]]
       (let [listed-with (atom nil)]
         (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider opts]
                                                                (reset! listed-with opts)
@@ -414,7 +415,7 @@
           (is (= [{:key    "azure-prod"
                    :name   "azure-prod"
                    :type   "azure"
-                   :models [{:id "openai/gpt-4.1-mini" :display_name "openai/gpt-4.1-mini"}]}]
+                   :models [{:id "openai/gpt-4.1-mini" :display_name "gpt-4.1-mini"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models")))
           (testing "and the call still happens, because it is what verifies the credentials"
             (is (= "openai/gpt-4.1-mini" (:model @listed-with)))))))))

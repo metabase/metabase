@@ -115,14 +115,37 @@
          clojure.lang.ExceptionInfo #"API base URL is required for azure"
          (llm.provider/validate-config! "azure" {:api-key "azure-key"})))
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"Deployment is required for azure"
+         clojure.lang.ExceptionInfo #"Deployment name is required for azure"
          (llm.provider/validate-config! "azure" {:api-key  "azure-key"
                                                  :base-url "https://r.services.ai.azure.com/openai"})))
-    (is (nil? (llm.provider/validate-config! "azure" {:api-key  "azure-key"
-                                                      :base-url "https://r.services.ai.azure.com/openai"
-                                                      :model    "openai/gpt-4.1-mini"}))))
+    (testing "a required field the registry defaults is satisfied by that default"
+      (is (nil? (llm.provider/validate-config! "azure" {:api-key         "azure-key"
+                                                        :base-url        "https://r.services.ai.azure.com/openai"
+                                                        :deployment-name "gpt-4.1-mini"}))))
+    (is (nil? (llm.provider/validate-config! "azure" {:api-key         "azure-key"
+                                                      :base-url        "https://r.services.ai.azure.com/openai"
+                                                      :model-family    "openai"
+                                                      :deployment-name "gpt-4.1-mini"}))))
   (testing "the managed type declares no fields, so any config validates"
     (is (nil? (llm.provider/validate-config! "metabase" {})))))
+
+(deftest connection-model-test
+  (testing "Azure composes its model from the family and deployment the admin picked, so neither is typed as a prefix"
+    (is (= "openai/gpt-4.1-mini"
+           (llm.provider/connection-model "azure" {:model-family    "openai"
+                                                   :deployment-name "gpt-4.1-mini"})))
+    (is (= "anthropic/claude-sonnet-4-5"
+           (llm.provider/connection-model "azure" {:model-family    "anthropic"
+                                                   :deployment-name "claude-sonnet-4-5"}))))
+  (testing "a half-filled connection names no model rather than a malformed one"
+    (is (nil? (llm.provider/connection-model "azure" {:model-family "openai"})))
+    (is (nil? (llm.provider/connection-model "azure" {:model-family    "openai"
+                                                      :deployment-name "  "})))
+    (is (nil? (llm.provider/connection-model "azure" {:deployment-name "gpt-4.1-mini"})))
+    (is (nil? (llm.provider/connection-model "azure" nil))))
+  (testing "types that list their models over the wire name none in their config"
+    (doseq [type ["anthropic" "openai" "openrouter" "bedrock" "metabase"]]
+      (is (nil? (llm.provider/connection-model type {:api-key "sk-whatever"})) type))))
 
 (deftest config-complete?-test
   (testing "API-key types are complete exactly when the key is non-blank"
@@ -133,9 +156,10 @@
         (is (false? (llm.provider/config-complete? type {:api-key nil})))
         (is (false? (llm.provider/config-complete? type nil))))))
   (testing "azure needs an API key, a base URL, and the deployment it serves"
-    (is (true? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
-                                                       :base-url "https://r.services.ai.azure.com/openai"
-                                                       :model    "openai/gpt-4.1-mini"})))
+    (is (true? (llm.provider/config-complete? "azure" {:api-key         "azure-key"
+                                                       :base-url        "https://r.services.ai.azure.com/openai"
+                                                       :model-family    "openai"
+                                                       :deployment-name "gpt-4.1-mini"})))
     (is (false? (llm.provider/config-complete? "azure" {:api-key "azure-key"})))
     (is (false? (llm.provider/config-complete? "azure" {:api-key "azure-key" :base-url "  "})))
     (is (false? (llm.provider/config-complete? "azure" {:base-url "https://r.services.ai.azure.com/openai"})))

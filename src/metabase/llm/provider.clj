@@ -121,8 +121,9 @@
     :icon          "ai"
     :default-model nil
     ;; Azure serves deployments the customer names, and its listing endpoint returns the regional catalog rather
-    ;; than those deployments, so there is nothing to fetch. The admin names the one this connection serves.
-    :model-field   :model
+    ;; than those deployments, so there is nothing to fetch. The admin names the one this connection serves, and
+    ;; picks the wire family separately rather than typing it as a prefix.
+    :model-fields  [:model-family :deployment-name]
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -134,12 +135,20 @@
                      :type        :text
                      :required?   true
                      :placeholder "https://<resource>.services.ai.azure.com/openai"}
-                    {:key         :model
-                     :label       (deferred-tru "Deployment")
+                    {:key       :model-family
+                     :label     (deferred-tru "Model provider")
+                     :type      :select
+                     :required? true
+                     :options   [{:value "openai" :label "OpenAI"}
+                                 {:value "anthropic" :label "Anthropic"}]
+                     :default   "openai"
+                     :help      (deferred-tru "Whether your deployment serves an Anthropic or an OpenAI model.")}
+                    {:key         :deployment-name
+                     :label       (deferred-tru "Deployment name")
                      :type        :text
                      :required?   true
-                     :placeholder "openai/gpt-4.1-mini"
-                     :help        (deferred-tru "The deployment this connection serves, prefixed by its API family: openai/ or anthropic/. Add another connection to use a second deployment.")}]}
+                     :placeholder (deferred-tru "Enter your Azure deployment name")
+                     :help        (deferred-tru "The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
     :icon          "ai"
@@ -221,11 +230,11 @@
   [type-name]
   (:models (provider-type type-name)))
 
-(defn model-field
-  "The `:config` key holding the model a connection of `type-name` serves, for types whose models cannot be listed
-  from the provider. Returns nil for types whose catalog is fetched or fixed."
+(defn model-fields
+  "The `:config` keys whose values compose the model a connection of `type-name` serves, for types whose models
+  cannot be listed from the provider. Returns nil for types whose catalog is fetched or fixed."
   [type-name]
-  (:model-field (provider-type type-name)))
+  (:model-fields (provider-type type-name)))
 
 (defn default-model
   "The model a new connection of `type-name` starts on, or nil when the type has no sensible default (Azure, whose
@@ -240,10 +249,20 @@
   (when (string? value)
     (not-empty (str/trim value))))
 
+(defn connection-model
+  "The model `config` names, composed from its type's [[model-fields]] — Azure's `{family}/{deployment}` comes from
+  two inputs so the admin picks the family rather than typing it as a prefix. Returns nil for types that list their
+  models, and for a connection that has not filled every part in yet."
+  [type-name config]
+  (when-let [field-keys (seq (model-fields type-name))]
+    (let [parts (map #(non-blank (get config %)) field-keys)]
+      (when (every? some? parts)
+        (str/join "/" parts)))))
+
 (defn- validate-field!
-  [type-name {:keys [key label required? prefix]} config]
+  [type-name {:keys [key label required? prefix default]} config]
   (let [value (non-blank (get config key))]
-    (when (and required? (not value))
+    (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
     (when (and value prefix (not (str/starts-with? value prefix)))
@@ -264,20 +283,23 @@
   "Whether `config` carries the credentials a request needs. Unlike [[config-complete?]] this ignores the model
   field: it names what to call, not what authenticates the call, and adapters receive it separately."
   [type-name config]
-  (let [model-key (model-field type-name)]
-    (every? (fn [{:keys [key required?]}]
+  (let [model-keys (set (model-fields type-name))]
+    (every? (fn [{:keys [key required? default]}]
               (or (not required?)
-                  (= key model-key)
+                  default
+                  (contains? model-keys key)
                   (non-blank (get config key))))
             (:fields (provider-type type-name)))))
 
 (defn config-complete?
-  "Whether `config` carries every required field for `type-name`, i.e. whether the connection can make requests."
+  "Whether `config` carries every required field for `type-name`, i.e. whether the connection can make requests.
+  A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
+  connection is resolved, so leaving it untouched is the admin accepting the value its form showed."
   [type-name config]
   (if (managed-type? type-name)
     (some? (llm.settings/llm-proxy-base-url))
-    (every? (fn [{:keys [key required?]}]
-              (or (not required?) (non-blank (get config key))))
+    (every? (fn [{:keys [key required? default]}]
+              (or (not required?) default (non-blank (get config key))))
             (:fields (provider-type type-name)))))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------

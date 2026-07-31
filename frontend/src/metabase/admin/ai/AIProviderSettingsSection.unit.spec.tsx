@@ -79,14 +79,20 @@ const AZURE_TYPE = createMockLlmProviderType({
     }),
     createMockLlmProviderField({
       key: "model-family",
-      label: "Model family",
+      label: "Model provider",
       type: "select",
-      required: false,
-      advanced: true,
+      required: true,
+      default: "openai",
       options: [
-        { value: "claude", label: "Claude models" },
-        { value: "gpt", label: "GPT models" },
+        { value: "openai", label: "OpenAI" },
+        { value: "anthropic", label: "Anthropic" },
       ],
+    }),
+    createMockLlmProviderField({
+      key: "deployment-name",
+      label: "Deployment name",
+      type: "text",
+      required: true,
     }),
   ],
 });
@@ -391,6 +397,34 @@ describe("AIProviderSettingsSection", () => {
     });
   });
 
+  it("offers the Azure deployment as two fields rather than a hand-typed prefix", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(within(modal).getByRole("button", { name: "Azure" }));
+
+    expect(within(modal).getByLabelText("Model provider")).toBeVisible();
+    expect(within(modal).getByLabelText("Model provider")).toHaveValue(
+      "OpenAI",
+    );
+    expect(within(modal).getByLabelText(/Deployment name/)).toBeVisible();
+
+    await userEvent.type(within(modal).getByLabelText(/API key/), "azure-new");
+    await userEvent.type(
+      within(modal).getByLabelText(/Base URL/),
+      "https://azure.test",
+    );
+    await userEvent.type(
+      within(modal).getByLabelText(/Deployment name/),
+      "gpt-4.1-mini",
+    );
+
+    // the pre-selected model provider counts as filled in, so it does not block Connect
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
+  });
+
   it("submits every descriptor field the provider type declares", async () => {
     await setup({ createdConnection: AZURE_CONNECTION });
 
@@ -404,9 +438,12 @@ describe("AIProviderSettingsSection", () => {
       "https://azure.test",
     );
 
-    await openAdvancedSettings(modal);
-    await userEvent.click(within(modal).getByLabelText("Model family"));
-    await selectOption("Claude models");
+    await userEvent.type(
+      within(modal).getByLabelText(/Deployment name/),
+      "my-deployment",
+    );
+    await userEvent.click(within(modal).getByLabelText("Model provider"));
+    await selectOption("Anthropic");
 
     await userEvent.click(
       within(modal).getByRole("button", { name: "Connect" }),
@@ -422,7 +459,8 @@ describe("AIProviderSettingsSection", () => {
             config: {
               "api-key": "azure-new",
               "api-base-url": "https://azure.test",
-              "model-family": "claude",
+              "deployment-name": "my-deployment",
+              "model-family": "anthropic",
             },
           },
         }),
