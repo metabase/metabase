@@ -27,9 +27,9 @@
 ;;; ------------------------------------------------- Harness ------------------------------------------------------
 
 (def ^:private write-scopes
-  "The scope transform_write is gated on, plus the two scopes reading a transform back demands —
-   without them the tool answers with the GHY-4217 minimal ack instead of the row."
-  #{"agent:transforms:write" "agent:resource:read" "agent:transforms:read"})
+  "The scope transform_write is gated on, plus the one reading a transform back demands — without
+   it the tool answers with the GHY-4217 minimal ack instead of the row."
+  #{"agent:content:write" "agent:content:read"})
 
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` with bearer-style `scopes` (nil = internal
@@ -73,9 +73,15 @@
 (defmacro ^:private with-target-db-support
   "Claim `:transforms/table` for whatever driver the test database runs on. The REST create/update
    check stack demands the feature of the target database, and H2 — which this suite deliberately
-   stays on, so the mcp module keeps out of the driver-test set — doesn't declare it."
+   stays on, so the mcp module keeps out of the driver-test set — doesn't declare it.
+
+   Touches the test database first, to force the driver namespace to load outside the `with-redefs`:
+   the redef swaps a multimethod var for a plain fn, and a driver loading inside that extent would
+   hit `defmethod` on something it can't cast, taking the whole suite's database down with it. Only
+   reachable when this namespace runs first in a JVM, which is exactly how it runs alone."
   [& body]
-  `(let [orig# driver/database-supports?]
+  `(let [_#    (mt/db)
+         orig# driver/database-supports?]
      (with-redefs [driver/database-supports? (fn [driver# feature# database#]
                                                (or (= feature# :transforms/table)
                                                    (orig# driver# feature# database#)))]
@@ -440,20 +446,22 @@
 ;;; --------------------------------------------------- Scopes -----------------------------------------------------
 
 (deftest transform-write-scope-gate-test
-  (testing "GHY-4240: the tool is unreachable without agent:transforms:write"
+  (testing "GHY-4240: the tool is unreachable without agent:content:write"
     (with-transforms
       (is (re-find #"Insufficient scope"
-                   (tool-error (write! :crowberto #{"agent:resource:read"}
-                                       {:method "update" :id 1 :name "x"})))))))
+                   (tool-error (write! :crowberto #{"agent:content:read"}
+                                       {:method "update" :id 1 :name "x"}))))
+      (testing "and the scope it declares is one the registry actually knows"
+        (is (contains? (registry/registered-scopes) "agent:content:write"))))))
 
 (deftest transform-write-readback-requires-read-scopes-test
   (testing "GHY-4240: a write scope alone doesn't double as a read scope — the echo degrades to an ack"
     (with-transforms
       (with-target-db-support
         (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_readback")]
-          (let [result (tool-result (write! :crowberto #{"agent:transforms:write"}
+          (let [result (tool-result (write! :crowberto #{"agent:content:write"}
                                             {:method "update" :id id :name "renamed"}))]
             (is (= #{:id :url :note} (set (keys result))))
-            (is (re-find #"agent:transforms:read" (:note result)))
+            (is (re-find #"agent:content:read" (:note result)))
             (testing "and the write still happened"
               (is (= "renamed" (t2/select-one-fn :name :model/Transform :id id))))))))))

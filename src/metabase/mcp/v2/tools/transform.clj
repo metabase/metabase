@@ -344,13 +344,12 @@
   one is done in Metabase. Running a transform is separate from writing it. Requires transforms permission on the
   source database and the transforms feature enabled."
   {:name        "transform_write"
-   :scope       metabot.scope/agent-transforms-write
+   :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
    :args        transform-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (common/dispatch-write transform-write-entry args)
-        payload  (common/readback token-scopes [metabot.scope/agent-resource-read
-                                                metabot.scope/agent-transforms-read]
+        payload  (common/readback token-scopes [metabot.scope/agent-content-read]
                                   (case op
                                     :create (create! a session-id)
                                     :update (update! a b session-id)))]
