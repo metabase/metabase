@@ -63,9 +63,6 @@ To develop against a live Metabase instance with hot-reload:
   "icon": "icon.svg",
   "metabase": {
     "version": ">=1.64.0"
-  },
-  "sdk": {
-    "version": "2.0.0"
   }
 }
 ```
