@@ -90,12 +90,13 @@
 (deftest ^:parallel registered-scopes-test
   (testing "every registered tool's :scope flows through registered-scopes into the default DCR grant"
     (is (set/subset? #{"agent:content:read"} (set (registry/registered-scopes)))))
-  (testing "GHY-4137: :extra-scopes are opt-in — a handler gates a mode on them, so they must be
-            advertised for a token to request them, but they must NOT be in the default grant, or
-            the gate is dead (every dynamically-registered client would hold them already).
-            GHY-4225 left `agent:query:run` as the only such scope: alert_write and
-            subscription_write gate scheduled execution on it beyond their own write scope."
-    (is (set/subset? #{"agent:query:run"} (set (registry/registered-opt-in-scopes)))))
+  (testing "GHY-4137: :extra-scopes are opt-in — advertised so a token can request them, but kept
+            OUT of the default grant, or the gate is dead. GHY-4225 left the v2 surface with none:
+            every scope a tool gates on is now one of the five, all default-granted. A scope may
+            not sit in both buckets — scopes_supported unions them (RFC 8414), so it would be
+            advertised twice; `agent:query:run` in particular is default-granted as execute_query's
+            own scope, and alert_write/subscription_write re-check it at runtime instead."
+    (is (empty? (registry/registered-opt-in-scopes))))
   ;; GHY-4225 retired :required-scopes from v2: duplicate_content's per-type create scopes all
   ;; collapsed into the single `agent:content:write` it already gates on, so there is no longer a
   ;; mandatory-but-separate scope to keep in the default grant.

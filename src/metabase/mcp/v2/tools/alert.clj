@@ -400,7 +400,6 @@
   delivers its results. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
   {:name         "alert_write"
    :scope        metabot.scope/agent-delivery-write
-   :extra-scopes [metabot.scope/agent-query-run]
    :annotations  {:readOnlyHint false :destructiveHint false}
    :args         alert-write-args-schema}
   [args {:keys [token-scopes]}]
