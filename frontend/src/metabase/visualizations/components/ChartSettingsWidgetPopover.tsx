@@ -92,7 +92,9 @@ export const ChartSettingsWidgetPopover = ({
             data-testid="chart-settings-widget-popover-content"
             onKeyDown={(event) => {
               if (event.key === "Escape") {
-                // Close after the focused widget handles Escape.
+                // Escape bubbles here after a focused *BlurChange input has
+                // discarded its pending value via flushSync; Mantine's document-level
+                // closeOnEscape would unmount the widget before the input could react.
                 onClose();
               }
             }}
