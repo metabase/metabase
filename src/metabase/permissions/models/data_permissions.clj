@@ -738,23 +738,32 @@
   "Similar to checking _partial_ permissions with permissions paths - what is the *most permissive* permission the
   user has on any of the tables within this database?
 
-  Backed by its own light per-request cache — one value per database for the permission type — so checks looping
-  over every database cost a single query however many permission rows exist."
-  [user-id perm-type database-id]
-  (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
-                    {perm-type (permissions.schema/data-permissions perm-type)})))
-  (cond
-    (is-superuser? user-id)
-    (most-permissive-value perm-type)
+  Called without a `database-id`, answers the same question across every database at once -- for asking about the
+  user's access to the instance as a whole. That takes one query, where walking the databases would take one each."
+  ([user-id perm-type]
+   (most-permissive-database-permission-for-user user-id perm-type nil))
 
-    (and (= perm-type :perms/manage-table-metadata)
-         (is-data-analyst? user-id))
-    (most-permissive-value perm-type)
+  ([user-id perm-type database-id]
+   (when (not= :model/Table (model-by-perm-type perm-type))
+     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                     {perm-type (permissions.schema/data-permissions perm-type)})))
+   (cond
+     (is-superuser? user-id)
+     (most-permissive-value perm-type)
 
-    :else
-    (or (get-in (cached-db-perms user-id database-id) [perm-type database-id :any-table])
-        (least-permissive-value perm-type))))
+     (and (= perm-type :perms/manage-table-metadata)
+          (is-data-analyst? user-id))
+     (most-permissive-value perm-type)
+
+     database-id
+     (or (get-in (cached-db-perms user-id database-id) [perm-type database-id :any-table])
+         (least-permissive-value perm-type))
+
+     :else
+     (let [ordered (-> permissions.schema/data-permissions perm-type :values)
+           values  (into #{} (keep :any-table) (vals (get (all-db-perms user-id) perm-type)))]
+       (or (first (filter values ordered))
+           (least-permissive-value perm-type))))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
