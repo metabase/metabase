@@ -138,7 +138,7 @@ export default createVisualization;
 
 | Prop               | Type                                     | Description                                                                              |
 | ------------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `series`           | `Series[]`                               | Query results (rows + column metadata).                                                  |
+| `series`           | `Series`                                 | Query results (rows + column metadata).                                                  |
 | `settings`         | `CustomVisualizationSettings<TSettings>` | Resolved visualization settings.                                                         |
 | `width`            | `number \| null`                         | Container width in pixels (`null` until first measure — render `null` to avoid a flash). |
 | `height`           | `number \| null`                         | Container height in pixels (`null` until first measure).                                 |
@@ -150,13 +150,13 @@ export default createVisualization;
 
 Host-provided helpers, so measurements and colors match what Metabase renders.
 
-| Field               | Type                            | Description                                                                                  |
-| ------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
-| `getColor`          | `(colorName: string) => string` | Resolves a Metabase color name to its current theme value.                                   |
-| `measureTextWidth`  | `(text, style) => number`       | Measures the rendered width of a text string. `style.family` defaults to the instance font.  |
-| `measureTextHeight` | `(text, style) => number`       | Measures the rendered height of a text string. `style.family` defaults to the instance font. |
-| `fontFamily`        | `string`                        | The font family Metabase is rendering with — use it to style your own markup.                |
-| `colorScheme`       | `"light" \| "dark"`             | The color scheme the visualization is rendered with. `getColor` already resolves against it. |
+| Field               | Type                      | Description                                                                                  |
+| ------------------- | ------------------------- | -------------------------------------------------------------------------------------------- |
+| `getColor`          | `(colorName) => string`   | Resolves a Metabase color name to its current theme value.                                   |
+| `measureTextWidth`  | `(text, style) => number` | Measures the rendered width of a text string. `style.family` defaults to the instance font.  |
+| `measureTextHeight` | `(text, style) => number` | Measures the rendered height of a text string. `style.family` defaults to the instance font. |
+| `fontFamily`        | `string`                  | The font family Metabase is rendering with — use it to style your own markup.                |
+| `colorScheme`       | `"light" \| "dark"`       | The color scheme the visualization is rendered with. `getColor` already resolves against it. |
 
 ## Visualization Settings
 
