@@ -68,9 +68,9 @@ To develop against a live Metabase instance with hot-reload:
 ```
 
 | Field              | Description                                                                                   |
-| ------------------ | -------------------------------------------------------------------------------------------- |
+| ------------------ | --------------------------------------------------------------------------------------------- |
 | `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory. |
-| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                      |
+| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                       |
 | `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.60.0"`, `"^1.60"`).                  |
 
 ---
@@ -262,14 +262,19 @@ const StaticVisualizationComponent = ({
   series,
   settings,
   renderingContext,
+  width,
+  height,
 }: CustomStaticVisualizationProps<Settings>) => {
   const { getColor, fontFamily } = renderingContext;
 
+  const finalWidth = width ?? 540;
+  const finalHeight = height ?? 360;
+
   return (
     <svg
-      width={540}
-      height={360}
-      viewBox="0 0 540 360"
+      width={finalWidth}
+      height={finalHeight}
+      viewBox={`0 0 ${finalWidth} ${finalHeight}`}
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* Pure rendering — no event handlers */}
@@ -277,6 +282,16 @@ const StaticVisualizationComponent = ({
   );
 };
 ```
+
+### Props
+
+| Property           | Type                  | Description                                                                                                                             |
+| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `series`           | `Series`              | The query result(s) to render.                                                                                                          |
+| `settings`         | settings object       | The resolved values of your declared settings.                                                                                          |
+| `renderingContext` | `RenderingContext`    | Host helpers for colors and text measurement (see below).                                                                               |
+| `width`            | `number \| undefined` | Pixel width of the box to render into (e.g. a dashboard grid cell in a PDF export). Undefined for natural-size rendering (email/Slack). |
+| `height`           | `number \| undefined` | Pixel height of the box to render into. Undefined for natural-size rendering.                                                           |
 
 ### RenderingContext
 
@@ -298,7 +313,8 @@ Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine
 
 **Guidelines:**
 
-- Use fixed dimensions (e.g. `width: 540, height: 360`) — no responsive sizing.
+- Prefer the `width`/`height` props when provided so the chart fills its box (e.g. a dashboard grid
+  cell in a PDF export), and fall back to fixed dimensions when they are undefined (email/Slack).
 - Return preferably an `<svg>` root element. Non-SVG output is treated as raw HTML: emails embed
   it as-is, while Slack and PDF exports rasterize it with a very limited HTML renderer
   (no flexbox/grid, limited font support).

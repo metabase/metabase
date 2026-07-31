@@ -163,6 +163,8 @@ export type CustomStaticVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
+  width?: number;
+  height?: number;
 };
 export type ClickObject<TSettings extends Record<string, unknown>> = {
   /** The raw value of the clicked cell. */
