@@ -13,11 +13,13 @@ const getDefaultPluginMetabot = () => ({
   MetabaseAIProviderSetup:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<MetabaseAIProviderSetupProps>,
+  hasMetabaseManagedProviderDetails: () => false,
 });
 
 export const PLUGIN_METABOT: {
   isEnabled: boolean;
   MetabaseAIProviderSetup: ComponentType<MetabaseAIProviderSetupProps>;
+  hasMetabaseManagedProviderDetails: () => boolean;
 } = getDefaultPluginMetabot();
 
 /**

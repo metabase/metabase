@@ -162,7 +162,8 @@ function ProviderConnectionRow({
 
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const hasUsageDetails =
-    Boolean(providerType?.managed) && PLUGIN_METABOT.isEnabled;
+    Boolean(providerType?.managed) &&
+    PLUGIN_METABOT.hasMetabaseManagedProviderDetails();
   const [isShowingDetails, { toggle: toggleDetails }] = useDisclosure(true);
 
   return (
