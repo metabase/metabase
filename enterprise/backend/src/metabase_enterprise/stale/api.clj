@@ -20,10 +20,13 @@
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection _permissions-set]
+  ;; `visible-collection-ids` used to apply `default-visibility-config`, which excludes archived collections and the
+  ;; Trash. `descendants-flat` filters neither, so both are spelled out here.
   (into []
         (comp (map :id)
+              (remove #(= % (collection/trash-collection-id)))
               (filter #(collection/visible-collection-id? % :write)))
-        (collection/descendants-flat collection)))
+        (collection/descendants-flat collection [:= :archived false])))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not

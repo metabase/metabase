@@ -975,10 +975,14 @@
   "Whether the current user can see the Collection with `collection-id`, at `:read` (the default) or `:write` level.
 
   Answered from the current user's permission set rather than by listing every visible Collection, so it costs no
-  query. The namespace and archival filtering that [[visible-collection-query]] applies is redundant for the ancestors
-  and descendants this is used on: a collection tree never spans namespaces (see `assert-valid-namespace`), so they
-  sit in the namespace of a collection the caller already holds, and were subject to the same filter when the caller
-  obtained it. Use [[visible-collection-filter-clause]] to filter *inside* a query."
+  query. Note that it answers only the permission question: unlike [[visible-collection-query]] it applies no archival
+  filtering, and no `shared-tenant-collection` exclusion for instances with tenants disabled. Callers that need those
+  must say so themselves.
+
+  That is safe for the ancestors and descendants this is used on, because a collection tree never spans namespaces
+  (see `assert-valid-namespace`): they sit in the namespace of a collection the caller already holds, and so were
+  subject to the same filtering when the caller obtained it. Use [[visible-collection-filter-clause]] to filter
+  *inside* a query."
   ([collection-id]
    (visible-collection-id? collection-id :read))
 

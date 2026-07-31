@@ -293,6 +293,9 @@
   any table, so it comes from [[*db-permission-cache*]]'s `:database` — which means a table with no rows of its
   own, or no row in `metabase_table` at all, still resolves correctly.
 
+  Nothing invalidates this within a request, so a permission written after a check has already loaded is not seen by
+  later checks in the same request. That was always true per database; it now spans every database the user can see.
+
   Two completeness sets because a load comes in one of two shapes. A whole-database load answers for any table in it,
   including tables with no rows of their own. A table-scoped load answers only for the tables it asked about — an
   unrequested table is indistinguishable from one with no permissions, and answering for it would invent a
@@ -348,7 +351,11 @@
   - **given** — load exactly those tables. Right when the candidate set is already small and known: the tables a
     card's query reads, a page of recents, the tables behind a list of measures.
   - **absent** — load every table in `:db-ids`. Right when the candidate set *is* a database or a schema of one, where
-    listing the IDs would just be a longhand way of naming the database."
+    listing the IDs would just be a longhand way of naming the database.
+
+  Supplying both loads the tables and ignores `:db-ids`, since the table list is the narrower scope. Note also that a
+  table already covered by a fully-loaded database is re-requested, because mapping a table ID back to its database
+  would itself take a query."
   [{:keys [db-ids table-ids]}]
   (when (and (use-cache? api/*current-user-id*)
              (not api/*is-superuser?*))
@@ -611,7 +618,9 @@
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
   single value. The schema-level permission is the *most* restrictive table-level permission within that schema.
 
-  Deliberately uncached: the sole caller asks about one schema of one database, so a request cache could never hit."
+  Deliberately uncached: the only caller is the upload path, which asks about a single schema of a single database.
+  It asks twice, once per permission type, so a cache would save at most one small scoped query per uploads-enabled
+  database -- not worth keeping a fifth cache alive for."
   [user-id perm-type database-id schema-name]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
