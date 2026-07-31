@@ -165,6 +165,42 @@
             (is (false? (:archived (call {:method "update" :id doc-id :edits [] :archived false}))))
             (is (= doc-before (t2/select-one-fn :document :model/Document :id doc-id)))))))))
 
+(def ^:private unrenderable-body
+  "A stored body holding a block type the Markdown serializer has no rendering for — what a
+   document written by a newer frontend, or by a REST caller (`[:document :any]`), looks like to
+   this tool."
+  {:type    "doc"
+   :content [{:type "mysteryBlock" :attrs {:_id "m1"}}
+             {:type "paragraph" :attrs {:_id "p1"} :content [{:type "text" :text "After."}]}]})
+
+(deftest unrenderable-body-does-not-fail-a-committed-write-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (with-tool-documents
+      (fn [created!]
+        (let [doc-id (:id (created! (call {:method           "create"
+                                           :name             "Old name"
+                                           :content_markdown "Stable body."})))]
+          (t2/update! :model/Document doc-id {:document unrenderable-body})
+          (testing "a metadata-only update lands and is reported as the success it is — the write
+                   commits before the response is built, so a body this tool can't render must not
+                   turn a completed write into a failed call"
+            (let [renamed (call {:method "update" :id doc-id :edits [] :name "New name"})]
+              (is (= "New name" (:name renamed)))
+              (is (= "New name" (t2/select-one-fn :name :model/Document :id doc-id)))))
+          (testing "content_markdown is omitted rather than degraded — the next edit's old_str is
+                   matched against that exact text, so text that isn't the serialization is worse
+                   than none"
+            (let [renamed (call {:method "update" :id doc-id :edits [] :name "Newer name"})]
+              (is (not (contains? renamed :content_markdown)))
+              (is (string? (:content_markdown_unavailable renamed)))))
+          (testing "an edit against a body that can't be serialized still fails, and fails before
+                   writing anything — there is no current Markdown for old_str to match"
+            (is (thrown-with-msg? Exception #"Cannot serialize unknown block node type"
+                                  (call {:method "update" :id doc-id
+                                         :edits  [{:old_str "After." :new_str "Changed."}]})))
+            (is (= "Newer name" (t2/select-one-fn :name :model/Document :id doc-id)))
+            (is (= unrenderable-body (t2/select-one-fn :document :model/Document :id doc-id)))))))))
+
 (deftest edit-matching-errors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
