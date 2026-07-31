@@ -38,12 +38,14 @@ describe("usePluginMount", () => {
     consoleError.mockRestore();
   });
 
-  it("logs a mount error for the given plugin", () => {
+  it("logs a mount error for the given plugin and rethrows it", () => {
     const error = new Error("mount failed");
 
-    renderPluginMount(() => {
-      throw error;
-    }, createMockCustomVizPluginRuntime());
+    expect(() =>
+      renderPluginMount(() => {
+        throw error;
+      }, createMockCustomVizPluginRuntime()),
+    ).toThrow("mount failed");
 
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to render plugin "My Viz":',
@@ -51,21 +53,23 @@ describe("usePluginMount", () => {
     );
   });
 
-  it("logs the plugin's version warnings alongside the error", () => {
-    renderPluginMount(
-      () => {
-        throw new Error("mount failed");
-      },
-      createMockCustomVizPluginRuntime({
-        warnings: [
-          {
-            type: "sdk-version-mismatch",
-            sdk_version: null,
-            tested_sdk_range: ">=2.0.0 <=2.0.0",
-          },
-        ],
-      }),
-    );
+  it("logs the plugin's version warnings alongside the rethrown error", () => {
+    expect(() =>
+      renderPluginMount(
+        () => {
+          throw new Error("mount failed");
+        },
+        createMockCustomVizPluginRuntime({
+          warnings: [
+            {
+              type: "sdk-version-mismatch",
+              sdk_version: null,
+              tested_sdk_range: ">=2.0.0 <=2.0.0",
+            },
+          ],
+        }),
+      ),
+    ).toThrow("mount failed");
 
     expect(consoleError).toHaveBeenCalledWith(
       "The plugin has version warnings that may explain the failure:",
@@ -73,7 +77,7 @@ describe("usePluginMount", () => {
     );
   });
 
-  it("logs an update error for the given plugin", () => {
+  it("logs an update error for the given plugin and rethrows it", () => {
     const error = new Error("update failed");
     const handle: WidgetMountHandle<Props> = {
       update: () => {
@@ -88,7 +92,7 @@ describe("usePluginMount", () => {
     );
     expect(consoleError).not.toHaveBeenCalled();
 
-    update({ value: 2 });
+    expect(() => update({ value: 2 })).toThrow("update failed");
 
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to render plugin "My Viz":',

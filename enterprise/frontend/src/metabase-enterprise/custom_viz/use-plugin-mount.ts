@@ -38,6 +38,7 @@ export function usePluginMount<P>(
           plugin.warnings.map(getCustomVizPluginWarningMessage).join(" "),
         );
       }
+      throw error;
     }
   }, [performMount, props, plugin]);
 
