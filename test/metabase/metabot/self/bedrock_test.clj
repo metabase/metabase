@@ -131,6 +131,25 @@
              #"AI proxy is not supported for AWS Bedrock"
              (bedrock/list-models {:ai-proxy? true})))))))
 
+(deftest bedrock-raw-forwards-credentials-test
+  (testing "credentials passed to bedrock-raw reach the request, without requiring saved settings"
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                       llm.settings/llm-bedrock-secret-access-key nil]
+      (with-redefs [http/request (fn [req]
+                                   (is (= "https://bedrock-mantle.eu-west-1.api.aws/anthropic/v1/messages"
+                                          (:url req)))
+                                   (is (str/includes? (get-in req [:headers "Authorization"])
+                                                      "AKIAOVERRIDEOVERRID1"))
+                                   (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (bedrock/bedrock-raw {:model       "anthropic.claude-haiku-4-5"
+                                   :input       [{:role :user :content "hi"}]
+                                   :credentials {:access-key-id     "AKIAOVERRIDEOVERRID1"
+                                                 :secret-access-key "override-secret"
+                                                 :region            "eu-west-1"}})))))))
+
 (deftest bedrock-raw-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
     (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil

@@ -284,6 +284,34 @@
                 {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}]
                (:models (openrouter/list-models))))))))
 
+(deftest openrouter-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key      "sk-or-v1-setting"
+                                       llm.settings/llm-openrouter-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/chat/completions"
+                                                          :headers {"Authorization" "Bearer sk-or-v1-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                         :credentials {:api-key  "sk-or-v1-explicit"
+                                                       :base-url "https://explicit.example"}})))))))
+
+(deftest openrouter-raw-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer sk-or-v1-setting"}} req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                         :credentials {:api-key ""}})))))))
+
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
     (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-setting"]

@@ -618,6 +618,34 @@
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
 
+(deftest claude-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key      "sk-ant-setting"
+                                       llm.settings/llm-anthropic-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/messages"
+                                                          :headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key  "sk-ant-explicit"
+                                               :base-url "https://explicit.example"}})))))))
+
+(deftest claude-raw-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-setting"}} req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key ""}})))))))
+
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
     (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
