@@ -21,6 +21,8 @@
 (t2/deftransforms :model/QueryExecution
   {:json_query mi/transform-json
    :lens_params mi/transform-json
+   ;; no keywordization so login-attribute names round-trip untouched
+   :sandbox_details mi/transform-json-no-keywordization
    :status     mi/transform-keyword
    :context    mi/transform-keyword})
 

@@ -116,6 +116,7 @@
                     :pulse_id         nil
                     :card_id          nil
                     :is_sandboxed     false
+                    :sandbox_details  nil
                     :dashboard_id     nil
                     :transform_id     nil
                     :lens_id          nil

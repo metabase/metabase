@@ -95,6 +95,7 @@
    [:insights          {:optional true} [:sequential :map]]
    [:download_perms    {:optional true} :string]
    [:is_sandboxed      {:optional true} :boolean]
+   [:sandbox_details   {:optional true} [:sequential :map]]
    [:format-rows?      {:optional true} :boolean]])
 
 (mr/def ::query-result

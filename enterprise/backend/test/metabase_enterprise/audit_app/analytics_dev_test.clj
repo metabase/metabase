@@ -144,7 +144,7 @@
                    "transform_id" "transform_qualified_id"
                    "lens_id" "lens_params" "query"
                    "embedding_client" "embedding_route" "embedding_sdk_version" "is_preview"
-                   "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed" "parameters"
+                   "auth_method" "is_sandboxed" "sandbox_details" "is_impersonated" "is_db_routed" "parameters"
                    "tenant_id" "embedding_hostname" "embedding_path"
                    "user_agent" "sanitized_user_agent" "ip_address"
                    "metabase_version"}

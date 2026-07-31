@@ -3610,7 +3610,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
            metabase-enterprise.sandbox.api.util}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            audit-app
            driver
