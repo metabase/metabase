@@ -3355,7 +3355,6 @@
            analytics-interface
            audit-app
            collections
-           driver
            models
            util
            warehouse-schema
