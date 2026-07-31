@@ -261,35 +261,6 @@
       (finally
         (try (.delete tempfile) (catch Exception _))))))
 
-(def ^:private sandbox-host-html
-  "Minimal HTML doc that the patched `@locker/near-membrane-dom` loads as the iframe document
-   so plugin code can be `eval`'d under a relaxed, per-iframe CSP."
-  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
-
-(def ^:private sandbox-host-csp
-  "CSP applied ONLY to the sandbox iframe document.
-   - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
-   - `frame-ancestors 'self'` - so Metabase can embed this document."
-  (str "default-src 'none'; "
-       "script-src 'unsafe-eval'; "
-       "frame-ancestors 'self';"))
-
-(api.macros/defendpoint :get "/sandbox-host" :- :any
-  "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz
-   sandbox. The response carries a per-document `Content-Security-Policy` that permits
-   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
-   nonce-based CSP."
-  []
-  {:status  200
-   :headers {"Content-Type"                 "text/html; charset=utf-8"
-             "Content-Security-Policy"      sandbox-host-csp
-             "X-Frame-Options"              "SAMEORIGIN"
-             "X-Content-Type-Options"       "nosniff"
-             "Cross-Origin-Resource-Policy" "same-origin"
-             "Referrer-Policy"              "no-referrer"
-             "Cache-Control"                "public, max-age=60"}
-   :body    sandbox-host-html})
-
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.

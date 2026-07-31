@@ -89,7 +89,7 @@
                   nil
                   (catch Throwable e
                     e))]
-      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+      (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
       (database-routing/with-database-routing-off
         (let [db-id            (:id database)
               metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
@@ -298,9 +298,9 @@
       ;; delete the existing trigger
       (nil? new-trigger)
       (do
-        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
+        (log/infof "Trigger for \"%s\" of Database %d has been removed. It will no longer run on a schedule."
                    (:name task-info)
-                   (:name database))
+                   (u/the-id database))
         (delete-trigger! database task-info))
 
       ;; need to recreate the new trigger
@@ -308,13 +308,13 @@
            (nil? existing-trigger-with-same-schedule))
       (do
         (if (delete-trigger! database task-info)
-          (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
+          (log/infof "Trigger for \"%s\" of Database %d has been updated. The new schedule is: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info))
-          (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
+          (log/infof "A trigger for \"%s\" of Database %d has been enabled with schedule: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info)))
         (task/add-trigger! new-trigger))
 
@@ -375,7 +375,7 @@
                                  (sync.schedules/default-randomized-schedule))))
                   (inc counter)
                   (catch Exception e
-                    (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
+                    (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))
                     counter))))
              (t2/reducible-query
               {:select [:*]

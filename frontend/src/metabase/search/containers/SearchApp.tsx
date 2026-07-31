@@ -16,14 +16,11 @@ import {
   SearchContextTypes,
   SearchFilterKeys,
 } from "metabase/common/search/constants";
-import type {
-  SearchAwareLocation,
-  URLSearchFilterQueryParams,
-} from "metabase/common/search/types";
+import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push, useRouter } from "metabase/router";
+import type { Location, LocationDescriptorObject } from "metabase/router";
+import { push, queryToSearch, useLocation } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchBody,
@@ -36,16 +33,14 @@ import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { Box, Group, Paper, Text } from "metabase/ui";
 import type { SearchRequest } from "metabase-types/api";
 
-const getPageFromLocation = (location: SearchAwareLocation) => {
-  const maybePage = location.query?.page
-    ? parseInt(location.query.page, 10)
-    : 0;
+const getPageFromLocation = (location: Location) => {
+  const page = new URLSearchParams(location.search).get("page");
+  const maybePage = page ? parseInt(page, 10) : 0;
   return maybePage || 0;
 };
 
 export function SearchApp() {
-  // Unjustified type cast. FIXME
-  const location = useRouter().location as SearchAwareLocation;
+  const location = useLocation();
   const dispatch = useDispatch();
 
   usePageTitle(t`Search`);
@@ -85,7 +80,7 @@ export function SearchApp() {
     (newFilters: URLSearchFilterQueryParams) => {
       onChangeLocation({
         pathname: "search",
-        query: { q: searchText.trim(), ...newFilters },
+        search: queryToSearch({ q: searchText.trim(), ...newFilters }),
       });
     },
     [onChangeLocation, searchText],
@@ -94,11 +89,11 @@ export function SearchApp() {
   const advancePage = (howMany = 1) => {
     onChangeLocation({
       pathname: "search",
-      query: {
+      search: queryToSearch({
         q: searchText.trim(),
         ...searchFilters,
         page: String(page + howMany),
-      },
+      }),
     });
   };
 

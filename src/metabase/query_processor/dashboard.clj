@@ -1,6 +1,6 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
-  (:refer-clojure :exclude [some select-keys not-empty get-in])
+  (:refer-clojure :exclude [some not-empty get-in])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,9 +8,11 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -20,7 +22,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys some not-empty get-in]]
+   [metabase.util.performance :refer [some not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -37,21 +39,71 @@
                           :card_id          card-id
                           :dashboardcard_id dashcard-id))))))
 
+(defn- current-dimension-mapping?
+  [provider query mapping]
+  (let [target-key (lib-metric/field-ref->key (:target mapping))]
+    (boolean
+     (some #(= target-key (lib-metric/field-ref->key (-> % :mapping :target)))
+           (lib-metric/compute-dimension-pairs provider query)))))
+
+(defn- default-metric-dimension
+  [provider query card]
+  (let [metric-metadata {:lib/type           :metadata/metric
+                         :id                 (:id card)
+                         :dataset-query      (:dataset_query card)
+                         :dimensions         (:dimensions card)
+                         :dimension-mappings (:dimension_mappings card)}
+        dimensions      (lib-metric/get-persisted-dimensions metric-metadata)
+        mappings        (lib-metric/get-persisted-dimension-mappings metric-metadata)]
+    (when-let [dimension (u/seek #(and (:default %)
+                                       (not= :status/orphaned (:status %)))
+                                 dimensions)]
+      (when-let [mapping (u/seek #(= (:id dimension) (:dimension-id %)) mappings)]
+        (when (current-dimension-mapping? provider query mapping)
+          (when-let [database-provider (lib-metric/database-provider-for-table provider (:table-id mapping))]
+            (when (permissions.metric/can-use-dimension-mapping? database-provider (:database_id card) mapping)
+              (let [field-id (lib-metric/dimension-target->field-id (:target mapping))]
+                (cond-> (assoc dimension
+                               :lib/type :metadata/dimension
+                               :source-type :metric
+                               :source-id (:id card)
+                               :dimension-mapping mapping)
+                  (and (not (seq (:sources dimension))) field-id)
+                  (assoc :sources [{:type :field, :field-id field-id}]))))))))))
+
+(defn card-with-default-metric-dimension
+  "Replace a metric card's final-stage breakouts with its active default dimension when the current user can access it."
+  [card]
+  (if-not (= :metric (:type card))
+    card
+    (let [provider (lib-metric/metadata-provider)
+          query    (lib/query provider (:dataset_query card))]
+      (if-not (and (= 1 (count (:stages query)))
+                   (lib/mbql-stage? query -1))
+        card
+        (if-let [dimension (default-metric-dimension provider query card)]
+          (let [definition (lib-metric/from-metric-metadata provider card)
+                breakout   (lib-metric/dimension-breakout definition dimension)]
+            (cond-> card
+              breakout (assoc :dataset_query (-> query
+                                                 lib/remove-all-breakouts
+                                                 (lib/breakout breakout)))))
+          card)))))
+
 (defn- resolve-param-for-card
   [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
   (when-not param-id
     (throw (ex-info (tru "Unable to resolve invalid query parameter: parameter is missing :id")
                     {:type              qp.error-type/invalid-parameter
                      :invalid-parameter request-param})))
-  (log/tracef "Resolving parameter %s\n%s" (pr-str param-id) (u/pprint-to-str request-param))
+  (log/tracef "Resolving parameter %s" (pr-str param-id))
   ;; find information about this dashboard parameter by its parameter `:id`. If no parameter with this ID
   ;; exists, it is an error.
   (let [matching-param (or (get param-id->param param-id)
                            (throw (ex-info (tru "Dashboard does not have a parameter with ID {0}." (pr-str param-id))
                                            {:type        qp.error-type/invalid-parameter
                                             :status-code 400})))]
-    (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str (update matching-param :mappings (fn [mappings]
-                                                                                                             (into #{} (map #(dissoc % :dashcard)) mappings)))))
+    (log/tracef "Found matching Dashboard parameter %s" (pr-str param-id))
     ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
     (when-let [matching-mapping (or (some (fn [mapping]
                                             (when (and (= (:card_id mapping) card-id)
@@ -59,9 +111,8 @@
                                               mapping))
                                           (:mappings matching-param))
                                     (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
-      (log/tracef "Found matching mapping for Card %d, Dashcard %d:\n%s"
-                  card-id dashcard-id
-                  (u/pprint-to-str (update matching-mapping :dashcard #(select-keys % [:id :parameter_mappings]))))
+      (log/tracef "Found matching mapping for Card %d, Dashcard %d"
+                  card-id dashcard-id)
       ;; if `request-param` specifies type, then validate that the type is allowed
       (when (:type request-param)
         (qp.card/check-allowed-parameter-value-type
@@ -143,18 +194,15 @@
     (when-let [user-id api/*current-user-id*]
       (when (seq request-params)
         (user-parameter-value/store! user-id dashboard-id request-params)))
-    (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
-                (u/pprint-to-str (update-vals dashboard-param-id->param
-                                              (fn [param]
-                                                (update param :mappings (fn [mappings]
-                                                                          (into #{} (map #(dissoc % :dashcard)) mappings))))))
-                (u/pprint-to-str request-param-id->param)
-                (u/pprint-to-str merged-parameters))
+    (log/tracef "Merged %d dashboard parameter(s) and %d request parameter(s) into %d parameter(s)"
+                (count dashboard-param-id->param)
+                (count request-param-id->param)
+                (count merged-parameters))
     (u/prog1
       (into [] (comp (map (partial resolve-param-for-card card-id dashcard-id dashboard-param-id->param))
                      (filter some?))
             merged-parameters)
-      (log/tracef "Resolved =>\n%s" (u/pprint-to-str <>)))))
+      (log/tracef "Resolved %d parameter(s)" (count <>)))))
 
 (defn process-query-for-dashcard
   "Like [[metabase.query-processor.card/process-query-for-card]], but runs the query for a `DashboardCard` with
@@ -198,9 +246,9 @@
                              (dissoc options :dashboard :card)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id})]
-        (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
-                    dashboard-id card-id dashcard-id
-                    (u/pprint-to-str options))
+        (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"
+                    dashboard-id card-id dashcard-id)
         ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
         (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
-          (m/mapply qp.card/process-query-for-card card export-format options))))))
+          (m/mapply qp.card/process-query-for-card card export-format
+                    (assoc options :card-transform card-with-default-metric-dimension)))))))

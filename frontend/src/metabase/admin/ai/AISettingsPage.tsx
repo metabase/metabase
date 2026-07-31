@@ -17,7 +17,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { useRouter } from "metabase/router";
+import { queryToSearch, useSearchParams } from "metabase/router";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
@@ -38,9 +38,7 @@ const METABOT_SETTINGS_PATH = "/admin/metabot";
 const METABOT_ID_QUERY_PARAM = "metabot_id";
 
 export function AISettingsPage() {
-  const {
-    location: { query },
-  } = useRouter();
+  const [searchParams] = useSearchParams();
 
   const isConfigured = !!useSetting("llm-metabot-configured?");
   const hasEmbedding =
@@ -54,7 +52,7 @@ export function AISettingsPage() {
   const areAiFeaturesEnabled = aiFeaturesEnabledValue !== false;
 
   const selectedMetabotId = getSelectedMetabotId(
-    query?.[METABOT_ID_QUERY_PARAM],
+    searchParams.get(METABOT_ID_QUERY_PARAM),
   );
 
   const handleAiFeaturesEnabledChange = async (checked: boolean) => {
@@ -265,7 +263,7 @@ function DisabledSection({
   );
 }
 
-function getSelectedMetabotId(metabotId: string | undefined): MetabotTabId {
+function getSelectedMetabotId(metabotId: string | null): MetabotTabId {
   if (metabotId === String(FIXED_METABOT_IDS.EMBEDDED)) {
     return FIXED_METABOT_IDS.EMBEDDED;
   }
@@ -276,8 +274,8 @@ function getSelectedMetabotId(metabotId: string | undefined): MetabotTabId {
 function getMetabotTabPath(metabotId: MetabotTabId) {
   return {
     pathname: METABOT_SETTINGS_PATH,
-    query: {
+    search: queryToSearch({
       [METABOT_ID_QUERY_PARAM]: String(metabotId),
-    },
+    }),
   };
 }

@@ -21,7 +21,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false nil) vals first)
+             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false nil false) vals first)
                                                       " frame-ancestors 'none';")
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"

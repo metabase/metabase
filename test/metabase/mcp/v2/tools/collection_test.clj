@@ -284,25 +284,24 @@
   (mt/with-model-cleanup [:model/Collection]
     (testing "a bearer token without the write scope cannot call the tool at all"
       (is (= "Insufficient scope to call tool: collection_write"
-             (tool-error (call-tool! :crowberto #{"agent:search"} {:method "create" :name "x"})))))
+             (tool-error (call-tool! :crowberto #{"agent:content:read"} {:method "create" :name "x"})))))
     (testing "the write scope creates"
-      (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:collection:write"}
+      (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:content:write"}
                                               {:method "create" :name "Scoped create"}))))))
     (testing "the same scope updates — one scope covers both methods, so there is no second gate
               between them and the call reaches the id lookup"
       (is (re-find #"not found"
-                   (tool-error (call-tool! :crowberto #{"agent:collection:write"}
+                   (tool-error (call-tool! :crowberto #{"agent:content:write"}
                                            {:method "update" :id 13371337 :name "x"})))))
     (testing "the v1 create scope does not reach this tool — it gates POST /api/agent/v1/collection,
               and collection_write is not that endpoint"
       (is (= "Insufficient scope to call tool: collection_write"
              (tool-error (call-tool! :crowberto #{"agent:collection:create"}
                                      {:method "create" :name "x"})))))
-    (testing "the wildcard the metabot permission bucket grants covers it"
-      (is (re-find #"not found"
-                   (tool-error (call-tool! :crowberto #{"agent:collection:*"}
-                                           {:method "update" :id 13371337 :name "x"})))))))
+    ;; GHY-4225: the metabot permission wildcards no longer bear on v2 — in-app callers use
+    ;; the unrestricted sentinel and OAuth tokens draw scopes from the tool registry.
+    ))
 
 (deftest write-scope-grantable-test
   (testing "GHY-4148: the scope the tool checks is advertised, so a token can actually be granted it"
-    (is (contains? (registry/registered-scopes) "agent:collection:write"))))
+    (is (contains? (registry/registered-scopes) "agent:content:write"))))

@@ -5,9 +5,14 @@ import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import { isNotNull } from "metabase/utils/types";
+import type {
+  FunnelDatum,
+  FunnelStep,
+  Step,
+} from "metabase/visualizations/lib/funnel/types";
 import { truncateText } from "metabase/visualizations/lib/text";
 
-import type { FunnelDatum, FunnelSettings, FunnelStep, Step } from "../types";
+import type { FunnelSettings } from "../types";
 
 type StepDimensions = Pick<FunnelStep, "top" | "left" | "height">;
 

@@ -14,10 +14,11 @@ import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { updateMetadata } from "metabase/redux/metadata";
-import { useParams, useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -32,7 +33,7 @@ import type { EntityToken } from "metabase-types/api/entity";
 import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
 
 export const PublicOrEmbeddedQuestion = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
   const dispatch = useDispatch();
@@ -92,7 +93,7 @@ export const PublicOrEmbeddedQuestion = () => {
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
-        location.query,
+        parseSearchQuery(location.search),
       );
 
       setCard(card);

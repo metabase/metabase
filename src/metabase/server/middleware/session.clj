@@ -382,7 +382,7 @@
                          :set    {:last_active_at :%now}
                          :where  [:= :key_hashed hashed]})
           (catch Exception e
-            (log/warn e "Failed to update session last_active_at")))))))
+            (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |

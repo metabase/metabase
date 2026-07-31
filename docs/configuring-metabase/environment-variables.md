@@ -85,7 +85,7 @@ Whether AI features are enabled.
 - Type: integer
 - Default: `null`
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
-- [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -294,6 +294,7 @@ Range: 1-100. To limit the total number of rows included in the file attachment
 
 - Type: string
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -903,6 +904,7 @@ Number of threads to use for batched index updates, including embedding requests
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
   via environmment variable.
@@ -1451,6 +1453,7 @@ Socket timeout in milliseconds for LLM API requests.
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`,
   which defaults to true, but can be disabled via environment variable.
@@ -1653,6 +1656,7 @@ The size of the thread pool used to send system event notifications.
 
 - Type: integer
 - Default: `10485760`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The maximum file size that will be created when storing notification query results on disk.
   Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
@@ -1724,6 +1728,14 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
+### `MB_QUERY_CACHING_EARLY_REFRESH_RATIO`
+
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `query-caching-early-refresh-ratio`
+
+Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.
+
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1743,9 +1755,9 @@ The absolute maximum time to keep any cached query results, in seconds.
 ### `MB_QUEUE_BACKEND`
 
 - Type: string
-- Default: `quartz`
+- Default: `null`
 
-Which queue backend to use. Valid values: `quartz`, `memory`.
+Which queue backend to use. Valid values: `quartz`, `memory`. When unset, defaults to `quartz`, or to `memory` when the task scheduler is disabled (`MB_DISABLE_SCHEDULER`).
 
 ### `MB_QUEUE_MAX_RETRIES`
 
@@ -2136,6 +2148,7 @@ Enable typeahead search in the Metabase navbar?
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Should we send users a notification email the first time they log in from a new device? (Default: true). This is
   currently only configurable via environment variable so users who gain access to an admin's credentials cannot
@@ -2216,7 +2229,7 @@ Whether an introductory modal should be shown after the next database connection
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `show-google-sheets-integration`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not to show the user a button that sets up Google Sheets integration.
 

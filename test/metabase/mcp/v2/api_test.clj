@@ -178,4 +178,4 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [{:keys [body]} (#'oauth.metadata/protected-resource-metadata "/api/metabase-mcp/v2")]
         (is (str/ends-with? (:resource body) "/api/metabase-mcp/v2"))
-        (is (contains? (set (:scopes_supported body)) "agent:search"))))))
+        (is (contains? (set (:scopes_supported body)) "agent:content:read"))))))

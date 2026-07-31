@@ -391,8 +391,8 @@
 
   Concrete mapping:
   - 1-level (`SELECT * FROM t`):           `[]`            — Mongo
-  - 1-level over a catalog (`SELECT * FROM t`, but workspace remap and other
-    consumers need a catalog name to route across DBs): `[:db]` — MySQL.
+  - 1-level over a catalog (`SELECT * FROM t`, but consumers need a catalog
+    name to route across DBs): `[:db]` — MySQL.
     The compiled SQL is still bare; this slot tells consumers MySQL has a
     meaningful database identifier (= JDBC `TABLE_CAT`) above the table.
   - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Redshift, ClickHouse, H2, Oracle
@@ -400,7 +400,7 @@
     (Snowflake `db.schema.table`; SQL Server `db.schema.table`; BigQuery
     `project.dataset.table`).
 
-  Used by workspace table remapping to decide:
+  Used by table remapping to decide:
   - which columns to populate when storing a `:model/TableRemapping` row
   - which AST positions to match against during query rewriting
 
@@ -913,9 +913,6 @@
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
     :describe-is-generated
     ;;
-    ;; Does this driver support the workspace feature
-    :workspace
-    ;;
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference
@@ -970,8 +967,7 @@
                               :test/uuids-in-create-table-statements  true
                               :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false
-                              :workspace                              false}]
+                              :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1444,7 +1440,7 @@
 
   Unlike [[native-query-deps]] which looks up tables in the database to return IDs,
   this method returns just the schema and table names as they appear in the query.
-  This is useful for workspace dependency tracking where referenced tables may not
+  This is useful for dependency tracking where referenced tables may not
   exist yet.
 
   `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
@@ -1998,103 +1994,6 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Workspace Isolation                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmulti workspace-isolation-details
-  "Compute the isolation resource descriptors for `workspace` without touching the
-   warehouse. Returns a map with:
-
-   - :schema           - The name of the isolated schema/database to create
-   - :database_details - Connection details (user, password, etc.) for the isolated user
-
-   Names are deterministic (workspace id + instance slug), but generated credentials
-   are random per call — callers must compute this once, merge it into the workspace
-   map they pass to [[init-workspace-isolation!]]/[[grant-workspace-read-access!]]/
-   [[destroy-workspace-isolation!]], and persist `:database_details` themselves.
-   Computing details before init is what makes cleanup of a partially-failed init
-   possible: destroy can run with the same map even when init never returned.
-
-   Implementations must be pure computation — no warehouse connections or mutations.
-   Reading the database's connection details (e.g. for a bound catalog) is fine;
-   callers bind [[metabase.driver.connection/with-admin-connection]] so those resolve
-   against the `:admin-details` overlay when configured."
-  {:added "0.64.0" :arglists '([driver database workspace])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti init-workspace-isolation!
-  "Initialize database isolation for a workspace. Creates an isolated schema/database,
-   user credentials, and grants appropriate permissions for the workspace to operate
-   within its own namespace.
-
-   `workspace` must already carry `:schema` and `:database_details` — the output of
-   [[workspace-isolation-details]] merged over the workspace map. Implementations
-   create resources with exactly those identifiers/credentials and must not generate
-   names or passwords themselves.
-
-   Implementations should:
-   - Create the `:schema` isolated schema or database for the workspace
-   - Create the `:database_details` user, with credentials that can only access that schema
-   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
-
-   The return value is unspecified; callers should persist the precomputed details,
-   not anything returned from here.
-
-   This is an enterprise feature. Drivers must also return true for
-   (database-supports? driver :workspace database) to indicate support.
-
-   Callers are expected to bind [[metabase.driver.connection/with-admin-connection]]
-   around this call so connections resolve against the database's `:admin-details`
-   overlay when configured. The default `dispatching-provisioner` in
-   `metabase-enterprise.workspaces.provisioning` does this; do not rely on
-   default connection details from inside impls."
-  {:added "0.59.0" :arglists '([driver database workspace])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti destroy-workspace-isolation!
-  "Destroy all database resources created for workspace isolation.
-   This includes dropping schemas/databases, users, roles, and any other
-   resources created by init-workspace-isolation!.
-
-   `workspace` carries `:schema` and `:database_details` — either the persisted
-   values from provisioning, or freshly computed via [[workspace-isolation-details]]
-   when nothing was persisted (crashed init). Implementations read identifiers from
-   the map rather than recomputing them, and must not rely on `:password` matching
-   what's on the warehouse (a recomputed password never does).
-
-   Should be called when deleting a workspace. Implementations should be
-   idempotent - calling on an already-destroyed workspace should not error.
-
-   Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
-   bind [[metabase.driver.connection/with-admin-connection]] before invoking."
-  {:added "0.59.0" :arglists '([driver database workspace])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti grant-workspace-read-access!
-  "Grant read access on the workspace's input namespaces to the workspace's isolated
-   user/role. `input` is a sequence of `::table-namespace` maps `[{:db ?, :schema ?}]`
-   identifying the namespaces to grant access to. Granularity is per-namespace
-   (schema-wide / database-wide); per-table grants are not supported.
-
-   Slot semantics by driver:
-
-   - 2-slot schema-having (Postgres, Redshift, ClickHouse): read `:schema`,
-     ignore `:db` (connection-bound).
-   - 3-slot (Snowflake, SQL Server, BigQuery): read `:db` + `:schema`. `:db`
-     falls back to the connection's bound db when absent.
-   - schema-less (MySQL): read `:db`; the `qualified-name-components` is `[]`
-     and the database name lives in the `:db` slot.
-
-   Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
-   bind [[metabase.driver.connection/with-admin-connection]] before invoking."
-  {:added "0.59.0" :arglists '([driver database workspace input])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti validate-impersonated-query
   "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."

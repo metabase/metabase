@@ -251,7 +251,7 @@
    A non-matching failure (e.g. the engine's \"No current user\") means validation was passed."
   [args]
   (try
-    (tools.search/search-tool args {:token-scopes #{"agent:search"}})
+    (tools.search/search-tool args {:token-scopes #{"agent:content:read"}})
     false
     (catch clojure.lang.ExceptionInfo e
       (boolean (re-find #"Nothing to search for" (ex-message e))))))
@@ -267,7 +267,7 @@
   (testing "\"root\" with only a filter is a browse redirect, not a query-less search"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"browse_"
                           (tools.search/search-tool {:collection_id "root" :type ["dashboard"]}
-                                                    {:token-scopes #{"agent:search"}})))))
+                                                    {:token-scopes #{"agent:content:read"}})))))
 
 (deftest engine-results-reports-total-test
   (testing "GHY-4137: engine-results reports the engine's total for every search, including a

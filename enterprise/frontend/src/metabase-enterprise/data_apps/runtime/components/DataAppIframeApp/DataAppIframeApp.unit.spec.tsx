@@ -27,6 +27,17 @@ const mockedReadName = jest.mocked(readNameFromUrl);
 const mockedUseBundle = jest.mocked(useDataAppBundle);
 const mockedReport = jest.mocked(reportErrorToParent);
 
+// A stand-in parent window, identity-distinct from `window` so the app reads as
+// framed; a bare object covers the only member the code touches (`postMessage`).
+const framedParent = { postMessage: jest.fn() } as unknown as Window;
+
+function setFramed(framed: boolean) {
+  Object.defineProperty(window, "parent", {
+    configurable: true,
+    value: framed ? framedParent : window,
+  });
+}
+
 type SetupOpts = {
   name?: string | null;
   bundle?: ReturnType<typeof useDataAppBundle>;
@@ -44,7 +55,20 @@ const setup = ({
 };
 
 describe("DataAppIframeApp", () => {
-  afterEach(() => jest.clearAllMocks());
+  beforeEach(() => setFramed(true));
+  afterEach(() => {
+    setFramed(false);
+    jest.clearAllMocks();
+  });
+
+  it("shows an error when opened directly as a top-level page (no parent frame)", () => {
+    setFramed(false);
+    setup();
+
+    expect(
+      screen.getByText("This data app can’t be opened directly."),
+    ).toBeInTheDocument();
+  });
 
   it("shows an error when the URL has no data-app name", () => {
     setup({ name: null });
