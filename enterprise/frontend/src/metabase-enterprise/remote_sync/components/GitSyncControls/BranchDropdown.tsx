@@ -81,6 +81,7 @@ export const BranchDropdown = ({
     try {
       await stashChanges({
         new_branch: branchName,
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is the git commit message recorded on the branch, not UI text
         message: t`Created branch ${branchName} from Metabase`,
       }).unwrap();
 

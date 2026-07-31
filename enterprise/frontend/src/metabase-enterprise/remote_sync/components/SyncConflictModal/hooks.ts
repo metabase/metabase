@@ -169,6 +169,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
           setIsStashing(true);
           await stashChanges({
             new_branch: newBranchName,
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is the git commit message recorded on the branch, not UI text
             message: message ?? t`Stashed from Metabase`,
           }).unwrap();
 
