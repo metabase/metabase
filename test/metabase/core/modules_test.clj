@@ -14,6 +14,9 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #(binding [dev.deps-graph/*parsed-file-cache* (atom {})]
+                       (%)))
+
 (defn- modules-config
   "Kondo modules config."
   []
@@ -32,7 +35,7 @@
 
 (def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
 
-(deftest ^:parallel all-modules-have-teams-test
+(deftest all-modules-have-teams-test
   (testing "All modules should have a valid :team owner"
     (let [teams (teams)]
       (doseq [[module config] (modules-config)]
@@ -77,7 +80,7 @@
               module-name])
            module-names))
 
-(deftest ^:parallel modules-should-be-sorted-by-name-test
+(deftest modules-should-be-sorted-by-name-test
   (testing "Modules configs should sorted by module name with enterprise/modules appearing last"
     (let [actual   (module-names-in-file-order)
           expected (sort-module-names actual)]
@@ -98,7 +101,7 @@
       (when-let [zloc' (z/right config-zloc)]
         (recur zloc')))))
 
-(deftest ^:parallel module-api-namespaces-should-be-sorted-test
+(deftest module-api-namespaces-should-be-sorted-test
   (testing "Module :api namespaces should be sorted"
     (do-each-module-config
      (fn [module config-zloc]
@@ -118,7 +121,7 @@
            (is (= (sort api-namespaces)
                   api-namespaces))))))))
 
-(deftest ^:parallel module-uses-should-be-sorted-test
+(deftest module-uses-should-be-sorted-test
   (testing "Module :uses namespaces should be sorted"
     (do-each-module-config
      (fn [module config-zloc]
@@ -138,7 +141,7 @@
            (is (= (sort-module-names uses)
                   uses))))))))
 
-(deftest ^:parallel modules-config-up-to-date-test
+(deftest modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [deps     (dev.deps-graph/dependencies)
@@ -173,7 +176,7 @@
 (defn- rest-module? [module]
   (str/ends-with? module "-rest"))
 
-(deftest ^:parallel do-not-use-rest-modules-in-other-modules-test
+(deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
           :when                                (not (rest-module? module))
           used-module                          (when (set? uses)
@@ -187,7 +190,7 @@
 
 ;;;; Model boundary tests
 
-(deftest ^:parallel model-boundaries-test
+(deftest model-boundaries-test
   (testing "Model boundary enforcement\n"
     (let [ownership    (dev.deps-graph/model-ownership)
           known-models (set (keys ownership))
@@ -212,7 +215,7 @@
           (testing (format "\n'%s' exports %s (owned by %s)" module model (get ownership model))
             (is (= module (get ownership model)))))))))
 
-(deftest ^:parallel model-config-not-stale-test
+(deftest model-config-not-stale-test
   (testing "Model exports and imports should not list models that are unused.\n"
     (let [{computed-exports :model-exports
            computed-imports :model-imports} (dev.model-boundary-config/compute-model-boundaries)
@@ -229,7 +232,7 @@
                          module direction config-key)
           (is (empty? (sort stale))))))))
 
-(deftest ^:parallel model-exports-sorted-test
+(deftest model-exports-sorted-test
   (testing "Module :model-exports should be sorted"
     (do-each-module-config
      (fn [module config-zloc]
@@ -245,7 +248,7 @@
            (is (= (sort exports)
                   exports))))))))
 
-(deftest ^:parallel model-imports-sorted-test
+(deftest model-imports-sorted-test
   (testing "Module :model-imports should be sorted"
     (do-each-module-config
      (fn [module config-zloc]
