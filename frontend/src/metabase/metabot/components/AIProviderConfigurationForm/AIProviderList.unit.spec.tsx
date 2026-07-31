@@ -122,4 +122,15 @@ describe("AIProviderList", () => {
 
     expect(fetchMock.callHistory.calls("path:/api/llm/models")).toHaveLength(1);
   });
+
+  it("shows the skeleton until the connections have loaded", async () => {
+    setup();
+
+    expect(screen.getByTestId("provider-list-skeleton")).toBeInTheDocument();
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-list-skeleton"),
+    ).not.toBeInTheDocument();
+  });
 });

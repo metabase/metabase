@@ -21,6 +21,7 @@ import {
   Group,
   Icon,
   Menu,
+  Skeleton,
   Stack,
   Text,
   Tooltip,
@@ -33,11 +34,28 @@ import type {
 
 import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
-import { ProviderListSkeleton } from "./ProviderListSkeleton";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 
 const PROVIDER_ICON_SIZE = 32;
+const PROVIDER_ROW_HEIGHT = "3rem";
 const PROVIDER_DETAILS_INDENT = "2.5rem";
+// The warning glyph fills its viewBox, so it only sits on the label's cap band at this size.
+const WARNING_ICON_SIZE = 12;
+
+// mirrors a two-connection list: rows the height of PROVIDER_ICON_SIZE plus their py="sm",
+// divided the same way, then the button that follows them
+export function ProviderListSkeleton() {
+  return (
+    <Stack gap="sm" data-testid="provider-list-skeleton">
+      <Stack gap={0}>
+        <Skeleton h={PROVIDER_ROW_HEIGHT} />
+        <Divider />
+        <Skeleton h={PROVIDER_ROW_HEIGHT} />
+      </Stack>
+      <Skeleton h="1.5rem" w="10rem" />
+    </Stack>
+  );
+}
 
 export function AIProviderList() {
   const { data: connections = [], isLoading: isLoadingConnections } =
@@ -185,7 +203,7 @@ function ProviderConnectionRow({
               <Icon
                 name="warning"
                 c="error"
-                size={14}
+                size={WARNING_ICON_SIZE}
                 aria-label={t`Incomplete configuration`}
               />
             </Tooltip>

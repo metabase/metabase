@@ -7,9 +7,9 @@ import {
 } from "metabase/api";
 import { Button, Flex, Stack } from "metabase/ui";
 
+import { ProviderListSkeleton } from "./AIProviderList";
 import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionForm } from "./ProviderConnectionForm";
-import { ProviderListSkeleton } from "./ProviderListSkeleton";
 
 export function AIProviderSetup({ onDone }: { onDone?: () => void }) {
   const { data: connections = [], isLoading: isLoadingConnections } =
