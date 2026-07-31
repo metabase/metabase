@@ -663,3 +663,30 @@
       (testing "and the message steers to the v2 discovery tool"
         (is (str/includes? msg "browse_data"))
         (is (not (str/includes? msg "read_resource")))))))
+
+;; The pipeline states the miss; this surface supplies the recovery sentence. These assert the
+;; two halves actually meet — a v2 caller gets v2 vocabulary and never v1's.
+(deftest ^:parallel recovery-hints-reach-the-agent-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query
+                                                       {:filters [[">" {} ["field" {} 999999999] 0]]})}))]
+      (testing "the base statement and this surface's hint arrive as one message"
+        (is (str/includes? msg "No field found with id 999999999."))
+        (is (str/includes? msg "browse_data")))
+      (testing "and never v1's vocabulary"
+        (is (not (str/includes? msg "read_resource")))
+        (is (not (str/includes? msg "metabase://")))))))
+
+(deftest ^:parallel uri-in-source-table-hint-is-v2-flavored-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query {:lib/type "mbql/query"
+                                                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                   :source-table "metabase://metric/76"}]}}))]
+      (testing "the URI rejection carries v2's numeric-id recovery, not v1's portable_entity_id one"
+        (is (str/includes? msg "does not accept URIs"))
+        (is (str/includes? msg "aggregation"))
+        (is (not (str/includes? msg "portable_entity_id")))))))

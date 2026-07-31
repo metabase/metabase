@@ -14,6 +14,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
    [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]
@@ -351,8 +352,10 @@
    alongside the portable name forms, and its recovery hints name the v2 discovery tools
    (`browse_data`, `search`) rather than v1's `read_resource` / `metabase://` URIs."
   [external-query]
-  (binding [serdes.resolve/*agent-surface* :mcp-v2]
-    (metabot.construct/execute-representations-query external-query)))
+  (binding [serdes.resolve/*numeric-ids-allowed?* true]
+    (metabot.construct/execute-representations-query
+     external-query
+     {:recovery-hint v2.recovery-hints/recovery-hint})))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
 

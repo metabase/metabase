@@ -1880,7 +1880,7 @@
        (map? (nth v 1))
        (let [fk (nth v 2)]
          (or (and (vector? fk) (>= (count fk) 4))
-             (and (pos-int? fk) (resolve/numeric-ids-allowed?))))))
+             (and (pos-int? fk) resolve/*numeric-ids-allowed?*)))))
 
 (defn- try-resolve-source-table-id
   "Resolve the stage's `source-table` portable FK to a numeric id. Returns nil on any failure
@@ -1890,7 +1890,7 @@
   [import-resolver source-table-fk]
   (try
     (cond
-      (and (pos-int? source-table-fk) (resolve/numeric-ids-allowed?))
+      (and (pos-int? source-table-fk) resolve/*numeric-ids-allowed?*)
       source-table-fk
 
       (and import-resolver (vector? source-table-fk) (= 3 (count source-table-fk)))
@@ -1990,14 +1990,10 @@
               ;; source table's fields with the surface's own discovery tool to inspect the
               ;; available foreign-key columns.
               (let [src-name (display-source-table mp source-table-id)]
-                (throw (ex-info (str (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate."
-                                          (display-portable fk)
-                                          (pr-str src-name)
-                                          (count candidates))
-                                     " "
-                                     (resolve/surface-hint
-                                      {:metabot (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
-                                       :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns.")}))
+                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate."
+                                     (display-portable fk)
+                                     (pr-str src-name)
+                                     (count candidates))
                                 {:status-code  400
                                  :error        :ambiguous-fk
                                  :agent-error? true
@@ -2677,9 +2673,9 @@
 
   Carried over from the sexp pipeline's
   `validate/operators.clj/validate-operator-specific!` `field` branch. A no-op on surfaces
-  that accept numeric field ids (see [[metabase.models.serialization.resolve/*agent-surface*]])."
+  that accept numeric field ids (see [[metabase.models.serialization.resolve/*numeric-ids-allowed?*]])."
   [form]
-  (when-not (resolve/numeric-ids-allowed?)
+  (when-not resolve/*numeric-ids-allowed?*
     (walk/postwalk
      (fn [node]
        (when (and (vector? node)

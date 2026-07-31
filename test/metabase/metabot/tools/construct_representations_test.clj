@@ -13,7 +13,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as serdes.resolve]))
 
@@ -357,10 +359,14 @@
             (is (= "metric" (:entity-type d)))
             (is (= "76" (:entity-id d)))
             (is (= "metabase://metric/76" (:source-table d)))
-            (is (re-find #"aggregation" (ex-message e))
-                "message should point at aggregation-clause recovery")
-            (is (re-find #"base_table_fully_qualified_name" (ex-message e))
-                "message should name the attribute the LLM needs to look up on the metric")))))
+            (testing "the recovery sentence is the caller's, so the throw carries only the facts to build it"
+              (is (= "`source-table:` does not accept URIs like `metabase://metric/76`." (ex-message e)))
+              (is (re-find #"aggregation" (v1-hints/recovery-hint d))
+                  "v1's table points at aggregation-clause recovery")
+              (is (re-find #"base_table_fully_qualified_name" (v1-hints/recovery-hint d))
+                  "v1's table names the attribute the LLM looks up on the metric")
+              (is (re-find #"aggregation" (v2-hints/recovery-hint d))
+                  "v2's table points at aggregation-clause recovery too, in its own vocabulary"))))))
     (testing "question / model URI - hint points at `source-card:`"
       (doseq [t ["question" "model" "card"]]
         (try
@@ -373,8 +379,10 @@
             (let [d (ex-data e)]
               (is (= :uri-in-source-table (:error d)))
               (is (= t (:entity-type d)))
-              (is (re-find #"source-card" (ex-message e))
-                  (str "message for " t " should point at source-card:")))))))
+              (is (re-find #"source-card" (v1-hints/recovery-hint d))
+                  (str "v1 hint for " t " points at source-card:"))
+              (is (re-find #"source-card" (v2-hints/recovery-hint d))
+                  (str "v2 hint for " t " points at source-card:")))))))
     (testing "table URI - hint points at portable FK form"
       (try
         (construct/resolve-database-id-from-first-stage
@@ -386,7 +394,8 @@
           (let [d (ex-data e)]
             (is (= :uri-in-source-table (:error d)))
             (is (= "table" (:entity-type d)))
-            (is (re-find #"portable FK" (ex-message e)))))))))
+            (is (re-find #"portable FK" (v1-hints/recovery-hint d)))
+            (is (re-find #"numeric table id" (v2-hints/recovery-hint d)))))))))
 
 (deftest execute-representations-query-unknown-db-in-source-table-test
   (testing (str "Post step-14-follow-up the first stage's `source-table[0]` is the sole source\n"
@@ -1019,10 +1028,10 @@
 ;;; ============================================================
 
 (defmacro ^:private with-v2-surface
-  "Run `body` with the MCP v2 agent surface bound, the way
-  `metabase.mcp.v2.common/execute-representations-query` binds it."
+  "Run `body` with numeric ids accepted, the way
+  `metabase.mcp.v2.common/execute-representations-query` binds it for the v2 dialect."
   [& body]
-  `(binding [serdes.resolve/*agent-surface* :mcp-v2]
+  `(binding [serdes.resolve/*numeric-ids-allowed?* true]
      ~@body))
 
 (deftest numeric-ids-rejected-on-default-surface-test
@@ -1122,7 +1131,8 @@
               {"lib/type" "mbql/query"
                "stages"   [{"lib/type"     "mbql.stage/mbql"
                             "source-table" ["Sample" "PUBLIC" "NOPE"]
-                            "aggregation"  [["count" {}]]}]}))
+                            "aggregation"  [["count" {}]]}]})
+             {:recovery-hint v2-hints/recovery-hint})
             (is false "expected throw")
             (catch clojure.lang.ExceptionInfo e
               (is (= :unknown-table (:error (ex-data e))))

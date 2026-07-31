@@ -50,30 +50,18 @@
 ;;; Agent surface
 ;;; ============================================================
 
-(def ^:dynamic *agent-surface*
-  "Which agent surface is driving portable-MBQL resolution. The resolution pipeline is shared
-  between the v1 metabot/agent-api surface and the MCP v2 tool surface, and the two differ in
-  which query dialects they accept and which discovery affordances their error hints may name:
+(def ^:dynamic *numeric-ids-allowed?*
+  "Whether bare numeric table/field/card ids are accepted alongside portable references inside
+  a query body being resolved.
 
-    :metabot — the v1 surface (default): query bodies use portable names only, and recovery
-               hints teach `read_resource` + `metabase://` URIs.
-    :mcp-v2  — the MCP v2 tool surface: numeric ids are also accepted inside query bodies, and
-               recovery hints teach `browse_data` / `search` (v2 exposes no `read_resource`)."
-  :metabot)
+  False — the default — accepts portable references only, and is the safe direction: a numeric
+  id is rejected with a teaching error rather than resolved against whatever row happens to
+  carry that id. Callers that have decided their input dialect uses numeric ids bind it true
+  for the duration of the resolve.
 
-(defn numeric-ids-allowed?
-  "Whether the active agent surface accepts numeric table/field ids inside query bodies."
-  []
-  (= *agent-surface* :mcp-v2))
-
-(defn surface-hint
-  "Pick the recovery-hint sentence matching the active agent surface. Takes a map with
-  `:metabot` and `:mcp-v2` keys; each error site supplies both wordings so a hint can never
-  name an affordance the calling surface does not expose."
-  [{:keys [metabot mcp-v2]}]
-  (case *agent-surface*
-    :mcp-v2 mcp-v2
-    metabot))
+  It is ambient rather than a parameter because one of its readers is a registered Malli
+  schema predicate, which has no call site to thread a value through."
+  false)
 
 ;;; ============================================================
 ;;; Pure predicates

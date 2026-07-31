@@ -182,10 +182,10 @@
 
 (defn- numeric-id-when-allowed?
   "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at
-  validation time via [[metabase.models.serialization.resolve/numeric-ids-allowed?]], so the
+  validation time via [[metabase.models.serialization.resolve/*numeric-ids-allowed?*]], so the
   same schema serves both surfaces)."
   [x]
-  (and (pos-int? x) (serdes.resolve/numeric-ids-allowed?)))
+  (and (pos-int? x) serdes.resolve/*numeric-ids-allowed?*))
 
 (def ^:private registry
   {::table-fk [:and vector?

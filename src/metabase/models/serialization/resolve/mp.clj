@@ -121,11 +121,7 @@
   The LLM can still self-correct in one turn by listing the parent database's tables with
   the calling surface's discovery tool; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (str (tru "No table found matching portable FK {0}." (pr-str path))
-                " "
-                (resolve/surface-hint
-                 {:metabot (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response.")
-                  :mcp-v2  (tru "Call `browse_data` with action \"list_tables\" for the database and retry with the numeric table id from the response as `source-table`.")}))
+  (ex-info (tru "No table found matching portable FK {0}." (pr-str path))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
@@ -183,12 +179,8 @@
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
         ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
-        (throw (ex-info (str (tru "Ambiguous portable table FK {0}: {1} candidates."
+        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates."
                                   (pr-str path) (count candidates))
-                             " "
-                             (resolve/surface-hint
-                              {:metabot (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK.")
-                               :mcp-v2  (tru "Call `browse_data` with action \"list_tables\" for the database to list available tables, then retry with the numeric table id — it is never ambiguous.")}))
                         {:status-code  400
                          :error        :ambiguous-table
                          :agent-error? true
@@ -217,12 +209,8 @@
         ;; by listing the parent table's fields with the calling surface's discovery tool.
         unknown-field-ex
         (fn [segment]
-          (ex-info (str (tru "No column {0} on table {1}.{2}.{3}."
+          (ex-info (tru "No column {0} on table {1}.{2}.{3}."
                              (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
-                        " "
-                        (resolve/surface-hint
-                         {:metabot (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
-                          :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for this table to list its columns with their numeric ids.")}))
                    {:status-code  400
                     :error        :unknown-field
                     :path         full-path
@@ -416,11 +404,7 @@
           entity-id     (or (:entity-id card) (:entity_id card))]
       (cond
         (nil? card)
-        (throw (ex-info (str (tru "No saved question, model, or metric found with id {0}." (str card-id))
-                             " "
-                             (resolve/surface-hint
-                              {:metabot (tru "Call `read_resource` with `metabase://question/<numeric id>` or `metabase://metric/<numeric id>` to find the one you meant.")
-                               :mcp-v2  (tru "Find it with `search` and use the numeric id from the result.")}))
+        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." (str card-id))
                         {:status-code 400
                          :error       :unknown-card-id
                          :card-id     card-id}))
@@ -459,11 +443,7 @@
         card-db-id    (when card (or (:database-id card) (:database_id card)))]
     (cond
       (nil? card)
-      (throw (ex-info (str (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
-                           " "
-                           (resolve/surface-hint
-                            {:metabot (tru "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`.")
-                             :mcp-v2  (tru "Find the question or model with `search` and put its bare numeric id into `source-card:`.")}))
+      (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-card
@@ -498,11 +478,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? measure)
-      (throw (ex-info (str (tru "No measure found with entity_id {0}." (pr-str entity-id))
-                           " "
-                           (resolve/surface-hint
-                            {:metabot (tru "Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag.")
-                             :mcp-v2  (tru "Do not invent or guess entity_ids: call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list.")}))
+      (throw (ex-info (tru "No measure found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-measure
@@ -533,11 +509,7 @@
           entity-id        (when measure (or (:entity-id measure) (:entity_id measure)))]
       (cond
         (nil? measure)
-        (throw (ex-info (str (tru "No measure found with id {0}." (str measure-id))
-                             " "
-                             (resolve/surface-hint
-                              {:metabot (tru "Read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and use the id from its `<measure>` tag.")
-                               :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list.")}))
+        (throw (ex-info (tru "No measure found with id {0}." (str measure-id))
                         {:status-code 400
                          :error       :unknown-measure-id
                          :measure-id  measure-id}))
@@ -571,11 +543,7 @@
           entity-id        (when segment (or (:entity-id segment) (:entity_id segment)))]
       (cond
         (nil? segment)
-        (throw (ex-info (str (tru "No segment found with id {0}." (str segment-id))
-                             " "
-                             (resolve/surface-hint
-                              {:metabot (tru "Read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and use the id from its `<segment>` tag.")
-                               :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list.")}))
+        (throw (ex-info (tru "No segment found with id {0}." (str segment-id))
                         {:status-code 400
                          :error       :unknown-segment-id
                          :segment-id  segment-id}))
@@ -608,11 +576,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? segment)
-      (throw (ex-info (str (tru "No segment found with entity_id {0}." (pr-str entity-id))
-                           " "
-                           (resolve/surface-hint
-                            {:metabot (tru "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag.")
-                             :mcp-v2  (tru "Do not invent or guess entity_ids: call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list.")}))
+      (throw (ex-info (tru "No segment found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-segment
@@ -711,11 +675,7 @@
        (when table-id
          (let [t (lib.metadata.protocols/table metadata-provider table-id)]
            (when-not t
-             (throw (ex-info (str (tru "No table found with id {0}." (str table-id))
-                                  " "
-                                  (resolve/surface-hint
-                                   {:metabot (tru "Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables.")
-                                    :mcp-v2  (tru "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids.")}))
+             (throw (ex-info (tru "No table found with id {0}." (str table-id))
                              {:status-code 400
                               :error       :unknown-table-id
                               :table-id    table-id})))
@@ -724,11 +684,7 @@
        (when field-id
          (let [f (lib.metadata.protocols/field metadata-provider field-id)]
            (when-not f
-             (throw (ex-info (str (tru "No field found with id {0}." (str field-id))
-                                  " "
-                                  (resolve/surface-hint
-                                   {:metabot (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list a table''s columns.")
-                                    :mcp-v2  (tru "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids.")}))
+             (throw (ex-info (tru "No field found with id {0}." (str field-id))
                              {:status-code 400
                               :error       :unknown-field-id
                               :field-id    field-id})))
