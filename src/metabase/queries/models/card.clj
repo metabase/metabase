@@ -245,16 +245,20 @@
         source-card-ids              (into #{}
                                            (keep (comp source-card-id :dataset_query))
                                            cards-with-non-empty-queries)]
-    ;; Prefetching code should not propagate any exceptions.
-    (when (lib-be/metadata-provider-cache)
-      (try
-        (prefetch-tables-for-cards! cards-with-non-empty-queries)
-        (catch Throwable t
-          (log/errorf "Failed prefetching cards `%s`: %s" (pr-str (map :id cards-with-non-empty-queries)) (ex-message t)))))
+    ;; Warming caches must not change the outcome of the permission checks below, so nothing here propagates: finding
+    ;; a query's tables means walking it, and a malformed one throws.
+    (try
+      (when (lib-be/metadata-provider-cache)
+        (prefetch-tables-for-cards! cards-with-non-empty-queries))
+      ;; Only the tables the queries name directly: a source Card is reached through its collection's permissions,
+      ;; not its tables', so it contributes none of its own.
+      (perms/prime-table-perms-cache
+       {:table-ids (into #{} (mapcat card->integer-table-ids) cards-with-non-empty-queries)})
+      (catch Throwable t
+        (log/errorf "Failed prefetching cards `%s`: %s" (pr-str (map :id cards-with-non-empty-queries)) (ex-message t))))
     (query-perms/with-card-instances (when (seq source-card-ids)
                                        (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema]
                                                          :id [:in source-card-ids]))
-      (perms/prime-db-perms-cache (into #{} (keep :database_id) cards-with-non-empty-queries))
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []

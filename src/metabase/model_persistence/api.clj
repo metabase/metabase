@@ -73,6 +73,7 @@
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
+                          (perms/prime-db-perms-cache {:db-ids db-ids})
                           (->> (t2/select :model/Database :id [:in db-ids])
                                (filter mi/can-write?)
                                (map :id)
