@@ -67,7 +67,7 @@
                     jdbc/execute!                                           (fn [conn & _args]
                                                                               (swap! calls conj [:query conn])
                                                                               [])]
-        (is (= [] (entity-retrieval.core/search "the query" 10)))
+        (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10)))
         (is (= [[:lock ::datasource]
                 [:compatible :locked-connection-1]
                 [:embed "the query"]
@@ -87,7 +87,7 @@
                                                                            (throw (ex-info "must not embed" {})))
                   reconcile/with-index-read-lock                         (fn [_ds f]
                                                                            (f ::locked-connection))]
-      (is (= [] (entity-retrieval.core/search "the query" 10))))))
+      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest search-degrades-when-reconcile-holds-the-lock-test
   (mt/with-premium-features #{:library-retrieval}
@@ -101,7 +101,7 @@
                   reconcile/with-index-read-lock                         (constantly nil)
                   jdbc/execute!                                          (fn [& _]
                                                                            (throw (ex-info "must not query" {})))]
-      (is (= [] (entity-retrieval.core/search "the query" 10))))))
+      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest search-degrades-when-configured-model-cannot-be-resolved-test
   (mt/with-premium-features #{:library-retrieval}
@@ -119,7 +119,7 @@
                                                                            (throw (ex-info "must not lock" {})))
                   jdbc/execute!                                          (fn [& _]
                                                                            (throw (ex-info "must not query" {})))]
-      (is (= [] (entity-retrieval.core/search "the query" 10))))))
+      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
