@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   ;; every tool namespace, so the pointer sweep below sees every registered description
+   [metabase.mcp.v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.skills :as skills]
    [metabase.mcp.v2.tools.learn :as learn]))
@@ -73,3 +75,55 @@
             leaked ["mb card" "mb dashboard" "mb query" "mb skills" "mb uuid" "--profile" "--dry-run"]]
       (testing (str topic " must not mention " (pr-str leaked))
         (is (not (str/includes? text leaked)))))))
+
+(defn- tool-descriptions
+  "Every registered tool's description. `nil` token-scopes sees the whole surface."
+  []
+  (keep :description (registry/list-tools nil)))
+
+(defn- learn-description
+  []
+  (->> (registry/list-tools nil)
+       (filter #(= "learn" (:name %)))
+       first
+       :description))
+
+(deftest catalog-reaches-the-tool-description-test
+  (testing "the learn description names every pack and reference — it is the catalog a client
+            that never calls learn() sees, and nothing else ties it to skills/packs, so a new
+            pack lands in the registry while the advertised catalog silently omits it"
+    (let [description (learn-description)]
+      (is (some? description) "the learn tool is registered")
+      (doseq [topic (skills/topics)]
+        (is (str/includes? description topic)
+            (str topic " is in skills/packs but missing from the learn tool description")))
+      (doseq [topic (skills/topics)
+              ref   (skills/reference-names topic)]
+        (is (str/includes? description ref)
+            (str "reference " ref " of " topic " is missing from the learn tool description"))))))
+
+(def ^:private learn-pointer-re
+  "Matches learn(\"topic\") and learn(\"topic\", \"reference\") as they read at runtime. Excluding
+   `<` from both names skips the `learn(\"<topic>\", \"<name>\")` placeholders the skill footer
+   and the tool descriptions spell out — a real pack or reference name never contains one."
+  #"learn\(\"([^\"<]+)\"(?:,\s*\"([^\"<]+)\")?\)")
+
+(deftest learn-pointers-resolve-test
+  (testing "every learn(...) pointer in a tool description or pack body names a topic and
+            reference that exist — renaming a pack otherwise leaves pointers aimed at nothing,
+            and the model only finds out by calling learn() and getting a teaching error"
+    (let [pack-texts (concat (map skills/skill-text (skills/topics))
+                             (for [topic (skills/topics)
+                                   ref   (skills/reference-names topic)]
+                               (skills/reference-text topic ref)))
+          pointers   (for [text  (concat (tool-descriptions) pack-texts)
+                           match (re-seq learn-pointer-re (str text))]
+                       match)
+          topics     (set (skills/topics))]
+      (is (seq pointers) "the sweep found pointers — an empty sweep would pass vacuously")
+      (doseq [[whole topic ref] pointers]
+        (is (contains? topics topic)
+            (str whole " names a topic that does not exist"))
+        (when ref
+          (is (contains? (set (skills/reference-names topic)) ref)
+              (str whole " names a reference that does not exist")))))))

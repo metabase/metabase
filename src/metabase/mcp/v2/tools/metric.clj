@@ -96,9 +96,11 @@
       (str base path))))
 
 (defn- write-result
-  "The created/updated metric echoed to the caller: the `:metric` concise read projection — so the
-   echo and a concise `get_content` read carry the same fields by construction — plus `:entity_id`
-   (a portable id to update by), `:archived`, and the metric's URL."
+  "The created/updated metric echoed to the caller: the `:metric` concise read projection, plus
+   `:entity_id` (a portable id to update by), `:archived`, and the metric's URL. The echo confirms
+   what was written rather than standing in for a read — `:query_summary` is derived from the query
+   at read time rather than stored on the card, so it is the one concise key the echo never carries.
+   Read the metric back through `get_content` if you need it."
   [card]
   (assoc (projections/project :metric :concise card)
          :entity_id (:entity_id card)
