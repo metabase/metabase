@@ -40,7 +40,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   createDataSource,
-  isVisualizerDashboardCard,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -62,6 +61,7 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
