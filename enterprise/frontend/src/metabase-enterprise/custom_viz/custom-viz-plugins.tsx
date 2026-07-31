@@ -15,7 +15,6 @@ import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
@@ -24,10 +23,7 @@ import {
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
+import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
   CustomVizPluginId,
@@ -514,7 +510,6 @@ function createCustomVizWrapper(
     onVisualizationClick,
     onHoverChange,
   }: VisualizationProps) {
-    const { resolvedColorScheme } = useColorScheme();
     const browserRenderingContext = useBrowserRenderingContext({ fontFamily });
 
     const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
@@ -531,6 +526,7 @@ function createCustomVizWrapper(
             family: style.family ?? browserRenderingContext.fontFamily,
           }),
         fontFamily: browserRenderingContext.fontFamily,
+        colorScheme: browserRenderingContext.colorScheme ?? "light",
       }),
       [browserRenderingContext],
     );
@@ -544,7 +540,6 @@ function createCustomVizWrapper(
       // the `column` resolver returns plain strings instead of internal
       // unions); the runtime value is the host's computed settings.
       settings: settings as unknown as GenericVizPluginProps["settings"],
-      colorScheme: resolvedColorScheme,
       renderingContext,
       // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (

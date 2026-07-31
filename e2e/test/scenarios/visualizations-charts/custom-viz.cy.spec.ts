@@ -593,6 +593,10 @@ describe("admin > custom visualizations", () => {
         .invoke("text")
         .should("match", /Brand color: (#[0-9a-fA-F]{3,8}|rgba?\(.+\))$/);
       cy.findByTestId("demo-viz-font-family").should("contain", "Lato");
+      cy.findByTestId("demo-viz-color-scheme").should(
+        "have.text",
+        "Color scheme: light",
+      );
 
       H.expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
       H.expectNoBadSnowplowEvents();

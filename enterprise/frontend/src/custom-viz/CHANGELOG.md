@@ -7,6 +7,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 ### ⚠ BREAKING CHANGES
 
 - `column` and `column_settings` are now reserved setting ids, contributed to every visualization by Metabase to power the built-in per-column formatting popover. Plugins that declared their own settings under these ids must rename them — the `Settings` type now rejects those keys with a type error ([#78128](https://github.com/metabase/metabase/pull/78128)).
+- The top-level `colorScheme` visualization prop moved into `renderingContext.colorScheme`, next to the `getColor` helper whose output depends on it. Read `props.renderingContext.colorScheme` instead of `props.colorScheme`.
 
 ### Features
 

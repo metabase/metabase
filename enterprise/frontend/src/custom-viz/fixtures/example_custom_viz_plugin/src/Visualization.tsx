@@ -85,6 +85,9 @@ export const Visualization = (
       <div data-testid="demo-viz-font-family">
         Font family: {renderingContext.fontFamily}
       </div>
+      <div data-testid="demo-viz-color-scheme">
+        Color scheme: {renderingContext.colorScheme}
+      </div>
       <button
         type="button"
         data-testid="demo-viz-click-target"

@@ -110,6 +110,7 @@ export interface RenderingContext {
   measureTextWidth: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
+  colorScheme: "light" | "dark";
 }
 
 export type CustomVisualizationProps<
@@ -119,12 +120,10 @@ export type CustomVisualizationProps<
   height: number | null;
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
-  colorScheme: "light" | "dark";
   renderingContext: RenderingContext;
   onClick: (
     clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
   ) => void;
-
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
