@@ -11,8 +11,12 @@ import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
+import { useLlmConnectionModels } from "metabase/metabot/hooks";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import {
+  Box,
   Button,
+  Collapse,
   Divider,
   Group,
   Icon,
@@ -31,12 +35,16 @@ import { ProviderConnectionModal } from "./ProviderConnectionModal";
 import { ProviderListSkeleton } from "./ProviderListSkeleton";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 
+const PROVIDER_ICON_SIZE = 32;
+const PROVIDER_DETAILS_INDENT = "2.5rem";
+
 export function AIProviderList() {
   const { data: connections = [], isLoading: isLoadingConnections } =
     useListLlmProvidersQuery();
   const { data: providerTypes = [], isLoading: isLoadingProviderTypes } =
     useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
+  const { errorByConnectionKey } = useLlmConnectionModels();
 
   const [isAdding, { open: startAdding, close: stopAdding }] =
     useDisclosure(false);
@@ -90,6 +98,7 @@ export function AIProviderList() {
                   providerType={providerTypes.find(
                     (type) => type.type === connection.type,
                   )}
+                  modelsError={errorByConnectionKey[connection.key]}
                   onEdit={() => setEditing(connection)}
                   onDelete={() => setDeleting(connection)}
                 />
@@ -134,11 +143,13 @@ export function AIProviderList() {
 function ProviderConnectionRow({
   connection,
   providerType,
+  modelsError,
   onEdit,
   onDelete,
 }: {
   connection: LlmProviderConnection;
   providerType?: LlmProviderType;
+  modelsError?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -149,68 +160,109 @@ function ProviderConnectionRow({
       ? providerType.label
       : undefined;
 
-  return (
-    <Group justify="space-between" wrap="nowrap" py="sm">
-      <Group gap="sm" wrap="nowrap">
-        <ProviderTypeIcon
-          type={connection.type}
-          icon={providerType?.icon ?? "ai"}
-          size={32}
-        />
-        <Stack gap={0}>
-          <Group gap="xs" wrap="nowrap">
-            <Text fw="bold">{connection.name}</Text>
-            {!connection.usable && (
-              <Tooltip
-                label={t`Some required settings are missing, so Metabot can't use this provider.`}
-              >
-                <Icon
-                  name="warning"
-                  c="error"
-                  size={14}
-                  aria-label={t`Incomplete configuration`}
-                />
-              </Tooltip>
-            )}
-          </Group>
-          {typeLabel && (
-            <Text size="sm" c="text-secondary">
-              {typeLabel}
-            </Text>
-          )}
-          {isEnvManaged &&
-            connection.env_vars.map((varName) => (
-              <SetByEnvVar key={varName} varName={varName} />
-            ))}
-        </Stack>
-      </Group>
+  const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
+  const hasUsageDetails =
+    Boolean(providerType?.managed) && PLUGIN_METABOT.isEnabled;
+  const [isShowingDetails, { toggle: toggleDetails }] = useDisclosure(true);
 
-      {!isEnvManaged && (
-        <Menu position="bottom-end">
-          <Menu.Target>
+  return (
+    <Stack gap={0} data-testid={`provider-${connection.key}`}>
+      <Group justify="space-between" wrap="nowrap" py="sm">
+        <Group gap="sm" wrap="nowrap">
+          <ProviderTypeIcon
+            type={connection.type}
+            icon={providerType?.icon ?? "ai"}
+            size={PROVIDER_ICON_SIZE}
+          />
+          <Stack gap={0}>
+            <Group gap="xs" wrap="nowrap">
+              <Text fw="bold">{connection.name}</Text>
+              {!connection.usable && (
+                <Tooltip
+                  label={t`Some required settings are missing, so Metabot can't use this provider.`}
+                >
+                  <Icon
+                    name="warning"
+                    c="error"
+                    size={14}
+                    aria-label={t`Incomplete configuration`}
+                  />
+                </Tooltip>
+              )}
+            </Group>
+            {typeLabel && (
+              <Text size="sm" c="text-secondary">
+                {typeLabel}
+              </Text>
+            )}
+            {modelsError && (
+              <Text size="sm" c="error">
+                {modelsError}
+              </Text>
+            )}
+            {isEnvManaged &&
+              connection.env_vars.map((varName) => (
+                <SetByEnvVar key={varName} varName={varName} />
+              ))}
+          </Stack>
+        </Group>
+
+        <Group gap="xs" wrap="nowrap">
+          {hasUsageDetails && (
             <Button
               variant="subtle"
               p="xs"
-              aria-label={t`Provider options`}
-              leftSection={<Icon name="ellipsis" />}
+              aria-label={t`Usage and pricing`}
+              aria-expanded={isShowingDetails}
+              onClick={toggleDetails}
+              leftSection={
+                <Icon
+                  name={isShowingDetails ? "chevronup" : "chevrondown"}
+                  size={12}
+                />
+              }
             />
-          </Menu.Target>
-          <Menu.Dropdown>
-            {isEditable && (
-              <Menu.Item leftSection={<Icon name="pencil" />} onClick={onEdit}>
-                {t`Edit`}
-              </Menu.Item>
-            )}
-            <Menu.Item
-              leftSection={<Icon name="trash" />}
-              c="error"
-              onClick={onDelete}
-            >
-              {t`Remove`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+          )}
+
+          {!isEnvManaged && (
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <Button
+                  variant="subtle"
+                  p="xs"
+                  aria-label={t`Provider options`}
+                  leftSection={<Icon name="ellipsis" />}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                {isEditable && (
+                  <Menu.Item
+                    leftSection={<Icon name="pencil" />}
+                    onClick={onEdit}
+                  >
+                    {t`Edit`}
+                  </Menu.Item>
+                )}
+                <Menu.Item
+                  leftSection={<Icon name="trash" />}
+                  c="error"
+                  onClick={onDelete}
+                >
+                  {t`Remove`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
+        </Group>
+      </Group>
+
+      {hasUsageDetails && (
+        <Collapse in={isShowingDetails}>
+          <Box pl={PROVIDER_DETAILS_INDENT} pb="md">
+            <MetabaseAIProviderSetup isConnected />
+          </Box>
+        </Collapse>
       )}
-    </Group>
+    </Stack>
   );
 }

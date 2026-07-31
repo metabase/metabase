@@ -1,12 +1,10 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListLlmModelsQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { Select, Stack, Text } from "metabase/ui";
-import type { LlmConnectionModels } from "metabase-types/api";
+import { Select, Stack } from "metabase/ui";
 
 export function LlmModelPicker() {
   const {
@@ -14,10 +12,7 @@ export function LlmModelPicker() {
     updateSetting,
     settingDetails,
   } = useAdminSetting("llm-metabot-provider");
-  const { data: connections = [], isLoading, error } = useListLlmModelsQuery();
-
-  const options = useMemo(() => getModelOptions(connections), [connections]);
-  const failed = connections.filter((connection) => connection.error);
+  const { modelOptions, isLoading, error } = useLlmConnectionModels();
 
   const isEnvSetting = !!settingDetails?.is_env_setting;
   const envVarName = isEnvSetting ? settingDetails?.env_name : undefined;
@@ -36,7 +31,7 @@ export function LlmModelPicker() {
         description={t`Metabot uses this model by default. Models are listed per connected provider.`}
         placeholder={isLoading ? t`Loading models...` : t`Select a model`}
         error={error ? getErrorMessage(error, t`Unable to load models.`) : null}
-        data={options}
+        data={modelOptions}
         value={modelRef ?? null}
         onChange={handleChange}
         disabled={isEnvSetting || isLoading}
@@ -44,23 +39,6 @@ export function LlmModelPicker() {
         nothingFoundMessage={t`No models found`}
       />
       {envVarName && <SetByEnvVar varName={envVarName} />}
-      {failed.map((connection) => (
-        <Text key={connection.key} size="sm" c="error">
-          {t`Couldn't load models from ${connection.name}: ${connection.error}`}
-        </Text>
-      ))}
     </Stack>
   );
-}
-
-function getModelOptions(connections: LlmConnectionModels[]) {
-  return connections
-    .filter((connection) => connection.models.length > 0)
-    .map((connection) => ({
-      group: connection.name,
-      items: connection.models.map((model) => ({
-        value: `${connection.key}/${model.id}`,
-        label: model.display_name,
-      })),
-    }));
 }
