@@ -160,6 +160,13 @@
            clojure.lang.ExceptionInfo #"Unsupported provider \"zai\" for metabase managed AI"
            (metabot.settings/llm-metabot-provider! "metabase/zai/glm-5.2"))))))
 
+(deftest validate-metabot-provider-rejects-direct-only-provider-as-managed-mistral-test
+  (testing "rejects mistral under metabase/ prefix (not in the managed allow-list)"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Unsupported provider \"mistral\" for metabase managed AI"
+           (metabot.settings/llm-metabot-provider! "metabase/mistral/mistral-medium-3-5"))))))
+
 (deftest validate-metabot-provider-rejects-unsupported-metabase-managed-model-test
   (testing "rejects unsupported model for an allowed metabase managed provider"
     (mt/with-premium-features #{:metabase-ai-managed}
@@ -194,6 +201,11 @@
   (testing "accepts valid direct zai provider string"
     (mt/with-temporary-setting-values [llm-metabot-provider "zai/glm-5.2"]
       (is (= "zai/glm-5.2" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-mistral-test
+  (testing "accepts valid direct mistral provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "mistral/mistral-medium-3-5"]
+      (is (= "mistral/mistral-medium-3-5" (metabot.settings/llm-metabot-provider))))))
 
 (deftest validate-metabot-provider-accepts-allowed-metabase-managed-provider-and-model-test
   (testing "accepts allow-listed metabase managed provider/model"
@@ -256,6 +268,14 @@
              (metabot.settings/configured-provider-credentials "zai"))))
     (mt/with-temporary-setting-values [llm-zai-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "zai"))))))
+
+(deftest configured-provider-credentials-mistral-test
+  (testing "returns the api-key map when a mistral key is configured, nil when blank or missing"
+    (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+      (is (= {:api-key "mistral-key-test"}
+             (metabot.settings/configured-provider-credentials "mistral"))))
+    (mt/with-temporary-setting-values [llm-mistral-api-key nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "mistral"))))))
 
 (deftest configured-provider-credentials-bedrock-fully-configured-test
   (testing "returns the AWS credentials map when bedrock is fully configured"
