@@ -1729,15 +1729,16 @@
         [:lower expr]))))
 
 (defn- uuid-field?
-  [[_ opts field-id :as x]]
+  [x]
   (and (driver-api/is-clause? :field x)
-       (isa? (or (:effective-type opts)
-                 (when (pos-int? field-id)
-                   (let [{:keys [base-type effective-type]}
-                         (driver-api/field (driver-api/metadata-provider) field-id)]
-                     (or effective-type base-type)))
-                 (:base-type opts))
-             :type/UUID)))
+       (let [[_ opts field-id] x]
+         (isa? (or (:effective-type opts)
+                   (when (pos-int? field-id)
+                     (let [{:keys [base-type effective-type]}
+                           (driver-api/field (driver-api/metadata-provider) field-id)]
+                       (or effective-type base-type)))
+                   (:base-type opts))
+               :type/UUID))))
 
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
