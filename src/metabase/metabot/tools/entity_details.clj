@@ -75,8 +75,8 @@
 (defn- readable-measures-or-segments
   "Filter lib `:metadata/measure` / `:metadata/segment` maps down to those whose parent table the current user can read.
 
-  `can-read?` for both `:model/Measure` and `:model/Segment` delegates to the parent Table, and both metadata schemas
-  carry a required `:table-id`, so filtering on it reproduces exactly what a per-item read-check would allow.
+  [[mi/can-read?]] for both `:model/Measure` and `:model/Segment` delegates to the parent Table, and both metadata
+  schemas carry a required `:table-id`, so filtering on it reproduces exactly what a per-item read-check would allow.
 
   This is *not* redundant with the enclosing Card read-check. A Card is readable through **collection** permissions
   (`:perms/use-parent-collection-perms`), which say nothing about data access to its source table — without this
@@ -337,10 +337,10 @@
   "Details for the table with `id`.
 
   PERMISSIONS: the two lookup branches below are *not* equivalent. Without `:metadata-provider` the table is fetched
-  through [[metabot.tools.u/get-table]], which `api/read-check`s it. With `:metadata-provider` the lookup goes through
-  `lib.metadata/table` on the app-DB provider, which applies no permission filtering at all — callers passing a
-  provider must have already established that the current user can read `id`. [[related-tables]], the only such
-  caller, pre-filters its FK targets with `table-utils/readable-table-ids`."
+  through [[metabot.tools.u/get-table]], which [[api/read-check]]s it. With `:metadata-provider` the lookup goes
+  through [[lib.metadata/table]] on the app-DB provider, which applies no permission filtering at all — callers
+  passing a provider must have already established that the current user can read `id`. [[related-tables]], the only
+  such caller, pre-filters its FK targets with [[table-utils/readable-table-ids]]."
   ([id] (table-details id nil))
   ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
                with-measures? with-segments?]
@@ -559,7 +559,7 @@
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))
-          ;; Empty today for ordinary cards — `lib/query` wraps them as a `:source-card` stage, and
+          ;; Empty today for ordinary cards — [[lib/query]] wraps them as a `:source-card` stage, and
           ;; `available-measures`/`available-segments` only look at a stage-0 `:source-table`. The pivot-question
           ;; branch above *does* build from `dataset-query`, which carries `:source-table`, so this really can emit;
           ;; filtering unconditionally also keeps the general case closed if lib's resolution ever changes.

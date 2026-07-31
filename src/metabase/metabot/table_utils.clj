@@ -130,7 +130,7 @@
   stricter level because seeing a table named in hand-written SQL implies native access; MBQL/notebook paths do not,
   and requiring `:query-builder-and-native` there would hide tables the user is legitimately building queries against.
 
-  `:include-published-via-collection?` mirrors the corresponding branch of `can-read?` for `:model/Table`, so
+  `:include-published-via-collection?` mirrors the corresponding branch of [[mi/can-read?]] for `:model/Table`, so
   library-published tables readable via their collection stay visible."
   []
   (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
@@ -146,13 +146,13 @@
 (defn readable-table-ids
   "The subset of `table-ids` the current user can read, as a set.
 
-  Uses `mi/can-read?` rather than a SQL visibility clause so the result matches exactly what a per-table
-  `api/read-check` would allow — including the `:perms/manage-table-metadata` branch, which the SQL clause does not
-  synthesize. Selects whole rows because `can-read?`'s published-collection branch reads `:is_published` and
+  Uses [[mi/can-read?]] rather than a SQL visibility clause so the result matches exactly what a per-table
+  [[api/read-check]] would allow — including the `:perms/manage-table-metadata` branch, which the SQL clause does not
+  synthesize. Selects whole rows because [[mi/can-read?]]'s published-collection branch reads `:is_published` and
   `:collection_id`.
 
-  One query regardless of how many ids are passed: the per-table permission lookups behind `can-read?` are served
-  from the request-scoped permissions cache."
+  One query regardless of how many ids are passed: the per-table permission lookups behind [[mi/can-read?]] are
+  served from the request-scoped permissions cache."
   [table-ids]
   (if-let [ids (not-empty (set table-ids))]
     (into #{}

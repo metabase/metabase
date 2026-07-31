@@ -192,7 +192,7 @@
   "Get source tables for an MBQL query, formatted for metabot context.
 
   Permission-filtered at `:perms/create-queries :query-builder` rather than through the
-  `used-tables-from-ids` path the native-SQL and Python-transform branches use, which demands
+  [[table-utils/used-tables-from-ids]] path the native-SQL and Python-transform branches use, which demands
   `:query-builder-and-native` — too restrictive here, since building an MBQL question in the
   notebook editor doesn't imply native access.
 
