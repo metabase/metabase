@@ -70,6 +70,7 @@ const conversationsTable = buildTable(
     ["bigInteger", "new_message_count", "type/Quantity"],
     ["bigInteger", "prompt_tokens", "type/Quantity"],
     ["bigInteger", "completion_tokens", "type/Quantity"],
+    ["bigInteger", "total_tokens", "type/Quantity"],
   ],
 );
 
@@ -89,6 +90,7 @@ const usageLogTable = buildTable(
     ["text", "ip_address", null],
     ["integer", "prompt_tokens", "type/Quantity"],
     ["integer", "completion_tokens", "type/Quantity"],
+    ["integer", "total_tokens", "type/Quantity"],
     ["integer", "cache_creation_tokens", "type/Quantity"],
     ["integer", "cache_read_tokens", "type/Quantity"],
   ],

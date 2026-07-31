@@ -95,19 +95,16 @@ describe("buildSourceBreakoutQuery", () => {
   });
 
   describe("by breakoutColumn", () => {
-    it.each([
-      "profile_name",
-      "user_display_name",
-      "ip_address",
-      "model",
-    ] as const)("%s", (breakoutColumn) =>
-      snapshotQuery(
-        buildSourceBreakoutQuery({
-          ...filtersFor("conversations"),
-          ...dataSources("conversations"),
-          breakoutColumn,
-        }),
-      ),
+    it.each(["profile_name", "user_display_name", "ip_address"] as const)(
+      "%s",
+      (breakoutColumn) =>
+        snapshotQuery(
+          buildSourceBreakoutQuery({
+            ...filtersFor("conversations"),
+            ...dataSources("conversations"),
+            breakoutColumn,
+          }),
+        ),
     );
   });
 

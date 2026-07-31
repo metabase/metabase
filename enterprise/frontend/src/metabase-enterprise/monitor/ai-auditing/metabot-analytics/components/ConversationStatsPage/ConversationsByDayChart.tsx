@@ -10,6 +10,7 @@ import * as Lib from "metabase-lib";
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
 import { BreakoutChartCard } from "./BreakoutChartCard";
+import { mapBreakoutDimension } from "./breakout-raw-series";
 import {
   type GetColor,
   type StatsFilters,
@@ -17,6 +18,7 @@ import {
   applyDateFilter,
   applyIdFilter,
   applyUsageStatsAggregation,
+  breakoutByModel,
   findColumn,
   getMetricSeriesSettings,
   joinGroupMembers,
@@ -29,6 +31,9 @@ import {
 } from "./types";
 
 type BucketName = "day" | "hour";
+
+const labelUnknownModel = (value: unknown) =>
+  value == null ? t`Unknown model` : value;
 
 export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
   if (dateFilter.type === "relative") {
@@ -136,7 +141,13 @@ function ConversationsByDayChartInner({
   const { themeColor } = useMantineTheme().fn;
 
   const rawSeries = useMemo(
-    () => toTimeseriesRawSeries(data, jsQuery, metric, themeColor),
+    () =>
+      toTimeseriesRawSeries(
+        mapBreakoutDimension(data, labelUnknownModel, "series"),
+        jsQuery,
+        metric,
+        themeColor,
+      ),
     [data, jsQuery, metric, themeColor],
   );
 
@@ -175,6 +186,7 @@ export function buildTimeseriesBreakoutQuery({
   q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByCreatedAtBucket(q, bucketName);
+  q = breakoutByModel(q);
   return q;
 }
 
@@ -206,21 +218,27 @@ function toTimeseriesRawSeries(
   const aggregationColumnNames = data.data.cols
     .filter((c) => c.source === "aggregation")
     .map((c) => c.name);
-  const isMultiSeriesTokens =
-    metric === "tokens" && aggregationColumnNames.length === 2;
+  const breakoutColumnNames = data.data.cols
+    .filter((c) => c.source === "breakout")
+    .map((c) => c.name);
+  const hasModelSeries = breakoutColumnNames.length > 1;
 
   return [
     {
       data: data.data,
       card: {
         dataset_query: jsQuery,
-        display: isMultiSeriesTokens ? "line" : "area",
+        display: "area",
         visualization_settings: {
           "graph.x_axis.scale": "timeseries",
           "graph.x_axis.title_text": "",
           "graph.y_axis.title_text": "",
+          ...(hasModelSeries && {
+            "graph.dimensions": breakoutColumnNames.slice(0, 2),
+            "stackable.stack_type": "stacked",
+          }),
           ...getMetricSeriesSettings(metric, getColor, aggregationColumnNames, {
-            dualAxis: true,
+            hasModelSeries,
           }),
         },
       },

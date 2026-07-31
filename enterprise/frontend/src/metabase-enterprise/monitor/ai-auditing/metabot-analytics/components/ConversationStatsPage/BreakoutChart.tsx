@@ -21,6 +21,9 @@ import {
 
 type BuildQueryFn = (opts: StatsFilters & ChartDataSources) => Query;
 
+const labelUnknownModel = (value: unknown) =>
+  value == null ? t`Unknown model` : value;
+
 type Props = ChartProps & {
   titles: Record<UsageStatsMetric, string>;
   display: "row" | "bar";
@@ -109,7 +112,12 @@ function BreakoutChartInner({
     const labeled = labelMapper
       ? mapBreakoutDimension(data, labelMapper)
       : data;
-    return toBreakoutRawSeries(labeled, jsQuery, {
+    const withModelLabels = mapBreakoutDimension(
+      labeled,
+      labelUnknownModel,
+      "series",
+    );
+    return toBreakoutRawSeries(withModelLabels, jsQuery, {
       metric,
       display,
       maxCategories,

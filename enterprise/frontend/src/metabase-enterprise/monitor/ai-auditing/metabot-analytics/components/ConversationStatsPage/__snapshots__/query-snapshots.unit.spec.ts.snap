@@ -3,15 +3,16 @@
 exports[`buildGroupBreakoutQuery all filters 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "user_id is 42", "tenant_id is 7", "group_id is not 1", "group_id is 5"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["group_name"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["group_name", "model"]
+orderBys: ["sum desc"]"
 `;
 
 exports[`buildGroupBreakoutQuery by metric conversations 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "group_id is not 1"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
 aggregations: ["count()"]
-breakouts: ["group_name"]
+breakouts: ["group_name", "model"]
 orderBys: ["count desc"]"
 `;
 
@@ -19,84 +20,80 @@ exports[`buildGroupBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "group_id is not 1"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
 aggregations: ["sum(new_message_count)"]
-breakouts: ["group_name"]
+breakouts: ["group_name", "model"]
 orderBys: ["sum desc"]"
 `;
 
 exports[`buildGroupBreakoutQuery by metric tokens 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "group_id is not 1"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["group_name"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["group_name", "model"]
+orderBys: ["sum desc"]"
 `;
 
 exports[`buildGroupBreakoutQuery excludeAllUsers=false 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
 aggregations: ["count()"]
-breakouts: ["group_name"]
+breakouts: ["group_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery all filters 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "user_id is 42", "tenant_id is 7", "group_id is 5"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["source_name"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["source_name", "model"]
+orderBys: ["sum desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery by breakoutColumn ip_address 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["count()"]
-breakouts: ["ip_address"]
-orderBys: ["count desc"]"
-`;
-
-exports[`buildSourceBreakoutQuery by breakoutColumn model 1`] = `
-"filters: ["created_at is in the previous 30 days or today"]
-aggregations: ["count()"]
-breakouts: ["model"]
+breakouts: ["ip_address", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery by breakoutColumn profile_name 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["count()"]
-breakouts: ["profile_name"]
+breakouts: ["profile_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery by breakoutColumn user_display_name 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["count()"]
-breakouts: ["user_display_name"]
+breakouts: ["user_display_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery by metric conversations 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["count()"]
-breakouts: ["source_name"]
+breakouts: ["source_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["sum(new_message_count)"]
-breakouts: ["source_name"]
+breakouts: ["source_name", "model"]
 orderBys: ["sum desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery by metric tokens 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["source_name"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["source_name", "model"]
+orderBys: ["sum desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery single filter dateFilter specific 1`] = `
 "filters: ["created_at is on Apr 17, 2026"]
 aggregations: ["count()"]
-breakouts: ["source_name"]
+breakouts: ["source_name", "model"]
 orderBys: ["count desc"]"
 `;
 
@@ -104,78 +101,80 @@ exports[`buildSourceBreakoutQuery single filter groupId 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "group_id is 5"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
 aggregations: ["count()"]
-breakouts: ["source_name"]
+breakouts: ["source_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery single filter tenantId 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "tenant_id is 7"]
 aggregations: ["count()"]
-breakouts: ["source_name"]
+breakouts: ["source_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildSourceBreakoutQuery single filter userId 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "user_id is 42"]
 aggregations: ["count()"]
-breakouts: ["source_name"]
+breakouts: ["source_name", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildTenantBreakoutQuery all filters 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "user_id is 42", "tenant_id is 7", "tenant_id is not empty", "group_id is 5"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["tenant_id"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["tenant_id", "model"]
+orderBys: ["sum desc"]"
 `;
 
 exports[`buildTenantBreakoutQuery by metric conversations 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "tenant_id is not empty"]
 aggregations: ["count()"]
-breakouts: ["tenant_id"]
+breakouts: ["tenant_id", "model"]
 orderBys: ["count desc"]"
 `;
 
 exports[`buildTenantBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "tenant_id is not empty"]
 aggregations: ["sum(new_message_count)"]
-breakouts: ["tenant_id"]
+breakouts: ["tenant_id", "model"]
 orderBys: ["sum desc"]"
 `;
 
 exports[`buildTenantBreakoutQuery by metric tokens 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "tenant_id is not empty"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["tenant_id"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["tenant_id", "model"]
+orderBys: ["sum desc"]"
 `;
 
 exports[`buildTimeseriesBreakoutQuery all filters 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "user_id is 42", "tenant_id is 7", "group_id is 5"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["created_at: Day (bucket: day)"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["created_at: Day (bucket: day)", "model"]"
 `;
 
 exports[`buildTimeseriesBreakoutQuery bucket by hour 1`] = `
 "filters: ["created_at is on Apr 17, 2026"]
 aggregations: ["count()"]
-breakouts: ["created_at: Hour (bucket: hour)"]"
+breakouts: ["created_at: Hour (bucket: hour)", "model"]"
 `;
 
 exports[`buildTimeseriesBreakoutQuery by metric conversations 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["count()"]
-breakouts: ["created_at: Day (bucket: day)"]"
+breakouts: ["created_at: Day (bucket: day)", "model"]"
 `;
 
 exports[`buildTimeseriesBreakoutQuery by metric messages 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["sum(new_message_count)"]
-breakouts: ["created_at: Day (bucket: day)"]"
+breakouts: ["created_at: Day (bucket: day)", "model"]"
 `;
 
 exports[`buildTimeseriesBreakoutQuery by metric tokens 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
-aggregations: ["sum(prompt_tokens)", "sum(completion_tokens)"]
-breakouts: ["created_at: Day (bucket: day)"]"
+aggregations: ["sum(total_tokens)"]
+breakouts: ["created_at: Day (bucket: day)", "model"]"
 `;

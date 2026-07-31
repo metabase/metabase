@@ -12,27 +12,23 @@ import {
 describe("getMetricSeriesSettings", () => {
   const getColor = (name: string) => `#${name}`;
 
-  it("returns two-series config for tokens with both aggregation columns, no stacking, dual axis on opt-in", () => {
-    const grouped = getMetricSeriesSettings("tokens", getColor, [
-      "sum",
-      "sum_2",
-    ]);
-    expect(grouped["graph.metrics"]).toEqual(["sum", "sum_2"]);
-    expect(grouped.series_settings?.sum?.title).toMatch(/input/i);
-    expect(grouped.series_settings?.sum_2?.title).toMatch(/output/i);
-    expect(grouped.series_settings?.sum?.axis).toBeUndefined();
-    expect(grouped.series_settings?.sum_2?.axis).toBeUndefined();
-
-    const dual = getMetricSeriesSettings("tokens", getColor, ["sum", "sum_2"], {
-      dualAxis: true,
-    });
-    expect(dual.series_settings?.sum?.axis).toBe("left");
-    expect(dual.series_settings?.sum_2?.axis).toBe("right");
+  it("pins the single aggregation as the metric and colors it per metric type", () => {
+    const settings = getMetricSeriesSettings("tokens", getColor, ["sum"]);
+    expect(settings["graph.metrics"]).toEqual(["sum"]);
+    expect(settings.series_settings?.sum?.color).toBe("#accent2");
   });
 
-  it("falls back to single-series settings otherwise", () => {
+  it("leaves series colors to the palette when the model breakout supplies the series", () => {
+    const settings = getMetricSeriesSettings("tokens", getColor, ["sum"], {
+      hasModelSeries: true,
+    });
+    expect(settings["graph.metrics"]).toEqual(["sum"]);
+    expect(settings.series_settings).toBeUndefined();
+  });
+
+  it("falls back to the metric's default column name when none is supplied", () => {
     const settings = getMetricSeriesSettings("conversations", getColor);
-    expect(settings["graph.metrics"]).toBeUndefined();
+    expect(settings["graph.metrics"]).toEqual(["count"]);
     expect(settings.series_settings).toHaveProperty("count");
   });
 });

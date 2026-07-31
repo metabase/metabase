@@ -1,5 +1,4 @@
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
@@ -44,7 +43,7 @@ const METRIC_COLUMN_NAME: Record<UsageStatsMetric, string> = {
   messages: "sum",
 };
 
-type TokenSeriesSettings = Pick<
+type MetricSeriesSettings = Pick<
   VisualizationSettings,
   "series_settings" | "graph.metrics"
 >;
@@ -53,35 +52,20 @@ export function getMetricSeriesSettings(
   metric: UsageStatsMetric,
   getColor: GetColor,
   aggregationColumnNames?: string[],
-  options?: { dualAxis?: boolean },
-): TokenSeriesSettings {
-  return match({ metric, cols: aggregationColumnNames })
-    .with(
-      { metric: "tokens", cols: [P.string, P.string] as const },
-      ({ cols: [inputCol, outputCol] }) => ({
-        series_settings: {
-          [inputCol]: {
-            color: getColor("accent2"),
-            title: t`Input tokens`,
-            ...(options?.dualAxis && { axis: "left" }),
-          },
-          [outputCol]: {
-            color: getColor("accent3"),
-            title: t`Output tokens`,
-            ...(options?.dualAxis && { axis: "right" }),
-          },
-        },
-        "graph.metrics": [inputCol, outputCol],
-      }),
-    )
-    .otherwise(({ cols }) => {
-      const colName = cols?.[0] ?? METRIC_COLUMN_NAME[metric];
-      return {
-        series_settings: {
-          [colName]: { color: getColor(METRIC_ACCENT[metric]) },
-        },
-      };
-    });
+  options?: { hasModelSeries?: boolean },
+): MetricSeriesSettings {
+  const colName = aggregationColumnNames?.[0] ?? METRIC_COLUMN_NAME[metric];
+
+  if (options?.hasModelSeries) {
+    return { "graph.metrics": [colName] };
+  }
+
+  return {
+    series_settings: {
+      [colName]: { color: getColor(METRIC_ACCENT[metric]) },
+    },
+    "graph.metrics": [colName],
+  };
 }
 
 export function findColumn(
@@ -205,20 +189,14 @@ export function applyUsageStatsAggregation(
   return match(metric)
     .with("conversations", () => Lib.aggregateByCount(query, 0))
     .with("messages", () => addSumAggregation(query, "new_message_count"))
-    .with("tokens", () =>
-      addSumAggregation(
-        addSumAggregation(query, "prompt_tokens"),
-        "completion_tokens",
-      ),
-    )
+    .with("tokens", () => addSumAggregation(query, "total_tokens"))
     .exhaustive();
 }
 
 function getOrderColumnName(metric: UsageStatsMetric): string | null {
   return match(metric)
     .with("conversations", () => "count")
-    .with("messages", () => "sum")
-    .with("tokens", () => null)
+    .with(P.union("messages", "tokens"), () => "sum")
     .exhaustive();
 }
 
@@ -263,6 +241,7 @@ export function buildSourceBreakoutQuery({
   q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, breakoutColumn);
+  q = breakoutByModel(q);
   q = applyMetricOrderBy(q, metric);
   return q;
 }
@@ -270,6 +249,12 @@ export function buildSourceBreakoutQuery({
 export function breakoutByColumn(query: Query, columnName: string): Query {
   const col = findColumn(query, columnName, Lib.breakoutableColumns);
   return col ? Lib.breakout(query, 0, col) : query;
+}
+
+export const MODEL_COLUMN = "model";
+
+export function breakoutByModel(query: Query): Query {
+  return breakoutByColumn(query, MODEL_COLUMN);
 }
 
 type BreakoutQueryOpts = StatsFilters & {
@@ -332,6 +317,7 @@ export function buildGroupBreakoutQuery({
   q = excludeAllUsers ? excludeAllUsersGroup(q) : q;
   q = applyIdFilter(q, "group_id", groupId);
   q = breakoutByJoinedGroupName(q);
+  q = breakoutByModel(q);
   q = applyUsageStatsAggregation(q, metric);
   q = applyMetricOrderBy(q, metric);
   return q;
@@ -364,6 +350,7 @@ export function buildTenantBreakoutQuery({
   q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, "tenant_id");
+  q = breakoutByModel(q);
   q = applyMetricOrderBy(q, metric);
   return q;
 }

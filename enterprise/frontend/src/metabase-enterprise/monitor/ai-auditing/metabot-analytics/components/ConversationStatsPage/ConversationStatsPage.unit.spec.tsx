@@ -140,11 +140,7 @@ function parseStage(body: unknown): RequestStage | null {
   return JSON.parse(body).stages?.[0] ?? null;
 }
 
-function getBreakoutValues(stage: RequestStage): RowValue[] {
-  const [breakout] = stage.breakout ?? [];
-  if (!breakout) {
-    return [];
-  }
+function getBreakoutValues(breakout: FieldRef): RowValue[] {
   const columnName = FIELD_NAME_BY_ID.get(breakout[2]);
   if (columnName === "created_at") {
     return breakout[1]?.["temporal-unit"] === "hour"
@@ -160,27 +156,38 @@ function getBreakoutValues(stage: RequestStage): RowValue[] {
   return values;
 }
 
+function crossProduct(valueLists: RowValue[][]): RowValue[][] {
+  return valueLists.reduce<RowValue[][]>(
+    (acc, values) => acc.flatMap((row) => values.map((v) => [...row, v])),
+    [[]],
+  );
+}
+
 function buildDatasetResponse(body: unknown): Dataset {
   const stage = parseStage(body);
-  const values = stage ? getBreakoutValues(stage) : [];
-  const aggregationNames =
-    (stage?.aggregation ?? []).length > 1 ? ["sum", "sum_2"] : ["count"];
+  const breakouts = stage?.breakout ?? [];
+  const dimensionRows = breakouts.length
+    ? crossProduct(breakouts.map(getBreakoutValues))
+    : [];
 
   return createMockDataset({
     data: createMockDatasetData({
       cols: [
-        createMockColumn({ source: "breakout", name: "dimension" }),
-        ...aggregationNames.map((name) =>
-          createMockColumn({ source: "aggregation", name }),
+        ...breakouts.map((_, index) =>
+          createMockColumn({
+            source: "breakout",
+            name: index === 0 ? "dimension" : `dimension_${index}`,
+          }),
         ),
+        createMockColumn({ source: "aggregation", name: "count" }),
       ],
-      rows: values.map((value, index) => [
-        value,
-        ...aggregationNames.map((_, offset) => (index + 1) * 10 + offset),
+      rows: dimensionRows.map((dimensions, index) => [
+        ...dimensions,
+        (index + 1) * 10,
       ]),
     }),
     database_id: AUDIT_DB_ID,
-    row_count: values.length,
+    row_count: dimensionRows.length,
   });
 }
 
@@ -256,11 +263,14 @@ async function findChartCard(title: string): Promise<HTMLElement> {
   return parentElement;
 }
 
+// Each dimension value gets one clickable segment per model series, so the
+// label matches more than once.
 async function drillInto(chartTitle: string, dimensionLabel: string) {
   const card = await findChartCard(chartTitle);
-  await userEvent.click(
-    await within(card).findByRole("button", { name: dimensionLabel }),
-  );
+  const [segment] = await within(card).findAllByRole("button", {
+    name: dimensionLabel,
+  });
+  await userEvent.click(segment);
 }
 
 function chartTitles(label: string): string[] {
@@ -269,7 +279,6 @@ function chartTitles(label: string): string[] {
     `${label} by day`,
     `${label} by source`,
     `${label} by profile`,
-    `Models with most ${lowerLabel}`,
     `Groups with most ${lowerLabel}`,
     `Users with most ${lowerLabel}`,
     `IP addresses with most ${lowerLabel}`,
@@ -321,15 +330,33 @@ describe("ConversationStatsPage", () => {
       },
     );
 
-    it("breaks tokens down by the model that spent them", async () => {
+    it("breaks every tokens chart down by the model that spent them", async () => {
       setup({ initialRoute: `${STATS_PATH}?metric=tokens` });
 
-      const card = await findChartCard("Models with most tokens");
-      for (const model of BREAKOUT_VALUES.model) {
-        expect(
-          await within(card).findByRole("button", { name: String(model) }),
-        ).toBeInTheDocument();
-      }
+      await screen.findByText("Tokens by day");
+      const modelFieldId = fieldIdByName("v_ai_usage_log", "model");
+
+      await waitFor(() => {
+        const stages = getDatasetStages();
+        expect(stages.length).toBeGreaterThan(0);
+        for (const stage of stages) {
+          expect(stage.breakout?.map((ref) => ref[2])).toContain(modelFieldId);
+        }
+      });
+    });
+
+    it("sums total tokens once rather than splitting input from output", async () => {
+      setup({ initialRoute: `${STATS_PATH}?metric=tokens` });
+
+      await screen.findByText("Tokens by day");
+
+      await waitFor(() => {
+        const stages = getDatasetStages();
+        expect(stages.length).toBeGreaterThan(0);
+        for (const stage of stages) {
+          expect(stage.aggregation).toHaveLength(1);
+        }
+      });
     });
 
     it("buckets the timeseries by hour for a single-day date filter", async () => {
@@ -395,11 +422,11 @@ describe("ConversationStatsPage", () => {
 
       const card = await findChartCard("Tenants with most conversations");
       expect(
-        await within(card).findByRole("button", { name: BOBBY_TENANT.name }),
-      ).toBeInTheDocument();
+        await within(card).findAllByRole("button", { name: BOBBY_TENANT.name }),
+      ).not.toHaveLength(0);
       expect(
-        within(card).getByRole("button", { name: ROBERT_TENANT.name }),
-      ).toBeInTheDocument();
+        within(card).getAllByRole("button", { name: ROBERT_TENANT.name }),
+      ).not.toHaveLength(0);
     });
 
     it("filters the charts by the selected tenant", async () => {
