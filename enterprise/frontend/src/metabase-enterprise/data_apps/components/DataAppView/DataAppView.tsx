@@ -14,6 +14,7 @@ import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
+  DATA_APP_LOAD_TIMEOUT_MS,
   DATA_APP_READY_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
 } from "../../constants";
@@ -54,6 +55,9 @@ export function DataAppView() {
   const [appReady, setAppReady] = useState(false);
   const [bundleError, setBundleError] =
     useState<DataAppBundleErrorMessage | null>(null);
+  // Diagnostic string for the "Show error details" toggle; non-null once the
+  // iframe fails to load (blocked / unreachable / hung), which drives the error UI.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Reset whenever we navigate to a different app so a stale error/ready state
   // doesn't stick (the next app must re-earn the overlay being dropped).
@@ -61,6 +65,7 @@ export function DataAppView() {
   useEffect(() => {
     setBundleError(null);
     setAppReady(false);
+    setLoadError(null);
   }, [name]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
@@ -155,6 +160,44 @@ export function DataAppView() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  // The iframe can fail to load without ever posting back — blocked by a CSP
+  // `frame-src` violation, unreachable, or hung — which would otherwise leave the
+  // loading overlay spinning forever. Surface an error via a CSP-violation signal
+  // (instant, the cross-origin misconfiguration case) and a timeout backstop.
+  useEffect(() => {
+    // Stop once anything resolves the wait — including a `loadError` already set
+    // by the CSP signal — so the timeout can't clobber a more specific message.
+    if (!validName || appReady || bundleError || loadError) {
+      return undefined;
+    }
+
+    const onViolation = (event: SecurityPolicyViolationEvent) => {
+      if (
+        event.effectiveDirective.startsWith("frame-src") &&
+        event.blockedURI.startsWith(window.location.origin)
+      ) {
+        setLoadError(
+          t`Framing ${event.blockedURI} was blocked by the browser’s content security policy.`,
+        );
+      }
+    };
+
+    document.addEventListener("securitypolicyviolation", onViolation);
+
+    const timer = window.setTimeout(
+      () =>
+        setLoadError(
+          t`The data app didn’t load within ${DATA_APP_LOAD_TIMEOUT_MS / 1000} seconds. The frame may be unreachable.`,
+        ),
+      DATA_APP_LOAD_TIMEOUT_MS,
+    );
+
+    return () => {
+      document.removeEventListener("securitypolicyviolation", onViolation);
+      window.clearTimeout(timer);
+    };
+  }, [validName, appReady, bundleError, loadError]);
+
   if (!validName) {
     return (
       <NotFound
@@ -234,6 +277,16 @@ export function DataAppView() {
           details={bundleError.stack}
         />
       </Flex>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <GenericError
+        title={t`Couldn’t load this data app`}
+        message={t`This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back.`}
+        details={loadError}
+      />
     );
   }
 
