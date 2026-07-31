@@ -23,7 +23,6 @@ import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
-import { CommandSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
@@ -41,6 +40,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
 import { DocumentBlockShell } from "./DocumentBlockShell";
+import { DocumentCommandSuggestion } from "./DocumentCommandSuggestion";
 import { DocumentEditorHostProvider } from "./DocumentEditorHost";
 import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
@@ -151,7 +151,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         CommandExtension.configure({
           suggestion: {
             allow: ({ state }) => !isMetabotBlock(state),
-            render: createSuggestionRenderer(CommandSuggestion),
+            render: createSuggestionRenderer(DocumentCommandSuggestion),
           },
         }),
         MetabotNode.configure({
