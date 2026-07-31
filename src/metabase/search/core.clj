@@ -5,6 +5,7 @@
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
@@ -258,6 +259,22 @@
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
   (enqueue-hook-selectors! [instance] always?))
+
+(defn after-commit!
+  "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
+  They run off the committing thread unless ingestion is forced synchronous.
+  A step that throws is logged, naming the work by `description`, and the steps after it still run."
+  [description & steps]
+  (mdb/do-after-commit
+   (fn []
+     (let [run #(doseq [step steps]
+                  (try
+                    (step)
+                    (catch Exception e
+                      (log/errorf e "Failed search-index handoff: %s" description))))]
+       (if search.ingestion/*force-sync*
+         (run)
+         (future (run)))))))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!
