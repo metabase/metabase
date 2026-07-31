@@ -37444,7 +37444,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
+            "enum" : [ "anthropic", "openai", "mistral", "azure", "bedrock", "zai", "metabase", "openrouter" ]
           }
         } ],
         "responses" : {
@@ -37641,7 +37641,7 @@
                   },
                   "provider" : {
                     "type" : "string",
-                    "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
+                    "enum" : [ "anthropic", "openai", "mistral", "azure", "bedrock", "zai", "metabase", "openrouter" ]
                   }
                 },
                 "required" : [ "provider" ]
