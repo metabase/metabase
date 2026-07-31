@@ -343,8 +343,7 @@
 
 (defn prime-table-perms-cache
   "Eagerly load table-granular permissions for the current user, so that a run of per-table checks costs one query
-  instead of one per table. A no-op for superusers (their checks never read the cache) and when the request cache is
-  unavailable.
+  instead of one per table. A no-op for superusers, whose checks never read the cache.
 
   Takes `{:db-ids #{…} :table-ids #{…}}`, and `:table-ids` decides the shape:
 

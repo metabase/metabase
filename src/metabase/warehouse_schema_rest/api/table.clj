@@ -123,7 +123,7 @@
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
-      (do (perms/prime-table-perms-cache {:db-ids (into #{} (map :db_id) tables)})
+      (do (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
           tables)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
