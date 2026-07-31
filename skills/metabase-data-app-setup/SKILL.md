@@ -444,6 +444,12 @@ Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal ba
 
 For the hook contract itself — generics, table sources, segments, measures, breakouts, sorting, and debugging — use skill discovery before authoring schema-backed data-layer code.
 
+## App layout — fill the frame height
+
+Metabase and `npm run dev` both give the bundle a full-height frame, but nothing between it and your root element sets a height — so an app shorter than the frame ends where its content ends, leaving its background, sidebar and footer in a short strip over bare white.
+
+So the app's outermost element carries `minHeight: "100vh"` (plus `boxSizing: "border-box"` when it has padding) and paints the page background. `minHeight`, never `height` — taller content must still scroll. Regions that should reach the bottom (sidebar, sticky footer) go in a flex-column root with `flex: 1`. Check the emptiest screen — loading, empty state, a lone KPI — those are the ones that render short.
+
 ## SDK component sizing
 
 SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
@@ -483,6 +489,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 | "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$DATA_APP_MB_URL" ] && [ "$DATA_APP_MB_URL" != "mb_replace_me" ] && [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ] && curl -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/user/current" || echo "set real DATA_APP_MB_URL / DATA_APP_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
+| App background stops partway down, bare white below short content. | Give the root `minHeight: 100vh` (see *App layout*). |
 | "Invalid hook call" at runtime. | Two React copies. `dataAppConfig()` externalizes `react` — ensure `react`/`react-dom` are installed and you haven't added a second React or a mismatched version. |
 | Bundle is multi-MB. | React/the SDK should be externalized by the contract plugin — confirm `vite.config.ts` still uses `dataAppConfig()` and the pinned data-apps SDK tag is installed. (A large but not multi-MB bundle can also be inlined assets — see the single-file note above.) |
 | `dist/index.js` doesn't assign to `__dataAppFactory__`. | `src/index.tsx` must `export default` the `DataAppFactory` — the preset wires that into the IIFE global. |
