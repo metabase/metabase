@@ -1,6 +1,7 @@
 (ns metabase.server.streaming-response
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.response]
    [metabase.api.common.internal]
@@ -280,6 +281,19 @@
   [{{:strs [accept-encoding]} :headers}]
   (some->> accept-encoding (re-find #"gzip|\*")))
 
+(def ^:private already-compressed-content-types
+  #{"application/gzip" "application/x-gzip" "application/zip"})
+
+(defn- already-compressed-content-type?
+  "Is `content-type` already a compressed format? Gzipping it again just makes the client unwrap twice."
+  [content-type]
+  (boolean (some-> content-type
+                   (str/split #";")
+                   first
+                   str/trim
+                   u/lower-case-en
+                   already-compressed-content-types)))
+
 (defn- output-stream-delay [gzip? ^HttpServletResponse response]
   (if gzip?
     (delay
@@ -405,7 +419,8 @@
                     (onStartAsync [_ _event])))
     (try
       (.setStatus response (or status 202))
-      (let [gzip?   (should-gzip-response? request-map)
+      (let [gzip?   (and (should-gzip-response? request-map)
+                         (not (already-compressed-content-type? content-type)))
             headers (cond-> (assoc (merge headers (:headers response-map))
                                    "Content-Type" content-type
                                    ;; Very important: connections which serve streaming responses SHOULD NOT be reused
@@ -466,7 +481,9 @@
     this))
 
 (defn- render [^StreamingResponse streaming-response gzip?]
-  (let [{:keys [headers content-type], :as options} (.options streaming-response)]
+  (let [{:keys [headers content-type], :as options} (.options streaming-response)
+        gzip?                                       (and gzip?
+                                                         (not (already-compressed-content-type? content-type)))]
     (assoc (response/response (if gzip?
                                 (StreamingResponse. (.f streaming-response)
                                                     (assoc options :gzip? true)
