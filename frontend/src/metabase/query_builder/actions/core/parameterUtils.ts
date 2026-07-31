@@ -10,19 +10,7 @@ import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type { Card, Parameter } from "metabase-types/api";
-
-type BlankQueryOptions = {
-  db?: string;
-  table?: string;
-  segment?: string;
-  metric?: string;
-};
-
-type QueryParams = BlankQueryOptions & {
-  slug?: string;
-  objectId?: string;
-};
+import type { Card, Parameter, ParameterValuesMap } from "metabase-types/api";
 
 function shouldPropagateDashboardParameters({
   cardId,
@@ -87,7 +75,7 @@ export function getParameterValuesForQuestion({
   metadata,
 }: {
   card: Card;
-  queryParams?: QueryParams;
+  queryParams?: ParameterValuesMap;
   metadata: Metadata;
 }) {
   const parameters = getCardUiParameters(card, metadata);

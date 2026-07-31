@@ -106,7 +106,9 @@ const VIEW_AS_RELATED_FORMATTING_OPTIONS = new Set(VIEW_AS_FIELDS);
 const TAB = {
   SETTINGS: "settings",
   FORMATTING: "formatting",
-};
+} as const;
+
+type DatasetFieldTab = (typeof TAB)[keyof typeof TAB];
 
 const TAB_OPTIONS = [
   {
@@ -154,7 +156,7 @@ function DatasetFieldMetadataSidebarInner({
     return values;
   }, [field, dataset, modelIndexes]);
 
-  const [tab, setTab] = useState<string>(TAB.SETTINGS);
+  const [tab, setTab] = useState<DatasetFieldTab>(TAB.SETTINGS);
 
   const handleFormattingSettingsChange = useCallback(
     (settings: ColumnSettingsType) => {

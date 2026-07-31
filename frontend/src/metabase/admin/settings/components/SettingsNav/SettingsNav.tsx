@@ -4,7 +4,11 @@ import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_SECURITY_CENTER,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -80,7 +84,9 @@ export function SettingsNav() {
       />
       {/* do not allow users with "Settings access" permissions to access custom viz pages */}
       {isAdmin && <CustomVisualizationsNav />}
-      {isAdmin && <DataAppsNav />}
+      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so
+          the nav item (and its upsell gem) shows without the token feature */}
+      {isAdmin && PLUGIN_DATA_APPS.isEnabled && <DataAppsNav />}
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}

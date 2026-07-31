@@ -108,6 +108,7 @@
       (:semantic-type converted)    (update :semantic-type keyword)
       (:base-type converted)        (update :base-type keyword)
       (:has-field-values converted) (update :has-field-values keyword)
+      (:default-temporal-unit converted) (update :default-temporal-unit keyword)
       (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
       (:group converted)            (update :group u/normalize-map))))
 

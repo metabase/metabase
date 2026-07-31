@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot.tools.entity-details-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -24,3 +25,33 @@
             (is (= ["African" "American"] (:field_values name-field)))))
         (finally
           (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
+
+(deftest sandboxed-metric-dimensions-test
+  (testing "metric details respect column-restricting sandboxes"
+    (met/with-gtaps! {:gtaps {:venues {:query (sandbox.tu/restricted-column-query (mt/id))}}}
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Sandboxed metric"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :venues)
+                                                                             :aggregation  [[:count]]}}}]
+        (let [venue-name        (:name (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+              metric-dimensions (fn []
+                                  (-> (entity-details/get-metric-details {:metric-id          metric-id
+                                                                          :with-field-values? false})
+                                      :structured-output
+                                      :queryable-dimensions))
+              source-names      (fn [dimensions]
+                                  (into #{}
+                                        (comp (filter #(= venue-name (get-in % [:portable_fk 2])))
+                                              (map :name))
+                                        dimensions))]
+          (testing "only source-card columns are returned"
+            (is (= #{"CATEGORY_ID" "ID" "NAME"}
+                   (source-names (metric-dimensions)))))
+          (testing "missing sandbox metadata fails closed"
+            (let [sandbox (t2/select-one :model/Sandbox :table_id (mt/id :venues))]
+              (t2/update! :model/Card :id (:card_id sandbox) {:result_metadata nil})
+              (is (empty? (metric-dimensions))))))))))

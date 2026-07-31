@@ -373,12 +373,15 @@
                               (format "WHEN doc_type = '%s' THEN %s" (name k) w)))]
     (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
 
-(defenterprise search
+(defenterprise search-unfiltered
   "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
   blended score (cosine similarity plus a slight doc_type bump).
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
   dedupes the (many-per-entity) docs down to distinct entities.
-  Returns [] when the pgvector store is unconfigured."
+  Returns [] when the pgvector store is unconfigured.
+
+  Hits are not permission-filtered — see [[metabase.entity-retrieval.mirror/search-unfiltered]] for what a
+  caller owes the current user."
   :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)

@@ -134,7 +134,9 @@
                     (is (= public-before (tables-in-schema app-db "public"))))
                   (testing "retrieval round-trips through the app-db pool"
                     (is (= [{:model "table" :id table-id}]
-                           (->> (entity-retrieval.core/search "puppy" 5)
+                           ;; Index plumbing, no user in the loop — filtering is tested at the tool.
+                           #_{:clj-kondo/ignore [:discouraged-var]}
+                           (->> (entity-retrieval.core/search-unfiltered "puppy" 5)
                                 (map :entity)
                                 distinct
                                 vec))))

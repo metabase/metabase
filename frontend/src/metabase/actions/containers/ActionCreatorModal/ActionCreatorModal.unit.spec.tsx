@@ -13,7 +13,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route, useLocation, useParams } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
@@ -24,7 +24,14 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "./ActionCreatorModal";
 
-const RoutedActionCreatorModal = withRouteProps(ActionCreatorModal);
+/** Feeds the modal its route props the way `modalRoute` does in the app. */
+function RoutedActionCreatorModal({ onClose }: { onClose: () => void }) {
+  const params = useParams<{ slug: string; actionId: string }>();
+  const location = useLocation();
+  return (
+    <ActionCreatorModal params={params} location={location} onClose={onClose} />
+  );
+}
 
 const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;

@@ -133,6 +133,11 @@ export const getMetabotConversationTitle = createSelector(
   (convo) => convo.title,
 );
 
+export const getMetabotConversationForkedFrom = createSelector(
+  getMetabotConversation,
+  (convo) => convo.forkedFromConversationId,
+);
+
 export const getIsPollingForTitle = createSelector(
   [
     (state: State) => getMetabotState(state).titlePollingConversationIds,

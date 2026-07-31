@@ -336,7 +336,7 @@
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
           state     (metabot.persistence/conversation-state live)
-          first-msg (or (:content (metabot.persistence/first-valid-user-message live))
+          first-msg (or (:content (metabot.persistence/first-non-forked-user-message live))
                         (:content message))
           title-job (conversation-title/ensure-title!
                      conversation_id
@@ -484,8 +484,10 @@
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "mistral"    :llm-mistral-api-key
     "openai"     :llm-openai-api-key
-    "openrouter" :llm-openrouter-api-key))
+    "openrouter" :llm-openrouter-api-key
+    "zai"        :llm-zai-api-key))
 
 (defn- non-blank-string
   [value]

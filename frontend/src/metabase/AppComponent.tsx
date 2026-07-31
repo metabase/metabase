@@ -24,10 +24,9 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { connect, useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { AppErrorDescriptor, State } from "metabase/redux/store";
-import type { Location } from "metabase/router";
+import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -59,57 +58,33 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   return <GenericError details={data?.message} />;
 };
 
-interface AppStateProps {
-  errorPage: AppErrorDescriptor | null;
-  isAdminApp: boolean;
-  isDataStudioApp: boolean;
-  isMonitorApp: boolean;
-  isDataApp: boolean;
-  bannerMessageDescriptor?: string;
-  isAppBarVisible: boolean;
-  isNavBarEnabled: boolean;
-}
-
-interface AppDispatchProps {
-  onError: (error: unknown) => void;
-}
-
-interface AppRouterOwnProps {
-  location: Location;
-}
-
-type AppProps = AppStateProps & AppDispatchProps & AppRouterOwnProps;
-
-const mapStateToProps = (
-  state: State,
-  props: AppRouterOwnProps,
-): AppStateProps => ({
-  errorPage: getErrorPage(state),
-  isAdminApp: getIsAdminApp(state, props),
-  isDataStudioApp: getIsDataStudioApp(state, props),
-  isMonitorApp: getIsMonitorApp(state, props),
-  isDataApp: getIsDataApp(state, props),
-  isAppBarVisible: getIsAppBarVisible(state, props),
-  isNavBarEnabled: getIsNavBarEnabled(state, props),
-});
-
-const mapDispatchToProps: AppDispatchProps = {
-  onError: setErrorPage,
-};
-
-function App({
-  errorPage,
-  isAdminApp,
-  isDataStudioApp,
-  isMonitorApp,
-  isDataApp,
-  isAppBarVisible,
-  isNavBarEnabled,
-  onError,
-}: AppProps) {
+export function App() {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const dispatch = useDispatch();
   const applicationName = useSelector(getApplicationName);
-  const { pathname } = useLocation();
+
+  // These selectors derive the active app section from the URL, so they take
+  // the router props rather than reading them from the store.
+  const location = useLocation();
+  const routerProps = { location };
+  const errorPage = useSelector(getErrorPage);
+  const isAdminApp = useSelector((state) => getIsAdminApp(state, routerProps));
+  const isDataStudioApp = useSelector((state) =>
+    getIsDataStudioApp(state, routerProps),
+  );
+  const isMonitorApp = useSelector((state) =>
+    getIsMonitorApp(state, routerProps),
+  );
+  const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
+  const isAppBarVisible = useSelector((state) =>
+    getIsAppBarVisible(state, routerProps),
+  );
+  const isNavBarEnabled = useSelector((state) =>
+    getIsNavBarEnabled(state, routerProps),
+  );
+
+  const onError = (error: unknown) => dispatch(setErrorPage(error));
+  const { pathname } = location;
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
@@ -159,14 +134,3 @@ function App({
     </ErrorBoundary>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<
-  AppStateProps,
-  AppDispatchProps,
-  AppRouterOwnProps,
-  State
->(
-  mapStateToProps,
-  mapDispatchToProps,
-)(App);

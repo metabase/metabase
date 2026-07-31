@@ -7,7 +7,7 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";
-import { replace, useRouter } from "metabase/router";
+import { replace, useLocation, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -31,7 +31,8 @@ const getTitle = (
 };
 
 const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const dispatch = useDispatch();
   const [copyDashboard] = useCopyDashboardMutation();
   const dashboard = useSelector(getDashboardComplete);

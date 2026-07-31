@@ -56,7 +56,7 @@ const mapDispatchToProps = {
 };
 
 interface DatabaseDetailProps {
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   entity: StubbedDatabase;
   user: User | null;
   isEditing?: boolean;

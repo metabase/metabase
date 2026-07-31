@@ -1,15 +1,12 @@
-import type { NavigationType, Location as V7Location } from "react-router";
+import type { Location as V7Location } from "react-router";
 
 import { LOCATION_CHANGE } from "../location-change";
 import type { Location } from "../types";
 
-import { toV3Location } from "./location";
+import { toFacadeLocation } from "./location";
 import { notifyLocationListeners } from "./navigator";
 
-export type LocationMirror = (
-  location: V7Location,
-  action: NavigationType,
-) => void;
+export type LocationMirror = (location: V7Location) => void;
 
 /**
  * The dispatch half of a redux store, narrowed to what the mirror needs. Taking
@@ -33,9 +30,9 @@ type DispatchLocationChange = (action: {
 export function createLocationMirror(
   dispatch: DispatchLocationChange,
 ): LocationMirror {
-  return (location, action) => {
-    const v3Location = toV3Location(location, action);
-    dispatch({ type: LOCATION_CHANGE, payload: v3Location });
-    notifyLocationListeners(v3Location);
+  return (location) => {
+    const facadeLocation = toFacadeLocation(location);
+    dispatch({ type: LOCATION_CHANGE, payload: facadeLocation });
+    notifyLocationListeners(facadeLocation);
   };
 }
