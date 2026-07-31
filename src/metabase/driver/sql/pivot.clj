@@ -45,7 +45,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod pivot-grouping-hsql :sql-mbql5
+(defmethod pivot-grouping-hsql :sql
   [_driver exprs]
   (into [::grouping-fn] exprs))
 

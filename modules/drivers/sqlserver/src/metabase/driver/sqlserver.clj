@@ -19,8 +19,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
@@ -236,9 +236,9 @@
       (parent-method driver field-clause))))
 
 ;; SQL Server's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
-(defmethod sql-mbql5.pivot/pivot-grouping-hsql :sqlserver
+(defmethod sql.pivot/pivot-grouping-hsql :sqlserver
   [_driver exprs]
-  (into [::sql-mbql5.pivot/grouping-id-fn] exprs))
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defn- maybe-inline-number [x]
   (if (number? x)

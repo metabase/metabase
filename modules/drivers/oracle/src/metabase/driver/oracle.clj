@@ -17,7 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
@@ -253,9 +253,9 @@
     (h2x/->integer [:floor [::h2x/extract :second t]])))
 
 ;; Oracle's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
-(defmethod sql-mbql5.pivot/pivot-grouping-hsql :oracle
+(defmethod sql.pivot/pivot-grouping-hsql :oracle
   [_driver exprs]
-  (into [::sql-mbql5.pivot/grouping-id-fn] exprs))
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first

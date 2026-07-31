@@ -20,18 +20,18 @@
 (deftest ^:parallel grouping-id-fn-formatter-test
   (testing "renders GROUPING_ID(expr1, expr2, ...) for plain identifier args"
     (is (= ["GROUPING_ID(col_a, col_b)"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-id-fn :col-a :col-b]))))
+           (sql/format-expr [::sql.pivot/grouping-id-fn :col-a :col-b]))))
   (testing "preserves args from nested expressions"
     (is (= ["GROUPING_ID(CAST(foo AS ?), bar)" "int"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-id-fn [:cast :foo "int"] :bar])))))
+           (sql/format-expr [::sql.pivot/grouping-id-fn [:cast :foo "int"] :bar])))))
 
 (deftest ^:parallel synthesise-grouping-bitmask-test
   (testing "single expr renders as bare GROUPING(expr) with no arithmetic"
     (is (= ["GROUPING(col_a)"]
-           (sql/format-expr (sql-mbql5.pivot/synthesise-grouping-bitmask [:col-a])))))
+           (sql/format-expr (sql.pivot/synthesise-grouping-bitmask [:col-a])))))
   (testing "three exprs render as a sum with descending powers of 2, no `* 1` on the last term"
     (is (= ["(GROUPING(col_a) * 4) + (GROUPING(col_b) * 2) + GROUPING(col_c)"]
-           (sql/format-expr (sql-mbql5.pivot/synthesise-grouping-bitmask [:col-a :col-b :col-c]))))))
+           (sql/format-expr (sql.pivot/synthesise-grouping-bitmask [:col-a :col-b :col-c]))))))
 
 (deftest ^:parallel grouping-sets-formatter-test
   (testing "renders GROUPING SETS ((..), (..), ()) including the empty grand-total set"
