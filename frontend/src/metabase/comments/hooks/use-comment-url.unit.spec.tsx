@@ -17,6 +17,11 @@ function setup(initialRoute: string, childTargetId = "9") {
 }
 
 describe("useCommentUrl", () => {
+  it("returns an empty string when rendered outside a router (storybook / custom-viz fixtures)", () => {
+    renderWithProviders(<Probe childTargetId="9" />);
+    expect(screen.getByTestId("comment-url")).toHaveTextContent("");
+  });
+
   it("appends a /comments segment on routes with a comments child route", () => {
     expect(setup("/document/1")).toBe("/document/1/comments/9");
   });

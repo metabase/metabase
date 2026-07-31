@@ -1,4 +1,4 @@
-import { useLocation } from "metabase/router";
+import { useMaybeLocation } from "metabase/router";
 import { isExplorationUrl } from "metabase/urls";
 import type { EntityId } from "metabase-types/api/comments";
 
@@ -7,7 +7,9 @@ interface UseCommentUrlOptions {
 }
 
 export function useCommentUrl({ childTargetId }: UseCommentUrlOptions) {
-  const { pathname, search: locationSearch } = useLocation();
+  const location = useMaybeLocation();
+  const pathname = location?.pathname;
+  const locationSearch = location?.search ?? "";
   if (!pathname) {
     return "";
   }
