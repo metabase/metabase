@@ -47,14 +47,20 @@ export function AIProviderList() {
   const [deleteProvider] = useDeleteLlmProviderMutation();
   const { errorByConnectionKey } = useLlmConnectionModels();
 
-  const [isAdding, { open: startAdding, close: stopAdding }] =
+  const [isModalOpen, { open: openModal, close: closeModal }] =
     useDisclosure(false);
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
   const [sendToast] = useToast();
 
-  const handleModalClose = () => {
-    stopAdding();
+  const handleAdd = () => {
+    setEditing(undefined);
+    openModal();
+  };
+
+  const handleEdit = (connection: LlmProviderConnection) => {
+    setEditing(connection);
+    openModal();
   };
 
   const handleConfirmDelete = async () => {
@@ -99,7 +105,7 @@ export function AIProviderList() {
                     (type) => type.type === connection.type,
                   )}
                   modelsError={errorByConnectionKey[connection.key]}
-                  onEdit={() => setEditing(connection)}
+                  onEdit={() => handleEdit(connection)}
                   onDelete={() => setDeleting(connection)}
                 />
               </Fragment>
@@ -112,7 +118,7 @@ export function AIProviderList() {
           p={hasConnections ? 0 : undefined}
           w="fit-content"
           leftSection={<Icon name="add" />}
-          onClick={startAdding}
+          onClick={handleAdd}
         >
           {hasConnections ? t`Add another provider` : t`Add a provider`}
         </Button>
@@ -121,10 +127,10 @@ export function AIProviderList() {
       {hasConnections && <LlmModelPicker />}
 
       <ProviderConnectionModal
-        opened={isAdding || editing != null}
+        opened={isModalOpen}
         providerTypes={editing ? providerTypes : addableProviderTypes}
         connection={editing}
-        onClose={handleModalClose}
+        onClose={closeModal}
         onClosed={() => setEditing(undefined)}
       />
 
