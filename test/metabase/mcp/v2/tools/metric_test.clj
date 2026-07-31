@@ -7,6 +7,7 @@
    tool's own contract on top of them: the `definition` query sources, the shape gate's teaching
    errors, and the refusal to retype a question into a metric."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
@@ -387,6 +388,27 @@
       (is (not= "Internal error" msg)))))
 
 ;;; --------------------------------------------- Round-tripping ---------------------------------------------------
+
+(deftest write-echo-omits-only-query-summary-test
+  (testing "the write echo carries the concise read's fields except `query_summary`, which is
+            derived from the query at read time rather than stored on the card — so the projection
+            drops it (register-key-projection! compacts nil-valued keys). Pinned in both directions
+            so the docstring's claim cannot drift from the shape again."
+    (mt/with-model-cleanup [:model/Card]
+      (let [echo      (tool-result (call-tool! :crowberto write-scope "metric_write"
+                                               {:method "create" :name "metric-test echo parity"
+                                                :definition (count-definition)}))
+            read      (-> (call-tool! :crowberto nil "get_content"
+                                      {:items [{:type "metric" :id (:id echo)}]})
+                          tool-result :results first)
+            echo-keys (set (keys echo))
+            read-keys (set (keys read))]
+        (testing "query_summary is the only concise read key the echo lacks"
+          (is (= #{:query_summary} (set/difference read-keys echo-keys))))
+        (testing "and the read genuinely carries it, so the gap is the echo's"
+          (is (string? (:query_summary read))))
+        (testing "the echo's own additions over the read are the documented ones"
+          (is (= #{:entity_id :url} (set/difference echo-keys read-keys))))))))
 
 (defn- read-definition!
   "The `definition` section `get_content` returns for one metric, exactly as it comes off the wire."
