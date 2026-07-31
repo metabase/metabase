@@ -306,6 +306,25 @@ describe("useRouteLeaveBlocker when another navigation arrives meanwhile", () =>
     expect(screen.getByTestId("blocked-pathname")).toHaveTextContent("/b");
     expect(history.getCurrentLocation().pathname).toBe("/a");
   });
+
+  // What is held has to survive re-renders of the tree the guards sit in. It is
+  // written while the router asks the blocker, which is outside React, so a
+  // render that reset it would strand the navigation with the prompt still up.
+  it("still resumes after the tree re-renders while the prompt is up", async () => {
+    shouldBlock.mockReturnValue(true);
+    const { history } = setupThreeRoutes();
+    act(() => history.push("/b"));
+
+    // Any further blocked navigation re-renders the guards without answering
+    // the prompt, the way unrelated app state does.
+    act(() => history.push("/c"));
+    act(() => history.push("/c"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(await screen.findByText("page b")).toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe("/b");
+  });
 });
 
 // A guard registers with the provider above it, which only a mounted router

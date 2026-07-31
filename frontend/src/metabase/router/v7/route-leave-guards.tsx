@@ -113,18 +113,23 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
   // The navigation the user is being asked about, kept for as long as a prompt
   // is up. `blocker.location` is not a substitute: react-router holds one pending
   // navigation, so anything navigating meanwhile overwrites it.
+  //
+  // The ref is the one source of truth, because the blocker callback writes it
+  // from outside React. Syncing it back from the state during a render would
+  // reset it to whatever that render saw, and this provider wraps the whole app,
+  // so renders land constantly. `held` mirrors it, purely to re-render guards.
+  const heldRef = useRef<HeldNavigation | null>(null);
   const [held, setHeld] = useState<HeldNavigation | null>(null);
 
-  // The blocker callback runs outside React, so it reads what is held through a
-  // ref rather than through the state above.
-  const heldRef = useRef(held);
-  heldRef.current = held;
+  const hold = useCallback((next: HeldNavigation | null) => {
+    heldRef.current = next;
+    setHeld(next);
+  }, []);
 
   const release = useCallback(() => {
     answeredRef.current.clear();
-    heldRef.current = null;
-    setHeld(null);
-  }, []);
+    hold(null);
+  }, [hold]);
 
   const registerGuard = useCallback(
     (id: string, guard: Guard) => {
@@ -143,34 +148,36 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
     [release],
   );
 
-  const shouldBlock = useCallback<BlockerFunction>((args) => {
-    // The navigation we just reissued on the user's behalf. They already said
-    // yes to it, so it goes through.
-    if (skipNextRef.current) {
-      skipNextRef.current = false;
-      return false;
-    }
+  const shouldBlock = useCallback<BlockerFunction>(
+    (args) => {
+      // The navigation we just reissued on the user's behalf. They already said
+      // yes to it, so it goes through.
+      if (skipNextRef.current) {
+        skipNextRef.current = false;
+        return false;
+      }
 
-    // A prompt is already up. Keep blocking, and keep asking about the
-    // destination the user was originally shown.
-    if (heldRef.current) {
+      // A prompt is already up. Keep blocking, and keep asking about the
+      // destination the user was originally shown.
+      if (heldRef.current) {
+        return true;
+      }
+
+      answeredRef.current.clear();
+      const guardId = findBlockingGuard(
+        guardsRef.current,
+        args,
+        answeredRef.current,
+      );
+      if (guardId == null) {
+        return false;
+      }
+
+      hold({ guardId, args });
       return true;
-    }
-
-    answeredRef.current.clear();
-    const guardId = findBlockingGuard(
-      guardsRef.current,
-      args,
-      answeredRef.current,
-    );
-    if (guardId == null) {
-      return false;
-    }
-
-    heldRef.current = { guardId, args };
-    setHeld(heldRef.current);
-    return true;
-  }, []);
+    },
+    [hold],
+  );
 
   const blocker = useBlocker(shouldBlock);
 
@@ -194,8 +201,7 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
       // Hand the prompt to the next guard that objects. Only once none is left
       // does the navigation itself resume.
       if (next) {
-        heldRef.current = { guardId: next, args };
-        setHeld(heldRef.current);
+        hold({ guardId: next, args });
         return;
       }
 
@@ -214,7 +220,7 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
         blocker.proceed?.();
       }
     },
-    [blocker, navigate, release],
+    [blocker, navigate, release, hold],
   );
 
   const resetAll = useCallback(() => {
