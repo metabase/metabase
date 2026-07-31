@@ -87,11 +87,24 @@
   [[metabase.app-db.setup]], but only under its own dispatch value, so capture has to do it for itself
   (https://github.com/camsaul/toucan2/issues/203)."
   [query]
-  (if-not (map? query)
-    query
+  (cond
+    ;; A SQL-args vector can be a perfectly valid DELETE input, but it cannot safely be repurposed as a
+    ;; modelless SELECT. In particular, executing it here would run the DELETE before the actual statement.
+    (sequential? query)
+    nil
+
+    ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
+    ;; duplicate target rows). Capture is deliberately best-effort, so leave those statements uncaptured.
+    (and (map? query) (contains? query :using))
+    nil
+
+    (map? query)
     (cond-> (dissoc query :delete)
       (contains? query :delete-from) (-> (dissoc :delete-from)
-                                         (assoc :from [(:delete-from query)])))))
+                                         (assoc :from [(:delete-from query)])));
+
+    :else
+    query))
 
 (defn- pre-image-rows
   "Select the rows a delete statement is about to affect, narrowed to `fields`, as plain raw-value maps.
@@ -103,30 +116,32 @@
   with kv-args) and for a statement matching more than [[max-pre-image-rows]] rows.
   SQL execution failures propagate: suppressing one cannot restore a PostgreSQL transaction it already aborted."
   [query-type model fields parsed-args resolved-query]
-  (when-let [sql-args (try
-                        (let [built (t2.pipeline/build query-type model
-                                                       (assoc parsed-args :columns (vec fields))
-                                                       (delete-query->select-query resolved-query))]
-                          (t2.pipeline/compile query-type model built))
-                        (catch Exception e
-                          (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
-                          nil))]
-    ;; Reduce rather than realize the whole result set, so one row past the ceiling is all a wide statement
-    ;; ever pulls into heap.
-    (let [rows (into [] (comp (take (inc max-pre-image-rows)) (map t2.realize/realize))
-                     (t2.execute/reducible-query sql-args))]
-      (cond
-        ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
-        ;; compiled query instead of running it. Only rows are rows: anything else means no statement ran, so
-        ;; there is nothing to capture.
-        (not (every? map? rows))
-        nil
+  (when-not (or (sequential? resolved-query)
+                (and (map? resolved-query) (contains? resolved-query :using)))
+    (when-let [sql-args (try
+                          (let [built (t2.pipeline/build query-type model
+                                                         (assoc parsed-args :columns (vec fields))
+                                                         (delete-query->select-query resolved-query))]
+                            (t2.pipeline/compile query-type model built))
+                          (catch Exception e
+                            (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
+                            nil))]
+      ;; Reduce rather than realize the whole result set, so one row past the ceiling is all a wide statement
+      ;; ever pulls into heap.
+      (let [rows (into [] (comp (take (inc max-pre-image-rows)) (map t2.realize/realize))
+                       (t2.execute/reducible-query sql-args))]
+        (cond
+          ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
+          ;; compiled query instead of running it. Only rows are rows: anything else means no statement ran, so
+          ;; there is nothing to capture.
+          (not (every? map? rows))
+          nil
 
-        (< max-pre-image-rows (count rows))
-        (log/errorf "Skipping DML capture for %s: statement matches more than %d rows"
-                    model max-pre-image-rows)
+          (< max-pre-image-rows (count rows))
+          (log/errorf "Skipping DML capture for %s: statement matches more than %d rows"
+                      model max-pre-image-rows)
 
-        :else rows))))
+          :else rows)))))
 
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/delete.* #_model ::captured #_resolved-query :default]
