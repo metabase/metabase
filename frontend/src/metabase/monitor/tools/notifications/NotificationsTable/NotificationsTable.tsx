@@ -35,8 +35,6 @@ import {
   getChannelLabel,
 } from "../NotificationsAdminPage/utils";
 
-import S from "./NotificationsTable.module.css";
-
 type Props = {
   notifications: AdminNotification[];
   error: unknown;
@@ -53,7 +51,7 @@ type Props = {
 
 const getNodeId = (notification: AdminNotification) => String(notification.id);
 
-const COLUMN_WIDTHS = [0.06, 0.28, 0.18, 0.16, 0.16, 0.16];
+const SKELETON_COLUMN_WIDTHS = [0.06, 0.28, 0.18, 0.16, 0.16, 0.16];
 
 export const NotificationsTable = ({
   notifications,
@@ -258,12 +256,10 @@ export const NotificationsTable = ({
       data-testid="notifications-admin-table"
     >
       {isLoading ? (
-        <>
-          <span role="status" className={S.visuallyHidden}>
-            {t`Loading alerts…`}
-          </span>
-          <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
-        </>
+        <TreeTableSkeleton
+          showCheckboxes
+          columnWidths={SKELETON_COLUMN_WIDTHS}
+        />
       ) : (
         <TreeTable
           instance={instance}
