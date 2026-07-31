@@ -108,8 +108,8 @@
                            (transport/publish-encoded! channel payload)
                            (conj ids id)
                            (catch Exception e
-                             (log/error e "Error publishing outbox row; recovery sweep will retry"
-                                        {:channel channel :outbox-id id})
+                             (log/error "Error publishing outbox row; recovery sweep will retry"
+                                        {:channel channel :outbox-id id :error (ex-message e)})
                              ids)))
                        []
                        (::rows @state))]
@@ -139,8 +139,8 @@
   [acc ^Instant now {:keys [id queue_name publish_attempts]} ^Exception e]
   (let [next-attempts (inc publish_attempts)
         delay-ms      (retry-delay-ms next-attempts)]
-    (log/warn e "Failed to publish queue outbox row during recovery; will retry with backoff"
-              {:queue queue_name :outbox-id id :publish-attempts next-attempts :retry-delay-ms delay-ms})
+    (log/warn "Failed to publish queue outbox row during recovery; will retry with backoff"
+              {:queue queue_name :outbox-id id :publish-attempts next-attempts :retry-delay-ms delay-ms :error (ex-message e)})
     (analytics/inc! :metabase-mq/batches-retried {:channel queue_name :reason "outbox-recovery"})
     (update acc :bumps conj {:id id :next-attempt-at (Timestamp/from (.plusMillis now delay-ms))})))
 

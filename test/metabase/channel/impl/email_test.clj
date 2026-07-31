@@ -180,16 +180,19 @@
              (#'email.impl/notification-recipients->emails recipients {}))))))
 
 (deftest render-body-logging-test
-  (testing "rendering a user-provided template logs the template body at debug level"
+  (testing "rendering a user-provided template logs a debug message, without leaking the template body"
     (mt/with-log-messages-for-level [messages :debug]
       (let [template {:details {:type :email/handlebars-text
                                 :subject "Test"
                                 :body "Hello {{name}}"}}]
         (#'email.impl/render-body template {:name "World"})
         (is (some (fn [{:keys [message]}]
-                    (and (re-find #"Rendering user-provided template" message)
-                         (re-find #"Hello" message)))
-                  (messages)))))))
+                    (re-find #"Rendering user-provided template" message))
+                  (messages)))
+        (testing "the template body itself is not logged"
+          (is (not (some (fn [{:keys [message]}]
+                           (re-find #"Hello" message))
+                         (messages)))))))))
 
 (deftest email-branding-hidden-when-whitelabel-test
   (testing "the 'Made with Metabase' footer respects the :whitelabel premium feature"

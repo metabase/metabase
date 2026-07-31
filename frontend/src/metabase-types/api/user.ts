@@ -60,7 +60,6 @@ export interface UserPermissions {
   can_access_subscription?: boolean;
   can_access_data_studio?: boolean;
   can_access_transforms?: boolean;
-  can_access_workspaces?: boolean;
 }
 
 export interface User extends BaseUser {

@@ -185,6 +185,7 @@
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes."
   {"anthropic.claude-fable-5"   "Claude Fable 5"
+   "anthropic.claude-opus-5"    "Claude Opus 5"
    "anthropic.claude-opus-4-8"  "Claude Opus 4.8"
    "anthropic.claude-opus-4-7"  "Claude Opus 4.7"
    "anthropic.claude-sonnet-5"  "Claude Sonnet 5"
@@ -250,7 +251,7 @@
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts   (assoc opts :model model)
+  (let [opts   (assoc opts :model model :reasoning? false)
         family (model->family model)
         {:keys [path headers req]}
         (case family

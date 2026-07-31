@@ -1,6 +1,6 @@
 import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
-import App from "metabase/AppComponent";
+import { App } from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
@@ -75,13 +75,7 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "metabase/route-guards";
-import {
-  Navigate,
-  Route,
-  redirect,
-  useParams,
-  withRouteProps,
-} from "metabase/router";
+import { Navigate, Route, redirect, useParams } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
@@ -93,10 +87,6 @@ import { createEntityIdRedirect } from "./routes-stable-id-aware";
 type AppStore = Store<State> & {
   dispatch: ThunkDispatch<State, void, UnknownAction>;
 };
-
-// Legacy containers that still read v3 router props (`params`/`location`/
-// `route`/`router`/`routes`), fed from the router context so they run as
-// `element` routes. Removed with the shim.
 
 /**
  * v48 and earlier linked databases as `/browse/<dbId>-<slug>`. That was a
@@ -116,21 +106,12 @@ export function LegacyBrowseRedirect() {
   return <Navigate to={`/browse/databases/${dbIdAndSlug}`} replace />;
 }
 
-// Reads the route location through `connect`'s `mapStateToProps`, so the hooks
-// cannot reach it. Migrating it means rewriting the connected container,
-// tracked separately.
-const RoutedApp = withRouteProps(App);
-
 export const getRoutes = (store: AppStore) => {
   return (
-    <Route element={<RoutedApp />}>
+    <Route element={<App />}>
       {/* SETUP */}
       <Route element={<RedirectIfSetup />}>
-        <Route
-          path="/setup"
-          element={<Setup />}
-          props={{ disableCommandPalette: true }}
-        />
+        <Route path="/setup" element={<Setup />} />
       </Route>
 
       {/* For compatibility: use the standard setup for embedding */}

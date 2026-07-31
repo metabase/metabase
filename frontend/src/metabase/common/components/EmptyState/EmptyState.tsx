@@ -2,6 +2,7 @@ import cx from "classnames";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import type { ButtonProps } from "metabase/ui";
 import { Box, Button, Flex, Icon, Text, isValidIconName } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -45,6 +46,7 @@ type EmptyStateProps = {
   icon?: IconName;
   image?: string;
   spacing?: "sm" | "md";
+  actionVariant?: ButtonProps["variant"];
 };
 
 export const EmptyState = ({
@@ -58,6 +60,7 @@ export const EmptyState = ({
   icon,
   image,
   spacing = "md",
+  actionVariant = "filled",
   ...rest
 }: EmptyStateProps) => (
   <div className={className}>
@@ -92,11 +95,11 @@ export const EmptyState = ({
       <Flex className={S.footer} align="center" mx="auto">
         {action && link && (
           <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
-            <Button variant="filled">{action}</Button>
+            <Button variant={actionVariant}>{action}</Button>
           </Link>
         )}
         {action && onActionClick && (
-          <Button onClick={onActionClick} variant="filled">
+          <Button onClick={onActionClick} variant={actionVariant}>
             {action}
           </Button>
         )}

@@ -33,7 +33,11 @@
     (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? false}
             (#'self/parse-provider-model "openrouter/anthropic/claude-haiku-4-5")))
     (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash" :ai-proxy? false}
-            (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash"))))
+            (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash")))
+    (is (=? {:provider "zai" :model "glm-5.2" :ai-proxy? false}
+            (#'self/parse-provider-model "zai/glm-5.2")))
+    (is (=? {:provider "mistral" :model "mistral-medium-3-5" :ai-proxy? false}
+            (#'self/parse-provider-model "mistral/mistral-medium-3-5"))))
   (testing "parses metabase/ prefix (AI proxy)"
     (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
             (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -50,7 +54,9 @@
   (testing "resolves known providers to adapter functions"
     (is (fn? (#'self/resolve-adapter "anthropic")))
     (is (fn? (#'self/resolve-adapter "openai")))
-    (is (fn? (#'self/resolve-adapter "openrouter"))))
+    (is (fn? (#'self/resolve-adapter "openrouter")))
+    (is (fn? (#'self/resolve-adapter "zai")))
+    (is (fn? (#'self/resolve-adapter "mistral"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
@@ -83,6 +89,89 @@
                   (when-not (::skip (ex-data e))
                     (throw e))))
               (is (= expected (:tool_choice @captured))))))))))
+
+(deftest call-llm-prompt-cache-key-test
+  (testing "the conversation id (:session-id) is forwarded as the Mistral prompt_cache_key"
+    (let [captured (atom nil)]
+      ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                 (when (:body opts)
+                                                   (reset! captured (json/decode+kw (:body opts))))
+                                                 (throw (ex-info "stop" {::skip true :api-error true})))]
+        (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+          (let [call! (fn [tracking-opts]
+                        (reset! captured nil)
+                        (try
+                          (run! identity (self/call-llm "mistral/mistral-medium-3-5" nil [] {} tracking-opts))
+                          (catch Exception e
+                            (when-not (::skip (ex-data e))
+                              (throw e)))))]
+            (call! {:tag "agent" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"})
+            (is (= "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48" (:prompt_cache_key @captured)))
+            (testing "no prompt_cache_key without a :session-id"
+              (call! {:tag "agent"})
+              (is (not (contains? @captured :prompt_cache_key))))))))))
+
+(deftest call-llm-structured-prompt-cache-key-test
+  (testing "call-llm-structured forwards :session-id as the prompt_cache_key, same contract as call-llm"
+    (let [captured (atom nil)]
+      ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                 (when (:body opts)
+                                                   (reset! captured (json/decode+kw (:body opts))))
+                                                 (throw (ex-info "stop" {::skip true :api-error true})))]
+        (mt/with-temporary-setting-values [llm-mistral-api-key "mistral-key-test"]
+          (let [call! (fn [tracking-opts]
+                        (reset! captured nil)
+                        (try
+                          (self/call-llm-structured "mistral/mistral-medium-3-5"
+                                                    [{:role "user" :content "hi"}]
+                                                    {:type "object" :properties {:title {:type "string"}}}
+                                                    nil
+                                                    128
+                                                    tracking-opts)
+                          (catch Exception e
+                            (when-not (::skip (ex-data e))
+                              (throw e)))))]
+            (call! {:tag "conversation-title" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"})
+            (is (= "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48" (:prompt_cache_key @captured)))
+            (testing "no prompt_cache_key without a :session-id"
+              (call! {:tag "example-question-generation"})
+              (is (not (contains? @captured :prompt_cache_key))))))))))
+
+(deftest call-llm-prompt-cache-key-not-leaked-to-other-providers-test
+  (testing "call-llm hands :prompt-cache-key to every adapter, but only mistral forwards it to the wire"
+    (let [captured (atom nil)]
+      (mt/with-premium-features #{:metabase-ai-managed}
+        ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured (json/decode+kw (:body opts))))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
+                                             llm-proxy-base-url     "http://proxy.example"
+                                             llm-openrouter-api-key "sk-or-v1-test-key"
+                                             llm-openai-api-key     "sk-test-key"
+                                             llm-zai-api-key        "zai-key.test"]
+            (doseq [model ["anthropic/test-model"
+                           "metabase/anthropic/claude-sonnet-4-6"
+                           "openrouter/test-model"
+                           "openai/test-model"
+                           "zai/glm-5.2"]]
+              (testing model
+                (reset! captured nil)
+                (try
+                  (run! identity (self/call-llm model
+                                                nil
+                                                []
+                                                {}
+                                                {:tag "agent" :session-id "d34d4c93-a5cc-4d5e-b0a6-6b8f89525b48"}))
+                  (catch Exception e
+                    (when-not (::skip (ex-data e))
+                      (throw e))))
+                (is (map? @captured))
+                (is (not (contains? @captured :prompt_cache_key)))
+                (is (not (contains? @captured :prompt-cache-key)))))))))))
 
 ;;; utils tests
 
@@ -184,7 +273,31 @@
                :result      {:data []}
                :error       nil
                :duration-ms 1234}]
-             (into [] (self.core/lite-aisdk-xf) chunks))))))
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "streams reasoning deltas and carries provider metadata on the end"
+    (let [chunks [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "Think"}
+                  {:type :reasoning-delta :id "r1" :delta "ing"}
+                  {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}]]
+      (is (= [{:type :reasoning :id "r1" :text "Think"}
+              {:type :reasoning :id "r1" :text "ing"}
+              {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "sig"}}}]
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "a reasoning-end without provider metadata emits no carrier"
+    (is (= [{:type :reasoning :id "r1" :text "hm"}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "hm"}
+                  {:type :reasoning-end :id "r1"}])))))
+
+(deftest ^:parallel aisdk-xf-reasoning-grouping-test
+  (testing "non-streaming mode joins reasoning deltas into one part with metadata"
+    (is (= [{:type :reasoning :id "r1" :text "abc" :provider-metadata {:anthropic {:signature "sig"}}}]
+           (into [] (self.core/aisdk-xf)
+                 [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "ab"}
+                  {:type :reasoning-delta :id "r1" :delta "c"}
+                  {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
 ;;; tool executor
 
@@ -454,6 +567,50 @@
                  (sse-events [{:type :text :id "t1" :text "hi"}
                               {:type :data :data-type "state" :data {:queries {}}}]))))))
 
+(deftest parts->aisdk-sse-xf-reasoning-test
+  (testing "consecutive same-id :reasoning parts share one block with a short wire id"
+    (is (= [["reasoning-start" "1" nil]
+            ["reasoning-delta" "1" "Think"]
+            ["reasoning-delta" "1" "ing"]
+            ["reasoning-end" "1" nil]
+            ["finish" nil nil]]
+           (mapv (juxt :type :id :delta)
+                 (sse-events [{:type :reasoning :id "r1" :text "Think"}
+                              {:type :reasoning :id "r1" :text "ing"}])))))
+  (testing "reasoning and text close each other in both directions"
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end"
+            "text-start" "text-delta" "text-end"
+            "reasoning-start" "reasoning-delta" "reasoning-end"
+            "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "hmm"}
+                              {:type :text :id "t1" :text "answer"}
+                              {:type :reasoning :id "r2" :text "more"}])))))
+  (testing "empty-text parts (metadata carriers) emit nothing"
+    (is (= ["finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "sig"}}}]))))
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "hi"}
+                              {:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "sig"}}}])))))
+  (testing "a whitespace-only part (paragraph separator) flows as a delta"
+    (is (= [["reasoning-delta" "part one"]
+            ["reasoning-delta" "\n\n"]
+            ["reasoning-delta" "part two"]]
+           (->> (sse-events [{:type :reasoning :id "r1" :text "part one"}
+                             {:type :reasoning :id "r1" :text "\n\n"}
+                             {:type :reasoning :id "r1" :text "part two"}])
+                (filter #(= "reasoning-delta" (:type %)))
+                (mapv (juxt :type :delta))))))
+  (testing "a tool part closes an open reasoning block first"
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "tool-input-available" "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "planning"}
+                              {:type :tool-input :id "call-1" :function "search" :arguments {}}]))))))
+
 (deftest parts->aisdk-sse-xf-tool-test
   (testing "tool input and successful output"
     (let [[input-event output-event] (sse-events [{:type :tool-input :id "call-1" :function "search"
@@ -478,7 +635,35 @@
            (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))
   (testing ":tool-input-start maps to tool-input-start"
     (is (= {:type "tool-input-start" :toolCallId "call-3" :toolName "search"}
-           (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}]))))))
+           (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}])))))
+  (testing "a :title on a :tool-input part rides along on tool-input-available"
+    (is (= {:type "tool-input-available" :toolCallId "call-4" :toolName "read_resource"
+            :input {} :title "Inspecting [Orders](metabase://dashboard/5)"}
+           (first (sse-events [{:type :tool-input :id "call-4" :function "read_resource"
+                                :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
+
+(deftest ^:parallel stamp-tool-titles-xf-test
+  (let [tools {"greet" {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"  {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"   {:tool-name "num"   :title-fn (fn [_] 42)}
+               "plain" {:tool-name "plain"}}
+        stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
+    (testing "title-fn result becomes :title"
+      (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}}))))
+    (testing "a throwing title-fn leaves the part untitled"
+      (is (= [{:type :tool-input :id "c2" :function "boom" :arguments {}}]
+             (stamp {:type :tool-input :id "c2" :function "boom" :arguments {}}))))
+    (testing "a non-string result leaves the part untitled"
+      (is (= [{:type :tool-input :id "c3" :function "num" :arguments {}}]
+             (stamp {:type :tool-input :id "c3" :function "num" :arguments {}}))))
+    (testing "a tool without a title-fn is untouched"
+      (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
+             (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "non-tool-input parts pass through"
+      (is (= [{:type :text :id "t1" :text "hi"}]
+             (stamp {:type :text :id "t1" :text "hi"}))))))
 
 (deftest parts->aisdk-sse-xf-data-test
   (testing "data parts become typed data events with a generated id"
@@ -1231,7 +1416,7 @@
           "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception"))))
 
 (deftest rethrow-api-error!-warn-log-test
-  (testing "the full upstream body is emitted at warn level alongside provider and status"
+  (testing "provider and status are emitted at warn level; the body is never logged"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
                              :headers {"content-type" "text/plain"}
@@ -1246,9 +1431,11 @@
       (is (nil? more) "exactly one warn line at the failure boundary")
       (is (=? {:level :warn :namespace 'metabase.metabot.self.core}
               entry))
-      (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
-                   (:message entry)))))
-  (testing "an oversized body is capped in the warn log, but preserved in full on ex-data"
+      (is (re-find #"provider=openrouter status=502"
+                   (:message entry)))
+      (is (not (str/includes? (:message entry) "upstream gateway timeout"))
+          "the response body is not logged")))
+  (testing "the body never reaches the warn log, but is preserved in full on ex-data"
     (let [cap      @#'self.core/max-body-log-chars
           big-body (apply str (repeat (+ cap 1000) \x))
           upstream (ex-info "clj-http error"
@@ -1265,11 +1452,9 @@
                   "the full, untruncated body still survives on ex-data"))
             (msgs))]
       (is (nil? more) "exactly one warn line at the failure boundary")
-      (is (str/ends-with? (:message entry)
-                          (str "body=" (subs (pr-str big-body) 0 cap) "…"))
-          "the warn line's body segment is capped at max-body-log-chars with a trailing ellipsis")
-      (is (not (str/includes? (:message entry) big-body))
-          "the full oversized body is not spliced into the warn line"))))
+      (is (re-find #"provider=openrouter status=502" (:message entry)))
+      (is (not (str/includes? (:message entry) "xxx"))
+          "no fragment of the body is spliced into the warn line"))))
 
 (deftest rethrow-api-error!-auth-status-body-not-leaked-test
   (testing "401/403 bodies are not appended to the user-facing message (may carry sensitive auth/account detail)"
@@ -1294,5 +1479,8 @@
                     "the full decoded body is still preserved on ex-data for debugging"))
               (msgs))]
         (is (nil? more) "exactly one warn line at the failure boundary")
-        (is (str/includes? (:message entry) secret)
-            "the full body is still emitted at warn level for server-side debugging")))))
+        (is (str/includes? (:message entry)
+                           (str "provider=anthropic status=" status))
+            "a warn with provider and status is still emitted for server-side debugging")
+        (is (not (str/includes? (:message entry) secret))
+            "the secret-bearing body never appears in the warn log")))))

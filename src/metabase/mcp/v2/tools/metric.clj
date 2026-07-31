@@ -7,7 +7,7 @@
    Its own work is the metric authoring contract: one `definition` query source (a full query in
    the portable external dialect `get_content` returns, plain MBQL 5, or a `query_handle` from an
    execute tool), the metric shape gate (`lib/can-save?`: one stage, exactly one aggregation, at
-   most one date/datetime breakout), and refusing to retype an existing question or model."
+   most one breakout), and refusing to retype an existing question or model."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -34,7 +34,7 @@
 
 (def ^:private shape-rule
   "The metric shape rule, quoted verbatim in every gate error so the caller learns it once."
-  (str "A metric needs exactly one aggregation and at most one date/datetime grouping, in a single "
+  (str "A metric needs exactly one aggregation and at most one grouping, in a single "
        "query stage."))
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
@@ -81,7 +81,7 @@
           "reuse them. Save it with question_write instead, or rebuild the aggregation with execute_query.")))
   (when-not (lib/can-save? dataset-query :metric)
     (common/throw-teaching-error
-     (format "This query can't be saved as a metric. %s Build it with execute_query first — a single summarize (count, sum, average…) with at most one date grouping."
+     (format "This query can't be saved as a metric. %s Build it with execute_query first — a single summarize (count, sum, average…) with at most one grouping."
              shape-rule))))
 
 ;;; ------------------------------------------------- Responses ----------------------------------------------------
@@ -191,7 +191,7 @@
     [:maybe [:string {:min 1 :description "Create only (editable on update): display name of the metric."}]]]
    [:definition {:optional true}
     [:maybe [:map {:description (str "The metric's query: a full single-stage query holding exactly one aggregation "
-                                     "and at most one date/datetime breakout. Accepts the portable external dialect "
+                                     "and at most one breakout. Accepts the portable external dialect "
                                      "— what get_content's \"definition\" include returns for a metric and what "
                                      "execute_query takes — or MBQL 5 with numeric ids. Pass this or query_handle, "
                                      "not both.")}]]]
@@ -225,7 +225,7 @@
   delete). Pass the query as definition (a full single-stage query in the portable external dialect execute_query
   takes and get_content's \"definition\" include returns, or MBQL 5 with numeric ids) or as a query_handle from
   execute_query — one or the other, not both. The query must have exactly one aggregation (count, sum, average…) and
-  at most one date/datetime grouping; anything else is a teaching error, so build it with execute_query first. Native
+  at most one grouping; anything else is a teaching error, so build it with execute_query first. Native
   SQL cannot be a metric — save it with question_write. Optional: description, collection_id (omit to save to your
   personal collection; pass \"root\" for the root collection), collection_position to pin. Updating a card that is a
   question or a model is refused rather than retyping it. Requires write permission on the metric and curate

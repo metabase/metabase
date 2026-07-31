@@ -286,9 +286,19 @@ const FieldDetail = (props: FieldDetailProps) => {
   );
 };
 
+// What the container has to supply: `params` feeds `mapStateToProps`, and
+// `metadata` is read here but selected by the container. Naming it keeps that
+// contract type-checked.
+type FieldDetailOwnProps = ReferenceRouteProps &
+  Pick<FieldDetailProps, "metadata">;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-  // Unjustified type cast. FIXME
-)(FieldDetail as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  FieldDetail as unknown as React.ComponentType<FieldDetailOwnProps>,
+);

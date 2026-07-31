@@ -29,6 +29,7 @@ jobs:
           filters: .github/file-paths.yaml
           list-files: shell
       - name: Setup actionlint
+        if: steps.changes.outputs.actionlint == 'true'
         id: download
         shell: bash
         run: |
@@ -39,4 +40,5 @@ jobs:
             bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
           fi
       - name: Run actionlint
+        if: steps.changes.outputs.actionlint == 'true'
         run: ${{ steps.download.outputs.executable }} --color --verbose ${{ steps.changes.outputs.actionlint_files }}

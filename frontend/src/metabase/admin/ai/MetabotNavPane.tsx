@@ -5,12 +5,11 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { useSetting } from "metabase/common/hooks";
-import { PLUGIN_AI_CONTROLS, PLUGIN_AUDIT } from "metabase/plugins";
+import { PLUGIN_AI_CONTROLS } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 export function MetabotNavPane() {
   const AiControlsNavItems = PLUGIN_AI_CONTROLS.getAiControlsNavItems();
-  const AiAnalyticsNavItems = PLUGIN_AUDIT.getMetabotAnalyticsNavItems();
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?") !== false;
 
   return (
@@ -39,7 +38,6 @@ export function MetabotNavPane() {
           />
         </AdminNavItem>
         {AiControlsNavItems}
-        {AiAnalyticsNavItems}
       </AdminNavWrapper>
     </Flex>
   );

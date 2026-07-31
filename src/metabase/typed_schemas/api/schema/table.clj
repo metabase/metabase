@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.api.common :as common]
    [metabase.typed-schemas.api.schema.common :as schema.common]
    [metabase.typed-schemas.api.scope :as scope]
@@ -37,6 +38,12 @@
       :tableId (when (integer? table-id) table-id)
       :defaultTemporalBucket (:unit field)))))
 
+(defn- filter-readable-tables
+  "Filters tables down to the ones the current user can read."
+  [tables]
+  (perms/prime-db-perms-cache (into #{} (map :db_id) tables))
+  (filter mi/can-read? tables))
+
 (defn select-tables
   "Returns readable tables, with optional database and table-id scopes.
 
@@ -50,7 +57,7 @@
                                 database-ids (conj (scope/database-id-filter-clause database-ids :db_id))
                                 table-ids (conj (scope/id-filter-clause table-ids :id)))
                     :order-by [[:name :asc] [:id :asc]]})
-        (filter mi/can-read?))))
+        (filter-readable-tables))))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
@@ -61,7 +68,7 @@
                               [:= :is_published true]
                               (scope/id-filter-clause data-collection-ids :collection_id)]
                    :order-by [[:name :asc] [:id :asc]]})
-       (filter mi/can-read?)))
+       (filter-readable-tables)))
 
 (defn segment-schema
   "Returns the schema for a segment."

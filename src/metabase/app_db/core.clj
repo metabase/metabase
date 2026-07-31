@@ -42,7 +42,8 @@
   in-transaction?
   quoting-style
   unique-identifier
-  transaction-state]
+  transaction-state
+  with-unshared-connection]
  [mdb.connection-pool-setup
   recent-activity?]
  [mdb.data-source

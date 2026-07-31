@@ -74,7 +74,7 @@
 
 (defn- title-source
   [conversation-id]
-  (metabot.persistence/first-valid-user-message
+  (metabot.persistence/first-non-forked-user-message
    (metabot.persistence/opening-messages conversation-id)))
 
 (defn- generate-title!
@@ -95,8 +95,8 @@
       (.interrupt (Thread/currentThread))
       :failed)
     (catch Throwable e
-      (log/warn e "Failed to backfill Metabot conversation title"
-                {:conversation-id conversation-id})
+      (log/warn "Failed to backfill Metabot conversation title"
+                {:conversation-id conversation-id :error (ex-message e)})
       :failed)))
 
 (defn- finish-result

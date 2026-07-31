@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -22,8 +21,8 @@
   "Log changes to the permissions graph."
   [old new]
   (log/debug "Changing permissions"
-             "\n FROM:" (u/pprint-to-str :magenta old)
-             "\n TO:"   (u/pprint-to-str :blue new)))
+             "FROM:" (pr-str old)
+             "TO:"   (pr-str new)))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can

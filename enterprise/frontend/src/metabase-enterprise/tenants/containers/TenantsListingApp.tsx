@@ -38,10 +38,9 @@ export const TenantsListingApp = () => {
     [data?.data],
   );
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: ActiveStatus | null) => {
     if (tab) {
-      // Unjustified type cast. FIXME
-      setStatus(tab as ActiveStatus);
+      setStatus(tab);
     }
   };
 

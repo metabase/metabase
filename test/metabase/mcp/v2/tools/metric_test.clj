@@ -259,6 +259,18 @@
           (tool-result (call-tool! :crowberto write-scope "metric_write"
                                    {:method "update" :id (:id created) :collection_id coll-id}))
           (is (= coll-id (t2/select-one-fn :collection_id :model/Card :id (:id created)))))))))
+(deftest non-temporal-breakout-is-a-valid-metric-test
+  (testing "a non-temporal grouping is a valid metric. It was rejected until #76623 (\"Add Metric
+            Dimensions\") relaxed lib/can-save? from \"at most one date-or-datetime breakout\" to
+            \"at most one breakout\" — pinned here so the tool tracks the upstream rule rather than
+            re-deriving a stricter one."
+    (mt/with-model-cleanup [:model/Card]
+      (let [result (tool-result (call-tool! :crowberto write-scope "metric_write"
+                                            {:method "create" :name "metric-test quantity grouping"
+                                             :definition (mbql5-definition
+                                                          :breakout [["field" {} (mt/id :orders :quantity)]])}))]
+        (is (pos-int? (:id result)))
+        (is (= "metric" (:type result)))))))
 
 ;;; --------------------------------------------- Metric shape gate ------------------------------------------------
 
@@ -270,8 +282,6 @@
                                                :stages   [{:lib/type     "mbql.stage/mbql"
                                                            :source-table (mt/id :orders)}]})
              "two aggregations"         (mbql5-definition :aggregation [["count" {}] ["count" {}]])
-             "a non-temporal breakout"  (mbql5-definition
-                                         :breakout [["field" {} (mt/id :orders :quantity)]])
              "two breakouts"            (mbql5-definition
                                          :breakout [["field" {:temporal-unit "month"} (mt/id :orders :created_at)]
                                                     ["field" {:temporal-unit "year"} (mt/id :orders :created_at)]])
@@ -286,7 +296,7 @@
                                           {:method "create" :name (str "metric-test " label)
                                            :definition definition}))]
           (is (re-find #"exactly one aggregation" msg))
-          (is (re-find #"at most one date" msg))
+          (is (re-find #"at most one grouping" msg))
           (is (not= "Internal error" msg)))))))
 
 ;; not ^:parallel: creates a row through the tool; with-model-cleanup's id watermark is not parallel-safe

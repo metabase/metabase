@@ -10,7 +10,7 @@ import {
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
+import { useLazyLoadGeoJSONQuery } from "metabase/admin/settings/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
