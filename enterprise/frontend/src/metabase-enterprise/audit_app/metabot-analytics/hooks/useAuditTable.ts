@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 
-import { useGetDatabaseMetadataQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryMetadataQuery,
+  useGetDatabaseMetadataQuery,
+} from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type {
@@ -26,27 +30,46 @@ type UseAuditTableResult = {
  * (case-insensitive to handle H2 uppercasing).
  */
 export function useAuditTable(viewName: string): UseAuditTableResult {
-  const { isLoading } = useGetDatabaseMetadataQuery({ id: AUDIT_DB_ID });
+  const { data: database, isLoading: isLoadingTables } =
+    useGetDatabaseMetadataQuery({ id: AUDIT_DB_ID, skip_fields: true });
+
+  const tableId = useMemo(() => {
+    const lowerName = viewName.toLowerCase();
+    const table = database?.tables?.find(
+      (table) => table.name?.toLowerCase() === lowerName,
+    );
+    return typeof table?.id === "number" ? table.id : undefined;
+  }, [database, viewName]);
+
   const metadata = useSelector(getMetadataUnfiltered);
 
-  return useMemo(() => {
-    if (isLoading) {
-      return { provider: null, table: null, isLoading: true };
-    }
+  const provider = useMemo(
+    () => Lib.metadataProvider(AUDIT_DB_ID, metadata),
+    [metadata],
+  );
 
-    const lowerName = viewName.toLowerCase();
-    const tableId = Object.keys(metadata.tables).find((key) => {
-      const t = metadata.tables[key];
-      return t.db_id === AUDIT_DB_ID && t.name?.toLowerCase() === lowerName;
-    });
+  const table = useMemo(
+    () => (tableId == null ? null : Lib.tableOrCardMetadata(provider, tableId)),
+    [provider, tableId],
+  );
 
-    if (!tableId) {
-      return { provider: null, table: null, isLoading: false };
-    }
+  const datasetQuery = useMemo(
+    () =>
+      table == null
+        ? undefined
+        : Lib.toJsQuery(Lib.queryFromTableOrCardMetadata(provider, table)),
+    [provider, table],
+  );
 
-    const provider = Lib.metadataProvider(AUDIT_DB_ID, metadata);
-    const table = Lib.tableOrCardMetadata(provider, Number(tableId));
+  const { data: queryMetadata } = useGetAdhocQueryMetadataQuery(
+    datasetQuery ?? skipToken,
+  );
 
-    return { provider, table, isLoading: false };
-  }, [isLoading, metadata, viewName]);
+  const isLoadingFields = table != null && queryMetadata == null;
+
+  return {
+    provider,
+    table: isLoadingFields ? null : table,
+    isLoading: isLoadingTables || isLoadingFields,
+  };
 }

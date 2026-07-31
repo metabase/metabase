@@ -5,6 +5,7 @@ import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupCardsUsingModelEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupRevisionsEndpoints,
   setupTokenStatusEndpoint,
   setupUsersEndpoints,
@@ -25,7 +26,10 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
 
@@ -49,6 +53,7 @@ export const setup = async ({
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
   setupAuditInfoEndpoint();
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
 
   const state = createMockState({
     currentUser,

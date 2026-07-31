@@ -6,6 +6,7 @@ import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import FieldList from "metabase/reference/databases/FieldList";
 import * as actions from "metabase/reference/reference";
 
@@ -15,12 +16,7 @@ import type {
   ReferenceRouteProps,
   StateWithReference,
 } from "../selectors";
-import {
-  getDatabase,
-  getDatabaseId,
-  getIsEditing,
-  getTable,
-} from "../selectors";
+import { getDatabase, getIsEditing, getTable, getTableId } from "../selectors";
 import type { StubbedDatabase, StubbedTable } from "../types";
 
 import TableSidebar from "./TableSidebar";
@@ -31,12 +27,13 @@ const mapStateToProps = (
 ) => ({
   database: getDatabase(state, props),
   table: getTable(state, props),
-  databaseId: getDatabaseId(state, props),
+  tableId: getTableId(state, props),
   isEditing: getIsEditing(state),
 });
 
 const mapDispatchToProps = {
   ...metadataActions,
+  fetchTableMetadataAndForeignKeys,
   ...actions,
 };
 
@@ -50,17 +47,17 @@ interface FieldListContainerProps extends FetchProps, ClearStateProps {
 
   // From mapStateToProps
   database: StubbedDatabase;
-  databaseId: number;
+  tableId: number;
   table: StubbedTable;
   isEditing?: boolean;
 
-  // From mapDispatchToProps (metadataActions spread)
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
+  // From mapDispatchToProps
+  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
 }
 
 class FieldListContainer extends Component<FieldListContainerProps> {
   fetchContainerData() {
-    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
+    actions.wrappedFetchTableMetadata(this.props, this.props.tableId);
   }
 
   UNSAFE_componentWillMount() {

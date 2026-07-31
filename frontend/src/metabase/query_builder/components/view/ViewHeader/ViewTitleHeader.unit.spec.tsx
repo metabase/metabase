@@ -4,7 +4,10 @@ import type { ComponentProps } from "react";
 import { Route } from "react-router";
 import _ from "underscore";
 
-import { setupTableEndpoints } from "__support__/server-mocks";
+import {
+  setupListDatabaseSchemasEndpoint,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
@@ -151,6 +154,7 @@ function setup({
 
   setupTableEndpoints(ORDERS_TABLE);
   setupTableEndpoints(PRODUCTS_TABLE);
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
