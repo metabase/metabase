@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useMetabotName } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -17,7 +17,7 @@ import { MetabotIcon } from "./MetabotIcon";
 export const MetabotDataStudioButton = () => {
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const location = useLocation();
 
   if (!hasMetabotAccess) {

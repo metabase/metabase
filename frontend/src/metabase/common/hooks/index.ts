@@ -7,7 +7,6 @@ export * from "./use-docs-url";
 export * from "./use-get-personal-collection";
 export * from "./use-has-token-feature";
 export * from "./use-locale";
-export * from "./use-metabot-name";
 export * from "./use-notification-channels";
 export * from "./use-scroll-to-top";
 export * from "./use-set-collection-preview";

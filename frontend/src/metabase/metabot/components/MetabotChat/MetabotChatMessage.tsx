@@ -6,7 +6,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
-import { useMetabotName, useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import {
   type MetabotAgentChatMessage,
@@ -453,7 +453,7 @@ const AbortedTurnAlert = ({
   debug: boolean;
   onRetry?: (messageId: string) => void;
 }) => {
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   return (
     <AgentTurnAlert
       variant="info"

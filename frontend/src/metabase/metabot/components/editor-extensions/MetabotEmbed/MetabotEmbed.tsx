@@ -12,7 +12,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useLazyMetabotGenerateContentQuery } from "metabase/api";
-import { useMetabotName } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
@@ -151,7 +151,7 @@ export const MetabotComponent = memo(
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotGenerateContentQuery();
     const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
-    const metabotName = useMetabotName();
+    const metabotName = useSetting("metabot-name");
 
     const handleRunMetabot = async () => {
       const serializePrompt =

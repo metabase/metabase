@@ -2,7 +2,7 @@ import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import { useMetabotName } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
@@ -64,7 +64,7 @@ export const MetabotFeedbackModal = ({
   positive,
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const metabotId = useSelector(getMetabotId);
 
   const handleSubmit = (values: {

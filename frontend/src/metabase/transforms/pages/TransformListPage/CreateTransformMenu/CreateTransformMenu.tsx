@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature, useMetabotName } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -43,7 +43,7 @@ export const CreateTransformMenu = () => {
   const { remoteSyncReadOnly } = useTransformPermissions();
 
   const metabot = useMetabotAgent("omnibot");
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const { hasMetabotAccess } = useUserMetabotPermissions();
 
   const handleMetabotClick = () => {

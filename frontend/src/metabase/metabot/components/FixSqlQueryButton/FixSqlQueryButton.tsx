@@ -1,7 +1,7 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { useMetabotName, useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
@@ -19,7 +19,7 @@ export function FixSqlQueryButton() {
   const dispatch = useDispatch();
   const { hasSqlGenerationAccess, canUseSqlGeneration } =
     useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const [sendToast] = useToast();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
