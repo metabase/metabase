@@ -74,19 +74,24 @@
 (defn sdk-version-tested?
   "Whether `sdk-version` satisfies [[tested-sdk-version-range]]. A nil/blank
    version means the bundle predates stamping and was built with SDK 1.x.
-   Malformed versions count as untested. Pre-release and build metadata is
-   stripped before matching so canary versions match like their releases."
+   Malformed or non-string versions count as untested. Pre-release and build
+   metadata is stripped before matching so canary versions match like their
+   releases."
   [sdk-version]
-  (if-let [v (Semver/coerce (if (str/blank? sdk-version) "1.0.0" sdk-version))]
+  (if-let [v (when (or (nil? sdk-version) (string? sdk-version))
+               (Semver/coerce (if (str/blank? sdk-version) "1.0.0" sdk-version)))]
     (.satisfies (.withClearedPreReleaseAndBuild v) ^String tested-sdk-version-range)
     false))
 
 (defn warnings
   "Soft version warnings for a plugin. Computed at read time and never stored,
    since they depend on the running Metabase version. Each warning carries a
-   machine-readable `:type` plus params the frontend builds messages from."
+   machine-readable `:type` plus params the frontend builds messages from.
+   A wrong-typed `sdk.version` is treated as unstamped — uploads are validated,
+   but serdes-imported manifests are not."
   [{:keys [metabase_version manifest] :as plugin}]
-  (let [sdk-version (get-in manifest [:sdk :version])]
+  (let [sdk-version (let [v (get-in manifest [:sdk :version])]
+                      (when (string? v) v))]
     (cond-> []
       (not (sdk-version-tested? sdk-version))
       (conj {:type             "sdk-version-mismatch"

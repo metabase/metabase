@@ -68,7 +68,11 @@
       (is (false? (manifest/sdk-version-tested? nil)))
       (is (false? (manifest/sdk-version-tested? ""))))
     (testing "malformed versions are untested"
-      (is (false? (manifest/sdk-version-tested? "garbage"))))))
+      (is (false? (manifest/sdk-version-tested? "garbage"))))
+    (testing "non-string versions (possible via serdes-imported manifests) are untested"
+      (is (false? (manifest/sdk-version-tested? 2)))
+      (is (false? (manifest/sdk-version-tested? 2.0)))
+      (is (false? (manifest/sdk-version-tested? {:major 2}))))))
 
 (deftest warnings-test
   (with-redefs [config/is-dev? false
@@ -84,6 +88,12 @@
                :tested_sdk_range ">=2.0.0 <=2.0.0"}]
              (manifest/warnings {:metabase_version nil
                                  :manifest         {}}))))
+    (testing "a wrong-typed sdk.version (possible via serdes import) warns as unstamped instead of throwing"
+      (is (= [{:type             "sdk-version-mismatch"
+               :sdk_version      nil
+               :tested_sdk_range ">=2.0.0 <=2.0.0"}]
+             (manifest/warnings {:metabase_version nil
+                                 :manifest         {:sdk {:version 2}}}))))
     (testing "unsatisfied metabase.version warns"
       (is (= [{:type             "metabase-version-mismatch"
                :metabase_version ">=1.99"
