@@ -36,6 +36,7 @@
 (def ^:private canonical-signature         @#'insights/canonical-signature)
 (def ^:private add-measure-suggestions     @#'insights/add-measure-suggestions)
 (def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
+(def ^:private predicate-candidates        @#'insights/predicate-candidates)
 (def ^:private merge-candidates            @#'insights/merge-candidates)
 (def ^:private card-table-dependencies     @#'insights/card-table-dependencies)
 (def ^:private eligible-candidate-table?   @#'insights/eligible-candidate-table?)
@@ -353,6 +354,20 @@
     (lib/filter (orders-base-query)
                 (lib/and (lib/= product-id 987654)
                          (lib/> subtotal 12345)))))
+
+(deftest predicate-candidates-canonicalize-source-atom-order-test
+  (let [mp          (lib-be/application-database-metadata-provider (mt/id))
+        first-field (lib.metadata/field mp (mt/id :orders :subtotal))
+        second-field (lib.metadata/field mp (mt/id :orders :product_id))
+        first-atom  {:predicate (lib/> first-field 10), :columns [first-field]}
+        second-atom {:predicate (lib/= second-field 20), :columns [second-field]}
+        predicates  (fn [atoms]
+                      (:predicates (last (predicate-candidates atoms))))]
+    (is (= (mapv canonical-signature (predicates [first-atom second-atom]))
+           (mapv canonical-signature (predicates [second-atom first-atom]))))
+    (is (= (sort [(canonical-signature (:predicate first-atom))
+                  (canonical-signature (:predicate second-atom))])
+           (mapv canonical-signature (predicates [first-atom second-atom]))))))
 
 (defn- orders-filtered-metric-query
   ([] (orders-filtered-metric-query 987654))

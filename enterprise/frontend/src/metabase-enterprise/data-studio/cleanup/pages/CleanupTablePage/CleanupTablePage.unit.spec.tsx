@@ -63,8 +63,10 @@ const candidate: UsageMetadataCandidateDetail = {
   id: 11,
   candidate_type: "measure",
   table,
+  display_name: "Total revenue",
   suggested_name: "Total revenue",
   suggested_description: "Sum of order totals",
+  family: { key: "family", position: 0, depth: 0 },
   definition: createMockStructuredDatasetQuery({
     query: {
       "source-table": 1,
@@ -201,6 +203,20 @@ describe("CleanupTablePage", () => {
         ),
       ).toBe(true);
     });
+  });
+
+  it("uses the family display name and indents related recommendations", async () => {
+    setup({
+      ...candidate,
+      display_name: "Active accounts with recent activity",
+      family: { key: "active-accounts", position: 2, depth: 2 },
+    });
+
+    const row = await screen.findByRole("button", {
+      name: "Active accounts with recent activity",
+    });
+    expect(row).toHaveStyle({ paddingInlineStart: "3.5rem" });
+    expect(screen.queryByText("Total revenue")).not.toBeInTheDocument();
   });
 
   it("shows a focused candidate review without repeated or technical details", async () => {

@@ -701,11 +701,16 @@
                      :table-id  table-id}))))
         (lib/atomic-filters query stage-number)))
 
+(defn- canonical-atom-sort-key
+  [{:keys [predicate]}]
+  (canonical-signature predicate))
+
 (declare segment-subsets)
 
 (defn- predicate-candidates
   [atoms]
-  (let [atom-candidates (mapv #(assoc % :predicates [(:predicate %)]) atoms)
+  (let [atoms           (sort-by canonical-atom-sort-key atoms)
+        atom-candidates (mapv #(assoc % :predicates [(:predicate %)]) atoms)
         composite-candidates
         (when (<= 2 (count atoms) 5)
           (for [subset (segment-subsets atoms)]
@@ -1096,6 +1101,20 @@
            names)))
       (safe-display-name definition clause fallback)))
 
+(defn- conjunction-atoms
+  [[operator _opts & subclauses :as predicate]]
+  (if (= operator :and)
+    (mapcat conjunction-atoms subclauses)
+    [predicate]))
+
+(defn- candidate-atom-details
+  [definition predicate]
+  (->> (conjunction-atoms predicate)
+       (sort-by canonical-signature)
+       (mapv (fn [atom]
+               {:signature    (canonical-signature atom)
+                :display-name (detailed-candidate-display-name definition atom (tru "Filter"))}))))
+
 (defn- source-display-name
   [source]
   (or (:display-name source) (:name source)))
@@ -1125,6 +1144,13 @@
         (tru "{0} where {1}" base-name condition-name))
       (safe-display-name definition clause (tru "Measure")))))
 
+(defn- conditional-measure-base-name
+  [definition {:keys [type condition]}]
+  (when (and (contains? conditional-aggregation-operators type) condition)
+    (safe-display-name definition
+                       (conditional-base-aggregation (get-in definition [:stages 0 :aggregation 0]))
+                       (tru "Measure"))))
+
 (defn- candidate-naming-definition
   [{:keys [definition], metadata-provider ::metadata-provider}]
   (cond-> definition
@@ -1134,12 +1160,18 @@
   [{:keys [aggregation source] :as candidate}]
   (let [naming-definition (candidate-naming-definition candidate)
         suggested-name    (measure-suggested-name naming-definition aggregation)
+        base-name         (conditional-measure-base-name naming-definition aggregation)
+        condition-atoms   (some->> (:condition aggregation)
+                                   (candidate-atom-details naming-definition))
         description    (if (contains? conditional-aggregation-operators (:type aggregation))
                          suggested-name
                          (safe-definition-description naming-definition :aggregation suggested-name))]
     (-> candidate
         (dissoc ::metadata-provider)
-        (assoc :suggested-name (u.str/elide suggested-name candidate-name-max-length)
+        (assoc :aggregation (cond-> aggregation
+                              (seq condition-atoms) (assoc :condition-atoms condition-atoms
+                                                           :base-name base-name))
+               :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
 
 (defn- add-segment-suggestions
@@ -1147,6 +1179,7 @@
   (let [naming-definition (candidate-naming-definition candidate)
         compact-name      (safe-display-name naming-definition predicate (tru "Segment"))
         suggested-name    (detailed-candidate-display-name naming-definition predicate (tru "Segment"))
+        atoms             (candidate-atom-details naming-definition predicate)
         description       (if (= compact-name suggested-name)
                             (safe-definition-description naming-definition
                                                          :filters
@@ -1154,7 +1187,8 @@
                             (tru "Filtered by {0}" suggested-name))]
     (-> candidate
         (dissoc ::metadata-provider)
-        (assoc :suggested-name (u.str/elide suggested-name candidate-name-max-length)
+        (assoc :atoms atoms
+               :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
 
 (defn- resolve-transparent-card-source

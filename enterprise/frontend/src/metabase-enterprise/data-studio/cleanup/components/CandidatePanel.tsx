@@ -282,7 +282,7 @@ function CandidatePanelBody({
         <Group gap="sm" wrap="nowrap" miw={0} flex={1}>
           <Icon name={getCandidateIcon(candidate)} />
           <Title order={3} flex={1} lineClamp={2}>
-            {candidate.suggested_name}
+            {candidate.display_name}
           </Title>
         </Group>
         <ActionIcon

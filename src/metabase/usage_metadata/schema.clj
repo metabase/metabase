@@ -165,6 +165,11 @@
    [:required-tables       [:sequential {:min 1} ::candidate-metric-required-table]]
    [:evidence              ::candidate-evidence]])
 
+(mr/def ::candidate-atom
+  [:map {:closed true}
+   [:signature    :string]
+   [:display-name ::lib.schema.common/non-blank-string]])
+
 (mr/def ::candidate-measure
   [:map {:closed true}
    [:source                ::source]
@@ -178,7 +183,9 @@
                   [:percentile           {:optional true} [:and number? [:>= 0] [:<= 1]]]
                   [:condition            {:optional true} ::mbql-clause]
                   [:condition-fields     {:optional true} [:sequential {:min 1} ::field]]
-                  [:condition-atom-count {:optional true} pos-int?]]]
+                  [:condition-atom-count {:optional true} pos-int?]
+                  [:condition-atoms      {:optional true} [:sequential {:min 1} ::candidate-atom]]
+                  [:base-name            {:optional true} ::lib.schema.common/non-blank-string]]]
    [:evidence    ::candidate-evidence]])
 
 (mr/def ::candidate-segment
@@ -189,6 +196,7 @@
    [:suggested-description ::lib.schema.common/non-blank-string]
    [:predicate             ::mbql-clause]
    [:fields                [:sequential {:min 1} ::field]]
+   [:atoms                 [:sequential {:min 1} ::candidate-atom]]
    [:composite?            :boolean]
    [:atom-count            pos-int?]
    [:evidence              ::candidate-evidence]])

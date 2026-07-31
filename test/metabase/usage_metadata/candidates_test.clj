@@ -1,5 +1,6 @@
 (ns metabase.usage-metadata.candidates-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.lib-be.core :as lib-be]
@@ -25,6 +26,7 @@
   @#'candidates/non-closed-segment-candidate-ids)
 (def ^:private non-closed-measure-candidate-ids
   @#'candidates/non-closed-measure-candidate-ids)
+(def ^:private candidate-families @#'candidates/candidate-families)
 
 (defn- candidate-row
   [run-id table-id]
@@ -45,6 +47,68 @@
    :distinct_source_count  1
    :total_view_count       10
    :complexity             1})
+
+(defn- family-candidate
+  [id atoms overrides]
+  (merge
+   {:id                    id
+    :table_id              1
+    :candidate_type        :segment
+    :modeling_status       :missing
+    :signature_hash        (format "%064d" id)
+    :signature             (str "[\"candidate-" id "\"]")
+    :definition            {}
+    :semantic_details      {:atoms (mapv (fn [[signature display-name]]
+                                           {:signature signature, :display-name display-name})
+                                         atoms)}
+    :suggested_name        (str "Candidate " id)
+    :verified_source_count 0
+    :official_source_count 0
+    :distinct_source_count 1
+    :complexity            (count atoms)
+    :total_view_count      10}
+   overrides))
+
+(deftest recommendation-families-use-a-deterministic-primary-subset-parent-test
+  (let [parent       (family-candidate 1 [["a-trial" "Trial complete"]
+                                          ["c-deployment" "Deployment is cloud"]
+                                          ["d-email" "Email is present"]]
+                                       {:official_source_count 1
+                                        :distinct_source_count 10})
+        other-parent (family-candidate 2 [["a-trial" "Trial complete"]
+                                          ["b-created" "Created recently"]
+                                          ["c-deployment" "Deployment is cloud"]]
+                                       {:distinct_source_count 2})
+        child        (family-candidate 3 [["a-trial" "Trial complete"]
+                                          ["b-created" "Created recently"]
+                                          ["c-deployment" "Deployment is cloud"]
+                                          ["d-email" "Email is present"]]
+                                       {:distinct_source_count 5})
+        families     (candidate-families [other-parent child parent])
+        child-row    (first (filter #(= 3 (:candidate-id %)) families))
+        display-name (:display-name child-row)]
+    (testing "the strongest equally-sized subset is the one primary parent"
+      (is (= (:signature_hash parent) (:family-key child-row)))
+      (is (= 1 (:family-depth child-row))))
+    (testing "the parent atoms remain a prefix and the additional atom is appended"
+      (is (< (str/index-of display-name "Trial")
+             (str/index-of display-name "Deployment")
+             (str/index-of display-name "Email")
+             (str/index-of display-name "Created"))))
+    (testing "each candidate appears exactly once"
+      (is (= [1 3 2] (mapv :candidate-id families))))))
+
+(deftest recommendation-family-priority-comes-from-its-strongest-member-test
+  (let [weak-root    (family-candidate 1 [["a" "A"]] {})
+        strong-child (family-candidate 2 [["a" "A"] ["b" "B"]]
+                                       {:verified_source_count 1
+                                        :distinct_source_count 20})
+        medium-root  (family-candidate 3 [["c" "C"]]
+                                       {:official_source_count 1
+                                        :distinct_source_count 10})]
+    (is (= [1 2 3]
+           (mapv :candidate-id
+                 (candidate-families [medium-root weak-root strong-child]))))))
 
 (deftest latest-successful-snapshot-and-durable-dismissal-test
   (mt/with-temp [:model/UsageMetadataCandidateRun old-run {:status            :succeeded

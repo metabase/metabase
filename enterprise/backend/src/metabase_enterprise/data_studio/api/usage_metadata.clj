@@ -102,8 +102,12 @@
                                                        :data_layer :data_authority :view_count :is_published
                                                        :collection_id])
                                    :database (:database table))
+     :display_name          (or (:display_name candidate) (:suggested_name candidate))
      :suggested_name        (:suggested_name candidate)
      :suggested_description (:suggested_description candidate)
+     :family                {:key      (or (:family_key candidate) (:signature_hash candidate))
+                             :position (or (:family_position candidate) 0)
+                             :depth    (or (:family_depth candidate) 0)}
      :definition            (:definition candidate)
      :modeling_status       (:modeling_status candidate)
      :dismissed             (dismissed? dismissals candidate)
@@ -184,6 +188,7 @@
     (conj (let [pattern (str "%" (u/lower-case-en search) "%")]
             [:or
              [:like [:lower :candidate.suggested_name] pattern]
+             [:like [:lower :candidate.display_name] pattern]
              [:like [:lower :candidate.suggested_description] pattern]
              [:like [:lower :table.name] pattern]
              [:like [:lower :table.display_name] pattern]
@@ -198,7 +203,7 @@
   [sort-column direction]
   (let [ordered (case sort-column
                   :name
-                  [[[:lower :candidate.suggested_name] :asc]]
+                  [[[:lower [:coalesce :candidate.display_name :candidate.suggested_name]] :asc]]
 
                   :source-count
                   [[:candidate.distinct_source_count :desc]]
@@ -208,7 +213,11 @@
 
                   ;; Preserve the miner's ordering exactly: presence of verified
                   ;; and official evidence is binary; source count then breaks ties.
-                  [[[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
+                  ;; Recommendation families inherit the priority of their strongest member,
+                  ;; then use a deterministic parent-first traversal inside the family.
+                  [[[:coalesce :candidate.family_order [:inline 2147483647]] :asc]
+                   [[:coalesce :candidate.family_position [:inline 2147483647]] :asc]
+                   [[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
                    [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
                    [:candidate.distinct_source_count :desc]
                    [:candidate.complexity :asc]
