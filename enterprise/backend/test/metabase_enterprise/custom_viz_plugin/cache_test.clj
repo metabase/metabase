@@ -1,5 +1,6 @@
 (ns ^:synchronous metabase-enterprise.custom-viz-plugin.cache-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
@@ -136,6 +137,19 @@
   (testing "SECURITY: rejects file:// URLs"
     (is (thrown-with-msg? Exception #"http or https"
                           (cache/dev-base-url "file:///etc/passwd")))))
+
+(deftest fetch-dev-manifest-test
+  (testing "returns a well-formed manifest"
+    (with-redefs [http/get (constantly {:body (json/encode {:name "dev-viz"})})]
+      (is (= {:name "dev-viz"}
+             (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "returns nil when the manifest cannot be fetched"
+    (with-redefs [http/get (fn [& _] (throw (Exception. "connection refused")))]
+      (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "rejects a structurally invalid manifest, same as the upload path"
+    (with-redefs [http/get (constantly {:body (json/encode {:name 123})})]
+      (is (thrown-with-msg? Exception #"is invalid"
+                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}

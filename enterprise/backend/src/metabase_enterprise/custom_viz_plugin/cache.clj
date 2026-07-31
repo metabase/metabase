@@ -332,15 +332,20 @@
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.
-   Returns the parsed manifest map or nil on failure."
+   Returns the parsed manifest map or nil on failure. Throws ex-info with
+   `:status-code 400` when the manifest is structurally invalid."
   [^String base-url]
-  (try
-    (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
-                                   (assoc http-opts :as :string)))]
-      (manifest/parse-manifest content))
-    (catch Exception e
-      (log/debugf "No manifest at %s: %s" base-url (ex-message e))
-      nil)))
+  (when-let [parsed (try
+                      (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
+                                                     (assoc http-opts :as :string)))]
+                        (manifest/parse-manifest content))
+                      (catch Exception e
+                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
+                        nil))]
+    (when-let [error (manifest/validation-error parsed)]
+      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                      {:status-code 400})))
+    parsed))
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.
