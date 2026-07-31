@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -10,7 +11,7 @@ import {
   setupLlmProvidersEndpoint,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { LlmConnectionModels } from "metabase-types/api";
 import {
   createMockLlmConnectionModels,
@@ -57,6 +58,11 @@ const setup = ({
 };
 
 describe("AIProviderList", () => {
+  afterEach(() => {
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+  });
+
   it("does not badge a connection that has everything it needs", async () => {
     setup({ usable: true });
 
@@ -116,5 +122,34 @@ describe("AIProviderList", () => {
     expect(await screen.findByText("Model")).toBeInTheDocument();
 
     expect(fetchMock.callHistory.calls("path:/api/llm/models")).toHaveLength(1);
+  });
+
+  it("reopens the add modal on a fresh form rather than the last provider picked", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Add another provider/ }),
+    );
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: /Anthropic/ }),
+    );
+    expect(await within(modal).findByLabelText(/API key/)).toBeInTheDocument();
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Close" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add another provider/ }),
+    );
+    const reopened = await screen.findByRole("dialog");
+    expect(
+      within(reopened).getByRole("button", { name: /Anthropic/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(reopened).queryByLabelText(/API key/),
+    ).not.toBeInTheDocument();
   });
 });

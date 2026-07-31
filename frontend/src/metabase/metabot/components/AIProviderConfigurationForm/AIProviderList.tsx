@@ -55,7 +55,6 @@ export function AIProviderList() {
 
   const handleModalClose = () => {
     stopAdding();
-    setEditing(undefined);
   };
 
   const handleConfirmDelete = async () => {
@@ -121,13 +120,13 @@ export function AIProviderList() {
 
       {hasConnections && <LlmModelPicker />}
 
-      {(isAdding || editing) && (
-        <ProviderConnectionModal
-          providerTypes={editing ? providerTypes : addableProviderTypes}
-          connection={editing}
-          onClose={handleModalClose}
-        />
-      )}
+      <ProviderConnectionModal
+        opened={isAdding || editing != null}
+        providerTypes={editing ? providerTypes : addableProviderTypes}
+        connection={editing}
+        onClose={handleModalClose}
+        onClosed={() => setEditing(undefined)}
+      />
 
       <ConfirmModal
         opened={deleting != null}
