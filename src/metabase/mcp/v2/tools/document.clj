@@ -90,28 +90,54 @@
                       [[model (:id row)] row]))))
         (group-by #(get-in % [:attrs :model]) links)))
 
-(defn- resolve-smart-links!
-  "Fill `:label`/`:href` on every smartLink node in `ast` from its target row. An id that doesn't
-  resolve — because nothing has it or because the current user can't read what does — keeps the
-  node with the defaults `parse` gave it and logs a warning: bad content, not a write error."
+(defn- stored-smart-link-attrs
+  "`{[model entityId] attrs}` for every already-labelled smartLink in `ast`."
   [ast]
+  (into {}
+        (keep (fn [node]
+                (when (and (map? node) (= "smartLink" (:type node)))
+                  (let [{:keys [entityId model label] :as attrs} (:attrs node)]
+                    (when label
+                      [[model entityId] attrs])))))
+        (tree-seq :content :content ast)))
+
+(defn- resolve-smart-links!
+  "Fill `:label`/`:href` on every smartLink node in `ast` from its target row, falling back to the
+  same link's attrs in `previous-ast` (nil at create) and then to the defaults `parse` gave it.
+
+  Re-reading the row is what heals a renamed target, so it wins whenever it is available. The
+  fallback covers the case where it isn't: a `{% entity %}` token carries only `entityId`/`model`,
+  so every re-parsed block's links arrive label-less, and an editor who can't read the target
+  resolves nothing. Without a fallback, editing one sentence blanks the label of a link elsewhere
+  in the same block for everyone, including the people who can see it — the editor is treated as
+  authoritative about a name they were never shown.
+
+  Carrying the old label forward writes back a string the caller can't see, which is safe in the
+  one direction that matters: labels live in the AST and never in the Markdown projection, so no
+  response hands the caller a name they can't read. An id that resolves no row and has no previous
+  label keeps `parse`'s defaults and logs a warning: bad content, not a write error."
+  [ast previous-ast]
   (let [links (->> (tree-seq :content :content ast)
                    (filter #(= "smartLink" (:type %))))]
     (if (empty? links)
       ast
-      (let [rows (smart-link-rows links)]
+      (let [rows   (smart-link-rows links)
+            stored (some-> previous-ast stored-smart-link-attrs)]
         (walk/postwalk
          (fn [node]
            (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:keys [entityId model]} (:attrs node)]
-               (if-let [row (get rows [model entityId])]
+             (let [{:keys [entityId model]} (:attrs node)
+                   k                        [model entityId]]
+               (if-let [row (get rows k)]
                  (update node :attrs assoc
                          :label (smart-link-label row)
                          :href (smart-link-href model row))
-                 (do
-                   (when (prose-mirror/smart-link-model->db-model model)
-                     (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
-                   node)))
+                 (if-let [prior (get stored k)]
+                   (update node :attrs assoc :label (:label prior) :href (:href prior))
+                   (do
+                     (when (prose-mirror/smart-link-model->db-model model)
+                       (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
+                     node))))
              node))
          ast)))))
 
@@ -294,7 +320,7 @@
     (common/throw-teaching-error "archived only applies to method: \"update\" — a new document is never archived."))
   (let [collection-id (common/resolve-collection-id (:collection_id args))]
     (api/create-check :model/Document {:collection_id collection-id})
-    (let [ast (resolve-smart-links! (documents/parse content_markdown))]
+    (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
       (check-card-embeds! ast nil)
       (let [created (documents/create-document! {:name                name
                                                  :document            ast
@@ -327,13 +353,14 @@
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document
             ;; column is left entirely alone below.
             ;; Resolved once on the finished AST rather than per splice: fewer queries, and it
-            ;; picks up a link any of the edits introduced.
+            ;; picks up a link any of the edits introduced. The pre-edit AST goes along so a link
+            ;; whose target this caller can't read keeps the label it already had.
             new-ast (some-> (cond
                               ;; Full rewrite: everything re-parses, nothing keeps its node id, so
                               ;; every anchored comment thread is reported orphaned below.
                               content_markdown (documents/parse content_markdown)
                               (seq edits)      (reduce apply-edit (:document existing) edits))
-                            resolve-smart-links!)
+                            (resolve-smart-links! (:document existing)))
             _       (when new-ast
                       (check-card-embeds! new-ast (:id existing)))
             body    (cond-> {}

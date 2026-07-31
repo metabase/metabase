@@ -285,6 +285,66 @@
                                                (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
                                                        hidden-id)))))))))))
 
+(deftest edit-keeps-the-label-of-a-smart-link-the-editor-cannot-read-test
+  (testing "editing other text in a block must not wipe the label of a smart link pointing at
+           content the editor can't read. The `{% entity %}` token carries only id and model, so a
+           re-parsed block's link has no label until it is resolved from the row — and an editor
+           who can't read that row resolves nothing. Treating that as \"no label\" writes the blank
+           back for everyone, including the people who can see the target."
+    (mt/with-temp [:model/Collection {secret-id :id} {:name "Top Secret Collection"}
+                   :model/Card       {hidden-id :id} {:name          "CONFIDENTIAL Revenue"
+                                                      :collection_id secret-id
+                                                      :dataset_query (orders-query)}
+                   :model/Card       {unseen-id :id} {:name          "CONFIDENTIAL Headcount"
+                                                      :collection_id secret-id
+                                                      :dataset_query (orders-query)}
+                   :model/Collection {shared-id :id} {:name "Shared Reports"}]
+      ;; `shared-id` needs no grant: a new collection is already all-users read-write, which is
+      ;; what lets rasta edit the document while the card stays out of reach.
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (with-tool-documents
+        (fn [created!]
+          (let [payload    (mt/with-current-user (mt/user->id :crowberto)
+                             (created!
+                              (call {:method           "create"
+                                     :name             "Smart link label"
+                                     :collection_id    shared-id
+                                     :content_markdown (str "Intro. See {% entity id=\"" hidden-id
+                                                            "\" model=\"card\" %} for detail.")})))
+                doc-id     (:id payload)
+                link-attrs (fn []
+                             (->> (tree-seq :content :content
+                                            (t2/select-one-fn :document :model/Document :id doc-id))
+                                  (some #(when (= "smartLink" (:type %)) (:attrs %)))))
+                resolved   {:entityId hidden-id
+                            :model    "card"
+                            :label    "CONFIDENTIAL Revenue"
+                            :href     (str "/question/" hidden-id)}]
+            (testing "a writer who can read the target stores its label"
+              (is (= resolved (link-attrs))))
+            (let [updated (mt/with-current-user (mt/user->id :rasta)
+                            (call {:method "update" :id doc-id
+                                   :edits  [{:old_str "Intro." :new_str "Introduction."}]}))]
+              (testing "the edit lands"
+                (is (str/starts-with? (:content_markdown updated) "Introduction.")))
+              (testing "and the link the editor never touched keeps its label and href"
+                (is (= resolved (link-attrs))))
+              (testing "without handing that editor the name they cannot read — labels live in the
+                       AST, never in the Markdown, which is what makes carrying one forward safe"
+                (is (not (str/includes? (:content_markdown updated) "CONFIDENTIAL")))))
+            (testing "the fallback only keeps a label the document already had — a link the editor
+                     adds to something they can't read resolves to nothing, so this cannot be used
+                     to acquire a name"
+              (mt/with-current-user (mt/user->id :rasta)
+                (call {:method "update" :id doc-id
+                       :edits  [{:old_str "for detail."
+                                 :new_str (str "for detail, and {% entity id=\"" unseen-id
+                                               "\" model=\"card\" %} too.")}]}))
+              (is (= {:entityId unseen-id :model "card" :label nil :href "/"}
+                     (->> (tree-seq :content :content
+                                    (t2/select-one-fn :document :model/Document :id doc-id))
+                          (some #(when (= unseen-id (get-in % [:attrs :entityId])) (:attrs %)))))))))))))
+
 (deftest smart-link-labels-are-not-resolved-by-the-markdown-layer-test
   (testing "parse leaves label/href at their defaults — the Markdown namespace performs no lookup,
            which is what keeps the documents module free of a permissions dependency"
