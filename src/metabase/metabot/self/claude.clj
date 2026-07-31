@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
@@ -359,9 +358,8 @@
   [{:keys [credentials ai-proxy?]}]
   (try
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-anthropic-api-key)))]
-                                    {:url     (or (not-empty (:base-url credentials)) (llm/llm-anthropic-api-base-url))
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"x-api-key" k}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -480,12 +478,10 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [api-key  (or (not-empty (:api-key credentials))
-                           (not-empty (llm/llm-anthropic-api-key)))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "anthropic" "Anthropic"
                                           (when api-key
-                                            {:url     (or (not-empty (:base-url credentials))
-                                                          (llm/llm-anthropic-api-base-url))
+                                            {:url     (:base-url credentials)
                                              :headers {"x-api-key" api-key}})
                                           ai-proxy?)
               response (core/request auth

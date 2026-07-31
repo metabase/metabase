@@ -153,8 +153,9 @@
                   :config   {:api-key "**********id"}}
                  (mt/user-http-request :crowberto :post 200 "llm/providers"
                                        {:type "anthropic" :config {:api-key "sk-ant-valid"}}))))
-        (testing "the credentials are verified against the provider exactly once, unmasked"
-          (is (= [["anthropic" {:api-key "sk-ant-valid"}]] @calls)))
+        (testing "the credentials are verified against the provider exactly once, unmasked and with the
+                  registry defaults the adapter needs filled in"
+          (is (= [["anthropic" {:api-key "sk-ant-valid" :base-url "https://api.anthropic.com"}]] @calls)))
         (testing "the unmasked credentials are what gets persisted"
           (is (= {:api-key "sk-ant-valid"} (stored-config "anthropic"))))))))
 
@@ -264,7 +265,9 @@
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [_provider {:keys [credentials]}]
-                                  (is (= {:api-key "sk-ant-rotated"} credentials))
+                                  (is (= {:api-key  "sk-ant-rotated"
+                                          :base-url "https://api.anthropic.com"}
+                                         credentials))
                                   {:models []})]
       (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-rotated"}})
       (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic"))))))

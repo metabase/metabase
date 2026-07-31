@@ -251,7 +251,7 @@
       (is (= {:connection-key "anthropic"
               :type           "anthropic"
               :model          "claude-opus-4-1"
-              :credentials    {:api-key "sk-ant-db"}
+              :credentials    {:api-key "sk-ant-db" :base-url "https://api.anthropic.com"}
               :ai-proxy?      false}
              (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1")))
       (is (false? (llm.provider/proxied-model-ref? "anthropic/claude-opus-4-1"))))
@@ -259,7 +259,7 @@
       (is (= {:connection-key "openrouter"
               :type           "openrouter"
               :model          "anthropic/claude-haiku-4-5"
-              :credentials    {:api-key "sk-or-v1-db"}
+              :credentials    {:api-key "sk-or-v1-db" :base-url "https://openrouter.ai/api"}
               :ai-proxy?      false}
              (llm.provider/resolve-model-ref "openrouter/anthropic/claude-haiku-4-5"))))
     (testing "the managed connection resolves to the wire family named by the model and routes through the proxy"
@@ -275,6 +275,30 @@
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil)))
       (is (false? (llm.provider/proxied-model-ref? "nope/some-model"))))))
+
+(deftest resolve-model-ref-fills-in-field-defaults-test
+  (testing "a connection that never set an optional field still resolves with the registry default, so the adapter
+            never has to reach back into the single-provider settings for it"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})
+                                                      (connection "bedrock" "bedrock"
+                                                                  {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                                   :secret-access-key "wJalrXUtnFEMI"})]]
+      (is (= {:api-key "sk-ant-db" :base-url "https://api.anthropic.com"}
+             (:credentials (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1"))))
+      (is (= "us-east-1"
+             (:region (:credentials (llm.provider/resolve-model-ref "bedrock/anthropic.claude-opus-4-8")))))))
+  (testing "a value the admin did set is left alone"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-db"
+                                                                   :base-url "https://proxy.internal"})]]
+      (is (= {:api-key "sk-ant-db" :base-url "https://proxy.internal"}
+             (:credentials (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1"))))))
+  (testing "the single-provider env connection carries its own base URL rather than borrowing another connection's"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      "sk-ant-env"
+                                    mb-llm-anthropic-api-base-url "https://env.example"]
+        (is (= {:api-key "sk-ant-env" :base-url "https://env.example"}
+               (:credentials (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1"))))))))
 
 (deftest ^:parallel provider-type-names-are-mirrored-on-the-frontend-test
   (testing (str "The frontend mirrors this set by hand as `LlmProviderTypeName` in "

@@ -17,7 +17,6 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -53,12 +52,6 @@
 
 ;;; ------------------------------------------------ HTTP plumbing ----------------------------------------------
 
-(defn- settings-credentials
-  "Azure credentials from the `llm-azure-*` settings."
-  []
-  {:api-key  (not-empty (llm/llm-azure-api-key))
-   :base-url (not-empty (llm/llm-azure-api-base-url))})
-
 (defn- missing-credentials-ex []
   (ex-info (tru "Azure credentials are not configured")
            {:api-error   true
@@ -71,13 +64,12 @@
             :error-code :proxy-unsupported}))
 
 (defn- ensure-credentials
-  "Validate an Azure credentials map, falling back to [[settings-credentials]] when nil.
+  "Validate the credentials of the connection serving this request.
   Throws when the API key or base URL is missing."
   [credentials]
-  (let [creds (or credentials (settings-credentials))]
-    (when-not (llm.provider/config-complete? "azure" creds)
-      (throw (missing-credentials-ex)))
-    creds))
+  (when-not (llm.provider/config-complete? "azure" credentials)
+    (throw (missing-credentials-ex)))
+  credentials)
 
 (defn- azure-error-msg
   "Canonical, status-specific Azure error message."

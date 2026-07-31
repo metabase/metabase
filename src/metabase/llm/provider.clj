@@ -443,6 +443,18 @@
     (str/replace-first model-ref (str managed-connection-key "/") "")
     model-ref))
 
+(defn with-field-defaults
+  "Fill in each field's registry `:default` wherever `config` left it blank, so a resolved connection carries
+  everything the adapter needs. Without this an adapter would have to reach back into the single-provider
+  settings for a missing base URL, which is how one connection ends up answering with another's configuration."
+  [type-name config]
+  (reduce (fn [config {:keys [key default]}]
+            (cond-> config
+              (and default (not (non-blank (get config key))))
+              (assoc key default)))
+          (or config {})
+          (:fields (provider-type type-name))))
+
 (defn resolve-model-ref
   "Resolve a `connection-key/model` string against the configured connections.
 
@@ -463,7 +475,7 @@
         {:connection-key conn-key
          :type           type
          :model          model
-         :credentials    config
+         :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
 
 (defn proxied-model-ref?
