@@ -17,6 +17,16 @@
 
 (def ^:private run-refresh-async! @#'usage-metadata.api/run-refresh-async!)
 
+(deftest routes-require-library-feature-test
+  (mt/with-premium-features #{}
+    (let [error (try
+                  (usage-metadata.api/routes {} identity identity)
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    e))]
+      (is (= 402 (:status-code (ex-data error))))
+      (is (re-find #"Library is a paid feature" (ex-message error))))))
+
 (deftest temporary-direct-refresh-must-not-merge-to-master-test
   ;; Remove this test only after the usage-metadata refresh API path is wired through Quartz again.
   (is false "DO NOT MERGE: the usage-metadata refresh API temporarily bypasses Quartz."))

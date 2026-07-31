@@ -4,13 +4,16 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.measures.api :as measures.api]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.segments.api :as segments.api]
    [metabase.usage-metadata.candidates :as candidates]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -552,4 +555,10 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-studio/usage-metadata` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (let [handler (api.macros/ns-handler *ns* +auth)]
+    (open-api/handler-with-open-api-spec
+     (fn [request respond raise]
+       (premium-features/assert-has-feature :library (deferred-tru "Library"))
+       (handler request respond raise))
+     (fn [prefix]
+       (open-api/open-api-spec handler prefix)))))
