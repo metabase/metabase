@@ -180,7 +180,7 @@
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
         ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
         (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates."
-                                  (pr-str path) (count candidates))
+                             (pr-str path) (count candidates))
                         {:status-code  400
                          :error        :ambiguous-table
                          :agent-error? true
@@ -210,7 +210,7 @@
         unknown-field-ex
         (fn [segment]
           (ex-info (tru "No column {0} on table {1}.{2}.{3}."
-                             (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
+                        (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
                    {:status-code  400
                     :error        :unknown-field
                     :path         full-path

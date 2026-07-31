@@ -82,6 +82,13 @@
                        :source-table (table-name-ref :orders)}
                       stage-extra)]}))
 
+(defn- orders-card-query
+  "A Lib query over ORDERS for a card fixture's stored `:dataset_query`. Distinct from
+   [[orders-query]], which builds the tool-input shape a caller sends rather than a stored query."
+  []
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
 (defn- col-index
   [cols col-name]
   (some (fn [[i c]] (when (= (:name c) col-name) i)) (map-indexed vector cols)))
@@ -504,7 +511,7 @@
 (deftest numeric-source-card-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {:limit 5})}]
+      (mt/with-temp [:model/Card card {:dataset_query (lib/limit (orders-card-query) 5)}]
         (let [sid    (str (random-uuid))
               result (call! sid {:query {:lib/type "mbql/query"
                                          :stages   [{:lib/type    "mbql.stage/mbql"
@@ -598,7 +605,7 @@
       (mt/with-temp [:model/Card {metric-id :id}
                      {:type          :metric
                       :name          "query-test order count metric"
-                      :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+                      :dataset_query (lib/aggregate (orders-card-query) (lib/count))}]
         (let [sid  (str (random-uuid))
               body (payload (call! sid {:query (numeric-orders-query
                                                 {:aggregation [["metric" {} metric-id]]})}))]

@@ -234,8 +234,8 @@
   them with the appropriate 4xx status code instead of a 500."
   [body]
   (-> (metabot-construct/execute-representations-query
-     (:query body)
-     {:recovery-hint recovery-hints/recovery-hint})
+       (:query body)
+       {:recovery-hint recovery-hints/recovery-hint})
       (get-in [:structured-output :query])))
 
 (defn- evaluate-external-query-for-execution

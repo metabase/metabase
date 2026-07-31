@@ -5,7 +5,7 @@
    reimplementing permissions or persistence.
 
    Its own work is the metric authoring contract: one `definition` query source (a full query in
-   the portable external dialect `get_content` returns, plain MBQL 5, or a `query_handle` from an
+   the numeric-id MBQL 5 `get_content` returns, the older name-based dialect, or a `query_handle` from an
    execute tool), the metric shape gate (`lib/can-save?`: one stage, exactly one aggregation, at
    most one breakout), and refusing to retype an existing question or model."
   (:require
@@ -27,10 +27,10 @@
 
 (def ^:private accepted-shapes
   "The sentence every definition-shape teaching error ends with, naming what `definition` accepts."
-  (str "`definition` accepts a full single-stage query holding exactly one aggregation: either the "
-       "portable external dialect — what get_content's \"definition\" include returns for a metric "
-       "and what execute_query takes — or MBQL 5 with numeric ids. Alternatively pass a "
-       "query_handle from an execute tool instead of `definition`."))
+  (str "`definition` accepts a full single-stage query holding exactly one aggregation: MBQL 5 with "
+       "numeric ids — what get_content's \"definition\" include returns for a metric and what "
+       "execute_query takes — or the older name-based dialect, still resolved on input. "
+       "Alternatively pass a query_handle from an execute tool instead of `definition`."))
 
 (def ^:private shape-rule
   "The metric shape rule, quoted verbatim in every gate error so the caller learns it once."

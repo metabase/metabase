@@ -43,8 +43,8 @@
   [{:keys [_reasoning query title display]} :- slackbot-query-schema]
   (try
     (let [query-result (construct/execute-representations-query
-                       query
-                       {:recovery-hint recovery-hints/recovery-hint})
+                        query
+                        {:recovery-hint recovery-hints/recovery-hint})
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [metabase-link (streaming/query->question-url (:query structured) display)
