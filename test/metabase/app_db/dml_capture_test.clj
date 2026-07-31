@@ -10,7 +10,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
 
@@ -216,11 +217,14 @@
     (is (= 2 (t2/delete! ::bird [(str "DELETE FROM " table-name " WHERE group_id = ?") 111])))
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 111))))
-  (testing "DELETE ... USING maps are explicitly rejected before pipeline compilation"
-    (is (nil? (#'dml-capture/delete-query->select-query
-               {:delete-from (keyword table-name)
-                :using       [:other_table]
-                :where       [:= :group_id 112]})))))
+  (testing "DELETE ... USING maps are rejected before the capture pipeline can compile them"
+    (with-redefs [t2.pipeline/build (fn [& _]
+                                      (throw (ex-info "capture pipeline must not build a USING delete" {})))]
+      (is (nil? (#'dml-capture/pre-image-rows
+                 :toucan.query-type/select.instances ::bird [:id] {}
+                 {:delete-from (keyword table-name)
+                  :using       [:other_table]
+                  :where       [:= :group_id 112]}))))))
 
 (deftest uncaptured-ops-fire-nothing-test
   (reset-capture!)
