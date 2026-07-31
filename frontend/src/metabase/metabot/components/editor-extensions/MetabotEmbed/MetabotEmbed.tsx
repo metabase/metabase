@@ -20,11 +20,10 @@ import {
 } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { buildDraftCard } from "metabase/rich_text_editing/tiptap/extensions/shared/draft-card";
+import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shared/layout";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { MetabotGenerateContentRequest } from "metabase-types/api";
-
-import { buildDraftCard } from "../shared/draft-card";
-import { wrapCardEmbed } from "../shared/layout";
 
 import S from "./MetabotEmbed.module.css";
 

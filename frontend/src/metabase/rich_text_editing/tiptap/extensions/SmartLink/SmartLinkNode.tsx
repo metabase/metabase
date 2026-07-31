@@ -27,6 +27,10 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  parseMetabaseProtocolMarkdownLink,
+} from "metabase/rich_text_editing/utils/links";
 import { Icon } from "metabase/ui";
 import {
   METABSE_PROTOCOL_MD_LINK,

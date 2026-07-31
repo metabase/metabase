@@ -11,6 +11,12 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
+import {
+  MetabotNode,
+  type PromptSerializer,
+} from "metabase/metabot/components/editor-extensions/MetabotEmbed";
+import { MetabotMentionExtension } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotMentionExtension";
+import { MetabotMentionSuggestion } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestion";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
@@ -25,12 +31,6 @@ import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/H
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
-import {
-  MetabotNode,
-  type PromptSerializer,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
-import { MetabotMentionExtension } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { MetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { PlainLink } from "metabase/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
