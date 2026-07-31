@@ -52,14 +52,12 @@
                     (update-keys m driver-api/normalize-token))
                    boolean-types))))
 
-(defn- boolean-typed-clause? [[_tag _x options]]
+(defn- boolean-typed-clause? [[_tag options _x]]
   (boolean-typed? options))
 
 (defn- boolean-field-clause? [clause boolean-types]
   (and (driver-api/is-clause? :field clause)
-       (let [[id-or-name options] (driver-api/match-one clause
-                                    [_ (options :guard :lib/uuid) id-or-name] [id-or-name options] ;; mbql5
-                                    [_ id-or-name options] [id-or-name options])
+       (let [[_ options id-or-name] clause
              has-some-type? (some-fn :base-type :base_type :effective-type :effective_type)]
          (or (boolean-typed? options boolean-types)
              ;; If :base-type is not present in the options, try looking it up in the metadata provider.
@@ -70,9 +68,7 @@
 
 (defn- boolean-value-clause? [clause]
   (and (driver-api/is-clause? :value clause)
-       (or (boolean? (driver-api/match-one clause
-                       [_ (opts :guard :lib/uuid) val & _] val ;; mbql5
-                       [_ val & _] val))
+       (or (boolean? (nth clause 2))
            (boolean-typed-clause? clause))))
 
 (defn boolean-expression-clause?
@@ -82,9 +78,7 @@
   expression refs by name, if necessary, to determine whether their value is a boolean literal."
   [clause]
   (and (driver-api/is-clause? :expression clause)
-       (->> (driver-api/match-one clause
-              [_ (opts :guard :lib/uuid) name] name ;; mbql5
-              [_ name] name)
+       (->> (nth clause 2)
             (sql.qp/expression-by-name sql.qp/*inner-query*)
             (boolean-value-clause?))))
 
@@ -95,9 +89,7 @@
    expression refs by name, if necessary, to determine whether the expression is a predicate operator."
   [clause]
   (and (driver-api/is-clause? :expression clause)
-       (->> (driver-api/match-one clause
-              [_ (opts :guard :lib/uuid) name] name ;; mbql5
-              [_ name] name)
+       (->> (nth clause 2)
             (sql.qp/expression-by-name sql.qp/*inner-query*)
             (driver-api/is-clause? lib.schema.filter/predicate-operators))))
 

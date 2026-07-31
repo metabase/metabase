@@ -740,23 +740,15 @@
                    :else                  value)
       (->honeysql driver value))))
 
-(defn- literal-text-value?*
-  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+(defn- literal-text-value?
+  [[_ {:keys [base-type effective-type]} value :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
        ;; If no type info is provided (nil opts), assume it's text since it's a string.
-       ;; This handles cases like [:value "some string" nil] from expression definitions.
+       ;; This handles cases like [:value nil "some string"] from expression definitions.
        (or (nil? base-type)
            (isa? (or effective-type base-type)
                  :type/Text))))
-
-(defn- literal-text-value?
-  [clause]
-  (literal-text-value?*
-   (driver-api/match-one clause
-     [tag (opts :guard :lib/uuid) value] ;; mbql5
-     [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
-     _ clause)))
 
 (defn expression-by-name
   "Get the expression clause named `expression-name` from `inner-query` (an MBQL 5 stage)."
@@ -787,7 +779,7 @@
                               ;; the string becomes a parameter placeholder without type info,
                               ;; which some databases (like H2) can't handle.
                               (string? expression-definition)
-                              [::expression-literal-text-value {} [:value {:base_type :type/Text} expression-definition]]
+                              [::expression-literal-text-value {} [:value {:base-type :type/Text} expression-definition]]
 
                               :else
                               expression-definition))
@@ -1098,17 +1090,15 @@
                   (over-order-by->honeysql driver aggregations order-by)))
           order-bys)))
 
-(defn- remapped-order-by? [order-by]
+(defn- remapped-order-by?
+  [[_dir _opts [_ opts _name]]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-   (driver-api/match-one order-by
-     [_dir (_opts :guard :lib/uuid) [_ (opts :guard :lib/uuid) _name]] opts ;; mbql5
-     [_dir [_ _name opts]] opts)))
+   opts))
 
-(defn- remapped-breakout? [breakout]
+(defn- remapped-breakout?
+  [[_ opts _name]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-   (driver-api/match-one breakout
-     [_ (opts :guard :lib/uuid) _name] opts ;; mbql5
-     [_ _name opts] opts)))
+   opts))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
@@ -1248,19 +1238,14 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
-(defn- normalize-interval [interval]
-  (driver-api/match-one interval
-    [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
-    _ interval))
-
 (defmethod ->honeysql [:sql :+]
   [driver [_ _opts & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
-      (reduce (fn [hsql-form [_ amount unit]]
+      (reduce (fn [hsql-form [_ _opts amount unit]]
                 (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
-              (map normalize-interval intervals))
+              intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     (into [:+]
           (map (partial ->honeysql driver))
@@ -1278,11 +1263,11 @@
                         {:type driver-api/qp.error-type.invalid-query
                          :args args})))
   (if (interval? (first other-args))
-    (reduce (fn [hsql-form [_ amount unit]]
+    (reduce (fn [hsql-form [_ _opts amount unit]]
               ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
               (add-interval-honeysql-form driver hsql-form (- amount) unit))
             (->honeysql driver first-arg)
-            (map normalize-interval other-args))
+            other-args)
     (into [:-]
           (map (partial ->honeysql driver))
           args)))
@@ -1512,13 +1497,8 @@
 
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
   ([driver                                                :- :keyword
-    clause :- vector?]
-   (let [[clause-type opts id-or-name] (driver-api/match-one clause
-                                         [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
-                                         clause
-                                         [clause-type id-or-name opts]
-                                         [clause-type opts id-or-name])
-         desired-alias (or (get opts driver-api/qp.add.desired-alias)
+    [clause-type opts id-or-name] :- vector?]
+   (let [desired-alias (or (get opts driver-api/qp.add.desired-alias)
                            ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
                            ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
                            ;; going forward because it is liable to break
@@ -1582,9 +1562,7 @@
     ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
   (let [{cast-type ::add-cast
-         wrap-in-case? ::wrap-in-case} (driver-api/match-one clause
-                                         [_ (opts :guard :lib/uuid) _] opts ;; mbql5
-                                         [_ _ opts] opts)
+         wrap-in-case? ::wrap-in-case} (lib/options clause)
         maybe-cast    #(cond-> %
                          wrap-in-case? (as-> <> [::wrap-in-case {} <>])
                          cast-type     (as-> <> [::cast {} <> cast-type]))
@@ -1620,11 +1598,8 @@
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
    (match/replace form
-     [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
-     [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
-
-     [:field id-or-name opts]
-     [:field id-or-name (force-using-column-alias-opts opts is-breakout)])))
+     [:field opts id-or-name]
+     [:field (force-using-column-alias-opts opts is-breakout) id-or-name])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
@@ -1698,7 +1673,6 @@
    [:and driver-api/mbql.schema.value
     [:fn {:error/message "string value"} #(string? (second %))]]
    driver-api/mbql.schema.FieldOrExpressionDef
-   ;; mbql5
    [:ref :metabase.lib.schema.expression/string]])
 
 (defmulti escape-like-pattern
@@ -1755,18 +1729,15 @@
         [:lower expr]))))
 
 (defn- uuid-field?
-  [x]
-  (let [[opts field-id] (driver-api/match-one x
-                          [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
-                          [:field field-id opts] [opts field-id])]
-    (and (driver-api/mbql-clause? x)
-         (isa? (or (:effective-type opts)
-                   (when (pos-int? field-id)
-                     (let [{:keys [base-type effective-type]}
-                           (driver-api/field (driver-api/metadata-provider) field-id)]
-                       (or effective-type base-type)))
-                   (:base-type opts))
-               :type/UUID))))
+  [[_ opts field-id :as x]]
+  (and (driver-api/is-clause? :field x)
+       (isa? (or (:effective-type opts)
+                 (when (pos-int? field-id)
+                   (let [{:keys [base-type effective-type]}
+                         (driver-api/field (driver-api/metadata-provider) field-id)]
+                     (or effective-type base-type)))
+                 (:base-type opts))
+             :type/UUID)))
 
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
@@ -1898,8 +1869,7 @@
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
   (driver-api/match-one maybe-value-form
-    [:value (opts :guard :lib/uuid) x & _] x ;; mbql5
-    [:value x & _] x
+    [:value _opts x & _] x
     _              maybe-value-form))
 
 (defmethod ->honeysql [:sql :!=]
