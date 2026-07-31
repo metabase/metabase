@@ -450,7 +450,7 @@
         ;; the positive half of the filter.
         (mt/with-no-data-perms-for-all-users!
           (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
-                                            :perms/manage-table-metadata :yes)
+                                       :perms/manage-table-metadata :yes)
           (mt/with-test-user :rasta
             (let [output (:structured-output (entity-details/get-table-details
                                               {:entity-type        :table
