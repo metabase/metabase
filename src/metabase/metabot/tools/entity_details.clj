@@ -72,21 +72,6 @@
                                {:id (:id metadata) :key definition-key :error (ex-message e)})
                      nil)))))))
 
-(defn- readable-measures-or-segments
-  "Filter lib `:metadata/measure` / `:metadata/segment` maps down to those whose parent table the current user can read.
-
-  [[mi/can-read?]] for both `:model/Measure` and `:model/Segment` delegates to the parent Table, and both metadata
-  schemas carry a required `:table-id`, so filtering on it reproduces exactly what a per-item read-check would allow.
-
-  This is *not* redundant with the enclosing Card read-check. A Card is readable through **collection** permissions
-  (`:perms/use-parent-collection-perms`), which say nothing about data access to its source table — without this
-  filter, collection access to a saved question or metric hands out that table's measure/segment names, descriptions,
-  and full definitions."
-  [items]
-  (when (seq items)
-    (let [readable (table-utils/readable-table-ids (map :table-id items))]
-      (filterv (comp readable :table-id) items))))
-
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
@@ -201,6 +186,23 @@
                    (and fk-target-field-id
                         (not (referenced-field-readable? fk-target-field-id)))
                    (dissoc :fk-target-field-id)))))))
+
+(defn- readable-metrics
+  "Filter lib `:metadata/metric` maps down to those whose Card the current user can read.
+
+  [[lib/available-metrics]] reads metric Cards straight off the app-DB metadata provider, filtered only on
+  `archived` / `type` / `table_id` — nothing about who may see them. A metric Card is readable through **collection**
+  permissions, so without this anyone who can read a Table learns the name and description of every metric defined on
+  it, including metrics sitting in collections they cannot open.
+
+  Selects only `:collection_id`, the single column [[mi/can-read?]] consults for a Card."
+  [metrics]
+  (when (seq metrics)
+    (let [readable (into #{}
+                         (comp (filter mi/can-read?)
+                               (map :id))
+                         (t2/select [:model/Card :id :collection_id] :id [:in (set (map :id metrics))]))]
+      (filterv (comp readable :id) metrics))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -371,6 +373,10 @@
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
+                       ;; Before `field-values-fn`, so we never fetch values for a column we are about to drop.
+                       ;; Also strips `:fk-target-field-id`, which is what stops `:fields` leaking the name and
+                       ;; schema of an FK target that [[related-tables]] just filtered out.
+                       permission-filter-columns
                        field-values-fn
                        (map #(metabot.tools.u/add-table-reference table-query %))))
            related (when with-related-tables?
@@ -389,18 +395,19 @@
             ;; Portable table FK path matching the representations-format expectation:
             ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
             :portable_fk (when db-name [db-name (:schema base) (:name base)])}
+           ;; No readability filter on `:measures` / `:segments` here: `available-measures` and `available-segments`
+           ;; only return items belonging to the query's own source table, and that table was read-checked on the way
+           ;; in (see the PERMISSIONS note above), so a filter could never drop anything.
            (m/assoc-some :description (:description base)
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
-                                                     (lib/available-metrics table-query))))
+                                                     (readable-metrics (lib/available-metrics table-query)))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
-                                                      (readable-measures-or-segments
-                                                       (lib/available-measures table-query)))))
+                                                      (lib/available-measures table-query))))
                          :segments (when with-segments?
                                      (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                                      (readable-measures-or-segments
-                                                       (lib/available-segments table-query))))))
+                                                      (lib/available-segments table-query)))))
            (merge related))))))
 
 (defn- fk-related-table-groups
@@ -514,6 +521,7 @@
                                                      card-metadata)))
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
+                                permission-filter-columns
                                 field-values-fn))
          related (when with-related-tables?
                    (related-tables card-query with-fields? field-values-fn))]
@@ -558,19 +566,22 @@
                          shared.content-store/default-store))
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
-                                      (lib/available-metrics card-query))))
-          ;; Empty today for ordinary cards — [[lib/query]] wraps them as a `:source-card` stage, and
-          ;; `available-measures`/`available-segments` only look at a stage-0 `:source-table`. The pivot-question
-          ;; branch above *does* build from `dataset-query`, which carries `:source-table`, so this really can emit;
-          ;; filtering unconditionally also keeps the general case closed if lib's resolution ever changes.
+                                      (readable-metrics (lib/available-metrics card-query)))))
+          ;; Always empty as things stand, on both branches above. [[lib/query]] wraps a card as a `:source-card`
+          ;; stage, and `available-measures`/`available-segments` only look at a stage-0 `:source-table`. The
+          ;; pivot-question branch would carry one, but its `(#{:query} (:type dataset-query))` guard never matches:
+          ;; `lib.metadata/card` hands back `:dataset-query` already converted to MBQL 5, so `:type` is nil and the
+          ;; branch is unreachable.
+          ;;
+          ;; If that guard is ever repaired, these two keys start emitting the *source table's* measures and
+          ;; segments while the only check performed is `api/read-check` on the Card — a collection permission that
+          ;; says nothing about data access to the table. Filter them on their parent table at that point.
           :measures (when with-measures?
                       (not-empty (mapv #(convert-measure-or-segment % :aggregation)
-                                       (readable-measures-or-segments
-                                        (lib/available-measures card-query)))))
+                                       (lib/available-measures card-query))))
           :segments (when with-segments?
                       (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                       (readable-measures-or-segments
-                                        (lib/available-segments card-query))))))
+                                       (lib/available-segments card-query)))))
          (merge related)))))
 
 (defn cards-details
