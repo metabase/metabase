@@ -99,7 +99,7 @@
     (let [captured-query (atom nil)
           fake-query     {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [external-query]
+        (fn [external-query & _opts]
           (reset! captured-query external-query)
           {:structured-output {:query-id       "q-1"
                                :query          fake-query
@@ -137,7 +137,7 @@
                 "include them with nil values) but the link is still built and returned.")
     (let [fake-query {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [_external-query]
+        (fn [_external-query & _opts]
           {:structured-output {:query-id       "q-x"
                                :query          fake-query
                                :result-columns []}
@@ -162,7 +162,7 @@
                 "returns `{:output <message>}` so the message reaches the LLM verbatim -\n"
                 "no stack trace, no data-parts.")
     (with-repr-stub!
-      (fn [_external-query]
+      (fn [_external-query & _opts]
         (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by search / read_resource."
                         {:agent-error? true
                          :status-code  400
@@ -184,7 +184,7 @@
                 "`Failed to construct notebook query: ...` prefix. Protects the LLM from\n"
                 "leaking internal stack-trace-style messages.")
     (with-repr-stub!
-      (fn [_external-query]
+      (fn [_external-query & _opts]
         (throw (RuntimeException. "something went sideways")))
       (fn []
         (let [result (slackbot-query/slackbot-construct-notebook-query-tool

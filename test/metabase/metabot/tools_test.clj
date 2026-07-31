@@ -137,7 +137,7 @@
     (let [query-captured (atom nil)
           chart-called  (atom nil)]
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                  (fn [external-query]
+                                  (fn [external-query & _opts]
                                     (reset! query-captured external-query)
                                     {:structured-output {:query-id "q-1"
                                                          :query {:database 1}
