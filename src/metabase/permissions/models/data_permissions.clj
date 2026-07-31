@@ -458,12 +458,18 @@
 
   All three are aggregations of the same rows (see [[perm-rows-query-base]]), so one query computes them for every
   database and permission type at once. That is what keeps checks looping over databases to a single query, however many
-  databases and permission rows the instance has."
-  (atom {}))
+  databases and permission rows the instance has.
+
+  `:db-ids` is the set of databases those values can answer for. One created after the load -- which tests do
+  constantly -- is not among them, so it is fetched rather than read as having no permissions. A user with no
+  permission rows at all leaves the set empty and reloads on each check, which costs a query against what is
+  effectively an empty table and does not arise outside tests that strip permissions."
+  (atom {:db-ids #{} :perms {}}))
 
 (defn- load-db-perms
-  [user-id]
-  (let [per-group (-> (perm-rows-query-base user-id nil)
+  "Whole-database values for `db-ids`, or for every database when nil."
+  [user-id db-ids]
+  (let [per-group (-> (perm-rows-query-base user-id db-ids)
                       (assoc :select   [:p.perm_type :p.db_id :p.group_id
                                         [[:min value-rank-case] :gmin]
                                         [[:max value-rank-case] :gmax]
@@ -486,15 +492,25 @@
                        :group-by [:i.perm_type :i.db_id]}))))
 
 (defn- cached-db-perms
-  "The `{perm-type {db-id {:every-table v :any-table v}}}` map for `user-id`, loaded once per request. Loads straight
-  through without caching when the request cache doesn't apply."
-  [user-id]
+  "The `{perm-type {db-id {:database v :every-table v :any-table v}}}` map for `user-id`, able to answer for
+  `database-id` -- nil asks for all of them. The first call loads every database in one query; anything created after
+  it is loaded one at a time. Loads straight through without caching when the request cache doesn't apply."
+  [user-id database-id]
   (if (use-cache? user-id)
-    (or (get @*db-permission-cache* user-id)
-        (let [loaded (load-db-perms user-id)]
-          (swap! *db-permission-cache* assoc user-id loaded)
-          loaded))
-    (load-db-perms user-id)))
+    (let [{:keys [db-ids perms]} @*db-permission-cache*]
+      (if (or (contains? db-ids database-id)
+              (and (seq db-ids) (nil? database-id)))
+        (get perms user-id)
+        ;; nothing loaded yet? take every database at once. Otherwise this one postdates that load, so fetch just it.
+        (let [loaded (load-db-perms user-id (when (seq db-ids) [database-id]))]
+          (-> (swap! *db-permission-cache*
+                     (fn [cache]
+                       (-> cache
+                           (update :db-ids into (cond-> (into #{} (mapcat keys) (vals loaded))
+                                                  database-id (conj database-id)))
+                           (update-in [:perms user-id] #(merge-with merge % loaded)))))
+              (get-in [:perms user-id])))))
+    (load-db-perms user-id (when database-id [database-id]))))
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
 
@@ -535,7 +551,7 @@
     (most-permissive-value perm-type)
 
     :else
-    (let [db-perm    (get-in (cached-db-perms user-id) [perm-type database-id :database])
+    (let [db-perm    (get-in (cached-db-perms user-id database-id) [perm-type database-id :database])
           table-perm (if (= db-perm (most-permissive-value perm-type))
                        db-perm
                        (coalesce perm-type
@@ -652,7 +668,7 @@
                     {perm-type (permissions.schema/data-permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (or (get-in (cached-db-perms user-id) [perm-type database-id :database])
+    (or (get-in (cached-db-perms user-id database-id) [perm-type database-id :database])
         (least-permissive-value perm-type))))
 
 (mu/defn user-has-permission-for-database? :- :boolean
@@ -680,7 +696,7 @@
     (most-permissive-value perm-type)
 
     :else
-    (or (get-in (cached-db-perms user-id) [perm-type database-id :every-table])
+    (or (get-in (cached-db-perms user-id database-id) [perm-type database-id :every-table])
         (least-permissive-value perm-type))))
 
 (mu/defn native-download-permission-for-user :- ::permissions.schema/data-permission-value
@@ -710,7 +726,7 @@
     (most-permissive-value perm-type)
 
     :else
-    (or (get-in (cached-db-perms user-id) [perm-type database-id :any-table])
+    (or (get-in (cached-db-perms user-id database-id) [perm-type database-id :any-table])
         (least-permissive-value perm-type))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
@@ -730,7 +746,7 @@
         (boolean (some (fn [[db-id vals]]
                          (and (= (:any-table vals) value)
                               (not (exclude? db-id))))
-                       (get (cached-db-perms user-id) perm-type))))))
+                       (get (cached-db-perms user-id nil) perm-type))))))
 
 ;;; --------------------------------------- cache assembly ------------------------------------------------------------
 
@@ -756,7 +772,7 @@
   [user-id & body]
   `(binding [*table-permission-cache*  (atom {:db-ids #{} :table-ids #{} :perms {}})
              *schema-permission-cache* (atom {:db-ids #{} :perms {}})
-             *db-permission-cache*     (atom {})
+             *db-permission-cache*     (atom {:db-ids #{} :perms {}})
              *sandboxes-for-user*           (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 

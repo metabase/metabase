@@ -45,11 +45,11 @@
 (deftest db-permission-cache-loads-once-test
   (let [user-id 1
         loads   (atom 0)
-        cache   (atom {})]
+        cache   (atom {:db-ids #{} :perms {}})]
     (binding [api/*current-user-id*            user-id
               data-perms/*db-permission-cache* cache]
       (mt/with-dynamic-fn-redefs [data-perms/load-db-perms
-                                  (fn [_user-id]
+                                  (fn [_user-id _db-ids]
                                     (swap! loads inc)
                                     {:perms/manage-database {10 {:database :yes :every-table :yes :any-table :yes}
                                                              11 {:database :no  :every-table :no  :any-table :no}}
@@ -70,6 +70,25 @@
         (testing "exclude-db-ids is honoured"
           (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
                                                               :exclude-db-ids [10]))))))))
+
+(deftest db-permission-cache-covers-databases-created-later-test
+  (testing "a Database created after the cache loaded is fetched, not read as having no permissions"
+    ;; the first load covers every database that exists at the time; `mt/with-temp` then makes more, and several
+    ;; driver tests create one (or a loop of them) after a permission check has already run.
+    (mt/with-test-user :rasta
+      (let [view-data #(data-perms/full-db-permission-for-user (mt/user->id :rasta) :perms/view-data %)]
+        (is (not= :blocked (view-data (mt/id))) "baseline, and warms the cache")
+        (mt/with-temp [:model/Database {db-1 :id} {}]
+          (is (not= :blocked (view-data db-1))))
+        (mt/with-temp [:model/Database {db-2 :id} {}]
+          (is (not= :blocked (view-data db-2)) "and a second one, as a loop of temp databases would"))
+        (testing "the whole-instance question still works after those scoped loads"
+          (is (true? (data-perms/user-has-any-perms-of-type? (mt/user->id :rasta) :perms/view-data))))
+        (testing "a database already loaded is not re-queried"
+          (let [db-id (mt/id)]
+            (t2/with-call-count [call-count]
+              (dotimes [_ 5] (view-data db-id))
+              (is (zero? (call-count))))))))))
 
 (deftest table-permission-cache-scope-test
   (let [user-id 1
