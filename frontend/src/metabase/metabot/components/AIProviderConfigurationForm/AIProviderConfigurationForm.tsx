@@ -76,6 +76,7 @@ export function AIProviderConfigurationForm({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-mistral-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
     "llm-zai-api-key",
@@ -269,6 +270,7 @@ export function AIProviderConfigurationForm({
           ))
           .with(
             "anthropic",
+            "mistral",
             "openai",
             "openrouter",
             "zai",
