@@ -62,15 +62,20 @@
 
 (defn handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
-   `capabilities` is per-surface — a surface must only advertise the methods it dispatches."
-  [id params capabilities]
-  (when-let [client-info (:clientInfo params)]
-    (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
-  (jsonrpc-response
-   id
-   {:protocolVersion protocol-version
-    :capabilities    capabilities
-    :serverInfo      server-info}))
+   `capabilities` is per-surface — a surface must only advertise the methods it dispatches.
+   `instructions`, when given, rides the result as the MCP `instructions` field — the one channel
+   that reaches the model before any tool call."
+  ([id params capabilities]
+   (handle-initialize id params capabilities nil))
+  ([id params capabilities instructions]
+   (when-let [client-info (:clientInfo params)]
+     (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
+   (jsonrpc-response
+    id
+    (cond-> {:protocolVersion protocol-version
+             :capabilities    capabilities
+             :serverInfo      server-info}
+      instructions (assoc :instructions instructions)))))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
@@ -222,7 +227,7 @@
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
-  [{:keys [dispatch-method-fn capabilities]} user-id request]
+  [{:keys [dispatch-method-fn capabilities instructions]} user-id request]
   (let [body            (:body request)
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
@@ -248,7 +253,7 @@
             supports-mcp-ui? (mcp-app-ui-capability? params)
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
-            init-response (handle-initialize (:id body) params capabilities)]
+            init-response (handle-initialize (:id body) params capabilities instructions)]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.
         (mcp.usage/record-mcp-session!
@@ -385,6 +390,8 @@
    - `:capabilities` — the server capabilities the `initialize` handshake advertises. Must match
      what `:dispatch-method-fn` actually serves (e.g. advertise `:resources` only when the
      surface dispatches `resources/*`).
+   - `:instructions` — optional string returned as the `initialize` result's `instructions`
+     field, surfaced to the model by clients that support it.
    - `:tools-hash-fn` — `(fn [token-scopes])` returning a stable hash of the visible tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
    - `:endpoint-paths` — the URL paths (relative to site-url) this surface is served at.

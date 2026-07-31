@@ -61,7 +61,9 @@
         (is (= {:name "metabase" :version "0.1.0"} (get-in response [:body :result :serverInfo])))
         (testing "GHY-4157: tools and resources are advertised — resources serve the MCP Apps iframe shells; prompts stay unimplemented and so unadvertised"
           (is (= {:tools {:listChanged true} :resources {}}
-                 (get-in response [:body :result :capabilities]))))))))
+                 (get-in response [:body :result :capabilities]))))
+        (testing "the handshake carries the skills instructions — the one pre-tool-call channel"
+          (is (re-find #"learn\(\)" (get-in response [:body :result :instructions]))))))))
 
 (deftest tools-list-test
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true]

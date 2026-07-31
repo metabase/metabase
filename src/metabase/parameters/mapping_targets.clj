@@ -124,3 +124,80 @@
        (filter #(= field-id (params/param-target->field-id (:target %) card)))
        first
        :target))
+
+(defn template-tag-types
+  "Map of template-tag name (string) -> tag type keyword for `card`'s native query — e.g.
+  `{\"category\" :dimension, \"min_total\" :number}`. Read from the stored query directly (either the
+  legacy `[:native :template-tags]` slot or an MBQL 5 native stage), so one malformed tag — e.g. a
+  snippet reference missing its id — can't degrade the whole map the way non-strict normalization
+  would. Empty when the card has no native query or no tags."
+  [card]
+  (let [dq   (:dataset_query card)
+        tags (or (not-empty (get-in dq [:native :template-tags]))
+                 (some (comp not-empty :template-tags) (:stages dq))
+                 (let [query (card-query card)]
+                   (when (and query (lib/native-only-query? query))
+                     (lib/all-template-tags-map query))))
+        ;; a legacy native query keys tags by name; a pMBQL stage stores them as a vector of tag maps
+        tags (if (map? tags) (vals tags) tags)]
+    (into {}
+          (map (fn [tag] [(u/qualified-name (:name tag)) (keyword (:type tag))]))
+          tags)))
+
+(def variable-tag-types
+  "Template-tag types whose parameter mapping target is `[:variable [:template-tag <name>]]` — raw value
+  substitutions the caller supplies an operator for."
+  #{:text :number :date :boolean})
+
+(def dimension-tag-types
+  "Template-tag types whose parameter mapping target is `[:dimension [:template-tag <name>]]` — tags bound
+  to a real column, where the server expands the parameter into the right SQL."
+  #{:dimension :temporal-unit})
+
+(defn target-for-tag
+  "The mapping target for the template tag named `tag-name` (whose type is `tag-type`, from
+  [[template-tag-types]]): `[:dimension …]` for a field-filter or temporal-unit tag, `[:variable …]` for a
+  raw variable. Nil for a tag kind that can't back a parameter (snippet/card/table reference tags splice
+  SQL text and take no value)."
+  [tag-name tag-type]
+  (cond
+    (contains? dimension-tag-types tag-type) [:dimension [:template-tag tag-name]]
+    (contains? variable-tag-types tag-type)  [:variable [:template-tag tag-name]]
+    :else                                    nil))
+
+(defn- target-ref-name
+  "The column-name string a `:dimension` target's ref carries — `[:expression \"name\"]`, or a name-based
+  `[:field \"name\" opts]` ref — or nil for id-based refs."
+  [target]
+  (when (and (sequential? target) (= :dimension (keyword (first target))))
+    (let [[head arg] (second target)]
+      (case (some-> head keyword)
+        :expression (when (string? arg) arg)
+        :field      (when (string? arg) arg)
+        nil))))
+
+(defn wireable-target?
+  "Whether `target` (a normalized mapping-target clause) points at something `card` actually exposes for
+  `parameter`: a template tag whose kind matches the clause head, or a column among the card's compatible
+  mapping targets (matched by resolved field id, or by column name for expression/name-based refs). Used to
+  reject a wire whose mapping would save cleanly but resolve to nothing at render time. `:text-tag` targets
+  bind a virtual dashcard's own content rather than a card and are out of scope here — callers validate
+  them against the dashcard."
+  [card parameter target]
+  (try
+    (let [target (lib/normalize ::lib.schema.parameter/target target)]
+      (if-let [tag-name (lib/parameter-target-template-tag-name target)]
+        (let [tag-type (get (template-tag-types card) tag-name)]
+          (= (some-> target first keyword)
+             (some-> (target-for-tag tag-name tag-type) first)))
+        (let [targets  (valid-targets card parameter)
+              field-id (params/param-target->field-id target card)
+              ref-name (target-ref-name target)]
+          (boolean
+           (or (and field-id
+                    (some #(= field-id (params/param-target->field-id (:target %) card)) targets))
+               (and ref-name
+                    (some #(= ref-name (:column-name %)) targets)))))))
+    (catch Exception e
+      (log/warnf e "Could not validate mapping target %s for card %s" (pr-str target) (:id card))
+      false)))
