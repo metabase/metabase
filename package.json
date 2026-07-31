@@ -502,7 +502,7 @@
     "generate:expression-parser": "lezer-generator --typeScript frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts",
     "generate-license-disclaimer": "node bin/generate-license-disclaimer.js",
     "cloud:dev": "bun install && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && bun run concurrently -n 'FE,BE' -c 'blue,green' 'bun run build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'",
-    "lint-boundaries": "node bin/generate-oxlint-boundaries.mjs && oxlint -c .oxlintrc.boundaries.json --max-warnings 0 enterprise/frontend frontend e2e"
+    "lint-boundaries": "oxlint -c .oxlintrc.boundaries.json --max-warnings 0 enterprise/frontend frontend e2e"
   },
   "browserslist": [
     "defaults"

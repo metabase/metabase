@@ -9,7 +9,7 @@ express.
 | Command | What it does | Whole-tree cost |
 | --- | --- | --- |
 | `bun run lint-oxlint` | 200 rules: oxlint's native Rust rules plus 10 plugins loaded through `jsPlugins` | ~8s |
-| `bun run lint-boundaries` | Module-boundary enforcement (`.oxlintrc.boundaries.json`, generated) | ~53s |
+| `bun run lint-boundaries` | Module-boundary enforcement (`.oxlintrc.boundaries.json`, standalone) | ~35s |
 | `bun run lint-format` | oxfmt (quote style, spacing, **import order**) | ~1s |
 | `bun run type-check` | tsc — undefined names, unresolved imports, duplicate params | — |
 
@@ -39,7 +39,9 @@ a `jsPlugins` one whenever both exist.
   `-storybook`, `-cypress`, `-depend`, `-no-only-tests`, `-chai-friendly`
 - two local stand-ins under `frontend/lint/`, `-ttag-scope` and `-i18next-scope`,
   each published under the namespace of the plugin it replaces
-- `.oxlintrc.boundaries.json` additionally loads `-boundaries`
+- `.oxlintrc.boundaries.json` instead loads `frontend/lint/boundaries-plugin.mjs`,
+  a wrapper that runs `eslint-plugin-boundaries` with the module graph injected
+  (see the boundaries section below)
 
 They keep working because oxlint implements the ESLint rule API: `create(context)`,
 visitor keys, esquery selectors, `node.parent`, `context.report`, `context.options`
@@ -452,14 +454,28 @@ It was originally generated from the old `eslint.config.mjs` with `@oxlint/migra
 and has since been hand-maintained. There is no longer an ESLint config to
 regenerate from, so edit `.oxlintrc.json` directly.
 
-`.oxlintrc.boundaries.json` is **generated and gitignored**. `bin/generate-oxlint-boundaries.mjs`
-builds it from `.oxlintrc.json` plus `elements` and `enforcedRules` in
-`frontend/lint/module-boundaries.mjs`, and `lint-boundaries` runs it first. It is a
-full copy rather than an `extends` because `extends` does not inherit
-`ignorePatterns`. It used to be hand-maintained and went stale silently across a
-rebase, which is the failure mode generating it removes.
+## The boundaries pass
 
-`enterprise/frontend/src/custom-viz/**` is excluded there: it carries its own empty
+`.oxlintrc.boundaries.json` is a small, **committed** standalone config that runs only
+the boundary rules (`categories.correctness` is off, so no default rules fire). It does
+not `extends` the main config, because oxlint's `extends` inherits neither
+`ignorePatterns` nor `settings` (it does inherit `rules` and `jsPlugins`).
+
+The module graph lives in `frontend/lint/module-boundaries.mjs` (`elements`,
+`enforcedRules`). It cannot go into a JSON config directly, so
+`frontend/lint/boundaries-plugin.mjs` imports it and injects it: the plugin wraps the
+`element-types` and `no-unknown-files` rules from `eslint-plugin-boundaries`, feeding
+`elements` through `context.settings` and `enforcedRules` through the rule options. Its
+`meta.name` is `boundaries`, so the rule names stay `boundaries/element-types` and
+`boundaries/no-unknown-files`. Because a JS plugin reads the graph at runtime, there is
+no generate step and the graph cannot go stale.
+
+The config restates two things the plugin cannot supply: the main config's
+`ignorePatterns` (plus `enterprise/frontend/src/custom-viz/**`) and the
+`import/resolver` setting. `bin/lint-rules-check.mjs` fails if either drifts from
+`.oxlintrc.json`.
+
+`enterprise/frontend/src/custom-viz/**` is excluded: it carries its own empty
 `.oxlintrc.json`, meaning the parent config does not apply, and passing `-c` bypasses
 nested-config discovery.
 
