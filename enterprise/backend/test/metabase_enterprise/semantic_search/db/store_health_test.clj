@@ -249,7 +249,7 @@
         (check)
         (is (= 2 @collects))))))
 
-(deftest ^:sequential pull-collector-refreshes-pgvector-metrics-on-each-instance-test
+(deftest ^:synchronized pull-collector-refreshes-pgvector-metrics-on-each-instance-test
   (let [probe-future @#'semantic.store-health/readiness-probe-future
         probe        @#'semantic.store-health/last-readiness-probe
         prior-probe  @probe
@@ -264,11 +264,12 @@
       (reset! probe-future nil)
       ;; Nothing probed yet, so the refresh is due.
       (reset! probe nil)
-      (mt/with-dynamic-fn-redefs
-        [analytics/set-gauge!                                      #(swap! gauge-calls conj (vec %&))
-         semantic.store-health/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
-         semantic.store-health/submit-pgvector-readiness-refresh!  #(do (swap! submitted conj %)
-                                                                        (future (deref hold 10000 ::hung)))]
+      ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+      (with-redefs
+       [analytics/set-gauge!                                      #(swap! gauge-calls conj (vec %&))
+        semantic.store-health/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
+        semantic.store-health/submit-pgvector-readiness-refresh!  #(do (swap! submitted conj %)
+                                                                       (future (deref hold 10000 ::hung)))]
         ((:f collector))
         ((:f collector))
         (is (= 1 (count @submitted)) "overlapping scrapes share one local refresh")
