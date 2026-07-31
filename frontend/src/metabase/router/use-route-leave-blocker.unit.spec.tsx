@@ -263,6 +263,51 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
   });
 });
 
+// react-router keeps one pending navigation, so a navigation attempted while a
+// prompt is up replaces the one the prompt is about. The dashboard does exactly
+// that: saving from the leave-confirm modal re-syncs its own URL before the
+// answer comes back.
+describe("useRouteLeaveBlocker when another navigation arrives meanwhile", () => {
+  const setupThreeRoutes = () => {
+    const { history } = renderWithProviders(
+      <Route path="/">
+        <Route path="a" element={<Guard />} />
+        <Route path="b" element={<span>page b</span>} />
+        <Route path="c" element={<span>page c</span>} />
+      </Route>,
+      { withRouter: true, initialRoute: "/a" },
+    );
+
+    return { history: checkNotNull(history) };
+  };
+
+  it("resumes the destination the guard was prompted about, not the later one", async () => {
+    shouldBlock.mockReturnValue(true);
+    const { history } = setupThreeRoutes();
+
+    act(() => history.push("/b"));
+    expect(screen.getByTestId("blocked-pathname")).toHaveTextContent("/b");
+
+    act(() => history.replace("/c"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(await screen.findByText("page b")).toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe("/b");
+  });
+
+  it("keeps prompting about the original destination", () => {
+    shouldBlock.mockReturnValue(true);
+    const { history } = setupThreeRoutes();
+
+    act(() => history.push("/b"));
+    act(() => history.replace("/c"));
+
+    expect(screen.getByTestId("blocked-pathname")).toHaveTextContent("/b");
+    expect(history.getCurrentLocation().pathname).toBe("/a");
+  });
+});
+
 // A guard registers with the provider above it, which only a mounted router
 // supplies. Without one it registers nowhere, so it cannot hold a navigation it
 // has no way to release.
