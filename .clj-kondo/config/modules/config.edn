@@ -810,7 +810,6 @@
            collections
            events
            models
-           permissions
            public-sharing
            queries
            query-permissions

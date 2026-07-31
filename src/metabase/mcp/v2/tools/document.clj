@@ -8,6 +8,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
@@ -16,10 +17,114 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Smart links ---------------------------------------------------
+
+;; Parsing a `{% entity %}` token yields a smartLink with only its `entityId`/`model`; filling in
+;; the `label`/`href` the editor displays means reading the referenced row, which is a permission
+;; decision. That is why it happens here and not in [[metabase.documents.markdown]] — that
+;; namespace stays pure data, and the `documents` module stays clear of a `permissions` dependency
+;; that would pull every documents change into the driver test suite.
+
+(def ^:private smart-link-model->db-model
+  {"card"       :model/Card
+   "dataset"    :model/Card
+   "metric"     :model/Card
+   "dashboard"  :model/Dashboard
+   "collection" :model/Collection
+   "table"      :model/Table
+   "database"   :model/Database
+   "document"   :model/Document
+   "user"       :model/User})
+
+(defn- smart-link-href
+  [model {:keys [id db_id]}]
+  (case model
+    "card"       (str "/question/" id)
+    "dataset"    (str "/model/" id)
+    "metric"     (str "/metric/" id)
+    "dashboard"  (str "/dashboard/" id)
+    "collection" (str "/collection/" id)
+    "document"   (str "/document/" id)
+    "database"   (str "/browse/databases/" id)
+    "table"      (str "/question#?db=" db_id "&table=" id)
+    "/"))
+
+(defn- smart-link-label
+  [row]
+  (or (:display_name row)
+      (:name row)
+      (:common_name row)
+      (not-empty (str/trim (str (:first_name row) " " (:last_name row))))))
+
+(defn- smart-link-readable?
+  "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
+  a [[mi/can-read?]] implementation to defer to.
+
+  `:model/User` has none, so a user's name follows the mention picker's visibility rule instead
+  (see `filter-clauses` in [[metabase.users.models.user]]): a sandboxed or impersonated caller
+  resolves nobody but themselves, and everyone else resolves any user — non-admins are already
+  handed other people's names to populate subscription recipients. The internal user is not
+  filtered out the way the picker does it; a system account's name is noise, not a permission
+  boundary, and `:type` isn't among `:model/User`'s default fields to test cheaply."
+  [model row]
+  (if (= "user" model)
+    (or (= (:id row) api/*current-user-id*)
+        (not (perms/sandboxed-or-impersonated-user?)))
+    (mi/can-read? row)))
+
+(defn- smart-link-rows
+  "`{[model id] row}` for every distinct smart-link target among `links` the current user may
+  see, one query per referenced model. A target the caller can't read is left out, so it is
+  indistinguishable from one that doesn't exist and its name never crosses the permission
+  boundary — the caller's write check on the *document* does not extend to whatever the
+  document happens to point at."
+  [links]
+  (into {}
+        (mapcat (fn [[model model-links]]
+                  (let [db-model (smart-link-model->db-model model)
+                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
+                        rows     (when db-model
+                                   (try
+                                     (filterv #(smart-link-readable? model %)
+                                              (t2/select db-model :id [:in ids]))
+                                     (catch Exception e
+                                       (log/warnf e "smart link lookup failed for %s" model)
+                                       nil)))]
+                    (for [row rows]
+                      [[model (:id row)] row]))))
+        (group-by #(get-in % [:attrs :model]) links)))
+
+(defn- resolve-smart-links!
+  "Fill `:label`/`:href` on every smartLink node in `ast` from its target row. An id that doesn't
+  resolve — because nothing has it or because the current user can't read what does — keeps the
+  node with the defaults `parse` gave it and logs a warning: bad content, not a write error."
+  [ast]
+  (let [links (->> (tree-seq :content :content ast)
+                   (filter #(= "smartLink" (:type %))))]
+    (if (empty? links)
+      ast
+      (let [rows (smart-link-rows links)]
+        (walk/postwalk
+         (fn [node]
+           (if (and (map? node) (= "smartLink" (:type node)))
+             (let [{:keys [entityId model]} (:attrs node)]
+               (if-let [row (get rows [model entityId])]
+                 (update node :attrs assoc
+                         :label (smart-link-label row)
+                         :href (smart-link-href model row))
+                 (do
+                   (when (smart-link-model->db-model model)
+                     (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
+                   node)))
+             node))
+         ast)))))
 
 (defn- ast-id-set
   [ast]
@@ -175,7 +280,7 @@
     (common/throw-teaching-error "archived only applies to method: \"update\" — a new document is never archived."))
   (let [collection-id (common/resolve-collection-id (:collection_id args))]
     (api/create-check :model/Document {:collection_id collection-id})
-    (let [ast (documents/parse content_markdown)]
+    (let [ast (resolve-smart-links! (documents/parse content_markdown))]
       (check-card-embeds! ast nil)
       (let [created (documents/create-document! {:name                name
                                                  :document            ast
@@ -206,11 +311,14 @@
       (let [old-ids (ast-id-set (:document existing))
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document
             ;; column is left entirely alone below.
-            new-ast (cond
-                      ;; Full rewrite: everything re-parses, nothing keeps its node id, so
-                      ;; every anchored comment thread is reported orphaned below.
-                      content_markdown (documents/parse content_markdown)
-                      (seq edits)      (reduce apply-edit (:document existing) edits))
+            ;; Resolved once on the finished AST rather than per splice: fewer queries, and it
+            ;; picks up a link any of the edits introduced.
+            new-ast (some-> (cond
+                              ;; Full rewrite: everything re-parses, nothing keeps its node id, so
+                              ;; every anchored comment thread is reported orphaned below.
+                              content_markdown (documents/parse content_markdown)
+                              (seq edits)      (reduce apply-edit (:document existing) edits))
+                            resolve-smart-links!)
             _       (when new-ast
                       (check-card-embeds! new-ast (:id existing)))
             body    (cond-> {}

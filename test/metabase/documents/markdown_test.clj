@@ -3,10 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.documents.markdown :as md]
-   [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.documents.markdown :as md]))
 
 (set! *warn-on-reflection* true)
 
@@ -441,42 +438,6 @@
     (let [reparsed (md/parse "x {% entity id=\"987654321\" model=\"dashboard\" %} y")]
       (is (= {:entityId 987654321 :model "dashboard" :label nil :href "/"}
              (get-in reparsed [:content 0 :content 1 :attrs]))))))
-
-(defn- smart-link-attrs
-  [markdown]
-  (->> (tree-seq :content :content (md/parse markdown))
-       (keep #(when (= "smartLink" (:type %)) (:attrs %)))
-       vec))
-
-(deftest smart-link-resolution-is-permission-checked-test
-  (testing "an entity token pointing at content the caller can't read resolves to nothing, so its
-           name never crosses the permission boundary (a document writer must not be able to use
-           smart links to enumerate the names of content they have no access to)"
-    (mt/with-temp [:model/Collection {secret-id :id}   {:name "Top Secret Collection"}
-                   :model/Dashboard  {hidden-id :id}   {:name "CONFIDENTIAL Layoffs" :collection_id secret-id}
-                   :model/Collection {open-id :id}     {:name "Shared Reports"}
-                   :model/Card       {readable-id :id} {:name "Open Question" :collection_id open-id}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
-      (mt/with-current-user (mt/user->id :rasta)
-        (testing "an unreadable target is indistinguishable from a dangling id"
-          (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
-                  {:entityId secret-id :model "collection" :label nil :href "/"}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
-                                           hidden-id secret-id)))))
-        (testing "a readable target still resolves its label and href"
-          (is (= [{:entityId readable-id :model "card" :label "Open Question"
-                   :href (str "/question/" readable-id)}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
-        (testing "user mentions still resolve — :model/User has no can-read? and a name is not gated
-                 outside sandboxing, so the mention picker's behaviour is preserved"
-          (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"user\" %%}" (mt/user->id :crowberto)))))))
-      (testing "an admin resolves what a non-admin could not"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
-                   :href (str "/dashboard/" hidden-id)}]
-                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%}" hidden-id)))))))))
 
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
 

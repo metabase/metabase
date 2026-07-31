@@ -49,17 +49,16 @@
   boundary whitespace inside a bold/italic run moves outside the mark; and spaces in link
   hrefs percent-encode to `%20`.
 
-  Structural conversion here takes and returns plain data. The one exception is the
-  display-name/href lookup `parse` runs for `{% entity %}` tokens, which reads the referenced
-  row and so is permission-checked against the current user — see [[smart-link-readable?]]."
+  This namespace takes and returns plain data and touches no database. A `{% entity %}` token
+  parses to a smartLink carrying only its `entityId`/`model`, with `label`/`href` left at their
+  defaults; resolving those means reading the referenced row, which is a permission decision, so
+  it belongs to the caller — see `resolve-smart-links!` in
+  [[metabase.mcp.v2.tools.document]]. Keeping it there also keeps the `documents` module clear of
+  a dependency on `permissions`, which would drag every documents change into the driver test
+  suite."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [metabase.api.common :as api]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
                              HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline
@@ -125,90 +124,6 @@
    "database"   :model/Database
    "document"   :model/Document
    "user"       :model/User})
-
-(defn- smart-link-href
-  [model {:keys [id db_id]}]
-  (case model
-    "card"       (str "/question/" id)
-    "dataset"    (str "/model/" id)
-    "metric"     (str "/metric/" id)
-    "dashboard"  (str "/dashboard/" id)
-    "collection" (str "/collection/" id)
-    "document"   (str "/document/" id)
-    "database"   (str "/browse/databases/" id)
-    "table"      (str "/question#?db=" db_id "&table=" id)
-    "/"))
-
-(defn- smart-link-label
-  [row]
-  (or (:display_name row)
-      (:name row)
-      (:common_name row)
-      (not-empty (str/trim (str (:first_name row) " " (:last_name row))))))
-
-(defn- smart-link-readable?
-  "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to.
-
-  `:model/User` has none, so a user's name follows the mention picker's visibility rule instead
-  (see `filter-clauses` in [[metabase.users.models.user]]): a sandboxed or impersonated caller
-  resolves nobody but themselves, and everyone else resolves any user — non-admins are already
-  handed other people's names to populate subscription recipients. The internal user is not
-  filtered out the way the picker does it; a system account's name is noise, not a permission
-  boundary, and `:type` isn't among `:model/User`'s default fields to test cheaply."
-  [model row]
-  (if (= "user" model)
-    (or (= (:id row) api/*current-user-id*)
-        (not (perms/sandboxed-or-impersonated-user?)))
-    (mi/can-read? row)))
-
-(defn- smart-link-rows
-  "`{[model id] row}` for every distinct smart-link target among `links` the current user may
-  see, one query per referenced model. A target the caller can't read is left out, so it is
-  indistinguishable from one that doesn't exist and its name never crosses the permission
-  boundary — the caller's write check on the *document* does not extend to whatever the
-  document happens to point at."
-  [links]
-  (into {}
-        (mapcat (fn [[model model-links]]
-                  (let [db-model (smart-link-model->db-model model)
-                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
-                        rows     (when db-model
-                                   (try
-                                     (filterv #(smart-link-readable? model %)
-                                              (t2/select db-model :id [:in ids]))
-                                     (catch Exception e
-                                       (log/warnf e "smart link lookup failed for %s" model)
-                                       nil)))]
-                    (for [row rows]
-                      [[model (:id row)] row]))))
-        (group-by #(get-in % [:attrs :model]) links)))
-
-(defn- resolve-smart-links
-  "Fill `:label`/`:href` on every smartLink node in `content` from its target row. An id that
-  doesn't resolve — because nothing has it or because the current user can't read what does —
-  keeps the node with its default label/href and logs a warning: bad content, not a parse
-  error."
-  [content]
-  (let [links (->> (tree-seq :content :content {:content content})
-                   (filter #(= "smartLink" (:type %))))]
-    (if (empty? links)
-      content
-      (let [rows (smart-link-rows links)]
-        (walk/postwalk
-         (fn [node]
-           (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:keys [entityId model]} (:attrs node)]
-               (if-let [row (get rows [model entityId])]
-                 (update node :attrs assoc
-                         :label (smart-link-label row)
-                         :href (smart-link-href model row))
-                 (do
-                   (when (smart-link-model->db-model model)
-                     (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
-                   node)))
-             node))
-         content)))))
 
 ;;; ------------------------------------------------ Token grammar -------------------------------------------------
 
@@ -667,7 +582,7 @@
 (defn- parse-content
   [markdown-string]
   (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
-    (resolve-smart-links (into [] (mapcat segment->nodes) segments))))
+    (into [] (mapcat segment->nodes) segments)))
 
 (defn- wrap-loose-embeds
   "Give every top-level `cardEmbed`/`flexContainer` its `resizeNode` wrapper. A chart's height

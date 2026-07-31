@@ -2,6 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.documents.core :as documents]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as v2.content]
    [metabase.mcp.v2.tools.document :as v2.document]
@@ -23,6 +26,13 @@
       (get-in [:content 0 :text])
       json/decode+kw))
 
+(defn- orders-query
+  "A Lib query over ORDERS — a runnable `:dataset_query` for fixtures that only need the card to
+   have one. Lib rather than `mt/mbql-query`, which is deprecated since 0.61.0."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
 (defn- with-tool-documents
   "Call `f` with a `created!` fn that records a payload's document id for cleanup; deletes the
    recorded documents (with their comments and owned cards) afterward. Documents made through
@@ -43,7 +53,7 @@
 
 (deftest create-clones-card-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
-                                            :dataset_query (mt/mbql-query orders)}]
+                                            :dataset_query (orders-query)}]
     (mt/with-current-user (mt/user->id :crowberto)
       (with-tool-documents
         (fn [created!]
@@ -73,7 +83,7 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Card {card-id :id} {:name          "Hidden"
                                             :collection_id coll-id
-                                            :dataset_query (mt/mbql-query orders)}]
+                                            :dataset_query (orders-query)}]
     (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
     (mt/with-current-user (mt/user->id :rasta)
       (testing "an unreadable card collapses into the same not-found error as a missing one"
@@ -187,6 +197,65 @@
   (let [result (registry/call-tool nil "test-session" "document_write" args)]
     (when (:isError result)
       (-> result :content first :text))))
+
+(defn- written-smart-link-attrs
+  "The smartLink attrs of a document written through the tool, read back from the stored AST — the
+   `label`/`href` an editor would render. Goes through the tool rather than `md/parse` because
+   resolving those is a permission decision and so lives in the tool, not in the Markdown layer."
+  [created! body]
+  (let [payload (created! (call {:method "create" :name "smart link probe" :content_markdown body}))]
+    (->> (tree-seq :content :content (t2/select-one-fn :document :model/Document :id (:id payload)))
+         (keep #(when (= "smartLink" (:type %)) (:attrs %)))
+         vec)))
+
+(deftest smart-link-resolution-is-permission-checked-test
+  (testing "an entity token pointing at content the caller can't read resolves to nothing, so its
+           name never crosses the permission boundary — a document writer must not be able to use
+           smart links to enumerate the names of content they have no access to"
+    (mt/with-temp [:model/Collection {secret-id :id}   {:name "Top Secret Collection"}
+                   :model/Dashboard  {hidden-id :id}   {:name "CONFIDENTIAL Layoffs" :collection_id secret-id}
+                   :model/Collection {open-id :id}     {:name "Shared Reports"}
+                   :model/Card       {readable-id :id} {:name          "Open Question"
+                                                        :collection_id open-id
+                                                        :dataset_query (orders-query)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+      (with-tool-documents
+        (fn [created!]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "an unreadable target is indistinguishable from a dangling id"
+              (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
+                      {:entityId secret-id :model "collection" :label nil :href "/"}]
+                     (written-smart-link-attrs
+                      created!
+                      (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                              hidden-id secret-id)))))
+            (testing "a readable target still resolves its label and href"
+              (is (= [{:entityId readable-id :model "card" :label "Open Question"
+                       :href (str "/question/" readable-id)}]
+                     (written-smart-link-attrs created!
+                                               (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
+            (testing "user mentions still resolve — :model/User has no can-read? and a name is not
+                     gated outside sandboxing, so the mention picker's behaviour is preserved"
+              (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
+                     (written-smart-link-attrs created!
+                                               (format "{%% entity id=\"%d\" model=\"user\" %%}"
+                                                       (mt/user->id :crowberto)))))))
+          (testing "an admin resolves what a non-admin could not"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
+                       :href (str "/dashboard/" hidden-id)}]
+                     (written-smart-link-attrs created!
+                                               (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
+                                                       hidden-id)))))))))))
+
+(deftest smart-link-labels-are-not-resolved-by-the-markdown-layer-test
+  (testing "parse leaves label/href at their defaults — the Markdown namespace performs no lookup,
+           which is what keeps the documents module free of a permissions dependency"
+    (is (= [{:entityId 1 :model "dashboard" :label nil :href "/"}]
+           (->> (tree-seq :content :content (documents/parse "see {% entity id=\"1\" model=\"dashboard\" %}"))
+                (keep #(when (= "smartLink" (:type %)) (:attrs %)))
+                vec)))))
 
 (deftest rejected-argument-values-are-teaching-errors-test
   (testing "an argument the tool accepts but the write path cannot use must come back as an error
