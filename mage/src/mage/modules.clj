@@ -104,6 +104,7 @@
      channel
      classloader
      collections
+     comments
      config
      content-verification
      custom-viz-plugin

@@ -459,8 +459,14 @@
           (is (nil? (:error row)))
           (testing "rendered as real Markdown, not the flattened-text fallback"
             (is (str/includes? (str (:markdown row)) "> buried"))))))
-    (testing "past that ceiling the write is refused outright, so no such document exists to read"
-      (is (thrown? Exception
+    (testing "past that ceiling the write does not succeed, so no such document exists to read"
+      ;; Throwable, not Exception: which mechanism stops the write depends on how much stack the
+      ;; running thread has. The JSON nesting limit raises an ordinary exception, but on a smaller
+      ;; stack — CI's parallel test threads, say — a recursive walk over the body can overflow
+      ;; first, and a StackOverflowError is an Error. Either outcome satisfies what this pins,
+      ;; which is that the write does not land; asserting one of them made the test
+      ;; environment-dependent.
+      (is (thrown? Throwable
                    (mt/with-temp [:model/Document _ {:document     (deeply-nested-ast 600)
                                                      :content_type "application/json+vnd.prose-mirror"}]
                      nil))))))
