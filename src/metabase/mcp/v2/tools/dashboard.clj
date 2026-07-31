@@ -359,9 +359,7 @@
     [:maybe [:sequential {:description "Editor operations, applied in order as one atomic save."} op-schema]]]])
 
 (def ^:private dashboard-write-entry
-  {:tool-name       "dashboard_write"
-   :update-scope    metabot.scope/agent-dashboard-update
-   :create-required [:name]})
+  {:create-required [:name]})
 
 ;;; ------------------------------------------------- Handler ------------------------------------------------------
 
@@ -419,44 +417,48 @@
   clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on every referenced card."
   {:name         "dashboard_write"
-   :scope        metabot.scope/agent-dashboard-create
-   :update-scope metabot.scope/agent-dashboard-update
+   :scope        metabot.scope/agent-dashboard-write
+   ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
+   ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
+   ;; would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
-  (let [dispatched (common/dispatch-write dashboard-write-entry token-scopes args)]
+  (let [dispatched (common/dispatch-write dashboard-write-entry args)]
     (common/success-content
-     (projections/project
-      :dashboard :concise
-      (case (first dispatched)
-        :create
-        (let [[_ body]       dispatched
-              attrs          (dashboard-attrs body)
-              ops            (:ops body)
-              validate-only? (boolean (:validate_only body))]
-          (when (contains? body :archived)
-            (common/throw-teaching-error
-             "`archived` applies to method \"update\" only — remove it from this create call."))
-          (cond
-            validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
-            (seq ops)      (do
-                             ;; Compile before creating anything, so a bad op can't leave an
-                             ;; orphaned empty dashboard behind for a retry to duplicate. A new
-                             ;; dashboard is empty by definition, so compiling against a blank
-                             ;; checks everything the post-create compile would.
-                             (apply-ops! (blank-dashboard attrs) ops attrs true)
-                             (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
-                                                     [:dashcards :series :card] :tabs)
-                                         ops {} false))
-            :else          (saved-row (:id (dashboards.write/create-dashboard! attrs)))))
+     (common/readback token-scopes [metabot.scope/agent-resource-read]
+                      (projections/project
+                       :dashboard :concise
+                       (case (first dispatched)
+                         :create
+                         (let [[_ body]       dispatched
+                               attrs          (dashboard-attrs body)
+                               ops            (:ops body)
+                               validate-only? (boolean (:validate_only body))]
+                           (when (contains? body :archived)
+                             (common/throw-teaching-error
+                              "`archived` applies to method \"update\" only — remove it from this create call."))
+                           (cond
+                             validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
+                             (seq ops)      (do
+                                              ;; Compile before creating anything, so a bad op can't leave an
+                                              ;; orphaned empty dashboard behind for a retry to duplicate. A new
+                                              ;; dashboard is empty by definition, so compiling against a blank
+                                              ;; checks everything the post-create compile would.
+                                              (apply-ops! (blank-dashboard attrs) ops attrs true)
+                                              (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
+                                                                      [:dashcards :series :card] :tabs)
+                                                          ops {} false))
+                             :else          (saved-row (:id (dashboards.write/create-dashboard! attrs)))))
 
-        :update
-        (let [[_ id body]    dispatched
-              dash           (fetch-dashboard id)
-              attrs          (dashboard-attrs body)
-              ops            (:ops body)
-              validate-only? (boolean (:validate_only body))]
-          (cond
-            (seq ops)      (apply-ops! dash ops attrs validate-only?)
-            validate-only? (do (validate-payload! attrs)
-                               (dry-run-row dash attrs nil nil))
-            :else          (saved-row (:id (dashboards.write/update-dashboard! (:id dash) attrs))))))))))
+                         :update
+                         (let [[_ id body]    dispatched
+                               dash           (fetch-dashboard id)
+                               attrs          (dashboard-attrs body)
+                               ops            (:ops body)
+                               validate-only? (boolean (:validate_only body))]
+                           (cond
+                             (seq ops)      (apply-ops! dash ops attrs validate-only?)
+                             validate-only? (do (validate-payload! attrs)
+                                                (dry-run-row dash attrs nil nil))
+                             :else          (saved-row (:id (dashboards.write/update-dashboard! (:id dash) attrs)))))))))))

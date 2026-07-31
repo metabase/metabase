@@ -31,6 +31,23 @@
       (is (contains? (set (oauth-server/supported-scopes)) "mb:full"))
       (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full"))))))
 
+(deftest advertised-scopes-are-distinct-test
+  (testing "GHY-4151: scopes_supported is a set of scope strings (RFC 8414) — it unions the default
+            grant with the opt-in scopes, so a scope declared in both buckets would be advertised
+            twice. Duplicates also mean a mandatory scope was filed as opt-in."
+    (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
+                               "protected-resource"   (oauth-server/protected-resource-scopes)}]
+      (testing metadata
+        (is (= (count (distinct scopes)) (count scopes))
+            (str "duplicate scopes: "
+                 (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec)))))))
+
+(deftest document-create-scope-is-in-the-default-grant-test
+  (testing "GHY-4151: duplicate_content hard-requires agent:document:create for type \"document\",
+            and no other v2 tool carries that scope — so if it ever leaves the default grant, a
+            dynamically-registered client can list the tool and then 403 on every document copy"
+    (is (contains? (set (oauth-server/all-agent-scopes)) "agent:document:create"))))
+
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

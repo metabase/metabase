@@ -3,7 +3,6 @@
    tool calls to existing agent API endpoints."
   (:require
    [clojure.core.async :as a]
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
    [metabase.ai-tracing.core :as ait]
@@ -13,6 +12,7 @@
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -164,26 +164,6 @@
     (generate-manifest)
     @manifest-delay))
 
-(def ^:private extension-labels
-  "Human-readable labels for required-extension keywords in tool-call error messages."
-  {:mcp-app-ui "MCP Apps UI"})
-
-(defn- supported-extensions
-  [{:keys [supports-mcp-ui?]}]
-  (if supports-mcp-ui?
-    #{:mcp-app-ui}
-    #{}))
-
-(defn- missing-required-extensions
-  [tool supported-extensions]
-  (seq (set/difference (:required-extensions tool #{}) supported-extensions)))
-
-(defn- missing-extensions-error
-  [tool-name missing-extensions]
-  (let [extension-names (str/join ", " (map #(get extension-labels % (name %)) missing-extensions))]
-    (str tool-name " requires a client that supports " extension-names ". "
-         "Reconnect from a client that advertises text/html;profile=mcp-app.")))
-
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
@@ -191,10 +171,10 @@
    (list-tools token-scopes {:supports-mcp-ui? true}))
   ([token-scopes options]
    (let [{:keys [tools]} (manifest)
-         supported       (supported-extensions options)]
+         supported       (mcp.ui-resource/supported-extensions options)]
      (into []
            (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
-                 (remove #(missing-required-extensions % supported))
+                 (remove #(mcp.ui-resource/missing-required-extensions % supported))
                  (map (fn [tool]
                         (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
            (concat tools (mcp.resources/list-ui-tools))))))
@@ -503,18 +483,18 @@
    or error content on failure. The instrumented [[call-tool]] wraps this."
   [token-scopes session-id tool-name arguments options]
   (let [arguments (drop-nil-args arguments)
-        supported (supported-extensions options)]
+        supported (mcp.ui-resource/supported-extensions options)]
     (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
       (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
         (error-content (str "Insufficient scope to call tool: " tool-name) error-code-invalid-request)
-        (if-let [missing-extensions (missing-required-extensions ui-tool supported)]
-          (error-content (missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
+        (if-let [missing-extensions (mcp.ui-resource/missing-required-extensions ui-tool supported)]
+          (error-content (mcp.ui-resource/missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
           ((:response-fn ui-tool) arguments {:session-id session-id})))
       (if-let [tool-def (get (tool-index) tool-name)]
         (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
           (error-content (str "Insufficient scope to call tool: " tool-name) error-code-invalid-request)
-          (if-let [missing-extensions (missing-required-extensions tool-def supported)]
-            (error-content (missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
+          (if-let [missing-extensions (mcp.ui-resource/missing-required-extensions tool-def supported)]
+            (error-content (mcp.ui-resource/missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
             (let [arguments (if (tools-accepting-query-handle tool-name)
                               (resolve-query-arg session-id tool-name arguments)
                               arguments)]

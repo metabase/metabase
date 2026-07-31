@@ -14,7 +14,8 @@
 
 (p/import-vars
  [metabase.documents.api.document
-  add-card-to-document!]
+  add-card-to-document!
+  copy-document!]
  [metabase.documents.markdown
   parse
   serialize

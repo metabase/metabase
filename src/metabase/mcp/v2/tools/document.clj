@@ -16,6 +16,7 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -72,32 +73,68 @@
   (let [s (str s)]
     (pr-str (if (> (count s) 80) (str (subs s 0 77) "…") s))))
 
+(def ^:private max-replace-all-work
+  "Ceiling on `matches × document-KB` for one `replace_all`, the product that sets its cost: each
+  occurrence is spliced separately and every splice re-serializes the whole document, so the work is
+  quadratic in a document's size once `old_str` is short enough to appear throughout it.
+
+  Measured at roughly 0.03ms per match·KB, so this caps a single call near 600ms. Real edits are
+  orders of magnitude under — renaming a term appearing 30 times in a 50KB document is 1,500 — while
+  the shape this exists to stop, a one-character `old_str` on a 64KB document, prices at ~460,000 and
+  took ~14s before the ceiling existed. Left unbounded it grows with document size: an 85-byte
+  request against a 1MB document buys about an hour of one thread."
+  20000)
+
+(defn- replace-all-work
+  "`matches × document-KB` for `old_str` against `markdown` — the cost estimate
+  [[max-replace-all-work]] bounds. Sub-KB documents price at zero, which is correct: they are cheap
+  however many matches they hold."
+  [^String markdown matches]
+  (long (* (count matches) (/ (count markdown) 1024.0))))
+
 (defn- replace-all
   "Splice every occurrence of `old_str`, right-to-left so a replacement containing `old_str`
   is never re-matched, re-serializing between splices so each offset is taken against the
   AST it applies to. Re-parsing a touched block can shift text before it, so when `new_str`
   cannot reintroduce `old_str` the bound resets and the sweep repeats until no occurrence
   remains; an iteration cap turns any pathological non-convergence into a teaching error
-  rather than a silent miss."
+  rather than a silent miss.
+
+  Refuses up front when the call prices past [[max-replace-all-work]]. Pricing it costs one
+  serialization rather than one per match, so an over-budget call is rejected without doing any of
+  the work being rejected."
   [ast old_str new_str]
   (let [self-matching? (str/includes? new_str old_str)
-        max-iterations (+ 100 (* 2 (count (match-indexes (:markdown (documents/serialize ast)) old_str))))]
-    (loop [ast ast, bound Long/MAX_VALUE, iterations 0]
-      (when (> iterations max-iterations)
+        first-ser      (documents/serialize ast)
+        first-matches  (match-indexes (:markdown first-ser) old_str)
+        work           (replace-all-work (:markdown first-ser) first-matches)]
+    (when (> work max-replace-all-work)
+      (common/throw-teaching-error
+       (format (str "replace_all for old_str %s would rewrite %d matches across a %dKB document, which is more "
+                    "work than one call can do. Extend old_str with surrounding context so it matches fewer "
+                    "places and repeat, or replace the whole body with content_markdown, which rewrites it in "
+                    "a single pass — note that a full rewrite re-creates every block, so comment threads "
+                    "anchored to the body are orphaned.")
+               (snippet old_str)
+               (count first-matches)
+               (quot (count (:markdown first-ser)) 1024))))
+    ;; The pricing serialization above doubles as the first iteration's, so bounding the work costs
+    ;; nothing on an in-budget call. `splice` reuses a serialization only when it is of the very AST
+    ;; being spliced, so each recur re-serializes the AST it produced.
+    (loop [ast ast, ser first-ser, bound Long/MAX_VALUE, iterations 0]
+      (when (> iterations (+ 100 (* 2 (count first-matches))))
         (common/throw-teaching-error
          (format "replace_all could not converge for old_str %s — the replacement keeps re-creating text that matches. Use distinct old_str/new_str pairs or edit the surrounding blocks individually."
                  (snippet old_str))))
-      (let [ser     (documents/serialize ast)
-            matches (match-indexes (:markdown ser) old_str)
+      (let [matches (match-indexes (:markdown ser) old_str)
             idx     (last (filter #(< % bound) matches))]
         (cond
           (some? idx)
-          (recur (documents/splice ast ser idx (+ idx (count old_str)) new_str)
-                 (long idx)
-                 (inc iterations))
+          (let [spliced (documents/splice ast ser idx (+ idx (count old_str)) new_str)]
+            (recur spliced (documents/serialize spliced) (long idx) (inc iterations)))
 
           (and (not self-matching?) (seq matches))
-          (recur ast Long/MAX_VALUE (inc iterations))
+          (recur ast ser Long/MAX_VALUE (inc iterations))
 
           :else ast)))))
 
@@ -205,23 +242,27 @@
               [:old_str :string]
               [:new_str :string]
               [:replace_all {:optional true} [:maybe :boolean]]]]]]
-   [:collection_id {:optional true} [:maybe [:or :int :string]]]
-   [:collection_position {:optional true} [:maybe :int]]
+   ;; Numeric ids and positions are positive here, matching what the model layer enforces. Declared
+   ;; loosely they pass validation and then fail a `mu/defn` schema deeper in, which the caller only
+   ;; ever sees as the sanitized "Internal error" — a rejection that names the constraint is the
+   ;; whole value of declaring it.
+   ;; Kept as an `:or` so the generated JSON schema still shows both accepted shapes, which is what
+   ;; the agent reads. The humanized message lists each branch rather than one sentence; an
+   ;; `:error/message` on the `:or` itself is ignored by Malli's humanizer.
+   [:collection_id {:optional true} [:maybe [:or ms/PositiveInt :string]]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:archived {:optional true} [:maybe :boolean]]])
 
 (registry/deftool document-write-tool
   "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (\"root\" or omit for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). The response lists orphaned_comment_threads. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
-  {:name         "document_write"
-   :scope        metabot.scope/agent-document-create
-   :update-scope metabot.scope/agent-document-update
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         document-write-args-schema}
-  [args {:keys [token-scopes]}]
+  {:name        "document_write"
+   :scope       metabot.scope/agent-document-write
+   :annotations {:readOnlyHint false :destructiveHint false}
+   :args        document-write-args-schema}
+  [args _context]
   (let [[op a b] (common/dispatch-write
-                  {:tool-name       "document_write"
-                   :update-scope    metabot.scope/agent-document-update
-                   :create-required [:name :content_markdown]}
-                  token-scopes args)
+                  {:create-required [:name :content_markdown]}
+                  args)
         payload  (case op
                    :create (create! a)
                    :update (update! a b))]

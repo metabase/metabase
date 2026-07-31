@@ -3,7 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.documents.markdown :as md]))
+   [metabase.documents.markdown :as md]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -178,6 +181,66 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"height must be a number"
                           (md/parse "::: resize {height=99999999999999999999}\n{% card id=1 %}\n:::")))))
 
+;;; ------------------------------------------------ Nesting depth -------------------------------------------------
+
+(defn- deeply-nested-markdown
+  "Markdown nested `n` levels deep by each structure whose conversion recurses. Every one of these
+   overflowed the stack before a depth bound existed, at inputs as small as 8KB. Deep bullet lists
+   are deliberately absent: past four columns CommonMark reads the indentation as a code block
+   rather than a deeper list, so they cannot actually nest — and blockquotes already exercise the
+   same `convert-block` recursion a list would."
+  [n]
+  {"container fences" (str (apply str (repeat n "::: flex\n")) (apply str (repeat n ":::\n")))
+   "blockquotes"      (str (apply str (repeat n "> ")) "hi")
+   ;; This one overflows inside flexmark itself, before any of our conversion runs, so only a
+   ;; StackOverflowError backstop can turn it into an error response.
+   "emphasis runs"    (str (apply str (repeat n "*")) "x" (apply str (repeat n "*")))})
+
+(defn- parse-outcome
+  "`:parsed`, or the ex-data of the teaching error, or `:stack-overflow`. Deliberately not
+   `thrown-with-msg?`: a StackOverflowError is an Error rather than an ExceptionInfo, so it would
+   sail straight through that assertion — the distinction between the two is the whole point here."
+  [markdown]
+  (try (md/parse markdown)
+       :parsed
+       (catch clojure.lang.ExceptionInfo e (assoc (ex-data e) ::message (ex-message e)))
+       (catch StackOverflowError _ :stack-overflow)))
+
+(deftest ^:parallel deep-nesting-is-a-teaching-error-not-a-stack-overflow-test
+  (testing "input nested far past anything a document can express is refused with a 400 naming the
+           problem. A StackOverflowError would be worse than a poor message: it is an Error, so it
+           slips past the `catch Exception` that sanitizes every MCP tool failure and reaches the
+           client as an unhandled 500. Note the exact depth at which the stack gives out shifts with
+           the caller's own frame depth, so the bound — not the overflow — has to be what rejects
+           these."
+    (doseq [[label markdown] (deeply-nested-markdown 4000)]
+      (testing label
+        (let [outcome (parse-outcome markdown)]
+          (is (= 400 (:status-code outcome))
+              (format "%s should be a 400 teaching error, got %s" label (pr-str outcome)))
+          ;; Without this the container case would pass on its content-model error alone, which
+          ;; says nothing about whether a depth bound exists.
+          (is (re-find #"(?i)nest|deep" (str (::message outcome)))
+              (format "%s should name nesting depth as the problem, got %s"
+                      label (pr-str (::message outcome)))))))))
+
+(deftest ^:parallel legitimate-nesting-still-round-trips-test
+  (testing "the bound sits far above anything a real document holds, so ordinary nesting is
+           untouched. Layout containers are checked at their true maximum — resize > flex >
+           supporting is as deep as the content model allows — rather than at an arbitrary depth,
+           which would be rejected for violating the content model and prove nothing."
+    (doseq [[label markdown] {"blockquotes"     (str (apply str (repeat 20 "> ")) "hi")
+                              "emphasis runs"   (str (apply str (repeat 20 "*")) "x" (apply str (repeat 20 "*")))
+                              "container stack" (str "::: resize {height=442 minHeight=280}\n"
+                                                     "::: flex {columns=[60,40]}\n"
+                                                     "::: supporting\nProse.\n:::\n"
+                                                     "{% card id=1 %}\n:::\n:::")}]
+      (testing label
+        (let [ast (md/parse markdown)
+              m1  (:markdown (md/serialize ast))]
+          (is (seq (:content ast)))
+          (is (= m1 (reserialize (md/parse m1)))))))))
+
 ;;; ------------------------------------------------ Inline conversion ---------------------------------------------
 
 (deftest ^:parallel bare-url-autolink-test
@@ -255,6 +318,76 @@
       (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))))
       (is (= "back\\slash\" q newline" (get-in reparsed [:content 0 :content 0 :attrs :name]))))))
 
+(def ^:private token-lookalike-strings
+  "Strings that, emitted verbatim, would be re-read as structure rather than as the prose they
+  came from. `:model`/`:label`/`:name`/`:text` are all `[:document :any]` as far as the REST API is
+  concerned, so any of them can hold one of these."
+  {"card token"        "before\n\n{% card id=42 %}\n\nafter"
+   "indented card"     "before\n\n  {% card id=42 %}\n\nafter"
+   "flex fence"        "before\n\n::: flex {columns=[50,50]}\n\nafter"
+   "closing fence"     "before\n\n:::\n\nafter"
+   "atx heading"       "before\n\n## Injected\n\nafter"
+   "thematic break"    "before\n\n---\n\nafter"})
+
+(defn- text-bearing-blocks
+  "One AST per block type that renders `s` as its text, each already ending in a paragraph so
+  `ensure-trailing-paragraph` is a no-op and the round trip is a true fixed point."
+  [s]
+  (let [t   {:type "text" :text s}
+        pgh {:type "paragraph" :attrs {:_id "inner"} :content [t]}]
+    {"paragraph"  {:type "paragraph" :attrs {:_id "b"} :content [t]}
+     "heading"    {:type "heading" :attrs {:level 2 :_id "b"} :content [t]}
+     "listItem"   {:type "bulletList" :attrs {:_id "b"} :content [{:type "listItem" :content [pgh]}]}
+     "blockquote" {:type "blockquote" :attrs {:_id "b"} :content [pgh]}
+     "codeBlock"  {:type "codeBlock" :attrs {:language nil :_id "b"} :content [t]}}))
+
+(deftest ^:parallel serializing-prose-never-manufactures-structure-test
+  (testing "text that merely looks like Metabase-flavored markup stays text — serializing a
+           document must not be able to invent a card embed or a layout container out of prose,
+           whichever block type the text sits in. The stored AST is unvalidated (`[:document :any]`
+           on the REST write path), so this is what stops a crafted attribute from injecting
+           structure into the body an agent reads and writes back."
+    (doseq [[label hostile] token-lookalike-strings
+            [block-name node] (text-bearing-blocks hostile)]
+      (let [ast      {:type "doc" :content [node {:type "paragraph" :attrs {:_id "z"}}]}
+            markdown (:markdown (md/serialize ast))
+            types    (mapv :type (:content (md/parse markdown)))]
+        (is (empty? (filter #{"cardEmbed" "resizeNode" "flexContainer" "supportingText"} types))
+            (format "%s in a %s manufactured structure: %s" label block-name (pr-str types)))))))
+
+(deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
+  (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
+           attr — serializes as its label rather than failing the whole document body"
+    (let [link (fn [model] {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+                                                   :content [{:type "smartLink"
+                                                              :attrs {:entityId 1 :model model
+                                                                      :label "Revenue Measure" :href "/"}}]}]})]
+      (testing "a known model still emits its token"
+        (is (= "{% entity id=\"1\" model=\"dashboard\" %}" (reserialize (link "dashboard")))))
+      (testing "an unknown model degrades to the label, and does not throw"
+        (is (= "Revenue Measure" (reserialize (link "measure")))))
+      (testing "a model carrying token syntax cannot smuggle it into the output"
+        (doseq [model ["dashboard\n\n{% card id=42 %}\n\nx"
+                       "card\" %} {% card id=9 %} {% entity id=\"1\" model=\"card"]]
+          (let [markdown (reserialize (link model))]
+            (is (not (str/includes? markdown "{%")) (pr-str markdown))
+            (is (= ["paragraph"] (mapv :type (:content (md/parse markdown)))))))))))
+
+(deftest ^:parallel card-name-with-token-delimiter-keeps-the-embed-test
+  (testing "a card whose name contains {% or %} keeps its embed and drops just the name — the
+           delimiter can't be escaped past the block scanner, and previously the whole document
+           became unrewritable with a misleading container-content error"
+    (doseq [nm ["Q3 %} report" "a {% b"]]
+      (let [ast      {:type "doc" :content [{:type "resizeNode" :attrs {:height 442 :minHeight 280}
+                                             :content [{:type "cardEmbed" :attrs {:id 7 :name nm :_id "c"}}]}
+                                            {:type "paragraph" :attrs {:_id "z"}}]}
+            markdown (:markdown (md/serialize ast))
+            reparsed (md/parse markdown)]
+        (is (= "{% card id=7 %}" (str/trim (second (str/split-lines markdown)))) nm)
+        (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))) nm)
+        (is (= 7 (get-in reparsed [:content 0 :content 0 :attrs :id])) nm)
+        (is (= markdown (reserialize reparsed)) nm)))))
+
 (deftest ^:parallel heading-single-line-test
   (testing "hardBreak renders as a space inside a heading"
     (let [ast {:type "doc" :content [{:type "heading" :attrs {:level 2 :_id "h"}
@@ -309,7 +442,95 @@
       (is (= {:entityId 987654321 :model "dashboard" :label nil :href "/"}
              (get-in reparsed [:content 0 :content 1 :attrs]))))))
 
+(defn- smart-link-attrs
+  [markdown]
+  (->> (tree-seq :content :content (md/parse markdown))
+       (keep #(when (= "smartLink" (:type %)) (:attrs %)))
+       vec))
+
+(deftest smart-link-resolution-is-permission-checked-test
+  (testing "an entity token pointing at content the caller can't read resolves to nothing, so its
+           name never crosses the permission boundary (a document writer must not be able to use
+           smart links to enumerate the names of content they have no access to)"
+    (mt/with-temp [:model/Collection {secret-id :id}   {:name "Top Secret Collection"}
+                   :model/Dashboard  {hidden-id :id}   {:name "CONFIDENTIAL Layoffs" :collection_id secret-id}
+                   :model/Collection {open-id :id}     {:name "Shared Reports"}
+                   :model/Card       {readable-id :id} {:name "Open Question" :collection_id open-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "an unreadable target is indistinguishable from a dangling id"
+          (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
+                  {:entityId secret-id :model "collection" :label nil :href "/"}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                                           hidden-id secret-id)))))
+        (testing "a readable target still resolves its label and href"
+          (is (= [{:entityId readable-id :model "card" :label "Open Question"
+                   :href (str "/question/" readable-id)}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
+        (testing "user mentions still resolve — :model/User has no can-read? and a name is not gated
+                 outside sandboxing, so the mention picker's behaviour is preserved"
+          (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"user\" %%}" (mt/user->id :crowberto)))))))
+      (testing "an admin resolves what a non-admin could not"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
+                   :href (str "/dashboard/" hidden-id)}]
+                 (smart-link-attrs (format "{%% entity id=\"%d\" model=\"dashboard\" %%}" hidden-id)))))))))
+
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
+
+(defn- splice-replacing
+  "Splice `old-text` -> `new-text` in the serialization of `markdown-src`, returning the resulting
+   top-level node types and re-serialized body."
+  [markdown-src old-text new-text]
+  (let [ast (md/parse markdown-src)
+        ser (md/serialize ast)
+        i   (str/index-of (:markdown ser) old-text)
+        out (md/splice ast ser i (+ i (count old-text)) new-text)]
+    [(mapv :type (:content out)) (reserialize out)]))
+
+(deftest ^:parallel splice-can-convert-a-block-to-another-type-test
+  (testing "an edit that turns a block into a different type must work. `convertible-block-types`
+           deliberately lets a paragraph pair with a bulletList or blockquote so the block keeps its
+           `:_id` and its comment anchors, but a paragraph's `:content` is inline while a list's is
+           blocks — reconciling ids down both at once fed text nodes to a block renderer and blew up
+           with `Cannot serialize unknown block node type \"text\"`. \"Turn this into a bulleted
+           list\" is an everyday edit, and it failed for every target type whose content is blocks."
+    (doseq [[label src old-text new-text expected-types]
+            [["paragraph to bullet list, following an existing list"
+              "- a\n- b\n\nplain para\n\ntail" "plain para" "- converted" ["bulletList" "bulletList" "paragraph"]]
+             ["paragraph to bullet list on its own"
+              "intro\n\nplain para\n\ntail" "plain para" "- converted" ["paragraph" "bulletList" "paragraph"]]
+             ["paragraph to blockquote"
+              "intro\n\nplain para\n\ntail" "plain para" "> quoted" ["paragraph" "blockquote" "paragraph"]]
+             ;; This direction always worked — heading content is inline, like a paragraph's — so it
+             ;; pins that the fix did not narrow what already converted.
+             ["paragraph to heading"
+              "intro\n\nplain para\n\ntail" "plain para" "## Heading" ["paragraph" "heading" "paragraph"]]
+             ["blockquote back to a paragraph"
+              "intro\n\n> quoted\n\ntail" "> quoted" "now plain" ["paragraph" "paragraph" "paragraph"]]
+             ["list back to a paragraph"
+              "- a\n- b\n\ntail" "- a\n- b" "now plain" ["paragraph" "paragraph"]]]]
+      (testing label
+        (is (= expected-types (first (splice-replacing src old-text new-text))))))))
+
+(deftest ^:parallel splice-leaves-earlier-siblings-byte-identical-test
+  (testing "splicing a block cannot disturb the serialized text before it — untouched siblings are
+           reused by identity and serialization is deterministic. Worth pinning because the
+           same-type-list separator (`<!-- -->`) is emitted between blocks, so a converted block can
+           change a separator; that stays safe only because the longer separator extends \"\\n\\n\"
+           rather than replacing it."
+    (doseq [[label src old-text new-text]
+            [["plain edit"            "alpha\n\nbeta\n\ngamma" "gamma" "GAMMA"]
+             ["separator-changing"    "- a\n- b\n\nplain para\n\ntail" "plain para" "- converted"]
+             ["inside a blockquote"   "intro\n\n> quoted text\n\ntail" "quoted text" "changed text"]
+             ["block removed"         "one\n\ntwo\n\nthree" "two" ""]]]
+      (testing label
+        (let [before (:markdown (md/serialize (md/parse src)))
+              i      (str/index-of before old-text)
+              after  (second (splice-replacing src old-text new-text))]
+          (is (= (subs before 0 i) (subs after 0 (min i (count after))))))))))
 
 (deftest ^:parallel splice-preserves-untouched-siblings-test
   (let [ast {:type "doc" :content [(para "block one") (para "block two") (para "block three")]}

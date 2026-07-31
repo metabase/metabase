@@ -1,4 +1,7 @@
 {{> _header }}
     <p>This is just a confirmation that your alert about <a {{#unless payload.event_info.object.payload.disable_links}}href="{{{card-url payload.event_info.object.payload.card_id}}}"{{/unless}}>{{payload.event_info.object.payload.card.name}}</a> has been set up.</p>
     <p>This alert will be sent {{> _notification_card_condition send_condition=payload.event_info.object.payload.send_condition}}.</p>
+{{#if payload.event_info.object.handlers}}
+    <p>It delivers to: {{#each payload.event_info.object.handlers}}{{#each recipients}}{{#if user.email}}{{user.email}}{{/if}}{{#if details.value}}{{details.value}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}{{#unless @last}}, {{/unless}}{{/each}}.</p>
+{{/if}}
 {{> _footer}}
