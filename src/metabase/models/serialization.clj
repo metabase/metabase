@@ -1635,33 +1635,6 @@
           (m/update-existing-in [:pivot_table.column_split :rows] import-mbql)
           (m/update-existing-in [:pivot_table.column_split :columns] import-mbql)))
 
-;;; `timeline.selected_timeline_ids` holds the Timelines whose events a chart draws on its x-axis.
-
-(defn- export-timeline-id [id]
-  ;; `pos-int?` guard makes this idempotent: an already-exported entity id is left alone.
-  (if (pos-int? id)
-    (fk-elide (*export-fk* id :model/Timeline))
-    id))
-
-(defn- import-timeline-id [id]
-  (if (entity-id? id)
-    (*import-fk* id :model/Timeline)
-    id))
-
-(defn- export-viz-timelines [settings]
-  ;; `keep` drops the references that `fk-elide` returned nil for, i.e. Timelines deleted since the setting was saved.
-  (m/update-existing settings :timeline.selected_timeline_ids #(into [] (keep export-timeline-id) %)))
-
-(defn- import-viz-timelines [settings]
-  (m/update-existing
-   settings
-   :timeline.selected_timeline_ids
-   (fn [ids]
-     ;; A Timeline missing from the target just means its events aren't drawn, so drop the reference rather than
-     ;; failing the whole import. This mirrors the export side, which elides references to deleted Timelines.
-     (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
-       (into [] (keep import-timeline-id) ids)))))
-
 (defn- export-column-settings
   "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
   This function parses those keys, converts the IDs to portable values, and serializes them back to JSON."
@@ -1715,7 +1688,6 @@
         export-viz-click-behavior
         export-visualizer-settings
         export-pivot-table
-        export-viz-timelines
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -1807,7 +1779,6 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
-        import-viz-timelines
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
@@ -1834,14 +1805,6 @@
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
 
-(defn- viz-timeline-deps
-  [allow-int-ids? {ids :timeline.selected_timeline_ids}]
-  (into #{}
-        (keep (fn [id]
-                (when (or (entity-id? id) (raw-ref-id? allow-int-ids? id))
-                  [{:model "Timeline" :id id}])))
-        ids))
-
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
@@ -1855,11 +1818,10 @@
                                            vals
                                            (map viz-click-behavior-deps))
         link-card-deps            (viz-link-card-deps allow-int-ids? viz)
-        click-behavior-deps       (viz-click-behavior-deps viz)
-        timeline-deps             (viz-timeline-deps allow-int-ids? viz)]
+        click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps timeline-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
          (filter some?)
          (reduce set/union #{}))))
 
@@ -1880,21 +1842,12 @@
          (mapcat #(viz-click-behavior-descendants % src))
          set)))
 
-(defn- viz-timeline-descendants [{ids :timeline.selected_timeline_ids} src]
-  (into #{}
-        (keep (fn [id]
-                (when (and (pos-int? id)
-                           (fk-elide (*export-fk* id :model/Timeline)))
-                  [["Timeline" id] src])))
-        ids))
-
 (defn visualization-settings-descendants
   "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a
   descendant. Always returns an empty set even if the input is nil."
   [viz src]
   (set/union (viz-click-behavior-descendants  viz src)
-             (viz-column-settings-descendants viz src)
-             (viz-timeline-descendants        viz src)))
+             (viz-column-settings-descendants viz src)))
 
 ;;; Common transformers
 

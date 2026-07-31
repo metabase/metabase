@@ -60,11 +60,8 @@ export interface TimelineEventData {
 }
 
 export type ListTimelinesRequest = {
-  id?: TimelineId[];
   include?: "events";
   archived?: boolean;
-  start?: string;
-  end?: string;
 };
 
 export interface ListCollectionTimelinesRequest {

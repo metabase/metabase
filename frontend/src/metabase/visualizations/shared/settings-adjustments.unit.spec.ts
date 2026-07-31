@@ -3,34 +3,34 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import { getDashboardAdjustedSettings } from "./settings-adjustments";
 
 const settings: ComputedVisualizationSettings = {
-  "timeline.selected_timeline_ids": [1, 2],
+  "timeline.events_enabled": true,
 };
 
 describe("getDashboardAdjustedSettings", () => {
-  it("should strip selected timelines on short dashcards", () => {
+  it("should disable timeline events on short dashcards", () => {
     const adjusted = getDashboardAdjustedSettings({
       settings,
       width: 500,
       height: 200,
     });
-    expect(adjusted["timeline.selected_timeline_ids"]).toEqual([]);
+    expect(adjusted["timeline.events_enabled"]).toBe(false);
   });
 
-  it("should strip selected timelines on narrow dashcards", () => {
+  it("should disable timeline events on narrow dashcards", () => {
     const adjusted = getDashboardAdjustedSettings({
       settings,
       width: 240,
       height: 400,
     });
-    expect(adjusted["timeline.selected_timeline_ids"]).toEqual([]);
+    expect(adjusted["timeline.events_enabled"]).toBe(false);
   });
 
-  it("should keep selected timelines on large dashcards", () => {
+  it("should keep timeline events on large dashcards", () => {
     const adjusted = getDashboardAdjustedSettings({
       settings,
       width: 500,
       height: 400,
     });
-    expect(adjusted["timeline.selected_timeline_ids"]).toEqual([1, 2]);
+    expect(adjusted["timeline.events_enabled"]).toBe(true);
   });
 });

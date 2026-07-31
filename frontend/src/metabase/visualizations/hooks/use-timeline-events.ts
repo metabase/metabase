@@ -1,10 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
-import {
-  skipToken,
-  useListCollectionTimelinesQuery,
-  useListTimelinesQuery,
-} from "metabase/api";
+import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
@@ -39,64 +35,35 @@ export function useTimelineEvents({
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
-  const selectedTimelineIds = settings["timeline.selected_timeline_ids"];
-
-  // An absent selection falls back to the dashboard collection's timelines;
-  // an explicitly empty selection hides events on this card.
-  const hasExplicitSelection = selectedTimelineIds != null;
-
-  const shouldFetchSelected =
+  // Fetch only when the chart can render events and this card has not turned
+  // them off. Hosts like the query builder pass events in as props instead.
+  const shouldFetch =
     !timelineEventsProp &&
-    hasExplicitSelection &&
-    selectedTimelineIds.length > 0;
+    dashboard != null &&
+    settings["timeline.events_enabled"] !== false &&
+    settings["graph.x_axis.scale"] === "timeseries";
 
-  // Sorted copy so that the same selection always produces the same cache key,
-  // letting dashcards with equal selections share one request.
-  const timelineIds = useMemo(
-    () => (selectedTimelineIds ?? []).toSorted((a, b) => a - b),
-    [selectedTimelineIds],
-  );
-
-  const selectedQuery = useListTimelinesQuery(
-    shouldFetchSelected ? { id: timelineIds, include: "events" } : skipToken,
-  );
-
-  const shouldFetchCollection =
-    !timelineEventsProp && !hasExplicitSelection && dashboard != null;
-
-  const collectionQuery = useListCollectionTimelinesQuery(
-    shouldFetchCollection
+  const {
+    data: timelines,
+    isLoading,
+    isError,
+  } = useListCollectionTimelinesQuery(
+    shouldFetch
       ? { id: dashboard.collection_id ?? "root", include: "events" }
       : skipToken,
   );
-
-  // The endpoints already return only the requested timelines, so the
-  // responses need no further filtering beyond dropping archived events.
-  const selectedTimelines = selectedQuery.data;
-  const collectionTimelines = collectionQuery.data;
 
   const timelineEvents = useMemo(() => {
     if (timelineEventsProp) {
       return timelineEventsProp;
     }
-
-    if (!shouldFetchSelected && !shouldFetchCollection) {
+    if (!shouldFetch || !timelines) {
       return EMPTY_EVENTS;
     }
-
-    const timelines =
-      (shouldFetchCollection ? collectionTimelines : selectedTimelines) ?? [];
-
     return timelines.flatMap((timeline) =>
       (timeline.events ?? []).filter((event) => !event.archived),
     );
-  }, [
-    timelineEventsProp,
-    selectedTimelines,
-    collectionTimelines,
-    shouldFetchSelected,
-    shouldFetchCollection,
-  ]);
+  }, [timelineEventsProp, shouldFetch, timelines]);
 
   // Hosts like the query builder own event selection via props; when a host
   // does not (e.g. dashboards), fall back to local selection so clicking a
@@ -126,7 +93,7 @@ export function useTimelineEvents({
     onDeselectTimelineEvents: hasExternalSelection
       ? onDeselectTimelineEvents
       : handleLocalDeselect,
-    isLoading: selectedQuery.isLoading || collectionQuery.isLoading,
-    isError: selectedQuery.isError || collectionQuery.isError,
+    isLoading,
+    isError,
   };
 }

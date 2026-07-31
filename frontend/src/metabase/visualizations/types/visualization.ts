@@ -49,7 +49,6 @@ import type { ChartSettingSegmentedControlProps } from "../components/settings/C
 import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
 import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
 import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
-import type { ChartSettingTimelineEventsProps } from "../components/settings/ChartSettingTimelineEvents";
 import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
 import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
 import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
@@ -597,10 +596,7 @@ export type VisualizationSettingsDefinitions = {
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
-  "timeline.selected_timeline_ids"?: SeriesSettingDefinition<
-    Value,
-    ChartSettingTimelineEventsProps
-  >;
+  "timeline.events_enabled"?: SeriesSettingDefinition<Value, Props>;
   "treemap._groups_widget"?: SeriesSettingDefinition<
     Value,
     TreemapGroupsPickerProps
