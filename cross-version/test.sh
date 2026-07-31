@@ -20,6 +20,7 @@ TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 RESULT_FILE="${RESULT_FILE:-/tmp/cross-version-result.json}"
+LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -152,9 +153,26 @@ start_metabase() {
     docker compose up -d --quiet-pull
 }
 
+# Docker deletes a container's logs when the container is removed, and both
+# stop_metabase and cleanup remove containers. Append them to a file first so
+# they are still around after the run (CI prints these on failure).
+save_logs() {
+  local service="$1"
+  local label="$2"
+
+  mkdir -p "$LOG_DIR"
+  {
+    echo "===== ${service} — ${label} ====="
+    docker compose logs --no-color "$service" 2>&1 || true
+    echo
+  } >> "$LOG_DIR/docker-${service}.log"
+}
+
 # Stop Metabase (but keep postgres)
 stop_metabase() {
+  local label="$1"
   log "Stopping Metabase container..."
+  save_logs metabase "$label"
   docker compose stop metabase
   docker compose rm -f metabase
 }
@@ -327,6 +345,8 @@ check_downgrade_refused() {
 
 cleanup() {
   log "Cleaning up..."
+  save_logs metabase "teardown"
+  save_logs postgres "teardown"
   docker compose down -v --remove-orphans 2>/dev/null || true
 }
 
@@ -365,6 +385,11 @@ main() {
   # Ensure clean state
   cleanup
 
+  # Discard the logs the pre-run cleanup just wrote - they belong to whatever
+  # ran before us, not to this run.
+  rm -rf "$LOG_DIR"
+  mkdir -p "$LOG_DIR"
+
   trap cleanup EXIT
 
   log ""
@@ -389,7 +414,7 @@ main() {
 
   log ""
   log "Step 3: Stopping SOURCE version ($SOURCE_VERSION)..."
-  stop_metabase
+  stop_metabase "source $SOURCE_VERSION"
 
   log ""
   log "Step 4: Starting TARGET version ($TARGET_VERSION)..."
@@ -422,7 +447,7 @@ main() {
     fi
 
     # Stop the failed container
-    stop_metabase
+    stop_metabase "target $TARGET_VERSION (downgrade refused)"
 
     log ""
     log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
