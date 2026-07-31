@@ -133,23 +133,27 @@
         {:keys [mode connected? resolved?]} (probe-store)
         storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
         at               (.getEpochSecond (Instant/now))]
-    ;; Publish both stable series on every instance; both are zero when no store is usable.
-    (doseq [candidate storage-labels]
-      (analytics/set-gauge! :metabase-pgvector/store-available
-                            {:storage candidate}
-                            (if (= candidate storage) 1 0))
-      (analytics/set-gauge! :metabase-pgvector/store-connected
-                            {:storage candidate}
-                            (if (and (= candidate storage) connected?) 1 0)))
-    (clear-stale-last-success! previous-storage storage)
+    ;; A probe that couldn't find out leaves every series where it was. Zero here would read as "this
+    ;; instance has no pgvector store", which is a different claim, and one an app db slow enough to time out
+    ;; would make about a store that is fine. The next scrape retries.
+    (when resolved?
+      ;; Publish both stable series on every instance; both are zero when no store is usable.
+      (doseq [candidate storage-labels]
+        (analytics/set-gauge! :metabase-pgvector/store-available
+                              {:storage candidate}
+                              (if (= candidate storage) 1 0))
+        (analytics/set-gauge! :metabase-pgvector/store-connected
+                              {:storage candidate}
+                              (if (and (= candidate storage) connected?) 1 0)))
+      (clear-stale-last-success! previous-storage storage)
+      (when connected?
+        (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
+                              {:storage storage}
+                              at)))
     (reset! last-readiness-probe {:storage    storage
                                   :connected? connected?
                                   :resolved?  resolved?
-                                  :at         at})
-    (when connected?
-      (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
-                            {:storage storage}
-                            at))))
+                                  :at         at})))
 
 (defn- readiness-probe-stale?
   [{:keys [at]}]
