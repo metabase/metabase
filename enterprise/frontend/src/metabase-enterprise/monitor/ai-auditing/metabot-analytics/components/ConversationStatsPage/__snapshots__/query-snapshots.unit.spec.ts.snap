@@ -52,6 +52,13 @@ breakouts: ["ip_address"]
 orderBys: ["count desc"]"
 `;
 
+exports[`buildSourceBreakoutQuery by breakoutColumn model 1`] = `
+"filters: ["created_at is in the previous 30 days or today"]
+aggregations: ["count()"]
+breakouts: ["model"]
+orderBys: ["count desc"]"
+`;
+
 exports[`buildSourceBreakoutQuery by breakoutColumn profile_name 1`] = `
 "filters: ["created_at is in the previous 30 days or today"]
 aggregations: ["count()"]

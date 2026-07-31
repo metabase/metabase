@@ -104,6 +104,18 @@ const groupTitles: Record<UsageStatsMetric, string> = {
   },
 };
 
+const modelTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Models with most conversations`;
+  },
+  get messages() {
+    return t`Models with most messages`;
+  },
+  get tokens() {
+    return t`Models with most tokens`;
+  },
+};
+
 const ipAddressTitles: Record<UsageStatsMetric, string> = {
   get conversations() {
     return t`IP addresses with most conversations`;
@@ -140,8 +152,10 @@ const buildUserQuery = (opts: StatsFilters & ChartDataSources) =>
 const buildIpAddressQuery = (opts: StatsFilters & ChartDataSources) =>
   buildSourceBreakoutQuery({ ...opts, breakoutColumn: "ip_address" });
 
-const labelUnknownIpAddress = (value: unknown) =>
-  value == null ? t`Unknown` : value;
+const buildModelQuery = (opts: StatsFilters & ChartDataSources) =>
+  buildSourceBreakoutQuery({ ...opts, breakoutColumn: "model" });
+
+const labelUnknown = (value: unknown) => (value == null ? t`Unknown` : value);
 
 export function ConversationStatsPage() {
   const location = useLocation();
@@ -324,6 +338,14 @@ export function ConversationStatsPage() {
         </SimpleGrid>
 
         <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
+          <BreakoutChart
+            {...sharedChartProps}
+            titles={modelTitles}
+            display="row"
+            buildQuery={buildModelQuery}
+            labelMapper={labelUnknown}
+            h={500}
+          />
           {hasTenants && (
             <BreakoutChart
               {...sharedChartProps}
@@ -358,7 +380,7 @@ export function ConversationStatsPage() {
             titles={ipAddressTitles}
             display="row"
             buildQuery={buildIpAddressQuery}
-            labelMapper={labelUnknownIpAddress}
+            labelMapper={labelUnknown}
             h={500}
           />
         </SimpleGrid>

@@ -119,6 +119,7 @@ const BREAKOUT_VALUES: Record<string, RowValue[]> = {
   profile_name: ["NLQ", "SQL"],
   user_display_name: ["Bobby Tables", "Robert Tableton"],
   ip_address: ["10.0.0.1", "10.0.0.2"],
+  model: ["anthropic/claude-opus-4-8", "openai/gpt-5.4"],
   tenant_id: [BOBBY_TENANT.id, ROBERT_TENANT.id],
   group_name: ["Administrators", "data"],
 };
@@ -268,6 +269,7 @@ function chartTitles(label: string): string[] {
     `${label} by day`,
     `${label} by source`,
     `${label} by profile`,
+    `Models with most ${lowerLabel}`,
     `Groups with most ${lowerLabel}`,
     `Users with most ${lowerLabel}`,
     `IP addresses with most ${lowerLabel}`,
@@ -318,6 +320,17 @@ describe("ConversationStatsPage", () => {
         });
       },
     );
+
+    it("breaks tokens down by the model that spent them", async () => {
+      setup({ initialRoute: `${STATS_PATH}?metric=tokens` });
+
+      const card = await findChartCard("Models with most tokens");
+      for (const model of BREAKOUT_VALUES.model) {
+        expect(
+          await within(card).findByRole("button", { name: String(model) }),
+        ).toBeInTheDocument();
+      }
+    });
 
     it("buckets the timeseries by hour for a single-day date filter", async () => {
       setup({ initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` });
