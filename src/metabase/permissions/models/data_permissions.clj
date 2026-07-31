@@ -889,6 +889,14 @@
   "An ID, or something with an ID."
   [:or pos-int? [:map [:id pos-int?]]])
 
+(defn- merge-perm-changes
+  "Merges `{:to-delete [...] :to-insert [...]}` maps, deduping as it concatenates: several implication
+  paths can produce the same row — e.g. `view-data :blocked` implies `:perms/transforms :no` both
+  directly and via the implied `create-queries :no` — and inserting every copy creates duplicate
+  data_permissions rows (UXW-4927)."
+  [& changes]
+  (apply merge-with (fn [a b] (distinct (concat a b))) changes))
+
 (mu/defn- build-database-permission
   "Builds a sequence of DataPermissions models to delete and insert for setting a single permission to a specified
   value for a given group and database. If a permission value already exists for the specified group and object,
@@ -924,7 +932,7 @@
 
                           (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
                           (conj (build-database-permission perms group-or-id db-or-id :perms/transforms :no)))]
-    (apply merge-with concat
+    (apply merge-perm-changes
            {:to-delete existing-perms
             :to-insert [new-perm]}
            recursive-calls)))
@@ -1134,7 +1142,11 @@
       (when (not= (count (set (map :db_id new-perms))) 1)
         (throw (ex-info (tru "All tables must belong to the same database.")
                         {:new-perms new-perms})))
-      (apply merge-with concat
+      ;; merge-perm-changes rather than plain concat: the main case and the recursive implications can
+      ;; produce the same row — e.g. setting `create-queries` coalesces to a DB-level row whose
+      ;; implications include `view-data :unrestricted`, and the recursive table-level `view-data`
+      ;; call coalesces to that same DB-level row.
+      (apply merge-perm-changes
              (if-let [existing-db-perm (t2/select-one :model/DataPermissions
                                                       {:where
                                                        [:and
