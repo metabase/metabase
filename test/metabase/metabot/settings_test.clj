@@ -160,11 +160,17 @@
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-with-azure-credentials-test
-  (testing "returns true when azure has both the API key and base URL"
+  (testing "returns true when azure has the API key, the base URL, and the deployment it serves"
+    (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
+                                                    :base-url "https://my-resource.services.ai.azure.com/anthropic"
+                                                    :model    "anthropic/claude-sonnet-4-5"})]
+      (with-selected-model "azure/anthropic/claude-sonnet-4-5"
+        (is (true? (metabot.settings/llm-metabot-configured?))))))
+  (testing "returns false without a deployment, which leaves the model picker with nothing to offer"
     (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
                                                     :base-url "https://my-resource.services.ai.azure.com/anthropic"})]
       (with-selected-model "azure/anthropic/claude-sonnet-4-5"
-        (is (true? (metabot.settings/llm-metabot-configured?)))))))
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-with-partial-azure-credentials-test
   (testing "returns false when azure has an API key but no base URL"

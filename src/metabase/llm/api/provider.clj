@@ -188,16 +188,23 @@
   not been saved yet. Returns `{:models [...]}` or `{:models [] :error msg}` for a credential-level failure.
 
   Types whose catalog is fixed (the managed provider, which serves one model through the proxy) are answered from
-  the registry — there is nothing to fetch, and calling out would fail on instances that cannot reach the proxy."
+  the registry — there is nothing to fetch, and calling out would fail on instances that cannot reach the proxy.
+
+  Types that name their model in `:config` (Azure, whose deployments its listing endpoint does not return) still
+  make the call, because it is what verifies the credentials, but the model they serve comes from the connection
+  rather than the empty list that comes back."
   [{:keys [type config]} config-override model]
   (if-let [models (llm.provider/fixed-models type)]
     {:models (vec models)}
-    (let [config (llm.provider/with-field-defaults type (or config-override config))]
+    (let [config           (llm.provider/with-field-defaults type (or config-override config))
+          configured-model (some->> (llm.provider/model-field type) (get config) not-empty)
+          model            (or model configured-model)]
       (try
-        {:models (decorate-provider-models
-                  type
-                  (:models (metabot.self/list-models type (cond-> {:credentials config}
-                                                            model (assoc :model model)))))}
+        (let [listed (:models (metabot.self/list-models type (cond-> {:credentials config}
+                                                               model (assoc :model model))))]
+          {:models (if configured-model
+                     [{:id configured-model :display_name configured-model}]
+                     (decorate-provider-models type listed))})
         (catch clojure.lang.ExceptionInfo e
           (if (provider-client-error? e)
             {:models [] :error (.getMessage e)}
