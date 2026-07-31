@@ -51,8 +51,7 @@
                         tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
     :credentials      - Credentials of the provider connection serving this request, in that provider
                         type's `:config` shape (e.g. `{:api-key ...}`), with the type's field defaults
-                        filled in. An adapter serves a request from these alone and throws without them:
-                        borrowing another connection's key is never the right answer.
+                        filled in. An adapter serves a request from these alone and throws without them.
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
