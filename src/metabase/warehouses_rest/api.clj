@@ -105,6 +105,7 @@
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
                          {} rows)]
+      (perms/prime-schema-perms-cache {:db-ids db-ids})
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
@@ -870,6 +871,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
+  (perms/prime-table-perms-cache {:db-ids #{id}})
   (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
                                                    :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
                                                    :visibility_type [:not-in ["sensitive" "retired"]])

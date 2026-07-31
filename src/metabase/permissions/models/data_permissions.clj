@@ -605,6 +605,17 @@
 
 ;;; --------------------------------------------- Schema level checks ----------------------------------------------
 
+(defn prime-schema-perms-cache
+  "Eagerly load schema-level permissions for `:db-ids` for the current user, so that a run of per-schema checks across
+  several databases costs one query instead of one per database. A no-op for superusers, whose checks never read the
+  cache."
+  [{:keys [db-ids]}]
+  (when (and (use-cache? api/*current-user-id*)
+             (not api/*is-superuser?*)
+             (seq db-ids))
+    (cached-schema-perms api/*current-user-id* db-ids)
+    nil))
+
 (mu/defn schema-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
