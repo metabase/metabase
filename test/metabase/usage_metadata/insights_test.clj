@@ -1160,6 +1160,15 @@
   (is (= (set (map :id (candidate-source-cards {:min-view-count 10, :view-count-window-days 90})))
          (set (insights/qualified-card-ids 10 90)))))
 
+(deftest qualified-card-ids-bounds-recent-view-log-scan-test
+  (let [scanned-card-ids (atom ::not-called)]
+    (with-redefs-fn {#'insights/recent-card-view-counts
+                     (fn [card-ids _window-days]
+                       (reset! scanned-card-ids card-ids)
+                       {})}
+      #(insights/qualified-card-ids 10 90))
+    (is (set? @scanned-card-ids))))
+
 (deftest candidate-measures-support-remaining-direct-aggregations-test
   (let [query (orders-extended-measures-query)]
     (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining extended measures"

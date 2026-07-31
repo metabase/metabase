@@ -23,6 +23,7 @@
 (def ^:private prune-ineligible-candidates! @#'candidates/prune-ineligible-candidates!)
 (def ^:private source-provenance-index @#'candidates/source-provenance-index)
 (def ^:private locally-running-run-ids @#'candidates/locally-running-run-ids)
+(def ^:private candidate-refresh-lock-timeout? @#'candidates/candidate-refresh-lock-timeout?)
 (def ^:private non-closed-segment-candidate-ids
   @#'candidates/non-closed-segment-candidate-ids)
 (def ^:private non-closed-measure-candidate-ids
@@ -150,6 +151,16 @@
                                                        :source_config     {}}]
     (is (nil? (candidates/queue-refresh! :manual (mt/user->id :crowberto))))
     (is (= (:id run) (:id (candidates/active-run))))))
+
+(deftest candidate-refresh-lock-timeout-detection-test
+  (testing "cluster-lock reports keyword locks as namespace/name strings"
+    (is (true? (candidate-refresh-lock-timeout?
+                (ex-info "Timed out"
+                         {:lock-names ["metabase.usage-metadata.candidates/candidate-refresh"]})))))
+  (testing "an unrelated lock timeout must still be rethrown"
+    (is (false? (candidate-refresh-lock-timeout?
+                 (ex-info "Timed out"
+                          {:lock-names ["metabase.usage-metadata.candidates/another-lock"]}))))))
 
 (deftest refresh-queue-recovers-run-interrupted-before-worker-start-test
   (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :queued

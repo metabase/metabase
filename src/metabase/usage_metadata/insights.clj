@@ -394,7 +394,7 @@
          card-ids           (into #{} (map :id) cards)
          collection-ids     (into #{} (keep :collection_id) cards)
          recent-view-counts (when view-count-window-days
-                              (recent-card-view-counts nil view-count-window-days))
+                              (recent-card-view-counts card-ids view-count-window-days))
          verified-ids       (if (seq card-ids)
                               (t2/select-fn-set :moderated_item_id :model/ModerationReview
                                                 :moderated_item_id [:in card-ids]

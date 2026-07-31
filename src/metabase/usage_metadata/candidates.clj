@@ -102,7 +102,8 @@
 
 (defn- candidate-refresh-lock-timeout?
   [error]
-  (contains? (set (:lock-names (ex-data error))) (str ::candidate-refresh)))
+  (let [lock-name (str (namespace ::candidate-refresh) "/" (name ::candidate-refresh))]
+    (boolean (some #{lock-name} (:lock-names (ex-data error))))))
 
 (defn- queued-run-stale?
   [{:keys [status created_at]}]
