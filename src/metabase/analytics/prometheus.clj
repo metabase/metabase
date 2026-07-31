@@ -331,6 +331,21 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
+   ;; Shared: semantic search and entity retrieval each provision their own tables in it, as more may later.
+   ;; At most one is available at a time: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.
+   (prometheus/gauge :metabase-pgvector/store-available
+                     {:description "Whether the given pgvector storage is available to this instance."
+                      :labels      [:storage]})
+   ;; Probed hourly, so an outage takes up to that long to show up. The dedicated probe opens its own
+   ;; connection, so a store that is up but whose pool is saturated still reads as connected --
+   ;; metabase_database_c3p0_* covers that. The app-db probe shares the application pool, and does not.
+   (prometheus/gauge :metabase-pgvector/store-connected
+                     {:description "Whether the last connection probe to the given pgvector storage succeeded."
+                      :labels      [:storage]})
+   ;; Absent until a probe succeeds, and reset when the instance changes which backing it uses.
+   (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
+                     {:description "Unix timestamp of the last successful probe to the given pgvector storage."
+                      :labels      [:storage]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})

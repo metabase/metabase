@@ -38,9 +38,7 @@ const STATIC_CHART_DEFINITIONS = [
 
 export const registerStaticVisualizations = () => {
   STATIC_CHART_DEFINITIONS.forEach((definition) => {
-    // @ts-expect-error: chart definitions are not full Visualization components
     registerVisualization(definition);
   });
-  // @ts-expect-error: chart definitions are not full Visualization components
   setDefaultVisualization(SCALAR_CHART_DEFINITION);
 };

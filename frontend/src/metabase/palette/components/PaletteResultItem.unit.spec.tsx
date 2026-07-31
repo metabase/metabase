@@ -104,6 +104,12 @@ describe("Mouse/keyboard interactions", () => {
   });
 
   describe("The 'View and filter all N results' command palette item", () => {
+    // The link target is still a v3-style descriptor; the location it lands on
+    // carries the query as a search string.
+    const searchTarget = {
+      pathname: "/search",
+      search: "?q=hedgehogs",
+    };
     const searchLocation = {
       pathname: "/search",
       search: "?q=hedgehogs",
@@ -117,7 +123,7 @@ describe("Mouse/keyboard interactions", () => {
       icon: "link",
       perform: () => {},
       extra: {
-        href: searchLocation,
+        href: searchTarget,
       },
     };
 

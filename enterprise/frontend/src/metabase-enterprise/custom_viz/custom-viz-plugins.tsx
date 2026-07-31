@@ -6,7 +6,7 @@ import type {
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { api } from "metabase/api/client";
@@ -15,14 +15,15 @@ import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
@@ -508,10 +509,25 @@ function createCustomVizWrapper(
     height,
     series,
     settings,
+    fontFamily,
     onVisualizationClick,
     onHoverChange,
   }: VisualizationProps) {
-    const { resolvedColorScheme } = useColorScheme();
+    const browserRenderingContext = useBrowserRenderingContext({ fontFamily });
+
+    const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
+      () => ({
+        getColor: browserRenderingContext.getColor,
+        measureText: (text, style) =>
+          measureText(text, {
+            ...style,
+            family: style.family ?? browserRenderingContext.fontFamily,
+          }),
+        fontFamily: browserRenderingContext.fontFamily,
+        colorScheme: browserRenderingContext.colorScheme ?? "light",
+      }),
+      [browserRenderingContext],
+    );
 
     const pluginProps: GenericVizPluginProps = {
       width,
@@ -522,7 +538,7 @@ function createCustomVizWrapper(
       // the `column` resolver returns plain strings instead of internal
       // unions); the runtime value is the host's computed settings.
       settings: settings as unknown as GenericVizPluginProps["settings"],
-      colorScheme: resolvedColorScheme,
+      renderingContext,
       // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,

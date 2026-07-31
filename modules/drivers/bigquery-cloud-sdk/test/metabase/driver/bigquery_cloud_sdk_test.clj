@@ -894,6 +894,17 @@
           (is (re-find #"Too many query parameters" (ex-message ex))
               "the underlying BigQuery error message should be preserved"))))))
 
+(deftest validate-query-length-test
+  (let [limit @#'bigquery/max-sql-query-length-chars]
+    (testing "at the limit, the query is allowed"
+      (is (nil? (#'bigquery/validate-query-length! (str/join (repeat limit "x")) nil))))
+    (testing "over the limit, it throws :invalid-query"
+      (let [ex (try
+                 (#'bigquery/validate-query-length! (str/join (repeat (inc limit) "x")) nil)
+                 nil
+                 (catch Throwable t t))]
+        (is (= :invalid-query (some-> ex ex-data :type)))))))
+
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"

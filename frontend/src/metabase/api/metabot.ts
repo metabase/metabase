@@ -2,6 +2,7 @@ import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
+  ForkMetabotConversationRequest,
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
   MetabotConversationTitleResponse,
@@ -161,6 +162,16 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
+    forkMetabotConversation: builder.mutation<
+      MetabotConversationDetail,
+      ForkMetabotConversationRequest
+    >({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/fork`,
+        body,
+      }),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -211,6 +222,7 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSaveMetabotEntityMutation,
+  useForkMetabotConversationMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
