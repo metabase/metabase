@@ -51,15 +51,10 @@ function findBlockingGuard(
   return null;
 }
 
-/** The navigation a guard is currently prompting about. */
-interface HeldNavigation {
-  guardId: string;
-  args: BlockerArgs;
-}
-
 interface RouteLeaveGuardsValue {
   registerGuard: (id: string, guard: Guard) => () => void;
-  held: HeldNavigation | null;
+  blockedGuardId: string | null;
+  blocker: Blocker;
   proceedFrom: (id: string) => void;
   resetAll: () => void;
 }
@@ -92,129 +87,58 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
   const guardsRef = useRef(new Map<string, Guard>());
   // Guards that already had their say about the navigation being held.
   const answeredRef = useRef(new Set<string>());
-  // The navigation the user is being asked about, kept for as long as a prompt
-  // is up.
-  //
-  // The ref is the one source of truth, because the blocker callback writes it
-  // from outside React. Syncing it back from the state during a render would
-  // reset it to whatever that render saw, and this provider wraps the whole app,
-  // so renders land constantly. `held` mirrors it, purely to re-render guards.
-  const heldRef = useRef<HeldNavigation | null>(null);
-  const [held, setHeld] = useState<HeldNavigation | null>(null);
+  const blockedArgsRef = useRef<BlockerArgs | null>(null);
+  const [blockedGuardId, setBlockedGuardId] = useState<string | null>(null);
 
-  // react-router's `proceed` closes over the navigation it was made for, so the
-  // one captured when the prompt went up resumes that navigation even if a later
-  // one has replaced what the router reports as pending. `blocker.proceed` is not
-  // a substitute: the router keeps one pending navigation, so anything navigating
-  // meanwhile overwrites it, and resuming would go somewhere never asked about.
-  const answerRef = useRef<Pick<Blocker, "proceed" | "reset">>({
-    proceed: undefined,
-    reset: undefined,
-  });
-
-  const hold = useCallback((next: HeldNavigation | null) => {
-    heldRef.current = next;
-    setHeld(next);
+  const registerGuard = useCallback((id: string, guard: Guard) => {
+    guardsRef.current.set(id, guard);
+    return () => {
+      guardsRef.current.delete(id);
+      answeredRef.current.delete(id);
+      setBlockedGuardId((current) => (current === id ? null : current));
+    };
   }, []);
 
-  const release = useCallback(() => {
+  const shouldBlock = useCallback<BlockerFunction>((args) => {
     answeredRef.current.clear();
-    answerRef.current = { proceed: undefined, reset: undefined };
-    hold(null);
-  }, [hold]);
+    blockedArgsRef.current = args;
 
-  const registerGuard = useCallback(
-    (id: string, guard: Guard) => {
-      guardsRef.current.set(id, guard);
-      return () => {
-        guardsRef.current.delete(id);
-        answeredRef.current.delete(id);
-        // The guard holding the navigation has gone, so nothing can answer for
-        // it any more. Drop the navigation rather than leave it stuck.
-        if (heldRef.current?.guardId === id) {
-          const drop = answerRef.current.reset;
-          release();
-          drop?.();
-        }
-      };
-    },
-    [release],
-  );
-
-  const shouldBlock = useCallback<BlockerFunction>(
-    (args) => {
-      // A prompt is already up. Keep blocking, and keep asking about the
-      // destination the user was originally shown.
-      if (heldRef.current) {
-        return true;
-      }
-
-      answeredRef.current.clear();
-      const guardId = findBlockingGuard(
-        guardsRef.current,
-        args,
-        answeredRef.current,
-      );
-      if (guardId == null) {
-        return false;
-      }
-
-      hold({ guardId, args });
-      return true;
-    },
-    [hold],
-  );
+    const id = findBlockingGuard(guardsRef.current, args, answeredRef.current);
+    setBlockedGuardId(id);
+    return id != null;
+  }, []);
 
   const blocker = useBlocker(shouldBlock);
 
-  // The first render after the block is the one that still sees the blocker for
-  // the held navigation, so its answers are captured before anything else can
-  // navigate and replace them.
-  if (
-    heldRef.current &&
-    blocker.state === "blocked" &&
-    !answerRef.current.proceed
-  ) {
-    answerRef.current = { proceed: blocker.proceed, reset: blocker.reset };
-  }
-
   const proceedFrom = useCallback(
     (id: string) => {
-      const args = heldRef.current?.args;
-      if (!args) {
-        return;
-      }
       answeredRef.current.add(id);
 
-      const next = findBlockingGuard(
-        guardsRef.current,
-        args,
-        answeredRef.current,
-      );
+      const args = blockedArgsRef.current;
+      const next = args
+        ? findBlockingGuard(guardsRef.current, args, answeredRef.current)
+        : null;
 
       // Hand the prompt to the next guard that objects. Only once none is left
       // does the navigation itself resume.
       if (next) {
-        hold({ guardId: next, args });
-        return;
+        setBlockedGuardId(next);
+      } else {
+        blocker.proceed?.();
       }
-
-      const resume = answerRef.current.proceed;
-      release();
-      resume?.();
     },
-    [release, hold],
+    [blocker],
   );
 
   const resetAll = useCallback(() => {
-    const drop = answerRef.current.reset;
-    release();
-    drop?.();
-  }, [release]);
+    answeredRef.current.clear();
+    setBlockedGuardId(null);
+    blocker.reset?.();
+  }, [blocker]);
 
   const value = useMemo(
-    () => ({ registerGuard, held, proceedFrom, resetAll }),
-    [registerGuard, held, proceedFrom, resetAll],
+    () => ({ registerGuard, blockedGuardId, blocker, proceedFrom, resetAll }),
+    [registerGuard, blockedGuardId, blocker, proceedFrom, resetAll],
   );
 
   return (
@@ -250,16 +174,18 @@ export function useGuardedBlocker(
   );
 
   return useMemo<Blocker>(() => {
-    if (context?.held?.guardId !== id) {
+    if (!context) {
       return IDLE_BLOCKER;
     }
 
-    const { held, proceedFrom, resetAll } = context;
+    const { blocker, blockedGuardId, proceedFrom, resetAll } = context;
+    if (blockedGuardId !== id || blocker.state !== "blocked") {
+      return IDLE_BLOCKER;
+    }
+
     return {
       state: "blocked",
-      // The destination this guard was asked about, which is not always the one
-      // react-router is holding by now.
-      location: held.args.nextLocation,
+      location: blocker.location,
       proceed: () => proceedFrom(id),
       reset: resetAll,
     };
