@@ -4,6 +4,7 @@ import type {
   CardId,
   Collection,
   ModerationReviewStatus,
+  SchemaName,
   TableId,
   VirtualTableId,
 } from "metabase-types/api";
@@ -16,7 +17,7 @@ const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
 type VirtualSchemaCollection = {
   id?: Collection["id"] | null;
   name: Collection["name"];
-  schemaName?: string;
+  schemaName?: SchemaName;
 };
 
 export const ROOT_COLLECTION_VIRTUAL_SCHEMA = generateSchemaId(

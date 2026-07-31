@@ -18,6 +18,9 @@ describe("saved question helpers", () => {
     it("should return 'Everything else' for root collection", () => {
       expect(getCollectionVirtualSchemaName(null)).toBe("Everything else");
       expect(
+        getCollectionVirtualSchemaName({ id: null, name: "Our analytics" }),
+      ).toBe("Everything else");
+      expect(
         getCollectionVirtualSchemaName({ id: "root", name: "Our analytics" }),
       ).toBe("Everything else");
     });
@@ -52,6 +55,10 @@ describe("saved question helpers", () => {
       },
       {
         collection: null,
+        expectedName: encodeURIComponent("Everything else"),
+      },
+      {
+        collection: { id: null, name: "Our analytics" },
         expectedName: encodeURIComponent("Everything else"),
       },
       {

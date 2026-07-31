@@ -16,12 +16,12 @@ import type {
   NativeDatasetQuery,
   StructuredDatasetQuery,
   TableId,
-  TemplateTag,
   TemplateTagType,
   TemplateTags,
 } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
+  createMockTemplateTag,
   getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import {
@@ -33,16 +33,6 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-
-function getTemplateTag(tag: Partial<TemplateTag> = {}): TemplateTag {
-  return {
-    id: "_",
-    name: "_",
-    "display-name": "_",
-    type: "card",
-    ...tag,
-  };
-}
 
 function createSavedNativeCard({
   tags = {},
@@ -176,7 +166,7 @@ describe("data model utils", () => {
       it("returns true when 'card' variables are used", () => {
         const card = createSavedNativeCard({
           tags: {
-            "#5": getTemplateTag({ type: "card" }),
+            "#5": createMockTemplateTag({ type: "card" }),
           },
         });
         const { metadata } = setup({ cards: [card] });
@@ -190,7 +180,7 @@ describe("data model utils", () => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const card = createSavedNativeCard({
             tags: {
-              foo: getTemplateTag({ type: tagType }),
+              foo: createMockTemplateTag({ type: tagType }),
             },
           });
           const { metadata } = setup({ cards: [card] });
@@ -204,8 +194,8 @@ describe("data model utils", () => {
       it("returns false if at least one unsupported variable type is used", () => {
         const card = createSavedNativeCard({
           tags: {
-            "#5": getTemplateTag({ type: "card" }),
-            foo: getTemplateTag({ type: "dimension" }),
+            "#5": createMockTemplateTag({ type: "card" }),
+            foo: createMockTemplateTag({ type: "dimension" }),
           },
         });
         const { metadata } = setup({ cards: [card] });
