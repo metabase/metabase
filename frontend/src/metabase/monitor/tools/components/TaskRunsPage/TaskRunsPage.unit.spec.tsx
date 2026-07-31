@@ -306,7 +306,7 @@ describe("TaskRunsPage", () => {
   describe("started-at filter with include-today", () => {
     it("requests with the ~ suffix when today is included", async () => {
       await setup();
-  
+
       await openDatePicker();
       await selectRange("Previous week");
 
@@ -327,7 +327,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?run-type=alert&started-at=past1weeks&entity-type=card&entity-id=42`,
       });
-  
+
       await openDatePicker();
       await userEvent.click(
         screen.getByRole("switch", { name: "Include today" }),
@@ -345,7 +345,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?run-type=alert&started-at=past1weeks&entity-type=card&entity-id=42`,
       });
-  
+
       await openDatePicker();
       await selectRange("Previous 30 days");
 
@@ -361,7 +361,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?started-at=past1weeks&include-today=true`,
       });
-  
+
       expect(
         screen.getByText("Previous week, including today"),
       ).toBeInTheDocument();
@@ -372,7 +372,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?started-at=thisday&include-today=true`,
       });
-  
+
       expect(getLastRunsParams().get("started-at")).toBe("thisday");
     });
   });
@@ -382,7 +382,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?entity-id=5`,
       });
-  
+
       const params = getLastRunsParams();
       expect(params.get("entity-id")).toBeNull();
       expect(params.get("entity-type")).toBeNull();
@@ -392,7 +392,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?entity-type=card`,
       });
-  
+
       const params = getLastRunsParams();
       expect(params.get("entity-id")).toBeNull();
       expect(params.get("entity-type")).toBeNull();
@@ -402,7 +402,7 @@ describe("TaskRunsPage", () => {
       await setup({
         initialRoute: `${PATHNAME}?entity-type=card&entity-id=5`,
       });
-  
+
       const params = getLastRunsParams();
       expect(params.get("entity-type")).toBe("card");
       expect(params.get("entity-id")).toBe("5");

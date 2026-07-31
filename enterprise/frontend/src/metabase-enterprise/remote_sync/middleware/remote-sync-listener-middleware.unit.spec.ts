@@ -2,7 +2,6 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import {
   setupCreateCollectionEndpoint,
   setupDeleteCollectionEndpoint,
@@ -12,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
