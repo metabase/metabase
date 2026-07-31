@@ -165,6 +165,8 @@ export type CustomStaticVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
+  width?: number;
+  height?: number;
 };
 
 export type ClickObject = {

@@ -56,6 +56,8 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     series,
     settings,
     renderingContext,
+    width,
+    height,
   }: CustomStaticVisualizationProps<Settings>) => {
     const { getColor } = renderingContext;
     const { threshold } = settings;
@@ -67,10 +69,15 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 
     const meetsThreshold = value >= threshold;
 
+    // width/height are the pixel box to fill when provided (e.g. a dashboard
+    // grid cell in a PDF export); fall back to a fixed size otherwise.
+    const finalWidth = width ?? 540;
+    const finalHeight = height ?? 360;
+
     return (
       <svg
-        width={540}
-        height={360}
+        width={finalWidth}
+        height={finalHeight}
         viewBox="0 0 17 16"
         xmlns="http://www.w3.org/2000/svg"
       >
