@@ -34,15 +34,12 @@
   [_]
   (try
     (when (usage-metadata.settings/usage-metadata-enabled?)
-      (usage-metadata.batch/run-batch!)
-      nil)
+      (usage-metadata.batch/run-batch!))
     (when (premium-features/has-feature? :library)
-      ;; A manual API request creates a queued run before triggering this job.
-      ;; Scheduled execution creates its own run only when nothing is active.
-      (when-let [run (or (usage-metadata.candidates/active-run)
-                         (usage-metadata.candidates/queue-refresh! :scheduled nil))]
-        (when (= :queued (:status run))
-          (usage-metadata.candidates/run-refresh! run))))
+      ;; `queue-refresh!` also recovers runs interrupted by a previous process, so every
+      ;; scheduled tick must go through it rather than short-circuiting on `active-run`.
+      (when-let [run (usage-metadata.candidates/queue-refresh! :scheduled nil)]
+        (usage-metadata.candidates/run-refresh! run)))
     (catch Throwable e
       (log/error e "Error processing usage metadata")
       (throw e))))

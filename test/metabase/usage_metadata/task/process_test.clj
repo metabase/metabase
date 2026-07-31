@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.jobs :as jobs]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.usage-metadata.batch]
+   [metabase.usage-metadata.candidates :as usage-metadata.candidates]
    [metabase.usage-metadata.task.process :as usage-metadata.task.process]))
 
 (set! *warn-on-reflection* true)
@@ -35,3 +37,35 @@
         (mt/with-temporary-setting-values [usage-metadata-enabled? true]
           (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
           (is (true? (deref ran? 5000 ::timeout))))))))
+
+(deftest scheduled-candidate-refresh-goes-through-recovery-test
+  (mt/with-temp-scheduler!
+    (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
+    (let [replacement-run {:id 2, :status :queued}
+          queued-args     (promise)
+          submitted-run   (promise)]
+      (with-redefs [premium-features/has-feature?              (constantly true)
+                    metabase.usage-metadata.batch/run-batch!   (constantly nil)
+                    usage-metadata.candidates/active-run       (constantly {:id 1, :status :running})
+                    usage-metadata.candidates/queue-refresh!   (fn [trigger requested-by]
+                                                                 (deliver queued-args [trigger requested-by])
+                                                                 replacement-run)
+                    usage-metadata.candidates/run-refresh!     #(deliver submitted-run %)]
+        (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
+        (is (= [:scheduled nil] (deref queued-args 5000 ::timeout)))
+        (is (= replacement-run (deref submitted-run 5000 ::timeout)))))))
+
+(deftest scheduled-candidate-refresh-leaves-active-run-alone-test
+  (mt/with-temp-scheduler!
+    (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
+    (let [queued-args   (promise)
+          submitted-run (promise)]
+      (with-redefs [premium-features/has-feature?              (constantly true)
+                    metabase.usage-metadata.batch/run-batch!   (constantly nil)
+                    usage-metadata.candidates/queue-refresh!   (fn [trigger requested-by]
+                                                                 (deliver queued-args [trigger requested-by])
+                                                                 nil)
+                    usage-metadata.candidates/run-refresh!     #(deliver submitted-run %)]
+        (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
+        (is (= [:scheduled nil] (deref queued-args 5000 ::timeout)))
+        (is (= ::timeout (deref submitted-run 100 ::timeout)))))))
