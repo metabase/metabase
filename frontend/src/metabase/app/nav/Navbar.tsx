@@ -6,7 +6,7 @@ import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
 import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
@@ -30,7 +30,8 @@ const mapStateToProps = (state: State) => ({
 });
 
 function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   useListDatabasesQuery();
   const isAdminApp = useMemo(
     () => location.pathname.startsWith("/admin/"),

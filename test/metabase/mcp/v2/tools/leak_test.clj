@@ -18,8 +18,11 @@
 
 (set! *warn-on-reflection* true)
 
+;; `visualize_query` is deliberately absent: it was a v1-only affordance when this list was
+;; written, but v2 now ships a tool by that name, so banning it would forbid the tool from
+;; naming itself and forbid `render_drill_through` from pointing at it.
 (def ^:private v1-affordances
-  ["read_resource" "metabase://" "portable_entity_id" "visualize_query" "portable"
+  ["read_resource" "metabase://" "portable_entity_id" "portable"
    "MBQL 5" "MBQL 4" "MBQL5" "MBQL4" "legacy"])
 
 (deftest tool-manifest-never-names-v1-affordances-test

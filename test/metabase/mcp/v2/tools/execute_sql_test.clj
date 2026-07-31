@@ -22,7 +22,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private sql-scope
-  #{"agent:sql:execute"})
+  #{"agent:sql:run"})
 
 (defn- call!
   "Call `tool-name` (default `execute_sql`) through the registry dispatch seam as the
@@ -358,23 +358,23 @@
         (testing "execute_query refuses an execute_sql handle and steers back to execute_sql"
           (is (= "Native queries are not supported here; use execute_sql instead."
                  (error-text (call! sid "execute_query" {:query_handle handle}
-                                    #{"agent:query:execute"})))))))))
+                                    #{"agent:query:run"})))))))))
 
 ;;; ---------------------------------------------------- Scope -----------------------------------------------------
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest execute-sql-scope-test
   (testing "the tool's scope is advertised, so a token can actually be granted it"
-    (is (contains? (registry/registered-scopes) "agent:sql:execute")))
+    (is (contains? (registry/registered-scopes) "agent:sql:run")))
   (testing "scope gating holds on both surfaces: tools/list and tools/call"
     (let [listed-names #(into #{} (map :name) (registry/list-tools %))]
       (is (contains? (listed-names sql-scope) "execute_sql"))
-      (is (not (contains? (listed-names #{"agent:query:execute"}) "execute_sql")))))
+      (is (not (contains? (listed-names #{"agent:query:run"}) "execute_sql")))))
   (mt/with-current-user (mt/user->id :crowberto)
     (let [sid  (str "execute-sql-scope-" (random-uuid))
           args {:database_id (mt/id) :sql "SELECT 1"}]
       (testing "a token holding only execute_query's scope cannot call execute_sql"
-        (is (str/includes? (error-text (call! sid "execute_sql" args #{"agent:query:execute"}))
+        (is (str/includes? (error-text (call! sid "execute_sql" args #{"agent:query:run"}))
                            "Insufficient scope")))
       (testing "the identical call succeeds with the SQL-execute scope"
         (mt/with-model-cleanup [:model/McpQueryHandle]

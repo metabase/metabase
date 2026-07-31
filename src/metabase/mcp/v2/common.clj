@@ -10,7 +10,9 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.channel.urls :as channel.urls]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.lib.core :as lib]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
@@ -19,7 +21,8 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
@@ -209,7 +212,12 @@
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
    collection and resolve to nil without a DB translation; `\"trash\"` resolves to
    `:trash-collection-id` when the caller allows it (the tool passes the id from the
-   collections module) and is a teaching error otherwise."
+   collections module) and is a teaching error otherwise.
+
+   A numeric id is checked for existence here. [[resolve-id-or-404]] translates entity_ids but
+   passes numbers straight through, so without this an id for no collection at all travelled on
+   into the write, where it fails a `mu/defn` schema or a permission check and reaches the caller
+   as the sanitized \"Internal error\". Permissions stay the caller's job afterwards, unchanged."
   ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
   ([id-or-sentinel {:keys [trash-collection-id]}]
    (cond
@@ -221,7 +229,24 @@
          (throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
 
      :else
-     (resolve-id-or-404 :model/Collection id-or-sentinel))))
+     (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
+       (when-not (t2/exists? :model/Collection :id id)
+         (throw-not-found :model/Collection id-or-sentinel))
+       id))))
+
+;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
+
+(defn frontend-url
+  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
+   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
+   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
+   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
+   fails validation."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))
 
 ;;; --------------------------------------------- response_format --------------------------------------------------
 
@@ -306,56 +331,146 @@
 
 ;;; ------------------------------------------------ _write dispatch -----------------------------------------------
 
-(defn check-update-scope!
-  "The method-level scope gate for merged `_write` tools: the registry requires the create
-   scope to list/call the tool at all; `method: \"update\"` additionally requires
-   `update-scope` at runtime. No-op for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which [[metabase.mcp.scope/matches?]] always accepts)."
-  [token-scopes update-scope tool-name]
-  (when-not (mcp.scope/matches? token-scopes update-scope)
-    (throw (ex-info (format "Insufficient scope to call %s with method: update — this token can create but not update."
-                            tool-name)
-                    {:status-code 403 ::error-code error-code-invalid-request}))))
+(defn readback
+  "GHY-4217: `row` when `token-scopes` could read the entity back through the read tools, else a
+   minimal `{id, url?, note}` acknowledgement — a write succeeding must never double as a read,
+   or the write scope becomes a read oracle for content the token's read scopes deny (a no-op
+   update would return the full entity). `read-scopes` is everything the read path would demand:
+   the read tool's own scope plus any per-type extra. Unscoped callers (cookie sessions bind the
+   unrestricted sentinel) always get the row."
+  [token-scopes read-scopes row]
+  (let [missing (remove #(mcp.scope/matches? token-scopes %) read-scopes)]
+    (if (empty? missing)
+      row
+      (assoc (select-keys row [:id :url])
+             :note (format "Written. Reading it back requires the %s scope%s this token doesn't have."
+                           (str/join " and " missing)
+                           (if (next missing) "s" ""))))))
+
+(defn- expand-clear
+  "Turn a `clear` list of property names into explicit nils on `args`. Null can't carry this
+   meaning itself: the registry strips nulls at the boundary because strict clients flood every
+   declared property with null, so `description: null` cannot be told apart from \"didn't touch
+   it\". A list of names survives that stripping and says it unambiguously. The nils are what the
+   tools' update paths already read — they test `contains?` (or `select-keys`), so a present-but-nil
+   key sets the column to nil without any per-tool change."
+  [args clearable clear]
+  (if (empty? clear)
+    (dissoc args :clear)
+    (let [clearable (set clearable)
+          fields    (map keyword clear)]
+      (doseq [field fields]
+        (when-not (contains? clearable field)
+          (throw-teaching-error
+           (if (seq clearable)
+             (format "`%s` can't be cleared. This tool can clear: %s."
+                     (name field) (str/join ", " (sort (map name clearable))))
+             (format "`%s` can't be cleared — this tool has no clearable properties."
+                     (name field)))))
+        (when (some? (get args field))
+          (throw-teaching-error
+           (format "`%s` is both set and cleared in the same call — pass one or the other."
+                   (name field)))))
+      (reduce #(assoc %1 %2 nil) (dissoc args :clear) fields))))
 
 (defn dispatch-write
   "Shared `method` dispatch for `_write` tools. `entry` carries the tool's write contract:
-   `:tool-name`, `:update-scope` (re-checked at runtime on update), and `:create-required`
-   (arg keys enforced at create with teaching errors — the \"(create)\" markers in the spec).
+   `:create-required` (arg keys enforced at create with teaching errors — the \"(create)\" markers
+   in the spec) and `:clearable` (the property names `clear` may name — see [[expand-clear]]). The
+   tool's single write `:scope` is enforced at the registry gate, so dispatch itself does no scope
+   checking.
 
-   Returns `[:create args]` or `[:update id args]` (with `:method`/`:id` stripped), or throws
-   a teaching error. Does not itself touch the DB — the tool handler consumes the result."
-  [{:keys [tool-name update-scope create-required]} token-scopes {:keys [method id] :as args}]
+   Returns `[:create args]` or `[:update id args]` (with `:method`/`:id`/`:clear` stripped, and any
+   cleared property present as an explicit nil), or throws a teaching error. Does not itself touch
+   the DB — the tool handler consumes the result."
+  [{:keys [create-required clearable]} {:keys [method id clear] :as args}]
   (case method
     "create"
     (do
+      (when (seq clear)
+        (throw-teaching-error
+         "`clear` applies to method \"update\" only — a new object has nothing set to clear."))
       (doseq [k create-required]
         (when (nil? (get args k))
           (throw-teaching-error (format "`%s` is required when method is \"create\"." (name k)))))
-      [:create (dissoc args :method)])
+      [:create (dissoc args :method :clear)])
 
     "update"
     (do
       (when (nil? id)
         (throw-teaching-error "`id` is required when method is \"update\"."))
-      (when update-scope
-        (check-update-scope! token-scopes update-scope tool-name))
-      [:update id (dissoc args :method :id)])
+      [:update id (-> (dissoc args :method :id)
+                      (expand-clear clearable clear))])
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
 
 ;;; -------------------------------------------- Representations pipeline ------------------------------------------
 
 (defn execute-representations-query
-  "Run the shared representations pipeline (validate → repair → resolve) with the MCP v2
-   surface bound — the one entry point for v2 tools that accept an agent-authored MBQL query.
-   Under the v2 surface the pipeline accepts numeric table/field ids inside query bodies
-   alongside the portable name forms, and its recovery hints name the v2 discovery tools
-   (`browse_data`, `search`) rather than v1's `read_resource` / `metabase://` URIs."
+  "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
+   the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
+   dialect on, and supplies v2's recovery sentences so a resolution failure names `browse_data` /
+   `search` rather than v1's `read_resource` / `metabase://` URIs."
   [external-query]
   (binding [serdes.resolve/*numeric-ids-allowed?* true]
     (metabot.construct/execute-representations-query
      external-query
      {:recovery-hint v2.recovery-hints/recovery-hint})))
+
+;;; ------------------------------------------------ Shared schemas ------------------------------------------------
+
+(def card-display-values
+  "Visualization types a card (or an MCP Apps visualization) can render as. Shared so the display
+   a tool saves and the display a tool renders can't drift apart. Callers that want a per-field
+   `:description` build their own enum from these — Malli properties can't be added to a built
+   schema without wrapping it in an `:and`, which publishes as JSON Schema `allOf`."
+  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
+
+(def card-display-enum
+  "[[card-display-values]] as an undescribed Malli enum."
+  (into [:enum] card-display-values))
+
+;;; ------------------------------------------------ Portable queries ----------------------------------------------
+
+(defn ellipsize
+  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
+  [s limit]
+  (let [s (str s)]
+    (if (> (count s) limit)
+      (str (subs s 0 limit) "…")
+      s)))
+
+(defn portable-query?
+  "True when `query` is a full query whose first stage names its source the way the portable
+   external dialect does — an FK path `[db schema table]` or a card entity_id — rather than a
+   numeric id. Those forms mean nothing to [[metabase.lib-be.core/normalize-query]]; they need
+   the representations pipeline."
+  [query]
+  (let [stage (first (:stages query))]
+    (or (vector? (:source-table stage))
+        (string? (:source-card stage)))))
+
+(defn resolve-external-query
+  "Resolve a full query in the portable external dialect through the same pipeline `execute_query`
+   runs a fresh `query` through — repair, portable-FK resolution, and the runnable/editor gates —
+   and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
+
+   The pipeline's own agent-facing failures become a teaching error about the `definition`
+   argument, ending in `hint` (a sentence naming the shapes the calling tool accepts); permission
+   failures and anything unrecognized pass through."
+  [external-query hint]
+  (try
+    ;; Through the v2 entry point, not the raw pipeline: a `definition` gets the same numeric-id
+    ;; dialect and the same v2 recovery sentences a fresh `execute_query` body would.
+    (-> (execute-representations-query external-query)
+        (get-in [:structured-output :query])
+        lib/prepare-for-serialization)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:agent-error? (ex-data e))
+        (throw-teaching-error
+         (format "`definition` could not be resolved: %s %s" (ellipsize (ex-message e) 300) hint))
+        (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
 

@@ -8,7 +8,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical])
   (:import
@@ -90,8 +89,7 @@
                                      input+row (map vector inputs coerced)]
                            input+row)]
     (for [input inputs]
-      (u/prog1 (assoc input :row (input->coerced input))
-        (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
+      (assoc input :row (input->coerced input)))))
 
 (defn- perform-data-grid-action! [action-kw context inputs]
   (let [next-inputs (coerce-inputs inputs)]

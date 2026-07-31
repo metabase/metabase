@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type Question from "metabase-lib/v1/Question";
@@ -12,12 +12,16 @@ import {
   type McpChartTypeEntry,
   getMcpChartTypes,
 } from "../utils/getMcpChartTypes";
+import { getRequestedDisplayAction } from "../utils/getRequestedDisplayAction";
 
 interface UseMcpVisualizationSelectorInput {
   queryKey: string | null;
   question: Question | undefined;
   queryResults: Dataset[] | null | undefined;
   updateQuestion: (question: Question, opts: { run: boolean }) => void;
+
+  /** Chart type `visualize_query` asked for, honored once per query. */
+  requestedDisplay?: CardDisplayType | null;
 }
 
 interface UseMcpVisualizationSelectorResult {
@@ -38,6 +42,7 @@ export function useMcpVisualizationSelector({
   question,
   queryResults,
   updateQuestion,
+  requestedDisplay = null,
 }: UseMcpVisualizationSelectorInput): UseMcpVisualizationSelectorResult {
   const queryResult = queryResults?.[0] ?? null;
   const currentDisplay = question?.display() ?? null;
@@ -67,11 +72,17 @@ export function useMcpVisualizationSelector({
 
   const rowCount = queryResult?.data?.rows?.length ?? 0;
 
+  const hasSettledResults = defaultDisplayState.queryKey === queryKey;
+
   const sensibleChartTypes = getMcpChartTypes({
     defaultDisplay: defaultDisplayState.defaultDisplay,
     // Unjustified type cast. FIXME
     sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
     canShowTable: rowCount >= 2,
+    // Only the chart type the tool asked for, and only once this query's own
+    // results have settled — offering `currentDisplay` outright would leak the
+    // previous query's display into the picker on a stale render.
+    activeDisplay: hasSettledResults ? requestedDisplay : null,
   });
 
   const handleDisplayChange = (type: CardDisplayType) => {
@@ -83,6 +94,40 @@ export function useMcpVisualizationSelector({
 
     updateQuestion(nextQuestion, { run: false });
   };
+
+  // Honor the tool's requested chart type once this query's results have landed.
+  // Locking matches picking from the chart type picker, so the data shape does
+  // not reset the display the user explicitly asked for.
+  const settledDisplayQueryKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const action = getRequestedDisplayAction({
+      requestedDisplay,
+      currentDisplay,
+      defaultDisplay: defaultDisplayState.defaultDisplay,
+      queryKey,
+      settledQueryKey: settledDisplayQueryKeyRef.current,
+    });
+
+    if (action === "wait") {
+      return;
+    }
+
+    settledDisplayQueryKeyRef.current = queryKey;
+
+    if (action === "apply" && question && requestedDisplay) {
+      updateQuestion(question.setDisplay(requestedDisplay).lockDisplay(), {
+        run: false,
+      });
+    }
+  }, [
+    requestedDisplay,
+    currentDisplay,
+    defaultDisplayState.defaultDisplay,
+    queryKey,
+    question,
+    updateQuestion,
+  ]);
 
   return {
     sensibleChartTypes,

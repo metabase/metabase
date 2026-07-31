@@ -33,6 +33,12 @@
   [^Integer id]
   (format "/question/%d" id))
 
+(defn metric-path
+  "Relative frontend path for a metric `Card` with ID, e.g. \"/metric/10\" — metrics have their own
+   page, not the question query builder."
+  [^Integer id]
+  (format "/metric/%d" id))
+
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
@@ -112,17 +118,22 @@
   []
   (str (site-url) "/unsubscribe"))
 
+(defn collection-path
+  "Relative frontend path for a `Collection` with ID, or nil for root, e.g. \"/collection/10\"."
+  [collection-id-or-nil]
+  (format "/collection/%s" (or collection-id-or-nil "root")))
+
 (defn collection-url
   "Return an appropriate URL for a `Collection` with ID or nil for root.
      (collection-url 10) -> \"http://localhost:3000/collection/10\"
      (collection-url nil) -> \"http://localhost:3000/collection/root\""
   [collection-id-or-nil]
-  (format "%s/collection/%s" (site-url) (or collection-id-or-nil "root")))
+  (str (site-url) (collection-path collection-id-or-nil)))
 
 (defn tools-caching-details-url
   "Return an appropriate URL for linking to caching log details."
   [^Integer persisted-info-id]
-  (format "%s/monitor/model-caching/%d" (site-url) persisted-info-id))
+  (format "%s/monitor/model-persistence-log/%d" (site-url) persisted-info-id))
 
 (defn transform-job-url
   "URL for a transform job."

@@ -26,6 +26,7 @@ import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/selectors/settings";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";
@@ -48,8 +49,8 @@ let hasInitializedPlugins = false;
  * to avoid an extra frame where children render without plugins.
  */
 function useInitPlugins(reduxStore: SdkStore) {
-  const tokenFeatures = useSelector(
-    (state) => state.settings.values["token-features"],
+  const tokenFeatures = useSelector((state) =>
+    getSetting(state, "token-features"),
   );
 
   // Modular Embedding already initializes the plugins in its entrypoint.

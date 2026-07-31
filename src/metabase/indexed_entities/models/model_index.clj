@@ -96,7 +96,7 @@
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e
-        (log/warnf e "Error fetching indexed values for model %s" (:id model))
+        (log/warnf "Error fetching indexed values for model %s: %s" (:id model) (ex-message e))
         [(ex-message e) []]))))
 
 (defn find-changes
@@ -157,8 +157,8 @@
                                      "indexed")}))
         (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
-          (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
-                      (:id model-index) (:model_id model-index))
+          (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
+                      (:id model-index) (:model_id model-index) (ex-message e))
           (t2/update! :model/ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)

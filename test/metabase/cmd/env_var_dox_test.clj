@@ -75,6 +75,35 @@
     (testing "returns nil when doc key is missing"
       (is (nil? (#'sut/format-doc {}))))))
 
+(deftest ^:parallel settable-in-config-file?-test
+  (testing "Read-only settings can't be set in a config file"
+    (is (false? (sut/settable-in-config-file? {:setter :none}))))
+  (testing "Settings with a setter can"
+    (is (true? (sut/settable-in-config-file? {:setter (fn [_])})))
+    (is (true? (sut/settable-in-config-file? {})))))
+
+(def ^:private env-var-only-note
+  "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).")
+
+(deftest ^:parallel format-config-name-test
+  (testing "Read-only settings are flagged as environment-variable-only, whatever their visibility"
+    (is (= env-var-only-note
+           (#'sut/format-config-name {:munged-name "show-google-sheets-integration"
+                                      :setter :none
+                                      :visibility :public})))
+    (testing "including internal ones, which otherwise get no line at all"
+      (is (= env-var-only-note
+             (#'sut/format-config-name {:munged-name "audit-max-retention-days"
+                                        :setter :none
+                                        :visibility :internal})))))
+  (testing "Internal settings with a setter get no config file line"
+    (is (= "" (#'sut/format-config-name {:munged-name "internal-setting"
+                                         :visibility :internal}))))
+  (testing "Settable, non-internal settings get their config file name"
+    (is (= "[Configuration file name](./config-file.md): `admin-email`"
+           (#'sut/format-config-name {:munged-name "admin-email"
+                                      :visibility :authenticated})))))
+
 (deftest ^:parallel format-env-var-entry-with-false-doc-test
   (testing "format-env-var-entry doesn't crash when env-var has :doc false"
     (let [env-var-with-false-doc {:name :test-setting

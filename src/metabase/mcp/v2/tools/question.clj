@@ -154,19 +154,6 @@
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
-(def ^:private card-display-enum
-  [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
-   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
-
-(defn- frontend-url
-  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
-   when site-url is unset so the tool never emits an absolute URL with an empty host."
-  [path]
-  (let [base (channel.urls/site-url)]
-    (if (str/blank? base)
-      path
-      (str base path))))
-
 (defn- collection-path
   "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing
    / Q3\". Ancestors the caller can't read are omitted, matching the app breadcrumb. A `nil`
@@ -281,7 +268,7 @@
                   dashboard-id    (assoc :dashboard_id dashboard-id))
                 {:id api/*current-user-id*})]
       (assoc (card-response card)
-             :url (frontend-url (channel.urls/card-path (:id card)))))))
+             :url (common/frontend-url (channel.urls/card-path (:id card)))))))
 
 (defn- update-card-response
   "The update response: [[card-response]] plus `:archived`."
@@ -380,10 +367,13 @@
    [:collection_id {:optional true} [:maybe [:or :int :string]]]
    [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
    [:collection_position {:optional true} [:maybe :int]]
-   [:display {:optional true} [:maybe card-display-enum]]
+   [:display {:optional true} [:maybe common/card-display-enum]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:cache_ttl {:optional true} [:maybe :int]]
    [:archived {:optional true} [:maybe :boolean]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description" "collection_position" "cache_ttl"]]]]
    [:column_metadata {:optional true}
     [:maybe [:sequential
              [:map
@@ -396,17 +386,18 @@
 (registry/deftool question-write-tool
   "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
-   :scope        metabot.scope/agent-question-create
-   :update-scope metabot.scope/agent-question-update
-   :annotations  {:readOnlyHint false :destructiveHint false}
+   :scope        metabot.scope/agent-content-write
+   ;; `archived: true` trashes the card, so this is not the additive-only update
+   ;; `destructiveHint false` would assert.
+   :annotations  {:readOnlyHint false :destructiveHint true}
    :args         question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (common/dispatch-write
-                  {:tool-name "question_write"
-                   :update-scope metabot.scope/agent-question-update
-                   :create-required [:name]}
-                  token-scopes args)
-        payload (case op
-                  :create (create! a session-id)
-                  :update (update! a b session-id))]
+                  {:create-required [:name]
+                   :clearable       #{:description :collection_position :cache_ttl}}
+                  args)
+        payload (common/readback token-scopes [metabot.scope/agent-content-read]
+                                 (case op
+                                   :create (create! a session-id)
+                                   :update (update! a b session-id)))]
     (common/success-content payload payload)))

@@ -207,7 +207,7 @@
 (registry/deftool get-parameter-values
   "Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target (\"dashboard\" or \"question\" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values; a date parameter returns the column's distinct dates, rarely what you want — build date ranges yourself. Pair with run_saved_question, which takes these values as its `parameters`."
   {:name        "get_parameter_values"
-   :scope       metabot.scope/agent-resource-read
+   :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
    :args        get-parameter-values-args-schema}
   [{:keys [target id parameter_id query constraints limit offset]} _context]

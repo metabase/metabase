@@ -94,13 +94,6 @@
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
 
-(defn- ellipsize
-  [s limit]
-  (let [s (str s)]
-    (if (> (count s) limit)
-      (str (subs s 0 limit) "…")
-      s)))
-
 (defn- wrap-mbql4-fragment
   "Inject the tool's `table` into a bare MBQL 4 fragment (a map with no full-query shape, e.g.
    `{:filter [...]}`) by wrapping it in a legacy full query, so `create-segment!` can derive a
@@ -139,7 +132,7 @@
     (catch Exception e
       (common/throw-teaching-error
        (format "`definition` is not a valid MBQL query: %s %s"
-               (ellipsize (ex-message e) 300) (accepted-shapes kind))))))
+               (common/ellipsize (ex-message e) 300) (accepted-shapes kind))))))
 
 ;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint
 ;; auto-converts MBQL 4 via measures.api/normalize-input-definition, but MBQL 4 is a Cypress-e2e
@@ -153,33 +146,6 @@
           "\"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". "
           (accepted-shapes :measure)))))
 
-(defn- named-source-query?
-  "True when `definition` is a full query whose first stage names its source by an FK path or a
-   card entity_id rather than a numeric id. Those forms mean nothing to
-   [[lib-be/normalize-query]]; they need the representations pipeline."
-  [definition]
-  (let [stage (first (:stages definition))]
-    (or (vector? (:source-table stage))
-        (string? (:source-card stage)))))
-
-(defn- resolve-external-query
-  "Resolve a full external-dialect query through the same pipeline `execute_query` runs a fresh
-   `query` through — repair, reference resolution, and the runnable/editor gates — and return
-   the serialized MBQL 5 query. Resolution only: the pipeline does not execute. Surfaces the
-   pipeline's own agent-facing failures as teaching errors; permission failures and anything
-   unrecognized pass through."
-  [kind external-query]
-  (try
-    (-> (common/execute-representations-query external-query)
-        (get-in [:structured-output :query])
-        lib/prepare-for-serialization)
-    (catch clojure.lang.ExceptionInfo e
-      (if (:agent-error? (ex-data e))
-        (common/throw-teaching-error
-         (format "`definition` could not be resolved: %s %s"
-                 (ellipsize (ex-message e) 300) (accepted-shapes kind)))
-        (throw e)))))
-
 (defn- clause-form->definition
   "Reassemble the bare clause form onto `table` and resolve it. The clause form names no source of
    its own, so `table` — `table_id` on create, the row's own table on update — is what makes it a
@@ -187,13 +153,13 @@
    is distinguished from an array of clauses by its string head."
   [kind definition table]
   (let [clauses (if (string? (first definition)) [definition] (vec definition))]
-    (resolve-external-query
-     kind
+    (common/resolve-external-query
      {:lib/type "mbql/query"
       :stages   [(assoc {:lib/type     "mbql.stage/mbql"
                          :source-table (:id table)}
                         (case kind :segment :filters :measure :aggregation)
-                        clauses)]})))
+                        clauses)]}
+     (accepted-shapes kind))))
 
 (defn- prepare-definition
   "Resolve a caller-supplied `definition` into the MBQL 5 query the domain layer stores, accepting
@@ -204,8 +170,8 @@
     (sequential? definition)
     (clause-form->definition kind definition table)
 
-    (named-source-query? definition)
-    (resolve-external-query kind definition)
+    (common/portable-query? definition)
+    (common/resolve-external-query definition (accepted-shapes kind))
 
     :else
     (case kind
@@ -256,7 +222,7 @@
   (->> (or (seq (distinct (custom-messages humanized)))
            (distinct (humanized-messages humanized)))
        (take 3)
-       (map #(ellipsize % 200))
+       (map #(common/ellipsize % 200))
        (str/join "; ")))
 
 (defn- run-domain-write
@@ -320,7 +286,13 @@
                                          "the only removal path — there is no hard delete.")}]]]
    [:revision_message {:optional true}
     [:maybe [:string {:min 1 :description (str "Update only, required: a short sentence describing the change, "
-                                               "recorded in the revision history.")}]]]])
+                                               "recorded in the revision history.")}]]]
+   [:clear {:optional true}
+    [:maybe [:sequential [:enum {:description (str "Update only: property names to unset (description). Needed "
+                                                   "because a null cannot say \"clear this\" — strict clients fill "
+                                                   "every unset property with null, so nulls are stripped at the "
+                                                   "boundary.")}
+                          "description"]]]]])
 
 ;;; ------------------------------------------------ segment_write -------------------------------------------------
 
@@ -335,8 +307,8 @@
                           "reference other segments; cycles are rejected.")}))
 
 (def ^:private segment-write-entry
-  {:tool-name       "segment_write"
-   :create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]
+   :clearable       #{:description}})
 
 (registry/deftool segment-write
   "Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries'
@@ -347,11 +319,14 @@
   single-stage query. For a full query table_id must name the definition's own source table; a mismatch is
   a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the
   table, and the table must not live in a read-only remote-synced collection."
-  {:name  "segment_write"
-   :scope metabot.scope/agent-segment-write
-   :args  segment-write-args-schema}
+  {:name        "segment_write"
+   :scope       metabot.scope/agent-content-write
+   ;; `archived: true` trashes the segment, so this is not the additive-only update
+   ;; `destructiveHint false` would assert.
+   :annotations {:readOnlyHint false :destructiveHint true}
+   :args        segment-write-args-schema}
   [args {:keys [token-scopes]}]
-  (let [dispatched (common/dispatch-write segment-write-entry token-scopes args)]
+  (let [dispatched (common/dispatch-write segment-write-entry args)]
     (case (first dispatched)
       :create
       (let [[_ body]   dispatched
@@ -363,6 +338,7 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :segment)
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content))
 
       :update
@@ -377,6 +353,7 @@
                                               (t2/select-one :model/Table :id (:table_id segment)))))]
         (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content)))))
 
 ;;; ------------------------------------------------ measure_write -------------------------------------------------
@@ -393,8 +370,8 @@
                           "but not metrics; cycles are rejected.")}))
 
 (def ^:private measure-write-entry
-  {:tool-name       "measure_write"
-   :create-required [:table_id :name :definition]})
+  {:create-required [:table_id :name :definition]
+   :clearable       #{:description}})
 
 (registry/deftool measure-write
   "Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another
@@ -408,11 +385,14 @@
   full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only:
   writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live
   in a read-only remote-synced collection."
-  {:name  "measure_write"
-   :scope metabot.scope/agent-measure-write
-   :args  measure-write-args-schema}
+  {:name        "measure_write"
+   :scope       metabot.scope/agent-content-write
+   ;; `archived: true` trashes the measure, so this is not the additive-only update
+   ;; `destructiveHint false` would assert.
+   :annotations {:readOnlyHint false :destructiveHint true}
+   :args        measure-write-args-schema}
   [args {:keys [token-scopes]}]
-  (let [dispatched (common/dispatch-write measure-write-entry token-scopes args)]
+  (let [dispatched (common/dispatch-write measure-write-entry args)]
     (case (first dispatched)
       :create
       (let [[_ body]   dispatched
@@ -424,6 +404,7 @@
                                                  :description (:description body)
                                                  :definition  definition}))
             (write-result :measure)
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content))
 
       :update
@@ -438,4 +419,5 @@
                                               (t2/select-one :model/Table :id (:table_id measure)))))]
         (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
+            (->> (common/readback token-scopes [metabot.scope/agent-content-read]))
             common/success-content)))))

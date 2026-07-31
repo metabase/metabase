@@ -19,76 +19,6 @@
   (metabot.tu/raw-fixture fixture-name #(openrouter/openrouter-raw (merge {:model "anthropic/claude-haiku-4-5"} opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; parts->cc-messages tests
-;;; ──────────────────────────────────────────────────────────────────
-
-(deftest ^:parallel parts->cc-messages-plain-text-test
-  (testing "plain user and assistant text"
-    (is (=? [{:role "user" :content "Hello"}
-             {:role "assistant" :content "Hi there!"}]
-            (openrouter/parts->cc-messages
-             [{:role :user :content "Hello"}
-              {:type :text :text "Hi there!"}])))))
-
-(deftest ^:parallel parts->cc-messages-tool-call-test
-  (testing "text + tool call merges into single assistant message"
-    (is (=? [{:role       "assistant"
-              :content    "Let me check..."
-              :tool_calls [{:id       "call-1"
-                            :type     "function"
-                            :function {:name "search"}}]}]
-            (openrouter/parts->cc-messages
-             [{:type :text :text "Let me check..."}
-              {:type :tool-input :id "call-1" :function "search" :arguments {:query "revenue"}}])))))
-
-(deftest ^:parallel parts->cc-messages-tool-call-only-test
-  (testing "tool call without preceding text"
-    (is (=? [{:role       "assistant"
-              :content    nil
-              :tool_calls [{:id "call-1"}]}]
-            (openrouter/parts->cc-messages
-             [{:type :tool-input :id "call-1" :function "search" :arguments {:query "revenue"}}])))))
-
-(deftest ^:parallel parts->cc-messages-tool-result-test
-  (testing "tool output becomes tool role message"
-    (is (=? [{:role         "tool"
-              :tool_call_id "call-1"
-              :content      "Found 42 results"}]
-            (openrouter/parts->cc-messages
-             [{:type :tool-output :id "call-1" :result {:output "Found 42 results"}}])))))
-
-(deftest ^:parallel parts->cc-messages-multiple-tool-results-test
-  (testing "multiple tool outputs become separate tool messages"
-    (is (=? [{:role "tool" :tool_call_id "call-1" :content "Result 1"}
-             {:role "tool" :tool_call_id "call-2" :content "Result 2"}]
-            (openrouter/parts->cc-messages
-             [{:type :tool-output :id "call-1" :result {:output "Result 1"}}
-              {:type :tool-output :id "call-2" :result {:output "Result 2"}}])))))
-
-(deftest ^:parallel parts->cc-messages-nil-arguments-test
-  (testing "tool call with nil arguments defaults to empty object JSON string"
-    (is (=? [{:role       "assistant"
-              :content    nil
-              :tool_calls [{:id       "call-1"
-                            :type     "function"
-                            :function {:name      "todo_read"
-                                       :arguments "{}"}}]}]
-            (openrouter/parts->cc-messages
-             [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
-
-(deftest ^:parallel parts->cc-messages-full-conversation-test
-  (testing "full conversation with tool round-trip"
-    (is (=? [{:role "user"      :content "What time is it in Kyiv?"}
-             {:role "assistant" :tool_calls [{:id "call-1" :function {:name "get-time"}}]}
-             {:role "tool"      :tool_call_id "call-1" :content "2025-02-13T14:00:00+02:00"}
-             {:role "assistant" :content "It's 2:00 PM in Kyiv."}]
-            (openrouter/parts->cc-messages
-             [{:role :user :content "What time is it in Kyiv?"}
-              {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
-              {:type :tool-output :id "call-1" :result {:output "2025-02-13T14:00:00+02:00"}}
-              {:type :text :text "It's 2:00 PM in Kyiv."}])))))
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; openrouter-request-body prompt-caching tests
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -339,11 +269,13 @@
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
+                                                    {:id "anthropic/claude-opus-5"     :name "Anthropic: Claude Opus 5"     :created 26}
                                                     {:id "anthropic/claude-sonnet-4.6"                                      :created 25}
                                                     {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
                                                     {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}
                                                     {:id "openai/gpt-5"                :name "OpenAI: GPT-5"                :created 5}]}})]
         (is (= [{:id "anthropic/claude-haiku-4.5"  :display_name "Anthropic: Claude Haiku 4.5"}
+                {:id "anthropic/claude-opus-5"     :display_name "Anthropic: Claude Opus 5"}
                 {:id "anthropic/claude-sonnet-4.6" :display_name "Claude Sonnet 4.6"}
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}

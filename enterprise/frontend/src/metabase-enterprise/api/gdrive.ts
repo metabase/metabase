@@ -20,6 +20,8 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: ["gsheets-status"],
     }),
+    // Connecting/disconnecting Google Sheets changes the `gsheets` setting
+    // server-side, so these also invalidate session-properties.
     saveGsheetsFolderLink: builder.mutation<
       { success: boolean },
       { url: string; link_type?: "folder" | "file" }
@@ -29,14 +31,14 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/gsheets/connection",
         body: body,
       }),
-      invalidatesTags: ["gsheets-status"],
+      invalidatesTags: ["gsheets-status", "session-properties"],
     }),
     deleteGsheetsFolderLink: builder.mutation<{ success: boolean }, void>({
       query: () => ({
         method: "DELETE",
         url: "/api/ee/gsheets/connection",
       }),
-      invalidatesTags: ["gsheets-status"],
+      invalidatesTags: ["gsheets-status", "session-properties"],
     }),
     syncGsheetsFolder: builder.mutation<{ db_id: DatabaseId }, void>({
       query: () => ({

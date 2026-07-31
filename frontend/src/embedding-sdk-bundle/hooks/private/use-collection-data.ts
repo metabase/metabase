@@ -4,7 +4,7 @@ import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-br
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
-import { useGetCollectionQuery } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type { CollectionId } from "metabase-types/api";
 
 export const useCollectionData = (
@@ -16,8 +16,9 @@ export const useCollectionData = (
   );
 
   // Internal collection state.
-  const [internalCollectionId, setInternalCollectionId] =
-    useState<CollectionId>(baseCollectionId);
+  const [internalCollectionId, setInternalCollectionId] = useState<
+    CollectionId | undefined
+  >(baseCollectionId);
 
   const { isBreadcrumbEnabled: isGlobalBreadcrumbEnabled, currentLocation } =
     useSdkBreadcrumbs();
@@ -35,8 +36,10 @@ export const useCollectionData = (
     error: collectionLoadingError,
     isFetching: isFetchingCollection,
   } = useGetCollectionQuery(
-    { id: effectiveCollectionId },
-    { skip: skipCollectionFetching },
+    // To avoid `/api/collection/undefined` and 404.
+    effectiveCollectionId === undefined || skipCollectionFetching
+      ? skipToken
+      : { id: effectiveCollectionId },
   );
 
   return {

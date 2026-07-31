@@ -19,6 +19,7 @@
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.premium-features.core :as premium-features]
@@ -65,7 +66,7 @@
     (deftool ping-v2
       \"Health-check tool for the v2 MCP surface.\"
       {:name        \"ping_v2\"
-       :scope       metabot.scope/agent-search
+       :scope       metabot.scope/agent-content-read
        :annotations {:readOnlyHint true}
        :args        [:map …]}
       [arguments context]
@@ -73,13 +74,18 @@
 
    Defines `handler-sym` as the handler fn (2-arity: null-stripped, schema-validated
    `arguments`, and a `context` map of `:session-id`, `:token-scopes`, `:client-info`,
-   `:request-context`) and registers the tool. Optional keys: `:update-scope` (the scope
-   [[metabase.mcp.v2.common/dispatch-write]] re-checks on `method: \"update\"`; also advertised
-   to OAuth via [[registered-scopes]]), `:extra-scopes` (scopes the handler gates individual
-   modes on — not required to call the tool, and opt-in: advertised via
-   [[registered-opt-in-scopes]] so a token can request them, but kept out of the default DCR
-   grant), `:feature` (a premium-features keyword; the tool is hidden when the
+   `:request-context`) and registers the tool. Optional keys: `:required-scopes` (scopes the
+   handler hard-requires on some call paths — e.g. a per-type create scope — which the caller must
+   therefore already hold; default-granted via [[registered-scopes]]), `:extra-scopes` (scopes the
+   handler gates individual *optional* modes on — not required to call the tool, and opt-in:
+   advertised via [[registered-opt-in-scopes]] so a token can request them, but kept out of the
+   default DCR grant), `:feature` (a premium-features keyword; the tool is hidden when the
    instance lacks it), `:annotations` (merged over the always-present MCP annotation defaults).
+
+   `:required-scopes` vs `:extra-scopes` is the difference between \"you cannot do this without
+   it\" and \"ask for it and you unlock more\" — a mandatory scope left out of the default grant
+   advertises a capability no default-grant client can reach.
+
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a
    teaching error."
   [handler-sym description opts argv & body]
@@ -91,14 +97,14 @@
 
 (defn registered-scopes
   "The default-grant scope strings the v2 surface relies on: every registered tool's `:scope` and
-   `:update-scope`. Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow into
-   the DCR default grant (and thus `scopes_supported`) as their tools land. `:extra-scopes` are
-   *not* here — they are opt-in, see [[registered-opt-in-scopes]]. A net-new leaf must also be
+   `:required-scopes`. Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow
+   into the DCR default grant (and thus `scopes_supported`) as their tools land. `:extra-scopes`
+   are *not* here — they are opt-in, see [[registered-opt-in-scopes]]. A net-new leaf must also be
    declared with `defscope` (and, for in-app metabot users, covered by a `perm-type->scopes`
    bucket) in [[metabase.metabot.scope]] alongside the tool that carries it."
   []
   (into #{}
-        (comp (mapcat (juxt :scope :update-scope))
+        (comp (mapcat (fn [tool] (cons (:scope tool) (:required-scopes tool))))
               (filter some?))
         (vals @tools*)))
 
@@ -106,7 +112,8 @@
   "The opt-in scope strings: every registered tool's `:extra-scopes`. A handler gates an optional
    mode on these (e.g. listing snippets), so they are advertised in `scopes_supported` for a token
    to request — but kept out of the default DCR grant, or the gate would be dead: every
-   dynamically-registered client would already hold them. Advertised via
+   dynamically-registered client would already hold them. A scope the handler *hard-requires*
+   belongs in `:required-scopes` instead — see [[registered-scopes]]. Advertised via
    [[metabase.mcp.core/opt-in-scopes]]; the same `defscope`/`perm-type->scopes` rule applies."
   []
   (into #{}
@@ -125,12 +132,15 @@
    :openWorldHint   false})
 
 (defn- tool->manifest-entry
-  [{:keys [args annotations] :as tool}]
-  (assoc tool
-         :inputSchema (-> args
-                          tools-manifest/malli->json-schema
-                          tools-manifest/strict-tool-input-schema)
-         :annotations (merge default-annotations annotations)))
+  [{:keys [args annotations outputSchema] :as tool}]
+  (cond-> (assoc tool
+                 :inputSchema (-> args
+                                  tools-manifest/malli->json-schema
+                                  tools-manifest/strict-tool-input-schema)
+                 :annotations (merge default-annotations annotations))
+    ;; No strict transform on outputs — that rewrite exists to satisfy OpenAI's strict-tool rules
+    ;; for arguments the model produces, and outputs aren't constrained by them.
+    outputSchema (assoc :outputSchema (tools-manifest/malli->json-schema outputSchema))))
 
 (defn- generate-manifest
   []
@@ -155,20 +165,29 @@
       (premium-features/has-feature? feature)))
 
 (defn- visible?
-  [token-scopes disabled tool]
+  [token-scopes disabled supported tool]
   (and (not (contains? disabled (:name tool)))
        (feature-available? tool)
+       (not (mcp.ui-resource/missing-required-extensions tool supported))
        (mcp.scope/matches? token-scopes (:scope tool))))
 
 (defn list-tools
   "Return the tool definitions for the v2 MCP `tools/list` response, filtered by `token-scopes`,
-   the `mcp-v2-disabled-tools` setting, and EE feature availability."
-  [token-scopes]
-  (let [disabled (disabled-tool-names)]
-    (into []
-          (comp (filter #(visible? token-scopes disabled %))
-                (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
-          (manifest))))
+   the `mcp-v2-disabled-tools` setting, EE feature availability, and the client extensions
+   `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that
+   can't render an iframe rather than failing at call time).
+
+   The 1-arity assumes full extension support: it backs [[tools-hash]], whose transport hook
+   sees only token scopes, so the hash must not depend on per-session capabilities."
+  ([token-scopes]
+   (list-tools token-scopes {:supports-mcp-ui? true}))
+  ([token-scopes options]
+   (let [disabled  (disabled-tool-names)
+         supported (mcp.ui-resource/supported-extensions options)]
+     (into []
+           (comp (filter #(visible? token-scopes disabled supported %))
+                 (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
+           (manifest)))))
 
 (defn tools-hash
   "Stable 8-character hex hash of the tool list visible to `token-scopes`; polled by the
@@ -203,7 +222,9 @@
 
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
-  (let [tool (get @tools* tool-name)]
+  (let [tool    (get @tools* tool-name)
+        missing (mcp.ui-resource/missing-required-extensions
+                 tool (mcp.ui-resource/supported-extensions options))]
     (cond
       (not (map? (or arguments {})))
       (common/error-content "Invalid arguments: expected a JSON object." common/error-code-invalid-params)
@@ -218,6 +239,12 @@
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       (common/error-content (str "Insufficient scope to call tool: " tool-name)
                             common/error-code-invalid-request)
+
+      ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
+      ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
+      missing
+      (common/error-content (mcp.ui-resource/missing-extensions-error tool-name missing)
+                            common/error-code-invalid-params)
 
       :else
       (let [arguments (common/drop-nil-args (or arguments {}))]

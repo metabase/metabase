@@ -13,7 +13,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 - **New code must not introduce `any`, explicit or implicit.** No `any` annotations, no `as any` / `as unknown as`, no untyped parameters or returns that infer `any`, no implicitly-`any` destructures or array/object literals.
 - **Untyped third-party / boundary values** must be typed at the boundary (a declared type, `unknown` + type guard, or a small typed wrapper) — never let `any` propagate inward.
-- **Mandatory LSP verification.** After writing or editing any TS/TSX, inspect the changed symbols with the TypeScript Language Server (hover to read inferred types; `goToDefinition` to confirm sources) and run the project type-check.
+- **Mandatory type verification.** Before finishing a TS/TSX change, run `bun run type-check-pure`. If TypeScript LSP tools are available, also inspect changed symbols with hover and go-to-definition; otherwise skip LSP check.
 
 ## Type tightening
 

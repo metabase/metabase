@@ -111,15 +111,15 @@
                                                                             :entity_type entity-type
                                                                             :entity_id id)]
                            (if terminal
-                             (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
-                                         type-name id fail_count)
-                             (log/warnf e "Entity %s %s failed, failure count: %d."
-                                        type-name id fail_count)))
+                             (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
+                                         type-name id fail_count (ex-message e))
+                             (log/warnf "Entity %s %s failed, failure count: %d. %s"
+                                        type-name id fail_count (ex-message e))))
                          (catch Exception record-ex
-                           (log/errorf e "Entity %s %s failed during dependency calculation."
-                                       type-name id)
-                           (log/errorf record-ex "Additionally, failed to record the failure for %s %s."
-                                       type-name id))))
+                           (log/errorf "Entity %s %s failed during dependency calculation: %s"
+                                       type-name id (ex-message e))
+                           (log/errorf "Additionally, failed to record the failure for %s %s: %s"
+                                       type-name id (ex-message record-ex)))))
                      0))))
             0
             instances)))

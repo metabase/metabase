@@ -82,14 +82,14 @@
                                   :type  :timestamp
                                   :as    {:date     (t/local-date "2019-12-10")
                                           :datetime (t/local-date-time "2019-12-10T14:47:00")}}
-    :unix-timestamp-seconds      {:value [:field 4 {::add/source-table (meta/id :checkins)}]
+    :unix-timestamp-seconds      {:value [:field {::add/source-table (meta/id :checkins)} 4]
                                   :type  :timestamp
                                   :as    (let [expected (-> [:timestamp_seconds (h2x/identifier :field "PUBLIC.CHECKINS" "unix_seconds")]
                                                             (h2x/with-database-type-info "timestamp"))]
                                            {:date      [:date expected]
                                             :datetime  [:datetime expected]
                                             :timestamp expected})}
-    :unix-timestamp-milliseconds {:value [:field 5 {::add/source-table (meta/id :checkins)}]
+    :unix-timestamp-milliseconds {:value [:field {::add/source-table (meta/id :checkins)} 5]
                                   :type  :timestamp
                                   :as    (let [expected (-> [:timestamp_millis (h2x/identifier :field "PUBLIC.CHECKINS" "unix_milliseconds")]
                                                             (h2x/with-database-type-info "timestamp"))]
@@ -101,23 +101,23 @@
    {:identity          identity
     :absolute-datetime (fn [filter-value]
                          (when (instance? java.time.temporal.Temporal filter-value)
-                           [:absolute-datetime filter-value :default]))}
+                           [:absolute-datetime {} filter-value :default]))}
 
    :fields mock-temporal-fields
 
    :field-ref-fns
    {:basic                               (fn [field]
-                                           [:field (:id field) {::add/source-table "ABC"}])
+                                           [:field {::add/source-table "ABC"} (:id field)])
     :default-temporal-unit               (fn [field]
-                                           [:field (:id field) {:temporal-unit     :default
-                                                                ::add/source-table "ABC"}])
+                                           [:field {:temporal-unit     :default
+                                                    ::add/source-table "ABC"} (:id field)])
     :base-type                           (fn [field]
-                                           [:field (:name field) {:base-type         (:base-type field)
-                                                                  ::add/source-table "ABC"}])
+                                           [:field {:base-type         (:base-type field)
+                                                    ::add/source-table "ABC"} (:name field)])
     :base-type-and-default-temporal-unit (fn [field]
-                                           [:field (:name field) {:base-type         (:base-type field)
-                                                                  :temporal-unit     :default
-                                                                  ::add/source-table "ABC"}])}
+                                           [:field {:base-type         (:base-type field)
+                                                    :temporal-unit     :default
+                                                    ::add/source-table "ABC"} (:name field)])}
 
    :filter-types
    {:=       {:honeysql-filter-fn :=
@@ -171,7 +171,7 @@
 
 (defn- temporal-type-reconciliation-expected-value
   [{:keys [field temporal-type expected-value honeysql-filter-fn num-args], :as _test-case}]
-  (let [field-literal?      (match/match-one field [:field (_ :guard string?) _] true)
+  (let [field-literal?      (match/match-one field [:field {} (_ :guard string?)] true)
         mock-field          (get mock-temporal-fields temporal-type)
         expected-identifier (cond-> (-> (h2x/identifier :field "ABC" (name temporal-type))
                                         (vary-meta assoc ::bigquery.qp/do-not-qualify? true))
@@ -184,7 +184,7 @@
 
 (defn- temporal-type-reconciliation-actual-value
   [{:keys [field num-args filter-value filter-type], :as _test-case}]
-  (let [filter-clause (into [filter-type field]
+  (let [filter-clause (into [filter-type {} field]
                             (repeat (dec num-args) filter-value))]
     (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))
 

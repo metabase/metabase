@@ -63,7 +63,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["AiUsageLog"
+  ["AgentApiCallLog"
+   "AiUsageLog"
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
@@ -151,7 +152,6 @@
    "SourceSegmentDaily"
    "SsoRelayState"
    "SupportAccessGrantLog"
-   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
@@ -163,6 +163,4 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"
-   "Workspace"
-   "WorkspaceDatabase"])
+   "ViewLog"])

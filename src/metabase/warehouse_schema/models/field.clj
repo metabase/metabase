@@ -4,7 +4,6 @@
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
@@ -166,8 +165,9 @@
            :from [:metabase_field]
            :where [:and
                    [:= :fk_target_field_id (:id field)]
-                   [:not [:in :id {:select [:field_id]
-                                   :from [:metabase_field_user_settings]}]]]}
+                   [:not [:exists {:select [1]
+                                   :from   [:metabase_field_user_settings]
+                                   :where  [:= :metabase_field_user_settings.field_id :metabase_field.id]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
@@ -346,6 +346,18 @@
           :let  [dimension (get id->dimensions (:id field))]]
       (assoc field :dimensions (if dimension [dimension] [])))))
 
+(defn- field->has-field-values-input
+  "Build the minimal Lib-style column map that [[lib/infer-has-field-values]] reads.
+
+  Going through [[metabase.lib-be.core/instance->metadata]] here would run a full Malli coercion over the ~90-key
+  `::lib.schema.metadata/column` schema for every Field, which dominates the cost of endpoints that hydrate whole
+  databases. The three keys below are the only ones `infer-has-field-values` looks at, and `deftransforms` has already
+  keywordized them. `mu/defn` still validates this map in dev and test."
+  [field]
+  {:base-type        (:base_type field)
+   :effective-type   (:effective_type field)
+   :has-field-values (:has_field_values field)})
+
 (methodical/defmethod t2.hydrate/simple-hydrate [#_model :default #_k :has_field_values]
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
   [[metabase.lib.schema.metadata/column-has-field-values-options]] for a more detailed explanation of what these
@@ -356,8 +368,7 @@
   See [[lib/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
-      (assoc field k has-field-values))))
+    (assoc field k (lib/infer-has-field-values (field->has-field-values-input field)))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
   "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to

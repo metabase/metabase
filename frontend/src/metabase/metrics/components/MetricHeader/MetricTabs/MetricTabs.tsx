@@ -65,6 +65,11 @@ function getTabs(
       label: t`Definition`,
       to: urls.query(card.id),
     });
+
+    tabs.push({
+      label: t`Dimensions`,
+      to: urls.dimensions(card.id),
+    });
   }
 
   if (PLUGIN_DEPENDENCIES.isEnabled && canSeeDependencies) {

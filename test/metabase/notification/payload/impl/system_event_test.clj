@@ -302,6 +302,32 @@
         (testing "test that disable_links: true will disable all links in the alert confirmation email"
           (is (false? (has-link? (assoc-in notification [:payload :disable_links] true)))))))))
 
+(deftest notification-create-email-names-recipients-test
+  (testing "the confirmation names where the alert delivers, so a creator can spot a recipient they
+            never chose — an alert can be created on their behalf (e.g. by an agent over MCP), and
+            without the list this email confirms existence but hides the part that matters"
+    (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+      (notification.tu/with-card-notification
+        [notification {:card         {:name "A Card"}
+                       :notification {:creator_id (mt/user->id :rasta)}
+                       :handlers     [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :lucky)}
+                                                      {:type    :notification-recipient/raw-value
+                                                       :details {:value "outside@example.com"}}]}]}]
+        (let [regexes [#"It delivers to:" #"lucky@metabase\.com" #"outside@example\.com"]
+              email   (-> (notification.tu/with-captured-channel-send!
+                            (events/publish-event! :event/notification-create
+                                                   {:object notification :user-id (mt/user->id :rasta)}))
+                          :channel/email
+                          first)]
+          (is (= {:recipients     #{"rasta@metabase.com"}
+                  :message-type   :attachments
+                  :subject        "You set up an alert"
+                  :message        [(zipmap (map str regexes) (repeat true))]
+                  :recipient-type :cc}
+                 (apply mt/summarize-multipart-single-email email regexes))))))))
+
 (deftest slack-error-token-email-test
   (let [check (fn [recipients regexes]
                 (let [email (mt/with-temporary-setting-values

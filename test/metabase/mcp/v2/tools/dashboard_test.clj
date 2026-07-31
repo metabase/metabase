@@ -9,7 +9,6 @@
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
-   [metabase.metabot.scope :as metabot.scope]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -141,13 +140,6 @@
                                            (wire {:method "update" :id (:id dash) :name "Hacked"})))))
         (is (= "Sales" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))))
 
-(deftest update-scope-is-rechecked-test
-  (testing "GHY-4147: a token holding only the create scope cannot update"
-    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-      (is (some? (tool-error (call-tool! :crowberto #{metabot.scope/agent-dashboard-create}
-                                         "dashboard_write"
-                                         (wire {:method "update" :id (:id dash) :name "New"}))))))))
-
 (deftest parameter-ops-accept-json-shapes-test
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
@@ -163,6 +155,40 @@
             (is (= :list (:values_query_type stored)))
             (testing "and a slug derived from the name, so the parameter is URL-addressable"
               (is (= "category" (:slug stored))))))))))
+
+(deftest update-parameter-clear-test
+  (testing "GHY-4191: `update_parameter` can remove a property it once set. Null can't say it —
+            `compact-op` strips nulls per op for the same reason the top-level boundary does — so
+            `clear` names them. A parameter is a map, so clearing removes the key outright rather
+            than storing an explicit null, which is not the same thing to the REST shape."
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (let [param #(first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))
+            run!  (fn [ops] (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                                     (wire {:method "update" :id (:id dash) :ops ops}))))]
+        (run! [{:op "add_parameter" :parameter_id "p1" :name "Category" :type "string/="
+                :default ["Widget"] :sectionId "string"}])
+        (is (= ["Widget"] (:default (param))) "precondition: the default is set")
+        (testing "clearing removes the key rather than nulling it"
+          (run! [{:op "update_parameter" :parameter_id "p1" :clear ["default"]}])
+          (is (not (contains? (param) :default)))
+          (testing "and leaves the parameter's other properties alone"
+            (is (= "Category" (:name (param))))
+            (is (= "string" (:sectionId (param))))))
+        (testing "clearing alongside an ordinary set in the same op"
+          (run! [{:op "update_parameter" :parameter_id "p1" :default ["Gadget"]}])
+          (is (= ["Gadget"] (:default (param))))
+          (run! [{:op "update_parameter" :parameter_id "p1" :name "Cat" :clear ["default" "sectionId"]}])
+          (is (= "Cat" (:name (param))))
+          (is (not (contains? (param) :default)))
+          (is (not (contains? (param) :sectionId))))
+        (testing "setting and clearing the same property in one op is a contradiction"
+          (is (re-find #"both set and cleared"
+                       (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                               (wire {:method "update" :id (:id dash)
+                                                      :ops [{:op "update_parameter" :parameter_id "p1"
+                                                             :default ["X"] :clear ["default"]}]})))))
+          (testing "and the atomic save means nothing changed"
+            (is (= "Cat" (:name (param))))))))))
 
 (deftest unknown-card-is-a-teaching-error-test
   (testing "GHY-4147: add_card referencing a card the user cannot read fails before any write"
@@ -195,10 +221,42 @@
                (t2/select-one [:model/Dashboard :name :width :auto_apply_filters :archived]
                               :id (:id dash))))))))
 
+(deftest clear-list-clears-attributes-test
+  (testing "GHY-4191: `clear` names the properties to unset, which null cannot say — the boundary
+            strips nulls because strict clients flood every declared property with one."
+    (mt/with-temp [:model/Dashboard dash {:name                "Sales"
+                                          :description         "old"
+                                          :collection_position 1
+                                          :cache_ttl           10}]
+      (testing "the named properties are unset, and unnamed ones are untouched"
+        (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                 (wire {:method "update" :id (:id dash)
+                                        :clear ["description" "cache_ttl"]})))
+        (is (= {:name "Sales" :description nil :collection_position 1 :cache_ttl nil}
+               (t2/select-one [:model/Dashboard :name :description :collection_position :cache_ttl]
+                              :id (:id dash)))))
+      (testing "clearing alongside an ordinary set in the same call"
+        (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                 (wire {:method "update" :id (:id dash)
+                                        :name "Renamed" :clear ["collection_position"]})))
+        (is (= {:name "Renamed" :collection_position nil}
+               (t2/select-one [:model/Dashboard :name :collection_position] :id (:id dash)))))
+      (testing "a property that isn't clearable is refused rather than silently ignored. The
+                schema enum rejects it at the boundary and names the ones that are clearable, so
+                the handler's own check (see common-test) is only a backstop against the enum and
+                the tool's `:clearable` set drifting apart"
+        (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                          (wire {:method "update" :id (:id dash)
+                                                 :clear ["name"]})))]
+          (is (re-find #"clear" err))
+          (is (re-find #"description" err)))
+        (is (= "Renamed" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))))
+
 (deftest clearable-attributes-cannot-be-cleared-with-null-test
   (testing "GHY-4147: the flip side of the boundary strip, pinned so it stays a decision rather
             than a surprise. These four columns are nullable and clearing them is meaningful, but
-            null is already spoken for as \"I did not set this\", so it cannot express it."
+            null is already spoken for as \"I did not set this\", so it cannot express it — the
+            `clear` list added in GHY-4191 is how a caller says it instead."
     (mt/with-temp [:model/Collection coll {}
                    :model/Dashboard  dash {:name                "Sales"
                                            :description         "old"

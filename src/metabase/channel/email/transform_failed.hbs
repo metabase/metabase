@@ -47,6 +47,12 @@
             </div>
             {{/each}}
 
+            {{#if payload.event_info.skipped_count}}
+            <div style="line-height: 20px; color: #656F76; font-weight: 400; margin: 24px auto 24px auto;">
+              {{payload.event_info.skipped_count}} downstream transform(s) didn&rsquo;t run because a transform they depend on failed.
+            </div>
+            {{/if}}
+
             <hr style="margin-top: 32px; margin-bottom: 32px;">
             <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
               Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.

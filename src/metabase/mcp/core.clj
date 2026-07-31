@@ -6,7 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.v2.registry :as v2.registry]))
+   [metabase.mcp.v2.registry :as v2.registry]
+   [metabase.mcp.v2.resources :as v2.resources]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,15 +37,19 @@
 
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata,
-   scopes from MCP UI resources (e.g. visualize_query), and the v2 tool-registry scopes (v2
-   tools reuse v1 scope strings where they cover a v1 tool, so this mostly adds the net-new
-   leaves)."
+   scopes from both surfaces' MCP UI resources (e.g. visualize_query), and the v2 tool-registry
+   scopes (v2 tools reuse v1 scope strings where they cover a v1 tool, so this mostly adds the
+   net-new leaves).
+
+   A resource registry contributes on its own rather than through its tools: a resource whose
+   scope no tool happens to carry still has to be requestable, or it could never be read."
   []
   (-> (into (mcp.resources/resource-scopes)
             (comp (keep #(get-in % [:form :metadata :scope]))
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
-      (into (v2.registry/registered-scopes))))
+      (into (v2.registry/registered-scopes))
+      (into (v2.resources/resource-scopes))))
 
 (defn opt-in-scopes
   "MCP scopes advertised for a token to request explicitly but excluded from the default DCR

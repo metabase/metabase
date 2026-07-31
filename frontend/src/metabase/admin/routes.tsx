@@ -38,13 +38,11 @@ import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
-  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
@@ -87,7 +85,6 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" element={<DatabasePage />} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" element={<DatabaseEditApp />}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -288,8 +285,6 @@ export const getRoutes = (
           path="metabot"
           element={createElement(createAdminRouteGuard("metabot"))}
         >
-          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
-          {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
           <Route key="index-layout" element={<MetabotAdminLayout />}>
             <Route index key="index" element={<AISettingsPage />} />
             <Route key="mcp" path="mcp" element={<McpSettingsPage />} />

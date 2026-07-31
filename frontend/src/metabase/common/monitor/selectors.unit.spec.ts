@@ -2,6 +2,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
+  canAccessAiAuditing,
   canAccessAlertsManagement,
   canAccessMonitor,
   canAccessMonitorDiagnostics,
@@ -213,5 +214,51 @@ describe("canAccessAlertsManagement", () => {
     });
 
     expect(canAccessAlertsManagement(state)).toBe(false);
+  });
+});
+
+describe("canAccessAiAuditing", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getIsEmbeddingIframe.mockReturnValue(false);
+  });
+
+  it("returns false when in embedding iframe", () => {
+    getIsEmbeddingIframe.mockReturnValue(true);
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessAiAuditing(state)).toBe(false);
+  });
+
+  it("returns true when user is admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessAiAuditing(state)).toBe(true);
+  });
+
+  it("returns false for an analyst without admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+      }),
+    });
+
+    expect(canAccessAiAuditing(state)).toBe(false);
+  });
+
+  it("returns false for a non-admin with the monitoring application permission", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessAiAuditing(state)).toBe(false);
   });
 });

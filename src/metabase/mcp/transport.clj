@@ -126,7 +126,7 @@
                    (let [response (try
                                     (dispatch-method-fn id method params session-id token-scopes request-context)
                                     (catch Throwable e
-                                      (log/error e "Error dispatching JSON-RPC method" method)
+                                      (log/error "Error dispatching JSON-RPC method" method (ex-message e))
                                       (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))]
                      ;; record the materialized JSON-RPC result/error (the request's output)
                      (ait/record! {:mcp/response response})

@@ -68,4 +68,4 @@ Two hard constraints, one root: **linked filters read table-metadata foreign key
 - Don't wire a raw `target` when `target_field` or `target_tag` fits — hand-built clauses are where wiring bugs live.
 - Don't expect a linked filter to work across a model/question join or with a static/card value source — it needs a metadata FK and a live source.
 - Don't set `required: true` without a `default` on expensive dashboards — viewers are blocked until they pick a value.
-- Don't pass null to `update_parameter` to clear a default or link — null reads as omitted; remove and re-add the parameter instead.
+- Don't pass null to `update_parameter` to clear a default or link — null reads as omitted; name the property in `clear` instead (`"clear": ["default", "filteringParameters"]`).

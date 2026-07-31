@@ -24,7 +24,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private execute-scope
-  #{"agent:query:execute"})
+  #{"agent:query:run"})
 
 (defn- call!
   "Call `execute_query` through the registry dispatch seam as the already-bound current user,
@@ -428,7 +428,7 @@
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
       (testing "GHY-4142: a token without the execute scope is denied"
-        (let [result (registry/call-tool #{"agent:search"} sid "execute_query" {})]
+        (let [result (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
           (is (:isError result))
           (is (= "Insufficient scope to call tool: execute_query" (response-text result)))))
       (testing "GHY-4142: the identical call with the execute scope reaches the handler (positive control)"
@@ -438,10 +438,10 @@
 
 (deftest ^:parallel scope-advertisement-test
   (testing "GHY-4142: the execute scope is grantable — advertised via registered-scopes"
-    (is (contains? (registry/registered-scopes) "agent:query:execute")))
+    (is (contains? (registry/registered-scopes) "agent:query:run")))
   (testing "GHY-4142: tools/list visibility follows the scope on both sides"
-    (is (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:query:execute"})))
-    (is (not (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:search"})))))
+    (is (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:query:run"})))
+    (is (not (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:content:read"})))))
   (testing "GHY-4142: the tool advertises itself read-only"
     (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools nil)))]
       (is (true? (get-in tool [:annotations :readOnlyHint]))))))

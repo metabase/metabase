@@ -7,7 +7,7 @@ import {
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import Action from "./Action";
+import { Action } from "./Action";
 
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
   computedSettings.actionDisplayType === "form";

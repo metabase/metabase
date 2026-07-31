@@ -15,21 +15,36 @@
                       (thunk)
                       (oauth-server/reset-provider!)))
 
-(deftest snippet-scope-is-opt-in-test
-  (testing "GHY-4137: agent:snippets:read is advertised for explicit request but kept out of the
-            default grant a dynamically-registered client receives — like mb:full — so snippet SQL
-            bodies aren't exposed unless a token asks for the scope"
-    (testing "it is advertised in the authorization-server metadata (scopes-supported)"
-      (is (contains? (set (oauth-server/supported-scopes)) "agent:snippets:read")))
-    (testing "it is NOT in the default grant"
-      (is (not (contains? (set (oauth-server/all-agent-scopes)) "agent:snippets:read"))))
-    (testing "GHY-4137: it is also advertised in the protected-resource metadata (RFC 9728), or a
-              client discovering scopes that way can never learn the scope exists to request it"
-      (is (contains? (set (oauth-server/protected-resource-scopes)) "agent:snippets:read")))
-    (testing "the protected-resource doc omits mb:full — a first-party full-access scope, not
-              specific to the MCP resource; it stays in the authorization-server metadata"
-      (is (contains? (set (oauth-server/supported-scopes)) "mb:full"))
-      (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full"))))))
+(deftest mb-full-stays-out-of-the-protected-resource-doc-test
+  (testing "`mb:full` is a first-party full-access scope, not specific to the MCP resource: it
+            belongs in the authorization-server metadata but not the RFC 9728 protected-resource
+            doc. (This assertion used to ride along with an `agent:snippets:read` opt-in test;
+            GHY-4225 folded the per-type read scopes into `agent:content:read`, so there is no
+            longer a v2 opt-in read scope to assert about.)"
+    (is (contains? (set (oauth-server/supported-scopes)) "mb:full"))
+    (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full")))))
+
+(deftest advertised-scopes-are-distinct-test
+  (testing "GHY-4151: scopes_supported is a set of scope strings (RFC 8414) — it unions the default
+            grant with the opt-in scopes, so a scope declared in both buckets would be advertised
+            twice. Duplicates also mean a mandatory scope was filed as opt-in."
+    (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
+                               "protected-resource"   (oauth-server/protected-resource-scopes)}]
+      (testing metadata
+        (is (= (count (distinct scopes)) (count scopes))
+            (str "duplicate scopes: "
+                 (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec)))))))
+
+(deftest rationalized-scopes-are-in-the-default-grant-test
+  (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered
+            client receives, or the tool surface advertises capabilities no such client can use.
+            (This replaces a check on `agent:document:create`, which duplicate_content required
+            until GHY-4225 collapsed the per-type create scopes into `agent:content:write`.)"
+    (let [granted (set (oauth-server/all-agent-scopes))]
+      (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
+                     "agent:sql:run" "agent:delivery:write"]]
+        (testing scope
+          (is (contains? granted scope)))))))
 
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"

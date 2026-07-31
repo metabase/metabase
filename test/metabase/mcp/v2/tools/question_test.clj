@@ -161,7 +161,7 @@
                     :name "Agent Q"
                     :query {:database (mt/id)
                             :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (not (:isError result)) (-> result :content first :text))
         (let [card-id (:id (:structuredContent result))]
           (is (int? card-id))
@@ -173,7 +173,7 @@
    minted query_handle — the exact handle-store round-trip (pMBQL → JSON → string-valued map)
    the save path must survive."
   [session-id query]
-  (let [result (registry/call-tool #{"agent:query:execute"} session-id "execute_query"
+  (let [result (registry/call-tool #{"agent:query:run"} session-id "execute_query"
                                    {:query query :validate_only true})]
     (when (:isError result)
       (throw (ex-info "expected execute_query success" {:result result})))
@@ -192,7 +192,7 @@
                                  :aggregation  [["count" {}]]
                                  :breakout     [["field" {:temporal-unit "month"}
                                                  (mt/id :orders :created_at)]]}]})
-            result (registry/call-tool #{"agent:question:create"} sid "question_write"
+            result (registry/call-tool #{"agent:content:write"} sid "question_write"
                                        {:method "create" :name "From Handle" :query_handle handle})]
         (is (not (:isError result)) (-> result :content first :text))
         (let [card-id (:id (:structuredContent result))]
@@ -213,7 +213,7 @@
                       sid (mt/user->id :crowberto)
                       (common/encode-serialized-query
                        (lib/prepare-for-serialization (lib/native-query mp "SELECT 1"))))
-              result (registry/call-tool #{"agent:question:create"} sid "question_write"
+              result (registry/call-tool #{"agent:content:write"} sid "question_write"
                                          {:method "create" :name "From SQL Handle" :query_handle handle})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
@@ -222,7 +222,7 @@
 
 (deftest create-question-name-required-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (let [result (registry/call-tool #{"agent:question:create"} nil "question_write"
+    (let [result (registry/call-tool #{"agent:content:write"} nil "question_write"
                                      {:method "create" :query {:database (mt/id) :stages [{}]}})]
       (is (:isError result))
       (is (re-find #"`name` is required" (-> result :content first :text))))))
@@ -233,14 +233,14 @@
       (let [base-args {:method "create"
                        :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}]
         (testing "collection_id: \"root\" saves to the root collection"
-          (let [result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+          (let [result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                                            (assoc base-args :name "Agent Q root" :collection_id "root"))]
             (is (not (:isError result)) (-> result :content first :text))
             (is (nil? (t2/select-one-fn :collection_id :model/Card
                                         :id (:id (:structuredContent result)))))))
         (testing "omitted collection_id saves to the caller's personal collection"
           (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+                result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                                            (assoc base-args :name "Agent Q personal"))]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= personal-id (t2/select-one-fn :collection_id :model/Card
@@ -252,7 +252,7 @@
   [extra-args]
   (let [base-args {:method "create" :card_type "model"
                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-        result    (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+        result    (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                                       (merge base-args extra-args))]
     (is (not (:isError result)) (-> result :content first :text))
     (t2/select-one-fn :result_metadata :model/Card :id (:id (:structuredContent result)))))
@@ -281,7 +281,7 @@
                   :name "Agent Model Bad Column"
                   :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                   :column_metadata [{:name "NOT_A_REAL_COLUMN" :display_name "whoops"}]}
-          result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+          result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
       (is (:isError result))
       (is (re-find #"\"NOT_A_REAL_COLUMN\" is not in the query results"
                    (-> result :content first :text))))))
@@ -295,7 +295,7 @@
                       :name "Native Model With CM"
                       :native {:database_id (mt/id) :sql "SELECT * FROM orders"}
                       :column_metadata [{:name "TOTAL" :display_name "Total $"}]}
-              result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+              result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
           (is (:isError result))
           (is (re-find #"column_metadata isn't supported for models built from a native \(SQL\) query"
                        (-> result :content first :text)))))
@@ -304,7 +304,7 @@
                       :card_type "model"
                       :name "Native Model No CM"
                       :native {:database_id (mt/id) :sql "SELECT * FROM orders"}}
-              result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+              result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= :model (t2/select-one-fn :type :model/Card :id (:id (:structuredContent result))))))))))
 
@@ -316,7 +316,7 @@
                       :name "Dash Q"
                       :dashboard_id (:id dash)
                       :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-              result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+              result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
           (let [card-id (:id (:structuredContent result))]
             (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))))
@@ -329,7 +329,7 @@
                     :name "Dash Model"
                     :dashboard_id (:id dash)
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"Invalid dashboard-internal card" (-> result :content first :text)))))))
 
@@ -342,7 +342,7 @@
                     :dashboard_id (:id dash)
                     :collection_id (:id coll)
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write" args)]
+            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"Pass either collection_id or dashboard_id, not both"
                      (-> result :content first :text)))))))
@@ -373,13 +373,6 @@
                                      {:method "update" :id 999999999 :name "x"})]
       (is (:isError result))
       (is (re-find #"not found" (-> result :content first :text))))))
-
-(deftest update-scope-denied-test
-  (mt/with-temp [:model/Card card {:name "X"}]
-    (let [result (registry/call-tool #{"agent:question:create"} nil "question_write"
-                                     {:method "update" :id (:id card) :name "Y"})]
-      (is (:isError result))
-      (is (re-find #"method: update" (-> result :content first :text))))))
 
 (deftest update-question-swap-query-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -412,7 +405,7 @@
   (mt/with-model-cleanup [:model/Card]
     (mt/with-current-user (mt/user->id :crowberto)
       (let [baseline (create-model-result-metadata {:name "Update Model Baseline"})
-            create-result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+            create-result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                                               {:method "create" :card_type "model"
                                                :name "Update Model"
                                                :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
@@ -437,7 +430,7 @@
   (testing "a second partial column_metadata update keeps overrides set by an earlier one (GHY-4145)"
     (mt/with-model-cleanup [:model/Card]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [create-result (registry/call-tool #{"agent:question:create"} (str (random-uuid)) "question_write"
+        (let [create-result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                                                 {:method "create" :card_type "model"
                                                  :name "Iteratively Annotated Model"
                                                  :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
@@ -500,8 +493,25 @@
           (testing "the card is untouched"
             (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
 
+(deftest write-response-respects-read-scope-test
+  (testing "GHY-4217: without agent:resource:read the response is a minimal ack — the write scope
+            must not double as a read scope"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [args  {:method "create" :name "Ack Q"
+                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
+              acked (:structuredContent (registry/call-tool #{"agent:content:write"}
+                                                            (str (random-uuid)) "question_write" args))]
+          (is (pos-int? (:id acked)))
+          (is (re-find #"agent:content:read" (:note acked)))
+          (is (not (contains? acked :name)))
+          (testing "with the read scope the full response comes back"
+            (let [full (:structuredContent (registry/call-tool #{"agent:content:write" "agent:content:read"}
+                                                               (str (random-uuid)) "question_write"
+                                                               (assoc args :name "Full Q")))]
+              (is (= "Full Q" (:name full))))))))))
+
 (deftest question-write-scopes-registered-test
-  (testing "both create and update scopes flow into the OAuth surface"
+  (testing "the unified write scope flows into the OAuth surface"
     (let [scopes (set (registry/registered-scopes))]
-      (is (contains? scopes "agent:question:create"))
-      (is (contains? scopes "agent:question:update")))))
+      (is (contains? scopes "agent:content:write")))))
