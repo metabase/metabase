@@ -177,6 +177,7 @@
 (defn- elide-data [obj]
   (walk/postwalk (fn [x] (cond
                            (string? x) (string/elide x 250)
+                           ;; locked-query violation
                            (and (sequential? x) (> (count x) 50)) (take 50 x)
                            :else x)) obj))
 
