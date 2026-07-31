@@ -6,8 +6,12 @@ import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import { useSelector } from "metabase/redux";
+import { getSetting } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
+
+import { getCrossOriginDataAppHref } from "../lib/get-cross-origin-data-app-href";
 
 export function DataAppsNavbarSection({
   onItemSelect,
@@ -15,6 +19,8 @@ export function DataAppsNavbarSection({
   onItemSelect: () => void;
 }) {
   const { data: dataApps = [] } = useListDataAppsQuery({ available: true });
+  const appsHost = useSelector((state) => getSetting(state, "data-apps-host"));
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
   if (dataApps.length === 0) {
     return null;
@@ -37,7 +43,10 @@ export function DataAppsNavbarSection({
             onClick={onItemSelect}
             rel="noopener noreferrer"
             target="_blank"
-            url={Urls.dataApp(dataApp.name)}
+            url={
+              getCrossOriginDataAppHref(dataApp.name, appsHost, siteUrl) ??
+              Urls.dataApp(dataApp.name)
+            }
           >
             {dataApp.display_name}
           </PaddedSidebarLink>

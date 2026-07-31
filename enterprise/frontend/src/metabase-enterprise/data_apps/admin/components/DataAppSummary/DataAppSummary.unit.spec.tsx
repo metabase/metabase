@@ -1,4 +1,8 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppSummary } from "./DataAppSummary";
@@ -15,6 +19,27 @@ describe("DataAppSummary", () => {
     expect(link).toHaveAttribute(
       "href",
       expect.stringContaining("/apps/sales"),
+    );
+  });
+
+  it("links to the site-url origin when apps are served cross-origin", () => {
+    renderWithProviders(
+      <DataAppSummary
+        app={createMockDataApp({ name: "sales", display_name: "Sales" })}
+      />,
+      {
+        storeInitialState: createMockState({
+          settings: createMockSettingsState({
+            "data-apps-host": "https://apps.example.com",
+            "site-url": "https://mb.example.com",
+          }),
+        }),
+      },
+    );
+
+    expect(screen.getByRole("link", { name: "Sales" })).toHaveAttribute(
+      "href",
+      "https://mb.example.com/apps/sales",
     );
   });
 

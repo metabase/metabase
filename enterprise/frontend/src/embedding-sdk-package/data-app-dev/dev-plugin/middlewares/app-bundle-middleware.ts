@@ -1,5 +1,7 @@
 import type { Connect } from "vite";
 
+import { getUrlPathname } from "embedding-sdk-shared/lib/get-url-pathname";
+
 import {
   DATA_APP_BUILD_ID_HEADER,
   DATA_APP_BUNDLE_URL,
@@ -10,7 +12,7 @@ import type { AppBundle } from "../app-bundle";
 export const getAppBundleMiddleware =
   (bundle: AppBundle): Connect.NextHandleFunction =>
   (req, res, next) => {
-    if (req.url?.split("?")[0] !== DATA_APP_BUNDLE_URL) {
+    if (getUrlPathname(req.url) !== DATA_APP_BUNDLE_URL) {
       next();
 
       return;

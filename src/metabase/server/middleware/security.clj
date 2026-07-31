@@ -263,17 +263,28 @@
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
                                     (str "http://localhost:" cljs-dev-port)])
-                                 ;; NOTE: data-app routes deliberately do NOT get 'unsafe-eval'.
-                                 ;; Near-Membrane needs `eval` to run the app bundle, but it runs it
-                                 ;; inside a realm iframe served from `/api/apps/sandbox-host`, whose
-                                 ;; own CSP grants 'unsafe-eval' for that document alone. Granting it
-                                 ;; here instead would also hand `eval`/`Function` to anything running
-                                 ;; in the data-app document itself — including guest code that escaped
-                                 ;; the membrane.
+                                 ;; Near-Membrane needs `eval` to run the app bundle.
+                                 ;; SAME-ORIGIN: the data-app document deliberately does NOT get
+                                 ;; 'unsafe-eval' — the membrane runs `eval` inside a realm iframe
+                                 ;; served from `/api/apps/sandbox-host`, whose own CSP grants it for
+                                 ;; that document alone, so an escaped guest can't `eval` in the
+                                 ;; cookie-bearing host document.
+                                 ;; CROSS-ORIGIN (`data-apps-host`): the apps document has no session
+                                 ;; cookie, so the realm host is unreachable there and unnecessary —
+                                 ;; the membrane uses an `about:blank` realm that inherits this CSP, so
+                                 ;; 'unsafe-eval' is granted here. Safe precisely because a guest with
+                                 ;; `eval` on the cookieless apps origin still can't reach the session.
+                                 (when (and data-app-iframe?
+                                            (server.settings/data-apps-host-configured?))
+                                   ["'unsafe-eval'"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
-                  :child-src    ["'self'"
-                                 "https://accounts.google.com"]
+                  :child-src    (cond-> ["'self'"
+                                         "https://accounts.google.com"]
+                                  ;; So the main app can frame the data-app iframe when it's
+                                  ;; served from a separate origin (see `data-apps-host`).
+                                  (server.settings/data-apps-host-configured?)
+                                  (conj (server.settings/data-apps-host)))
                   :style-src    ["'self'"
                                  ;; See [[generate-nonce]].
                                  (when (and nonce (not data-app-iframe?))
@@ -291,14 +302,23 @@
                                    (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
-                  :frame-src    (if (some? data-app-connect-hosts)
-                                  ;; Data-app docs get a per-app framing allowlist:
-                                  ;; only `'self'` and the origins the app declared
-                                  ;; in `allowed_hosts` — NOT the instance-wide iframe
-                                  ;; hosts, so a data app can't frame those unless it
-                                  ;; lists them itself.
-                                  (into ["'self'"] data-app-connect-hosts)
-                                  (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
+                  :frame-src    (cond-> (if (some? data-app-connect-hosts)
+                                          ;; Data-app docs get a per-app framing allowlist:
+                                          ;; only `'self'` and the origins the app declared
+                                          ;; in `allowed_hosts` — NOT the instance-wide iframe
+                                          ;; hosts, so a data app can't frame those unless it
+                                          ;; lists them itself.
+                                          (into ["'self'"] data-app-connect-hosts)
+                                          (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
+                                  ;; The data-app top page (`/apps/<slug>`) frames the iframe,
+                                  ;; so when it's served from a separate origin BOTH branches
+                                  ;; must allow that origin (see `data-apps-host`) — the top
+                                  ;; page also carries a per-app `data-app-connect-hosts`, and
+                                  ;; without this its `frame-src` would omit the apps host and
+                                  ;; block the frame. A no-op on the `/embed/apps` iframe doc,
+                                  ;; which is already same-origin with it.
+                                  (server.settings/data-apps-host-configured?)
+                                  (conj (server.settings/data-apps-host)))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
@@ -361,6 +381,9 @@
   (case mode
     :any  "*"
     :self "'self'"
+    ;; The data-app iframe served from a separate origin is framed by the main app,
+    ;; so it must allow the instance's own origin as an ancestor.
+    :main-app (or (not-empty (system/site-url)) "'self'")
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -391,6 +414,9 @@
   [mode]
   (case mode
     :any  nil
+    ;; Cross-origin framing can't be expressed via X-Frame-Options (ALLOW-FROM is
+    ;; dead); rely on the CSP `frame-ancestors` above and omit the legacy header.
+    :main-app nil
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
@@ -568,7 +594,11 @@
                  ;; than the open embedding `*`. Check it before the broader
                  ;; `embed?`, which `/embed/apps/...` also matches.
                  :frame-ancestors             (cond
-                                                (request/data-app? request)                       :self
+                                                (request/data-app? request)
+                                                (if (server.settings/data-apps-host-configured?)
+                                                  ;; served cross-origin → framed by the main app
+                                                  :main-app
+                                                  :self)
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
                  :allow-cache?                (request/cacheable? request)

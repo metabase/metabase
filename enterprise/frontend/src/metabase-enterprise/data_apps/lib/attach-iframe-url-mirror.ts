@@ -44,6 +44,7 @@ export function attachIframeUrlMirror(
       parentPrefix + tail + window.location.search + window.location.hash;
     const parentCurrent =
       window.location.pathname + window.location.search + window.location.hash;
+
     if (parentCurrent !== parentTarget) {
       window.history.replaceState(window.history.state, "", parentTarget);
     }
@@ -57,10 +58,12 @@ export function attachIframeUrlMirror(
     origPush.apply(this, args);
     mirror();
   };
+
   history.replaceState = function (...args) {
     origReplace.apply(this, args);
     mirror();
   };
+
   iframeWindow.addEventListener("popstate", mirror);
 
   return () => {

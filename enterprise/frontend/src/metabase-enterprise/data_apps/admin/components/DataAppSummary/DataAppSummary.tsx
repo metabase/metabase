@@ -1,10 +1,13 @@
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { Group, Stack, Text } from "metabase/ui";
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
+import { getCrossOriginDataAppHref } from "../../../lib/get-cross-origin-data-app-href";
 import { DataAppAllowedHosts } from "../DataAppAllowedHosts/DataAppAllowedHosts";
 import { DataAppIcon } from "../DataAppIcon/DataAppIcon";
 
@@ -50,6 +53,12 @@ const SyncStatus = ({ app }: Props) => {
 export const DataAppSummary = ({ app }: Props) => {
   const isOpenable = app.enabled && !app.sync_error;
 
+  const appsHost = useSelector((state) => getSetting(state, "data-apps-host"));
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const href =
+    getCrossOriginDataAppHref(app.name, appsHost, siteUrl) ??
+    Urls.getSubpathSafeUrl(Urls.dataApp(app.name));
+
   return (
     <Group align="center" flex="1" wrap="nowrap" miw={0}>
       <DataAppIcon />
@@ -58,7 +67,7 @@ export const DataAppSummary = ({ app }: Props) => {
         {isOpenable ? (
           <Text
             component="a"
-            href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
+            href={href}
             target="_blank"
             rel="noreferrer"
             fw={700}

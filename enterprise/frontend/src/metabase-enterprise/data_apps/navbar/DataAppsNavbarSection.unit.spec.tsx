@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 
 import { DataAppsNavbarSection } from "./DataAppsNavbarSection";
@@ -47,6 +51,33 @@ describe("DataAppsNavbarSection", () => {
     expect(screen.getByRole("link", { name: /Gadget/ })).toHaveAttribute(
       "href",
       "/apps/gadget",
+    );
+  });
+
+  it("links to the site-url origin when apps are served cross-origin", async () => {
+    fetchMock.get("path:/api/apps?available=true", [
+      { name: "gizmo", display_name: "Gizmo" },
+    ]);
+
+    renderWithProviders(
+      <Route
+        path="/"
+        element={<DataAppsNavbarSection onItemSelect={jest.fn()} />}
+      />,
+      {
+        withRouter: true,
+        storeInitialState: createMockState({
+          settings: createMockSettingsState({
+            "data-apps-host": "https://apps.example.com",
+            "site-url": "https://mb.example.com",
+          }),
+        }),
+      },
+    );
+
+    expect(await screen.findByRole("link", { name: /Gizmo/ })).toHaveAttribute(
+      "href",
+      "https://mb.example.com/apps/gizmo",
     );
   });
 });

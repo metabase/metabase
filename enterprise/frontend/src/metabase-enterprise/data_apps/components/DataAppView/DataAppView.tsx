@@ -8,10 +8,13 @@ import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Box, Flex } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
+import { installHostBroker } from "../../broker/host-broker";
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   DATA_APP_LOAD_TIMEOUT_MS,
@@ -20,6 +23,7 @@ import {
 } from "../../constants";
 import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
+import { getWrongOriginRedirect } from "../../lib/get-wrong-origin-redirect";
 import { isCrossOriginError } from "../../lib/is-cross-origin-error";
 import { isDataAppMessage } from "../../lib/is-data-app-message";
 
@@ -44,6 +48,30 @@ import S from "./DataAppView.module.css";
 export function DataAppView() {
   const { name = "" } = useParams<{ name: string }>();
   const validName = name.length > 0;
+
+  // When `MB_DATA_APPS_HOST` is set, the iframe is served from that separate origin
+  // (no session cookie) and its instance traffic is proxied through the broker.
+  const appsHost = useSelector((state) => getSetting(state, "data-apps-host"));
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const isCrossOrigin = Boolean(appsHost);
+  const appsOrigin = useMemo(
+    () => (appsHost ? new URL(appsHost).origin : window.location.origin),
+    [appsHost],
+  );
+
+  // Cross-origin apps must load on the `site-url` origin; on a mismatched loopback
+  // host (local dev) bounce there so the iframe can frame and broker.
+  useEffect(() => {
+    const target = getWrongOriginRedirect(
+      isCrossOrigin,
+      siteUrl,
+      window.location,
+    );
+
+    if (target) {
+      window.location.replace(target);
+    }
+  }, [isCrossOrigin, siteUrl]);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -70,7 +98,7 @@ export function DataAppView() {
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
   const src = useMemo(
-    () => (validName ? deriveIframeSrc(name) : ""),
+    () => (validName ? deriveIframeSrc(name, appsHost) : ""),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -81,8 +109,19 @@ export function DataAppView() {
     error: metaError,
   } = useGetDataAppQuery(name, { skip: !validName });
 
+  // Install the host side of the broker for a cross-origin iframe: it has no session
+  // cookie, so we proxy its allowlisted requests here (where the cookie lives).
   useEffect(() => {
-    if (!iframeEl || !validName) {
+    if (!iframeEl || !isCrossOrigin) {
+      return undefined;
+    }
+    return installHostBroker(iframeEl, appsOrigin);
+  }, [iframeEl, isCrossOrigin, appsOrigin]);
+
+  useEffect(() => {
+    // The URL mirror reaches into the iframe's `history`/`location`, which only works
+    // same-origin; when the iframe is a separate origin we skip it entirely.
+    if (!iframeEl || !validName || isCrossOrigin) {
       return undefined;
     }
 
@@ -123,11 +162,12 @@ export function DataAppView() {
       iframeEl.removeEventListener("load", onLoad);
       detach?.();
     };
-  }, [iframeEl, name, validName]);
+  }, [iframeEl, name, validName, isCrossOrigin]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
+      // The iframe's origin is the apps host when cross-origin, else our own origin.
+      if (event.origin !== appsOrigin) {
         return;
       }
 
@@ -158,7 +198,44 @@ export function DataAppView() {
     window.addEventListener("message", onMessage);
 
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [appsOrigin]);
+
+  // The iframe can fail to load without ever posting back — blocked by a CSP
+  // `frame-src` violation, unreachable, or hung — which would otherwise leave the
+  // loading overlay spinning forever. Surface an error via a CSP-violation signal
+  // (instant, the cross-origin misconfiguration case) and a timeout backstop.
+  useEffect(() => {
+    // Stop once anything resolves the wait — including a `loadError` already set
+    // by the CSP signal — so the timeout can't clobber a more specific message.
+    if (!validName || appReady || bundleError || loadError) {
+      return undefined;
+    }
+
+    const onViolation = (event: SecurityPolicyViolationEvent) => {
+      if (
+        event.effectiveDirective.startsWith("frame-src") &&
+        event.blockedURI.startsWith(appsOrigin)
+      ) {
+        setLoadError(
+          t`Framing ${event.blockedURI} was blocked by the browser’s content security policy.`,
+        );
+      }
+    };
+    document.addEventListener("securitypolicyviolation", onViolation);
+
+    const timer = window.setTimeout(
+      () =>
+        setLoadError(
+          t`The data app didn’t load within ${DATA_APP_LOAD_TIMEOUT_MS / 1000} seconds. The frame may be unreachable.`,
+        ),
+      DATA_APP_LOAD_TIMEOUT_MS,
+    );
+
+    return () => {
+      document.removeEventListener("securitypolicyviolation", onViolation);
+      window.clearTimeout(timer);
+    };
+  }, [validName, appReady, bundleError, loadError, appsOrigin]);
 
   // The iframe can fail to load without ever posting back — blocked by a CSP
   // `frame-src` violation, unreachable, or hung — which would otherwise leave the
@@ -314,6 +391,7 @@ export function DataAppView() {
         title={meta.display_name}
         src={src}
         sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups"
+        allow="clipboard-write"
         style={{
           display: "block",
           width: "100%",

@@ -78,6 +78,8 @@ describe("DataAppView", () => {
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
     expect(iframe).toHaveAttribute("src", "/embed/apps/sales");
+    // Cross-origin iframes lose the default clipboard permission; delegate it.
+    expect(iframe).toHaveAttribute("allow", "clipboard-write");
   });
 
   /** Post a `message` event as if it came from `source`. */
@@ -208,6 +210,14 @@ describe("DataAppView", () => {
       expect(
         screen.getByText("Couldn’t load this data app"),
       ).toBeInTheDocument();
+    });
+
+    it("ignores CSP violations for other frames", () => {
+      setupIframe();
+
+      dispatchFrameSrcViolation("https://not-the-apps-host.example.com");
+
+      expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
     });
 
     it("shows an error when the iframe never signals it loaded", () => {

@@ -191,6 +191,7 @@ llm-payloads
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/agent-memory/
+scratchpad
 
 .eslintcache
 

@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
+   [metabase.server.middleware.data-apps-host :as mw.data-apps-host]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
@@ -112,6 +113,9 @@
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
+        ;; Runs outside the HTTPS redirect so apps-host requests are handled before it (its
+        ;; target host is the main site-url); env-only setting, so no DB/cache dependency.
+        #'mw.data-apps-host/data-apps-host-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
         wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
         ;; Outside of middleware onion

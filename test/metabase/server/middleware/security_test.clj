@@ -122,6 +122,29 @@
        (filter #(str/starts-with? % (str directive " ")))
        first))
 
+(deftest data-app-cross-origin-csp-test
+  (testing "when MB_DATA_APPS_HOST is set, data apps are served from a separate origin"
+    (with-redefs [server.settings/data-apps-host (constantly "https://apps.example.com")]
+      (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+        (testing "the apps-host document is framable by the main app (site-url), not just 'self'"
+          (is (= "frame-ancestors https://mb.example.com"
+                 (frame-ancestors-for "/embed/apps/sales")))
+          (testing "and omits X-Frame-Options, which can't express cross-origin framing"
+            (is (nil? (get (headers-for-uri "/embed/apps/sales") "X-Frame-Options")))))
+        (testing "the main app document may frame the apps host (frame-src + child-src)"
+          (is (str/includes? (csp-directive-for "/somepage" "frame-src")
+                             "https://apps.example.com"))
+          (is (str/includes? (csp-directive-for "/somepage" "child-src")
+                             "https://apps.example.com")))
+        (testing "the data-app top page can frame the apps host even with no allowed_hosts"
+          ;; Regression: /apps/<slug> carries a (possibly empty) per-app
+          ;; `data-app-connect-hosts`, so its `frame-src` takes the per-app branch.
+          ;; That branch must still include the apps host or a direct load of the
+          ;; top page can't frame the cross-origin iframe.
+          (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+            (is (str/includes? (csp-directive-for "/apps/sales" "frame-src")
+                               "https://apps.example.com"))))))))
+
 ;; `form-action` is the SOLE barrier (no JS backstop) against a hostile bundle
 ;; native-submitting a HOST `<form action="/api/user">` to provision an admin — the
 ;; backend takes `:form-params` before the JSON body and a normal-cookie session
@@ -147,19 +170,28 @@
       (is (nil? (csp-directive-for uri "form-action"))))))
 
 (deftest data-app-unsafe-eval-test
-  ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
-  ;; iframe served from `/api/apps/sandbox-host`, which carries the grant in its own
-  ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
-  ;; anything running there — including guest code that escaped the membrane.
-  (testing "the data-app document does not get 'unsafe-eval'"
-    (with-redefs [config/is-dev? false]
-      (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"]]
+  ;; Near-Membrane needs `eval` to run the app bundle.
+  (testing "same-origin: the data-app document does NOT get 'unsafe-eval'"
+    ;; The membrane runs `eval` inside a realm iframe served from `/api/apps/sandbox-host`,
+    ;; which carries the grant in its own CSP — so an escaped guest can't `eval` in the
+    ;; cookie-bearing data-app document.
+    (with-redefs [config/is-dev?                  false
+                  server.settings/data-apps-host  (constantly nil)]
+      (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"
+                   "/embed/dashboard/abc"]]
         (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
             (str uri " should not grant 'unsafe-eval'")))))
-  (testing "and neither does any other document"
-    (with-redefs [config/is-dev? false]
-      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "script-src")
-                              "'unsafe-eval'"))))))
+  (testing "cross-origin (MB_DATA_APPS_HOST): the sandbox iframe document DOES get 'unsafe-eval'"
+    ;; The realm host is unreachable on the cookieless apps origin, so the membrane uses an
+    ;; about:blank realm that inherits this document's CSP. Safe — no session cookie here.
+    (with-redefs [config/is-dev?                  false
+                  server.settings/data-apps-host  (constantly "https://apps.example.com")]
+      (is (str/includes? (csp-directive-for "/embed/apps/sales" "script-src") "'unsafe-eval'"))
+      (is (str/includes? (csp-directive-for "/embed/apps/sales/sub/route" "script-src") "'unsafe-eval'"))
+      (testing "but the top page and unrelated documents do not"
+        (doseq [uri ["/apps/sales" "/embed/dashboard/abc" "/somepage"]]
+          (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
+              (str uri " should not grant 'unsafe-eval'")))))))
 
 (deftest data-app-frame-src-test
   (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"

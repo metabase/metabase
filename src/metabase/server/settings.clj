@@ -41,6 +41,19 @@ x.com")
   :visibility :public
   :export?    true)
 
+(defsetting data-apps-host
+  (deferred-tru "Separate origin (e.g. https://apps.example.com) the same instance serves the sandboxed data-app iframe from. When set, a data app runs cross-origin and cannot see the session cookie; it reaches the instance only through the host app's postMessage broker, so a compromised app can't act under the viewing user's session. Env-only (MB_DATA_APPS_HOST); unset keeps data apps same-origin.")
+  :type       :string
+  :encryption :no
+  :visibility :public
+  :setter     :none
+  :export?    false)
+
+(defn data-apps-host-configured?
+  "True when [[data-apps-host]] is set — data apps are served from a separate origin."
+  []
+  (not (str/blank? (data-apps-host))))
+
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
   :encryption :no

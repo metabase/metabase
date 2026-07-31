@@ -1,5 +1,7 @@
 import type { Connect } from "vite";
 
+import { getUrlParts } from "embedding-sdk-shared/lib/get-url-parts";
+
 import {
   DATA_APP_DIAGNOSTICS_URL,
   INCLUDE_STALE_PARAM,
@@ -79,7 +81,7 @@ export const getDiagnosticsEndpointMiddleware =
     notifyChanged,
   }: DiagnosticsEndpointMiddlewareOptions): Connect.NextHandleFunction =>
   async (req, res, next) => {
-    const [pathname, query] = (req.url ?? "").split("?");
+    const { pathname, query } = getUrlParts(req.url ?? "");
 
     if (pathname !== DATA_APP_DIAGNOSTICS_URL) {
       next();
