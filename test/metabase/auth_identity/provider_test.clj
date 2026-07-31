@@ -2,24 +2,25 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.test :as mt]
    [methodical.core :as methodical]))
 
 ;; Set up test providers for testing the hierarchy
-(derive :provider/test-password ::provider/provider)
-(derive :provider/test-ldap ::provider/provider)
-(derive :provider/test-ldap ::provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/test-password ::provider/provider)
+(auth-identity/derive! :provider/test-ldap ::provider/provider)
+(auth-identity/derive! :provider/test-ldap ::provider/create-user-if-not-exists)
 
 (deftest ^:parallel provider-hierarchy-test
   (testing "Provider hierarchy works correctly"
     (testing "Providers can derive from ::provider/provider"
-      (is (isa? :provider/test-password ::provider/provider))
-      (is (isa? :provider/test-ldap ::provider/provider)))
+      (is (auth-identity/isa? :provider/test-password ::provider/provider))
+      (is (auth-identity/isa? :provider/test-ldap ::provider/provider)))
     (testing "SSO providers can derive from ::provider/create-user-if-not-exists"
-      (is (isa? :provider/test-ldap ::provider/create-user-if-not-exists)))
+      (is (auth-identity/isa? :provider/test-ldap ::provider/create-user-if-not-exists)))
     (testing "Password providers do NOT derive from create-user-if-not-exists"
-      (is (not (isa? :provider/test-password ::provider/create-user-if-not-exists))))))
+      (is (not (auth-identity/isa? :provider/test-password ::provider/create-user-if-not-exists))))))
 
 (deftest ^:parallel validate-multimethod-test
   (testing "validate multimethod has default implementation"
@@ -61,7 +62,7 @@
   (testing "login! default implementation handles redirect responses"
     (testing "Returns redirect response unchanged when authenticate returns :redirect"
       ;; Create a test provider that returns redirect
-      (derive :provider/test-redirect ::provider/provider)
+      (auth-identity/derive! :provider/test-redirect ::provider/provider)
       (methodical/defmethod provider/authenticate :provider/test-redirect
         [_provider _request]
         {:success? :redirect
@@ -77,7 +78,7 @@
   (testing "login! default implementation handles failure responses"
     (testing "Returns error response unchanged when authenticate fails"
       ;; Create a test provider that returns error
-      (derive :provider/test-error ::provider/provider)
+      (auth-identity/derive! :provider/test-error ::provider/provider)
       (methodical/defmethod provider/authenticate :provider/test-error
         [_provider _request]
         {:success? false
@@ -118,7 +119,7 @@
 (deftest ^:parallel ^:parallel multimethod-dispatch-test
   (testing "Multimethod dispatch works with provider hierarchy"
     ;; Create a test provider that inherits from ::provider/provider
-    (derive :provider/test-custom ::provider/provider)
+    (auth-identity/derive! :provider/test-custom ::provider/provider)
     (testing "Custom provider inherits default validate implementation"
       (is (nil? (provider/validate :provider/test-custom {:credentials {:foo "bar"}}))))
     (testing "Custom provider inherits default authenticate implementation"
@@ -130,7 +131,7 @@
 (deftest ^:parallel provider-id-in-authenticate-response-test
   (testing "authenticate method returns :provider-id in success response"
     (testing "Provider returns :provider-id for successful authentication"
-      (derive :provider/test-with-provider-id ::provider/provider)
+      (auth-identity/derive! :provider/test-with-provider-id ::provider/provider)
       (methodical/defmethod provider/authenticate :provider/test-with-provider-id
         [_provider {:keys [email] :as _request}]
         {:success? true
@@ -148,7 +149,7 @@
 (deftest ^:parallel provider-id-flow-in-login-test
   (testing "login! :around flows :provider-id to user-data"
     (testing "When authenticate returns :provider-id and :user-data, it gets merged into :user-data"
-      (derive :provider/test-provider-id-flow ::provider/provider)
+      (auth-identity/derive! :provider/test-provider-id-flow ::provider/provider)
       (methodical/defmethod provider/authenticate :provider/test-provider-id-flow
         [_provider _request]
         {:success? true
@@ -171,7 +172,7 @@
 
 (deftest ^:parallel authenticate-expired-auth-identity-test
   (testing "Authentication fails when auth-identity has expired"
-    (derive :provider/test-expired ::provider/provider)
+    (auth-identity/derive! :provider/test-expired ::provider/provider)
     (methodical/defmethod provider/authenticate :provider/test-expired
       [_provider _request]
       {:success? true
@@ -190,7 +191,7 @@
 
 (deftest ^:parallel authenticate-not-expired-auth-identity-test
   (testing "Authentication succeeds when auth-identity has not expired"
-    (derive :provider/test-not-expired ::provider/provider)
+    (auth-identity/derive! :provider/test-not-expired ::provider/provider)
     (methodical/defmethod provider/authenticate :provider/test-not-expired
       [_provider _request]
       {:success? true
@@ -209,7 +210,7 @@
 
 (deftest ^:parallel authenticate-no-expiration-test
   (testing "Authentication succeeds when auth-identity has no expiration (nil expires_at)"
-    (derive :provider/test-no-expiration ::provider/provider)
+    (auth-identity/derive! :provider/test-no-expiration ::provider/provider)
     (methodical/defmethod provider/authenticate :provider/test-no-expiration
       [_provider _request]
       {:success? true
@@ -228,7 +229,7 @@
 
 (deftest ^:parallel authenticate-no-auth-identity-test
   (testing "Authentication with no auth-identity bypasses expiration check"
-    (derive :provider/test-no-auth-identity ::provider/provider)
+    (auth-identity/derive! :provider/test-no-auth-identity ::provider/provider)
     (methodical/defmethod provider/authenticate :provider/test-no-auth-identity
       [_provider _request]
       {:success? true
@@ -245,7 +246,7 @@
 
 (deftest ^:parallel authenticate-failure-bypasses-expiration-check-test
   (testing "Failed authentication bypasses expiration check"
-    (derive :provider/test-auth-failure ::provider/provider)
+    (auth-identity/derive! :provider/test-auth-failure ::provider/provider)
     (methodical/defmethod provider/authenticate :provider/test-auth-failure
       [_provider _request]
       {:success? false
