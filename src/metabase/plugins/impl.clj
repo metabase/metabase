@@ -198,7 +198,7 @@
   ;; Reserved names come from the root-owned classpath, so they are not race-able. Pass them to *both*
   ;; batches: classification (has-manifest?) and registration read the writable JAR separately, so a JAR that
   ;; is a bare dependency when classified but a bundled-name manifest when registered must still be refused.
-  (let [reserved (bundled-plugin-names)
+  (let [reserved                              (bundled-plugin-names)
         {dep-jars false, user-manifests true} (group-by has-manifest? (plugins-paths))]
     ;; 1. Bare dependency JARs (e.g. the Oracle JDBC driver `ojdbc8.jar`) go on the classpath first, so a
     ;;    bundled manifest's `class:` dependency is satisfiable by the time it is registered.

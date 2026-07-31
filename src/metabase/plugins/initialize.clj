@@ -101,7 +101,7 @@
         (when lazy-load
           (lazy-loaded-driver/register-lazy-loaded-driver!
            (assoc info
-                  :driver driver
+                  :driver       driver
                   :load-plugin! #(load-plugin-info! info)))))
       ;; Preserve the existing eager path for driver manifests that explicitly opt out of lazy loading.
       (when (some false? (map :lazy-load drivers))

@@ -61,7 +61,7 @@
 (deftest incompatible-plugin-api-version-is-rejected-test
   (let [calls  (atom [])
         plugin {:metabase-plugin-api-version (inc initialize/plugin-api-version)
-                :info                       {:name (str "test incompatible plugin " (random-uuid))
+                :info                       {:name    (str "test incompatible plugin " (random-uuid))
                                              :version "1.0.0"}
                 :init                       [{:step "load-namespace" :namespace "example.plugin"}]
                 :add-to-classpath!          #(swap! calls conj :classpath)}]
