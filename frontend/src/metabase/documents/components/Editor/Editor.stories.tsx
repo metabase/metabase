@@ -12,8 +12,6 @@ import {
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { WithRouterProps } from "metabase/router";
-import { RouterContext } from "metabase/router";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
@@ -40,17 +38,10 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
-// Unjustified type cast. FIXME
-const mockRouterContext = {
-  location: { pathname: "/document/1", search: "", query: {} },
-} as WithRouterProps;
-
-const StoryDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: StoryFn) => {
   return (
     <MetabaseReduxProvider store={store}>
-      <RouterContext.Provider value={mockRouterContext}>
-        <Story />
-      </RouterContext.Provider>
+      <Story />
     </MetabaseReduxProvider>
   );
 };
@@ -60,7 +51,7 @@ const DefaultTemplate = (args: EditorProps) => <Editor {...args} />;
 export default {
   title: "Components/Documents",
   component: Editor,
-  decorators: [StoryDecorator],
+  decorators: [ReduxDecorator],
   layout: "fullscreen",
   parameters: {
     msw: {

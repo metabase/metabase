@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { push, useParams, useRouter } from "metabase/router";
+import { push, useLocation, useParams } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -108,18 +108,22 @@ function ExplorationPageForId() {
   const dispatch = useDispatch();
   const { id = "", pageId } = useParams<ExplorationPageParams>();
   const params = { id, pageId };
-  const { location } = useRouter();
+  const location = useLocation();
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
 
-  const isCommentsSidebarOpen = location.query?.comments === "true";
+  const isCommentsSidebarOpen = searchParams.get("comments") === "true";
   const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
 
   const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
-    const tab = location.query?.tab;
+    const tab = searchParams.get("tab") ?? undefined;
     if (isExplorationSidebarTab(tab)) {
       return tab;
     }
     return "all";
-  }, [location.query]);
+  }, [searchParams]);
 
   const getSelectedSidebarTabUrl = useCallback(
     (tab: ExplorationSidebarTab) => {
@@ -446,15 +450,15 @@ function ExplorationPageForId() {
     if (!selectedPage) {
       return null;
     }
-    const param = location.query?.[TIMELINE_QUERY_PARAM];
-    if (typeof param === "string" && param !== "") {
+    const param = searchParams.get(TIMELINE_QUERY_PARAM);
+    if (param != null && param !== "") {
       const num = Number(param);
       if (Number.isFinite(num) && availableTimelineIds.has(num)) {
         return num;
       }
     }
     return null;
-  }, [selectedPage, location.query, availableTimelineIds]);
+  }, [selectedPage, searchParams, availableTimelineIds]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() => {
     if (selectedTimelineId == null) {

@@ -14,13 +14,11 @@ import {
   createQuery,
   createThread,
 } from "metabase/explorations/test-utils";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Exploration, ExplorationThread } from "metabase-types/api";
 
 import { ExplorationPage } from "./ExplorationPage";
-
-const RoutedExplorationPage = withRouteProps(ExplorationPage);
 
 const RERENDER_BUTTON_TESTID = "exploration-rerender-trigger";
 
@@ -31,7 +29,7 @@ function ExplorationPageHarness() {
   return (
     <>
       <button data-testid={RERENDER_BUTTON_TESTID} onClick={forceRerender} />
-      <RoutedExplorationPage />
+      <ExplorationPage />
     </>
   );
 }
@@ -252,7 +250,11 @@ describe("ExplorationPage thread-ready toasts", () => {
 
     await waitFor(() => {
       expect(history.getCurrentLocation().pathname).toContain("/page/200");
-      expect(history.getCurrentLocation().query).toMatchObject({
+      expect(
+        Object.fromEntries(
+          new URLSearchParams(history.getCurrentLocation().search),
+        ),
+      ).toMatchObject({
         tab: "all",
         timeline: "1",
         foo: "bar",

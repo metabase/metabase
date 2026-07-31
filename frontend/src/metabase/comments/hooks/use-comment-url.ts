@@ -1,4 +1,4 @@
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { isExplorationUrl } from "metabase/urls";
 import type { EntityId } from "metabase-types/api/comments";
 
@@ -7,13 +7,12 @@ interface UseCommentUrlOptions {
 }
 
 export function useCommentUrl({ childTargetId }: UseCommentUrlOptions) {
-  const { location } = useRouter();
-  const { pathname } = location;
+  const { pathname, search: locationSearch } = useLocation();
   if (!pathname) {
     return "";
   }
   if (isExplorationUrl(pathname)) {
-    const search = new URLSearchParams(location.search);
+    const search = new URLSearchParams(locationSearch);
     search.set("comments", "true");
     const basePathname = pathname.replace(/\/page\/[^/]*$/, "");
     const pinnedPathname =
@@ -27,5 +26,5 @@ export function useCommentUrl({ childTargetId }: UseCommentUrlOptions) {
     existingCommentIndex !== -1
       ? pathname.slice(0, existingCommentIndex)
       : pathname;
-  return `${nextPathname}/comments${childTargetId ? `/${childTargetId}` : ""}${location.search}`;
+  return `${nextPathname}/comments${childTargetId ? `/${childTargetId}` : ""}${locationSearch}`;
 }

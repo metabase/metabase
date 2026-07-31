@@ -19,8 +19,6 @@ import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { WithRouterProps } from "metabase/router";
-import { RouterContext } from "metabase/router";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -90,19 +88,9 @@ function DocumentProviders({
     return getStore(commonReducers, initialState, [Api.middleware]);
   }, []);
 
-  // Unjustified type cast. FIXME
-  const mockRouterContext = {
-    location: { pathname: "/document/1", search: "", query: {} },
-  } as WithRouterProps;
-
   return (
     <AppColorSchemeProvider forceColorScheme={theme}>
-      <MetabaseReduxProvider store={store}>
-        {" "}
-        <RouterContext.Provider value={mockRouterContext}>
-          {children}
-        </RouterContext.Provider>
-      </MetabaseReduxProvider>
+      <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
     </AppColorSchemeProvider>
   );
 }

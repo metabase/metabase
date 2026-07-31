@@ -1,11 +1,10 @@
-import type { Location, LocationDescriptor } from "history";
 import { t } from "ttag";
 
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { useDispatch } from "metabase/redux";
-import { push, useRouter } from "metabase/router";
+import { type Path, push, useLocation } from "metabase/router";
 import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type {
@@ -32,7 +31,7 @@ export function ExplorationVisualizationHeader({
   showCommentsButton,
 }: ExplorationVisualizationHeaderProps) {
   const dispatch = useDispatch();
-  const { location } = useRouter();
+  const location = useLocation();
   const nextCommentsUrl = getNextCommentsUrl(location);
   const { allCommentsCount } = useUnresolvedCommentsCount({
     target:
@@ -107,15 +106,13 @@ function getExploreFilterPillLabel(
   return value;
 }
 
-function getNextCommentsUrl(location: Location): LocationDescriptor {
-  const query = { ...location.query };
-  if (query?.comments === "true") {
-    delete query.comments;
+function getNextCommentsUrl(location: Pick<Path, "pathname" | "search">) {
+  const search = new URLSearchParams(location.search);
+  if (search.get("comments") === "true") {
+    search.delete("comments");
   } else {
-    query.comments = "true";
+    search.set("comments", "true");
   }
-  return {
-    pathname: location.pathname,
-    query,
-  };
+  const searchString = search.toString();
+  return `${location.pathname}${searchString ? `?${searchString}` : ""}`;
 }

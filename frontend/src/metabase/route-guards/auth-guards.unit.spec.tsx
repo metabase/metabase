@@ -83,11 +83,11 @@ describe("route-guards", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
       });
 
-      expect(history!.getCurrentLocation().query).toEqual(
-        expect.objectContaining({
-          redirect: "/dashboard/123?comments=true#comment-5",
-        }),
-      );
+      expect(
+        new URLSearchParams(history!.getCurrentLocation().search).get(
+          "redirect",
+        ),
+      ).toBe("/dashboard/123?comments=true#comment-5");
     });
   });
 

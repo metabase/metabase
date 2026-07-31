@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import {
   type ReactNode,
   createContext,
@@ -8,7 +7,7 @@ import {
 } from "react";
 
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { Outlet } from "metabase/router";
+import { Outlet, useLocation, useNavigationType } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { EXPLORATIONS_AGENT_ID } from "../components/NewExplorationChat/NewExplorationChat";
@@ -35,25 +34,26 @@ export function useNewExplorationDraft(): ExplorationSelection {
  * (+ New menu, "All projects") starts a new draft.
  */
 export function NewExplorationDraftProvider(props: {
-  location?: Location;
   // Rendered as an `element` route, so children come from <Outlet/>; the prop
   // stays for the unit test, which passes the pages in directly.
   children?: ReactNode;
 }) {
-  const { location, children = <Outlet /> } = props;
+  const { children = <Outlet /> } = props;
+  const location = useLocation();
+  const navigationType = useNavigationType();
 
-  const [freshKey, setFreshKey] = useState(location?.key);
+  const [freshKey, setFreshKey] = useState(location.key);
 
   // Effect rather than render-time derivation: the draft keeps rendering for
   // one extra frame before the remount, which is invisible here.
   useEffect(() => {
     if (
-      location?.pathname === Urls.newExploration() &&
-      location?.action !== "POP"
+      location.pathname === Urls.newExploration() &&
+      navigationType !== "POP"
     ) {
-      setFreshKey(location?.key);
+      setFreshKey(location.key);
     }
-  }, [location]);
+  }, [location, navigationType]);
 
   return <NewExplorationDraft key={freshKey}>{children}</NewExplorationDraft>;
 }
