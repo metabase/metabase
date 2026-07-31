@@ -5,6 +5,7 @@ import { usePrevious } from "react-use";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldList from "metabase/reference/databases/FieldList";
 import * as actions from "metabase/reference/reference";
@@ -14,20 +15,21 @@ import type { ClearStateProps, FetchProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
-  getDatabaseId,
   getIsEditing,
   getTable,
+  getTableId,
 } from "../selectors";
 
 import TableSidebar from "./TableSidebar";
 
 const mapDispatchToProps = {
   ...metadataActions,
+  fetchTableMetadataAndForeignKeys,
   ...actions,
 };
 
 interface FieldListContainerProps extends FetchProps, ClearStateProps {
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
+  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
 }
 
 function FieldListContainer(props: FieldListContainerProps) {
@@ -37,7 +39,7 @@ function FieldListContainer(props: FieldListContainerProps) {
 
   const database = useSelector((state) => getDatabase(state, { params }));
   const table = useSelector((state) => getTable(state, { params }));
-  const databaseId = useSelector((state) => getDatabaseId(state, { params }));
+  const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
   // Dispatched during render, not from an effect, to reproduce the
@@ -48,7 +50,7 @@ function FieldListContainer(props: FieldListContainerProps) {
   const didFetch = useRef(false);
   if (!didFetch.current) {
     didFetch.current = true;
-    actions.wrappedFetchDatabaseMetadata(props, databaseId);
+    actions.wrappedFetchTableMetadata(props, tableId);
   }
 
   useEffect(() => {
