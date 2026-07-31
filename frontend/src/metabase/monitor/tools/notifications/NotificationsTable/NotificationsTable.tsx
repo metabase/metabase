@@ -22,6 +22,7 @@ import {
   Text,
   Tooltip,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -33,6 +34,8 @@ import {
   getChannelIconName,
   getChannelLabel,
 } from "../NotificationsAdminPage/utils";
+
+import S from "./NotificationsTable.module.css";
 
 type Props = {
   notifications: AdminNotification[];
@@ -49,6 +52,8 @@ type Props = {
 };
 
 const getNodeId = (notification: AdminNotification) => String(notification.id);
+
+const COLUMN_WIDTHS = [0.06, 0.28, 0.18, 0.16, 0.16, 0.16];
 
 export const NotificationsTable = ({
   notifications,
@@ -84,7 +89,7 @@ export const NotificationsTable = ({
         accessorFn: (notification) => notification.id,
         cell: ({ row }) => (
           <Flex justify="center">
-            <Badge variant="outline" size="sm" miw={29}>
+            <Badge variant="light" color="brand" size="xs" miw={29}>
               {row.original.id}
             </Badge>
           </Flex>
@@ -229,7 +234,7 @@ export const NotificationsTable = ({
     [],
   );
 
-  if (isLoading || error !== undefined) {
+  if (error !== undefined) {
     return (
       <Card
         flex="0 1 auto"
@@ -238,7 +243,7 @@ export const NotificationsTable = ({
         p="lg"
         data-testid="notifications-admin-table"
       >
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper loading={false} error={error} />
       </Card>
     );
   }
@@ -249,19 +254,29 @@ export const NotificationsTable = ({
       mih={0}
       p={0}
       withBorder
+      aria-busy={isLoading}
       data-testid="notifications-admin-table"
     >
-      <TreeTable
-        instance={instance}
-        hierarchical={false}
-        showCheckboxes
-        onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
-        headerCheckboxAriaLabel={t`Select all`}
-        ariaLabel={t`Notifications`}
-        onRowClick={handleRowActivate}
-        getRowProps={getRowProps}
-        emptyState={<MonitorEmptyState label={t`No alerts`} />}
-      />
+      {isLoading ? (
+        <>
+          <span role="status" className={S.visuallyHidden}>
+            {t`Loading alerts…`}
+          </span>
+          <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
+        </>
+      ) : (
+        <TreeTable
+          instance={instance}
+          hierarchical={false}
+          showCheckboxes
+          onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+          headerCheckboxAriaLabel={t`Select all`}
+          ariaLabel={t`Notifications`}
+          onRowClick={handleRowActivate}
+          getRowProps={getRowProps}
+          emptyState={<MonitorEmptyState label={t`No alerts`} />}
+        />
+      )}
     </Card>
   );
 };
