@@ -3,7 +3,7 @@ name: E2E Coverage Shard
 # Reusable per-shard worker for the coverage manifest run. Trimmed extract of
 # e2e-test.yml: runs one cypress-split shard against an instrumented build and
 # uploads that shard's per-spec coverage. Intentionally omits the PR-only
-# concerns (failed-spec retry, Trunk quarantine, S3 result upload, timing
+# concerns (failed-spec retry, quarantine, S3 result upload, timing
 # output) since this is a nightly, non-blocking job.
 
 on:
