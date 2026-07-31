@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
-import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
+import type { TextMeasurer } from "./measure-text";
 import type {
   BaseVisualizationSettings,
   CreateDefineSetting,
@@ -107,8 +107,7 @@ export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
-  measureTextWidth: TextWidthMeasurer;
-  measureTextHeight: TextHeightMeasurer;
+  measureText: TextMeasurer;
   fontFamily: string;
   colorScheme: "light" | "dark";
 }

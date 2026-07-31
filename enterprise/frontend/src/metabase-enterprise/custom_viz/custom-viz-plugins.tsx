@@ -16,6 +16,7 @@ import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
@@ -515,13 +516,8 @@ function createCustomVizWrapper(
     const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
       () => ({
         getColor: browserRenderingContext.getColor,
-        measureTextWidth: (text, style) =>
-          browserRenderingContext.measureText(text, {
-            ...style,
-            family: style.family ?? browserRenderingContext.fontFamily,
-          }),
-        measureTextHeight: (text, style) =>
-          browserRenderingContext.measureTextHeight(text, {
+        measureText: (text, style) =>
+          measureText(text, {
             ...style,
             family: style.family ?? browserRenderingContext.fontFamily,
           }),

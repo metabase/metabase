@@ -4,6 +4,9 @@ export type FontStyle = {
   weight: string | number;
 };
 
-export type TextWidthMeasurer = (text: string, style: FontStyle) => number;
+export type TextSize = {
+  width: number;
+  height: number;
+};
 
-export type TextHeightMeasurer = (text: string, style: FontStyle) => number;
+export type TextMeasurer = (text: string, style: FontStyle) => TextSize;

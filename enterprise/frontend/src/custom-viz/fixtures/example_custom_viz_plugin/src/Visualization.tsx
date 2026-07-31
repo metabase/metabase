@@ -13,22 +13,12 @@ export const Visualization = (
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
 
-  const measuredTextStyle = {
-    size: 14,
-    weight: 700,
-  };
-  const measuredWidth = Math.round(
-    renderingContext.measureTextWidth(
-      "Custom viz rendered successfully",
-      measuredTextStyle,
-    ),
+  const measuredTextSize = renderingContext.measureText(
+    "Custom viz rendered successfully",
+    { size: 14, weight: 700 },
   );
-  const measuredHeight = Math.round(
-    renderingContext.measureTextHeight(
-      "Custom viz rendered successfully",
-      measuredTextStyle,
-    ),
-  );
+  const measuredWidth = Math.round(measuredTextSize.width);
+  const measuredHeight = Math.round(measuredTextSize.height);
   const brandColor = renderingContext.getColor("brand");
 
   const [lastClickValue, setLastClickValue] = useState<RowValue | null>(null);
