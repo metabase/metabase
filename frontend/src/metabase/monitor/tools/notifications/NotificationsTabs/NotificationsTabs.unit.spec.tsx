@@ -111,10 +111,10 @@ describe("NotificationsTabs", () => {
       />,
     );
 
+    const failingTab = screen.getByTestId("notifications-admin-tab-failing");
     expect(
-      within(screen.getByTestId("notifications-admin-tab-failing")).queryByText(
-        /\d/,
-      ),
-    ).not.toBeInTheDocument();
+      within(failingTab).getByTestId("tab-count-skeleton"),
+    ).toBeInTheDocument();
+    expect(within(failingTab).queryByText(/\d/)).not.toBeInTheDocument();
   });
 });

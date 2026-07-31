@@ -38,7 +38,12 @@ const TabCountBadge = ({
 }) =>
   match(count)
     .with({ status: "loading" }, () => (
-      <Skeleton h={16} miw="1.5rem" radius="xl" />
+      <Skeleton
+        h={16}
+        miw="1.5rem"
+        radius="xl"
+        data-testid="tab-count-skeleton"
+      />
     ))
     .with({ status: "error" }, () => null)
     .with({ status: "loaded" }, ({ value }) =>
