@@ -90,7 +90,7 @@
   (testing "an unknown provider type is rejected"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"Unknown provider type"
-         (llm.provider/validate-config! "gemini" {:api-key "whatever"}))))
+         (llm.provider/validate-config! "evilai" {:api-key "whatever"}))))
   (testing "a missing required field is rejected"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"API key is required for anthropic"
@@ -322,12 +322,12 @@
   (testing "every registered type is addressable by name, and unknown names are not"
     (is (= (map :type (llm.provider/provider-types))
            (map #(:type (llm.provider/provider-type (:type %))) (llm.provider/provider-types))))
-    (is (nil? (llm.provider/provider-type "gemini"))))
+    (is (nil? (llm.provider/provider-type "evilai"))))
   (testing "only the Metabase provider is managed"
     (is (true? (llm.provider/managed-type? "metabase")))
     (is (= "metabase" llm.provider/managed-connection-key))
     (is (false? (llm.provider/managed-type? "anthropic")))
-    (is (false? (llm.provider/managed-type? "gemini"))))
+    (is (false? (llm.provider/managed-type? "evilai"))))
   (testing "secret field keys cover exactly the password inputs"
     (is (= #{:api-key} (llm.provider/secret-field-keys "anthropic")))
     (is (= #{:api-key} (llm.provider/secret-field-keys "azure")))
@@ -344,10 +344,10 @@
             "bedrock"    "anthropic.claude-opus-4-8"
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
-    (is (nil? (llm.provider/default-model "gemini"))))
+    (is (nil? (llm.provider/default-model "evilai"))))
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
-    (is (false? (llm.provider/type-available? "gemini")))))
+    (is (false? (llm.provider/type-available? "evilai")))))
 
 (deftest db-stored-single-provider-connections-test
   (testing "a per-provider credential setting stored in the app DB implies a connection keyed by its provider type"

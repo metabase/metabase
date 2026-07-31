@@ -264,7 +264,7 @@
     (testing "rejects an unsupported wire family"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Invalid Azure model"
-           (metabot.settings/llm-metabot-provider! "azure/gemini/some-deployment"))))
+           (metabot.settings/llm-metabot-provider! "azure/evilai/some-deployment"))))
     (testing "rejects a missing deployment name"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Invalid Azure model"

@@ -207,9 +207,9 @@
                 (mt/user-http-request :crowberto :post 400 "llm/providers"
                                       {:type "anthropic" :config {:api-key "sk-openai-shaped"}}))))
       (testing "an unknown provider type is rejected"
-        (is (= "Unknown provider type \"gemini\"."
+        (is (= "Unknown provider type \"evilai\"."
                (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                     {:type "gemini" :config {:api-key "whatever"}}))))
+                                     {:type "evilai" :config {:api-key "whatever"}}))))
       (is (= [] (llm.provider/connections))))))
 
 (deftest create-suffixes-a-colliding-key-test

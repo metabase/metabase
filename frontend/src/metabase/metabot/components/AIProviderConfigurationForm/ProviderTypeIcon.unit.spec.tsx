@@ -40,7 +40,7 @@ describe("ProviderTypeIcon", () => {
   it("falls back to the registry icon for a type the frontend does not know yet", () => {
     // the registry is the backend's, so it can serve a type this union does not list yet;
     // the cast reproduces that server response, which is unreachable through the type alone
-    const unknownType = "gemini" as LlmProviderTypeName;
+    const unknownType = "evilai" as LlmProviderTypeName;
     renderWithProviders(<ProviderTypeIcon type={unknownType} icon="ai" />);
 
     expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
