@@ -142,6 +142,7 @@ function OuterGuard({ children }: PropsWithChildren) {
   return (
     <div>
       <span data-testid="outer-state">{blocker.state}</span>
+      <button onClick={() => blocker.proceed?.()}>proceed outer</button>
       {children}
     </div>
   );
@@ -210,11 +211,69 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
     expect(screen.getByTestId("outer-state")).toHaveTextContent("unblocked");
   });
 
+  it("asks the outer guard once the inner one is let through", async () => {
+    outerShouldBlock.mockReturnValue(true);
+    shouldBlock.mockReturnValue(true);
+    const { history } = setupNestedGuards();
+    act(() => history.push("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    // Letting the inner guard through hands the prompt to the outer one rather
+    // than releasing the navigation, so a second dirty form still gets a say.
+    expect(screen.getByTestId("outer-state")).toHaveTextContent("blocked");
+    expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
+    expect(history.getCurrentLocation().pathname).toBe("/a");
+  });
+
+  it("resumes the navigation once every guard has been asked", async () => {
+    outerShouldBlock.mockReturnValue(true);
+    shouldBlock.mockReturnValue(true);
+    const { history } = setupNestedGuards();
+    act(() => history.push("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "proceed outer" }),
+    );
+
+    expect(await screen.findByText("page b")).toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe("/b");
+  });
+
+  it("drops the navigation when any guard in the chain resets", async () => {
+    outerShouldBlock.mockReturnValue(true);
+    shouldBlock.mockReturnValue(true);
+    const { history } = setupNestedGuards();
+    act(() => history.push("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "reset" }));
+
+    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
+    expect(screen.getByTestId("outer-state")).toHaveTextContent("unblocked");
+  });
+
   it("lets a navigation through when neither says so", () => {
     const { history } = setupNestedGuards();
 
     act(() => history.push("/b"));
 
     expect(history.getCurrentLocation().pathname).toBe("/b");
+  });
+});
+
+// A guard registers with the provider above it, which only a mounted router
+// supplies. Without one it registers nowhere, so it cannot hold a navigation it
+// has no way to release.
+describe("useRouteLeaveBlocker outside a router", () => {
+  it("is inert rather than an error", () => {
+    shouldBlock.mockReturnValue(true);
+    shouldBlock.mockClear();
+
+    renderWithProviders(<Guard />, { withRouter: false });
+
+    expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
+    expect(shouldBlock).not.toHaveBeenCalled();
   });
 });

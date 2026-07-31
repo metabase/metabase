@@ -1,8 +1,8 @@
-import { useContext, useEffect, useId, useRef } from "react";
+import { useContext, useId, useRef } from "react";
 import type { Blocker, BlockerFunction } from "react-router";
 import { UNSAFE_RouteContext } from "react-router";
 
-import { registerGuard, useBlockedGuard } from "./v7/route-leave-guards";
+import { useGuardedBlocker } from "./v7/route-leave-guards";
 
 /**
  * Block navigation that leaves the route this component renders in, replacing
@@ -18,9 +18,9 @@ import { registerGuard, useBlockedGuard } from "./v7/route-leave-guards";
  * do not pass the route in: v7 publishes the matched branch, so the scope is
  * read here rather than threaded through props.
  *
- * Guards nest: several can be mounted at once, and the innermost one that blocks
- * gets the prompt. It also gets the whole navigation, so proceeding past it does
- * not then stop at an outer guard.
+ * Guards nest. Several can be mounted at once, the innermost one that blocks
+ * gets the prompt, and letting it through asks the rest before the navigation
+ * resumes.
  *
  * @see https://reactrouter.com/7.18.1/api/hooks/useBlocker
  */
@@ -34,12 +34,7 @@ export function useRouteLeaveBlocker(shouldBlock: BlockerFunction): Blocker {
   const latestShouldBlock = useRef(shouldBlock);
   latestShouldBlock.current = shouldBlock;
 
-  useEffect(
-    () => registerGuard(id, { shouldBlock: latestShouldBlock, basePath }),
-    [id, basePath],
-  );
-
-  return useBlockedGuard(id);
+  return useGuardedBlocker(id, latestShouldBlock, basePath);
 }
 
 /**

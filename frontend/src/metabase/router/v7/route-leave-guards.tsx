@@ -1,7 +1,17 @@
 import type { PropsWithChildren, RefObject } from "react";
-import { createContext, useContext, useMemo } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Blocker, BlockerFunction } from "react-router";
 import { useBlocker } from "react-router";
+
+type BlockerArgs = Parameters<BlockerFunction>[0];
 
 interface Guard {
   // Held as a ref because the caller's decision closes over state that changes
@@ -13,21 +23,6 @@ interface Guard {
   basePath?: string;
 }
 
-// Insertion order is mount order, so the innermost guard is asked first.
-const guards = new Map<string, Guard>();
-
-let blockedGuardId: string | null = null;
-
-export function registerGuard(id: string, guard: Guard): () => void {
-  guards.set(id, guard);
-  return () => {
-    guards.delete(id);
-    if (blockedGuardId === id) {
-      blockedGuardId = null;
-    }
-  };
-}
-
 function staysWithin(basePath: string | undefined, pathname: string): boolean {
   if (!basePath) {
     return false;
@@ -37,54 +32,119 @@ function staysWithin(basePath: string | undefined, pathname: string): boolean {
 }
 
 /**
- * react-router holds one blocker per router, so the app registers exactly one
- * and fans it out here. Otherwise a second guard mounting anywhere on the page
- * would silently take over from the first: the caching sidebar's form guard sits
- * inside both the dashboard and the query builder, which carry their own.
- *
- * The one-blocker limit, and what upstream intends to do about it, is tracked in
- * https://github.com/remix-run/react-router/discussions/9978. Drop this fan-out
- * if react-router grows support for several blockers.
+ * The first guard that wants to stop this navigation and has not been answered
+ * for it yet. Insertion order is mount order, so the innermost guard goes first.
  */
-const shouldBlockAnyGuard: BlockerFunction = (args) => {
-  const blocking = [...guards.entries()].find(
-    ([, { shouldBlock, basePath }]) =>
-      !staysWithin(basePath, args.nextLocation.pathname) &&
-      shouldBlock.current?.(args),
-  );
-
-  blockedGuardId = blocking?.[0] ?? null;
-  return blocking != null;
-};
-
-interface RouteLeaveBlockerValue {
-  blocker: Blocker;
-  blockedGuardId: string | null;
+function findBlockingGuard(
+  guards: Map<string, Guard>,
+  args: BlockerArgs,
+  answered: Set<string>,
+): string | null {
+  for (const [id, { shouldBlock, basePath }] of guards) {
+    if (answered.has(id) || staysWithin(basePath, args.nextLocation.pathname)) {
+      continue;
+    }
+    if (shouldBlock.current?.(args)) {
+      return id;
+    }
+  }
+  return null;
 }
 
-const RouteLeaveBlockerContext = createContext<RouteLeaveBlockerValue | null>(
+interface RouteLeaveGuardsValue {
+  registerGuard: (id: string, guard: Guard) => () => void;
+  blockedGuardId: string | null;
+  blocker: Blocker;
+  proceedFrom: (id: string) => void;
+  resetAll: () => void;
+}
+
+const RouteLeaveGuardsContext = createContext<RouteLeaveGuardsValue | null>(
   null,
 );
 
 /**
- * Owns the router's blocker, on behalf of every route-leave guard below it. The
- * guard that blocked gets the live blocker and so drives the prompt; the rest
- * see an idle one.
+ * Owns the router's blocker on behalf of every route-leave guard below it.
  *
- * Sits in `AppShell`, so a component rendered outside a router (which specs do)
- * finds no provider and its guard is inert rather than an error.
+ * react-router holds one blocker per router, and a second `useBlocker` silently
+ * takes over from the first, so the app registers exactly one and fans it out.
+ * That matters here: the caching sidebar's form guard sits inside both the
+ * dashboard and the query builder, which carry their own. The one-blocker limit
+ * is tracked in https://github.com/remix-run/react-router/discussions/9978. Drop
+ * this fan-out if react-router grows support for several blockers.
+ *
+ * Guards are answered in turn. The first one that blocks gets the prompt, and
+ * letting it through asks the rest before the navigation resumes, so two dirty
+ * forms on one page prompt twice, as they did when each guard cancelled the
+ * navigation outright.
+ *
+ * The registry lives here rather than at module level, so a guard rendered
+ * outside a router registers nowhere and stays inert. A module-level registry
+ * would still be consulted by a router mounted elsewhere, and could then block a
+ * navigation that no mounted component is able to release.
  */
 export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
-  const blocker = useBlocker(shouldBlockAnyGuard);
+  const guardsRef = useRef(new Map<string, Guard>());
+  // Guards that already had their say about the navigation being held.
+  const answeredRef = useRef(new Set<string>());
+  const blockedArgsRef = useRef<BlockerArgs | null>(null);
+  const [blockedGuardId, setBlockedGuardId] = useState<string | null>(null);
 
-  // `blockedGuardId` is set while the router asks the blocker, which is what
-  // schedules this render, so it names the guard this blocker belongs to.
-  const value = useMemo(() => ({ blocker, blockedGuardId }), [blocker]);
+  const registerGuard = useCallback((id: string, guard: Guard) => {
+    guardsRef.current.set(id, guard);
+    return () => {
+      guardsRef.current.delete(id);
+      answeredRef.current.delete(id);
+      setBlockedGuardId((current) => (current === id ? null : current));
+    };
+  }, []);
+
+  const shouldBlock = useCallback<BlockerFunction>((args) => {
+    answeredRef.current.clear();
+    blockedArgsRef.current = args;
+
+    const id = findBlockingGuard(guardsRef.current, args, answeredRef.current);
+    setBlockedGuardId(id);
+    return id != null;
+  }, []);
+
+  const blocker = useBlocker(shouldBlock);
+
+  const proceedFrom = useCallback(
+    (id: string) => {
+      answeredRef.current.add(id);
+
+      const args = blockedArgsRef.current;
+      const next = args
+        ? findBlockingGuard(guardsRef.current, args, answeredRef.current)
+        : null;
+
+      // Hand the prompt to the next guard that objects. Only once none is left
+      // does the navigation itself resume.
+      if (next) {
+        setBlockedGuardId(next);
+      } else {
+        blocker.proceed?.();
+      }
+    },
+    [blocker],
+  );
+
+  const resetAll = useCallback(() => {
+    answeredRef.current.clear();
+    setBlockedGuardId(null);
+    blocker.reset?.();
+  }, [blocker]);
+
+  const value = useMemo(
+    () => ({ registerGuard, blockedGuardId, blocker, proceedFrom, resetAll }),
+    [registerGuard, blockedGuardId, blocker, proceedFrom, resetAll],
+  );
 
   return (
-    <RouteLeaveBlockerContext.Provider value={value}>
+    <RouteLeaveGuardsContext.Provider value={value}>
       {children}
-    </RouteLeaveBlockerContext.Provider>
+    </RouteLeaveGuardsContext.Provider>
   );
 }
 
@@ -96,9 +156,35 @@ const IDLE_BLOCKER: Blocker = {
 };
 
 /**
- * The shared blocker, but only for the guard that blocked the navigation.
+ * Registers a guard with the nearest `RouteLeaveGuards`, and reports the blocker
+ * for as long as that guard is the one holding the navigation. Outside a router
+ * there is no provider, so the guard registers nowhere and stays idle.
  */
-export function useBlockedGuard(id: string): Blocker {
-  const shared = useContext(RouteLeaveBlockerContext);
-  return shared?.blockedGuardId === id ? shared.blocker : IDLE_BLOCKER;
+export function useGuardedBlocker(
+  id: string,
+  shouldBlock: RefObject<BlockerFunction>,
+  basePath: string | undefined,
+): Blocker {
+  const context = useContext(RouteLeaveGuardsContext);
+  const registerGuard = context?.registerGuard;
+
+  useEffect(
+    () => registerGuard?.(id, { shouldBlock, basePath }),
+    [registerGuard, id, shouldBlock, basePath],
+  );
+
+  const isHoldingNavigation =
+    context?.blockedGuardId === id && context?.blocker.state === "blocked";
+
+  return useMemo(() => {
+    if (!context || !isHoldingNavigation) {
+      return IDLE_BLOCKER;
+    }
+    return {
+      state: "blocked",
+      location: context.blocker.location,
+      proceed: () => context.proceedFrom(id),
+      reset: context.resetAll,
+    } as Blocker;
+  }, [context, isHoldingNavigation, id]);
 }
