@@ -111,6 +111,7 @@
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/RemoteSyncWorktree
+    :model/RemoteSyncWorktreeRemapping
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata

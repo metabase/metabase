@@ -4,7 +4,6 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,20 +19,6 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(t2/define-before-insert :model/DashboardTab
-  [tab]
-  (remote-sync/inherit-worktree-id tab :model/Dashboard :dashboard_id))
-
-(t2/define-before-update :model/DashboardTab
-  [tab]
-  (remote-sync/check-worktree-id-unchanged tab)
-  (remote-sync/check-parent-same-worktree tab :model/Dashboard :dashboard_id)
-  tab)
-
-(t2/define-after-select :model/DashboardTab
-  [tab]
-  (remote-sync/remove-worktree-id-helper tab))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
@@ -69,7 +54,7 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      [:worktree_id :worktree_id_helper]
+   :skip      []
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

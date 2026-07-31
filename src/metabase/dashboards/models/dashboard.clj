@@ -23,7 +23,6 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -81,7 +80,7 @@
   [dashboard]
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
-    (u/prog1 (remote-sync/inherit-worktree-id dashboard :model/Collection :collection_id)
+    (u/prog1 dashboard
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
@@ -93,8 +92,6 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (remote-sync/check-worktree-id-unchanged dashboard)
-  (remote-sync/check-parent-same-worktree dashboard :model/Collection :collection_id)
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
@@ -133,7 +130,6 @@
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
-      remote-sync/remove-worktree-id-helper
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
@@ -425,8 +421,7 @@
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [:worktree_id :worktree_id_helper
-               ;; those stats are inherently local state
+   :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl]

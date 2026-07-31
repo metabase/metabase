@@ -1169,15 +1169,16 @@
                        {:where [:and
                                 [:= :is_remote_synced true]
                                 [:= :location "/"]
+                                [:= :worktree_id serdes/*worktree-id*]
                                 [:not :archived]]})
-     (when (rs-settings/remote-sync-transforms)
+     (when (and (nil? serdes/*worktree-id*) (rs-settings/remote-sync-transforms))
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
                                   [:= :namespace (name collections/transforms-ns)]
                                   [:= :location "/"]
                                   [:not :archived]]}))
-     (when (rs-settings/library-is-remote-synced?)
+     (when (and (nil? serdes/*worktree-id*) (rs-settings/library-is-remote-synced?))
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
@@ -1189,7 +1190,7 @@
 
 (defmethod query-export-roots :setting
   [{:keys [export-scope model-key model-type] :as spec}]
-  (when (spec-enabled? spec)
+  (when (and (nil? serdes/*worktree-id*) (spec-enabled? spec))
     (let [conditions (export-conditions spec)]
       (case export-scope
         :root-only
@@ -1206,7 +1207,7 @@
 
 (defmethod query-export-roots :library-synced
   [{:keys [export-scope model-key model-type archived-key] :as spec}]
-  (when (spec-enabled? spec)
+  (when (and (nil? serdes/*worktree-id*) (spec-enabled? spec))
     (case export-scope
       :all
       (if archived-key

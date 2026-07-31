@@ -1653,20 +1653,21 @@
     (source.p/create-branch source name base-branch)))
 
 (def ^:private worktree-content-models
-  "The models a worktree materializes, in delete order. Children (dashboard cards and tabs, parameter cards,
-  action rows, transform tag assignments) go with their parents through the DB's cascading FKs; collections are
-  deleted last, once nothing points at them. Must stay in sync with the tables carrying a `worktree_id` column."
-  [:model/Card :model/Dashboard :model/Document :model/Timeline :model/NativeQuerySnippet
-   :model/Action :model/Transform])
+  "The models a worktree materializes inside its collections, in delete order. Children (dashboard cards and tabs,
+  parameter cards, action rows) go with their parents through the DB's cascading FKs; the collections themselves
+  are deleted last, once nothing points at them."
+  [:model/Card :model/Dashboard :model/Document :model/Timeline])
 
 (defn delete-worktree!
-  "Delete a worktree and everything it checked out: its content, its collections, its sync ledger and task
-  history, and finally the worktree row itself. Runs in a single transaction."
+  "Delete a worktree and everything it checked out: the contents of its collections, the collections, its entity_id
+  remappings, its sync ledger and task history, and finally the worktree row itself. Runs in a single transaction."
   [worktree-id]
   (t2/with-transaction [_conn]
-    (doseq [model worktree-content-models]
-      (t2/delete! model :worktree_id worktree-id))
+    (when-let [collection-ids (seq (t2/select-pks-set :model/Collection :worktree_id worktree-id))]
+      (doseq [model worktree-content-models]
+        (t2/delete! model :collection_id [:in collection-ids])))
     (t2/delete! :model/Collection :worktree_id worktree-id)
+    (t2/delete! :model/RemoteSyncWorktreeRemapping :worktree_id worktree-id)
     (t2/delete! :model/RemoteSyncObject :worktree_id worktree-id)
     (t2/delete! :model/RemoteSyncTask :worktree_id worktree-id)
     (t2/delete! :model/RemoteSyncWorktree :id worktree-id)))

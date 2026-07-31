@@ -306,9 +306,7 @@
     (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
-  (-> collection
-      remote-sync/remove-worktree-id-helper
-      maybe-localize-system-collection-name))
+  (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection
   (derive :metabase/model)
@@ -321,9 +319,16 @@
   (when-not (audit/analytics-dev-mode)
     (= id (:id (audit/default-audit-collection)))))
 
+(defn- worktree-accessible?
+  "Whether `collection` is accessible to the current user: a worktree's collections are admin-only, main-app ones
+  (`:worktree_id` `nil`) are not restricted here."
+  [collection]
+  (or (nil? (:worktree_id collection))
+      api/*is-superuser?*))
+
 (defmethod mi/can-write? :model/Collection
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
+   (and (worktree-accessible? instance)
         (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         (mi/current-user-has-full-permissions? :write instance)
@@ -333,7 +338,7 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
+   (and (worktree-accessible? instance)
         (or (is-trash? instance)
             (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
@@ -494,13 +499,37 @@
   [_model-type _collection-id]
   true)
 
+(defn- worktree-id
+  "The remote-sync worktree the Collection with `collection-id` was checked out into; `nil` for a main-app
+  collection and for the root. `worktree_id` sits on Collection alone -- everything a worktree checks out lives
+  inside one of its collections."
+  [collection-id]
+  (when collection-id
+    (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))
+
+(defn- check-worktree-create-allowed
+  "Returns `collection`, having checked that the current user may create it: a worktree's content is admin-only. A
+  pull, which materializes a worktree without a user, is exempt."
+  [collection]
+  (when (and (:worktree_id collection) (not mi/*deserializing?*))
+    (api/check-superuser))
+  collection)
+
+(defn- check-worktree-id-unchanged
+  "`before-update` guard rejecting a direct write to `worktree_id`: a collection is checked out into a worktree
+  once, and stays there. Returns nil; call for side effect."
+  [collection]
+  (when (contains? (t2/changes collection) :worktree_id)
+    (throw (ex-info (tru "A worktree_id cannot be changed.") {:status-code 400})))
+  nil)
+
 (defn- assert-location-parent-same-worktree
   "If `:location` is changing, verify the new parent Collection belongs to the same worktree as this one -- a
   collection cannot be moved into, out of, or between remote-sync worktrees."
   [collection-before-updates {:keys [location] :as _collection-updates}]
   (when location
     (let [current (:worktree_id collection-before-updates)
-          target  (remote-sync/worktree-id-of :model/Collection (location-path->parent-id location))]
+          target  (worktree-id (location-path->parent-id location))]
       (when (not= current target)
         (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
                         {:status-code        400
@@ -1804,8 +1833,8 @@
                  (assoc :slug (slugify collection-name))
                  (cond->
                   (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
-                  parent-id (assoc :worktree_id (remote-sync/worktree-id-of :model/Collection parent-id)))
-                 remote-sync/check-worktree-create-allowed)
+                  parent-id (assoc :worktree_id (worktree-id parent-id)))
+                 check-worktree-create-allowed)
       (assert-valid-remote-synced-parent <>))))
 
 (defn- copy-collection-permissions!
@@ -1997,7 +2026,7 @@
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    (remote-sync/check-worktree-id-unchanged collection)
+    (check-worktree-id-unchanged collection)
     (assert-location-parent-same-worktree collection-before-updates collection-updates)
     ;; (3) make sure Collection namespace is valid
     (when (contains? collection-updates :namespace)
@@ -2217,7 +2246,7 @@
           :namespace
           :slug
           :type]
-   :skip [:worktree_id :worktree_id_helper]
+   :skip [:worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

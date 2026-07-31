@@ -22,6 +22,22 @@
  [source.p
   ->ingestable])
 
+(defn- in-worktree?
+  "Whether `collection` -- a Collection or its id, `nil` for the root -- was checked out into a remote-sync
+  worktree."
+  [collection]
+  (some? (if (map? collection)
+           (:worktree_id collection)
+           (when collection
+             (t2/select-one-fn :worktree_id :model/Collection :id collection)))))
+
+(defn- worktree-collection-ids
+  "The ids among `collection-ids` naming a Collection checked out into a remote-sync worktree."
+  [collection-ids]
+  (if-let [ids (seq (distinct (remove nil? collection-ids)))]
+    (t2/select-pks-set :model/Collection {:where [:and [:in :id ids] [:not= :worktree_id nil]]})
+    #{}))
+
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 
@@ -32,7 +48,7 @@
   not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (some? (:worktree_id collection))
+  (or (in-worktree? collection)
       (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
@@ -70,21 +86,23 @@
       (= (settings/remote-sync-type) :read-write)))
 
 (defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration. Worktree content is always
-  editable: a worktree is a working copy of its branch."
+  "Determines if a model instance is editable based on remote sync configuration. Content in a worktree collection
+  is always editable: a worktree is a working copy of its branch."
   :feature :none
   [model-key instance]
-  (or (some? (:worktree_id instance))
+  (or (in-worktree? (:collection_id instance))
       (spec/model-editable? model-key instance)))
 
 (defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean. Worktree content is always
-  editable: a worktree is a working copy of its branch."
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean. Content in a worktree
+  collection is always editable: a worktree is a working copy of its branch."
   :feature :none
   [model-key instances]
-  (let [editable (spec/batch-model-editable? model-key (remove :worktree_id instances))]
+  (let [worktree-ids  (worktree-collection-ids (map :collection_id instances))
+        in-worktree?  #(contains? worktree-ids (:collection_id %))
+        editable      (spec/batch-model-editable? model-key (remove in-worktree? instances))]
     (into editable
-          (comp (filter :worktree_id)
+          (comp (filter in-worktree?)
                 (map (fn [inst] [(:id inst) true])))
           instances)))
 

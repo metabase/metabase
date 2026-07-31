@@ -6,7 +6,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -32,25 +31,17 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (-> (merge {:parameter_mappings     []
-              :visualization_settings {}
-              :inline_parameters      []}
-             dashcard)
-      (remote-sync/inherit-worktree-id :model/Dashboard :dashboard_id)))
-
-(t2/define-before-update :model/DashboardCard
-  [dashcard]
-  (remote-sync/check-worktree-id-unchanged dashcard)
-  (remote-sync/check-parent-same-worktree dashcard :model/Dashboard :dashboard_id)
-  dashcard)
+  (merge {:parameter_mappings     []
+          :visualization_settings {}
+          :inline_parameters      []}
+         dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
-  (let [dashcard (remote-sync/remove-worktree-id-helper dashcard)]
-    (if (contains? dashcard :visualization_settings)
-      (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
-      dashcard)))
+  (if (contains? dashcard :visualization_settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
+    dashcard))
 
 (declare series)
 
@@ -403,7 +394,7 @@
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      [:worktree_id :worktree_id_helper]
+   :skip      []
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)

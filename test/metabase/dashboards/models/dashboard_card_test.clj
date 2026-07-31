@@ -251,8 +251,8 @@
                                                      :size_x 3
                                                      :size_y 4
                                                      :series []}])
-            ;; this is usually 12, but it can be 13 sometimes in CI for some reason
-            (is (contains? #{12 13} (call-count)))))))))
+            ;; this is usually 10, but it can be 11 sometimes in CI for some reason
+            (is (contains? #{10 11} (call-count)))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
