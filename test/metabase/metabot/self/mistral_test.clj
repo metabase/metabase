@@ -235,6 +235,35 @@
                                    :input [{:role :user :content "hi"}]
                                    :ai-proxy? true})))))))
 
+(deftest mistral-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key      "mistral-key-setting"
+                                       llm.settings/llm-mistral-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/chat/completions"
+                                                          :headers {"Authorization" "Bearer mistral-key-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (mistral/mistral-raw {:input       [{:role :user :content "hi"}]
+                                   :credentials {:api-key  "mistral-key-explicit"
+                                                 :base-url "https://explicit.example"}})))))))
+
+(deftest mistral-raw-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer mistral-key-setting"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (mistral/mistral-raw {:input       [{:role :user :content "hi"}]
+                                   :credentials {:api-key ""}})))))))
+
 (deftest list-models-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
     (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key nil]
