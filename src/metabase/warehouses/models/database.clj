@@ -443,15 +443,18 @@
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
-        ;; mysql and h2 both do not support `returning`, so we do the correct thing for postgres and
-        ;; then some sad version for those two
-        (if (= :postgres (mdb/db-type))
-          (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
-          (warehouses.db/card-ids-for-database-reducible id)))
+        ;; This intentionally bypasses Card's row-level delete hook. Capture the affected search documents
+        ;; first, then delete in bounded statements; database cascades remove Actions and ModelIndexValues
+        ;; before Toucan can observe them.
+        (warehouses.db/card-ids-for-database-reducible id))
        (run! (fn [batch]
-               (search/delete! :model/Card (map (comp str :id) batch)))))
-  (when (not= :postgres (mdb/db-type))
-    (warehouses.db/delete-cards-for-database! id))
+               (let [ids       (mapv :id batch)
+                     cascading (search/cascading-documents (mapv #(t2/instance :model/Card %) batch))]
+                 (warehouses.db/delete-cards! ids)
+                 ;; Index mutations must see committed state. The shared ingestion queue serializes these
+                 ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
+                 (mdb/do-after-commit #(do (search/delete! :model/Card ids)
+                                           (search/reconcile-cascading-documents! cascading)))))))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e

@@ -88,13 +88,6 @@
                                  [:in :table_id table-ids-query]
                                  extra-clause]})))
 
-(mu/defn delete-cards-for-database-returning-ids-reducible
-  "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-query {:delete-from (t2/table-name :model/Card)
-                       :where       [:= :database_id database-id]
-                       :returning   [:id]}))
-
 (mu/defn card-ids-for-database-reducible
   "A reducible of the `:id`s of the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -102,11 +95,11 @@
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
-(mu/defn delete-cards-for-database!
-  "Delete the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
+(mu/defn delete-cards!
+  "Delete the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:= :database_id database-id]}))
+             :where       [:in :id card-ids]}))
 
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled, returning the number updated."
