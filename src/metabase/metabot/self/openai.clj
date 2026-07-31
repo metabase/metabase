@@ -289,7 +289,8 @@
 
 (defn list-models
   "List the OpenAI chat models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
   ([] (list-models {}))
   ([opts]
@@ -350,8 +351,8 @@
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API.
-  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); the configured OpenAI settings are used
-  for whatever it doesn't carry.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
   [{:keys [model credentials ai-proxy?] :as opts
     :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]

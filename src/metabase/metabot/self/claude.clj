@@ -362,7 +362,8 @@
 
 (defn- list-all-models
   "Fetch the full Anthropic model catalog (`GET /v1/models`).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`."
   [{:keys [credentials ai-proxy?]}]
   (try
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
@@ -379,7 +380,8 @@
 
 (defn list-models
   "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -476,8 +478,8 @@
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API.
-  Opts map supports `:credentials` (`{:api-key ... :base-url ...}`); the configured Anthropic settings are used
-  for whatever it doesn't carry."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [req (claude-request-body opts)]
