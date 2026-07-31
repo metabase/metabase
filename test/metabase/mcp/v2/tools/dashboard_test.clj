@@ -156,6 +156,40 @@
             (testing "and a slug derived from the name, so the parameter is URL-addressable"
               (is (= "category" (:slug stored))))))))))
 
+(deftest update-parameter-clear-test
+  (testing "GHY-4191: `update_parameter` can remove a property it once set. Null can't say it —
+            `compact-op` strips nulls per op for the same reason the top-level boundary does — so
+            `clear` names them. A parameter is a map, so clearing removes the key outright rather
+            than storing an explicit null, which is not the same thing to the REST shape."
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (let [param #(first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))
+            run!  (fn [ops] (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                                     (wire {:method "update" :id (:id dash) :ops ops}))))]
+        (run! [{:op "add_parameter" :parameter_id "p1" :name "Category" :type "string/="
+                :default ["Widget"] :sectionId "string"}])
+        (is (= ["Widget"] (:default (param))) "precondition: the default is set")
+        (testing "clearing removes the key rather than nulling it"
+          (run! [{:op "update_parameter" :parameter_id "p1" :clear ["default"]}])
+          (is (not (contains? (param) :default)))
+          (testing "and leaves the parameter's other properties alone"
+            (is (= "Category" (:name (param))))
+            (is (= "string" (:sectionId (param))))))
+        (testing "clearing alongside an ordinary set in the same op"
+          (run! [{:op "update_parameter" :parameter_id "p1" :default ["Gadget"]}])
+          (is (= ["Gadget"] (:default (param))))
+          (run! [{:op "update_parameter" :parameter_id "p1" :name "Cat" :clear ["default" "sectionId"]}])
+          (is (= "Cat" (:name (param))))
+          (is (not (contains? (param) :default)))
+          (is (not (contains? (param) :sectionId))))
+        (testing "setting and clearing the same property in one op is a contradiction"
+          (is (re-find #"both set and cleared"
+                       (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                               (wire {:method "update" :id (:id dash)
+                                                      :ops [{:op "update_parameter" :parameter_id "p1"
+                                                             :default ["X"] :clear ["default"]}]})))))
+          (testing "and the atomic save means nothing changed"
+            (is (= "Cat" (:name (param))))))))))
+
 (deftest unknown-card-is-a-teaching-error-test
   (testing "GHY-4147: add_card referencing a card the user cannot read fails before any write"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]

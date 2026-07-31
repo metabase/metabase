@@ -292,8 +292,19 @@
    (op-map "update_parameter"
            (str "Change properties of an existing parameter. Only the properties you pass change; "
                 "the rest are left alone. Passing null does not clear a property — it is treated as "
-                "omitted — so a default or linked filter already set cannot be removed this way.")
-           (into [[:parameter_id parameter-id-schema]] parameter-fields))
+                "omitted — so to remove one, name it in `clear`.")
+           (into [[:parameter_id parameter-id-schema]
+                  [:clear {:optional true}
+                   [:maybe [:sequential
+                            [:enum {:description (str "Property names to remove from this parameter "
+                                                      "(default, filteringParameters, "
+                                                      "values_source_config, values_source_type, "
+                                                      "sectionId, temporal_units). Null cannot say this: "
+                                                      "strict clients fill every unset property with "
+                                                      "null, so nulls are treated as omitted.")}
+                             "default" "filteringParameters" "values_source_config"
+                             "values_source_type" "sectionId" "temporal_units"]]]]]
+                 parameter-fields))
    (op-map "remove_parameter"
            (str "Delete a parameter, along with its card mappings, its inline placements, and any "
                 "linked-filter reference to it. Subscriptions that depend on it are archived and "
