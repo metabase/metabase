@@ -113,9 +113,9 @@ describe("TaskRunsPage", () => {
         offset: 0,
       }),
     });
-    // `findByRole` rather than waiting on the loader: the loader can mount a
-    // tick after render, so waiting for its absence can pass before the data
-    // (and with it the pagination) has arrived.
+    // `findByRole` rather than waiting on the loader: the loader can mount
+    // a tick after render, so waiting for its absence can pass before
+    // the data (and with it the pagination) has arrived.
     const pagination = await screen.findByRole("navigation", {
       name: "pagination",
     });

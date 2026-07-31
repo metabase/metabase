@@ -17,13 +17,13 @@ export type QueryCacheSeed = {
 };
 
 /**
- * Synchronously seed RTK Query cache entries into a `preloadedState` slice for
- * the shared `Api`, without a live store. Use this to give a test server data
- * that the app reads from the query cache.
+ * Synchronously seed RTK Query cache entries into a `preloadedState` slice
+ * for the shared `Api`, without a live store. Use this to give a test
+ * whatever server data the app should read from the query cache.
  *
- * Building the slice via `preloadedState` (rather than dispatching into a built
- * store) keeps it fully synchronous and per-store: no cross-test leakage, and
- * reads resolve on the first render.
+ * Building the slice via `preloadedState` (rather than dispatching into
+ * a built store) keeps it fully synchronous and per-store:
+ * no cross-test leakage, and reads resolve on the first render.
  *
  * Entries that already exist in the state are skipped, so seeding is
  * idempotent. Mock states routinely pass through seeding twice (spec setup +

@@ -39,10 +39,10 @@ export function renderWithSDKProviders(
   }: RenderWithSDKProvidersOptions = {},
 ) {
   // `settings` and the current user are served from the `getSessionProperties`
-  // / `getCurrentUser` RTK Query caches rather than redux slices. Settings are
-  // captured here and seeded through `preloadedState` below; the user entry is
-  // seeded by `createMockState` itself (the raw `currentUser` field is dropped
-  // by the reducer-name pick).
+  // and `getCurrentUser` RTK Query caches rather than redux slices.
+  // Settings are captured here and seeded through `preloadedState` below.
+  // The user entry is seeded by `createMockState` itself;
+  // the raw `currentUser` field is dropped by the reducer-name pick.
   let { settings: seededSettings, ...initialState }: Partial<StoreSeedState> =
     createMockState(storeInitialState);
 

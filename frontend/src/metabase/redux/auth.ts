@@ -144,10 +144,11 @@ export const logout = createAsyncThunk(
 
         await dispatch(refreshLocale()).unwrap();
 
-        // The session is over: all cached API data (current user included) is
-        // for a session that no longer exists. Reset last — mounted query
-        // hooks refetch immediately after a reset, so doing it any earlier
-        // fires a burst of doomed 401 requests from the still-mounted page.
+        // The session is over: all cached API data (current user included)
+        // is for a session that no longer exists. Reset last —
+        // mounted query hooks refetch immediately after a reset,
+        // so doing it any earlier fires a burst of doomed 401 requests
+        // from the still-mounted page.
         dispatch(Api.util.resetApiState());
 
         if (samlLogoutUrl) {
@@ -158,11 +159,11 @@ export const logout = createAsyncThunk(
         await dispatch(refreshLocale()).unwrap();
 
         dispatch(push(Urls.login()));
-        // The session is over: all cached API data (current user included) is
-        // for a session that no longer exists. Reset after navigating — mounted
-        // query hooks refetch immediately after a reset, so resetting on the
-        // old page fires a burst of doomed 401 requests; `reload` below cuts
-        // any stragglers short.
+        // The session is over: all cached API data (current user included)
+        // is for a session that no longer exists. Reset after navigating —
+        // mounted query hooks refetch immediately after a reset,
+        // so resetting on the old page fires a burst of doomed 401 requests;
+        // `reload` below cuts any stragglers short.
         dispatch(Api.util.resetApiState());
         reload(); // clears redux state and browser caches
       }

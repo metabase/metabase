@@ -5,13 +5,15 @@ import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
 
-// The current user lives in the `getCurrentUser` RTK Query cache — there is no
-// user slice. `loadCurrentUser` (dispatched on app entry) populates it, and the
-// user mutations in `metabase/api/user` patch it in place.
+// The current user lives in the `getCurrentUser` RTK Query cache —
+// there is no user slice. `loadCurrentUser` (dispatched on app entry)
+// populates it, and the user mutations in `metabase/api/user` keep it
+// in sync.
 //
-// The explicit annotation collapses the RTK-generated selector generics; left
-// inferred, they leak into every consumer of `getUser` and push deeply-nested
-// reducer files over TypeScript's instantiation-depth limit (TS2589).
+// The explicit annotation collapses the RTK-generated selector generics;
+// left inferred, they leak into every consumer of `getUser` and push
+// deeply-nested reducer files over TypeScript's instantiation-depth
+// limit (TS2589).
 const selectCurrentUser: (state: State) => { data?: User } =
   userApi.endpoints.getCurrentUser.select();
 

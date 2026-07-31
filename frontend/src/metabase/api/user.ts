@@ -105,8 +105,8 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
         body,
       }),
-      // The id-scoped `current-user` tag only matches when the edited user is
-      // the viewer, so an admin editing someone else refetches nothing.
+      // The id-scoped `current-user` tag only matches when the edited user
+      // is the viewer, so an admin editing someone else refetches nothing.
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
           listTag("user"),
