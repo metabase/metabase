@@ -112,6 +112,18 @@
     :mysql    [:date_add :%now
                [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
 
+;; every literal below is `:inline`d on purpose: the caller supplies this query's params positionally
+;; (session key, hashed key, optional anti-CSRF token), so anything parameterized here shifts them
+(def ^:private confirmed-second-factor-exists
+  ;; enrollment state is the auth_identity.confirmed_at COLUMN, not the encrypted credentials JSON.
+  ;; Mirrors `metabase-enterprise.mfa.management/confirmed-totp-exists`; can't be shared, that side is EE.
+  [:exists {:select [:second_factor.id]
+            :from   [[:auth_identity :second_factor]]
+            :where  [:and
+                     [:= :second_factor.user_id :session.user_id]
+                     [:= :second_factor.provider [:inline "totp"]]
+                     [:not= :second_factor.confirmed_at nil]]}])
+
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required]

@@ -6,11 +6,22 @@ import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Alert, Anchor, Group, Switch, Text } from "metabase/ui";
+import { Alert, Anchor, Group, Select, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
-import type { MfaAdminOverview } from "metabase-types/api";
+import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 
 import { ENROLLED_USERS_PATH, UNENROLLED_USERS_PATH } from "../../constants";
+
+type EnforcementOption = {
+  value: MfaEnforcement;
+  label: string;
+};
+
+const getEnforcementOptions = (): EnforcementOption[] => [
+  { value: "off", label: t`Off` },
+  { value: "optional", label: t`Optional` },
+  { value: "required", label: t`Required` },
+];
 
 export function AdminAuthCard() {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
@@ -27,11 +38,19 @@ export function AdminAuthCard() {
     return null;
   }
 
-  const handleChange = (checked: boolean) => {
-    updateSetting({
-      key: "mfa-enforcement",
-      value: checked ? "optional" : "off",
-    });
+  // Any value other than "off" needs the token, but "off" stays selectable so a lapsed
+  // licence can always be wound back down.
+  const options = getEnforcementOptions().map((option) => ({
+    ...option,
+    disabled: option.value !== "off" && !hasFeature,
+  }));
+
+  const handleChange = (value: string | null) => {
+    const option = options.find((option) => option.value === value);
+
+    if (option) {
+      updateSetting({ key: "mfa-enforcement", value: option.value });
+    }
   };
 
   return (
@@ -40,14 +59,13 @@ export function AdminAuthCard() {
       title={t`Two-factor authentication`}
       description={t`Let users secure their account with an authenticator app.`}
     >
-      <Switch
+      <Select
         id="mfa-enforcement"
-        checked={enabled}
-        onChange={(e) => handleChange(e.target.checked)}
-        label={enabled ? t`Enabled` : t`Disabled`}
-        disabled={!enabled && !hasFeature}
-        w="auto"
-        size="sm"
+        label={t`Enforcement`}
+        data={options}
+        value={enforcement ?? "off"}
+        onChange={handleChange}
+        maw="20rem"
       />
       {enabled && overview && !overview.encryption_key_set && (
         <Alert size="compact" color="warning">
