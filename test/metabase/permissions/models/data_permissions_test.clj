@@ -1403,22 +1403,26 @@
            (str "/block/db/" db-id "/"))))))
 
 (deftest use-cache?-test
-  (testing "use-cache? returns true only when both cache is enabled and user is current user"
+  (testing "use-cache? returns true only when the cache is bound and enabled, and the user is the current user"
     (let [current-user-id 1
-          other-user-id 2]
+          other-user-id 2
+          cache (atom {})]
       (binding [api/*current-user-id* current-user-id]
         (testing "cache enabled, current user"
           (binding [data-perms/*use-perms-cache?* true]
-            (is (#'data-perms/use-cache? current-user-id))))
+            (is (#'data-perms/use-cache? cache current-user-id))))
         (testing "cache enabled, different user"
           (binding [data-perms/*use-perms-cache?* true]
-            (is (not (#'data-perms/use-cache? other-user-id)))))
+            (is (not (#'data-perms/use-cache? cache other-user-id)))))
         (testing "cache disabled, current user"
           (binding [data-perms/*use-perms-cache?* false]
-            (is (not (#'data-perms/use-cache? current-user-id)))))
+            (is (not (#'data-perms/use-cache? cache current-user-id)))))
         (testing "cache disabled, different user"
           (binding [data-perms/*use-perms-cache?* false]
-            (is (not (#'data-perms/use-cache? other-user-id)))))))))
+            (is (not (#'data-perms/use-cache? cache other-user-id)))))
+        (testing "no cache bound -- outside a request scope nothing bounds how stale it could get"
+          (binding [data-perms/*use-perms-cache?* true]
+            (is (not (#'data-perms/use-cache? nil current-user-id)))))))))
 
 (deftest race-conditions-test
   ;; This test is probabilistic: success doesn't *necessarily* prove we're doing things correctly, but

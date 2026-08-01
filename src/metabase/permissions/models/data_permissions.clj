@@ -263,8 +263,15 @@
      ~@body))
 
 (defn- use-cache?
-  [user-id]
+  "Whether `cache` may answer for `user-id`. It may only when a request scope actually bound it — the root binding is
+  nil, so code outside [[with-relevant-permissions-for-user]] reads through to the database every time.
+
+  That matters now that a load covers every database: a cache that outlived its request would claim to answer for
+  permissions granted after it was filled, and never reload. Scoping it to the request is what bounds the staleness
+  each cache's docstring describes."
+  [cache user-id]
   (and *use-perms-cache?*
+       (some? cache)
        (= user-id api/*current-user-id*)))
 
 (defn is-superuser?
@@ -302,8 +309,8 @@
   whole instance costs a fraction of what one database's worth of boxed IDs used to.
 
   Nothing invalidates this within a request, so a permission written after a check has already loaded it is not seen
-  by later checks in the same request."
-  (atom {}))
+  by later checks in the same request. Unbound outside a request scope, where nothing would bound that staleness."
+  nil)
 
 (defn- load-table-permission-perms
   "Table-granular permissions as `{perm-type {perm-value bitmap}}`, for `table-id` or — when nil — for every table in
@@ -335,7 +342,7 @@
   database's table-granular rows if this request hasn't already. When the cache doesn't apply the load is narrowed to
   `table-id`, since there is no later check to amortize a wider one over."
   [user-id table-id]
-  (if (use-cache? user-id)
+  (if (use-cache? *table-permission-cache* user-id)
     (or (get @*table-permission-cache* user-id)
         (let [index (load-table-permission-perms user-id nil)]
           (swap! *table-permission-cache* assoc user-id index)
@@ -361,7 +368,7 @@
   `{:default v, :schemas {schema v}}` — per schema, the coalesced value of the schema's table rows combined with the
   db-level rows; `:default` (the db-level value alone) answers schemas with no rows of their own. Schema names are
   normalized (nil = \"\"). Loaded for every database and every permission type at once, on first use."
-  (atom {}))
+  nil)
 
 (defn- load-schema-permission-perms
   "Schema-level values for `db-id`, or for every database when nil."
@@ -396,7 +403,7 @@
   database if this request hasn't already. When the cache doesn't apply the load is narrowed to `db-id`, since there
   is no later check to amortize a wider one over."
   [user-id db-id]
-  (if (use-cache? user-id)
+  (if (use-cache? *schema-permission-cache* user-id)
     (or (get @*schema-permission-cache* user-id)
         (let [index (load-schema-permission-perms user-id nil)]
           (swap! *schema-permission-cache* assoc user-id index)
@@ -429,7 +436,7 @@
 
   All three are aggregations of the same rows (see [[perm-rows-query-base]]), so one query computes all of them, for
   every database, at once — including the questions that scan the whole instance rather than naming a database."
-  (atom {}))
+  nil)
 
 (defn- load-db-perms
   "Whole-database values for `db-id`, or for every database when nil."
@@ -461,7 +468,7 @@
   :any-table v}}}` map, loading every database if this request hasn't already. When the cache doesn't apply the load
   is narrowed to `db-id`, since there is no later check to amortize a wider one over."
   [user-id db-id]
-  (if (use-cache? user-id)
+  (if (use-cache? *db-permission-cache* user-id)
     (or (get @*db-permission-cache* user-id)
         (let [index (load-db-perms user-id nil)]
           (swap! *db-permission-cache* assoc user-id index)
