@@ -108,9 +108,10 @@ export function beginResearch(): Cypress.Chainable<number> {
   return cy.wait("@createExploration").then(({ response }) => {
     // Unjustified type cast. FIXME
     const id = response?.body?.id as number;
-    expect(id, "exploration id from POST /api/exploration response").to.be.a(
-      "number",
-    );
+    expect(
+      id,
+      `exploration id from POST /api/exploration response (status ${response?.statusCode}, body: ${JSON.stringify(response?.body)?.slice(0, 500)})`,
+    ).to.be.a("number");
     cy.url().should("include", `/question/research/${id}`);
     return cy.wrap(id);
   });

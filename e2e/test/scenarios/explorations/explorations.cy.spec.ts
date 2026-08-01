@@ -322,6 +322,10 @@ describe("scenarios > explorations > new research > metabot flow", () => {
         expect(request.body.name).to.eq(agentName);
         // Unjustified type cast. FIXME
         const id = response?.body?.id as number;
+        expect(
+          id,
+          `exploration id from POST /api/exploration response (status ${response?.statusCode}, body: ${JSON.stringify(response?.body)?.slice(0, 500)})`,
+        ).to.be.a("number");
         H.expectUnstructuredSnowplowEvent({
           event: "exploration_agent_message_sent",
         });
