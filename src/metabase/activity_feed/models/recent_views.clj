@@ -38,7 +38,6 @@
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -580,7 +579,6 @@
                                    (group-by (comp keyword :model) views)
                                    (update-vals views #(mapv :model_id %)))
         tables (table-recents table-ids)]
-    (perms/prime-table-perms-cache {:table-ids (into #{} (keep :id) tables)})
     {:card       (m/index-by :id (card-recents card-ids))
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))

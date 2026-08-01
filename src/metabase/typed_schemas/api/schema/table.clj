@@ -5,7 +5,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.api.common :as common]
    [metabase.typed-schemas.api.schema.common :as schema.common]
    [metabase.typed-schemas.api.scope :as scope]
@@ -41,7 +40,6 @@
 (defn- filter-readable-tables
   "Filters tables down to the ones the current user can read."
   [tables]
-  (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
   (filter mi/can-read? tables))
 
 (defn select-tables

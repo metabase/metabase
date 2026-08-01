@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -104,9 +103,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
-        table-ids (into #{} (keep :table_id) measures)]
-    (perms/prime-table-perms-cache {:table-ids table-ids})
+  (let [measures (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})]
     (-> (filterv mi/can-read? measures)
         (t2/hydrate :creator :definition_description))))
 

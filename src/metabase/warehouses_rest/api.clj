@@ -77,7 +77,6 @@
                               :visibility_type nil
                               {:order-by [[:%lower.schema :asc]
                                           [:%lower.display_name :asc]]})
-        _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?          (filter mi/can-query?)
                           can-write-metadata? (filter mi/can-write?))
@@ -105,7 +104,6 @@
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
                          {} rows)]
-      (perms/prime-schema-perms-cache {:db-ids db-ids})
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
@@ -351,7 +349,7 @@
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})
         ;; everything below walks the list one database at a time
-        _   (perms/prime-db-perms-cache {:db-ids (into #{} (map :id) dbs)})]
+        ]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       include-schemas?             add-schemas
@@ -871,7 +869,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
-  (perms/prime-table-perms-cache {:db-ids #{id}})
   (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
                                                    :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
                                                    :visibility_type [:not-in ["sensitive" "retired"]])
@@ -1505,7 +1502,6 @@
                                        :active true
                                        :visibility_type nil
                                        {:order-by [[:display_name :asc]]}))
-         _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (if-let [f (when config/ee-available?
                                                   (classloader/require 'metabase-enterprise.advanced-permissions.common)

@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -71,7 +70,6 @@
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
      (let [tables (t2/select :model/Table :id [:in ids])
-           _      (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
            tables (t2/hydrate tables
                               [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
