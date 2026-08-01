@@ -14,24 +14,24 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- insert-notification!
-  [notification-id position & [overrides]]
+  [notification-id position & [payload-overrides row-overrides]]
   (let [now (t/offset-date-time)]
     (t2/insert-returning-instance!
      :model/ProductNotification
      (merge {:notification_id notification-id
              :schema_version  1
-             :title           (str "Title " notification-id)
-             :content         (str "Content " notification-id)
-             :conditions
-             {:audience   "all_users"
-              :deployment "any"
-              :edition    "any"
-              :starts_at  (str (t/minus now (t/days 1)))
-              :ends_at    (str (t/plus now (t/days 1)))}
+             :payload         (merge {:title      (str "Title " notification-id)
+                                      :content    (str "Content " notification-id)
+                                      :conditions {:audience   "all_users"
+                                                   :deployment "any"
+                                                   :edition    "any"
+                                                   :starts_at  (str (t/minus now (t/days 1)))
+                                                   :ends_at    (str (t/plus now (t/days 1)))}}
+                                     payload-overrides)
              :position        position
              :active          true
              :last_seen_at    now}
-            overrides))))
+            row-overrides))))
 
 (deftest list-product-notifications-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
@@ -92,7 +92,7 @@
                                          :edition    "any"
                                          :starts_at  "2026-01-01T00:00:00Z"
                                          :ends_at    "2099-01-01T00:00:00Z"}})
-      (insert-notification! "inactive" 1 {:active false})
+      (insert-notification! "inactive" 1 nil {:active false})
       (insert-notification! "expired" 2 {:conditions
                                          {:audience   "all_users"
                                           :deployment "any"

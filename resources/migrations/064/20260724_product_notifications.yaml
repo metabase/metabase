@@ -27,20 +27,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: title
-                  type: varchar(255)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: content
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: icon
-                  type: varchar(255)
-              - column:
-                  name: conditions
+                  name: payload
                   type: ${text.type}
                   constraints:
                     nullable: false

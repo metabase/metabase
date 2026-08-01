@@ -91,12 +91,10 @@
       (throw (ex-info "Product notification start must be before its end"
                       {:id notification-id})))
     (validate-version-range! notification-id conditions)
+    ;; everything renderable lives in the payload so a new feed field needs no migration
     {:notification_id notification-id
      :schema_version  (:schema_version notification)
-     :title           (:title notification)
-     :content         (:content notification)
-     :icon            (:icon notification)
-     :conditions      conditions
+     :payload         (dissoc notification :id :schema_version)
      :position        position}))
 
 (defn- valid-notification-id
@@ -182,10 +180,10 @@
              (or (nil? maximum) (.isLowerThan current maximum)))))))
 
 (defn- eligible-v1?
-  [{:keys [active conditions]}
+  [{:keys [active payload]}
    {:keys [now superuser? hosted? enterprise? version]}]
-  (mu/validate-throw ConditionsV1 conditions)
-  (let [{:keys [audience deployment edition]} conditions]
+  (let [{:keys [audience deployment edition] :as conditions} (:conditions payload)]
+    (mu/validate-throw ConditionsV1 conditions)
     (and active
          (time-matches? conditions now)
          (or (= audience "all_users")

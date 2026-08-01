@@ -34,7 +34,7 @@
   (mt/with-temporary-setting-values [settings/product-notifications-last-synced-at nil]
     (is (true? (#'task/stale?))))
   (mt/with-temporary-setting-values
-    [settings/product-notifications-last-synced-at (t/minus (t/offset-date-time) (t/hours 13))]
+    [settings/product-notifications-last-synced-at (t/minus (t/offset-date-time) (t/hours 5))]
     (is (true? (#'task/stale?))))
   (mt/with-temporary-setting-values
     [settings/product-notifications-last-synced-at (t/minus (t/offset-date-time) (t/hours 1))]
@@ -46,7 +46,7 @@
 
 (deftest trigger-metadata-test
   (let [^CronTrigger trigger (#'task/sync-trigger 3 15)]
-    (is (= "0 15 3/12 * * ? *" (.getCronExpression trigger)))
+    (is (= "0 15 3/4 * * ? *" (.getCronExpression trigger)))
     (is (= CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING
            (.getMisfireInstruction trigger)))))
 

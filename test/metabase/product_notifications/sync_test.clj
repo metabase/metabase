@@ -44,8 +44,8 @@
              (t2/select-fn-vec (juxt :notification_id :position)
                                :model/ProductNotification
                                {:order-by [[:position :asc]]})))
-      (is (= (:conditions (feed-notification "first" "First"))
-             (t2/select-one-fn :conditions
+      (is (= (select-keys (feed-notification "first" "First") [:title :content :conditions])
+             (t2/select-one-fn :payload
                                :model/ProductNotification
                                :notification_id "first"))))
     (testing "retires missing rows without deleting notification or dismissal state"
@@ -83,16 +83,28 @@
                    (t2/select-one :model/ProductNotification
                                   :notification_id "will-be-unsupported")))))))
 
-(deftest immutable-id-failure-does-not-block-other-notifications-test
+(deftest edited-copy-updates-in-place-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
     (#'sync/sync-notifications!
      (normalize (feed-notification "existing" "Original")))
-    (#'sync/sync-notifications!
-     (normalize (feed-notification "existing" "Changed")
-                (feed-notification "new" "New")))
-    (is (false? (t2/select-one-fn :active :model/ProductNotification
-                                  :notification_id "existing")))
-    (is (t2/exists? :model/ProductNotification :notification_id "new"))))
+    (let [before-id (t2/select-one-pk :model/ProductNotification :notification_id "existing")]
+      (t2/insert! :model/ProductNotificationDismissal
+                  {:product_notification_id before-id
+                   :user_id                 (mt/user->id :rasta)})
+      (#'sync/sync-notifications!
+       (normalize (feed-notification "existing" "Changed")
+                  (feed-notification "new" "New")))
+      (let [row (t2/select-one :model/ProductNotification :notification_id "existing")]
+        (testing "the edit lands on the same row and the notification stays live"
+          (is (= before-id (:id row)))
+          (is (true? (:active row)))
+          (is (nil? (:retired_at row)))
+          (is (= "Changed" (get-in row [:payload :title]))))
+        (testing "editing copy does not re-notify people who already dismissed it"
+          (is (t2/exists? :model/ProductNotificationDismissal
+                          :product_notification_id before-id
+                          :user_id (mt/user->id :rasta)))))
+      (is (t2/exists? :model/ProductNotification :notification_id "new")))))
 
 (deftest invalid-notification-becomes-inactive-without-blocking-valid-notifications-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]

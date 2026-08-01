@@ -22,10 +22,11 @@
 
 (defn- notification-response
   [notification]
-  (cond-> {:id      (:notification_id notification)
-           :title   (:title notification)
-           :content (:content notification)}
-    (:icon notification) (assoc :icon (:icon notification))))
+  (let [{:keys [title content icon]} (:payload notification)]
+    (cond-> {:id      (:notification_id notification)
+             :title   title
+             :content content}
+      icon (assoc :icon icon))))
 
 (api.macros/defendpoint :get "/" :- [:vector ProductNotificationResponse]
   "Return eligible, undismissed product notifications in feed order."

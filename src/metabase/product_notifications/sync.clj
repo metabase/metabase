@@ -12,37 +12,18 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private immutable-fields
-  [:notification_id
-   :schema_version
-   :title
-   :content
-   :icon
-   :conditions])
-
-(defn- immutable-view
-  [notification]
-  (select-keys notification immutable-fields))
-
-(defn- check-immutable!
-  [existing incoming]
-  (when-not (= (immutable-view existing)
-               (immutable-view incoming))
-    (throw (ex-info "Changed product notifications must use a new ID"
-                    {:phase           :immutability
-                     :notification-id (:notification_id incoming)}))))
-
 (defn- sync-notification!
   [existing notification now]
   (t2/with-transaction [_conn]
     (if existing
-      (do
-        (check-immutable! existing notification)
-        (t2/update! :model/ProductNotification (:id existing)
-                    {:position     (:position notification)
-                     :active       true
-                     :retired_at   nil
-                     :last_seen_at now}))
+      ;; edits land in place; dismissals key off the row, so fixing copy never re-notifies
+      (t2/update! :model/ProductNotification (:id existing)
+                  {:schema_version (:schema_version notification)
+                   :payload        (:payload notification)
+                   :position       (:position notification)
+                   :active         true
+                   :retired_at     nil
+                   :last_seen_at   now})
       (t2/insert! :model/ProductNotification
                   (assoc notification
                          :active true
@@ -109,8 +90,8 @@
 (mu/defn ^:private sync-notifications!
   "Reconcile every valid notification without letting one item block the rest.
 
-  Invalid, unsupported, immutable, and missing IDs become inactive. A database
-  failure preserves that item's last known state."
+  Invalid, unsupported, and missing IDs become inactive. A database failure
+  preserves that item's last known state."
   [{:keys [notifications errors]} :- [:map
                                       [:notifications [:vector :map]]
                                       [:errors [:vector :map]]]]

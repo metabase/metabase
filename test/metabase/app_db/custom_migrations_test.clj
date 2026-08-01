@@ -2973,7 +2973,7 @@
             [[false []]
              [true
               [{:notification_id "demo-product-notification-release"
-                :conditions
+                :payload
                 {:audience   "all_users"
                  :deployment "any"
                  :edition    "any"
@@ -2981,7 +2981,7 @@
                  :ends_at    "2099-01-01T00:00:00Z"}
                 :position        0}
                {:notification_id "demo-product-notification-admin"
-                :conditions
+                :payload
                 {:audience   "admins"
                  :deployment "any"
                  :edition    "any"
@@ -2992,7 +2992,7 @@
         (binding [custom-migrations/*seed-product-notification-demo-data?* seed?]
           (migrate!))
         (is (= expected
-               (mapv #(update % :conditions json/decode+kw)
-                     (t2/query {:select   [:notification_id :conditions :position]
+               (mapv #(update % :payload (comp :conditions json/decode+kw))
+                     (t2/query {:select   [:notification_id :payload :position]
                                 :from     [:product_notification]
                                 :order-by [[:position :asc]]}))))))))

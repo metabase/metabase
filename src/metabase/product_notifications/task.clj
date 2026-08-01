@@ -25,12 +25,16 @@
   (and (not config/is-dev?)
        (not (premium-features/airgap-enabled))))
 
+(def ^:private sync-interval-hours
+  "How long a completed sync stays fresh. Also bounds how long a retracted notification keeps showing."
+  4)
+
 (defn- stale?
-  "Whether the instance has never synced or its last completed sync is older than twelve hours."
+  "Whether the instance has never synced or its last completed sync is older than the sync interval."
   []
   (if-let [last-synced (settings/product-notifications-last-synced-at)]
     (t/before? (t/offset-date-time last-synced)
-               (t/minus (t/offset-date-time) (t/hours 12)))
+               (t/minus (t/offset-date-time) (t/hours sync-interval-hours)))
     true))
 
 (defn- run-sync!
@@ -49,20 +53,21 @@
   (run-sync!))
 
 (defn- sync-trigger
+  "Sync every `sync-interval-hours`, offset randomly so the fleet does not hit the feed at once."
   [hour minute]
   (triggers/build
    (triggers/with-identity (triggers/key trigger-key))
    (triggers/start-now)
    (triggers/with-schedule
     (cron/schedule
-     (cron/cron-schedule (format "0 %d %d/12 * * ? *" minute hour))
+     (cron/cron-schedule (format "0 %d %d/%d * * ? *" minute hour sync-interval-hours))
      (cron/with-misfire-handling-instruction-do-nothing)))))
 
 (defmethod task/init! ::SyncProductNotifications [_]
   (let [job     (jobs/build
                  (jobs/of-type SyncProductNotifications)
                  (jobs/with-identity (jobs/key job-key)))
-        trigger (sync-trigger (rand-int 12) (rand-int 60))]
+        trigger (sync-trigger (rand-int sync-interval-hours) (rand-int 60))]
     (task/schedule-task! job trigger)
     (when (and (sync-enabled?) (stale?))
       (task/trigger-now! (jobs/key job-key)))))
