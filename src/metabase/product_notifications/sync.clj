@@ -50,7 +50,7 @@
        (try
          (sync-notification! existing notification now)
          (-> result
-             (update :active-ids conj notification-id)
+             (update :synced-ids conj notification-id)
              (update :synced-count inc))
          (catch Exception e
            (let [phase (:phase (ex-data e) :database)]
@@ -60,7 +60,7 @@
                         (name phase))
              (cond-> (update result :error-count inc)
                (= phase :database) (update :protected-ids conj notification-id)))))))
-   {:active-ids    #{}
+   {:synced-ids    #{}
     :protected-ids #{}
     :synced-count  0
     :error-count   0}
@@ -87,7 +87,7 @@
 (mu/defn ^:private sync-notifications!
   "Reconcile every valid notification without letting one item block the rest.
 
-  Invalid, unsupported, and missing IDs become inactive. A database failure
+  Invalid, unsupported, and missing IDs are retired. A database failure
   preserves that item's last known state."
   [{:keys [notifications errors]} :- [:map
                                       [:notifications [:vector :map]]
@@ -102,10 +102,10 @@
                                            {:phase :database}
                                            e))))
         result         (sync-valid-notifications! existing-by-id notifications now)
-        keep-ids       (into (:active-ids result) (:protected-ids result))
+        keep-ids       (into (:synced-ids result) (:protected-ids result))
         retire-errors  (retire-missing-notifications! existing-by-id keep-ids now)]
     (-> result
-        (dissoc :active-ids :protected-ids)
+        (dissoc :synced-ids :protected-ids)
         (update :error-count + (count errors) retire-errors))))
 
 (defn sync-from-source!
