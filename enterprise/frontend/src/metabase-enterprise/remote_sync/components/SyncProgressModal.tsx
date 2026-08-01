@@ -52,6 +52,10 @@ export function SyncProgressModal({
         message,
         icon: "warning",
         toastColor: "feedback-negative",
+        // the default 5s isn't enough to read (let alone screenshot) an error message someone
+        // needs to act on -- matches the timeout the other remote-sync error toasts already use,
+        // e.g. useExportChangesAction/useMergeChangesAction in SyncConflictModal/hooks.ts (metabase#79029)
+        timeout: 8000,
       });
 
       if (message.match(/no active task/i)) {
