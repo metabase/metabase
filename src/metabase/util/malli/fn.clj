@@ -406,7 +406,7 @@
   (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
     `(let [~'&f ~(deparameterized-fn-form lang parsed fn-name)
            ~@(into [] cat captured)]
-       (core/fn ~@(instrumented-fn-tail error-context fn-schema)))))
+       (core/fn ~'mufn ~@(instrumented-fn-tail error-context fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
