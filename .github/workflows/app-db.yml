@@ -61,6 +61,9 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
+        # disposable CI database: a RAM-backed datadir makes the ~90k fsyncs of a full
+        # migration chain free (measured: setup-db! 59s -> 16s)
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -188,6 +191,9 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
+        # disposable CI database: a RAM-backed datadir makes the ~90k fsyncs of a full
+        # migration chain free (measured: setup-db! 59s -> 16s)
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
