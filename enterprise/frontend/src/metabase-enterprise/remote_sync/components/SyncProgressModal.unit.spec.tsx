@@ -330,6 +330,24 @@ describe("SyncProgressModal", () => {
       expect(onDismiss).not.toHaveBeenCalled();
     });
 
+    it("keeps the cancel-failed error toast up long enough to actually read (metabase#79029)", async () => {
+      const { store } = setup({
+        isAdmin: true,
+        cancelResponse: { status: 500, body: "Server error" },
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => {
+        expect(store.getState().undo).toHaveLength(1);
+      });
+
+      expect(store.getState().undo[0]).toMatchObject({
+        message: "Failed to cancel sync: Server error",
+        timeout: 8000,
+      });
+    });
+
     it("should call onDismiss when cancel fails with 'no active task' message", async () => {
       const onDismiss = jest.fn();
       setup({
