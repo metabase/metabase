@@ -1,4 +1,12 @@
-export { Outlet, Route, useNavigate, useParams } from "react-router";
+export {
+  Outlet,
+  Route,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useParams,
+  useSearchParams,
+} from "react-router";
 export * from "./middleware";
 export * from "./navigation";
 export * from "./Navigate";
@@ -7,10 +15,8 @@ export * from "./router-link";
 export * from "./location-change";
 export * from "./RouterProvider";
 export * from "./types";
-export * from "./use-location";
-export * from "./use-navigation-type";
+export * from "./use-maybe-location";
 export * from "./use-route-leave-blocker";
-export * from "./use-search-params";
 export {
   createMemoryAppRouter,
   type MemoryTestRouter,

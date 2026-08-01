@@ -1,9 +1,7 @@
 import { usePrevious } from "react-use";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
-import { Route, useParams } from "metabase/router";
-
-import { useLocation } from "./use-location";
+import { Route, useLocation, useParams } from "metabase/router";
 
 // Mirrors the document /new -> /new leave prompt: a page that derives transient
 // state from `usePrevious(location.key)` and expects to stay rendered until the
