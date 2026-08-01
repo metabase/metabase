@@ -103,6 +103,8 @@ jobs:
     services:
       mysql:
         image: cimg/mysql:8.0
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
     steps:
@@ -126,6 +128,8 @@ jobs:
     services:
       mysql:
         image: mysql:9
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: circle_test
@@ -180,6 +184,8 @@ jobs:
     services:
       mariadb:
         image: circleci/mariadb:10.2.23
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
     steps:
@@ -202,6 +208,8 @@ jobs:
     services:
       mariadb:
         image: circleci/mariadb:latest
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
     steps:
