@@ -28,7 +28,7 @@
                                :starts_at  (str (t/minus now (t/days 1)))
                                :ends_at    (str (t/plus now (t/days 1)))}
              :position        position
-             :last_seen_at    now}
+             :last_synced_at  now}
             overrides))))
 
 (deftest list-product-notifications-test

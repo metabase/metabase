@@ -2255,7 +2255,7 @@
                                    :ends_at    "2099-01-01T00:00:00Z"})
     :position        0
     :retired_at      nil
-    :last_seen_at    :%now
+    :last_synced_at  :%now
     :created_at      :%now
     :updated_at      :%now}
    {:notification_id "demo-product-notification-admin"
@@ -2270,7 +2270,7 @@
                                    :ends_at    "2099-01-01T00:00:00Z"})
     :position        1
     :retired_at      nil
-    :last_seen_at    :%now
+    :last_synced_at  :%now
     :created_at      :%now
     :updated_at      :%now}])
 

@@ -45,7 +45,7 @@ databaseChangeLog:
                   name: retired_at
                   type: ${timestamp_type}
               - column:
-                  name: last_seen_at
+                  name: last_synced_at
                   type: ${timestamp_type}
                   constraints:
                     nullable: false

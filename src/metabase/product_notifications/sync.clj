@@ -23,9 +23,9 @@
                    :conditions     (:conditions notification)
                    :position       (:position notification)
                    :retired_at     nil
-                   :last_seen_at   now})
+                   :last_synced_at now})
       (t2/insert! :model/ProductNotification
-                  (assoc notification :last_seen_at now)))))
+                  (assoc notification :last_synced_at now)))))
 
 (defn- retire-notification!
   [notification now]
