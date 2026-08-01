@@ -22,7 +22,7 @@
 
 (defn- notification-response
   [notification]
-  (let [{:keys [title content icon]} (:payload notification)]
+  (let [{:keys [title content icon]} (:content notification)]
     (cond-> {:id      (:notification_id notification)
              :title   title
              :content content}

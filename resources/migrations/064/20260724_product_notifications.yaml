@@ -27,19 +27,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: payload
+                  name: content
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: conditions
                   type: ${text.type}
                   constraints:
                     nullable: false
               - column:
                   name: position
                   type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: active
-                  type: ${boolean.type}
-                  defaultValueBoolean: true
                   constraints:
                     nullable: false
               - column:
@@ -64,14 +63,14 @@ databaseChangeLog:
   - changeSet:
       id: v64.product-notifications2
       author: metabase
-      comment: Index active product notifications in display order
+      comment: Index live product notifications in display order
       changes:
         - createIndex:
             tableName: product_notification
-            indexName: idx_product_notification_active_position
+            indexName: idx_product_notification_retired_at_position
             columns:
               - column:
-                  name: active
+                  name: retired_at
               - column:
                   name: position
 

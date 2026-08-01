@@ -91,10 +91,12 @@
       (throw (ex-info "Product notification start must be before its end"
                       {:id notification-id})))
     (validate-version-range! notification-id conditions)
-    ;; everything renderable lives in the payload so a new feed field needs no migration
+    ;; the client renders :content and the backend evaluates :conditions; keeping :content
+    ;; a blob means a new renderable field needs no migration
     {:notification_id notification-id
      :schema_version  (:schema_version notification)
-     :payload         (dissoc notification :id :schema_version)
+     :content         (dissoc notification :id :schema_version :conditions)
+     :conditions      conditions
      :position        position}))
 
 (defn- valid-notification-id
@@ -180,11 +182,11 @@
              (or (nil? maximum) (.isLowerThan current maximum)))))))
 
 (defn- eligible-v1?
-  [{:keys [active payload]}
+  [{:keys [retired_at conditions]}
    {:keys [now superuser? hosted? enterprise? version]}]
-  (let [{:keys [audience deployment edition] :as conditions} (:conditions payload)]
+  (let [{:keys [audience deployment edition]} conditions]
     (mu/validate-throw ConditionsV1 conditions)
-    (and active
+    (and (nil? retired_at)
          (time-matches? conditions now)
          (or (= audience "all_users")
              (and (= audience "admins") superuser?))

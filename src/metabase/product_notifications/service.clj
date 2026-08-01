@@ -26,7 +26,7 @@
   (let [context (eligibility-context superuser?)]
     (filter #(product-notifications/eligible? % context)
             (t2/select :model/ProductNotification
-                       {:where    [:= :active true]
+                       {:where    [:= :retired_at nil]
                         :order-by [[:position :asc] [:id :asc]]}))))
 
 (mu/defn visible-notifications :- [:vector :map]
@@ -47,7 +47,7 @@
    superuser? :- :boolean]
   (when-let [notification (t2/select-one :model/ProductNotification
                                          :notification_id notification-id
-                                         :active true)]
+                                         :retired_at nil)]
     (when (product-notifications/eligible? notification
                                            (eligibility-context superuser?))
       (mdb/update-or-insert!

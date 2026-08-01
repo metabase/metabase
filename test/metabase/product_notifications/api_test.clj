@@ -14,28 +14,28 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- insert-notification!
-  [notification-id position & [payload-overrides row-overrides]]
+  [notification-id position & [overrides]]
   (let [now (t/offset-date-time)]
     (t2/insert-returning-instance!
      :model/ProductNotification
      (merge {:notification_id notification-id
              :schema_version  1
-             :payload         (merge {:title      (str "Title " notification-id)
-                                      :content    (str "Content " notification-id)
-                                      :conditions {:audience   "all_users"
-                                                   :deployment "any"
-                                                   :edition    "any"
-                                                   :starts_at  (str (t/minus now (t/days 1)))
-                                                   :ends_at    (str (t/plus now (t/days 1)))}}
-                                     payload-overrides)
+             :content         {:title   (str "Title " notification-id)
+                               :content (str "Content " notification-id)}
+             :conditions      {:audience   "all_users"
+                               :deployment "any"
+                               :edition    "any"
+                               :starts_at  (str (t/minus now (t/days 1)))
+                               :ends_at    (str (t/plus now (t/days 1)))}
              :position        position
-             :active          true
              :last_seen_at    now}
-            row-overrides))))
+            overrides))))
 
 (deftest list-product-notifications-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
-    (insert-notification! "second" 1 {:icon "star"})
+    (insert-notification! "second" 1 {:content {:title   "Title second"
+                                               :content "Content second"
+                                               :icon    "star"}})
     (insert-notification! "first" 0)
     (insert-notification! "admins" 2 {:conditions
                                       {:audience   "admins"
@@ -92,14 +92,14 @@
                                          :edition    "any"
                                          :starts_at  "2026-01-01T00:00:00Z"
                                          :ends_at    "2099-01-01T00:00:00Z"}})
-      (insert-notification! "inactive" 1 nil {:active false})
+      (insert-notification! "retired" 1 {:retired_at now})
       (insert-notification! "expired" 2 {:conditions
                                          {:audience   "all_users"
                                           :deployment "any"
                                           :edition    "any"
                                           :starts_at  "2026-01-01T00:00:00Z"
                                           :ends_at    (str (t/minus now (t/days 1)))}})
-      (doseq [notification-id ["missing" "admins" "inactive" "expired"]]
+      (doseq [notification-id ["missing" "admins" "retired" "expired"]]
         (is (= "Not found."
                (mt/user-http-request :rasta :post 404
                                      (str "product-notifications/" notification-id "/dismiss"))))))))

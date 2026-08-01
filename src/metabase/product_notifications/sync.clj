@@ -19,23 +19,20 @@
       ;; edits land in place; dismissals key off the row, so fixing copy never re-notifies
       (t2/update! :model/ProductNotification (:id existing)
                   {:schema_version (:schema_version notification)
-                   :payload        (:payload notification)
+                   :content        (:content notification)
+                   :conditions     (:conditions notification)
                    :position       (:position notification)
-                   :active         true
                    :retired_at     nil
                    :last_seen_at   now})
       (t2/insert! :model/ProductNotification
-                  (assoc notification
-                         :active true
-                         :last_seen_at now)))))
+                  (assoc notification :last_seen_at now)))))
 
 (defn- retire-notification!
   [notification now]
-  (when (:active notification)
+  (when-not (:retired_at notification)
     (t2/with-transaction [_conn]
       (t2/update! :model/ProductNotification (:id notification)
-                  {:active     false
-                   :retired_at now}))))
+                  {:retired_at now}))))
 
 (defn- log-feed-error!
   [{:keys [notification-id phase exception]}]
@@ -73,7 +70,7 @@
   [existing-by-id keep-ids now]
   (reduce
    (fn [error-count notification]
-     (if (and (:active notification)
+     (if (and (not (:retired_at notification))
               (not (contains? keep-ids (:notification_id notification))))
        (try
          (retire-notification! notification now)

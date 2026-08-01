@@ -44,8 +44,8 @@
              (t2/select-fn-vec (juxt :notification_id :position)
                                :model/ProductNotification
                                {:order-by [[:position :asc]]})))
-      (is (= (select-keys (feed-notification "first" "First") [:title :content :conditions])
-             (t2/select-one-fn :payload
+      (is (= (select-keys (feed-notification "first" "First") [:title :content])
+             (t2/select-one-fn :content
                                :model/ProductNotification
                                :notification_id "first"))))
     (testing "retires missing rows without deleting notification or dismissal state"
@@ -55,7 +55,6 @@
                      :user_id                 (mt/user->id :rasta)})
         (#'sync/sync-notifications! (normalize (feed-notification "third" "Third")))
         (let [first-row (t2/select-one :model/ProductNotification :notification_id "first")]
-          (is (false? (:active first-row)))
           (is (some? (:retired_at first-row)))
           (is (t2/exists? :model/ProductNotificationDismissal
                           :product_notification_id notification-id
@@ -67,7 +66,6 @@
                       (feed-notification "third" "Third")))
           (let [first-row (t2/select-one :model/ProductNotification :notification_id "first")]
             (is (= before-id (:id first-row)))
-            (is (true? (:active first-row)))
             (is (nil? (:retired_at first-row)))
             (is (t2/exists? :model/ProductNotificationDismissal
                             :product_notification_id before-id
@@ -79,9 +77,8 @@
        (product-notifications/normalized-feed
         {:notifications [(assoc (feed-notification "will-be-unsupported" "Ignored")
                                 :schema_version 2)]}))
-      (is (false? (:active
-                   (t2/select-one :model/ProductNotification
-                                  :notification_id "will-be-unsupported")))))))
+      (is (some? (t2/select-one-fn :retired_at :model/ProductNotification
+                                   :notification_id "will-be-unsupported"))))))
 
 (deftest edited-copy-updates-in-place-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
@@ -97,16 +94,15 @@
       (let [row (t2/select-one :model/ProductNotification :notification_id "existing")]
         (testing "the edit lands on the same row and the notification stays live"
           (is (= before-id (:id row)))
-          (is (true? (:active row)))
           (is (nil? (:retired_at row)))
-          (is (= "Changed" (get-in row [:payload :title]))))
+          (is (= "Changed" (get-in row [:content :title]))))
         (testing "editing copy does not re-notify people who already dismissed it"
           (is (t2/exists? :model/ProductNotificationDismissal
                           :product_notification_id before-id
                           :user_id (mt/user->id :rasta)))))
       (is (t2/exists? :model/ProductNotification :notification_id "new")))))
 
-(deftest invalid-notification-becomes-inactive-without-blocking-valid-notifications-test
+(deftest invalid-notification-retires-without-blocking-valid-notifications-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
     (#'sync/sync-notifications!
      (normalize (feed-notification "invalid" "Original")))
@@ -114,8 +110,8 @@
      (product-notifications/normalized-feed
       {:notifications [(assoc (feed-notification "invalid" "Original") :title "")
                        (feed-notification "valid" "Valid")]}))
-    (is (false? (t2/select-one-fn :active :model/ProductNotification
-                                  :notification_id "invalid")))
+    (is (some? (t2/select-one-fn :retired_at :model/ProductNotification
+                                 :notification_id "invalid")))
     (is (t2/exists? :model/ProductNotification :notification_id "valid"))))
 
 (deftest database-failure-does-not-block-other-notifications-test
@@ -152,5 +148,5 @@
           (is (thrown? clojure.lang.ExceptionInfo (sync/sync-from-source!)))
           (is (= (t/instant previous)
                  (t/instant (product-notifications-last-synced-at))))
-          (is (true? (t2/select-one-fn :active :model/ProductNotification
-                                       :notification_id "new"))))))))
+          (is (nil? (t2/select-one-fn :retired_at :model/ProductNotification
+                                      :notification_id "new"))))))))

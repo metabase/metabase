@@ -37,10 +37,10 @@
       (is (= ["first" "third"] (mapv :notification_id (:notifications feed))))
       (is (= [0 2] (mapv :position (:notifications feed))))
       (is (= ["all_users" "admins"]
-             (mapv #(get-in % [:payload :conditions :audience]) (:notifications feed))))
-      (is (= "star" (get-in feed [:notifications 1 :payload :icon])))
+             (mapv #(get-in % [:conditions :audience]) (:notifications feed))))
+      (is (= "star" (get-in feed [:notifications 1 :content :icon])))
       (is (= "2026-02-01T00:00:00Z"
-             (get-in feed [:notifications 1 :payload :conditions :starts_at])))
+             (get-in feed [:notifications 1 :conditions :starts_at])))
       (is (= [{:notification-id "future"
                :phase           :unsupported-schema}]
              (mapv #(dissoc % :exception) (:errors feed)))))))
@@ -87,14 +87,13 @@
 
 (deftest ^:parallel eligibility-test
   (let [base    {:schema_version 1
-                 :active         true
-                 :payload
-                 {:conditions
-                  {:audience   "all_users"
-                   :deployment "any"
-                   :edition    "any"
-                   :starts_at  "2026-01-01T00:00:00Z"
-                   :ends_at    "2027-01-01T00:00:00Z"}}}
+                 :retired_at     nil
+                 :conditions
+                 {:audience   "all_users"
+                  :deployment "any"
+                  :edition    "any"
+                  :starts_at  "2026-01-01T00:00:00Z"
+                  :ends_at    "2027-01-01T00:00:00Z"}}
         context {:now          (t/offset-date-time "2026-07-01T00:00:00Z")
                  :superuser?   false
                  :hosted?      false
@@ -109,37 +108,41 @@
                 (assoc context :now (t/offset-date-time "2027-01-01T00:00:00Z"))))))
     (testing "matches explicit audience, deployment, and edition"
       (is (not (product-notifications/eligible?
-                (assoc-in base [:payload :conditions :audience] "admins")
+                (assoc-in base [:conditions :audience] "admins")
                 context)))
       (is (product-notifications/eligible?
-           (assoc-in base [:payload :conditions :audience] "admins")
+           (assoc-in base [:conditions :audience] "admins")
            (assoc context :superuser? true)))
       (is (not (product-notifications/eligible?
-                (assoc-in base [:payload :conditions :deployment] "cloud")
+                (assoc-in base [:conditions :deployment] "cloud")
                 context)))
       (is (not (product-notifications/eligible?
-                (assoc-in base [:payload :conditions :edition] "ee")
+                (assoc-in base [:conditions :edition] "ee")
                 context))))
     (testing "matches combined targeting"
-      (let [notification (update-in base [:payload :conditions] assoc
-                                    :audience "admins"
-                                    :deployment "cloud"
-                                    :edition "ee")
+      (let [notification (update base :conditions assoc
+                                 :audience "admins"
+                                 :deployment "cloud"
+                                 :edition "ee")
             matching     (assoc context :superuser? true :hosted? true :enterprise? true)]
         (is (product-notifications/eligible? notification matching))
         (is (not (product-notifications/eligible? notification
                                                   (assoc matching :hosted? false))))))
     (testing "normalizes OSS and EE version prefixes and applies half-open bounds"
-      (let [bounded (update-in base [:payload :conditions] assoc :min_version "64.2" :max_version "65.0")]
+      (let [bounded (update base :conditions assoc :min_version "64.2" :max_version "65.0")]
         (is (product-notifications/eligible? bounded context))
         (is (product-notifications/eligible? bounded (assoc context :version "v1.64.2")))
         (is (not (product-notifications/eligible? bounded (assoc context :version "v0.65.0"))))
         (is (not (product-notifications/eligible? bounded (assoc context :version "vLOCAL_DEV"))))))
+    (testing "a retired notification is ineligible"
+      (is (not (product-notifications/eligible?
+                (assoc base :retired_at (t/offset-date-time "2026-06-01T00:00:00Z"))
+                context))))
     (testing "an unknown version can match an unbounded notification"
       (is (product-notifications/eligible? base (assoc context :version "vLOCAL_DEV"))))
     (testing "unknown notification schemas fail closed"
       (is (not (product-notifications/eligible? (assoc base :schema_version 2) context))))
     (testing "invalid stored conditions fail closed"
       (is (not (product-notifications/eligible?
-                (assoc-in base [:payload :conditions :starts_at] "not-a-time")
+                (assoc-in base [:conditions :starts_at] "not-a-time")
                 context))))))
