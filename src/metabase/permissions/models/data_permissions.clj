@@ -286,9 +286,11 @@
   things -- a dashboard whose parameters span two databases, an entity read followed by a chain-filter on a field
   elsewhere, a card touching a few tables. Those cost a bounded number of queries.
 
-  Five is where measurement put the line: across the search, sandbox, dashboard and sync suites, raising the limit
-  from five to twelve changed nothing, so everything still caught at five is an unbounded run rather than a few
-  unrelated checks."
+  Five is where measurement put the line. Across the search, sandbox, dashboard and sync suites -- discounting the
+  failures those suites already have when batched together -- a limit of two flags 19 sites and three flags 10, all
+  of them bounded: an entity read plus a chain-filter elsewhere, a dashboard whose parameters span two databases. At
+  four and above none of them flag. So this is deliberately a backstop against runs that grow with the data, not a
+  linter for every second check."
   5)
 
 (defn- cache-miss!
