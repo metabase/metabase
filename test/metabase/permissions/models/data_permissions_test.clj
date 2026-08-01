@@ -103,10 +103,14 @@
         (testing "tables already loaded are not re-requested"
           (data-perms/prime-table-perms-cache {:table-ids #{100 102}})
           (is (= [{:table-ids #{100 101}} {:table-ids #{102}}] @loads)))
-        (testing "a table nobody primed loads on its own, not its whole database"
+        (testing "a table nobody primed loads its whole database, so the rest of the run is already covered"
           (#'data-perms/cached-table-perms user-id 10 999)
-          (is (= {:table-ids #{999}} (last @loads)))
-          (is (contains? (:table-ids @cache) 999)))
+          (is (= {:db-ids #{10}} (last @loads)))
+          (is (contains? (:db-ids @cache) 10))
+          (testing "and a sibling table then costs nothing"
+            (reset! loads [])
+            (#'data-perms/cached-table-perms user-id 10 998)
+            (is (= [] @loads))))
         (testing "an already-loaded table is answered from cache"
           (reset! loads [])
           (#'data-perms/cached-table-perms user-id 10 100)

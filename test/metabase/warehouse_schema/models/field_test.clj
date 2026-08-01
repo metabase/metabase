@@ -330,7 +330,6 @@
           (doseq [db-id [db-1 db-2]]
             (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
             (data-perms/set-database-permission! pg db-id :perms/create-queries :no))
-          ;; Readable in one table per database, so neither database can be answered by its own grant alone.
           (doseq [table-id [t-1 t-3]]
             (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
             (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder))

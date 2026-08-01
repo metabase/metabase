@@ -536,13 +536,18 @@
 
 (defn- cached-table-perms
   "Read-through for [[*table-permission-cache*]]: the per-user `{perm-type {db-id {table-id value}}}` map, loading
-  `table-id` first if it isn't covered yet. Callers checking many tables should [[prime-table-perms-cache]] first."
+  `table-id` first if it isn't covered yet.
+
+  A miss loads the whole of `db-id` rather than the one table asked for. An unprimed check is nearly always the first
+  of a run over tables that share a database — filtering a list, hydrating a batch — so paying for the database once
+  turns what would be a query per table into a single query. [[prime-table-perms-cache]] is still worth calling when
+  the caller knows its scope up front, and narrows the load when the tables are few."
   [user-id db-id table-id]
   (if (use-cache? user-id)
     (if (or (contains? (:db-ids @*table-permission-cache*) db-id)
             (contains? (:table-ids @*table-permission-cache*) table-id))
       (get-in @*table-permission-cache* [:perms user-id])
-      (load-table-perms! user-id {:table-ids #{table-id}}))
+      (load-table-perms! user-id {:db-ids #{db-id}}))
     (load-table-permission-perms user-id {:table-ids #{table-id}})))
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
