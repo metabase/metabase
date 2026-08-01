@@ -19,7 +19,7 @@ let currentNavigate: NavigateFunction | null = null;
  */
 let pendingNavigations: Array<(navigate: NavigateFunction) => void> = [];
 
-export function setV7Navigate(navigate: NavigateFunction | null): void {
+export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {
     // The router unmounted. Anything still buffered was meant for it, not for
@@ -86,7 +86,7 @@ export function toNavigateArgs(
  * `dispatch(push(...))` navigates the v7 router. A call before the router mounts
  * is buffered and flushed on registration, so a mount-time redirect is not lost.
  */
-export function createV7Navigator(): RouterNavigator {
+export function createRouterNavigator(): RouterNavigator {
   const navigate = (to: To | number, options?: NavigateOptions) => {
     const run = (fn: NavigateFunction) =>
       typeof to === "number" ? fn(to) : fn(to, options);

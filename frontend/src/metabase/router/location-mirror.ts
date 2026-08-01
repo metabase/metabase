@@ -1,11 +1,11 @@
-import type { Location as V7Location } from "react-router";
+import type { Location as ReactRouterLocation } from "react-router";
 
 import { toFacadeLocation } from "./location";
 import { LOCATION_CHANGE } from "./location-change";
 import { notifyLocationListeners } from "./navigator";
 import type { Location } from "./types";
 
-export type LocationMirror = (location: V7Location) => void;
+export type LocationMirror = (location: ReactRouterLocation) => void;
 
 /**
  * The dispatch half of a redux store, narrowed to what the mirror needs. Taking

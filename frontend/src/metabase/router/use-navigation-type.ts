@@ -1,4 +1,4 @@
-import { useNavigationType as useV7NavigationType } from "react-router";
+import { useNavigationType as useReactRouterNavigationType } from "react-router";
 
 import type { Action } from "./types";
 
@@ -9,5 +9,5 @@ import type { Action } from "./types";
  * @see https://reactrouter.com/7.18.1/api/hooks/useNavigationType
  */
 export function useNavigationType(): Action {
-  return useV7NavigationType();
+  return useReactRouterNavigationType();
 }

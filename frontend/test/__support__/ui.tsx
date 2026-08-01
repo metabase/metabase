@@ -46,9 +46,9 @@ import {
   type LocationDescriptor,
   type MemoryTestRouterHolder,
   Route,
-  RouterProviderV7Memory,
+  RouterProviderMemory,
   createLocationMirror,
-  createV7Navigator,
+  createRouterNavigator,
   routerMiddleware,
   toFacadeLocation,
   toNavigateArgs,
@@ -216,7 +216,7 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
-  const routerNavigator = withRouter ? createV7Navigator() : undefined;
+  const routerNavigator = withRouter ? createRouterNavigator() : undefined;
   const storeMiddleware = _.compact([
     Api.middleware,
     routerNavigator && routerMiddleware(routerNavigator),
@@ -425,7 +425,7 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
       return true;
     }
     // Routes are often grouped in a fragment (`<><Route/><Route/></>`); descend
-    // so the tree is still recognized, matching how `mapToV7` unwraps fragments.
+    // so the tree is still recognized, matching how react-router unwraps fragments.
     if (child.type === Fragment) {
       return childrenAreRouteTree(child.props.children);
     }
@@ -462,13 +462,13 @@ function MaybeRouter({
     <Route path="*" element={children} />
   );
   return (
-    <RouterProviderV7Memory
+    <RouterProviderMemory
       initialRoute={initialRoute}
       routerHolder={routerHolder}
       onLocationChange={onLocationChange}
     >
       {content}
-    </RouterProviderV7Memory>
+    </RouterProviderMemory>
   );
 }
 

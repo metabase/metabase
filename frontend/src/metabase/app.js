@@ -37,7 +37,7 @@ import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-e
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { LOCATION_CHANGE, createV7Navigator } from "metabase/router";
+import { LOCATION_CHANGE, createRouterNavigator } from "metabase/router";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
@@ -80,7 +80,7 @@ function _init(reducers, getRoutes, callback) {
 
   const store = getStore(
     reducers,
-    createV7Navigator(),
+    createRouterNavigator(),
     undefined,
     extraMiddlewares,
   );
