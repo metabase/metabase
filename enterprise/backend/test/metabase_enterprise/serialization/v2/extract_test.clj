@@ -21,6 +21,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -1760,6 +1761,21 @@
                                   :no-data-model true})]
         (is (= #{(:entity_id c)}
                (ids-by-model "Collection" ser)))))))
+
+(deftest nonexistent-id-in-targets-test
+  (testing "targeting a numeric id that doesn't exist fails with a clean, actionable 400 instead of an
+            opaque NPE from some later step operating on a row that was never found (#75167)"
+    (initialize/initialize-if-needed! :db)
+    (let [e (try
+              (dorun (extract/extract {:targets       [["Collection" Integer/MAX_VALUE]]
+                                       :no-settings   true
+                                       :no-data-model true}))
+              nil
+              (catch clojure.lang.ExceptionInfo e
+                e))]
+      (is (some? e) "extract should throw rather than silently succeed on a nonexistent target")
+      (is (= 400 (:status-code (ex-data e))))
+      (is (re-find #"Could not find Collection with ID" (ex-message e))))))
 
 (deftest extract-nested-test
   (testing "extract-nested working"
