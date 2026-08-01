@@ -6,8 +6,8 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
+import { useTransformHost } from "metabase/transforms/host";
 import type { StackProps } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";
@@ -30,6 +30,7 @@ export function TransformHeader({
   readOnly,
   ...restProps
 }: TransformHeaderProps) {
+  const host = useTransformHost();
   const isRemoteSyncReadOnly = useIsTransformSyncReadOnly(transform);
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: transform.collection_id,
@@ -38,6 +39,7 @@ export function TransformHeader({
 
   return (
     <PaneHeader
+      showAppSwitcher={!host.hasHostChrome}
       title={<TransformNameInput transform={transform} readOnly={readOnly} />}
       icon="transform"
       menu={
@@ -53,15 +55,17 @@ export function TransformHeader({
       data-testid="transforms-header"
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
-          {path?.map((folder) => (
-            <Link
-              key={folder.id}
-              to={`${Urls.transformList()}?collectionId=${folder.id}`}
-            >
-              {folder.name}
-            </Link>
-          ))}
+          <Link to={host.rootUrl}>{t`Transforms`}</Link>
+          {path?.map((folder) => {
+            const folderUrl = host.getFolderUrl?.(folder.id);
+            return folderUrl != null ? (
+              <Link key={folder.id} to={folderUrl}>
+                {folder.name}
+              </Link>
+            ) : (
+              folder.name
+            );
+          })}
           {transform.name}
         </DataStudioBreadcrumbs>
       }

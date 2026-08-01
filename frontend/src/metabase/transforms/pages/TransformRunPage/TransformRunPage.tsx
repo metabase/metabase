@@ -3,6 +3,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
+import { useTransformHost } from "metabase/transforms/host";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -18,6 +19,7 @@ type TransformRunPageParams = {
 export const TransformRunPage = () => {
   const params = useParams<TransformRunPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
+  const { hasHostChrome } = useTransformHost();
   const {
     transform,
     isLoading: isLoadingTransform,
@@ -37,7 +39,10 @@ export const TransformRunPage = () => {
   }
 
   return (
-    <PageContainer data-testid="transforms-run-content">
+    <PageContainer
+      data-testid="transforms-run-content"
+      px={hasHostChrome ? 0 : undefined}
+    >
       <TransformHeader transform={transform} readOnly={readOnly} />
       <TransformDisconnectedDatabaseBanner transform={transform} />
       <RunSection transform={transform} readOnly={readOnly} />

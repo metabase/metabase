@@ -24,6 +24,7 @@ To view the shortcut menu in Metabase, press `?`, or click the **profile or grid
 | Browse databases         | g > d       |
 | Browse models            | g > m       |
 | Browse metrics           | g > k       |
+| Go to Content Studio     | g > c       |
 | Download diagnostics     | Ctrl/Cmd+f1 |
 | View shortcuts           | ?           |
 | Open trash               | g > t       |

@@ -5,6 +5,8 @@ import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPag
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackContentStudioOpened } from "metabase/common/content-studio/analytics";
+import { canAccessContentStudio as canAccessContentStudioSelector } from "metabase/common/content-studio/selectors";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
@@ -60,6 +62,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const adminItems = useSelector(getAdminPaths);
   const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
   const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
+  const canAccessContentStudio = useSelector(canAccessContentStudioSelector);
   const canAccessMonitor = useSelector(canAccessMonitorSelector);
   const isNewInstance = useSelector(getIsNewInstance);
   const helpLink = useHelpLink();
@@ -77,7 +80,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
-    if (!canAccessDataStudio && !canAccessMonitor && !showAdminSettingsItem) {
+    if (
+      !canAccessDataStudio &&
+      !canAccessContentStudio &&
+      !canAccessMonitor &&
+      !showAdminSettingsItem
+    ) {
       return null;
     }
 
@@ -115,6 +123,27 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           }
         >
           {t`Data studio`}
+        </Menu.Item>,
+      );
+    }
+    if (canAccessContentStudio) {
+      items.push(
+        <Menu.Item
+          key="content-studio-app-link"
+          component={ForwardRefLink}
+          to={Urls.contentStudio()}
+          onAuxClick={trackContentStudioOpened}
+          onClickCapture={trackContentStudioOpened}
+          leftSection={
+            <Icon
+              name="git_branch"
+              {...(currentApp === "content-studio"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
+            />
+          }
+        >
+          {t`Content studio`}
         </Menu.Item>,
       );
     }
@@ -161,7 +190,13 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         <Box px="md">{items}</Box>
       </>
     );
-  }, [canAccessDataStudio, canAccessMonitor, adminItems, currentApp]);
+  }, [
+    canAccessDataStudio,
+    canAccessContentStudio,
+    canAccessMonitor,
+    adminItems,
+    currentApp,
+  ]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
   const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;

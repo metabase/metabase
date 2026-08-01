@@ -36,6 +36,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { PLUGIN_CONTENT_STUDIO } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { Outlet, push, replace, useParams, useRouter } from "metabase/router";
@@ -501,6 +502,13 @@ export const DocumentPage = () => {
       <DocumentPrintContextProvider>
         <Box className={styles.documentPage}>
           {documentData?.archived && <DocumentArchivedEntityBanner />}
+          {documentData?.worktree_id != null && (
+            <PLUGIN_CONTENT_STUDIO.BranchEntityBanner
+              entityType="document"
+              worktreeId={documentData.worktree_id}
+              collectionId={documentData.collection_id}
+            />
+          )}
           <Box className={styles.contentArea}>
             <Box className={styles.mainContent} ref={setMainContentEl}>
               <ScrollContainerProvider value={mainContentEl}>

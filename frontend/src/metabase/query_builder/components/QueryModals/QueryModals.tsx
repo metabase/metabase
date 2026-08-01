@@ -10,6 +10,7 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
+import { PLUGIN_CONTENT_STUDIO } from "metabase/plugins";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -72,6 +73,10 @@ export function QueryModals({
   const [sendToast] = useToast();
 
   const initialCollectionId = useGetDefaultCollectionId();
+  const saveTargetCollectionId =
+    PLUGIN_CONTENT_STUDIO.useSaveTargetCollectionId(
+      modal === MODAL_TYPES.SAVE ? question.collectionId() : null,
+    );
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
   const visualizationSettings = useSelector(getVisualizationSettings);
 
@@ -205,6 +210,7 @@ export function QueryModals({
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
           opened={true}
+          targetCollection={saveTargetCollectionId}
         />
       );
     case MODAL_TYPES.ADD_TO_DASHBOARD:

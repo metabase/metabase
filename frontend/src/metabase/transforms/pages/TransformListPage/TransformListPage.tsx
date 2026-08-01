@@ -1,352 +1,38 @@
-import type { Row } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useListCollectionsTreeQuery,
-  useListTransformsQuery,
-} from "metabase/api";
-import { DateTime } from "metabase/common/components/DateTime";
-import { Link } from "metabase/common/components/Link";
-import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import {
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_REPLACEMENT,
-  PLUGIN_TRANSFORMS_PYTHON,
-} from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { Outlet, replace, useRouter } from "metabase/router";
+import { PLUGIN_REPLACEMENT } from "metabase/plugins";
+import { Outlet, useRouter } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import {
+  TransformTreeTable,
+  useTransformTreeData,
+} from "metabase/transforms/components/TransformTreeTable";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
-import { Ellipsified } from "metabase/ui";
-import {
-  Card,
-  EntityNameCell,
-  Flex,
-  Group,
-  Icon,
-  type RenderRowLink,
-  Stack,
-  TextInput,
-  TreeTable,
-  type TreeTableColumnDef,
-  TreeTableSkeleton,
-  useTreeTableInstance,
-} from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
+import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getUserName } from "metabase/utils/user";
-import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
-import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
-import S from "./TransformListPage.module.css";
-import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
-import {
-  buildTreeData,
-  getDefaultExpandedIds,
-  useGetNodeSyncColor,
-  useGetTransformWarnings,
-} from "./utils";
-
-const getNodeId = (node: TreeNode) => node.id;
-const getSubRows = (node: TreeNode) => node.children;
-const isFilterable = (node: TreeNode) => node.nodeType === "transform";
-
-const countTransforms = (node: TreeNode): number => {
-  if (!node.children) {
-    return 0;
-  }
-  return node.children.reduce((count, child) => {
-    if (child.nodeType === "transform") {
-      return count + 1;
-    }
-    return count + countTransforms(child);
-  }, 0);
-};
-
-const isRowDisabled = (row: Row<TreeNode>) => {
-  return row.original.can_read === false;
-};
-
-const getRowHref = (row: Row<TreeNode>) => {
-  if (isRowDisabled(row)) {
-    return null;
-  }
-  if (row.original.nodeType === "transform" && row.original.transformId) {
-    return Urls.transform(row.original.transformId);
-  }
-  if (row.original.nodeType === "library" && row.original.url) {
-    return row.original.url;
-  }
-  return null;
-};
-
-const renderRowLink: RenderRowLink<TreeNode> = (row, props) => {
-  const href = getRowHref(row);
-  return href ? <Link to={href} {...props} /> : props.children;
-};
-
-const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
-  folder: "text-secondary",
-  transform: "core-brand",
-  library: "text-primary",
-};
-
-const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
-const globalFilterFn = (
-  row: { original: TreeNode },
-  _columnId: string,
-  filterValue: string,
-) => {
-  if (row.original.nodeType !== "transform") {
-    return false;
-  }
-  const query = String(filterValue).toLowerCase();
-  return (
-    row.original.name.toLowerCase().includes(query) ||
-    (row.original.target?.name.toLowerCase().includes(query) ?? false)
-  );
-};
 
 export const TransformListPage = () => {
   const { location } = useRouter();
-  const { transformsDatabases = [], isLoadingDatabases } =
-    useTransformPermissions();
+  const { transformsDatabases = [] } = useTransformPermissions();
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
-  const hasScrolledRef = useRef(false);
-  const dispatch = useDispatch();
-  const [searchQuery, setSearchQuery] = useState("");
-  // Non-null when an admin is viewing a remote-sync worktree's transforms instead of the main
-  // app's. URL-backed so the selection survives navigating to a new-transform page and back.
-  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
-  const isWorktreeView = worktreeId != null;
-  const handleWorktreeChange = useCallback(
-    (nextWorktreeId: RemoteSyncWorktreeId | null) => {
-      dispatch(
-        replace(
-          Urls.transformList(
-            nextWorktreeId != null ? { worktreeId: nextWorktreeId } : {},
-          ),
-        ),
-      );
-    },
-    [dispatch],
-  );
-  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
-  const { data: targetCollection } = useGetCollectionQuery(
-    targetCollectionId
-      ? { id: targetCollectionId, namespace: "transforms" }
-      : skipToken,
-  );
-
-  const {
-    data: collections,
-    error: collectionsError,
-    isLoading: isLoadingCollections,
-  } = useListCollectionsTreeQuery({
-    namespace: "transforms",
-    "exclude-archived": true,
-    ...(isWorktreeView && { "worktree-id": worktreeId }),
+  const { nodes, transforms, isLoading, error } = useTransformTreeData(null, {
+    includePythonLibrary: true,
   });
-
-  const {
-    data: transforms,
-    error: transformsError,
-    isLoading: isLoadingTransforms,
-  } = useListTransformsQuery(
-    isWorktreeView ? { "worktree-id": worktreeId } : {},
-  );
-
-  const isLoading =
-    isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
-  const error = collectionsError ?? transformsError;
-  const shouldShowPythonTransformsUpsell = useSelector(
-    getShouldShowPythonTransformsUpsell,
-  );
-
-  const warningsByTransformId = useGetTransformWarnings(transforms);
-  const getNodeSyncColor = useGetNodeSyncColor();
-
-  const treeData = useMemo(() => {
-    const data = buildTreeData(collections, transforms);
-
-    // It will trigger the upsell modal if the feature isn't enabled.
-    // The Python library is shared app-wide, so it is left out of worktree views.
-    const shouldShowPythonLibraryRow =
-      !isWorktreeView &&
-      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
-
-    if (shouldShowPythonLibraryRow) {
-      data.push({
-        id: "library",
-        name: t`Python library`,
-        nodeType: "library",
-        icon: "snippet",
-        url: Urls.transformPythonLibrary({
-          path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
-        }),
-        can_read: transformsDatabases.length > 0,
-      });
-    }
-    return data;
-  }, [
-    collections,
-    hasPythonTransformsFeature,
-    isWorktreeView,
-    shouldShowPythonTransformsUpsell,
-    transforms,
-    transformsDatabases.length,
-  ]);
-
-  const defaultExpanded = useMemo(
-    () => getDefaultExpandedIds(targetCollectionId, targetCollection),
-    [targetCollectionId, targetCollection],
-  );
-
-  const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
-    return [
-      {
-        id: "name",
-        accessorKey: "name",
-        header: t`Name`,
-        minWidth: 280,
-        maxAutoWidth: 800,
-        enableSorting: true,
-        cell: ({ row }) =>
-          getNameCell({
-            row,
-            hasPythonTransformsFeature,
-            warningsByTransformId,
-            syncColor: getNodeSyncColor(row.original),
-          }),
-      },
-      {
-        id: "owner",
-        accessorFn: (node) => {
-          const owner = node.owner;
-          if (owner) {
-            return owner.first_name && owner.last_name
-              ? `${owner.first_name} ${owner.last_name}`
-              : owner.email;
-          }
-          return node.owner_email ?? "";
-        },
-        header: t`Owner`,
-        minWidth: 160,
-        enableSorting: true,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          const hasUserName = owner?.first_name || owner?.last_name;
-
-          if (hasUserName) {
-            const displayName = getUserName(owner);
-            return <Ellipsified>{displayName}</Ellipsified>;
-          }
-
-          const ownerEmail = row.original.owner_email ?? owner?.email;
-          if (ownerEmail) {
-            return <Ellipsified>{ownerEmail}</Ellipsified>;
-          }
-
-          return null;
-        },
-      },
-      {
-        id: "updated_at",
-        accessorKey: "updated_at",
-        header: t`Last Modified`,
-        maxWidth: 200,
-        minWidth: "auto",
-        enableSorting: true,
-        sortingFn: "datetime",
-        sortDescFirst: true,
-        cell: ({ row }) =>
-          row.original.updated_at ? (
-            <DateTime value={row.original.updated_at} />
-          ) : null,
-      },
-      {
-        id: "output_table",
-        accessorFn: (node) => node.target?.name ?? "",
-        header: t`Output table`,
-        minWidth: 200,
-        maxAutoWidth: 800,
-        enableSorting: true,
-        cell: ({ row }) =>
-          row.original.target?.name ? (
-            <Ellipsified>{row.original.target.name}</Ellipsified>
-          ) : null,
-      },
-      {
-        id: "actions",
-        header: "",
-        width: 48,
-        enableSorting: false,
-        cell: ({ row }) =>
-          isCollectionNode(row.original) ? (
-            <CollectionRowMenu
-              collection={row.original.collection}
-              transformCount={countTransforms(row.original)}
-            />
-          ) : null,
-      },
-    ];
-  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
-
-  const treeTableInstance = useTreeTableInstance({
-    data: treeData,
-    columns: columnDefs,
-    getNodeId,
-    getSubRows,
-    defaultExpanded,
-    expanded: searchQuery ? true : undefined,
-    globalFilter: searchQuery,
-    onGlobalFilterChange: setSearchQuery,
-    globalFilterFn,
-    isFilterable,
-  });
-
-  const handleRowClick = useCallback((row: Row<TreeNode>) => {
-    // Navigation for leaf nodes (transforms, library) is handled by the link
-    if (row.getCanExpand()) {
-      row.toggleExpanded();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (targetCollectionId && !hasScrolledRef.current && !isLoading) {
-      const nodeId = getCollectionNodeId(targetCollectionId);
-      treeTableInstance.scrollToNode(nodeId);
-      hasScrolledRef.current = true;
-    }
-  }, [targetCollectionId, isLoading, treeTableInstance]);
 
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
-
-  const hasNoData = treeData.length === 0;
-  const hasNoResults = !hasNoData && treeTableInstance.rows.length === 0;
-
-  const emptyMessage = hasNoData
-    ? t`No transforms yet`
-    : hasNoResults && searchQuery
-      ? t`No transforms found`
-      : null;
 
   return (
     <PageContainer data-testid="transforms-list" gap={0}>
@@ -359,104 +45,22 @@ export const TransformListPage = () => {
       />
       <Stack className={CS.overflowHidden}>
         {isMeterLocked && <LockedTransformsBanner />}
-        <Flex gap="md">
-          <TextInput
-            placeholder={t`Search...`}
-            leftSection={<Icon name="search" />}
-            bdrs="md"
-            flex="1"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <PLUGIN_REMOTE_SYNC.WorktreeSwitcher
-            value={worktreeId}
-            onChange={handleWorktreeChange}
-          />
-          {transformsDatabases.length > 0 && (
-            <>
-              <CreateTransformMenu worktreeId={worktreeId} />
-              {!isWorktreeView && <PLUGIN_REPLACEMENT.TransformToolsMenu />}
-            </>
-          )}
-        </Flex>
-
-        <Card withBorder p={0}>
-          {isLoading ? (
-            <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
-          ) : (
-            <TreeTable
-              instance={treeTableInstance}
-              emptyState={
-                emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
-              }
-              onRowClick={handleRowClick}
-              isRowDisabled={isRowDisabled}
-              renderRowLink={renderRowLink}
-              classNames={{ rowDisabled: S.rowDisabled }}
-            />
-          )}
-        </Card>
+        <TransformTreeTable
+          nodes={nodes}
+          transforms={transforms}
+          isLoading={isLoading}
+          targetCollectionId={targetCollectionId}
+          actions={
+            transformsDatabases.length > 0 && (
+              <>
+                <CreateTransformMenu />
+                <PLUGIN_REPLACEMENT.TransformToolsMenu />
+              </>
+            )
+          }
+        />
       </Stack>
       <Outlet />
     </PageContainer>
   );
 };
-
-function getNameCell({
-  row,
-  hasPythonTransformsFeature,
-  warningsByTransformId,
-  syncColor,
-}: {
-  row: Row<TreeNode>;
-  hasPythonTransformsFeature: boolean;
-  warningsByTransformId: Map<number, string>;
-  syncColor: ColorName | undefined;
-}) {
-  const getTooltipProps = (message: string | undefined) => {
-    if (!message) {
-      return undefined;
-    }
-
-    return {
-      alwaysShowTooltip: true,
-      tooltipProps: {
-        openDelay: 300,
-        label: message,
-      },
-    };
-  };
-
-  const getWarningMessage = () => {
-    if (isRowDisabled(row)) {
-      return t`Sorry, you don’t have permission to see that.`;
-    }
-
-    if (row.original.transformId) {
-      return warningsByTransformId.get(row.original.transformId);
-    }
-    return undefined;
-  };
-
-  const isLibraryWithoutFeature =
-    row.original.nodeType === "library" && !hasPythonTransformsFeature;
-
-  const hasWarning = !!getWarningMessage();
-  const iconColor = hasWarning
-    ? "warning"
-    : (syncColor ?? getNodeIconColor(row.original));
-
-  return (
-    <Group gap="sm" wrap="nowrap" miw={0}>
-      <EntityNameCell
-        data-testid="tree-node-name"
-        icon={hasWarning ? "warning" : row.original.icon}
-        iconColor={iconColor}
-        nameColor={syncColor}
-        name={row.original.name}
-        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
-      />
-      {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
-    </Group>
-  );
-}

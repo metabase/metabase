@@ -1,0 +1,372 @@
+import type { Row } from "@tanstack/react-table";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { t } from "ttag";
+
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { useTransformHost } from "metabase/transforms/host";
+import { CollectionRowMenu } from "metabase/transforms/pages/TransformListPage/CollectionRowMenu";
+import {
+  type TreeNode,
+  getCollectionNodeId,
+  isCollectionNode,
+} from "metabase/transforms/pages/TransformListPage/types";
+import {
+  getDefaultExpandedIds,
+  useGetNodeSyncColor,
+  useGetTransformWarnings,
+} from "metabase/transforms/pages/TransformListPage/utils";
+import { Ellipsified } from "metabase/ui";
+import {
+  Card,
+  EntityNameCell,
+  Flex,
+  Group,
+  Icon,
+  type RenderRowLink,
+  TextInput,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { getUserName } from "metabase/utils/user";
+import type { Transform, TransformId } from "metabase-types/api";
+
+import S from "./TransformTreeTable.module.css";
+
+const getNodeId = (node: TreeNode) => node.id;
+const getSubRows = (node: TreeNode) => node.children;
+const isFilterable = (node: TreeNode) => node.nodeType === "transform";
+
+const countTransforms = (node: TreeNode): number => {
+  if (!node.children) {
+    return 0;
+  }
+  return node.children.reduce((count, child) => {
+    if (child.nodeType === "transform") {
+      return count + 1;
+    }
+    return count + countTransforms(child);
+  }, 0);
+};
+
+const isRowDisabled = (row: Row<TreeNode>) => {
+  return row.original.can_read === false;
+};
+
+const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
+  folder: "text-secondary",
+  transform: "core-brand",
+  library: "text-primary",
+};
+
+const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
+
+const globalFilterFn = (
+  row: { original: TreeNode },
+  _columnId: string,
+  filterValue: string,
+) => {
+  if (row.original.nodeType !== "transform") {
+    return false;
+  }
+  const query = String(filterValue).toLowerCase();
+  return (
+    row.original.name.toLowerCase().includes(query) ||
+    (row.original.target?.name.toLowerCase().includes(query) ?? false)
+  );
+};
+
+type TransformTreeTableProps = {
+  nodes: TreeNode[];
+  transforms: Transform[] | undefined;
+  isLoading: boolean;
+  /** Folder to expand to and scroll into view once the tree has loaded. */
+  targetCollectionId?: number | null;
+  /** Toolbar controls sitting next to the search field. */
+  actions?: ReactNode;
+};
+
+/** The searchable tree of transform folders and transforms. */
+export function TransformTreeTable({
+  nodes,
+  transforms,
+  isLoading,
+  targetCollectionId = null,
+  actions,
+}: TransformTreeTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const hasScrolledRef = useRef(false);
+  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const { getTransformUrl } = useTransformHost();
+
+  const { data: targetCollection } = useGetCollectionQuery(
+    targetCollectionId != null
+      ? { id: targetCollectionId, namespace: "transforms" }
+      : skipToken,
+  );
+
+  const warningsByTransformId = useGetTransformWarnings(transforms);
+  const getNodeSyncColor = useGetNodeSyncColor();
+
+  const defaultExpanded = useMemo(
+    () => getDefaultExpandedIds(targetCollectionId, targetCollection),
+    [targetCollectionId, targetCollection],
+  );
+
+  const renderRowLink: RenderRowLink<TreeNode> = useCallback(
+    (row, props) => {
+      const href = getRowHref(row, getTransformUrl);
+      return href ? <Link to={href} {...props} /> : props.children;
+    },
+    [getTransformUrl],
+  );
+
+  const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
+    return [
+      {
+        id: "name",
+        accessorKey: "name",
+        header: t`Name`,
+        minWidth: 280,
+        maxAutoWidth: 800,
+        enableSorting: true,
+        cell: ({ row }) =>
+          getNameCell({
+            row,
+            hasPythonTransformsFeature,
+            warningsByTransformId,
+            syncColor: getNodeSyncColor(row.original),
+          }),
+      },
+      {
+        id: "owner",
+        accessorFn: (node) => {
+          const owner = node.owner;
+          if (owner) {
+            return owner.first_name && owner.last_name
+              ? `${owner.first_name} ${owner.last_name}`
+              : owner.email;
+          }
+          return node.owner_email ?? "";
+        },
+        header: t`Owner`,
+        minWidth: 160,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const owner = row.original.owner;
+          const hasUserName = owner?.first_name || owner?.last_name;
+
+          if (hasUserName) {
+            const displayName = getUserName(owner);
+            return <Ellipsified>{displayName}</Ellipsified>;
+          }
+
+          const ownerEmail = row.original.owner_email ?? owner?.email;
+          if (ownerEmail) {
+            return <Ellipsified>{ownerEmail}</Ellipsified>;
+          }
+
+          return null;
+        },
+      },
+      {
+        id: "updated_at",
+        accessorKey: "updated_at",
+        header: t`Last Modified`,
+        maxWidth: 200,
+        minWidth: "auto",
+        enableSorting: true,
+        sortingFn: "datetime",
+        sortDescFirst: true,
+        cell: ({ row }) =>
+          row.original.updated_at ? (
+            <DateTime value={row.original.updated_at} />
+          ) : null,
+      },
+      {
+        id: "output_table",
+        accessorFn: (node) => node.target?.name ?? "",
+        header: t`Output table`,
+        minWidth: 200,
+        maxAutoWidth: 800,
+        enableSorting: true,
+        cell: ({ row }) =>
+          row.original.target?.name ? (
+            <Ellipsified>{row.original.target.name}</Ellipsified>
+          ) : null,
+      },
+      {
+        id: "actions",
+        header: "",
+        width: 48,
+        enableSorting: false,
+        cell: ({ row }) =>
+          isCollectionNode(row.original) ? (
+            <CollectionRowMenu
+              collection={row.original.collection}
+              transformCount={countTransforms(row.original)}
+            />
+          ) : null,
+      },
+    ];
+  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
+
+  const treeTableInstance = useTreeTableInstance({
+    data: nodes,
+    columns: columnDefs,
+    getNodeId,
+    getSubRows,
+    defaultExpanded,
+    expanded: searchQuery ? true : undefined,
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+    globalFilterFn,
+    isFilterable,
+  });
+
+  const handleRowClick = useCallback((row: Row<TreeNode>) => {
+    // Navigation for leaf nodes (transforms, library) is handled by the link
+    if (row.getCanExpand()) {
+      row.toggleExpanded();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (targetCollectionId != null && !hasScrolledRef.current && !isLoading) {
+      const nodeId = getCollectionNodeId(targetCollectionId);
+      treeTableInstance.scrollToNode(nodeId);
+      hasScrolledRef.current = true;
+    }
+  }, [targetCollectionId, isLoading, treeTableInstance]);
+
+  const hasNoData = nodes.length === 0;
+  const hasNoResults = !hasNoData && treeTableInstance.rows.length === 0;
+
+  const emptyMessage = hasNoData
+    ? t`No transforms yet`
+    : hasNoResults && searchQuery
+      ? t`No transforms found`
+      : null;
+
+  return (
+    <>
+      <Flex gap="md">
+        <TextInput
+          placeholder={t`Search...`}
+          leftSection={<Icon name="search" />}
+          bdrs="md"
+          flex="1"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {actions}
+      </Flex>
+
+      <Card withBorder p={0}>
+        {isLoading ? (
+          <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
+        ) : (
+          <TreeTable
+            instance={treeTableInstance}
+            emptyState={
+              emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
+            }
+            onRowClick={handleRowClick}
+            isRowDisabled={isRowDisabled}
+            renderRowLink={renderRowLink}
+            classNames={{ rowDisabled: S.rowDisabled }}
+          />
+        )}
+      </Card>
+    </>
+  );
+}
+
+function getRowHref(
+  row: Row<TreeNode>,
+  getTransformUrl: (transformId: TransformId) => string,
+) {
+  if (isRowDisabled(row)) {
+    return null;
+  }
+  if (row.original.nodeType === "transform" && row.original.transformId) {
+    return getTransformUrl(row.original.transformId);
+  }
+  if (row.original.nodeType === "library" && row.original.url) {
+    return row.original.url;
+  }
+  return null;
+}
+
+function getNameCell({
+  row,
+  hasPythonTransformsFeature,
+  warningsByTransformId,
+  syncColor,
+}: {
+  row: Row<TreeNode>;
+  hasPythonTransformsFeature: boolean;
+  warningsByTransformId: Map<number, string>;
+  syncColor: ColorName | undefined;
+}) {
+  const getTooltipProps = (message: string | undefined) => {
+    if (!message) {
+      return undefined;
+    }
+
+    return {
+      alwaysShowTooltip: true,
+      tooltipProps: {
+        openDelay: 300,
+        label: message,
+      },
+    };
+  };
+
+  const getWarningMessage = () => {
+    if (isRowDisabled(row)) {
+      return t`Sorry, you don’t have permission to see that.`;
+    }
+
+    if (row.original.transformId) {
+      return warningsByTransformId.get(row.original.transformId);
+    }
+    return undefined;
+  };
+
+  const isLibraryWithoutFeature =
+    row.original.nodeType === "library" && !hasPythonTransformsFeature;
+
+  const hasWarning = !!getWarningMessage();
+  const iconColor = hasWarning
+    ? "warning"
+    : (syncColor ?? getNodeIconColor(row.original));
+
+  return (
+    <Group gap="sm" wrap="nowrap" miw={0}>
+      <EntityNameCell
+        data-testid="tree-node-name"
+        icon={hasWarning ? "warning" : row.original.icon}
+        iconColor={iconColor}
+        nameColor={syncColor}
+        name={row.original.name}
+        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
+      />
+      {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
+    </Group>
+  );
+}

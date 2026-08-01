@@ -24,8 +24,16 @@ jest.mock("metabase/common/monitor/analytics", () => ({
   trackMonitorOpened: jest.fn(),
 }));
 
+jest.mock("metabase/common/content-studio/analytics", () => ({
+  trackContentStudioOpened: jest.fn(),
+}));
+
 const { trackMonitorOpened } = jest.requireMock(
   "metabase/common/monitor/analytics",
+);
+
+const { trackContentStudioOpened } = jest.requireMock(
+  "metabase/common/content-studio/analytics",
 );
 
 const USER = createMockUser();
@@ -40,7 +48,7 @@ const REGULAR_ITEMS = [
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
-const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor"];
+const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Content studio", "Monitor"];
 
 const adminNavItem = {
   name: `People`,
@@ -85,6 +93,7 @@ async function setup({
       <Route path="/" element={<AppSwitcher />} />
       <Route path="/admin" element={<AppSwitcher />} />
       <Route path="/data-studio" element={<AppSwitcher />} />
+      <Route path="/content-studio" element={<AppSwitcher />} />
       <Route path="/monitor" element={<AppSwitcher />} />
     </>,
     {
@@ -171,6 +180,10 @@ describe("ProfileLink", () => {
       await openProfileLink();
       await assertActiveApp("data-studio");
 
+      await userEvent.click(await getContentStudioMenuItem());
+      await openProfileLink();
+      await assertActiveApp("content-studio");
+
       await userEvent.click(await getMonitorMenuItem());
       await openProfileLink();
       await assertActiveApp("monitor");
@@ -201,7 +214,7 @@ describe("ProfileLink", () => {
   });
 
   describe("with areas", () => {
-    it("should show data studio and monitor apps when appropriate", async () => {
+    it("should show data studio, content studio and monitor apps when appropriate", async () => {
       await setup({ isAdmin: true });
 
       WITH_AREAS.forEach((title) => {
@@ -216,6 +229,15 @@ describe("ProfileLink", () => {
       await userEvent.click(await getMonitorMenuItem());
 
       expect(trackMonitorOpened).toHaveBeenCalledTimes(1);
+    });
+
+    it("tracks opening Content studio from the app switcher", async () => {
+      trackContentStudioOpened.mockClear();
+      await setup({ isAdmin: true });
+
+      await userEvent.click(await getContentStudioMenuItem());
+
+      expect(trackContentStudioOpened).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -347,6 +369,11 @@ const assertActiveApp = async (current: CurrentApp) => {
     }),
   ).toBeInTheDocument();
   expect(
+    await within(await getContentStudioMenuItem()).findByRole("img", {
+      name: current === "content-studio" ? /check_filled/i : /git_branch/i,
+    }),
+  ).toBeInTheDocument();
+  expect(
     await within(await getMonitorMenuItem()).findByRole("img", {
       name: current === "monitor" ? /check_filled/i : /pulse/i,
     }),
@@ -359,5 +386,7 @@ const getAdminMenuItem = () =>
   screen.findByRole("menuitem", { name: /admin/i });
 const getDataStudioMenuItem = () =>
   screen.findByRole("menuitem", { name: /data studio/i });
+const getContentStudioMenuItem = () =>
+  screen.findByRole("menuitem", { name: /content studio/i });
 const getMonitorMenuItem = () =>
   screen.findByRole("menuitem", { name: /monitor/i });

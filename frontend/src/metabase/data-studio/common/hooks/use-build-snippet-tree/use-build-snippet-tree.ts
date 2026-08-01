@@ -68,7 +68,6 @@ export const useBuildSnippetTree = ({
             // A worktree is an admin's working copy of its branch, so read-only
             // sync only gates snippet creation in the main app.
             worktreeId != null || !isRemoteSyncReadOnly,
-            worktreeId,
           ),
     };
   }, [

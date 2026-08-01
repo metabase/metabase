@@ -111,6 +111,16 @@ export const globalShortcuts = {
     shortcut: ["g s"],
     shortcutGroup: "global" as const,
   },
+  "navigate-content-studio": {
+    get name() {
+      return t`Go to Content Studio`;
+    },
+    get keywords() {
+      return t`open content studio, view content studio, branches`;
+    },
+    shortcut: ["g c"],
+    shortcutGroup: "global" as const,
+  },
 
   "download-diagnostics": {
     get name() {

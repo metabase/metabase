@@ -71,6 +71,28 @@ async function triggerUpstreamRun() {
   await userEvent.click(screen.getByRole("button", { name: "Run all" }));
 }
 
+describe("RunSection branch transforms", () => {
+  it("runs a main-branch transform", () => {
+    setup();
+
+    expect(screen.getByTestId("run-button")).toBeEnabled();
+  });
+
+  it("does not run a transform that lives on a branch", () => {
+    setup({
+      transform: createMockTransform({
+        id: TRANSFORM_ID,
+        last_run: null,
+        worktree_id: 7,
+        can_execute: false,
+      }),
+    });
+
+    expect(screen.getByTestId("run-button")).toBeDisabled();
+    expect(screen.queryByTestId("run-options-button")).not.toBeInTheDocument();
+  });
+});
+
 describe("RunSection DAG run flow", () => {
   it("offers upstream and downstream run options", async () => {
     setup();

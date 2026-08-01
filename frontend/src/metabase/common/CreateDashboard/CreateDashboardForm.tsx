@@ -121,7 +121,6 @@ export function CreateDashboardForm({
               name="collection_id"
               title={t`Which collection should this go in?`}
               entityType="dashboard"
-              hasWorktrees
             />
           )}
           <FormFooter mt="md">

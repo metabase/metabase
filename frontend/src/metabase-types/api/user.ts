@@ -204,6 +204,11 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
+      namespace: "content_studio";
+      key: "isNavbarOpened" | "areCollectionsExpanded";
+      value: boolean;
+    }
+  | {
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;

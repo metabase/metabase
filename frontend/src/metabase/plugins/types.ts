@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 
-import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
 import type { Member, Membership, User } from "metabase-types/api";
 
@@ -47,12 +46,6 @@ export type PluginGroupManagersType = {
   deleteGroup: any;
   confirmDeleteMembershipAction: any;
   confirmUpdateMembershipAction: any;
-};
-
-export type SyncedCollectionsSidebarSectionProps = {
-  onItemSelect: VoidFunction;
-  selectedId?: number | string;
-  syncedCollections: CollectionTreeItem[];
 };
 
 export type GitSyncSetupMenuItemProps = {

@@ -6,14 +6,13 @@ import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
+import { BranchSwitcher } from "./BranchSwitcher";
 import {
   createMockDirtyEntity,
   createRemoteSyncStoreState,
   setupCollectionEndpoints,
   setupSessionEndpoints,
-} from "../GitSyncControls/test-utils";
-
-import { BranchSwitcher } from "./BranchSwitcher";
+} from "./test-utils";
 
 const setup = ({
   isAdmin = true,

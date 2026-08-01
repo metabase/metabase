@@ -17,6 +17,7 @@ import { initializePlugin as initializeAuth } from "./auth";
 import { initializePlugin as initializeCaching } from "./caching";
 import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
+import { initializePlugin as initializeContentStudio } from "./content-studio";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
@@ -72,6 +73,7 @@ export function initializePlugins() {
   initializeCaching();
   initializeCleanUp();
   initializeCollections();
+  initializeContentStudio();
   initializeContentTranslation();
   initializeContentVerification();
   initializeCustomViz();

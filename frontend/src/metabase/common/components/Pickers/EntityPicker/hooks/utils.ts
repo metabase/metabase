@@ -5,7 +5,12 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { getRootCollectionItem as getTransformsRootCollectionItem } from "metabase/transforms/utils";
-import type { CollectionNamespace } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+  RemoteSyncWorktreeId,
+} from "metabase-types/api";
 
 import type { OmniPickerCollectionItem } from "../types";
 import { allCollectionModels } from "../utils";
@@ -77,6 +82,47 @@ export const getRootCollectionItem = async ({
     ...(!rootCollectionFromApi ? { name: t`Collections` } : {}),
     can_write: canWrite,
   };
+};
+
+/**
+ * The top-level collections of a branch, which stand in for the root collection
+ * a branch does not have. The list endpoint reports no content types, so they
+ * stay expandable.
+ */
+export const getWorktreeRootCollectionItems = (
+  collections: Collection[] = [],
+): OmniPickerCollectionItem[] =>
+  collections
+    .filter(
+      (collection) => collection.id !== "root" && collection.location === "/",
+    )
+    .map((collection) => ({
+      ...collection,
+      model: "collection",
+      here: ["collection"],
+      below: allCollectionModels,
+    }));
+
+export const getWorktreeRootCollectionItem = async ({
+  worktreeId,
+  collectionId,
+  dispatch,
+}: {
+  worktreeId: RemoteSyncWorktreeId;
+  collectionId: CollectionId;
+  dispatch: DispatchFn;
+}): Promise<OmniPickerCollectionItem | undefined> => {
+  const collections = await dispatch(
+    collectionApi.endpoints.listCollections.initiate({
+      "worktree-id": worktreeId,
+    }),
+  )
+    .unwrap()
+    .catch(console.warn);
+
+  return getWorktreeRootCollectionItems(collections || []).find(
+    (item) => item.id === collectionId,
+  );
 };
 
 export const fetchRootCollection = async (

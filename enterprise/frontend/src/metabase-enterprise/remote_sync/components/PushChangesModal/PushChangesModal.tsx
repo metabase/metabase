@@ -28,9 +28,9 @@ interface PushChangesModalProps {
 }
 
 /**
- * Plain push of local changes. Only shown when the remote has NOT advanced — the caller
- * (GitSyncControls) runs the export preflight first and, when the remote is ahead, opens the
- * SyncConflictModal (push variant) directly instead of this modal.
+ * Plain push of local changes. Only shown when the remote has NOT advanced — the caller runs the
+ * export preflight first and, when the remote is ahead, opens the SyncConflictModal (push variant)
+ * directly instead of this modal.
  */
 export const PushChangesModal = ({
   onClose,
@@ -67,7 +67,7 @@ export const PushChangesModal = ({
     });
 
     trackPushChanges({
-      triggeredFrom: "app-bar",
+      triggeredFrom: "content-studio",
       force: false,
     });
   }, [commitMessage, exportChanges, currentBranch, worktreeId]);

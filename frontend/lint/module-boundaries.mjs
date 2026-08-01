@@ -184,6 +184,7 @@ const elements = [
     mode: "full",
   }),
   createElement({ type: "feature", name: "admin" }),
+  createElement({ type: "feature", name: "content-studio" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "feature", name: "documents" }),

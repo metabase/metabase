@@ -6,7 +6,6 @@ import type {
   FieldId,
   MeasureId,
   NativeQuerySnippetId,
-  RemoteSyncWorktreeId,
   SchemaName,
   SegmentId,
   TableId,
@@ -16,16 +15,12 @@ const ROOT_URL = "/data-studio";
 
 type OptionalParams = {
   collectionId?: CollectionId;
-  worktreeId?: RemoteSyncWorktreeId;
 };
 
-function getQueryString({ collectionId, worktreeId }: OptionalParams) {
+function getQueryString({ collectionId }: OptionalParams) {
   const searchParams = new URLSearchParams();
   if (collectionId != null) {
     searchParams.set("collectionId", String(collectionId));
-  }
-  if (worktreeId != null) {
-    searchParams.set("worktreeId", String(worktreeId));
   }
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `?${queryString}` : "";
@@ -96,18 +91,14 @@ export function dataStudioData({
 
 export function dataStudioLibrary({
   expandedIds,
-  worktreeId,
-}: {
-  expandedIds?: CollectionId[];
-  worktreeId?: RemoteSyncWorktreeId;
-} = {}) {
-  const params = new URLSearchParams();
-  expandedIds?.forEach((id) => params.append("expandedId", String(id)));
-  if (worktreeId != null) {
-    params.set("worktreeId", String(worktreeId));
+}: { expandedIds?: CollectionId[] } = {}) {
+  let query = "";
+  if (expandedIds?.length) {
+    const params = new URLSearchParams();
+    expandedIds.forEach((id) => params.append("expandedId", String(id)));
+    query = `?${params.toString()}`;
   }
-  const queryString = params.toString();
-  return `${ROOT_URL}/library${queryString.length > 0 ? `?${queryString}` : ""}`;
+  return `${ROOT_URL}/library${query}`;
 }
 
 export function dataStudioTable(tableId: TableId) {
@@ -342,12 +333,8 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
   return `${dataStudioSnippet(snippetId)}/dependencies`;
 }
 
-export type NewDataStudioSnippetParams = {
-  worktreeId?: RemoteSyncWorktreeId;
-};
-
-export function newDataStudioSnippet(params: NewDataStudioSnippetParams = {}) {
-  return `${dataStudioLibrary()}/snippets/new${getQueryString(params)}`;
+export function newDataStudioSnippet() {
+  return `${dataStudioLibrary()}/snippets/new`;
 }
 
 export function dataStudioArchivedSnippets() {

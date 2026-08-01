@@ -4,6 +4,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -507,6 +508,42 @@
           ;; production worktree deletion (`impl/delete-worktree!`) clears these; with-temp teardown doesn't
           (t2/delete! :model/RemoteSyncObject :worktree_id worktree))))))
 
+(deftest create-namespaced-collection-at-worktree-root-api-test
+  (testing "POST /api/collection with a namespace and a worktree_id but no parent lands at the branch's namespace root"
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-namespace-root"}]
+      (mt/with-model-cleanup [:model/Collection]
+        (try
+          (doseq [collection-namespace ["transforms" "snippets"]]
+            (testing collection-namespace
+              (let [{collection :id} (mt/user-http-request :crowberto :post 200 "collection"
+                                                           {:name        (str "Branch " collection-namespace " folder")
+                                                            :namespace   collection-namespace
+                                                            :parent_id   nil
+                                                            :worktree_id worktree})]
+                (is (=? {:worktree_id      worktree
+                         :namespace        (keyword collection-namespace)
+                         :location         "/"
+                         :is_remote_synced true}
+                        (t2/select-one :model/Collection :id collection)))
+                (testing "and it is listed under that worktree's namespace, not the main app's"
+                  (is (some #(= collection (:id %))
+                            (mt/user-http-request :crowberto :get 200 "collection"
+                                                  :namespace collection-namespace
+                                                  :worktree-id worktree)))
+                  (is (not-any? #(= collection (:id %))
+                                (mt/user-http-request :crowberto :get 200 "collection"
+                                                      :namespace collection-namespace)))))))
+          (testing "worktree content stays admin-only"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "collection"
+                                         {:name        "rasta branch folder"
+                                          :namespace   "snippets"
+                                          :parent_id   nil
+                                          :worktree_id worktree}))))
+          (finally
+            ;; production worktree deletion (`impl/delete-worktree!`) clears these; with-temp teardown doesn't
+            (t2/delete! :model/RemoteSyncObject :worktree_id worktree)))))))
+
 (deftest worktree-changes-are-tracked-in-their-own-worktree-test
   (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-dirty-tracking"}
                  :model/Collection {worktree-collection :id} {:worktree_id worktree :is_remote_synced true}
@@ -522,3 +559,17 @@
       (finally
         ;; production worktree deletion (`impl/delete-worktree!`) clears these; with-temp teardown doesn't
         (t2/delete! :model/RemoteSyncObject :worktree_id worktree)))))
+
+(deftest worktree-id-is-exposed-by-entity-detail-endpoints-test
+  (testing "the branch indicator on a hosted entity page is driven by worktree_id on the wire"
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree :id} {:branch "feature-detail-endpoints"}
+                   :model/Collection {collection :id} {:worktree_id worktree}
+                   :model/Card {card :id} {:collection_id collection}
+                   :model/Dashboard {dashboard :id} {:collection_id collection}
+                   :model/Document {document :id} {:collection_id collection
+                                                   :name "Branch doc"
+                                                   :document (documents.test-util/text->prose-mirror-ast "Branch doc")}]
+      (is (= [worktree worktree worktree]
+             [(:worktree_id (mt/user-http-request :crowberto :get 200 (format "card/%d" card)))
+              (:worktree_id (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dashboard)))
+              (:worktree_id (mt/user-http-request :crowberto :get 200 (format "document/%d" document)))])))))

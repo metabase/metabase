@@ -54,6 +54,7 @@ describe("Remote Sync", () => {
 
       H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
 
+      H.visitContentStudio();
       H.clickPushOption();
 
       H.modal()
@@ -63,9 +64,10 @@ describe("Remote Sync", () => {
       H.waitForTask({ taskName: "export" });
       H.expectUnstructuredSnowplowEvent({
         event: "remote_sync_push_changes",
-        triggered_from: "app-bar",
+        triggered_from: "content-studio",
       });
 
+      cy.visit("/");
       H.navigationSidebar()
         .findByRole("link", { name: /Test Synced Collection/ })
         .findByTestId("remote-sync-status")
@@ -81,14 +83,17 @@ describe("Remote Sync", () => {
         },
       );
 
+      H.visitContentStudio();
       H.clickPullOption();
 
       H.waitForTask({ taskName: "import" });
       H.expectUnstructuredSnowplowEvent({
         event: "remote_sync_pull_changes",
-        triggered_from: "app-bar",
+        triggered_from: "content-studio",
       });
 
+      cy.visit("/");
+      H.goToSyncedCollection("Test Synced Collection");
       H.collectionTable()
         .findByText(UPDATED_REMOTE_QUESTION_NAME)
         .should("exist");
@@ -164,6 +169,7 @@ describe("Remote Sync", () => {
         return doc;
       });
 
+      H.visitContentStudio();
       H.clickPushOption();
 
       // The remote has advanced, so pushing runs the preflight and opens the conflict modal directly
@@ -181,7 +187,9 @@ describe("Remote Sync", () => {
       H.waitForTask({ taskName: "export" });
 
       // Ensure that we are on the newly created branch
-      H.getGitSyncControls().should("contain.text", NEW_BRANCH);
+      H.getContentStudioBranchSelector().should("contain.text", NEW_BRANCH);
+
+      cy.visit("/collection/root");
       H.goToSyncedCollection();
 
       H.collectionTable().within(() => {
@@ -232,6 +240,7 @@ describe("Remote Sync", () => {
       };
 
       const pushUpdates = () => {
+        H.visitContentStudio();
         H.clickPushOption();
 
         H.modal()
@@ -239,8 +248,8 @@ describe("Remote Sync", () => {
           .click();
 
         H.waitForTask({ taskName: "export" });
-        // Push button should be disabled when local changes are synced
-        H.getPushOption().should("have.attr", "data-combobox-disabled", "true");
+        // Push should be disabled when local changes are synced
+        H.getPushOption().should("be.disabled");
       };
 
       it("should allow you to create new branches and switch between them", () => {
@@ -384,7 +393,11 @@ describe("Remote Sync", () => {
         // Make a change in metabase
         H.moveCollectionItemToSyncedCollection("Orders");
 
-        H.goToSyncedCollection();
+        H.visitContentStudio();
+        // Pulling only offers the unsynced-changes choices once the dirty state has loaded.
+        H.getContentStudioSyncControls()
+          .findByTestId("remote-sync-status")
+          .should("exist");
         H.clickPullOption();
       });
 
@@ -396,7 +409,10 @@ describe("Remote Sync", () => {
 
         H.waitForTask({ taskName: "export" });
 
-        H.getGitSyncControls().should("contain.text", "main");
+        H.getContentStudioBranchSelector().should("contain.text", "main");
+
+        cy.visit("/collection/root");
+        H.goToSyncedCollection();
         H.collectionTable().within(() => {
           cy.findByText("Orders").should("exist");
           cy.findByText(REMOTE_QUESTION_NAME).should("exist");
@@ -412,14 +428,17 @@ describe("Remote Sync", () => {
         });
 
         H.waitForTask({ taskName: "export" }).then(() => {
-          H.getGitSyncControls().should("contain.text", NEW_BRANCH);
+          H.getContentStudioBranchSelector().should("contain.text", NEW_BRANCH);
+
+          // waitForTask above already closed the sync confirmation modal.
+          H.modal().should("not.exist");
+
+          cy.visit("/collection/root");
+          H.goToSyncedCollection();
           H.collectionTable().within(() => {
             cy.findByText("Orders").should("exist");
             cy.findByText(REMOTE_QUESTION_NAME).should("exist");
           });
-
-          // waitForTask above already closed the sync confirmation modal.
-          H.modal().should("not.exist");
 
           // Switch back to main from Settings (clean after stashing, so it switches directly)
           H.switchBranchViaSettings("main");
@@ -443,7 +462,10 @@ describe("Remote Sync", () => {
 
         H.waitForTask({ taskName: "import" });
 
-        H.getGitSyncControls().should("contain.text", "main");
+        H.getContentStudioBranchSelector().should("contain.text", "main");
+
+        cy.visit("/collection/root");
+        H.goToSyncedCollection();
         H.collectionTable().within(() => {
           cy.findByText("Orders").should("not.exist");
           cy.findByText(REMOTE_QUESTION_NAME).should("exist");
@@ -480,10 +502,10 @@ describe("Remote Sync", () => {
         .should("exist");
 
       H.modal().should("not.exist");
-      H.goToMainApp();
 
-      // Branch picker should appear in the app bar (doesn't require import)
-      H.getGitSyncControls().should("contain.text", "main");
+      // Content Studio shows the synced branch (doesn't require import)
+      H.visitContentStudio();
+      H.getContentStudioBranchSelector().should("contain.text", "main");
     });
 
     it("can set up read-only mode", () => {
@@ -510,11 +532,13 @@ describe("Remote Sync", () => {
       // Read-only setup runs an initial import; close its confirmation modal (GHY-3747).
       H.closeSyncResultModal();
       H.modal().should("not.exist");
+
+      // A read-only instance pulls from the remote but never pushes back
+      H.visitContentStudio();
+      H.getPullOption().should("exist");
+      H.getPushOption().should("not.exist");
+
       H.goToMainApp();
-
-      // In read-only mode, git sync controls should not be visible in app bar
-      H.getGitSyncControls().should("not.exist");
-
       H.navigationSidebar().within(() => {
         cy.findByRole("treeitem", { name: /Synced Collection/ }).click();
       });
@@ -858,6 +882,7 @@ describe("Remote Sync", () => {
             H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
 
             // Push changes
+            H.visitContentStudio();
             H.clickPushOption();
             H.modal()
               .button(/Push changes/)
@@ -865,6 +890,7 @@ describe("Remote Sync", () => {
             H.waitForTask({ taskName: "export" });
 
             // Verify changes were pushed (status indicator should clear)
+            cy.visit("/");
             H.navigationSidebar()
               .findByRole("link", { name: /Syncable Tenant Collection/ })
               .findByTestId("remote-sync-status")
@@ -947,6 +973,7 @@ describe("Remote Sync", () => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
 
+      H.visitContentStudio();
       H.clickPullOption();
 
       cy.log("make sure conflict modal is displayed");
@@ -967,6 +994,9 @@ describe("Remote Sync", () => {
 
       cy.findByRole("button", { name: "Delete unsynced changes" }).click();
 
+      H.waitForTask({ taskName: "import" });
+
+      H.DataStudio.Transforms.visit();
       cy.findByRole("treegrid").within(() => {
         cy.log(
           "check existing transform was removed after pulling from remote",
@@ -979,7 +1009,7 @@ describe("Remote Sync", () => {
 
     it("can push to a new branch", () => {
       cy.intercept("POST", "/api/ee/remote-sync/stash").as("stashChanges");
-      H.DataStudio.Transforms.visit();
+      H.visitContentStudio();
       H.clickPullOption();
 
       cy.log(
@@ -1005,8 +1035,9 @@ describe("Remote Sync", () => {
       cy.wait("@stashChanges");
       H.waitForTask({ taskName: "export" });
 
-      H.getGitSyncControls().should("have.text", "new-branch");
+      H.getContentStudioBranchSelector().should("contain.text", "new-branch");
 
+      H.DataStudio.Transforms.visit();
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });

@@ -25,6 +25,7 @@ import * as Urls from "metabase/urls";
 
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";
+import { useSnippetHost } from "../../host";
 
 import S from "./EditSnippetPage.module.css";
 
@@ -46,9 +47,12 @@ export function EditSnippetPage() {
     error,
   } = useGetSnippetQuery(snippetId ?? skipToken);
 
+  const { hasHostChrome } = useSnippetHost();
   const [content, setContent] = useState(snippet?.content ?? "");
   const [updateSnippet, { isLoading: isSaving }] = useUpdateSnippetMutation();
-  const isReadOnly = remoteSyncReadOnly || !!snippet?.archived;
+  // A worktree is an admin's working copy of its branch, exempt from read-only sync.
+  const isLockedBySync = remoteSyncReadOnly && snippet?.worktree_id == null;
+  const isReadOnly = isLockedBySync || !!snippet?.archived;
 
   const isDirty = useMemo(
     () => snippet != null && content !== snippet.content,
@@ -107,7 +111,12 @@ export function EditSnippetPage() {
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="edit-snippet-page" gap="md">
+      <PageContainer
+        pos="relative"
+        data-testid="edit-snippet-page"
+        gap="md"
+        px={hasHostChrome ? 0 : undefined}
+      >
         <SnippetHeader
           snippet={snippet}
           actions={

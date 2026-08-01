@@ -19,7 +19,6 @@ interface SetupOptions {
   canWriteToDataCollection?: boolean;
   canWriteToMetricCollection?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-  worktreeId?: number;
 }
 
 const fullPermissionsUser: Partial<User> = {
@@ -36,7 +35,6 @@ const setup = ({
   canWriteToDataCollection = true,
   canWriteToMetricCollection = true,
   remoteSyncType,
-  worktreeId,
 }: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
@@ -56,7 +54,6 @@ const setup = ({
       dataCollectionId={dataCollectionId}
       canWriteToDataCollection={canWriteToDataCollection}
       canWriteToMetricCollection={canWriteToMetricCollection}
-      worktreeId={worktreeId}
     />,
     {
       storeInitialState: state,
@@ -169,7 +166,6 @@ describe("CreateMenu", () => {
           canCreateCollections: false,
         },
         showAuthorityLevelPicker: false,
-        showCollectionPicker: true,
       },
     });
   });
@@ -195,45 +191,5 @@ describe("CreateMenu", () => {
     expect(
       screen.queryByRole("button", { name: /New/ }),
     ).not.toBeInTheDocument();
-  });
-
-  it("still renders in a worktree when remote sync is read-only, minus the published-table option", async () => {
-    setup({
-      user: fullPermissionsUser,
-      remoteSyncType: "read-only",
-      worktreeId: 7,
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: /New/ }));
-
-    expect(
-      screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Metric", "Snippet", "Collection"]);
-  });
-
-  it("opens the collection modal without a location picker in a worktree", async () => {
-    const { store } = setup({
-      user: fullPermissionsUser,
-      dataCollectionId: 42,
-      worktreeId: 7,
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: /New/ }));
-    await userEvent.click(screen.getByRole("menuitem", { name: /Collection/ }));
-
-    expect(store.getState().modal.props).toMatchObject({
-      initialCollectionId: 42,
-      showCollectionPicker: false,
-    });
-  });
-
-  it("links the snippet option to the worktree's new-snippet page", async () => {
-    setup({ user: fullPermissionsUser, worktreeId: 7 });
-
-    await userEvent.click(screen.getByRole("button", { name: /New/ }));
-
-    expect(
-      screen.getByRole("menuitem", { name: /Create new snippet/ }),
-    ).toHaveAttribute("href", "/data-studio/library/snippets/new?worktreeId=7");
   });
 });

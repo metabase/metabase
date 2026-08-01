@@ -243,6 +243,7 @@ export const setupRemoteSyncEndpoints = ({
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
   hasRemoteChangesError = false,
+  isBranchMissing = false,
   exportPreflight,
   settingsResponse = { success: true },
   testConnectionError,
@@ -256,6 +257,7 @@ export const setupRemoteSyncEndpoints = ({
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
   hasRemoteChangesError?: boolean;
+  isBranchMissing?: boolean;
   exportPreflight?: Partial<RemoteSyncExportPreflightResponse>;
   settingsResponse?: Partial<RemoteSyncSettingsResponse> & {
     error?: { status: number; message: string };
@@ -283,6 +285,7 @@ export const setupRemoteSyncEndpoints = ({
       ? 401
       : {
           has_changes: hasRemoteChanges,
+          branch_missing: isBranchMissing,
         },
     {
       delay: hasRemoteChangesDelay,

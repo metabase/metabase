@@ -79,6 +79,8 @@ export type RemoteSyncHasChangesResponse = {
 
 export type HasRemoteChangesResponse = {
   has_changes: boolean;
+  /** The branch is gone from the remote, so there is nothing to compare against. */
+  branch_missing?: boolean;
 };
 
 export type ExportChangesRequest = {

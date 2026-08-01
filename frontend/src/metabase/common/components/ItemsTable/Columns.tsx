@@ -42,18 +42,20 @@ type HeaderProps = Omit<
 
 const ItemLinkComponent = ({
   onClick,
+  getItemUrl = modelToUrl,
   item,
   children,
 }: PropsWithChildren<{
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
+  getItemUrl?: (item: CollectionItem) => string;
 }>) => {
   if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
 
   return (
-    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
+    <ItemLink to={getItemUrl(item)} onClick={() => onClick?.(item)}>
       {children}
     </ItemLink>
   );
@@ -159,17 +161,23 @@ export const Columns = {
       testIdPrefix = "table",
       includeDescription = true,
       onClick,
+      getItemUrl,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
+      getItemUrl?: (item: CollectionItem) => string;
     }) => {
       const tc = useTranslateContent();
 
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-          <ItemLinkComponent onClick={onClick} item={item}>
+          <ItemLinkComponent
+            onClick={onClick}
+            getItemUrl={getItemUrl}
+            item={item}
+          >
             <EntityItem.Name name={tc(item.name)} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}

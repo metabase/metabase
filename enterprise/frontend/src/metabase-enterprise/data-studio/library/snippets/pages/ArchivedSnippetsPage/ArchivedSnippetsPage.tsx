@@ -20,18 +20,24 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
+
+import { useSnippetHost } from "../../host";
 
 import { useColumnDef } from "./hooks/useColumnDef";
 
 export function ArchivedSnippetsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { worktreeId, rootUrl, getSnippetUrl, hasHostChrome } =
+    useSnippetHost();
   const {
     tree: snippetTree,
     isLoading,
     error,
-  } = useBuildSnippetTree({ archived: true });
+  } = useBuildSnippetTree({
+    archived: true,
+    worktreeId: worktreeId ?? undefined,
+  });
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateSnippet] = useUpdateSnippetMutation();
 
@@ -73,20 +79,21 @@ export function ArchivedSnippetsPage() {
   return (
     <SectionLayout>
       <PaneHeader
+        showAppSwitcher={!hasHostChrome}
         breadcrumbs={
           <DataStudioBreadcrumbs>
-            <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
+            <Link to={rootUrl}>{t`SQL snippets`}</Link>
             {t`Archived snippets`}
           </DataStudioBreadcrumbs>
         }
-        px="3.5rem"
+        px={hasHostChrome ? 0 : "3.5rem"}
         py={0}
       />
       <Stack
         bg="background_page-secondary"
         data-testid="archived-snippets-page"
         pb="2rem"
-        px="3.5rem"
+        px={hasHostChrome ? 0 : "3.5rem"}
         style={{ overflow: "hidden" }}
       >
         <TextInput
@@ -120,9 +127,8 @@ export function ArchivedSnippetsPage() {
                 const { data } = row.original;
 
                 if (data.model === "snippet") {
-                  const snippetId = Number(data.id);
                   return (
-                    <Link to={Urls.dataStudioSnippet(snippetId)} {...props} />
+                    <Link to={getSnippetUrl(Number(data.id))} {...props} />
                   );
                 }
 

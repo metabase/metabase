@@ -8,6 +8,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PLUGIN_CONTENT_STUDIO } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader } from "metabase/ui";
@@ -82,6 +83,14 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       data-testid="dashboard"
     >
       {dashboard.archived && <DashboardArchivedEntityBanner />}
+
+      {dashboard.worktree_id != null && (
+        <PLUGIN_CONTENT_STUDIO.BranchEntityBanner
+          entityType="dashboard"
+          worktreeId={dashboard.worktree_id}
+          collectionId={dashboard.collection_id}
+        />
+      )}
 
       <Box
         component="header"

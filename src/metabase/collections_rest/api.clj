@@ -1440,7 +1440,10 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+            ;; create the collection at the root of a remote-sync worktree (admin-only, enforced in
+            ;; the model layer). With a `parent_id` the parent's worktree always wins.
+            [:worktree_id     {:optional true} [:maybe ms/PositiveInt]]]]
   (collections/create-collection! body))
 
 (defn- maybe-send-archived-notifications!

@@ -190,7 +190,7 @@ export type ListCollectionItemsResponse = {
 export interface UpdateCollectionRequest {
   id: RegularCollectionId;
   name?: string;
-  description?: string;
+  description?: string | null;
   archived?: boolean;
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
@@ -205,6 +205,11 @@ export interface CreateCollectionRequest {
   namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
   is_shared_tenant_collection?: boolean;
+  /**
+   * Creates the collection at the root of a remote-sync worktree. A `parent_id`
+   * already carries its parent's worktree, so pass one or the other.
+   */
+  worktree_id?: RemoteSyncWorktreeId;
 }
 
 export type ListCollectionsRequest = {

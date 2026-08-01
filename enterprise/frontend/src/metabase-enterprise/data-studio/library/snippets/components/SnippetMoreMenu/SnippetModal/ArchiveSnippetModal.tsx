@@ -7,8 +7,9 @@ import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
+
+import { useSnippetHost } from "../../../host";
 
 type ArchiveSnippetModalProps = {
   snippet: NativeQuerySnippet;
@@ -20,6 +21,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
   const dispatch = useDispatch();
   const [updateSnippet, { isLoading }] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
+  const { rootUrl, archivedSnippetsUrl } = useSnippetHost();
 
   const handleArchive = async () => {
     const { error } = await updateSnippet({
@@ -41,7 +43,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
               c="inherit"
               component={Link}
               td="underline"
-              to={Urls.dataStudioArchivedSnippets()}
+              to={archivedSnippetsUrl}
             >
               {t`View archived snippets`}
             </Text>
@@ -49,7 +51,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
         ),
         icon: "check",
       });
-      dispatch(push(Urls.dataStudioLibrary()));
+      dispatch(push(rootUrl));
       onClose();
     }
   };

@@ -13,9 +13,9 @@ import {
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { push } from "metabase/router";
+import { useTransformHost } from "metabase/transforms/host";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { RemoteSyncWorktreeId } from "metabase-types/api";
 
 import { trackTransformCreate } from "../../../analytics";
@@ -52,6 +52,8 @@ export const CreateTransformMenu = ({
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
+  const { getNewTransformUrl, getNewTransformFromCardUrl } = useTransformHost();
+
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useMetabotName();
   const { hasMetabotAccess } = useUserMetabotPermissions();
@@ -63,10 +65,9 @@ export const CreateTransformMenu = ({
   };
 
   const isWorktreeView = worktreeId != null;
-  const newTransformParams = { worktreeId: worktreeId ?? undefined };
 
   const handlePythonClick = () => {
-    dispatch(push(Urls.newPythonTransform(newTransformParams))); // Route will show upsell modal if feature is not enabled
+    dispatch(push(getNewTransformUrl("python"))); // Route will show upsell modal if feature is not enabled
 
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
@@ -123,7 +124,7 @@ export const CreateTransformMenu = ({
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "query" });
-                  dispatch(push(Urls.newQueryTransform(newTransformParams)));
+                  dispatch(push(getNewTransformUrl("query")));
                 }}
               >
                 {t`Query builder`}
@@ -132,7 +133,7 @@ export const CreateTransformMenu = ({
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "native" });
-                  dispatch(push(Urls.newNativeTransform(newTransformParams)));
+                  dispatch(push(getNewTransformUrl("native")));
                 }}
               >
                 {t`SQL query`}
@@ -180,9 +181,7 @@ export const CreateTransformMenu = ({
           models={["card", "dataset"]}
           isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            dispatch(
-              push(Urls.newTransformFromCard(item.id, newTransformParams)),
-            );
+            dispatch(push(getNewTransformFromCardUrl(item.id)));
             closePicker();
           }}
           onClose={closePicker}

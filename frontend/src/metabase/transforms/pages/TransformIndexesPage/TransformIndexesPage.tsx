@@ -16,6 +16,7 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useParams } from "metabase/router";
 import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { useTransformHost } from "metabase/transforms/host";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
@@ -36,6 +37,7 @@ type TransformIndexesPageParams = {
 export function TransformIndexesPage() {
   const params = useParams<TransformIndexesPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
+  const { hasHostChrome } = useTransformHost();
   const {
     data: transform,
     isLoading: isLoadingTransform,
@@ -55,7 +57,10 @@ export function TransformIndexesPage() {
   }
 
   return (
-    <PageContainer data-testid="transforms-indexes-content">
+    <PageContainer
+      data-testid="transforms-indexes-content"
+      px={hasHostChrome ? 0 : undefined}
+    >
       <TransformHeader transform={transform} readOnly={readOnly} />
       <TransformIndexesContent transform={transform} readOnly={readOnly} />
     </PageContainer>

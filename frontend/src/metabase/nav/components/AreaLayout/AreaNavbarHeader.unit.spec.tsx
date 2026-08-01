@@ -14,7 +14,6 @@ const setup = ({ isNavbarOpened = true }: SetupOpts = {}) => {
   renderWithProviders(
     <AreaNavbarHeader
       logo={<div>{"Logo"}</div>}
-      headerControls={<div>{"Header controls"}</div>}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={onNavbarToggle}
     />,
@@ -28,18 +27,6 @@ describe("AreaNavbarHeader", () => {
     setup();
 
     expect(screen.getByText("Logo")).toBeInTheDocument();
-  });
-
-  it("renders header controls when the navbar is open", () => {
-    setup({ isNavbarOpened: true });
-
-    expect(screen.getByText("Header controls")).toBeInTheDocument();
-  });
-
-  it("does not render header controls when the navbar is closed", () => {
-    setup({ isNavbarOpened: false });
-
-    expect(screen.queryByText("Header controls")).not.toBeInTheDocument();
   });
 
   it("toggles an open navbar closed", async () => {

@@ -26,7 +26,7 @@ export const trackPullChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "admin-settings" | "app-bar";
+  triggeredFrom: "admin-settings" | "content-studio";
   force: boolean;
 }) => {
   trackSimpleEvent({
@@ -40,7 +40,7 @@ export const trackPushChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "app-bar" | "conflict-modal";
+  triggeredFrom: "conflict-modal" | "content-studio";
   force: boolean;
 }) => {
   trackSimpleEvent({

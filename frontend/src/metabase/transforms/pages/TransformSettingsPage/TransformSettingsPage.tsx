@@ -2,6 +2,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { useTransformHost } from "metabase/transforms/host";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -18,6 +19,7 @@ type TransformSettingsPageParams = {
 export const TransformSettingsPage = () => {
   const params = useParams<TransformSettingsPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
+  const { hasHostChrome } = useTransformHost();
   const {
     transform,
     isLoading: isLoadingTransform,
@@ -37,7 +39,10 @@ export const TransformSettingsPage = () => {
   }
 
   return (
-    <PageContainer data-testid="transforms-target-content">
+    <PageContainer
+      data-testid="transforms-target-content"
+      px={hasHostChrome ? 0 : undefined}
+    >
       <TransformHeader transform={transform} readOnly={readOnly} />
       <TransformDisconnectedDatabaseBanner transform={transform} />
       <TransformSettingsSection transform={transform} readOnly={readOnly} />

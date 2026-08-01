@@ -14,6 +14,7 @@ import type {
   NativeQuerySnippet,
   RecentContexts,
   RegularCollectionId,
+  RemoteSyncWorktreeId,
   SchemaName,
   SearchRequest,
   TableId,
@@ -27,7 +28,6 @@ export type EntityPickerOptions = {
   hasLibrary?: boolean;
   hasRootCollection?: boolean;
   hasPersonalCollections?: boolean; // other users personal collections
-  hasWorktrees?: boolean; // remote-sync worktrees (admins only; for new-content pickers, since content can't move into a worktree)
   getItemTooltip?: (item: OmniPickerItem) => string | undefined;
   disableSearchScope?: boolean;
 
@@ -58,6 +58,12 @@ export type EntityPickerProps = {
   value?: OmniPickerValue;
   searchQuery?: string;
   recentsContext?: RecentContexts[];
+  /**
+   * Confines the picker to one branch's collections. The main app's content is
+   * unreachable from a branch and the other way around, so a picker opened on a
+   * branch can only offer that branch.
+   */
+  worktreeId?: RemoteSyncWorktreeId | null;
   isNewCollectionDialogOpen: boolean;
   openNewCollectionDialog: () => void;
   closeNewCollectionDialog: () => void;

@@ -23,6 +23,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { useTransformHost } from "metabase/transforms/host";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -116,6 +117,7 @@ function TransformQueryPageBody({
   });
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const { getTransformUrl, hasHostChrome } = useTransformHost();
   const isRemoteSyncReadOnly = useIsTransformSyncReadOnly(transform);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
@@ -160,9 +162,15 @@ function TransformQueryPageBody({
   useEffect(() => {
     if (isEditMode && isRemoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      dispatch(push(Urls.transform(transform.id)));
+      dispatch(push(getTransformUrl(transform.id)));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+  }, [
+    isRemoteSyncReadOnly,
+    isEditMode,
+    dispatch,
+    getTransformUrl,
+    transform.id,
+  ]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);
@@ -177,7 +185,7 @@ function TransformQueryPageBody({
       sendSuccessToast(t`Transform query updated`);
 
       if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+        dispatch(push(getTransformUrl(transform.id)));
       }
     }
   };
@@ -211,13 +219,16 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
+      dispatch(push(getTransformUrl(transform.id)));
     }
   };
 
   return (
     <>
-      <PageContainer data-testid="transform-query-editor">
+      <PageContainer
+        data-testid="transform-query-editor"
+        px={hasHostChrome ? 0 : undefined}
+      >
         <TransformHeader
           transform={transform}
           actions={

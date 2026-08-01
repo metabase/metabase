@@ -26,6 +26,7 @@ export const BaseItemsTableBody = ({
   onMove,
   onToggleSelected,
   onClick,
+  getItemUrl,
   visibleColumnsMap,
 }: Pick<
   BaseItemsTableProps,
@@ -44,6 +45,7 @@ export const BaseItemsTableBody = ({
   | "onCopy"
   | "onMove"
   | "onToggleSelected"
+  | "getItemUrl"
   | "visibleColumnsMap"
 >) => {
   const isDndAvailable = useSelector(getIsDndAvailable);
@@ -77,6 +79,7 @@ export const BaseItemsTableBody = ({
             onToggleSelected={onToggleSelected}
             items={items}
             onClick={onClick}
+            getItemUrl={getItemUrl}
             visibleColumnsMap={visibleColumnsMap}
           />
         );

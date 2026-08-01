@@ -6,6 +6,7 @@ import { Navbar } from "metabase/app/nav/Navbar";
 import {
   getIsAdminApp,
   getIsAppBarVisible,
+  getIsContentStudioApp,
   getIsDataApp,
   getIsDataStudioApp,
   getIsMonitorApp,
@@ -62,6 +63,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  isContentStudioApp: boolean;
   isDataStudioApp: boolean;
   isMonitorApp: boolean;
   isDataApp: boolean;
@@ -86,6 +88,7 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
+  isContentStudioApp: getIsContentStudioApp(state, props),
   isDataStudioApp: getIsDataStudioApp(state, props),
   isMonitorApp: getIsMonitorApp(state, props),
   isDataApp: getIsDataApp(state, props),
@@ -100,6 +103,7 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
+  isContentStudioApp,
   isDataStudioApp,
   isMonitorApp,
   isDataApp,
@@ -148,7 +152,11 @@ function App({
               <NewModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isContentStudioApp ||
+                  isMonitorApp ||
+                  isDataApp
                 }
               />
             </AppContentContainer>

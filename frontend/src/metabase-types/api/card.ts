@@ -27,6 +27,7 @@ import type {
 } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
@@ -96,6 +97,8 @@ export interface Card<
 
   archived: boolean;
   is_remote_synced?: boolean;
+  /** The remote-sync worktree this card is checked out into, null for the main app. */
+  worktree_id?: RemoteSyncWorktreeId | null;
 
   creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;

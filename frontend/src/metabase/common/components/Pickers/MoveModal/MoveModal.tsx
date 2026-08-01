@@ -18,7 +18,11 @@ import {
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItem,
+  RemoteSyncWorktreeId,
+} from "metabase-types/api";
 
 import type {
   EntityPickerModalProps,
@@ -231,6 +235,8 @@ interface BulkMoveModalProps {
   onMove: OnMoveWithOneItem<MoveDestination>;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
+  /** The branch the items live on; they can only move within it. */
+  worktreeId?: RemoteSyncWorktreeId | null;
   recentAndSearchFilter?: (item: OmniPickerItem) => boolean;
 }
 
@@ -239,6 +245,7 @@ export const BulkMoveModal = ({
   onMove,
   selectedItems,
   initialCollectionId,
+  worktreeId,
 }: BulkMoveModalProps) => {
   const movingCollectionIds = selectedItems
     .filter((item: OmniPickerCollectionItem) => isItemCollection(item))
@@ -371,9 +378,12 @@ export const BulkMoveModal = ({
       onChange={handleMove}
       models={models}
       namespaces={namespaces}
+      worktreeId={worktreeId}
       options={{
-        hasSearch: true,
-        hasRecents: true,
+        // search and recents span the main app, which is not a destination for
+        // branch content
+        hasSearch: worktreeId == null,
+        hasRecents: worktreeId == null,
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,

@@ -13,7 +13,6 @@ type AreaLayoutProps = {
   isLoading: boolean;
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
-  headerControls?: ReactNode;
   upperNav: ReactNode;
   lowerNav?: ReactNode;
   children?: ReactNode;
@@ -28,7 +27,6 @@ export function AreaLayout({
   isLoading,
   isNavbarOpened,
   onNavbarToggle,
-  headerControls,
   upperNav,
   lowerNav,
   children,
@@ -62,7 +60,6 @@ export function AreaLayout({
         <Stack gap="md" flex={1} mih={0} className={S.upperGroup}>
           <AreaNavbarHeader
             logo={logo}
-            headerControls={headerControls}
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}
           />

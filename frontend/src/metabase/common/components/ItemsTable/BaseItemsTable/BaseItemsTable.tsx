@@ -124,6 +124,8 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
+  /** Where an item's name links to; defaults to the item's main app URL. */
+  getItemUrl?: (item: CollectionItem) => string;
   visibleColumnsMap: CollectionContentTableColumnsMap;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
@@ -152,6 +154,7 @@ export const BaseItemsTable = ({
   includeColGroup = true,
   visibleColumnsMap,
   onClick,
+  getItemUrl,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = canSelectItems(collection, onToggleSelected);
@@ -243,6 +246,7 @@ export const BaseItemsTable = ({
         onMove={onMove}
         onToggleSelected={onToggleSelected}
         onClick={onClick}
+        getItemUrl={getItemUrl}
         visibleColumnsMap={visibleColumnsMap}
       />
     </Table>

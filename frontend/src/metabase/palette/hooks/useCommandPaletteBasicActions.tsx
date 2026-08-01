@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import { canAccessContentStudio } from "metabase/common/content-studio/selectors";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { useDatabaseListQuery } from "metabase/common/hooks";
@@ -55,6 +56,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-trash",
   "navigate-home",
   "navigate-data-studio",
+  "navigate-content-studio",
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
@@ -91,6 +93,7 @@ export const useCommandPaletteBasicActions = ({
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
   const hasDataStudioAccess = useSelector(canAccessDataStudio);
+  const hasContentStudioAccess = useSelector(canAccessContentStudio);
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
@@ -283,6 +286,15 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
+    if (hasContentStudioAccess) {
+      actions.push({
+        id: "navigate-content-studio",
+        section: "basic",
+        icon: "git_branch",
+        perform: () => dispatch(push(Urls.contentStudio())),
+      });
+    }
+
     const browseActions: RegisterShortcutProps[] = [
       {
         id: "navigate-browse-model",
@@ -321,6 +333,7 @@ export const useCommandPaletteBasicActions = ({
     dispatch,
     hasDataAccess,
     hasDataStudioAccess,
+    hasContentStudioAccess,
     hasNativeWrite,
     collectionId,
     openNewModal,

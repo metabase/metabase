@@ -39,6 +39,26 @@ export const checkoutSyncedCollectionBranch = (branch: string) => {
   cy.exec("git -C " + LOCAL_GIT_PATH + ` checkout -b  '${branch}'`);
 };
 
+// Create a branch at the current commit without checking it out
+export const createRemoteBranch = (branch: string) => {
+  cy.exec("git -C " + LOCAL_GIT_PATH + ` branch '${branch}'`);
+};
+
+/**
+ * Move a branch forward by one commit. Uses plumbing rather than a checkout because the backend
+ * writes straight into `.git` and leaves the working directory behind (see `stashChanges`), so
+ * checking a branch out here would fight with it.
+ */
+export const advanceRemoteBranch = (
+  branch: string,
+  message = "Remote update",
+) => {
+  cy.exec(
+    `commit=$(git -C '${LOCAL_GIT_PATH}' commit-tree '${branch}^{tree}' -p '${branch}' -m '${message}') && ` +
+      `git -C '${LOCAL_GIT_PATH}' update-ref 'refs/heads/${branch}' "$commit"`,
+  );
+};
+
 export const commitToRepo = (
   message = "Adding content to synced collection",
 ) => {
@@ -218,58 +238,102 @@ export const goToSyncedCollection = (
     .findByRole("treeitem", { name: new RegExp(collectionName) })
     .click(opts);
 
-// Git sync controls are now in the app bar, not the sidebar
-export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
+// --- Push / pull, driven from Content Studio ---
 
-const ensureGitSyncMenuOpen = () => {
-  getGitSyncControls().then(($btn) => {
-    if ($btn.attr("data-expanded") !== "true") {
-      cy.wrap($btn).click();
+// The branch the studio is scoped to. On the main scope it reads "Main (<branch>)".
+export const getContentStudioBranchSelector = () =>
+  cy.findByTestId("content-studio-branch-selector");
+
+export const getContentStudioSyncControls = () =>
+  cy.findByTestId("content-studio-sync-controls");
+
+export const visitContentStudio = () => {
+  cy.visit("/content-studio");
+  getContentStudioBranchSelector().should("be.visible");
+};
+
+const ensureSyncMenuOpen = () => {
+  getContentStudioSyncControls().then(($button) => {
+    if ($button.attr("aria-expanded") !== "true") {
+      // Re-query rather than reuse `$button`: the control re-renders as sync state
+      // arrives, which would leave a wrapped element detached by the time it is clicked.
+      getContentStudioSyncControls().click();
     }
   });
 };
 
+const PULL_OPTION_NAME = /Pull changes/;
+const PUSH_OPTION_NAME = /Push changes/;
+
 export const getPullOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Pull changes/ });
+  ensureSyncMenuOpen();
+  return cy.findByRole("menuitem", { name: PULL_OPTION_NAME });
 };
 
 export const getPushOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Push changes/ });
+  ensureSyncMenuOpen();
+  return cy.findByRole("menuitem", { name: PUSH_OPTION_NAME });
 };
 
-// Mantine combobox options can drop a synthetic `.click()` if the dropdown's
-// state machine isn't fully wired yet (e.g. right after the menu opens — the
-// dropdown is visible but the option's handler isn't attached). `realClick`
-// dispatches native mouse events that Mantine processes reliably, and we then
-// verify the menu closed; if not, re-click once with a synthetic click.
-//
-// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
-// neither "any popover visible" nor the controls' `data-expanded` attribute
-// distinguishes the main menu from follow-up popovers.
-const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
-const clickGitSyncOption = (
-  getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
-) => {
-  getOption().should("not.be.disabled").realClick();
-  cy.get("body").then(($body) => {
-    const mainMenuStillOpen =
-      $body
-        .find('[role="option"]:visible')
-        .filter((_, el) => MAIN_MENU_OPTION_RE.test(el.textContent || ""))
-        .length > 0;
-    if (mainMenuStillOpen) {
-      cy.log("git-sync menu didn't close — re-clicking option");
-      getOption().click();
+// Mantine menu items can drop a synthetic `.click()` if the dropdown's state machine isn't fully
+// wired yet (the dropdown is visible but the item's handler isn't attached). `realClick` dispatches
+// native mouse events that Mantine processes reliably. The target's `aria-expanded` is the signal
+// that the item fired: Mantine flips it as the item's handler closes the dropdown, before the close
+// transition runs. Re-clicking the item directly — rather than through the getter, which would
+// reopen the menu — keeps a retry from firing the action twice.
+const clickSyncMenuItem = (name: RegExp) => {
+  ensureSyncMenuOpen();
+  cy.findByRole("menuitem", { name }).should("not.be.disabled").realClick();
+
+  getContentStudioSyncControls().then(($button) => {
+    if ($button.attr("aria-expanded") === "true") {
+      cy.log("content studio sync menu didn't close — re-clicking item");
+      cy.findByRole("menuitem", { name }).click();
     }
   });
 };
 
-export const clickPullOption = () => clickGitSyncOption(getPullOption);
-export const clickPushOption = () => clickGitSyncOption(getPushOption);
+export const clickPullOption = () => clickSyncMenuItem(PULL_OPTION_NAME);
+export const clickPushOption = () => clickSyncMenuItem(PUSH_OPTION_NAME);
 
-// --- Branch switching (moved from the app bar to the instance Settings panel) ---
+// --- Content Studio scope & content ---
+
+// The branch picker is a Combobox, so its options live in a portalled dropdown.
+const getContentStudioBranchOptions = () =>
+  cy.findByRole("listbox", { name: "Branches" });
+
+const openContentStudioBranchSelector = () => {
+  getContentStudioBranchSelector().findByRole("button").click();
+  return getContentStudioBranchOptions();
+};
+
+/**
+ * Check out a branch that already exists on the remote. The checkout imports the branch's content,
+ * so callers wait for the import task afterwards.
+ */
+export const checkOutContentStudioBranch = (branch: string) => {
+  openContentStudioBranchSelector()
+    .findByRole("option", { name: /Check out a branch/ })
+    .click();
+
+  const checkOutModal = () =>
+    cy.findByRole("dialog", { name: "Check out a branch" });
+
+  checkOutModal().findByLabelText("Branch").type(branch);
+  // The autocomplete's suggestions are portalled over the modal's buttons; picking one closes them.
+  cy.findByRole("option", { name: branch }).click();
+  checkOutModal().button("Check out branch").click();
+};
+
+// One of the studio's three sidebar trees, named by its section title.
+export const getContentStudioTree = (name: string) =>
+  cy.findByRole("tree", { name });
+
+// The folders and entities the studio's content pane lists outside a collection.
+export const getContentStudioFolderContents = () =>
+  cy.findByTestId("content-studio-folder-contents");
+
+// --- Branch switching, driven from the instance Settings panel ---
 
 export const visitRemoteSyncSettings = () =>
   cy.visit("/admin/settings/remote-sync");
@@ -317,8 +381,9 @@ export const createSharedTenantCollection = (name: string) => {
   });
 };
 
+// The trailing glob catches the worktree-scoped poll, which carries a `worktree_id` query param.
 export const interceptTask = () =>
-  cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
+  cy.intercept("/api/ee/remote-sync/current-task*").as("currentTask");
 
 /**
  * The import/export confirmation modal stays open until the user closes it (GHY-3747). Dismiss it so a

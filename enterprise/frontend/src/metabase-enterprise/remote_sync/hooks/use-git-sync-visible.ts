@@ -11,8 +11,8 @@ export interface GitSyncVisibleState {
 }
 
 /**
- * Hook to check if the GitSyncControls would be visible and get the current branch.
- * This centralizes the visibility logic used by GitSyncControls and other components.
+ * Whether git sync controls should be offered — an admin on a read-write instance with sync
+ * enabled and a branch set — along with the branch itself.
  */
 export const useGitSyncVisible = (): GitSyncVisibleState => {
   const isAdmin = useSelector(getUserIsAdmin);

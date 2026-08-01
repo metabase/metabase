@@ -328,8 +328,9 @@ describe("remote-sync-listener-middleware", () => {
     });
 
     it("does NOT open the setup modal when an export task ends in conflict", async () => {
-      // Export conflicts are surfaced as a toast by GitSyncControls (which can use the useToast hook),
-      // not by the middleware — so the middleware must not route them to the setup-conflict modal.
+      // Export conflicts are surfaced as a toast by `useExportConflictToast` (which can use the
+      // useToast hook), not by the middleware — so the middleware must not route them to the
+      // setup-conflict modal.
       fetchMock.get("path:/api/ee/remote-sync/current-task", {
         status: 200,
         body: { status: "conflict", sync_task_type: "export" },

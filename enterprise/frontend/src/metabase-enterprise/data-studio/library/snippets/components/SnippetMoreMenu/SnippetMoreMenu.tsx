@@ -36,7 +36,12 @@ type SnippetMenuProps = {
 function SnippetMenu({ onOpenModal, snippet }: SnippetMenuProps) {
   const menuItems = [];
 
-  if (PLUGIN_SNIPPET_FOLDERS.isEnabled && !snippet.archived) {
+  // The folder picker only offers main-app folders, and the backend refuses to
+  // move a snippet out of the branch it is checked out into.
+  const canMove =
+    PLUGIN_SNIPPET_FOLDERS.isEnabled && snippet.worktree_id == null;
+
+  if (canMove && !snippet.archived) {
     menuItems.push(
       <Menu.Item
         key="move"

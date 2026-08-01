@@ -15,6 +15,8 @@ export interface NativeQuerySnippet {
   collection_id: RegularCollectionId | null;
   creator_id: UserId;
   archived: boolean;
+  /** The remote-sync worktree this snippet is checked out into, null for the main app. */
+  worktree_id?: RemoteSyncWorktreeId | null;
   entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;

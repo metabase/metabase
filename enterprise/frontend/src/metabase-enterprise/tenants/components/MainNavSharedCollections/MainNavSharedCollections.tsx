@@ -24,7 +24,7 @@ import {
   tenantUsersPersonalCollections,
 } from "metabase/urls";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
-import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/CollectionSyncStatusBadge";
 import type { Collection } from "metabase-types/api";
 
 export const MainNavSharedCollections = ({

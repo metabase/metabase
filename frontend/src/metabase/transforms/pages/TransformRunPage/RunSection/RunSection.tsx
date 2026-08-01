@@ -17,6 +17,7 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { useIsTransformSyncReadOnly } from "metabase/transforms/hooks/use-is-transform-sync-read-only";
+import { useTransformHost } from "metabase/transforms/host";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
   Anchor,
@@ -28,7 +29,6 @@ import {
   Menu,
   Stack,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   Transform,
@@ -156,9 +156,12 @@ type RunStatusSectionProps = {
 
 function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const { id, last_run } = transform;
+  const { getTransformRunListUrl } = useTransformHost();
 
   const status = last_run?.status;
   const previousStatus = usePrevious(status);
+
+  const runListUrl = getTransformRunListUrl?.(id);
 
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
@@ -182,14 +185,11 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
         run={last_run ?? null}
         neverRunMessage={t`This transform hasn't been run before.`}
         runInfo={
-          <Anchor
-            key="link"
-            component={Link}
-            to={Urls.transformRunList({ transformIds: [id] })}
-            lh="inherit"
-          >
-            {t`See all runs`}
-          </Anchor>
+          runListUrl != null ? (
+            <Anchor key="link" component={Link} to={runListUrl} lh="inherit">
+              {t`See all runs`}
+            </Anchor>
+          ) : null
         }
       />
       {runExtra}

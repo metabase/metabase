@@ -21,8 +21,9 @@ import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { trackBranchSwitched } from "../../analytics";
 import { parseSyncError } from "../../utils";
-import { BranchDropdown } from "../GitSyncControls/BranchDropdown";
 import { SyncConflictModal } from "../SyncConflictModal";
+
+import { BranchDropdown } from "./BranchDropdown";
 
 interface BranchSwitcherProps {
   /** May be undefined for non-admins, who can't read the admin-visibility branch setting. */

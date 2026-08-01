@@ -5,7 +5,6 @@ import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId, SearchResult } from "metabase-types/api";
@@ -63,8 +62,6 @@ export const AppBarLarge = ({
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
   const { hasMetabotAccess: isMetabotVisibleToUser } =
     useUserMetabotPermissions();
@@ -88,9 +85,7 @@ export const AppBarLarge = ({
         <AppBarLogo
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
-          isGitSyncVisible={isGitSyncVisible}
         />
-        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >

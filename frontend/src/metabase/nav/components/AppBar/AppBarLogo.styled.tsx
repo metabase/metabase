@@ -6,12 +6,8 @@ import styled from "@emotion/styled";
 import { Link } from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 
-export const LogoLink = styled(
-  Link,
-  doNotForwardProps("isSmallAppBar", "isGitSyncVisible"),
-)<{
+export const LogoLink = styled(Link, doNotForwardProps("isSmallAppBar"))<{
   isSmallAppBar: boolean;
-  isGitSyncVisible: boolean;
 }>`
   cursor: pointer;
   display: flex;
@@ -26,6 +22,6 @@ export const LogoLink = styled(
   ${(props) =>
     !props.isSmallAppBar &&
     css`
-      margin-inline-end: ${props.isGitSyncVisible ? "1rem" : "2rem"};
+      margin-inline-end: 2rem;
     `}
 `;

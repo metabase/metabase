@@ -52,23 +52,15 @@ describe("NavBar / AppBar visibility", () => {
   const stateWithUser = () =>
     createMockState({ currentUser: createMockUser() });
 
-  it("hides the navbar and app bar within Monitor, Data Studio", () => {
-    const state = stateWithUser();
+  it.each(["/monitor", "/data-studio", "/content-studio"])(
+    "hides the navbar and app bar within %s",
+    (path) => {
+      const state = stateWithUser();
 
-    expect(getIsNavBarEnabled(state, createRouterProps("/monitor"))).toBe(
-      false,
-    );
-    expect(getIsNavBarEnabled(state, createRouterProps("/data-studio"))).toBe(
-      false,
-    );
-
-    expect(getIsAppBarVisible(state, createRouterProps("/monitor"))).toBe(
-      false,
-    );
-    expect(getIsAppBarVisible(state, createRouterProps("/data-studio"))).toBe(
-      false,
-    );
-  });
+      expect(getIsNavBarEnabled(state, createRouterProps(path))).toBe(false);
+      expect(getIsAppBarVisible(state, createRouterProps(path))).toBe(false);
+    },
+  );
 
   it("keeps the navbar and app bar on a regular page", () => {
     const state = stateWithUser();

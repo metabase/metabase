@@ -174,6 +174,7 @@ export const CollectionBulkActions = memo(
             initialCollectionId={
               isTrashedCollection(collection) ? "root" : collection.id
             }
+            worktreeId={collection.worktree_id}
             recentAndSearchFilter={recentAndSearchFilter}
           />
         )}

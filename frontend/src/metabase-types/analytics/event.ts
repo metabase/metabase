@@ -77,3 +77,23 @@ export type MonitorSectionClickedEvent = ValidateEvent<{
     | "logs"
     | "model-caching";
 }>;
+
+export type ContentStudioOpenedEvent = ValidateEvent<{
+  event: "content_studio_opened";
+  triggered_from: "nav_menu";
+}>;
+
+export type ContentStudioWorktreeCreatedEvent = ValidateEvent<{
+  event: "content_studio_worktree_created";
+  target_id: number;
+}>;
+
+export type ContentStudioWorktreeDeletedEvent = ValidateEvent<{
+  event: "content_studio_worktree_deleted";
+  target_id: number;
+}>;
+
+export type ContentStudioScopeChangedEvent = ValidateEvent<{
+  event: "content_studio_scope_changed";
+  event_detail: "main" | "worktree";
+}>;

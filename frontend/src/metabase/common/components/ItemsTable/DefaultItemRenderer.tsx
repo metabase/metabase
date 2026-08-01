@@ -20,7 +20,7 @@ export type ItemRendererProps = {
   databases?: Database[];
   bookmarks?: Bookmark[];
 } & ActionMenuProps &
-  Pick<BaseItemsTableProps, "onClick" | "visibleColumnsMap">;
+  Pick<BaseItemsTableProps, "onClick" | "getItemUrl" | "visibleColumnsMap">;
 
 export const DefaultItemRenderer = ({
   item,
@@ -36,6 +36,7 @@ export const DefaultItemRenderer = ({
   bookmarks,
   testIdPrefix = "item",
   onClick,
+  getItemUrl,
   visibleColumnsMap,
 }: ItemRendererProps) => {
   const getIcon = useGetIcon();
@@ -73,6 +74,7 @@ export const DefaultItemRenderer = ({
           item={item}
           testIdPrefix={testIdPrefix}
           onClick={onClick}
+          getItemUrl={getItemUrl}
           includeDescription={!visibleColumnsMap["description"]}
         />
       )}

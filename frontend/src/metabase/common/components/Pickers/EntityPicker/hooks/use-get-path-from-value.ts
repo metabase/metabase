@@ -13,12 +13,14 @@ import {
   transformApi,
 } from "metabase/api";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
-import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
 import type {
   Collection,
+  CollectionId,
   CollectionNamespace,
   LibraryCollection,
+  RemoteSyncWorktreeId,
   SchemaName,
 } from "metabase-types/api";
 
@@ -33,7 +35,11 @@ import type {
 } from "../types";
 import { getCollectionItemsOptions, validCollectionModels } from "../utils";
 
-import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
+import {
+  getRootCollectionItem,
+  getWorktreeRootCollectionItem,
+  personalCollectionsRoot,
+} from "./utils";
 const allCollectionModels = Array.from(validCollectionModels);
 
 const getDefaultPath = async ({
@@ -337,6 +343,98 @@ const getNamespace = (
   return undefined;
 };
 
+/**
+ * The items that stand in for the root collection at the head of a path, for
+ * collections that the picker shows at the top level rather than under the root:
+ * a branch's collections, the library, and personal collections. `null` when the
+ * collection really does hang off the root.
+ */
+async function getRootStandInPath({
+  topLevelCollectionId,
+  worktreeId,
+  isInLibrary,
+  isInPersonalCollection,
+  isInOtherUserPersonalCollection,
+  libraryCollection,
+  personalCollection,
+  dispatch,
+}: {
+  topLevelCollectionId?: CollectionId;
+  worktreeId: RemoteSyncWorktreeId | null;
+  isInLibrary: boolean;
+  isInPersonalCollection: boolean;
+  isInOtherUserPersonalCollection: boolean;
+  libraryCollection?: LibraryCollection;
+  personalCollection?: Collection;
+  dispatch: DispatchFn;
+}): Promise<OmniPickerCollectionItem[] | null> {
+  if (worktreeId != null) {
+    const worktreeRootItem =
+      topLevelCollectionId == null
+        ? undefined
+        : await getWorktreeRootCollectionItem({
+            worktreeId,
+            collectionId: topLevelCollectionId,
+            dispatch,
+          });
+
+    return worktreeRootItem ? [worktreeRootItem] : [];
+  }
+
+  if (isInLibrary && libraryCollection) {
+    return [
+      {
+        id: libraryCollection.id,
+        name: libraryCollection.name,
+        model: "collection",
+        type: libraryCollection.type,
+        below: allCollectionModels,
+      },
+    ];
+  }
+
+  if (isInPersonalCollection && personalCollection) {
+    return [
+      {
+        id: personalCollection.id,
+        name: personalCollection.name,
+        model: "collection",
+        below: allCollectionModels,
+        can_write: true,
+      },
+    ];
+  }
+
+  if (isInOtherUserPersonalCollection) {
+    // need to fetch all personal collections to find the right one
+    const personalCollections = await dispatch(
+      collectionApi.endpoints.listCollections.initiate({
+        "personal-only": true,
+      }),
+    ).unwrap();
+
+    const otherUserPersonalCollection = personalCollections.find(
+      (col: Collection) => col.id === topLevelCollectionId,
+    );
+
+    return otherUserPersonalCollection
+      ? [
+          personalCollectionsRoot,
+          {
+            id: otherUserPersonalCollection.id,
+            name: otherUserPersonalCollection.name,
+            can_write: otherUserPersonalCollection.can_write,
+            model: "collection",
+            here: allCollectionModels,
+            below: allCollectionModels,
+          },
+        ]
+      : [personalCollectionsRoot];
+  }
+
+  return null;
+}
+
 async function getCollectionPathFromValue({
   value,
   dispatch,
@@ -414,67 +512,21 @@ async function getCollectionPathFromValue({
   const isInOtherUserPersonalCollection =
     collection.is_personal && !isInPersonalCollection;
 
-  // a worktree's collections live under the "Worktrees" section, not under the root
-  // (null outside a worktree, so the default path handling below applies)
-  const worktreeBasePath = await PLUGIN_REMOTE_SYNC.getWorktreePickerBasePath({
-    collection,
+  const rootStandInPath = await getRootStandInPath({
+    topLevelCollectionId: collectionIds[1],
+    worktreeId: collection?.worktree_id ?? null,
+    isInLibrary: !!isInLibrary,
+    isInPersonalCollection: !!isInPersonalCollection,
+    isInOtherUserPersonalCollection: !!isInOtherUserPersonalCollection,
+    libraryCollection,
+    personalCollection,
     dispatch,
   });
 
-  if (worktreeBasePath) {
+  if (rootStandInPath) {
     collectionIds.shift();
     locationPath.shift();
-    locationPath.push(...worktreeBasePath);
-  }
-
-  // pretend special collections are at the top level
-  if (
-    !worktreeBasePath &&
-    (isInPersonalCollection || isInOtherUserPersonalCollection || isInLibrary)
-  ) {
-    collectionIds.shift();
-    locationPath.shift();
-
-    if (isInLibrary && libraryCollection) {
-      locationPath.push({
-        id: libraryCollection.id,
-        name: libraryCollection.name,
-        model: "collection",
-        type: libraryCollection.type,
-        below: allCollectionModels,
-      });
-    } else if (isInPersonalCollection && personalCollection) {
-      locationPath.push({
-        id: personalCollection.id,
-        name: personalCollection.name,
-        model: "collection",
-        below: allCollectionModels,
-        can_write: true,
-      });
-    } else if (isInOtherUserPersonalCollection) {
-      // need to fetch all personal collections to find the right one
-      locationPath.push(personalCollectionsRoot);
-      const personalCollections = await dispatch(
-        collectionApi.endpoints.listCollections.initiate({
-          "personal-only": true,
-        }),
-      ).unwrap();
-
-      const basePersonalCollectionId = collectionIds[0];
-      const otherUserPersonalCollection = personalCollections.find(
-        (col: Collection) => col.id === basePersonalCollectionId,
-      );
-      if (otherUserPersonalCollection) {
-        locationPath.push({
-          id: otherUserPersonalCollection.id,
-          name: otherUserPersonalCollection.name,
-          can_write: otherUserPersonalCollection.can_write,
-          model: "collection",
-          here: allCollectionModels,
-          below: allCollectionModels,
-        });
-      }
-    }
+    locationPath.push(...rootStandInPath);
   }
 
   for (let i = 0; i < collectionIds.length; i++) {

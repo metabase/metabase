@@ -8,7 +8,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import * as Urls from "metabase/urls";
+import { type TransformHost, useTransformHost } from "metabase/transforms/host";
 import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {
@@ -16,32 +16,33 @@ type TransformTabsProps = {
 };
 
 export const TransformTabs = ({ transform }: TransformTabsProps) => {
-  const tabs = getTabs(transform.id);
+  const host = useTransformHost();
+  const tabs = getTabs(transform.id, host);
   return <PaneHeaderTabs tabs={tabs} />;
 };
 
-function getTabs(id: TransformId): PaneHeaderTab[] {
-  const inspectUrl = Urls.transformInspect(id);
+function getTabs(id: TransformId, host: TransformHost): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Definition`,
-      to: Urls.transform(id),
+      to: host.getTransformUrl(id),
     },
     {
       label: t`Run`,
-      to: Urls.transformRun(id),
+      to: host.getTransformRunUrl(id),
     },
     {
       label: t`Settings`,
-      to: Urls.transformSettings(id),
+      to: host.getTransformSettingsUrl(id),
     },
     {
       label: t`Indexes`,
-      to: Urls.transformIndexes(id),
+      to: host.getTransformIndexesUrl(id),
     },
   ];
 
-  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
+  const inspectUrl = host.getTransformInspectUrl?.(id);
+  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab && inspectUrl != null) {
     tabs.push({
       label: t`Inspect`,
       to: inspectUrl,
@@ -50,10 +51,11 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
     });
   }
 
-  if (PLUGIN_DEPENDENCIES.isEnabled) {
+  const dependenciesUrl = host.getTransformDependenciesUrl?.(id);
+  if (PLUGIN_DEPENDENCIES.isEnabled && dependenciesUrl != null) {
     tabs.push({
       label: t`Dependencies`,
-      to: Urls.transformDependencies(id),
+      to: dependenciesUrl,
     });
   }
 

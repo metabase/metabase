@@ -35,6 +35,10 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
 });
 
+export const getIsContentStudioApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/content-studio");
+});
+
 export const getIsMonitorApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/monitor");
 });
@@ -77,6 +81,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
   /^\/data-studio/,
+  /^\/content-studio/,
   /^\/monitor/,
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.

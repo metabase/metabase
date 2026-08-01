@@ -20,7 +20,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection, RemoteSyncWorktreeId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
@@ -35,8 +35,6 @@ type Params = {
   collections: Collection[];
   isLoadingCollections: boolean;
   searchQuery: string;
-  /** Show a remote-sync worktree's copy of the library instead of the main app's. */
-  worktreeId?: RemoteSyncWorktreeId;
   onPublishTableClick: VoidFunction;
 };
 
@@ -44,7 +42,6 @@ export function useLibraryTreeTableInstance({
   collections,
   isLoadingCollections,
   searchQuery,
-  worktreeId,
   onPublishTableClick,
 }: Params) {
   const { location } = useRouter();
@@ -89,7 +86,7 @@ export function useLibraryTreeTableInstance({
     tree: snippetTree,
     isLoading: loadingSnippets,
     error: snippetsError,
-  } = useBuildSnippetTree({ worktreeId });
+  } = useBuildSnippetTree();
 
   // Server-side search for tables and metrics, client-side for snippets
   const {
@@ -142,12 +139,7 @@ export function useLibraryTreeTableInstance({
                 <Text c="text-disabled" fz="inherit">
                   {data.description}
                 </Text>
-                {/* In a worktree an admin can create everything except published
-                    tables, which are shared app-wide; read-only sync only gates
-                    the main app. */}
-                {(worktreeId != null
-                  ? data.sectionType !== "data"
-                  : !isRemoteSyncReadOnly) && (
+                {!isRemoteSyncReadOnly && (
                   <EmptyStateAction
                     data={data}
                     onPublishTableClick={onPublishTableClick}
@@ -230,7 +222,6 @@ export function useLibraryTreeTableInstance({
     ],
     [
       isRemoteSyncReadOnly,
-      worktreeId,
       onPublishTableClick,
       refreshMetricCollections,
       refreshTableCollections,

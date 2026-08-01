@@ -109,34 +109,6 @@ describe("DataStudioLayout", () => {
       expect(screen.getByText("Library")).toBeInTheDocument();
     });
 
-    it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
-    });
-
-    it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: false,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId("git-sync-controls")).not.toBeInTheDocument();
-    });
-
     it("should render content area", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: null });
 

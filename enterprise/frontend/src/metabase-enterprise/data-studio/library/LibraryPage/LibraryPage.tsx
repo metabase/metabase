@@ -10,9 +10,7 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { replace, useRouter } from "metabase/router";
+import { useSelector } from "metabase/redux";
 import {
   Card,
   Flex,
@@ -22,12 +20,10 @@ import {
   TreeTable,
   TreeTableSkeleton,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { CollectionId, RemoteSyncWorktreeId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
-import { useGetLibraryCollection } from "../utils";
 
 import { CreateMenu } from "./components/CreateMenu";
 import { LibraryBulkActions } from "./components/LibraryBulkActions";
@@ -49,25 +45,7 @@ export function LibraryPage() {
 
 function LibraryPageContent() {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const dispatch = useDispatch();
-  const { location } = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  // Non-null when an admin is viewing a remote-sync worktree's copy of the library instead of
-  // the main app's. URL-backed so the selection survives navigating to a create page and back.
-  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
-  const isWorktreeView = worktreeId != null;
-  const handleWorktreeChange = useCallback(
-    (nextWorktreeId: RemoteSyncWorktreeId | null) => {
-      dispatch(
-        replace(
-          Urls.dataStudioLibrary(
-            nextWorktreeId != null ? { worktreeId: nextWorktreeId } : {},
-          ),
-        ),
-      );
-    },
-    [dispatch],
-  );
   const [
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
@@ -77,12 +55,7 @@ function LibraryPageContent() {
       "exclude-other-user-collections": true,
       "exclude-archived": true,
       "include-library": true,
-      ...(isWorktreeView && { "worktree-id": worktreeId }),
     });
-  // A worktree holds a copy of the library only when the main app's library is
-  // remote-synced, so the worktree switcher is pointless otherwise.
-  const { data: mainLibrary } = useGetLibraryCollection();
-  const isLibrarySynced = !!mainLibrary?.is_remote_synced;
   const {
     treeTableInstance,
     allRows,
@@ -95,7 +68,6 @@ function LibraryPageContent() {
     collections,
     isLoadingCollections,
     searchQuery,
-    worktreeId: worktreeId ?? undefined,
     onPublishTableClick: openPublishTableModal,
   });
 
@@ -159,7 +131,7 @@ function LibraryPageContent() {
           px="3.5rem"
           style={{ overflow: "hidden" }}
         >
-          {!libraryCollection && !isLoadingCollections && !isWorktreeView ? (
+          {!libraryCollection && !isLoadingCollections ? (
             <LibraryEmptyState />
           ) : (
             <>
@@ -172,18 +144,11 @@ function LibraryPageContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                {isLibrarySynced && (
-                  <PLUGIN_REMOTE_SYNC.WorktreeSwitcher
-                    value={worktreeId}
-                    onChange={handleWorktreeChange}
-                  />
-                )}
                 <CreateMenu
                   metricCollectionId={writableMetricCollection?.id}
                   canWriteToMetricCollection={!!writableMetricCollection}
                   dataCollectionId={tableCollection?.id}
                   canWriteToDataCollection={!!tableCollection?.can_write}
-                  worktreeId={worktreeId}
                 />
               </Flex>
               <Card withBorder p={0}>
@@ -192,7 +157,7 @@ function LibraryPageContent() {
                 ) : (
                   <TreeTable
                     instance={treeTableInstance}
-                    showCheckboxes={!isRemoteSyncReadOnly && !isWorktreeView}
+                    showCheckboxes={!isRemoteSyncReadOnly}
                     getSelectionState={getSelectionState}
                     isRowDisabled={getRowCovered}
                     onCheckboxClick={onCheckboxClick}
@@ -223,7 +188,7 @@ function LibraryPageContent() {
         onClose={closePublishTableModal}
         onPublished={closePublishTableModal}
       />
-      {!isRemoteSyncReadOnly && !isWorktreeView && (
+      {!isRemoteSyncReadOnly && (
         <LibraryBulkActions
           selectedItems={selectedItems}
           selectionSection={selectionSection}

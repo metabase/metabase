@@ -39,6 +39,14 @@ export {
   type CollectionAuthorityLevelDisplayProps,
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
+export {
+  PLUGIN_CONTENT_STUDIO,
+  type BranchEntityBannerProps,
+  type BranchEntityType,
+  type ContentStudioProviderProps,
+  type ContentStudioSidebarProps,
+  type ContentStudioSyncControlsProps,
+} from "./oss/content-studio";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
 export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
 export {
@@ -131,11 +139,7 @@ export {
   type PermissionOption,
   type PostActionFunction,
 } from "./oss/permissions";
-export {
-  PLUGIN_REMOTE_SYNC,
-  type WorktreeSwitcherProps,
-  type WorktreesSidebarSectionProps,
-} from "./oss/remote-sync";
+export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
   type SourceReplacementButtonChildProps,
@@ -189,7 +193,6 @@ export type {
   GetAuthProviders,
   GitSyncSetupMenuItemProps,
   PluginGroupManagersType,
-  SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
 import { reinitializeRequestHandlers } from "metabase/api/client";
@@ -199,6 +202,7 @@ import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
 import { reinitialize as reinitializeCaching } from "./oss/caching";
 import { reinitialize as reinitializeCollections } from "./oss/collections";
+import { reinitialize as reinitializeContentStudio } from "./oss/content-studio";
 import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
@@ -247,6 +251,7 @@ export function reinitialize() {
   reinitializeAuth();
   reinitializeCaching();
   reinitializeCollections();
+  reinitializeContentStudio();
   reinitializeContentTranslation();
   reinitializeContentVerification();
   reinitializeCore();

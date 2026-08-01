@@ -7,7 +7,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
-import { CollectionSyncStatusBadge } from "../SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import { CollectionSyncStatusBadge } from "../CollectionSyncStatusBadge";
 
 interface CollectionsNavTreeProps {
   collections: CollectionTreeItem[];

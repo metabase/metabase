@@ -15,9 +15,12 @@ export const useWorktrees = ({ skip = false }: { skip?: boolean } = {}) => {
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isEnabled = isAdmin && isRemoteSyncEnabled && !skip;
 
-  const { data: worktrees = [] } = useListWorktreesQuery(undefined, {
-    skip: !isEnabled,
-  });
+  const { data: worktrees = [], isFetching } = useListWorktreesQuery(
+    undefined,
+    {
+      skip: !isEnabled,
+    },
+  );
 
-  return { worktrees, isEnabled };
+  return { worktrees, isEnabled, isFetching };
 };

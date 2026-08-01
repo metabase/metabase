@@ -19,13 +19,14 @@ import {
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push, useRouter } from "metabase/router";
+import { push } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type {
   NativeQuerySnippet,
   RegularCollectionId,
 } from "metabase-types/api";
+
+import { useSnippetHost } from "../../host";
 
 import S from "./NewSnippetPage.module.css";
 
@@ -46,10 +47,8 @@ export function NewSnippetPage() {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
-  const { location } = useRouter();
-  // A worktree is an admin's working copy of its branch; a snippet created into one is
-  // exempt from read-only sync and lands at the worktree's root.
-  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
+  const { worktreeId, rootUrl, getSnippetUrl, hasHostChrome } =
+    useSnippetHost();
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
@@ -74,9 +73,9 @@ export function NewSnippetPage() {
 
   useEffect(() => {
     if (savedSnippet) {
-      dispatch(push(Urls.dataStudioSnippet(savedSnippet.id)));
+      dispatch(push(getSnippetUrl(savedSnippet.id)));
     }
-  }, [savedSnippet, dispatch]);
+  }, [savedSnippet, getSnippetUrl, dispatch]);
 
   const handleSave = async () => {
     // The folder picker only offers main-app folders, which would pull the snippet
@@ -89,9 +88,7 @@ export function NewSnippetPage() {
   };
 
   const handleCancel = () => {
-    dispatch(
-      push(Urls.dataStudioLibrary(worktreeId != null ? { worktreeId } : {})),
-    );
+    dispatch(push(rootUrl));
   };
 
   const handleCollectionSelected = async (
@@ -103,14 +100,20 @@ export function NewSnippetPage() {
 
   const extensions = useMemo(() => [sql()], []);
 
+  // A worktree is an admin's working copy of its branch, exempt from read-only sync.
   if (isRemoteSyncReadOnly && worktreeId == null) {
     return <Unauthorized />;
   }
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="new-snippet-page">
+      <PageContainer
+        pos="relative"
+        data-testid="new-snippet-page"
+        px={hasHostChrome ? 0 : undefined}
+      >
         <PaneHeader
+          showAppSwitcher={!hasHostChrome}
           title={
             <PaneHeaderInput
               initialValue={name}
@@ -131,11 +134,7 @@ export function NewSnippetPage() {
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link
-                to={Urls.dataStudioLibrary(
-                  worktreeId != null ? { worktreeId } : {},
-                )}
-              >{t`SQL snippets`}</Link>
+              <Link to={rootUrl}>{t`SQL snippets`}</Link>
               {t`New Snippet`}
             </DataStudioBreadcrumbs>
           }

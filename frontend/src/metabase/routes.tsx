@@ -27,6 +27,7 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
+import { getContentStudioRoutes } from "metabase/content-studio/routes";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
@@ -388,6 +389,9 @@ export const getRoutes = (store: AppStore) => {
 
           {/* DATA STUDIO */}
           {getDataStudioRoutes(IsAdmin)}
+
+          {/* CONTENT STUDIO */}
+          {getContentStudioRoutes()}
 
           {/* MONITOR */}
           {getMonitorRoutes()}

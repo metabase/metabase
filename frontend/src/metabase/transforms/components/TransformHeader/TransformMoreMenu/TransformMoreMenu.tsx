@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
+import { useTransformHost } from "metabase/transforms/host";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
 import { TransformRevisionHistorySidebar } from "../../TransformRevisionHistorySidebar";
@@ -115,10 +115,11 @@ function TransformModal({
 }: TransformModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
+  const { rootUrl } = useTransformHost();
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    dispatch(push(Urls.transformList()));
+    dispatch(push(rootUrl));
     onClose();
   };
 

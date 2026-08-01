@@ -17,17 +17,17 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
-import { type Location, push, useParams, useRouter } from "metabase/router";
+import { type Location, push, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { useTransformHost } from "metabase/transforms/host";
 import { Box, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type {
   Database,
   DraftTransformSource,
-  RemoteSyncWorktreeId,
   Transform,
 } from "metabase-types/api";
 
@@ -58,10 +58,7 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
-  const { location } = useRouter();
-  // A worktree is an admin's working copy of its branch; a transform created into one is
-  // exempt from read-only sync.
-  const worktreeId = Urls.extractEntityId(location.query?.worktreeId) ?? null;
+  const { worktreeId, rootUrl, hasHostChrome } = useTransformHost();
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -71,13 +68,20 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     );
   }
 
+  // A worktree is an admin's working copy of its branch; a transform created into one is
+  // exempt from read-only sync.
   if (isRemoteSyncReadOnly && worktreeId == null) {
     return (
-      <PageContainer pos="relative" data-testid="transform-query-editor">
+      <PageContainer
+        pos="relative"
+        data-testid="transform-query-editor"
+        px={hasHostChrome ? 0 : undefined}
+      >
         <PaneHeader
+          showAppSwitcher={!hasHostChrome}
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link key="transform-list" to={Urls.transformList()}>
+              <Link key="transform-list" to={rootUrl}>
                 {t`Transforms`}
               </Link>
             </DataStudioBreadcrumbs>
@@ -92,7 +96,6 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     <NewTransformPageBody
       initialSource={initialSource}
       databases={transformsDatabases}
-      worktreeId={worktreeId}
     />
   );
 }
@@ -100,13 +103,11 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
 type NewTransformPageBodyProps = {
   initialSource: DraftTransformSource;
   databases: Database[];
-  worktreeId: RemoteSyncWorktreeId | null;
 };
 
 function NewTransformPageBody({
   initialSource,
   databases,
-  worktreeId,
 }: NewTransformPageBodyProps) {
   const {
     source,
@@ -125,6 +126,8 @@ function NewTransformPageBody({
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
   const dispatch = useDispatch();
   const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
+  const { worktreeId, rootUrl, getTransformUrl, hasHostChrome } =
+    useTransformHost();
   useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
   const validationResult = useMemo(() => {
@@ -137,13 +140,11 @@ function NewTransformPageBody({
 
   const handleCreate = (transform: Transform) => {
     isSavedRef.current = true;
-    dispatch(push(Urls.transform(transform.id)));
+    dispatch(push(getTransformUrl(transform.id)));
   };
 
   const handleCancel = () => {
-    dispatch(
-      push(Urls.transformList(worktreeId != null ? { worktreeId } : {})),
-    );
+    dispatch(push(rootUrl));
   };
 
   const isLocationAllowed = useCallback(
@@ -153,8 +154,13 @@ function NewTransformPageBody({
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="transform-query-editor">
+      <PageContainer
+        pos="relative"
+        data-testid="transform-query-editor"
+        px={hasHostChrome ? 0 : undefined}
+      >
         <PaneHeader
+          showAppSwitcher={!hasHostChrome}
           title={
             <PaneHeaderInput
               initialValue={name}
@@ -175,12 +181,7 @@ function NewTransformPageBody({
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
-              <Link
-                key="transform-list"
-                to={Urls.transformList(
-                  worktreeId != null ? { worktreeId } : {},
-                )}
-              >
+              <Link key="transform-list" to={rootUrl}>
                 {t`Transforms`}
               </Link>
               {t`New transform`}

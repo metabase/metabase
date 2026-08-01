@@ -28,6 +28,7 @@ type BaseItemTableRowProps = PropsWithChildren<
     | "onMove"
     | "onToggleSelected"
     | "onClick"
+    | "getItemUrl"
     | "visibleColumnsMap"
   >
 >;
@@ -48,6 +49,7 @@ export const TableRow = ({
   itemKey,
   collection,
   onClick,
+  getItemUrl,
   visibleColumnsMap,
 }: BaseItemTableRowProps) => (
   <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
@@ -65,6 +67,7 @@ export const TableRow = ({
       onCopy={onCopy}
       onMove={onMove}
       onToggleSelected={onToggleSelected}
+      getItemUrl={getItemUrl}
       visibleColumnsMap={visibleColumnsMap}
     />
   </tr>
@@ -86,6 +89,7 @@ export const ItemDragSourceTableRow = ({
   itemKey,
   collection,
   onClick,
+  getItemUrl,
   selectedItems,
   onDrop,
   visibleColumnsMap,
@@ -115,6 +119,7 @@ export const ItemDragSourceTableRow = ({
           onMove={onMove}
           onToggleSelected={onToggleSelected}
           onClick={onClick}
+          getItemUrl={getItemUrl}
           visibleColumnsMap={visibleColumnsMap}
         />
       </tr>

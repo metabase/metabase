@@ -14,11 +14,7 @@ import {
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type {
-  CollectionId,
-  CollectionNamespace,
-  RemoteSyncWorktreeId,
-} from "metabase-types/api";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
 
@@ -27,13 +23,11 @@ export const CreateMenu = ({
   canWriteToMetricCollection,
   dataCollectionId,
   canWriteToDataCollection,
-  worktreeId = null,
 }: {
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
   dataCollectionId?: CollectionId;
   canWriteToDataCollection?: boolean;
-  worktreeId?: RemoteSyncWorktreeId | null;
 }) => {
   const dispatch = useDispatch();
   const [
@@ -44,24 +38,18 @@ export const CreateMenu = ({
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const isWorktreeView = worktreeId != null;
 
-  // A worktree is an admin's working copy of its branch, so read-only sync does not apply inside it.
-  if (remoteSyncReadOnly && !isWorktreeView) {
+  if (remoteSyncReadOnly) {
     return null;
   }
 
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
-  // Snippet folders live in a namespace the worktree flow can't create collections in.
-  const canCreateSnippetFolder =
-    hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled && !isWorktreeView;
-
   const canCreateCollection =
     (dataCollectionId && canWriteToDataCollection) ||
     (metricCollectionId && canWriteToMetricCollection) ||
-    canCreateSnippetFolder;
+    (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled);
 
   const collectionNamespaces: CollectionNamespace[] = [];
 
@@ -72,7 +60,7 @@ export const CreateMenu = ({
     collectionNamespaces.push(null);
   }
 
-  if (canCreateSnippetFolder) {
+  if (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled) {
     collectionNamespaces.push("snippets");
   }
 
@@ -82,16 +70,13 @@ export const CreateMenu = ({
     null;
 
   const menuItems = [
-    // Published tables are shared app-wide (tables are never worktree-scoped).
-    !isWorktreeView && (
-      <Menu.Item
-        key="publish-table"
-        leftSection={<FixedSizeIcon name="publish" />}
-        onClick={openPublishTableModal}
-      >
-        {t`Published table`}
-      </Menu.Item>
-    ),
+    <Menu.Item
+      key="publish-table"
+      leftSection={<FixedSizeIcon name="publish" />}
+      onClick={openPublishTableModal}
+    >
+      {t`Published table`}
+    </Menu.Item>,
     canCreateMetric && (
       <Menu.Item
         key="metric"
@@ -109,7 +94,7 @@ export const CreateMenu = ({
       <Menu.Item
         key="snippet"
         component={ForwardRefLink}
-        to={Urls.newDataStudioSnippet(isWorktreeView ? { worktreeId } : {})}
+        to={Urls.newDataStudioSnippet()}
         leftSection={<FixedSizeIcon name="snippet" />}
         aria-label={t`Create new snippet`}
       >
@@ -129,9 +114,6 @@ export const CreateMenu = ({
                 namespaces: collectionNamespaces,
                 pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
                 showAuthorityLevelPicker: false,
-                // The picker only offers main-app collections, which would silently
-                // move the new collection out of the worktree.
-                showCollectionPicker: !isWorktreeView,
                 inDataStudio: true,
               },
             }),

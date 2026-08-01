@@ -17,9 +17,13 @@ import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collect
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import * as Urls from "metabase/urls";
-import type { NativeQuerySnippet } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  NativeQuerySnippet,
+} from "metabase-types/api";
 
+import { type SnippetHost, useSnippetHost } from "../../host";
 import { SnippetMoreMenu } from "../SnippetMoreMenu";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
@@ -37,6 +41,9 @@ export function SnippetHeader({
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const host = useSnippetHost();
+  // A worktree is an admin's working copy of its branch, exempt from read-only sync.
+  const isReadOnly = remoteSyncReadOnly && snippet.worktree_id == null;
 
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: snippet.collection_id,
@@ -49,46 +56,54 @@ export function SnippetHeader({
 
   return (
     <PaneHeader
+      showAppSwitcher={!host.hasHostChrome}
       title={
         <SnippetNameInput
           snippet={snippet}
-          readOnly={remoteSyncReadOnly || !!snippet?.archived}
+          readOnly={isReadOnly || snippet.archived}
         />
       }
-      menu={remoteSyncReadOnly ? null : <SnippetMoreMenu snippet={snippet} />}
+      menu={isReadOnly ? null : <SnippetMoreMenu snippet={snippet} />}
       tabs={<SnippetTabs snippet={snippet} />}
       actions={actions}
       data-testid="snippet-header"
       {...rest}
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link key="snippet-root-collection" to={Urls.dataStudioLibrary()}>
+          <Link key="snippet-root-collection" to={host.rootUrl}>
             {t`SQL snippets`}
           </Link>
-          {folderPath?.map((collection, i) => (
-            <Link
+          {folderPath?.map((collection, index) => (
+            <FolderCrumb
               key={collection.id}
-              to={
-                collection.type === "trash" || collection.archived
-                  ? Urls.dataStudioArchivedSnippets()
-                  : Urls.dataStudioLibrary({
-                      expandedIds: [
-                        "root",
-                        ...folderPath.slice(0, i + 1).map((c) => c.id),
-                      ],
-                    })
-              }
-            >
-              {collection.type === "trash"
-                ? t`Archived snippets`
-                : collection.name}
-            </Link>
+              folder={collection}
+              ancestorIds={folderPath.slice(0, index + 1).map((c) => c.id)}
+              host={host}
+            />
           ))}
           <span>{snippet.name}</span>
         </DataStudioBreadcrumbs>
       }
     />
   );
+}
+
+type SnippetFolder = Pick<Collection, "id" | "name" | "type" | "archived">;
+
+type FolderCrumbProps = {
+  folder: SnippetFolder;
+  ancestorIds: CollectionId[];
+  host: SnippetHost;
+};
+
+function FolderCrumb({ folder, ancestorIds, host }: FolderCrumbProps) {
+  const isArchived = folder.type === "trash" || folder.archived;
+  const label = folder.type === "trash" ? t`Archived snippets` : folder.name;
+  const to = isArchived
+    ? host.archivedSnippetsUrl
+    : host.getFolderUrl?.(ancestorIds);
+
+  return to != null ? <Link to={to}>{label}</Link> : <span>{label}</span>;
 }
 
 type SnippetNameInputProps = {
@@ -134,24 +149,20 @@ type SnippetTabsProps = {
 };
 
 function SnippetTabs({ snippet }: SnippetTabsProps) {
-  const tabs = getTabs(snippet.id);
-  return <PaneHeaderTabs tabs={tabs} />;
-}
-
-function getTabs(snippetId: number): PaneHeaderTab[] {
+  const host = useSnippetHost();
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Definition`,
-      to: Urls.dataStudioSnippet(snippetId),
+      to: host.getSnippetUrl(snippet.id),
     },
   ];
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,
-      to: Urls.dataStudioSnippetDependencies(snippetId),
+      to: host.getSnippetDependenciesUrl(snippet.id),
     });
   }
 
-  return tabs;
+  return <PaneHeaderTabs tabs={tabs} />;
 }

@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import type { Card } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
@@ -20,6 +21,8 @@ export type Document = {
   updated_at: string;
   archived: boolean;
   is_remote_synced?: boolean;
+  /** The remote-sync worktree this document is checked out into, null for the main app. */
+  worktree_id?: RemoteSyncWorktreeId | null;
   can_delete: boolean;
   can_restore: boolean;
   can_write: boolean;

@@ -14,6 +14,7 @@ import type {
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
+  RemoteSyncWorktreeId,
   Table,
   UserId,
   UserInfo,
@@ -84,6 +85,8 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   is_remote_synced?: boolean;
+  /** The remote-sync worktree this dashboard is checked out into, null for the main app. */
+  worktree_id?: RemoteSyncWorktreeId | null;
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;

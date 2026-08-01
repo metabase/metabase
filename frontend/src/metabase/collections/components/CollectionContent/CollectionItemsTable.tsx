@@ -82,6 +82,7 @@ export type CollectionItemsTableProps = {
   toggleItem: (item: CollectionItem) => void;
   visibleColumns?: CollectionContentTableColumn[];
   onClick: (item: CollectionItem) => void;
+  getItemUrl: (item: CollectionItem) => string;
 }>;
 
 const DefaultEmptyContentComponent = ({
@@ -118,6 +119,7 @@ export const CollectionItemsTable = ({
   toggleItem,
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
+  getItemUrl,
 }: CollectionItemsTableProps) => {
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState<
     SortingOptions<ListCollectionItemsSortColumn>
@@ -175,6 +177,7 @@ export const CollectionItemsTable = ({
       }}
       visibleColumns={visibleColumns}
       onClick={onClick}
+      getItemUrl={getItemUrl}
       onNextPage={handleNextPage}
       onPreviousPage={handlePreviousPage}
       onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
@@ -216,6 +219,7 @@ const CollectionItemsTableContent = ({
   unpinnedQuery,
   visibleColumns,
   onClick,
+  getItemUrl,
   onNextPage,
   onPreviousPage,
   onUnpinnedItemsSortingChange,
@@ -269,6 +273,7 @@ const CollectionItemsTableContent = ({
         onSelectAll={handleSelectAll}
         onSelectNone={clear}
         onClick={onClick}
+        getItemUrl={getItemUrl}
         visibleColumnsMap={visibleColumnsMap}
       />
       <div

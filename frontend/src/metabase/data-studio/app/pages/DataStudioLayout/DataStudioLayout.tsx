@@ -187,7 +187,6 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
-      headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >
