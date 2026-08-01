@@ -281,6 +281,31 @@
     api/*is-superuser?*
     (t2/select-one-fn :is_superuser :model/User :id user-id)))
 
+(defn- covered-database-ids
+  "The databases a load is about to cover. Read before the load, so one created in between counts as uncovered."
+  []
+  (t2/select-pks-set :model/Database))
+
+(defn- cached-perms
+  "Read-through for one of the request caches. Each holds, per user, the databases the load covered and the index it
+  produced; a load always covers every database.
+
+  `db-ids` is what makes \"covered\" different from \"loaded\". Without it a database created after the load is
+  indistinguishable from one the user simply has no rows for, and would be answered as no-permissions rather than
+  fetched — wrong in the unsafe direction for the caches whose callers fall back to the least permissive value. The
+  set is read *before* the load, so a database appearing in between counts as not covered and forces a reload rather
+  than being wrongly marked covered.
+
+  A nil `db-id` is a question about the instance as a whole; any load answers it."
+  [cache user-id db-id load-all]
+  (let [{:keys [db-ids perms]} (get @cache user-id)]
+    (if (and perms (or (nil? db-id) (contains? db-ids db-id)))
+      perms
+      (let [covered (covered-database-ids)
+            index   (load-all)]
+        (swap! cache assoc user-id {:db-ids covered :perms index})
+        index))))
+
 (defn is-data-analyst?
   "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
   [user-id]
@@ -341,20 +366,18 @@
   "Read-through for [[*table-permission-cache*]]: the per-user `{perm-type {perm-value bitmap}}` index, loading every
   database's table-granular rows if this request hasn't already. When the cache doesn't apply the load is narrowed to
   `table-id`, since there is no later check to amortize a wider one over."
-  [user-id table-id]
+  [user-id db-id table-id]
   (if (use-cache? *table-permission-cache* user-id)
-    (or (get @*table-permission-cache* user-id)
-        (let [index (load-table-permission-perms user-id nil)]
-          (swap! *table-permission-cache* assoc user-id index)
-          index))
+    (cached-perms *table-permission-cache* user-id db-id
+                  #(load-table-permission-perms user-id nil))
     (load-table-permission-perms user-id table-id)))
 
 (defn- table-perm-value
   "A table's own coalesced value, or nil when it has no rows of its own. The bitmaps partition the tables, so at most
   one value can match and the walk stops there."
-  [user-id perm-type table-id]
+  [user-id perm-type db-id table-id]
   (when (pos-int? table-id)
-    (when-let [by-value (get (cached-table-perms user-id table-id) perm-type)]
+    (when-let [by-value (get (cached-table-perms user-id db-id table-id) perm-type)]
       (some (fn [perm-value]
               (when-let [^RoaringBitmap bitmap (get by-value perm-value)]
                 (when (.contains bitmap (int table-id))
@@ -404,10 +427,8 @@
   is no later check to amortize a wider one over."
   [user-id db-id]
   (if (use-cache? *schema-permission-cache* user-id)
-    (or (get @*schema-permission-cache* user-id)
-        (let [index (load-schema-permission-perms user-id nil)]
-          (swap! *schema-permission-cache* assoc user-id index)
-          index))
+    (cached-perms *schema-permission-cache* user-id db-id
+                  #(load-schema-permission-perms user-id nil))
     (load-schema-permission-perms user-id db-id)))
 
 ;;; --------------------------------------------- Database level cache ---------------------------------------------
@@ -469,10 +490,7 @@
   is narrowed to `db-id`, since there is no later check to amortize a wider one over."
   [user-id db-id]
   (if (use-cache? *db-permission-cache* user-id)
-    (or (get @*db-permission-cache* user-id)
-        (let [index (load-db-perms user-id nil)]
-          (swap! *db-permission-cache* assoc user-id index)
-          index))
+    (cached-perms *db-permission-cache* user-id db-id #(load-db-perms user-id nil))
     (load-db-perms user-id db-id)))
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
@@ -521,7 +539,7 @@
                                  (into #{}
                                        (remove nil?)
                                        [db-perm
-                                        (table-perm-value user-id perm-type table-id)
+                                        (table-perm-value user-id perm-type db-id table-id)
                                         (get-additional-table-permission! {:db-id db-id :table-id table-id}
                                                                           perm-type)])))]
       (or (when-not (= table-perm (least-permissive-value perm-type))

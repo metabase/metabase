@@ -57,7 +57,8 @@
         cache   (atom {})]
     (binding [api/*current-user-id*            user-id
               data-perms/*db-permission-cache* cache]
-      (mt/with-dynamic-fn-redefs [data-perms/load-db-perms
+      (mt/with-dynamic-fn-redefs [data-perms/covered-database-ids (fn [] #{10 11 12})
+                                  data-perms/load-db-perms
                                   (fn [_user-id db-id]
                                     (swap! loads conj db-id)
                                     {:perms/manage-database {10 {:database :yes :every-table :yes :any-table :yes}
@@ -72,10 +73,14 @@
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
           (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 11)))
           (is (= [nil] @loads)))
-        (testing "a database with no rows is answered from the same load, not re-queried"
+        (testing "a covered database with no rows is answered from that load, not re-queried"
           (reset! loads [])
           (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 12)))
           (is (= [] @loads)))
+        (testing "a database the load did not cover -- created since -- is fetched rather than read as ungranted"
+          (reset! loads [])
+          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 99)))
+          (is (= [nil] @loads)))
         (testing "the all-databases question shares the cache rather than keeping its own"
           (reset! loads [])
           (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
@@ -94,26 +99,31 @@
         cache   (atom {})]
     (binding [api/*current-user-id*               user-id
               data-perms/*table-permission-cache* cache]
-      (mt/with-dynamic-fn-redefs [data-perms/load-table-permission-perms
+      (mt/with-dynamic-fn-redefs [data-perms/covered-database-ids (fn [] #{10})
+                                  data-perms/load-table-permission-perms
                                   (fn [_user-id table-id]
                                     (swap! loads conj table-id)
                                     {:perms/view-data {:unrestricted (->bitmap [100 101])
                                                        :blocked      (->bitmap [102])}})]
         (testing "the first table check loads every database's table rows, unscoped"
-          (is (= :unrestricted (#'data-perms/table-perm-value user-id :perms/view-data 100)))
+          (is (= :unrestricted (#'data-perms/table-perm-value user-id :perms/view-data 10 100)))
           (is (= [nil] @loads)))
-        (testing "every other table is then answered from that one load"
+        (testing "every other table in a covered database is then answered from that one load"
           (reset! loads [])
-          (is (= :unrestricted (#'data-perms/table-perm-value user-id :perms/view-data 101)))
-          (is (= :blocked (#'data-perms/table-perm-value user-id :perms/view-data 102)))
+          (is (= :unrestricted (#'data-perms/table-perm-value user-id :perms/view-data 10 101)))
+          (is (= :blocked (#'data-perms/table-perm-value user-id :perms/view-data 10 102)))
           (is (= [] @loads)))
         (testing "a table with no rows of its own has no value here -- it inherits the database's grant"
-          (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data 999))))
+          (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data 10 999))))
         (testing "a virtual table ID never reaches the cache"
-          (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data "card__1"))))
+          (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data 10 "card__1"))))
+        (testing "a table in a database the load did not cover forces a reload"
+          (reset! loads [])
+          (is (= :unrestricted (#'data-perms/table-perm-value user-id :perms/view-data 77 100)))
+          (is (= [nil] @loads)))
         (testing "checking another user bypasses the cache, and loads only the table asked about"
           (reset! loads [])
-          (is (= :unrestricted (#'data-perms/table-perm-value 2 :perms/view-data 100)))
+          (is (= :unrestricted (#'data-perms/table-perm-value 2 :perms/view-data 10 100)))
           (is (= [100] @loads)))))))
 
 (deftest table-perm-value-partitions-tables-by-value-test
@@ -121,14 +131,15 @@
     (let [user-id 1]
       (binding [api/*current-user-id*               user-id
                 data-perms/*table-permission-cache*
-                (atom {user-id {:perms/view-data {:unrestricted           (->bitmap [1 2 3])
-                                                  :legacy-no-self-service (->bitmap [4])
-                                                  :blocked                (->bitmap [5 6])}}})]
+                (atom {user-id {:db-ids #{10}
+                                :perms  {:perms/view-data {:unrestricted           (->bitmap [1 2 3])
+                                                           :legacy-no-self-service (->bitmap [4])
+                                                           :blocked                (->bitmap [5 6])}}}})]
         (is (= [:unrestricted :unrestricted :unrestricted :legacy-no-self-service :blocked :blocked]
-               (map #(#'data-perms/table-perm-value user-id :perms/view-data %) [1 2 3 4 5 6])))
-        (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data 7)))
-        (is (nil? (#'data-perms/table-perm-value user-id :perms/download-results 1))
-            "a permission type with no rows at all")))))
+               (map #(#'data-perms/table-perm-value user-id :perms/view-data 10 %) [1 2 3 4 5 6])))
+        (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data 10 7)))
+        (is (nil? (#'data-perms/table-perm-value user-id :perms/view-data 10 1000001))
+            "a table id outside every bitmap")))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
