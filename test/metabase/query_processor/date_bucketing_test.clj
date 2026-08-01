@@ -958,7 +958,7 @@
 (defn- fmt-str-or-int
   [x]
   (if (string? x)
-    (str x)
+    x
     (int x)))
 
 (defn- week-of-year-and-week-count-should-be-consistent-test-break-out [unit]
