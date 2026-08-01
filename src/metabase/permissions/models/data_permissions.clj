@@ -288,8 +288,8 @@
 
   Five is where measurement put the line: across the search, sandbox, dashboard and sync suites, raising the limit
   from five to twelve changed nothing, so everything still caught at five is an unbounded run rather than a few
-  unrelated checks. Overridable with `MB_PERMS_CACHE_MISS_LIMIT` for re-measuring."
-  (or (some-> (System/getenv "MB_PERMS_CACHE_MISS_LIMIT") parse-long) 5))
+  unrelated checks."
+  5)
 
 (defn- cache-miss!
   "Called from a read-through cache when a check has to load rather than read. Counts the loads and throws once they
