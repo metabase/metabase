@@ -8,7 +8,6 @@ import {
 } from "react-router";
 
 import { AppShell } from "./AppShell";
-import { installLeaveHookBlocker } from "./leave-hooks";
 import { mapToV7 } from "./map-to-v7";
 
 export type MemoryTestRouter = DataRouter;
@@ -36,9 +35,7 @@ export function createAppRouter(
   tree: ReactNode,
   basename?: string,
 ): DataRouter {
-  const router = createBrowserRouter(toDataRoutes(tree), { basename });
-  installLeaveHookBlocker(router);
-  return router;
+  return createBrowserRouter(toDataRoutes(tree), { basename });
 }
 
 export function createMemoryAppRouter(
@@ -49,10 +46,8 @@ export function createMemoryAppRouter(
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
-  const router = createMemoryRouter(toDataRoutes(tree), {
+  return createMemoryRouter(toDataRoutes(tree), {
     basename,
     initialEntries: [entry],
   });
-  installLeaveHookBlocker(router);
-  return router;
 }

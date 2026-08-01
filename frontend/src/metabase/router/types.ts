@@ -180,17 +180,6 @@ export interface RouteProps {
 }
 
 /**
- * A route-leave hook: it receives the attempted destination and how it was
- * reached, and returns `false` to cancel the navigation. The navigation type is
- * a second argument rather than a field on the location, which carries only the
- * URL parts.
- */
-export type RouteHook = (
-  nextLocation?: Location,
-  navigationType?: Action,
-) => unknown;
-
-/**
  * v3's function form of a `<Link to>`, kept because `RouterLink` still handles it.
  */
 type ToLocationFunction = (location: Location) => LocationDescriptor;
