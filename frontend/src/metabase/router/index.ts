@@ -15,19 +15,16 @@ export {
   createMemoryAppRouter,
   type MemoryTestRouter,
   type MemoryTestRouterHolder,
-} from "./v7/create-router";
-export { queryToSearch, toFacadeLocation } from "./v7/location";
-export {
-  createLocationMirror,
-  type LocationMirror,
-} from "./v7/location-mirror";
+} from "./create-router";
+export { queryToSearch, toFacadeLocation } from "./location";
+export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
   createV7Navigator,
   subscribeLocation,
   toNavigateArgs,
-} from "./v7/navigator";
-export { getRawBrowserHistory } from "./v7/raw-history";
+} from "./navigator";
+export { getRawBrowserHistory } from "./raw-history";
 // The memory-router engine is test-only. It reaches the barrel rather than a
 // deep import because `sideEffects: false` lets rspack drop it from the app
 // bundles, where nothing references it.
-export { RouterProviderV7Memory } from "./v7/RouterProviderV7";
+export { RouterProviderV7Memory } from "./RouterProviderV7";

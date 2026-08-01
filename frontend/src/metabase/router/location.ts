@@ -1,6 +1,6 @@
 import type { Location as V7Location } from "react-router";
 
-import type { Location as HistoryLocation } from "../types";
+import type { Location as HistoryLocation } from "./types";
 
 /**
  * Serialize a query object into the `search` string a navigation target carries.

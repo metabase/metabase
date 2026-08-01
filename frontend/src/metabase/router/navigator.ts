@@ -1,7 +1,7 @@
 import type { NavigateFunction, NavigateOptions, To } from "react-router";
 
-import type { RouterNavigator } from "../middleware";
-import type { Location as HistoryLocation, LocationDescriptor } from "../types";
+import type { RouterNavigator } from "./middleware";
+import type { Location as HistoryLocation, LocationDescriptor } from "./types";
 
 /**
  * The live v7 `navigate`, registered by the host's `AppShell` once the router mounts.

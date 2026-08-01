@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 import type { PropsWithChildren } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Route } from "metabase/router";
 import { useRouteLeaveBlocker } from "./use-route-leave-blocker";
 
 const shouldBlock = jest.fn();

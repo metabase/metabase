@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-
 import { Route } from "metabase/router";
+
 import { Navigate } from "./Navigate";
 
 // Stable references: `<Navigate>` keeps `state` raw in its effect deps (like v7),

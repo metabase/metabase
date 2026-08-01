@@ -1,10 +1,9 @@
 import type { Location as V7Location } from "react-router";
 
-import { LOCATION_CHANGE } from "../location-change";
-import type { Location } from "../types";
-
 import { toFacadeLocation } from "./location";
+import { LOCATION_CHANGE } from "./location-change";
 import { notifyLocationListeners } from "./navigator";
+import type { Location } from "./types";
 
 export type LocationMirror = (location: V7Location) => void;
 

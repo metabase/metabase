@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 
-import { RouterProviderV7 } from "./v7/RouterProviderV7";
-import type { LocationMirror } from "./v7/location-mirror";
+import { RouterProviderV7 } from "./RouterProviderV7";
+import type { LocationMirror } from "./location-mirror";
 
 /**
  * Hosts the app on react-router v7.

@@ -11,7 +11,7 @@ import {
 } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { push, replace, useIsNavigationHeld } from "metabase/router";
-import { notifyLocationListeners } from "metabase/router/v7/navigator";
+import { notifyLocationListeners } from "metabase/router/navigator";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
