@@ -77,6 +77,7 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -295,6 +296,7 @@
                        :is_audit false
                        :router_database_id nil
                        {:order-by [[:%lower.name :asc]]})
+        _   (perms/prime-db-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)
                  (mapv present-database))]
@@ -360,6 +362,7 @@
 (defn- fetch-database-tables [id-str query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
+        _      (perms/prime-table-perms-cache {:db-ids #{db-id}})
         tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                :db_id  db-id
                                :active true

@@ -256,6 +256,10 @@
     (try
       (when (lib-be/metadata-provider-cache)
         (prefetch-tables-for-cards! cards-with-non-empty-queries))
+      ;; Only the tables the queries name directly: a source Card is reached through its collection's permissions,
+      ;; not its tables', so it contributes none of its own.
+      (perms/prime-table-perms-cache
+       {:table-ids (into #{} (mapcat card->integer-table-ids) cards-with-non-empty-queries)})
       (catch Throwable t
         (log/errorf "Failed prefetching cards `%s`: %s" (pr-str (map :id cards-with-non-empty-queries)) (ex-message t))))
     (query-perms/with-card-instances (when (seq source-card-ids)
