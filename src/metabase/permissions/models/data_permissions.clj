@@ -280,157 +280,10 @@
     api/*is-data-analyst?*
     (t2/select-one-fn :is_data_analyst :model/User :id user-id)))
 
-;;; ---------------------------------------------- Table level cache -----------------------------------------------
-
-(def ^:dynamic *table-permission-cache*
-  "Request cache for [[table-permission-for-user]]:
-
-    {:db-ids    #{db-id}     -- every table in these databases is loaded
-     :table-ids #{table-id}  -- these tables are loaded individually
-     :perms     {user-id {perm-type {db-id {table-id value}}}}}
-
-  Only table-granular rows live here. The grant attached to the database itself is a property of the database, not of
-  any table, so it comes from [[*db-permission-cache*]]'s `:database` — which means a table with no rows of its
-  own, or no row in `metabase_table` at all, still resolves correctly.
-
-  Nothing invalidates this within a request, so a permission written after a check has already loaded is not seen by
-  later checks in the same request. That was always true per database; it now spans every database the user can see.
-
-  Two completeness sets because a load comes in one of two shapes. A whole-database load answers for any table in it,
-  including tables with no rows of their own. A table-scoped load answers only for the tables it asked about — an
-  unrequested table is indistinguishable from one with no permissions, and answering for it would invent a
-  permission. So `:table-ids` records what was *asked for*, not what came back, and a scoped load never touches
-  `:db-ids`."
-  (atom {:db-ids #{} :table-ids #{} :perms {}}))
-
 (def ^:private max-ids-per-query
   "How many IDs to list in one load. Each is a bound parameter and Postgres caps a statement at 65535 of them, so a
   caller passing a very large set is split across several queries rather than failing outright."
   5000)
-
-(defn- load-table-permission-perms
-  "Table-granular permissions for one scope — either `{:table-ids …}` or `{:db-ids …}`. Database-level rows are
-  excluded; see [[*table-permission-cache*]]."
-  [user-id {:keys [db-ids table-ids]}]
-  (reduce (fn [m {:keys [perm_type db_id table_id mn mx]}]
-            (assoc-in m [(keyword perm_type) db_id table_id]
-                      (ranks->most-permissive-value (keyword perm_type) [mn mx])))
-          {}
-          (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
-                        (assoc :select [:p.perm_type :p.db_id :p.table_id
-                                        [[:min value-rank-case] :mn]
-                                        [[:max value-rank-case] :mx]]
-                               :group-by [:p.perm_type :p.db_id :p.table_id])
-                        (update :where conj [:not= :p.table_id nil])
-                        (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids]))))))
-
-(defn- merge-table-perms
-  "Merge freshly loaded table permissions into cached ones, unioning the per-database table maps rather than replacing
-  them — the same database is loaded more than once, once per batch of tables."
-  [cached loaded]
-  (merge-with #(merge-with merge %1 %2) cached loaded))
-
-(defn- load-table-perms!
-  "Load one scope into [[*table-permission-cache*]] and return the resulting per-user perms map."
-  [user-id {:keys [db-ids table-ids] :as scope}]
-  (let [loaded (load-table-permission-perms user-id scope)]
-    (-> (swap! *table-permission-cache*
-               (fn [cache]
-                 (-> cache
-                     (update (if (seq table-ids) :table-ids :db-ids) into (or (not-empty table-ids) db-ids))
-                     (update-in [:perms user-id] merge-table-perms loaded))))
-        (get-in [:perms user-id]))))
-
-(defn prime-table-perms-cache
-  "Eagerly load table-granular permissions for the current user, so that a run of per-table checks costs one query
-  instead of one per table. A no-op for superusers, whose checks never read the cache.
-
-  Takes `{:db-ids #{…} :table-ids #{…}}`, and `:table-ids` decides the shape:
-
-  - **given** — load exactly those tables. Right when the candidate set is already small and known: the tables a
-    card's query reads, a page of recents, the tables behind a list of measures.
-  - **absent** — load every table in `:db-ids`. Right when the candidate set *is* a database or a schema of one, where
-    listing the IDs would just be a longhand way of naming the database.
-
-  Supplying both loads the tables and ignores `:db-ids`, since the table list is the narrower scope. Note also that a
-  table already covered by a fully-loaded database is re-requested, because mapping a table ID back to its database
-  would itself take a query."
-  [{:keys [db-ids table-ids]}]
-  (when (and (use-cache? api/*current-user-id*)
-             (not api/*is-superuser?*))
-    (let [user-id api/*current-user-id*
-          cache   @*table-permission-cache*]
-      (if (seq table-ids)
-        (doseq [batch (partition-all max-ids-per-query
-                                     (into #{} (remove (:table-ids cache)) table-ids))]
-          (load-table-perms! user-id {:table-ids (set batch)}))
-        (when-let [missing-db-ids (not-empty (into #{} (remove (:db-ids cache)) db-ids))]
-          (load-table-perms! user-id {:db-ids missing-db-ids})))
-      nil)))
-
-(defn- cached-table-perms
-  "Read-through for [[*table-permission-cache*]]: the per-user `{perm-type {db-id {table-id value}}}` map, loading
-  `table-id` first if it isn't covered yet. Callers checking many tables should [[prime-table-perms-cache]] first."
-  [user-id db-id table-id]
-  (if (use-cache? user-id)
-    (if (or (contains? (:db-ids @*table-permission-cache*) db-id)
-            (contains? (:table-ids @*table-permission-cache*) table-id))
-      (get-in @*table-permission-cache* [:perms user-id])
-      (load-table-perms! user-id {:table-ids #{table-id}}))
-    (load-table-permission-perms user-id {:table-ids #{table-id}})))
-
-;;; ---------------------------------------------- Schema level cache ----------------------------------------------
-
-(def ^:dynamic *schema-permission-cache*
-  "Request cache for [[schema-permission-for-user]]: `{:db-ids #{} :perms {user-id {perm-type {db-id entry}}}}`
-  where each entry is `{:default v, :schemas {schema v}}` — per schema, the coalesced value of the schema's table
-  rows combined with the db-level rows; `:default` (the db-level value alone) answers schemas with no rows of their
-  own. Schema names are normalized (nil = \"\"). Loaded per database, all permission types at once."
-  (atom {:db-ids #{} :perms {}}))
-
-(defn- load-schema-permission-perms
-  [user-id db-ids]
-  (let [table-level-case [:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]]
-        folded (reduce (fn [m {:keys [perm_type db_id schema_name table_level mn mx]}]
-                         (if (pos? table_level)
-                           (update-in m [(keyword perm_type) db_id :schemas (or schema_name "")]
-                                      combine-rank-pairs [mn mx])
-                           (assoc-in m [(keyword perm_type) db_id :db-level] [mn mx])))
-                       {}
-                       (t2/query (assoc (perm-rows-query-base user-id db-ids)
-                                        :select [:p.perm_type :p.db_id :p.schema_name
-                                                 [table-level-case :table_level]
-                                                 [[:min value-rank-case] :mn]
-                                                 [[:max value-rank-case] :mx]]
-                                        :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))]
-    (into {}
-          (map (fn [[perm-type db-id->folded]]
-                 [perm-type
-                  (update-vals db-id->folded
-                               (fn [{:keys [db-level schemas]}]
-                                 {:default (ranks->most-permissive-value perm-type db-level)
-                                  :schemas (update-vals schemas
-                                                        #(ranks->most-permissive-value
-                                                          perm-type
-                                                          (combine-rank-pairs db-level %)))}))]))
-          folded)))
-
-(defn- cached-schema-perms
-  "Read-through for [[*schema-permission-cache*]]: the per-user `{perm-type {db-id entry}}` map, loading whichever of
-  `db-ids` isn't cached yet. Loads straight through without caching when the request cache doesn't apply."
-  [user-id db-ids]
-  (if (use-cache? user-id)
-    (do
-      (let [missing-db-ids (into [] (remove (:db-ids @*schema-permission-cache*)) db-ids)]
-        (when (seq missing-db-ids)
-          (let [loaded (load-schema-permission-perms user-id missing-db-ids)]
-            (swap! *schema-permission-cache*
-                   (fn [cache]
-                     (-> cache
-                         (update :db-ids into missing-db-ids)
-                         (update-in [:perms user-id] #(merge-with merge % loaded))))))))
-      (get-in @*schema-permission-cache* [:perms user-id]))
-    (load-schema-permission-perms user-id db-ids)))
 
 ;;; --------------------------------------------- Database level cache ---------------------------------------------
 
@@ -538,6 +391,159 @@
           (swap! *all-db-permission-cache* assoc user-id loaded)
           loaded))
     (load-db-perms user-id nil)))
+
+;;; ---------------------------------------------- Schema level cache ----------------------------------------------
+
+(def ^:dynamic *schema-permission-cache*
+  "Request cache for [[schema-permission-for-user]]: `{:db-ids #{} :perms {user-id {perm-type {db-id entry}}}}`
+  where each entry is `{:default v, :schemas {schema v}}` — per schema, the coalesced value of the schema's table
+  rows combined with the db-level rows; `:default` (the db-level value alone) answers schemas with no rows of their
+  own. Schema names are normalized (nil = \"\"). Loaded per database, all permission types at once."
+  (atom {:db-ids #{} :perms {}}))
+
+(defn- load-schema-permission-perms
+  [user-id db-ids]
+  (let [table-level-case [:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]]
+        folded (reduce (fn [m {:keys [perm_type db_id schema_name table_level mn mx]}]
+                         (if (pos? table_level)
+                           (update-in m [(keyword perm_type) db_id :schemas (or schema_name "")]
+                                      combine-rank-pairs [mn mx])
+                           (assoc-in m [(keyword perm_type) db_id :db-level] [mn mx])))
+                       {}
+                       (t2/query (assoc (perm-rows-query-base user-id db-ids)
+                                        :select [:p.perm_type :p.db_id :p.schema_name
+                                                 [table-level-case :table_level]
+                                                 [[:min value-rank-case] :mn]
+                                                 [[:max value-rank-case] :mx]]
+                                        :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))]
+    (into {}
+          (map (fn [[perm-type db-id->folded]]
+                 [perm-type
+                  (update-vals db-id->folded
+                               (fn [{:keys [db-level schemas]}]
+                                 {:default (ranks->most-permissive-value perm-type db-level)
+                                  :schemas (update-vals schemas
+                                                        #(ranks->most-permissive-value
+                                                          perm-type
+                                                          (combine-rank-pairs db-level %)))}))]))
+          folded)))
+
+(defn- cached-schema-perms
+  "Read-through for [[*schema-permission-cache*]]: the per-user `{perm-type {db-id entry}}` map, loading whichever of
+  `db-ids` isn't cached yet. Loads straight through without caching when the request cache doesn't apply."
+  [user-id db-ids]
+  (if (use-cache? user-id)
+    (do
+      (let [missing-db-ids (into [] (remove (:db-ids @*schema-permission-cache*)) db-ids)]
+        (when (seq missing-db-ids)
+          (let [loaded (load-schema-permission-perms user-id missing-db-ids)]
+            (swap! *schema-permission-cache*
+                   (fn [cache]
+                     (-> cache
+                         (update :db-ids into missing-db-ids)
+                         (update-in [:perms user-id] #(merge-with merge % loaded))))))))
+      (get-in @*schema-permission-cache* [:perms user-id]))
+    (load-schema-permission-perms user-id db-ids)))
+
+;;; ---------------------------------------------- Table level cache -----------------------------------------------
+
+(def ^:dynamic *table-permission-cache*
+  "Request cache for [[table-permission-for-user]]:
+
+    {:db-ids    #{db-id}     -- every table in these databases is loaded
+     :table-ids #{table-id}  -- these tables are loaded individually
+     :perms     {user-id {perm-type {db-id {table-id value}}}}}
+
+  Only table-granular rows live here. The grant attached to the database itself is a property of the database, not of
+  any table, so it comes from [[*db-permission-cache*]]'s `:database` — which means a table with no rows of its
+  own, or no row in `metabase_table` at all, still resolves correctly.
+
+  Nothing invalidates this within a request, so a permission written after a check has already loaded is not seen by
+  later checks in the same request. That was always true per database; it now spans every database the user can see.
+
+  Two completeness sets because a load comes in one of two shapes. A whole-database load answers for any table in it,
+  including tables with no rows of their own. A table-scoped load answers only for the tables it asked about — an
+  unrequested table is indistinguishable from one with no permissions, and answering for it would invent a
+  permission. So `:table-ids` records what was *asked for*, not what came back, and a scoped load never touches
+  `:db-ids`."
+  (atom {:db-ids #{} :table-ids #{} :perms {}}))
+
+(defn- load-table-permission-perms
+  "Table-granular permissions for one scope — either `{:table-ids …}` or `{:db-ids …}`. Database-level rows are
+  excluded; see [[*table-permission-cache*]]."
+  [user-id {:keys [db-ids table-ids]}]
+  (reduce (fn [m {:keys [perm_type db_id table_id mn mx]}]
+            (assoc-in m [(keyword perm_type) db_id table_id]
+                      (ranks->most-permissive-value (keyword perm_type) [mn mx])))
+          {}
+          (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
+                        (assoc :select [:p.perm_type :p.db_id :p.table_id
+                                        [[:min value-rank-case] :mn]
+                                        [[:max value-rank-case] :mx]]
+                               :group-by [:p.perm_type :p.db_id :p.table_id])
+                        (update :where conj [:not= :p.table_id nil])
+                        (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids]))))))
+
+(defn- merge-table-perms
+  "Merge freshly loaded table permissions into cached ones, unioning the per-database table maps rather than replacing
+  them — the same database is loaded more than once, once per batch of tables."
+  [cached loaded]
+  (merge-with #(merge-with merge %1 %2) cached loaded))
+
+(defn- load-table-perms!
+  "Load one scope into [[*table-permission-cache*]] and return the resulting per-user perms map."
+  [user-id {:keys [db-ids table-ids] :as scope}]
+  (let [loaded (load-table-permission-perms user-id scope)]
+    (-> (swap! *table-permission-cache*
+               (fn [cache]
+                 (-> cache
+                     (update (if (seq table-ids) :table-ids :db-ids) into (or (not-empty table-ids) db-ids))
+                     (update-in [:perms user-id] merge-table-perms loaded))))
+        (get-in [:perms user-id]))))
+
+(defn prime-table-perms-cache
+  "Eagerly load table-granular permissions for the current user, so that a run of per-table checks costs one query
+  instead of one per table. A no-op for superusers, whose checks never read the cache.
+
+  Takes `{:db-ids #{…} :table-ids #{…}}`, and `:table-ids` decides the shape:
+
+  - **given** — load exactly those tables. Right when the candidate set is already small and known: the tables a
+    card's query reads, a page of recents, the tables behind a list of measures.
+  - **absent** — load every table in `:db-ids`. Right when the candidate set *is* a database or a schema of one, where
+    listing the IDs would just be a longhand way of naming the database.
+
+  Supplying both loads the tables and ignores `:db-ids` *for the table load*, since the table list is the narrower
+  scope. Note also that a table already covered by a fully-loaded database is re-requested, because mapping a table ID
+  back to its database would itself take a query.
+
+  `:db-ids` is never wasted, though: whichever shape is used, it also primes [[*db-permission-cache*]], because
+  [[table-permission-for-user]] reads the database's own grant as well as the table's. A caller that passes only
+  `:table-ids` still pays one query per distinct database, so pass `:db-ids` too whenever the rows are already in
+  hand — it costs nothing extra when they are."
+  [{:keys [db-ids table-ids]}]
+  (when (and (use-cache? api/*current-user-id*)
+             (not api/*is-superuser?*))
+    (let [user-id api/*current-user-id*
+          cache   @*table-permission-cache*]
+      (if (seq table-ids)
+        (doseq [batch (partition-all max-ids-per-query
+                                     (into #{} (remove (:table-ids cache)) table-ids))]
+          (load-table-perms! user-id {:table-ids (set batch)}))
+        (when-let [missing-db-ids (not-empty (into #{} (remove (:db-ids cache)) db-ids))]
+          (load-table-perms! user-id {:db-ids missing-db-ids})))
+      (prime-db-perms-cache {:db-ids db-ids})
+      nil)))
+
+(defn- cached-table-perms
+  "Read-through for [[*table-permission-cache*]]: the per-user `{perm-type {db-id {table-id value}}}` map, loading
+  `table-id` first if it isn't covered yet. Callers checking many tables should [[prime-table-perms-cache]] first."
+  [user-id db-id table-id]
+  (if (use-cache? user-id)
+    (if (or (contains? (:db-ids @*table-permission-cache*) db-id)
+            (contains? (:table-ids @*table-permission-cache*) table-id))
+      (get-in @*table-permission-cache* [:perms user-id])
+      (load-table-perms! user-id {:table-ids #{table-id}}))
+    (load-table-permission-perms user-id {:table-ids #{table-id}})))
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
 

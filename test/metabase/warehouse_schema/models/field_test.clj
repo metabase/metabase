@@ -309,3 +309,43 @@
                        :model/Table {table-id :id} {:db_id db-id}]
           (let [field-id (op table-id)]
             (assert-coercion-effective-type-invariant! field-id label)))))))
+
+(deftest readable-fields-only-primes-permissions-test
+  (testing "the permission check is primed once rather than per table, however far the fields fan out"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database         {db-1 :id}     {}
+                     :model/Database         {db-2 :id}     {}
+                     :model/Table            {t-1 :id}      {:db_id db-1}
+                     :model/Table            {t-2 :id}      {:db_id db-1}
+                     :model/Table            {t-3 :id}      {:db_id db-2}
+                     :model/Table            {t-4 :id}      {:db_id db-2}
+                     :model/Field            {f-1 :id}      {:table_id t-1}
+                     :model/Field            {f-2 :id}      {:table_id t-2}
+                     :model/Field            {f-3 :id}      {:table_id t-3}
+                     :model/Field            {f-4 :id}      {:table_id t-4}
+                     :model/PermissionsGroup pg             {}]
+        (let [user-id (mt/user->id :rasta)]
+          (perms/add-user-to-group! user-id pg)
+          (t2/delete! :model/DataPermissions :db_id [:in [db-1 db-2]])
+          (doseq [db-id [db-1 db-2]]
+            (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+            (data-perms/set-database-permission! pg db-id :perms/create-queries :no))
+          ;; Readable in one table per database, so neither database can be answered by its own grant alone.
+          (doseq [table-id [t-1 t-3]]
+            (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+            (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder))
+          (mt/with-current-user user-id
+            (perms/with-relevant-permissions-for-user user-id
+              (let [fields (t2/select :model/Field :id [:in [f-1 f-2 f-3 f-4]])]
+                (t2/with-call-count [call-count]
+                  (let [readable (set (map :id (field/readable-fields-only fields)))]
+                    (is (= #{f-1 f-3} readable))
+                    (testing "four fields over four tables in two databases still cost a bounded number of queries"
+                      (is (>= 4 (call-count))
+                          (str "expected priming to bound the query count, got " (call-count)))))))))
+          (testing "and the result agrees with checking each field on its own"
+            (mt/with-current-user user-id
+              (perms/with-relevant-permissions-for-user user-id
+                (is (= #{f-1 f-3}
+                       (into #{} (comp (filter mi/can-read?) (map :id))
+                             (t2/select :model/Field :id [:in [f-1 f-2 f-3 f-4]]))))))))))))

@@ -31,9 +31,11 @@
 
 (defn- prime-table-perms-for-fields!
   "Load table permissions for `fields`' tables in one go — reading a Field delegates to its Table, so filtering a batch
-  of Fields would otherwise check one table at a time."
+  of Fields would otherwise check one table at a time. Pass `fields` already hydrated with `:table` where possible:
+  the databases are primed as well as the tables only if they can be read off the rows."
   [fields]
-  (perms/prime-table-perms-cache {:table-ids (into #{} (keep :table_id) fields)}))
+  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep (comp :db_id :table)) fields)
+                                  :table-ids (into #{} (keep :table_id) fields)}))
 
 (defn get-fields
   "Get `Field`s with IDs in `ids`."
