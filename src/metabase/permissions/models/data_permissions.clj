@@ -278,24 +278,28 @@
   passes silently -- as one query per entity -- in production."
   false)
 
-(defn- cache-primed?
-  "Whether a cache has already loaded something this request. Every cache records the scope it covers, so a non-empty
-  scope means a load happened."
-  [cache-value]
-  (boolean (or (seq (:db-ids cache-value))
-               (seq (:table-ids cache-value)))))
+(def ^:private max-cache-misses
+  "How many loads one cache may serve in a request before the pattern is treated as an unprimed run rather than a few
+  unrelated checks.
+
+  A handful is ordinary. Something has to load the cache, and a request can legitimately check several unrelated
+  things -- a dashboard whose parameters span two databases, an entity read followed by a chain-filter on a field
+  elsewhere, a card touching a few tables. Those cost a bounded number of queries.
+
+  Five is where measurement put the line: across the search, sandbox, dashboard and sync suites, raising the limit
+  from five to twelve changed nothing, so everything still caught at five is an unbounded run rather than a few
+  unrelated checks. Overridable with `MB_PERMS_CACHE_MISS_LIMIT` for re-measuring."
+  (or (some-> (System/getenv "MB_PERMS_CACHE_MISS_LIMIT") parse-long) 5))
 
 (defn- cache-miss!
-  "Called from a read-through cache when a check has to load rather than read.
-
-  The *first* miss of a request is ordinary: something has to load the cache, and a caller that primes correctly still
-  misses once. A *later* miss means an earlier load already covered a different scope -- which is the signature of a
-  run of checks that nobody primed, and costs one query per entity. That is what this rejects."
-  [kind cache-value]
-  (when (and *perms-cache-misses-are-errors?*
-             (cache-primed? cache-value))
-    (throw (ex-info (tru "Permission check was not primed. Load the scope up front with `prime-table-perms-cache`, `prime-db-perms-cache` or `prime-schema-perms-cache` before checking a batch.")
-                    {:kind kind}))))
+  "Called from a read-through cache when a check has to load rather than read. Counts the loads and throws once they
+  pass [[max-cache-misses]], so an unprimed run fails loudly in dev and test."
+  [kind cache]
+  (when *perms-cache-misses-are-errors?*
+    (let [{:keys [misses]} (swap! cache update :misses (fnil inc 0))]
+      (when (>= misses max-cache-misses)
+        (throw (ex-info (tru "Permission checks are running one query per entity. Load the scope up front with `prime-table-perms-cache`, `prime-db-perms-cache` or `prime-schema-perms-cache`.")
+                        {:kind kind}))))))
 
 (defn is-superuser?
   "Returns true if the given user ID is a superuser. Avoids a DB query when checking the current user."
@@ -406,7 +410,7 @@
     (if (contains? (:db-ids @*db-permission-cache*) database-id)
       (get-in @*db-permission-cache* [:perms user-id])
       (do
-        (cache-miss! :database @*db-permission-cache*)
+        (cache-miss! :database *db-permission-cache*)
         (load-db-perms! user-id #{database-id})))
     (load-db-perms user-id [database-id])))
 
@@ -464,7 +468,7 @@
     (do
       (let [missing-db-ids (into [] (remove (:db-ids @*schema-permission-cache*)) db-ids)]
         (when (seq missing-db-ids)
-          (cache-miss! :schema @*schema-permission-cache*)
+          (cache-miss! :schema *schema-permission-cache*)
           (let [loaded (load-schema-permission-perms user-id missing-db-ids)]
             (swap! *schema-permission-cache*
                    (fn [cache]
@@ -572,7 +576,7 @@
             (contains? (:table-ids @*table-permission-cache*) table-id))
       (get-in @*table-permission-cache* [:perms user-id])
       (do
-        (cache-miss! :table @*table-permission-cache*)
+        (cache-miss! :table *table-permission-cache*)
         (load-table-perms! user-id {:table-ids #{table-id}})))
     (load-table-permission-perms user-id {:table-ids #{table-id}})))
 
