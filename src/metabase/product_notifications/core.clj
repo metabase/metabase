@@ -38,7 +38,7 @@
    [:id ms/NonBlankString]
    [:schema_version [:= schema-version-v1]]
    [:title ms/NonBlankString]
-   [:content ms/NonBlankString]
+   [:description ms/NonBlankString]
    [:icon {:optional true} [:maybe ms/NonBlankString]]
    [:conditions ConditionsV1]])
 
@@ -91,11 +91,11 @@
       (throw (ex-info "Product notification start must be before its end"
                       {:id notification-id})))
     (validate-version-range! notification-id conditions)
-    ;; the client renders :display and the backend evaluates :conditions; keeping :display
+    ;; the client renders :content and the backend evaluates :conditions; keeping :content
     ;; a blob means a new renderable field needs no migration
     {:notification_id notification-id
      :schema_version  (:schema_version notification)
-     :display         (dissoc notification :id :schema_version :conditions)
+     :content         (dissoc notification :id :schema_version :conditions)
      :conditions      conditions
      :position        position}))
 

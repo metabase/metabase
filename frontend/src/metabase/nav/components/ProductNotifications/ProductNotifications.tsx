@@ -63,7 +63,7 @@ export function ProductNotifications() {
         isValidIconName(notification.icon) && <Icon name={notification.icon} />
       }
       title={notification.title}
-      body={<Markdown>{notification.content}</Markdown>}
+      body={<Markdown>{notification.description}</Markdown>}
       onDismiss={() => dismiss(notification.id)}
     />
   );

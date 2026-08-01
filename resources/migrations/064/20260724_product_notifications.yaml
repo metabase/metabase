@@ -27,7 +27,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: display
+                  name: content
                   type: ${text.type}
                   constraints:
                     nullable: false

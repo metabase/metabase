@@ -20,7 +20,7 @@
       [http/get (fn [_url _options]
                   {:status 200
                    :body   (body-stream
-                            "{\"notifications\":[{\"id\":\"hello\",\"schema_version\":1,\"title\":\"Hello\",\"content\":\"World\",\"conditions\":{\"audience\":\"all_users\",\"deployment\":\"any\",\"edition\":\"any\",\"starts_at\":\"2026-01-01T00:00:00Z\",\"ends_at\":\"2027-01-01T00:00:00Z\"}}]}")})]
+                            "{\"notifications\":[{\"id\":\"hello\",\"schema_version\":1,\"title\":\"Hello\",\"description\":\"World\",\"conditions\":{\"audience\":\"all_users\",\"deployment\":\"any\",\"edition\":\"any\",\"starts_at\":\"2026-01-01T00:00:00Z\",\"ends_at\":\"2027-01-01T00:00:00Z\"}}]}")})]
       (is (= ["hello"]
              (mapv :notification_id (:notifications (fetch/fetch-feed!)))))))
   (testing "does not decode a non-success response"

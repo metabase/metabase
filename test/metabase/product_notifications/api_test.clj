@@ -20,8 +20,8 @@
      :model/ProductNotification
      (merge {:notification_id notification-id
              :schema_version  1
-             :display         {:title   (str "Title " notification-id)
-                               :content (str "Content " notification-id)}
+             :content         {:title       (str "Title " notification-id)
+                               :description (str "Description " notification-id)}
              :conditions      {:audience   "all_users"
                                :deployment "any"
                                :edition    "any"
@@ -33,9 +33,9 @@
 
 (deftest list-product-notifications-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
-    (insert-notification! "second" 1 {:display {:title   "Title second"
-                                               :content "Content second"
-                                               :icon    "star"}})
+    (insert-notification! "second" 1 {:content {:title       "Title second"
+                                                :description "Description second"
+                                                :icon        "star"}})
     (insert-notification! "first" 0)
     (insert-notification! "admins" 2 {:conditions
                                       {:audience   "admins"
@@ -43,13 +43,13 @@
                                        :edition    "any"
                                        :starts_at  "2026-01-01T00:00:00Z"
                                        :ends_at    "2099-01-01T00:00:00Z"}})
-    (is (= [{:id      "first"
-             :title   "Title first"
-             :content "Content first"}
-            {:id      "second"
-             :title   "Title second"
-             :content "Content second"
-             :icon    "star"}]
+    (is (= [{:id          "first"
+             :title       "Title first"
+             :description "Description first"}
+            {:id          "second"
+             :title       "Title second"
+             :description "Description second"
+             :icon        "star"}]
            (mt/user-http-request :rasta :get 200 "product-notifications")))
     (is (= ["first" "second" "admins"]
            (mapv :id (mt/user-http-request :crowberto :get 200 "product-notifications"))))))

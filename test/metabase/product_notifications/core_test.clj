@@ -11,7 +11,7 @@
   (merge {:id             id
           :schema_version 1
           :title          "A useful update"
-          :content        "Read all about it."
+          :description    "Read all about it."
           :conditions     {:audience   "all_users"
                            :deployment "any"
                            :edition    "any"
@@ -38,7 +38,7 @@
       (is (= [0 2] (mapv :position (:notifications feed))))
       (is (= ["all_users" "admins"]
              (mapv #(get-in % [:conditions :audience]) (:notifications feed))))
-      (is (= "star" (get-in feed [:notifications 1 :display :icon])))
+      (is (= "star" (get-in feed [:notifications 1 :content :icon])))
       (is (= "2026-02-01T00:00:00Z"
              (get-in feed [:notifications 1 :conditions :starts_at])))
       (is (= [{:notification-id "future"

@@ -2245,9 +2245,9 @@
 (def ^:private product-notification-demo-data
   [{:notification_id "demo-product-notification-release"
     :schema_version  1
-    :display         (json/encode {:title   "Product notifications are ready"
-                                   :content "This notification is visible to everyone. Dismiss it to try the per-user dismissal flow."
-                                   :icon    "sparkles"})
+    :content         (json/encode {:title       "Product notifications are ready"
+                                   :description "This notification is visible to everyone. Dismiss it to try the per-user dismissal flow."
+                                   :icon        "sparkles"})
     :conditions      (json/encode {:audience   "all_users"
                                    :deployment "any"
                                    :edition    "any"
@@ -2260,9 +2260,9 @@
     :updated_at      :%now}
    {:notification_id "demo-product-notification-admin"
     :schema_version  1
-    :display         (json/encode {:title   "An admin-only notification"
-                                   :content "Only admins can see this one. It demonstrates audience targeting and display order."
-                                   :icon    "join_full_outer"})
+    :content         (json/encode {:title       "An admin-only notification"
+                                   :description "Only admins can see this one. It demonstrates audience targeting and display order."
+                                   :icon        "join_full_outer"})
     :conditions      (json/encode {:audience   "admins"
                                    :deployment "any"
                                    :edition    "any"

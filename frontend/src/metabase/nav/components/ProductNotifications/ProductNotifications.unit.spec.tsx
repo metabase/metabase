@@ -10,14 +10,14 @@ import { ProductNotifications } from "./ProductNotifications";
 const NOTIFICATION_A: ProductNotification = {
   id: "a",
   title: "First notification",
-  content: "Hello from A. [Register](https://example.com/a).",
+  description: "Hello from A. [Register](https://example.com/a).",
   icon: "join_full_outer",
 };
 
 const NOTIFICATION_B: ProductNotification = {
   id: "b",
   title: "Second notification",
-  content: "Hello from B.",
+  description: "Hello from B.",
 };
 
 const setup = ({

@@ -14,5 +14,5 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ProductNotification
-  {:display    mi/transform-json
+  {:content    mi/transform-json
    :conditions mi/transform-json})

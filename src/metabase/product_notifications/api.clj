@@ -12,7 +12,7 @@
   [:map {:closed true}
    [:id ms/NonBlankString]
    [:title ms/NonBlankString]
-   [:content ms/NonBlankString]
+   [:description ms/NonBlankString]
    [:icon {:optional true} ms/NonBlankString]])
 
 (def ^:private NoContentResponse
@@ -22,10 +22,10 @@
 
 (defn- notification-response
   [notification]
-  (let [{:keys [title content icon]} (:display notification)]
-    (cond-> {:id      (:notification_id notification)
-             :title   title
-             :content content}
+  (let [{:keys [title description icon]} (:content notification)]
+    (cond-> {:id          (:notification_id notification)
+             :title       title
+             :description description}
       icon (assoc :icon icon))))
 
 (api.macros/defendpoint :get "/" :- [:vector ProductNotificationResponse]

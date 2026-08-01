@@ -453,7 +453,7 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 export type ProductNotification = {
   id: string;
   title: string;
-  content: string; // markdown
+  description: string; // markdown
   icon?: string | IconName; // we check at runtime if it's a valid IconName
 };
 
