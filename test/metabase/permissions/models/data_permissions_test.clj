@@ -379,9 +379,10 @@
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
               (is (zero? (call-count))))
             (testing "a different database is a cache miss"
-              (t2/with-call-count [call-count]
-                (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)
-                (is (pos? (call-count)))))))))))
+              (binding [data-perms/*perms-cache-misses-are-errors?* false]
+                (t2/with-call-count [call-count]
+                  (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)
+                  (is (pos? (call-count))))))))))))
 
 (deftest table-permission-for-user-absent-table-still-sees-database-grant-test
   (testing "a check against a table that doesn't exist still sees the database-level grant"
