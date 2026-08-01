@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.product-notifications.api :as product-notifications.api]
    [metabase.product-notifications.init]
-   [metabase.product-notifications.service :as service]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.version.settings :as version.settings]
@@ -70,7 +70,7 @@
       (is (every? true?
                   (mt/repeat-concurrently
                    5
-                   #(service/dismiss! "concurrent" user-id false))))
+                   #(#'product-notifications.api/dismiss! "concurrent" user-id false))))
       (is (= 1 (t2/count :model/ProductNotificationDismissal
                          :user_id user-id))))))
 
