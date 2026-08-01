@@ -20,7 +20,7 @@
      :model/ProductNotification
      (merge {:notification_id notification-id
              :schema_version  1
-             :content         {:title   (str "Title " notification-id)
+             :display         {:title   (str "Title " notification-id)
                                :content (str "Content " notification-id)}
              :conditions      {:audience   "all_users"
                                :deployment "any"
@@ -33,7 +33,7 @@
 
 (deftest list-product-notifications-test
   (mt/with-model-cleanup [:model/ProductNotificationDismissal :model/ProductNotification]
-    (insert-notification! "second" 1 {:content {:title   "Title second"
+    (insert-notification! "second" 1 {:display {:title   "Title second"
                                                :content "Content second"
                                                :icon    "star"}})
     (insert-notification! "first" 0)

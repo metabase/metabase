@@ -19,7 +19,7 @@
       ;; edits land in place; dismissals key off the row, so fixing copy never re-notifies
       (t2/update! :model/ProductNotification (:id existing)
                   {:schema_version (:schema_version notification)
-                   :content        (:content notification)
+                   :display        (:display notification)
                    :conditions     (:conditions notification)
                    :position       (:position notification)
                    :retired_at     nil

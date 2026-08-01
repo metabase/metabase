@@ -91,11 +91,11 @@
       (throw (ex-info "Product notification start must be before its end"
                       {:id notification-id})))
     (validate-version-range! notification-id conditions)
-    ;; the client renders :content and the backend evaluates :conditions; keeping :content
+    ;; the client renders :display and the backend evaluates :conditions; keeping :display
     ;; a blob means a new renderable field needs no migration
     {:notification_id notification-id
      :schema_version  (:schema_version notification)
-     :content         (dissoc notification :id :schema_version :conditions)
+     :display         (dissoc notification :id :schema_version :conditions)
      :conditions      conditions
      :position        position}))
 

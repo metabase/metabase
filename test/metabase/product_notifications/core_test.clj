@@ -38,7 +38,7 @@
       (is (= [0 2] (mapv :position (:notifications feed))))
       (is (= ["all_users" "admins"]
              (mapv #(get-in % [:conditions :audience]) (:notifications feed))))
-      (is (= "star" (get-in feed [:notifications 1 :content :icon])))
+      (is (= "star" (get-in feed [:notifications 1 :display :icon])))
       (is (= "2026-02-01T00:00:00Z"
              (get-in feed [:notifications 1 :conditions :starts_at])))
       (is (= [{:notification-id "future"

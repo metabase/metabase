@@ -45,7 +45,7 @@
                                :model/ProductNotification
                                {:order-by [[:position :asc]]})))
       (is (= (select-keys (feed-notification "first" "First") [:title :content])
-             (t2/select-one-fn :content
+             (t2/select-one-fn :display
                                :model/ProductNotification
                                :notification_id "first"))))
     (testing "retires missing rows without deleting notification or dismissal state"
@@ -95,7 +95,7 @@
         (testing "the edit lands on the same row and the notification stays live"
           (is (= before-id (:id row)))
           (is (nil? (:retired_at row)))
-          (is (= "Changed" (get-in row [:content :title]))))
+          (is (= "Changed" (get-in row [:display :title]))))
         (testing "editing copy does not re-notify people who already dismissed it"
           (is (t2/exists? :model/ProductNotificationDismissal
                           :product_notification_id before-id
