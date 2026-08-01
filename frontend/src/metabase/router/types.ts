@@ -4,7 +4,7 @@ import type {
   FunctionComponent,
   HTMLProps,
 } from "react";
-import type { Location } from "react-router";
+import type { Location, Path } from "react-router";
 
 export type {
   Location,
@@ -35,10 +35,7 @@ export type LocationState = any;
  * string, the only form v7 reads; call sites that hold a query object serialize
  * it with `queryToSearch` first.
  */
-export interface LocationDescriptorObject {
-  pathname?: string;
-  search?: string;
-  hash?: string;
+export interface LocationDescriptorObject extends Partial<Path> {
   state?: LocationState;
 }
 
@@ -85,16 +82,11 @@ export interface History {
 export type RouteComponent = ComponentClass<any> | FunctionComponent<any>;
 
 /**
- * v3's function form of a `<Link to>`, kept because `RouterLink` still handles it.
- */
-type ToLocationFunction = (location: Location) => LocationDescriptor;
-
-/**
  * Props of the app's `<Link>`, re-homed from v3's `LinkProps`. `RouterLink` reads
  * `to` (and the active-styling props) and forwards the rest to the anchor.
  */
 export interface RouterLinkProps extends HTMLProps<any> {
-  to: LocationDescriptor | ToLocationFunction;
+  to: LocationDescriptor;
   activeClassName?: string;
   activeStyle?: CSSProperties;
   onlyActiveOnIndex?: boolean;
