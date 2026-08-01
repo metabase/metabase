@@ -4,7 +4,7 @@ import type { PropsWithChildren } from "react";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Route } from "./route";
+import { Route } from "metabase/router";
 import { useRouteLeaveBlocker } from "./use-route-leave-blocker";
 
 const shouldBlock = jest.fn();

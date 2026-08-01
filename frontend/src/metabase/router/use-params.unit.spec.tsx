@@ -5,9 +5,7 @@ import {
 } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { Route } from "./route";
-import { useParams } from "./use-params";
+import { Route, useParams } from "metabase/router";
 
 function ParamsProbe() {
   const { segmentId, fieldId } = useParams();

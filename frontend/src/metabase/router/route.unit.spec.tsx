@@ -3,8 +3,7 @@ import { useEffect } from "react";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Outlet } from "./Outlet";
-import { Route } from "./route";
+import { Outlet, Route } from "metabase/router";
 import { useRoutePathname } from "./use-route-leave-blocker";
 
 const Parent = () => (

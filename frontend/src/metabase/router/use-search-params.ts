@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
+import { useNavigate } from "react-router";
 
 import type { SetURLSearchParams, URLSearchParamsInit } from "./types";
 import { useLocation } from "./use-location";
-import { useNavigate } from "./use-navigate";
 import { createSearchParams, getSearchParamsForLocation } from "./utils";
 
 /**
