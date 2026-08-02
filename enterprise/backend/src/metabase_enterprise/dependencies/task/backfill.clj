@@ -199,9 +199,9 @@
       (deps.settings/dependency-backfill-variance-minutes)))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
 
-(derive ::backfill :metabase/event)
-(derive :event/serdes-load ::backfill)
-(derive :event/set-premium-embedding-token ::backfill)
+(events/derive! ::backfill :metabase/event)
+(events/derive! :event/serdes-load ::backfill)
+(events/derive! :event/set-premium-embedding-token ::backfill)
 
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]

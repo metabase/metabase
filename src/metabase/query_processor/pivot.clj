@@ -757,13 +757,16 @@
       (catch Throwable t
         {:throwable t}))))
 
+(def ^:private throwable-signature
+  (juxt class ex-message ex-data))
+
 (defn- outcomes-match?
-  "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw the
-  same throwable class, or both succeeded with row-equivalent results."
+  "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw
+  throwables with the same signature (see [[throwable-signature]]), or both succeeded with row-equivalent results."
   [{primary-outcome :outcome primary-t :throwable}
    {secondary-outcome :outcome secondary-t :throwable}]
   (cond
-    (and primary-t secondary-t) (= (class primary-t) (class secondary-t))
+    (and primary-t secondary-t) (= (throwable-signature primary-t) (throwable-signature secondary-t))
     (or  primary-t secondary-t) false
     :else                       (pivot-rows-equivalent? primary-outcome secondary-outcome)))
 
@@ -799,7 +802,7 @@
 
   When [[*check-pivot-parity?*]] is on and both paths are applicable, both run (primary via the caller's
   rff, secondary via the default rff for comparison) and disagreement is reported via
-  [[*on-parity-mismatch*]]. Parity checking is on by default in test builds.
+  [[*on-parity-mismatch*]]. Parity checking is on by default in clojure.test tests.
 
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query]

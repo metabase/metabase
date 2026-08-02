@@ -1,7 +1,14 @@
+import type { DatabaseId, SchemaId, SchemaName } from "metabase-types/api";
+
 import { generateSchemaId, getSchemaName, parseSchemaId } from "./schema";
 
-const SCHEMA_TEST_CASES = [
-  { dbId: 1, schemaName: 2, schema: "1:2" },
+type SchemaTestCase = {
+  dbId: DatabaseId;
+  schemaName?: SchemaName;
+  schema: SchemaId;
+};
+
+const SCHEMA_TEST_CASES: SchemaTestCase[] = [
   { dbId: 1, schemaName: "2", schema: "1:2" },
   { dbId: 1, schema: "1:" },
   {
@@ -26,7 +33,7 @@ describe("parseSchemaId", () => {
     const { schema, dbId, schemaName } = testCase;
 
     const expectedDatabaseId = dbId;
-    const expectedSchemaName = schemaName ? String(schemaName) : "";
+    const expectedSchemaName = schemaName ?? "";
 
     it(`parses "${schema}" correctly`, () => {
       const [parsedDatabaseId, parsedSchemaName] = parseSchemaId(schema);
@@ -66,7 +73,7 @@ describe("parseSchemaId", () => {
 describe("getSchemaName", () => {
   SCHEMA_TEST_CASES.forEach((testCase) => {
     const { schema, schemaName } = testCase;
-    const expectedSchemaName = schemaName ? String(schemaName) : "";
+    const expectedSchemaName = schemaName ?? "";
 
     it(`returns "${expectedSchemaName}" for "${schema}"`, () => {
       expect(getSchemaName(schema)).toBe(expectedSchemaName);

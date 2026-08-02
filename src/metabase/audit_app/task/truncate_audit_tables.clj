@@ -65,7 +65,10 @@
   "List of models to truncate. OSS implementation only truncates `query_execution` table."
   metabase-enterprise.audit-app.task.truncate-audit-tables
   []
-  [{:model :model/QueryExecution :timestamp-col :started_at}])
+  ;; postgres has partitioned query_execution; we detach partitions instead of deleting
+  (if (= :postgres (mdb/db-type))
+    []
+    [{:model :model/QueryExecution :timestamp-col :started_at}]))
 
 (defn- truncate-audit-tables!
   []
