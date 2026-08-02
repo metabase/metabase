@@ -112,11 +112,14 @@
   Only the `table` and `indexed-entity` methods of [[check-permissions-for-model]] resolve a result against its
   database; the rest are answered in SQL or from the collection. Results are consumed as a stream, so there is no
   point at which the databases they span are known -- and a search ranges over all of them anyway. So prime every
-  database: two queries, in place of one per database that turns up in the results."
+  database: two queries, in place of one per database that turns up in the results.
+
+  Destination databases are skipped -- they are reachable only through their router and never carry
+  `data_permissions` rows of their own, so priming them would just widen the load for nothing."
   [search-ctx]
   (when (and (not (:is-superuser? search-ctx))
              (some #{"table" "indexed-entity"} (:models search-ctx)))
-    (perms/prime-db-perms-cache {:db-ids (t2/select-pks-set :model/Database)})))
+    (perms/prime-db-perms-cache {:db-ids (t2/select-pks-set :model/Database :router_database_id nil)})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."

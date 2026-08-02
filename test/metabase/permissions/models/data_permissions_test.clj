@@ -215,6 +215,14 @@
       (testing "an empty seq does not throw"
         (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
 
+(deftest admin-permission-graph-excludes-destination-dbs-test
+  (testing "the admin permission graph covers routers but not their destinations"
+    (mt/with-temp [:model/Database {router-db-id :id}      {}
+                   :model/Database {destination-db-id :id} {:router_database_id router-db-id}]
+      (let [graph (data-perms/permissions-for-user (mt/user->id :crowberto))]
+        (is (contains? graph router-db-id))
+        (is (not (contains? graph destination-db-id)))))))
+
 (deftest destination-db-permissions-positive-control-test
   (testing "inserting a perm row for a normal (non-destination) db still succeeds"
     (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}

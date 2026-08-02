@@ -904,7 +904,8 @@
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
-  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database))
+  ;; destination databases are reachable only through their router and never carry permissions of their own
+  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database :router_database_id nil))
         perm-types (if perm-type [perm-type] (keys permissions.schema/data-permissions))]
     (into {} (map (fn [db-id]
                     [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
