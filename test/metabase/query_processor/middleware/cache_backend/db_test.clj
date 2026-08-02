@@ -4,47 +4,47 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
    [metabase.util.encryption-test :as encryption-test])
   (:import
-   (java.sql Connection)
-   (java.util.concurrent CountDownLatch TimeUnit)))
+   (java.util.concurrent CountDownLatch TimeUnit)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
 (defn- cache-results
   "Get the stored value from the query_cache"
-  ^bytes [^Connection conn]
-  (-> (jdbc/query {:connection conn} "select results from query_cache limit 1")
-      first
-      :results
-      byte-array))
+  []
+  (let [conn (.getConnection ^DataSource (:data-source mdb.connection/*application-db*))]
+    (-> (jdbc/query {:connection conn} "select results from query_cache limit 1")
+        first
+        :results
+        byte-array
+        codecs/bytes->str)))
 
 (deftest encryption-test
   (testing "With no encryption, cache results should be stored plain text"
     (encryption-test/with-secret-key nil
-      (mt/with-temp-empty-app-db [conn :h2]
-        (mdb/setup-db! :create-sample-content? false)
+      (data/with-empty-h2-app-db!
         (let [cache-backend (i/cache-backend :db)]
           (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
-          (let [cached (cache-results conn)]
-            (is (= "cache-value" (codecs/bytes->str cached))))))))
+          (let [cached (cache-results)]
+            (is (= "cache-value" cached)))))))
   (testing "With encryption enabled, cache results should be stored encrypted text"
     (encryption-test/with-secret-key "key1"
-      (mt/with-temp-empty-app-db [conn :h2]
-        (mdb/setup-db! :create-sample-content? false)
+      (data/with-empty-h2-app-db!
         (let [cache-backend (i/cache-backend :db)]
           (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
-          (let [cached (codecs/bytes->str (cache-results conn))]
+          (let [cached (cache-results)]
             (is (str/starts-with? cached "AES/CBC/PKCS5Padding"))
             (is (not (str/includes? cached "cache-value")))))))))
 
 (deftest save-results-concurrent-race-test
   (testing "Concurrent save-results! calls with the same query hash should not violate the PK constraint (#73770)"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+    (data/with-empty-h2-app-db!
       ;; Real query hashes are 32-byte SHA-256 digests; the query_cache PK is BINARY(32). With a
       ;; shorter hash, H2 pads stored values with zeros, so a subsequent select-by-hash would not
       ;; match — masking the retry logic in update-or-insert!.
