@@ -737,29 +737,47 @@
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
-    (let [details (:details (mt/db))
-          pk-key "testing"]
-      (is (=?
-           {:user some?
-            :password some?
-            :private_key_file complement}
-           (sql-jdbc.conn/connection-details->spec :snowflake details)))
-      (is (=?
-           {:user some?
-            :password some?
-            :private_key_file complement}
-           ;; Before `use-password` password took precedence over a key file
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
-      (is (=?
-           {:user some?
-            :password complement
-            :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
-      (is (=?
-           {:user some?
-            :password complement
-            :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
+    (let [details          (:details (mt/db))
+          pk-key           "testing"
+          ;; details as they would look for a database created back when password was the only auth method: a
+          ;; password and no `use-password` flag or private key
+          password-details (-> details
+                               (dissoc :private-key-value :private-key-options :use-password)
+                               (assoc :password "hunter2"))]
+      (testing "details with only a password use password auth"
+        (is (=?
+             {:user some?
+              :password some?
+              :private_key_file :hawk/key-not-present}
+             (sql-jdbc.conn/connection-details->spec :snowflake password-details))))
+      (testing "when `use-password` is missing, password takes precedence over a key file"
+        (is (=?
+             {:user some?
+              :password some?
+              :private_key_file :hawk/key-not-present}
+             (sql-jdbc.conn/connection-details->spec :snowflake (assoc password-details :private-key-value pk-key)))))
+      (testing "clearing the password changes to key auth"
+        (is (=?
+             {:user some?
+              :password :hawk/key-not-present
+              :private_key_file some?}
+             (sql-jdbc.conn/connection-details->spec :snowflake (assoc password-details
+                                                                       :password nil
+                                                                       :private-key-value pk-key)))))
+      (testing "`use-password` false changes to key auth even if a password is still present"
+        (is (=?
+             {:user some?
+              :password :hawk/key-not-present
+              :private_key_file some?}
+             (sql-jdbc.conn/connection-details->spec :snowflake (assoc password-details
+                                                                       :use-password false
+                                                                       :private-key-value pk-key)))))
+      (testing "the default test details use key auth"
+        (is (=?
+             {:user some?
+              :password :hawk/key-not-present
+              :private_key_file some?}
+             (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
