@@ -651,24 +651,50 @@
    :task (task! (dev-env/dev-env! parsed))}
 
   -johnswanson-dev-env
-  {:doc "Stand up (or tear down) an isolated dev environment for this worktree. Interactive prompts when flags omitted."
-   :examples [["./bin/mage -johnswanson-dev-env" "Interactive TUI to configure infra (saves config)"]
-              ["./bin/mage -johnswanson-dev-env --run" "Configure + launch backend/frontend"]
-              ["./bin/mage -johnswanson-dev-env --run --no-frontend" "Configure + backend only"]
-              ["./bin/mage -johnswanson-dev-env --down" "Stop everything for this worktree"]
-              ["./bin/mage -johnswanson-dev-env --status" "Show running containers and processes"]]
+  {:doc "Manage an isolated dev environment for this worktree (docker-compose style)."
+   :examples [["./bin/mage -johnswanson-dev-env" "Show status and available commands"]
+              ["./bin/mage -johnswanson-dev-env up" "Configure + start everything (idempotent)"]
+              ["./bin/mage -johnswanson-dev-env up --fresh" "Force-recreate containers and restart processes"]
+              ["./bin/mage -johnswanson-dev-env up --no-frontend" "Start without frontend dev server"]
+              ["./bin/mage -johnswanson-dev-env up --no-backend" "Start containers only, no backend process"]
+              ["./bin/mage -johnswanson-dev-env up --edition ee --token all-features --app-db h2 --with none" "Fully non-interactive: all flags specified"]
+              ["./bin/mage -johnswanson-dev-env up --config-file ./local/configs/seed.yml" "Preseed users/dbs/settings from a config file"]
+              ["./bin/mage -johnswanson-dev-env up --encryption-key my-secret-key" "Set MB_ENCRYPTION_SECRET_KEY"]
+              ["./bin/mage -johnswanson-dev-env up --non-interactive" "Reuse saved config without prompting"]
+              ["./bin/mage -johnswanson-dev-env add mongo" "Add MongoDB warehouse to running env"]
+              ["./bin/mage -johnswanson-dev-env logs" "Show last 100 lines from all log sources"]
+              ["./bin/mage -johnswanson-dev-env logs backend" "Show last 100 lines of backend logs"]
+              ["./bin/mage -johnswanson-dev-env logs -f" "Stream all logs (new lines only, interleaved)"]
+              ["./bin/mage -johnswanson-dev-env logs backend -f" "Stream backend logs"]
+              ["./bin/mage -johnswanson-dev-env open" "Open backend in default browser"]
+              ["./bin/mage -johnswanson-dev-env stop" "Stop processes and containers (preserves data)"]
+              ["./bin/mage -johnswanson-dev-env down" "Tear down everything (removes containers and config)"]]
    :requires [[mage.johnswanson.dev-env :as jds-dev-env]]
-   :options [["-e" "--edition EDITION" "ee or oss (default: prompt)"]
+   :custom-help? true
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum "open" "status" "list"]]
+                [:cat [:enum "up" "stop" "down"] [:* :string]]
+                [:cat [:= "add"] [:* :string]]
+                [:cat [:= "logs"] [:* :string]]]
+   :options [["-h" "--help" "Show help for a command"]
+             ["-e" "--edition EDITION" "ee or oss (default: prompt)"]
              ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
              [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
-             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev, or 'none' to skip"
               :multi true :default [] :update-fn conj]
-             [nil "--run" "Also launch backend + frontend in background"]
-             [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
-             [nil "--down" "Stop everything for this worktree"]
-             [nil "--status" "Show current env status"]
+             [nil "--config-file PATH" "Metabase config.yml to load on backend start (MB_CONFIG_FILE_PATH)"]
+             [nil "--encryption-key KEY" "Set MB_ENCRYPTION_SECRET_KEY"]
+             [nil "--non-interactive" "Never prompt. Fail if required flags are missing; treat missing --with as 'none'."]
+             [nil "--no-frontend" "Skip frontend dev server"]
+             [nil "--no-backend" "Skip backend process (containers + config only)"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
-             [nil "--fresh" "Recreate containers from scratch"]]
+             [nil "--fresh" "Force-recreate containers from scratch"]
+             ["-f" "--follow" "Stream new log lines in real time (logs subcommand)"]
+             [nil "--tail N" "Lines to show in dump mode, default 100 (logs subcommand)" :default 100 :parse-fn Integer/parseInt]
+             [nil "--stop" "With list: select envs to stop"]
+             [nil "--down" "With list: select envs to tear down"]
+             ["-a" "--all" "With list: show all worktrees, not just active ones"]]
    :task (task! (jds-dev-env/dev-env! parsed))}
 
   -bot-dev-env
