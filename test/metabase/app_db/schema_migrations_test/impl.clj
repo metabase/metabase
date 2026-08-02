@@ -229,7 +229,12 @@
   range.
 
   These run against the current set of test `DRIVERS` (by default H2), so if you want to run against more than H2
-  either set the `DRIVERS` env var or use [[mt/set-test-drivers!]] from the REPL."
+  either set the `DRIVERS` env var or use [[mt/set-test-drivers!]] from the REPL.
+
+  Tag tests whose target migrations shipped before the previous release with `^:mb/old-migrations-test`
+  (advance the boundary each release): each such test pays a near-full migration-suite prefix per app-db
+  matrix entry, and the tag skips it on PR runs while still running it on every push to master and
+  release branches — where a backported migration would land anyway."
   {:style/indent 2}
   [migration-range [migrate!-binding] & body]
   `(do-test-migrations!

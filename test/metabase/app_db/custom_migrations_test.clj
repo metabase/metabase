@@ -2598,7 +2598,7 @@
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
 
-(deftest migrate-clickhouse-details-to-multi-db-test
+(deftest ^:mb/old-migrations-test migrate-clickhouse-details-to-multi-db-test
   (testing "v57.2025-08-23T16:00:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations
@@ -2676,7 +2676,7 @@
           (testing "everything back to normal after downgrade"
             (assert-pre-conditions)))))))
 
-(deftest escape-existing-at-symbol-user-attributes-test
+(deftest ^:mb/old-migrations-test escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
     (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
       (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))
@@ -2701,7 +2701,7 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
-(deftest backfill-transform-target-db-id-test
+(deftest ^:mb/old-migrations-test backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
       (let [db-id         (:id (new-instance-with-default :metabase_database))
@@ -2750,7 +2750,7 @@
           (is (nil? (id->target none-id)))
           (is (nil? (id->target deleted-id))))))))
 
-(deftest fix-clickhouse-upload-db-schema-names-test
+(deftest ^:mb/old-migrations-test fix-clickhouse-upload-db-schema-names-test
   (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
     (encryption-test/with-secret-key "fake-secret-key"
       ;; Test when the upload db doesn't have an upload_schema_name set (both upload db and upload
@@ -2822,7 +2822,7 @@
                :active true
                :is_upload false} unrelated)))))))
 
-(deftest remove-legacy-incremental-strategies-test
+(deftest ^:mb/old-migrations-test remove-legacy-incremental-strategies-test
   (testing "v59.2026-03-13T00:00:00: migrate legacy checkpoint-filter to checkpoint-filter-field-id"
     (impl/test-migrations ["v59.2026-03-13T00:00:00"] [migrate!]
       (let [db-id    (:id (new-instance-with-default :metabase_database))
@@ -2909,7 +2909,7 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest backfill-mfa-confirmed-at-test
+(deftest ^:mb/old-migrations-test backfill-mfa-confirmed-at-test
   (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
     (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
       (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
@@ -2937,7 +2937,7 @@
           (testing "pending (unconfirmed) enrollment stays null"
             (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
 
-(deftest backfill-transform-target-tables-test
+(deftest ^:mb/old-migrations-test backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
       (let [db-id     (:id (new-instance-with-default :metabase_database))
