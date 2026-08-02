@@ -46,12 +46,14 @@ import {
   type LocationDescriptor,
   type MemoryTestRouterHolder,
   Route,
+  type RouteObject,
   RouterProviderMemory,
   createLocationMirror,
   createRouterNavigator,
   routerMiddleware,
   toFacadeLocation,
   toNavigateArgs,
+  toRouteObjects,
 } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -433,6 +435,19 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
   });
 }
 
+/**
+ * Mounts routes that are already objects, such as the app's own `getRoutes`.
+ * The router takes route objects, but a spec renders an element, so it hands
+ * them over on this element and the router wrapper unwraps it.
+ */
+export const RouteTree = (_props: { routes: RouteObject[] }): null => null;
+
+function isRouteTree(
+  children: React.ReactNode,
+): children is React.ReactElement<{ routes: RouteObject[] }> {
+  return isValidElement(children) && children.type === RouteTree;
+}
+
 function MaybeRouter({
   children,
   hasRouter,
@@ -453,22 +468,30 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
-  // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
-  // `<Routes>` only renders `<Route>` children, so wrap a bare component in a
-  // catch-all route.
-  const content = childrenAreRouteTree(children) ? (
-    children
-  ) : (
-    <Route path="*" element={children} />
-  );
   return (
     <RouterProviderMemory
+      routes={toRoutes(children)}
       initialRoute={initialRoute}
       routerHolder={routerHolder}
       onLocationChange={onLocationChange}
-    >
-      {content}
-    </RouterProviderMemory>
+    />
+  );
+}
+
+/**
+ * Tests pass route objects, a `<Route>` tree, or a bare component. Only a bare
+ * component needs anything doing to it: it gets a catch-all route to sit in.
+ */
+function toRoutes(children: React.ReactElement): RouteObject[] {
+  if (isRouteTree(children)) {
+    return children.props.routes;
+  }
+  return toRouteObjects(
+    childrenAreRouteTree(children) ? (
+      children
+    ) : (
+      <Route path="*" element={children} />
+    ),
   );
 }
 

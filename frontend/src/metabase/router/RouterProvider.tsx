@@ -1,8 +1,8 @@
-import type { PropsWithChildren } from "react";
 import { useLayoutEffect, useState } from "react";
 import {
   type DataRouter,
   RouterProvider as ReactRouterProvider,
+  type RouteObject,
 } from "react-router";
 
 import { getBasename } from "metabase/utils/basename";
@@ -71,11 +71,14 @@ function useLocationMirror(
  * all react to the LOCATION_CHANGE it emits.
  */
 export function RouterProvider({
-  children,
+  routes,
   onLocationChange,
-}: PropsWithChildren<{ onLocationChange?: LocationMirror }>): JSX.Element {
+}: {
+  routes: RouteObject[];
+  onLocationChange?: LocationMirror;
+}): JSX.Element {
   const [router] = useState(() =>
-    createAppRouter(children, getBasename() || undefined),
+    createAppRouter(routes, getBasename() || undefined),
   );
   useLocationMirror(router, onLocationChange);
 
@@ -89,19 +92,20 @@ export function RouterProvider({
  * tree.
  */
 export function RouterProviderMemory({
-  children,
+  routes,
   initialRoute,
   basename,
   routerHolder,
   onLocationChange,
-}: PropsWithChildren<{
+}: {
+  routes: RouteObject[];
   initialRoute: string;
   basename?: string;
   routerHolder?: MemoryTestRouterHolder;
   onLocationChange?: LocationMirror;
-}>): JSX.Element {
+}): JSX.Element {
   const [router] = useState(() => {
-    const created = createMemoryAppRouter(children, initialRoute, basename);
+    const created = createMemoryAppRouter(routes, initialRoute, basename);
     if (routerHolder) {
       routerHolder.current = created;
     }

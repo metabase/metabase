@@ -2,6 +2,7 @@ import { render, waitFor } from "@testing-library/react";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import {
+  RouteTree,
   getTestStoreAndWrapper,
   renderWithProviders,
   screen,
@@ -78,7 +79,7 @@ function setupAppRoutes({
     initialRoute,
     storeInitialState: { currentUser: user },
   });
-  render(getRoutes(store), { wrapper });
+  render(<RouteTree routes={getRoutes(store)} />, { wrapper });
   return { history };
 }
 

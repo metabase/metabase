@@ -13,6 +13,7 @@ export type {
   Params,
   Path,
   RelativeRoutingType,
+  RouteObject,
   SetURLSearchParams,
   To,
   URLSearchParamsInit,
