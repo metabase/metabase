@@ -8,13 +8,12 @@ import { getIsStepCompleted, getLocale } from "metabase/setup/selectors";
 import { Select } from "metabase/ui";
 
 import { updateLocale } from "../../actions";
-import { DEFAULT_LOCALES } from "../../constants";
 import { getLocales } from "../../utils";
 
 export const LanguageSelector = () => {
   const dispatch = useDispatch();
   const locale = useSelector(getLocale);
-  const localeData = useSetting("available-locales") ?? DEFAULT_LOCALES;
+  const localeData = useSetting("available-locales");
   const [updateSetting] = useUpdateSettingMutation();
   const isUserInfoStepCompleted = useSelector((state) =>
     getIsStepCompleted(state, "user_info"),

@@ -33,7 +33,6 @@ import {
   trackTrackingChanged,
   trackUsageReasonSelected,
 } from "./analytics";
-import { DEFAULT_LOCALES } from "./constants";
 import {
   getIsEmbeddingUseCase,
   getLocale,
@@ -64,7 +63,7 @@ export const loadLocaleDefaults = createAsyncThunk<
   void,
   ThunkConfig
 >(LOAD_LOCALE_DEFAULTS, async (_, { getState }) => {
-  const data = getSetting(getState(), "available-locales") ?? DEFAULT_LOCALES;
+  const data = getSetting(getState(), "available-locales");
   const locale = getDefaultLocale(getLocales(data));
   if (locale) {
     await loadLocalization(locale.code);
