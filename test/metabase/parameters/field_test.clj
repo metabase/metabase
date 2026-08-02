@@ -2,9 +2,22 @@
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.field :as parameters.field]
+   [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(deftest search-values-returns-empty-list-on-error-test
+  (testing (str "when the underlying search query throws, `search-values` returns an empty list (not nil) so callers "
+                "always get a valid list. Filtering on a UUID PK column triggered the throwing path (#40176).")
+    (with-redefs [search-values-query/search-values-query (fn [& _]
+                                                            (throw (ex-info "boom" {})))]
+      (is (= []
+             (parameters.field/search-values
+              (t2/select-one :model/Field :id (mt/id :venues :id))
+              (t2/select-one :model/Field :id (mt/id :venues :name))
+              "Red"
+              nil))))))
 
 (deftest ^:parallel search-values-test
   (testing "make sure `search-values` works on with our various drivers"

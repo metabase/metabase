@@ -22,6 +22,7 @@ import {
   ORDERS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import { getTableUrlForPristineQuestion } from "../utils";
@@ -73,20 +74,25 @@ type SetupOpts = {
   question: Question;
   options?: UpdateUrlOptions;
   currentState?: { card: Card; cardId?: number; serializedCard: string } | null;
+  originalCard?: Card | null;
+  isModifiedFromNotebook?: boolean;
 };
 
 async function setup({
   question,
   options = {},
   currentState = null,
+  originalCard = null,
+  isModifiedFromNotebook = false,
 }: SetupOpts) {
   const dispatch = jest.fn();
   const qb = createMockQueryBuilderState({
     card: question.card(),
-    originalCard: null,
+    originalCard,
     currentState,
     uiControls: createMockQueryBuilderUIControlsState({
       queryBuilderMode: "view",
+      isModifiedFromNotebook,
     }),
   });
   const getState = () => ({
@@ -240,6 +246,62 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     });
   });
 
+  // Witness for metabase#56775: when navigating an ad-hoc model/metric (the QB
+  // composes a model into an ad-hoc question whose source is the model itself),
+  // the card carried on location.state must be the UNWRAPPED underlying model
+  // card, not the composed ad-hoc wrapper. Otherwise the back button restores a
+  // card whose source-table is `card__<id>` (the model wrapping itself) instead
+  // of the model's real query.
+  it("carries the unwrapped model card (not the composed ad-hoc card) for an ad-hoc model (metabase#56775)", async () => {
+    // Defaults to a structured model over ORDERS (source-table = ORDERS_ID).
+    const modelCard = createStructuredModelCard({ id: 1 });
+    const entities = createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      questions: [modelCard],
+    });
+    const baseState = createMockState({ entities });
+    const metadata = getMetadata(baseState);
+    const modelQuestion = checkNotNull(metadata.question(modelCard.id));
+    // This is what getQuestion produces when opening a model: an ad-hoc question
+    // whose query reads FROM the model (source-card = the model itself).
+    const adHocModelQuestion = modelQuestion.composeQuestion();
+
+    // Sanity: composing rewrites the query to read FROM the model, so the
+    // composed card's query no longer equals the model's real query.
+    expect(adHocModelQuestion.card().dataset_query).not.toEqual(
+      modelCard.dataset_query,
+    );
+
+    const dispatch = jest.fn();
+    const qb = createMockQueryBuilderState({
+      // qb.card / originalCard hold the real (unwrapped) model card.
+      card: modelCard,
+      originalCard: modelCard,
+      currentState: null,
+      uiControls: createMockQueryBuilderUIControlsState({
+        queryBuilderMode: "view",
+      }),
+    });
+    const getState = () => ({ ...baseState, qb });
+
+    await updateUrl(adHocModelQuestion, { dirty: true, replaceState: false })(
+      dispatch,
+      getState,
+    );
+
+    // updateUrl records the card it is about to carry on history.state via
+    // setCurrentState(newState) before dispatching the router push. Assert on
+    // that payload — it is the same `card` decision the back-button restore
+    // reads back, and is independent of the router transport.
+    const setStateCall = dispatchedSetCurrentState(dispatch);
+    expect(setStateCall).toBeDefined();
+    const newState = setStateCall?.[0].payload;
+    // Clean HEAD unwraps to the model's real query. The reintroduced bug
+    // (metabase#56775) carries the composed ad-hoc wrapper whose source is the
+    // model itself, so the back button would restore the model wrapping itself.
+    expect(newState.card.dataset_query).toEqual(modelCard.dataset_query);
+  });
+
   it("flows objectId through onto location.state", async () => {
     const card = createSavedStructuredCard();
     const question = buildSavedQuestion(card);
@@ -304,6 +366,41 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       expect(
         getDispatchedNavigation(dispatch)?.descriptor.pathname,
       ).not.toMatch(/^\/table\//);
+    });
+  });
+
+  // When dirty is not passed explicitly, updateUrl computes it. A saved question
+  // that was edited from the notebook editor must be treated as dirty even when
+  // its query happens to match the original again (e.g. add then remove a
+  // filter). A dirty saved question serializes its card into the URL hash; a
+  // clean one navigates to the plain URL with no hash. (metabase#48829)
+  describe("dirty computation (isModifiedFromNotebook)", () => {
+    it("treats a notebook-modified question as dirty even when it matches its original", async () => {
+      const card = createSavedStructuredCard();
+      const question = buildSavedQuestion(card);
+
+      const { dispatch } = await setup({
+        question,
+        // Identical original ⇒ isDirtyComparedTo is false, so only the
+        // isModifiedFromNotebook flag can drive dirtiness here.
+        originalCard: card,
+        isModifiedFromNotebook: true,
+      });
+
+      expect(getDispatchedNavigation(dispatch)?.descriptor.hash).toBeTruthy();
+    });
+
+    it("treats an unmodified question matching its original as clean", async () => {
+      const card = createSavedStructuredCard();
+      const question = buildSavedQuestion(card);
+
+      const { dispatch } = await setup({
+        question,
+        originalCard: card,
+        isModifiedFromNotebook: false,
+      });
+
+      expect(getDispatchedNavigation(dispatch)?.descriptor.hash).toBeFalsy();
     });
   });
 });

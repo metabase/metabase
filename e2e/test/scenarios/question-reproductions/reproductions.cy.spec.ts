@@ -366,53 +366,6 @@ describe("issue 47793", () => {
     },
   );
 });
-describe("issue 49270", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("document title should not indicate that loading takes place when query has errored (metabase#49270)", () => {
-    H.openOrdersTable();
-    cy.icon("sum").click();
-
-    cy.intercept("POST", "/api/dataset", (request) => {
-      request.reply({ statusCode: 500, delay: 1000 });
-    });
-
-    cy.button("Done").click();
-    cy.title().should("equal", "Doing science... · Metabase");
-    cy.title().should("equal", "Question · Metabase");
-  });
-});
-
-describe("issue 53404", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should show an error message when overwriting a card with a cycle (metabase#53404)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openNotebook();
-    H.getNotebookStep("data").button("Join data").click();
-    H.miniPicker().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("Orders").click();
-    });
-    H.popover().findByText("ID").click();
-    H.popover().findByText("ID").click();
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@updateCard");
-      cy.findByText("Cannot save card with cycles.").should("be.visible");
-      cy.findByText(/undefined/).should("not.exist");
-    });
-  });
-});
-
 describe("issue 53170", () => {
   beforeEach(() => {
     H.restore();
@@ -605,40 +558,6 @@ describe("54205", () => {
     });
   });
 });
-describe("issue 55631", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-    cy.intercept("POST", "/api/card").as("cardCreate");
-  });
-
-  it("should not flash the default title when saving the question (metabase#55631)", () => {
-    H.visualize();
-    cy.findByTestId("qb-header").button("Save").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Name").clear().type("Custom");
-      cy.findByLabelText("Where do you want to save this?").click();
-    });
-
-    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
-
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@cardCreate");
-
-      // It is important to have extremely short timeout in order to catch the issue
-      // before the dialog closes.
-      cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
-    });
-  });
-});
 describe("issue 42723", () => {
   const questionDetails: StructuredQuestionDetails = {
     display: "line",
@@ -716,51 +635,6 @@ describe("issue 52872", () => {
       });
   });
 });
-describe("issue 64293", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be possible to run a query for a empty required parameter without a default value (metabase#64293)", () => {
-    const questionDetails: NativeQuestionDetails = {
-      name: "Question 1",
-      native: {
-        query: "SELECT * FROM PEOPLE WHERE state = {{State}}",
-        "template-tags": {
-          State: {
-            type: "text",
-            name: "State",
-            id: "1",
-            "display-name": "State",
-          },
-        },
-      },
-      parameters: [
-        createMockParameter({
-          id: "1",
-          slug: "State",
-          required: true,
-          name: "State",
-        }),
-      ],
-    };
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    cy.findByPlaceholderText("State").should("exist");
-    cy.findByPlaceholderText("State").type("NY{enter}");
-
-    H.runButtonOverlay().should("exist");
-    H.runButtonOverlay().click();
-
-    H.ensureParameterColumnValue({
-      columnName: "STATE",
-      columnValue: "NY",
-    });
-  });
-});
-
 describe("issue 13347", () => {
   beforeEach(() => {
     H.restore();

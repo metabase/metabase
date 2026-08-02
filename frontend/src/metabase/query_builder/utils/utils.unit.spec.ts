@@ -642,6 +642,17 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
+    describe("disallows leaving for the metric view page while editing (metabase#32037)", () => {
+      it.each(getViewMetricLocations(question))(
+        "to `$pathname`",
+        (destination) => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(false);
+        },
+      );
+    });
+
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
