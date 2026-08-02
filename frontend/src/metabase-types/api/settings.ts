@@ -634,7 +634,7 @@ interface PublicSettings {
   "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
-  "session-cookies": boolean | null;
+  "session-cookies": boolean;
   "setup-token": string | null;
   "metabot-enabled?": boolean;
   "metabot-name": string;

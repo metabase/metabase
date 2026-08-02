@@ -21,7 +21,7 @@ interface PasswordPanelProps {
 export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const providers = useSelector(getExternalAuthProviders);
   const isLdapEnabled = useSetting("ldap-enabled");
-  const hasSessionCookies = useSetting("session-cookies") ?? false;
+  const hasSessionCookies = useSetting("session-cookies");
   const dispatch = useDispatch();
 
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeResponse | null>(
