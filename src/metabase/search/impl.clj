@@ -106,20 +106,25 @@
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
 
-(defn- prime-db-perms!
-  "Load the whole-database permissions that the per-result checks are about to read.
+(defn- prime-perms!
+  "Load the permissions that the per-result checks are about to read.
 
-  Only the `table` and `indexed-entity` methods of [[check-permissions-for-model]] resolve a result against its
-  database; the rest are answered in SQL or from the collection. Results are consumed as a stream, so there is no
-  point at which the databases they span are known -- and a search ranges over all of them anyway. So prime every
-  database: two queries, in place of one per database that turns up in the results.
+  Only the `table` and `indexed-entity` methods of [[check-permissions-for-model]] consult them; the rest are answered
+  in SQL or from the collection. A `table` result is checked with `can-query?`, which reads both the table's own grant
+  and its database's, so this primes the table cache -- which covers the database cache too. `indexed-entity` needs
+  only the database half.
+
+  Results are consumed as a stream, so there is no point at which the databases they span are known -- and a search
+  ranges over all of them anyway, so prime every database. Passing only `:db-ids` is what makes that affordable: the
+  table cache holds `data_permissions` rows with a `table_id`, so the load is bounded by how many table-level grants
+  the user's groups actually have, not by how many tables exist.
 
   Destination databases are skipped -- they are reachable only through their router and never carry
   `data_permissions` rows of their own, so priming them would just widen the load for nothing."
   [search-ctx]
   (when (and (not (:is-superuser? search-ctx))
              (some #{"table" "indexed-entity"} (:models search-ctx)))
-    (perms/prime-db-perms-cache {:db-ids (t2/select-pks-set :model/Database :router_database_id nil)})))
+    (perms/prime-table-perms-cache {:db-ids (t2/select-pks-set :model/Database :router_database_id nil)})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -507,7 +512,7 @@
   Hydration is the expensive part, so it should only ever run on the rows actually returned.
   Pass the result to [[search-results]] for the API response shape; [[search]] composes the two."
   [search-ctx :- SearchContext]
-  (prime-db-perms! search-ctx)
+  (prime-perms! search-ctx)
   (let [reducible-results (search.engine/results search-ctx)
         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
