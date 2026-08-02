@@ -1,12 +1,7 @@
-import { render, waitFor } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
-import {
-  RouteTree,
-  getTestStoreAndWrapper,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -74,12 +69,10 @@ function setupAppRoutes({
   initialRoute: string;
   user?: ReturnType<typeof createMockUser>;
 }) {
-  const { wrapper, store, history } = getTestStoreAndWrapper({
-    withRouter: true,
+  const { history } = renderRoutes(getRoutes, {
     initialRoute,
     storeInitialState: { currentUser: user },
   });
-  render(<RouteTree routes={getRoutes(store)} />, { wrapper });
   return { history };
 }
 

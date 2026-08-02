@@ -130,6 +130,27 @@ export function renderWithProviders(
   };
 }
 
+/**
+ * Renders route objects, for a spec that has them already, such as the app's own
+ * `getRoutes`. Pass a function to build them from the store the harness makes.
+ */
+export function renderRoutes(
+  routes: RouteObject[] | ((store: Store<State>) => RouteObject[]),
+  { initialRoute = "/", ...options }: RenderWithProvidersOptions = {},
+) {
+  const {
+    wrapper: Wrapper,
+    store,
+    history,
+  } = getTestStoreAndWrapper({ ...options, initialRoute, withRouter: true });
+
+  const utils = testingLibraryRender(
+    <Wrapper routes={typeof routes === "function" ? routes(store) : routes} />,
+  );
+
+  return { ...utils, store, history };
+}
+
 export function renderHookWithProviders<TProps, TResult>(
   hook: (props: TProps) => TResult,
   {
@@ -290,6 +311,7 @@ const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
 
 export function TestWrapper({
   children,
+  routes,
   store,
   routerHolder,
   withRouter,
@@ -301,7 +323,12 @@ export function TestWrapper({
   displayTheme,
   withCssVariables = false,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  /**
+   * Routes to mount, for a spec that has them as objects already, such as the
+   * app's own `getRoutes`. Takes the place of rendering a `<Route>` tree.
+   */
+  routes?: RouteObject[];
   store: any;
   routerHolder?: MemoryTestRouterHolder;
   withRouter: boolean;
@@ -340,6 +367,7 @@ export function TestWrapper({
                 <MaybeKBar hasKBar={withKBar}>
                   <MaybeRouter
                     hasRouter={withRouter}
+                    routes={routes}
                     routerHolder={routerHolder}
                     initialRoute={initialRoute}
                   >
@@ -435,26 +463,15 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
   });
 }
 
-/**
- * Mounts routes that are already objects, such as the app's own `getRoutes`.
- * The router takes route objects, but a spec renders an element, so it hands
- * them over on this element and the router wrapper unwraps it.
- */
-export const RouteTree = (_props: { routes: RouteObject[] }): null => null;
-
-function isRouteTree(
-  children: React.ReactNode,
-): children is React.ReactElement<{ routes: RouteObject[] }> {
-  return isValidElement(children) && children.type === RouteTree;
-}
-
 function MaybeRouter({
   children,
+  routes,
   hasRouter,
   routerHolder,
   initialRoute,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  routes?: RouteObject[];
   hasRouter: boolean;
   routerHolder?: MemoryTestRouterHolder;
   initialRoute: string;
@@ -466,11 +483,11 @@ function MaybeRouter({
   );
 
   if (!hasRouter) {
-    return children;
+    return <>{children}</>;
   }
   return (
     <RouterProviderMemory
-      routes={toRoutes(children)}
+      routes={routes ?? toRoutes(children)}
       initialRoute={initialRoute}
       routerHolder={routerHolder}
       onLocationChange={onLocationChange}
@@ -479,12 +496,13 @@ function MaybeRouter({
 }
 
 /**
- * Tests pass route objects, a `<Route>` tree, or a bare component. Only a bare
+ * Tests render either a `<Route>` tree or a bare component. Only a bare
  * component needs anything doing to it: it gets a catch-all route to sit in.
+ * A spec that has routes as objects passes them as `routes` instead.
  */
-function toRoutes(children: React.ReactElement): RouteObject[] {
-  if (isRouteTree(children)) {
-    return children.props.routes;
+function toRoutes(children?: React.ReactElement): RouteObject[] {
+  if (!children) {
+    return [];
   }
   return toRouteObjects(
     childrenAreRouteTree(children) ? (
