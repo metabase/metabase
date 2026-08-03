@@ -115,12 +115,12 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
-;; The v2 UI resources gate on the single `agent:viz:mcp-ui`. The two `:query`/`:drill-through`
-;; leaves below shipped in v0.62 and still gate v1's, so they stay declared — tokens carry the
-;; literal string and a bare `agent:viz:mcp-ui` grant does not cover them (wildcard matching only
-;; fires on grants ending in `:*`).
-(api-scope/defscope agent-viz-mcp-ui "agent:viz:mcp-ui"
-  (deferred-tru "Visualize within the chat"))
+;; The v2 UI resources gate on `agent:query:run`, not a viz scope of their own: rendering a chart
+;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
+;; viz-only grant would run a query the user thought they had declined. Client capability is gated
+;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a
+;; separate scope was not a data boundary. The two leaves below shipped in v0.62 and still gate
+;; v1's resources, so they stay declared — tokens carry the literal string.
 (api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
   (deferred-tru "Render query visualizations in the MCP UI"))
 (api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"

@@ -90,7 +90,7 @@
    {:uri           "ui://metabase/visualize-query.html"
     :name          "Visualize Query"
     :description   "Lightweight MCP Apps visualization for a query"
-    :scope         metabot.scope/agent-viz-mcp-ui
+    :scope         metabot.scope/agent-query-run
     :prefersBorder true
     :render-fn     (mcp.ui-resource/embed-render-fn "visualize-query")}))
 
@@ -100,6 +100,6 @@
    {:uri           "ui://metabase/render-drill-through.html"
     :name          "Render Drill Through"
     :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
-    :scope         metabot.scope/agent-viz-mcp-ui
+    :scope         metabot.scope/agent-query-run
     :prefersBorder true
     :render-fn     (mcp.ui-resource/embed-render-fn "render-drill-through")}))

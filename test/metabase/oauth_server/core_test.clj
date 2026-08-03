@@ -96,8 +96,8 @@
       (testing "an indicator naming the v2 resource drops scopes that surface does not accept"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
                                 [v2-uri]
-                                "agent:content:read agent:question:create agent:sql:execute agent:viz:mcp-ui"))]
-          (is (= #{"agent:content:read" "agent:viz:mcp-ui"} narrowed))))
+                                "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
+          (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
       (testing "every scope v2 advertises survives narrowing — otherwise the resource doc would
                 advertise a scope its own consent flow strips"
         (let [advertised (oauth-server/v2-resource-scopes)]

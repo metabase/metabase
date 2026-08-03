@@ -29,7 +29,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private viz-scopes
-  #{"agent:viz:mcp-ui"})
+  #{"agent:query:run"})
 
 (def ^:private mcp-ui-client
   "A client that advertises the MCP Apps UI extension. Both tools are gated on it."
@@ -230,10 +230,16 @@
 ;;; ------------------------------------------------ Client gating -------------------------------------------------
 
 (deftest mcp-app-ui-extension-gating-test
-  (testing "GHY-4157: MCP Apps tools are hidden from clients that cannot render an iframe"
-    (let [visible (fn [options] (set (map :name (registry/list-tools viz-scopes options))))]
-      (is (= #{"visualize_query" "render_drill_through"} (visible {:supports-mcp-ui? true})))
-      (is (= #{} (visible {:supports-mcp-ui? false})))))
+  (testing "GHY-4157: MCP Apps tools are hidden from clients that cannot render an iframe.
+            Asserted per-tool rather than by set equality: the UI tools share `agent:query:run`
+            with the execute tools, so the granting scope lists more than these two."
+    (let [visible (fn [options] (set (map :name (registry/list-tools viz-scopes options))))
+          with-ui (visible {:supports-mcp-ui? true})
+          no-ui   (visible {:supports-mcp-ui? false})]
+      (doseq [tool-name ["visualize_query" "render_drill_through"]]
+        (testing tool-name
+          (is (contains? with-ui tool-name))
+          (is (not (contains? no-ui tool-name)))))))
   (testing "GHY-4157: calling one from an incapable client says what the client is missing"
     (mt/with-current-user (mt/user->id :rasta)
       (let [message (error-text (call! "visualize_query" (str (random-uuid))
@@ -244,12 +250,17 @@
 
 (deftest scope-gating-test
   (mt/with-current-user (mt/user->id :rasta)
-    (testing "GHY-4157: each MCP Apps tool is gated on its own scope"
-      (is (str/includes? (-> (registry/call-tool #{"agent:query:run"} (str (random-uuid))
-                                                 "visualize_query" {:query_handle (str (random-uuid))}
-                                                 mcp-ui-client)
-                             response-text)
-                         "Insufficient scope")))))
+    (testing "GHY-4157: the MCP Apps tools are scope-gated — a token without `agent:query:run` is
+              refused before the handle is ever looked up. Rendering a chart is what running a query
+              looks like on screen, so they share the execute tools' scope rather than carrying one
+              of their own."
+      (doseq [tool-name ["visualize_query" "render_drill_through"]]
+        (testing tool-name
+          (is (str/includes? (-> (registry/call-tool #{"agent:content:read"} (str (random-uuid))
+                                                     tool-name {:query_handle (str (random-uuid))}
+                                                     mcp-ui-client)
+                                 response-text)
+                             "Insufficient scope")))))))
 
 ;;; ------------------------------------------------- Manifest -----------------------------------------------------
 
@@ -307,10 +318,10 @@
               unlocks nothing here, since a bare grant matches only itself"
       (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))
       (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:drill-through"})))))
-    (is (empty? (:resources (v2.resources/list-resources #{"agent:query:run"})))))
+    (is (empty? (:resources (v2.resources/list-resources #{"agent:content:read"})))))
   (testing "GHY-4157: reading a shell without its scope is denied, not served"
     (is (= :scope-denied (:status (v2.resources/read-resource v2.resources/visualize-query-uri
-                                                              #{"agent:query:run"} {}))))
+                                                              #{"agent:content:read"} {}))))
     (is (= :not-found (:status (v2.resources/read-resource "ui://metabase/nope.html"
                                                            viz-scopes {}))))))
 
