@@ -26,7 +26,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
-   [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -325,7 +325,7 @@
   (when (and (init-status/complete?)
              (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))
     (when-let [{:keys [uid sid] :as claims}
-               (mcp.session/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
+               (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
       (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid]))
               (m/update-existing :is-group-manager? boolean)
               ;; Endpoint scope middleware treats this as session-like auth, but the
