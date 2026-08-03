@@ -180,7 +180,7 @@ export function createTestPlan({
     forceAll ? files : filterAffectedTests(nodes, affected, files);
 
   // A non-narrowing run (merge queue, pushes to master) still uses the plan
-  // to decide WHETHER a suite runs, but never trims it:
+  // to decide whether a suite runs, but never trims it:
   // any selected work at all widens to the full suite.
   const widen = (selected: string[], all: string[]) =>
     narrow || selected.length === 0 ? selected : all;

@@ -212,10 +212,8 @@ jobs:
       skip: ${{ needs.create-test-plan.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.create-test-plan.outputs.frontend_all != 'true' && needs.create-test-plan.outputs.e2e_all != 'true' }}
       skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
-      # The plan decides whether unit specs run - an empty selection skips
-      # the job. Off pull requests the plan never trims (narrow=false),
-      # so a non-empty selection there means the full suite.
-      # No plan at all (workflow_dispatch) also skips, as before.
+      # The plan decides whether unit specs run.
+      # An empty selection skips the job, and so does having no plan at all (workflow_dispatch).
       skip-unit: ${{ needs.create-test-plan.outputs.fe_unit_specs_count == '0' || needs.create-test-plan.outputs.fe_unit_specs_count == '' }}
       unit-specs-from-plan: ${{ github.event_name == 'pull_request' }}
 
@@ -247,9 +245,7 @@ jobs:
       # that touched only specs would silently run a narrowed suite — we always want the full suite there.
       specs: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
 
-  # Loki visual regression tests.
-  # The job lives here to share the test plan computed above,
-  # and keeps the `visual-test` key because branch protection requires that check name.
+  # Branch protection requires a check named `visual-test`, so the job key must not change.
   visual-test:
     needs: [create-test-plan]
     if: |

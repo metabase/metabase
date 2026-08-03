@@ -6,8 +6,7 @@ on:
       skip:
         type: boolean
         default: false
-      # fe-tests-unit is gated by this alone - the caller decides,
-      # from the test plan on pull requests and from dorny elsewhere.
+      # fe-tests-unit is gated by this alone - the caller decides from the test plan.
       skip-unit:
         type: boolean
         default: false
