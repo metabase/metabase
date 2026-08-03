@@ -109,7 +109,6 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       popoverProps: {
         position: "right-start",
         offset: 20,
-        // Settings dropdowns are portaled into the popover and overflow it.
         styles: { dropdown: { overflow: "visible" } },
       },
       popover: FormatPopover,

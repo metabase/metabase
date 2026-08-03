@@ -84,8 +84,6 @@ describe("ChartSettingSelect", () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  // Asserts the input's display value: options stay mounted while the dropdown
-  // is closed, so a getByText check would pass even when nothing is selected.
   it("should show correct option as selected", () => {
     const { rerender } = render(
       <ChartSettingSelect
