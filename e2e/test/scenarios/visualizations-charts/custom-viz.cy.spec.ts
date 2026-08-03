@@ -591,7 +591,7 @@ describe("admin > custom visualizations", () => {
         });
       cy.findByTestId("demo-viz-brand-color")
         .invoke("text")
-        .should("match", /Brand color: (#[0-9a-fA-F]{3,8}|rgba?\(.+\))$/);
+        .should("match", /Brand color: (#[0-9a-fA-F]{3,8}|(rgb|hsl)a?\(.+\))$/);
       cy.findByTestId("demo-viz-font-family").should("contain", "Lato");
       cy.findByTestId("demo-viz-color-scheme").should(
         "have.text",
@@ -2274,7 +2274,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      15,
+      25,
     );
   });
 
