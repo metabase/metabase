@@ -49,8 +49,6 @@ function ProviderTypeMark({
   size: number;
 }) {
   if (type === "metabase") {
-    // this provider is Metabase's own hosted service, so it keeps the Metabase mark on a
-    // whitelabelled instance rather than taking on the customer's logo
     return <DefaultLogoIcon height={size} />;
   }
 

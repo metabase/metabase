@@ -21,8 +21,6 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
   const { data: connections = [], isLoading } = useListLlmProvidersQuery();
   const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
 
-  // a connection can be listed without being able to serve a request — one configured by env
-  // var with a field missing, say — and that is not something to call connected
   const connectedProvider = connections.find((connection) => connection.usable);
   const connectedLabel = providerTypes.find(
     (providerType) => providerType.type === connectedProvider?.type,
