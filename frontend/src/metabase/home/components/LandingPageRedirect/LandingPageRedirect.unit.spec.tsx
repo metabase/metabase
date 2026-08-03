@@ -16,8 +16,8 @@ describe("LandingPageRedirect", () => {
   const setup = () =>
     renderWithProviders(
       <>
-        <Route path="/" component={LandingPageRedirect} />
-        <Route path="/custom" component={() => <div>custom page</div>} />
+        <Route path="/" element={<LandingPageRedirect />} />
+        <Route path="/custom" element={<div>custom page</div>} />
       </>,
       { withRouter: true, initialRoute: "/" },
     );

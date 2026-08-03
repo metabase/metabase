@@ -45,13 +45,11 @@ const setup = ({ isSuperuser = true, remoteSyncType }: SetupOptions = {}) => {
     <>
       <Route
         path="/"
-        component={() => (
-          <RootSnippetsCollectionMenu collectionId={collection.id} />
-        )}
+        element={<RootSnippetsCollectionMenu collectionId={collection.id} />}
       />
       <Route
         path={dataStudioArchivedSnippets()}
-        component={() => <div data-testid="archived-snippets" />}
+        element={<div data-testid="archived-snippets" />}
       />
     </>,
     {

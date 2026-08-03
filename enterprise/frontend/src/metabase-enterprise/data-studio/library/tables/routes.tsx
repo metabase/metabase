@@ -20,52 +20,52 @@ import { TableSegmentsPage } from "./pages/TableSegmentsPage";
 export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="tables">
-      <Route path=":tableId" component={TableOverviewPage} />
-      <Route path=":tableId/fields" component={TableFieldsPage} />
-      <Route path=":tableId/fields/:fieldId" component={TableFieldsPage} />
-      <Route path=":tableId/segments" component={TableSegmentsPage} />
+      <Route path=":tableId" element={<TableOverviewPage />} />
+      <Route path=":tableId/fields" element={<TableFieldsPage />} />
+      <Route path=":tableId/fields/:fieldId" element={<TableFieldsPage />} />
+      <Route path=":tableId/segments" element={<TableSegmentsPage />} />
       <Route path=":tableId/segments/new" element={<IsAdmin />}>
-        <Route index component={PublishedTableNewSegmentPage} />
+        <Route index element={<PublishedTableNewSegmentPage />} />
       </Route>
       <Route
         path=":tableId/segments/:segmentId"
-        component={PublishedTableSegmentDetailPage}
+        element={<PublishedTableSegmentDetailPage />}
       />
       <Route
         path=":tableId/segments/:segmentId/revisions"
-        component={PublishedTableSegmentRevisionHistoryPage}
+        element={<PublishedTableSegmentRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":tableId/segments/:segmentId/dependencies"
-          component={PublishedTableSegmentDependenciesPage}
+          element={<PublishedTableSegmentDependenciesPage />}
         >
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
-      <Route path=":tableId/measures" component={TableMeasuresPage} />
+      <Route path=":tableId/measures" element={<TableMeasuresPage />} />
       <Route path=":tableId/measures/new" element={<IsAdmin />}>
-        <Route index component={PublishedTableNewMeasurePage} />
+        <Route index element={<PublishedTableNewMeasurePage />} />
       </Route>
       <Route
         path=":tableId/measures/:measureId"
-        component={PublishedTableMeasureDetailPage}
+        element={<PublishedTableMeasureDetailPage />}
       />
       <Route
         path=":tableId/measures/:measureId/revisions"
-        component={PublishedTableMeasureRevisionHistoryPage}
+        element={<PublishedTableMeasureRevisionHistoryPage />}
       />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":tableId/measures/:measureId/dependencies"
-          component={PublishedTableMeasureDependenciesPage}
+          element={<PublishedTableMeasureDependenciesPage />}
         >
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":tableId/dependencies" component={TableDependenciesPage}>
-          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        <Route path=":tableId/dependencies" element={<TableDependenciesPage />}>
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
     </Route>

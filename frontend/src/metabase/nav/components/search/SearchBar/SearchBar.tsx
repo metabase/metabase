@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
 import type {
   ChangeEvent,
@@ -18,12 +17,17 @@ import {
   getSearchTextFromLocation,
   isSearchPageLocation,
 } from "metabase/common/search";
-import type { SearchAwareLocation } from "metabase/common/search/types";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push, withRouter } from "metabase/router";
+import type { LocationDescriptorObject } from "metabase/router";
+import {
+  push,
+  queryToSearch,
+  useLocation,
+  useNavigationType,
+} from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
@@ -36,11 +40,7 @@ import S from "./SearchBar.module.css";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
-type RouterProps = {
-  location: SearchAwareLocation;
-};
-
-type OwnProps = {
+type Props = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
   /**
@@ -51,14 +51,13 @@ type OwnProps = {
   onSearchItemSelect?: (result: SearchResult) => void;
 };
 
-type Props = RouterProps & OwnProps;
-
-function SearchBarView({
-  location,
+function SearchBar({
   onSearchActive,
   onSearchInactive,
   onSearchItemSelect: onSearchItemSelectProp,
 }: Props) {
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -147,11 +146,11 @@ function SearchBarView({
   }, [previousLocation, location]);
 
   useEffect(() => {
-    if (previousLocation !== location && location.action !== "REPLACE") {
+    if (previousLocation !== location && navigationType !== "REPLACE") {
       // deactivate search when page changes
       setInactive();
     }
-  }, [previousLocation, location, setInactive]);
+  }, [previousLocation, location, navigationType, setInactive]);
 
   const goToSearchApp = useCallback(() => {
     const shouldPersistFilters = isSearchPageLocation(previousLocation);
@@ -163,7 +162,7 @@ function SearchBarView({
     };
     onChangeLocation({
       pathname: "search",
-      query,
+      search: queryToSearch(query),
     });
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
@@ -262,8 +261,6 @@ function SearchBarView({
     </Box>
   );
 }
-
-export const SearchBar = withRouter(SearchBarView);
 
 // for some reason our unit test don't work if this is a name export ¯\_(ツ)_/¯
 // eslint-disable-next-line import/no-default-export

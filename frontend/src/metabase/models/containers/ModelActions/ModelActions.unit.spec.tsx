@@ -222,8 +222,8 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <Route index component={redirect("actions")} />
-        <Route path="actions" component={ModelActions}>
+        <Route index element={redirect("actions")} />
+        <Route path="actions" element={<ModelActions />}>
           {modalRoute("new", ActionCreator, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
@@ -232,7 +232,7 @@ async function setup({
           })}
         </Route>
       </Route>
-      <Route path="/question/:slug" component={() => null} />
+      <Route path="/question/:slug" element={null} />
     </>,
     { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );

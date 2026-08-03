@@ -57,10 +57,13 @@ function setup({
   const initialRoute = Urls.transformIndexes(transform.id);
   const path = initialRoute.replace(`/${transform.id}/`, "/:transformId/");
 
-  renderWithProviders(<Route path={path} component={TransformIndexesPage} />, {
-    withRouter: true,
-    initialRoute,
-  });
+  renderWithProviders(
+    <Route path={path} element={<TransformIndexesPage />} />,
+    {
+      withRouter: true,
+      initialRoute,
+    },
+  );
 
   return { transform };
 }

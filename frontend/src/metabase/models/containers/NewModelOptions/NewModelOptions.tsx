@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -7,6 +6,7 @@ import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmp
 import CS from "metabase/css/core/index.css";
 import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
   canUserCreateNativeQueries,
@@ -20,11 +20,8 @@ import S from "./NewModelOptions.module.css";
 
 const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
-interface NewModelOptionsProps {
-  location: Location;
-}
-
-const NewModelOptions = ({ location }: NewModelOptionsProps) => {
+const NewModelOptions = () => {
+  const location = useLocation();
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
@@ -33,8 +30,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const collectionId = Urls.extractEntityId(
-    // Unjustified type cast. FIXME
-    location.query.collectionId as string,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

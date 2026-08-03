@@ -10,7 +10,7 @@ import { UnsubscribePulseModal } from "./containers/UnsubscribePulseModal";
 
 export function getNotificationRoutes() {
   return (
-    <Route path="notifications" component={NotificationsApp}>
+    <Route path="notifications" element={<NotificationsApp />}>
       {modalRoute("help", HelpModal)}
       {modalRoute("alert/:alertId/archive", DeleteAlertModal, { noWrap: true })}
       {modalRoute("pulse/:pulseId/archive", ArchivePulseModal)}

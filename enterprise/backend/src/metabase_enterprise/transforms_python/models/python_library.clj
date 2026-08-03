@@ -89,19 +89,15 @@
   {:copy      [:path :source :entity_id]
    :transform {:created_at (serdes/date)}})
 
-(defmethod serdes/hash-fields :model/PythonLibrary
-  [_model]
-  [:path])
-
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
 
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 
 ;; Event type hierarchy for remote-sync tracking
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 (doseq [e [:event/python-library-create :event/python-library-update :event/python-library-delete]]
-  (derive e ::event))
+  (events/derive! e ::event))
 
 (t2/define-after-insert :model/PythonLibrary
   [library]

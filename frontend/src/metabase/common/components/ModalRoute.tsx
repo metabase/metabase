@@ -1,7 +1,7 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
-import { Route, useNavigate } from "metabase/router";
+import type { Location } from "metabase/router";
+import { Route, useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 
 type RouteParams = Record<string, string | undefined>;
@@ -14,12 +14,6 @@ type RouteParams = Record<string, string | undefined>;
 export type ModalComponentProps = {
   params: RouteParams;
   location: Location;
-  /**
-   * The matched route, passed through only for `LeaveRouteConfirmModal`, which
-   * hands it to react-router v3's `setRouteLeaveHook`. Do not use it to derive
-   * URLs: `onClose` already returns to the parent page.
-   */
-  route?: Route;
   onClose: () => void;
 };
 
@@ -44,11 +38,9 @@ export function modalRoute(
   ComposedModal: React.ComponentType<ModalComponentProps>,
   { noWrap = false, modalProps }: ModalRouteOptions = {},
 ) {
-  function ModalRouteComponent({
-    params,
-    location,
-    route,
-  }: RouteInjectedProps) {
+  function ModalRouteComponent() {
+    const params = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const onClose = useCallback(
       () => navigate("..", { relative: "route" }),
@@ -56,12 +48,7 @@ export function modalRoute(
     );
 
     const modal = (
-      <ComposedModal
-        params={params}
-        location={location}
-        route={route}
-        onClose={onClose}
-      />
+      <ComposedModal params={params} location={location} onClose={onClose} />
     );
 
     if (noWrap) {
@@ -87,15 +74,5 @@ export function modalRoute(
   }]`;
 
   // Keyed for the plugin route arrays, which React renders as a list.
-  return <Route key={path} path={path} component={ModalRouteComponent} />;
+  return <Route key={path} path={path} element={<ModalRouteComponent />} />;
 }
-
-/**
- * What react-router v3 injects into a route `component`. Replaced by the facade
- * hooks when the engine swaps.
- */
-type RouteInjectedProps = {
-  params: RouteParams;
-  location: Location;
-  route: Route;
-};

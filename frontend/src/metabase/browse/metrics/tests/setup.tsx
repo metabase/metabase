@@ -264,10 +264,10 @@ export function setup({
 
   return renderWithProviders(
     <>
-      <Route path="/" component={() => <BrowseMetrics />} />
+      <Route path="/" element={<BrowseMetrics />} />
       <Route
         path="/metric/:cardId"
-        component={() => <div data-testid="metric-detail-page" />}
+        element={<div data-testid="metric-detail-page" />}
       />
     </>,
     {

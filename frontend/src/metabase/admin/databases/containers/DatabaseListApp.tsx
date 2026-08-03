@@ -15,7 +15,7 @@ import { DatabaseList } from "../components/DatabaseList";
 import { getDeletes, getDeletionError } from "../selectors";
 
 interface DatabaseListAppProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const DatabaseListApp = (props: DatabaseListAppProps) => {

@@ -441,6 +441,22 @@
   [a-query stage-number orderable direction]
   (lib.core/order-by a-query stage-number orderable (keyword direction)))
 
+(defn ^:export with-page
+  "Set (or, with a nil `a-page`, remove) the `:page` clause on `a-query` at `stage-number`. Returns
+  the updated query. `a-page` is a JS object `{page, items}` (`page` is 1-indexed). Drops `:limit`
+  if present, since it conflicts with `:page`.
+
+  > **Code health:** Healthy"
+  [a-query stage-number a-page]
+  (lib.core/with-page a-query stage-number (when a-page (js->clj a-page :keywordize-keys true))))
+
+(defn ^:export current-page
+  "Return the `:page` clause on `a-query` at `stage-number` as a JS object, or nil if there is none.
+
+  > **Code health:** Healthy"
+  [a-query stage-number]
+  (clj->js (lib.core/current-page a-query stage-number)))
+
 (defn ^:export order-bys
   "Get the `ORDER BY` clauses in `a-query` at `stage-number`, as a JS array of opaque values.
 
@@ -628,11 +644,17 @@
 (defn ^:export with-temporal-bucket
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
-  If `bucketing-option` is `nil` (JS `undefined` or `null`), any existing temporal bucketing is removed.
+  `bucketing-option` may be a bucket object (from [[available-temporal-buckets]]) or a unit name string
+  (e.g. `\"day\"`, `\"default\"`). The string `\"default\"` sets an explicit no-truncation bucket that
+  survives the `auto-bucket-datetimes` middleware; contrast with `nil` (JS `undefined` or `null`), which
+  removes the bucket entirely and lets the middleware add `:day` back.
 
   > **Code health:** Healthy"
   [a-clause-or-column bucketing-option]
-  (lib.core/with-temporal-bucket a-clause-or-column bucketing-option))
+  (lib.core/with-temporal-bucket
+    a-clause-or-column
+    (cond-> bucketing-option
+      (string? bucketing-option) keyword)))
 
 (defn ^:export available-temporal-buckets
   "Get a list of available temporal bucketing options for `a-clause-or-column` in the context of `a-query`

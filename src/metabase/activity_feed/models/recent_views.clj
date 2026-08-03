@@ -38,6 +38,7 @@
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -243,7 +244,7 @@
 
 (defn- root-coll []
   (select-keys
-   (root/root-collection-with-ui-details {})
+   (root/root-collection-with-ui-details nil)
    [:id :name :authority_level]))
 
 ;; ================== Recent Cards ==================
@@ -438,28 +439,29 @@
 (defn- table-recents
   "Query to select recent table data"
   [table-ids]
-  (t2/select :model/Table
-             {:select [:t.id :t.name :t.description
-                       :t.display_name :t.active :t.visibility_type :t.schema
-                       [:db.name :database-name]
-                       [:db.id :db_id]
-                       [:db.initial_sync_status :initial-sync-status]]
-              :from [[:metabase_table :t]]
-              :where (let [base-condition [:or
-                                           [:= :visibility_type nil]
-                                           [:!= :visibility_type "hidden"]]]
-                       (if (seq table-ids)
-                         [:and base-condition [:in :t.id table-ids]]
-                         base-condition))
-              :left-join [[:metabase_database :db]
-                          [:= :db.id :t.db_id]]}))
+  (if-not (seq table-ids)
+    []
+    (t2/select :model/Table
+               {:select [:t.id :t.name :t.description
+                         :t.display_name :t.active :t.visibility_type :t.schema
+                         [:db.name :database-name]
+                         [:db.id :db_id]
+                         [:db.initial_sync_status :initial-sync-status]]
+                :from [[:metabase_table :t]]
+                :where [:and
+                        [:or
+                         [:= :visibility_type nil]
+                         [:!= :visibility_type "hidden"]]
+                        [:in :t.id table-ids]]
+                :left-join [[:metabase_database :db]
+                            [:= :db.id :t.db_id]]})))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
     (when (and (not= "hidden" (:visibility_type table))
                (:database-name table)
                (:active table)
-               (mi/can-read? :model/Table model_id))
+               (mi/can-read? table))
       {:id model_id
        :name (:name table)
        :description (:description table)
@@ -576,11 +578,13 @@
          table-ids :table
          document-ids :document} (as-> views views
                                    (group-by (comp keyword :model) views)
-                                   (update-vals views #(mapv :model_id %)))]
+                                   (update-vals views #(mapv :model_id %)))
+        tables (table-recents table-ids)]
+    (perms/prime-table-perms-cache {:table-ids (into #{} (keep :id) tables)})
     {:card       (m/index-by :id (card-recents card-ids))
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))
-     :table      (m/index-by :id (table-recents table-ids))
+     :table      (m/index-by :id tables)
      :document   (m/index-by :id (document-recents document-ids))}))
 
 (def ^:private ItemValidator (mr/validator Item))
@@ -593,7 +597,7 @@
     item
     (when-not config/is-prod?
       (log/errorf (colorize/red "Invalid recent view item: %s reason: %s")
-                  (pr-str item)
+                  (pr-str (select-keys item [:id :model]))
                   (me/humanize (mr/explain Item item))))))
 
 (mu/defn get-recents

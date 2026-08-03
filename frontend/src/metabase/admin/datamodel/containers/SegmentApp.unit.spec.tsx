@@ -65,9 +65,9 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
 
   const { history } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path={SEGMENTS_URL} component={TestHome} />
-      <Route path={FORM_URL} component={SegmentApp} />
+      <Route path="/" element={<TestHome />} />
+      <Route path={SEGMENTS_URL} element={<TestHome />} />
+      <Route path={FORM_URL} element={<SegmentApp />} />
     </>,
     {
       initialRoute,

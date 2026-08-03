@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
-
-import { Route } from "./route";
-import { useSearchParams } from "./use-search-params";
+import { Route, useSearchParams } from "metabase/router";
 
 function SearchParamsProbe() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,7 +34,7 @@ function SearchParamsProbe() {
 
 function setup(initialRoute: string) {
   return renderWithProviders(
-    <Route path="foo" component={SearchParamsProbe} />,
+    <Route path="foo" element={<SearchParamsProbe />} />,
     {
       withRouter: true,
       initialRoute,
@@ -121,7 +119,7 @@ describe("router/useSearchParams", () => {
         </button>
       );
     };
-    renderWithProviders(<Route path="foo" component={MutatingProbe} />, {
+    renderWithProviders(<Route path="foo" element={<MutatingProbe />} />, {
       withRouter: true,
       initialRoute: "/foo?x=1",
     });
@@ -146,7 +144,7 @@ function DefaultProbe() {
 }
 
 function setupDefault(initialRoute: string) {
-  return renderWithProviders(<Route path="foo" component={DefaultProbe} />, {
+  return renderWithProviders(<Route path="foo" element={<DefaultProbe />} />, {
     withRouter: true,
     initialRoute,
   });

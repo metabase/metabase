@@ -1,95 +1,78 @@
+import type { ComponentClass, FunctionComponent } from "react";
+import type { Location, Path } from "react-router";
+
+export type {
+  Location,
+  NavigateFunction,
+  NavigateOptions,
+  Params,
+  Path,
+  RelativeRoutingType,
+  RouteObject,
+  SetURLSearchParams,
+  To,
+  URLSearchParamsInit,
+} from "react-router";
+
 /**
- * The pathname, search, and hash values of a URL.
- *
- * @see https://api.reactrouter.com/v7/interfaces/react-router.Path.html
+ * The navigation action that produced a location.
  */
-export interface Path {
-  pathname: string;
-  search: string;
-  hash: string;
+export type Action = "POP" | "PUSH" | "REPLACE";
+
+/**
+ * The `state` carried through a navigation. history@3 typed this `any` and the
+ * legacy route-prop readers were written against that; tightened once those call
+ * sites migrate off the compat shape onto the pure v7 `Location`.
+ */
+export type LocationState = any;
+
+/**
+ * A location to navigate to, as an object. Carries the query as a `search`
+ * string, the only form v7 reads; call sites that hold a query object serialize
+ * it with `queryToSearch` first.
+ */
+export interface LocationDescriptorObject extends Partial<Path> {
+  state?: LocationState;
 }
 
 /**
- * Describes a location that is the destination of some navigation, used in
- * Link, useNavigate, etc.
- *
- * @see https://api.reactrouter.com/v7/types/react-router.To.html
+ * A location to navigate to: either a path string or a descriptor object.
  */
-export type To = string | Partial<Path>;
+export type LocationDescriptor = LocationDescriptorObject | string;
+
+type LocationListener = (location: Location) => void;
+type TransitionHook = (
+  location: Location,
+  callback: (result: unknown) => void,
+) => unknown;
 
 /**
- * An entry in a history stack. A location contains information about the URL
- * path, as well as possibly some arbitrary state and a key.
- *
- * @see https://api.reactrouter.com/v7/interfaces/react-router.Location.html
+ * The `history` object interface the facade still passes around (the middleware
+ * driver, the sync bridge, and the route-leave tests). Mirrors history@3's
+ * `History` so the v3 engine and the v7 navigator both satisfy it.
  */
-export interface Location<State = unknown> {
-  pathname: string;
-  search: string;
-  hash: string;
-  state: State;
-  key: string;
+export interface History {
+  listenBefore(hook: TransitionHook): () => void;
+  listen(listener: LocationListener): () => void;
+  transitionTo(location: Location): void;
+  push(path: LocationDescriptor): void;
+  replace(path: LocationDescriptor): void;
+  go(n: number): void;
+  goBack(): void;
+  goForward(): void;
+  createKey(): string;
+  createPath(path: LocationDescriptor): string;
+  createHref(path: LocationDescriptor): string;
+  createLocation(
+    path?: LocationDescriptor,
+    action?: Action,
+    key?: string,
+  ): Location;
+  getCurrentLocation(): Location;
 }
 
 /**
- * Whether a relative `to` is resolved against the route hierarchy or against
- * the current URL path.
- *
- * @see https://api.reactrouter.com/v7/types/react-router.RelativeRoutingType.html
+ * A route's component. v3 accepted a class or function component; kept for the
+ * call sites that annotate the injected `route` / `routes` props.
  */
-export type RelativeRoutingType = "route" | "path";
-
-/**
- * Options for the `navigate` function, mirroring react-router v7's
- * `NavigateOptions`.
- *
- * @see https://api.reactrouter.com/v7/interfaces/react-router.NavigateOptions.html
- */
-export interface NavigateOptions {
-  replace?: boolean;
-  state?: unknown;
-  relative?: RelativeRoutingType;
-}
-
-/**
- * The interface for the `navigate` function returned from `useNavigate`.
- *
- * @see https://api.reactrouter.com/v7/interfaces/react-router.NavigateFunction.html
- */
-export interface NavigateFunction {
-  (to: To, options?: NavigateOptions): void;
-  (delta: number): void;
-}
-
-/**
- * The parameters that were parsed from the URL path.
- *
- * @see https://api.reactrouter.com/v7/types/react-router.Params.html
- */
-export type Params<Key extends string = string> = {
-  readonly [key in Key]: string | undefined;
-};
-
-/**
- * Accepted inputs for building search params, mirroring react-router v7's
- * `URLSearchParamsInit`.
- *
- * @see https://api.reactrouter.com/v7/types/react-router.URLSearchParamsInit.html
- */
-export type URLSearchParamsInit =
-  | string
-  | URLSearchParams
-  | [string, string][]
-  | Record<string, string | string[]>;
-
-/**
- * Sets new search params and causes a navigation when called.
- *
- * @see https://api.reactrouter.com/v7/types/react-router.SetURLSearchParams.html
- */
-export type SetURLSearchParams = (
-  nextInit?:
-    | URLSearchParamsInit
-    | ((prev: URLSearchParams) => URLSearchParamsInit),
-  navigateOptions?: NavigateOptions,
-) => void;
+export type RouteComponent = ComponentClass<any> | FunctionComponent<any>;

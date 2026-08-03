@@ -145,7 +145,7 @@
                                                                          table)]
                                                        (sync-and-update! database table all-metadata))
                                                      (catch Exception e
-                                                       (log/error e)
+                                                       (log/error (ex-message e))
                                                        0))
                                                    0)]
                                      {:total-fields   (count table-metadata)

@@ -367,7 +367,6 @@
   (cond (nil? m) {}
         ;; Fallback for non-editable collections where transients aren't supported.
         (not (editable? m))
-        #_{:clj-kondo/ignore [:discouraged-var]}
         (clojure.core/update-keys m f)
         :else (-> (reduce-kv (fn [acc k v]
                                (let [k' (f k)]
@@ -388,7 +387,6 @@
   (cond (nil? coll) {}
         ;; Fallback for non-editable collections where transients aren't supported.
         (not (editable? coll))
-        #_{:clj-kondo/ignore [:discouraged-var]}
         (clojure.core/update-vals coll f)
         :else (-> (reduce-kv (fn [acc k v]
                                (let [v' (f v)]

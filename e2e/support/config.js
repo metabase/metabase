@@ -26,6 +26,7 @@ import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
+import { buildDataApp } from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
@@ -215,6 +216,7 @@ const defaultConfig = {
       stopMockLlmServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
+      buildDataApp,
     });
 
     /********************************************************************

@@ -4,16 +4,18 @@ import "metabase-dev";
 
 import _ from "underscore";
 
-import { api } from "metabase/api/client";
+import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
-import { setRequestClientHeaders } from "metabase/embedding/lib/embedding-request-auth";
-import { PLUGIN_API } from "metabase/plugins";
+import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 import { push } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+
+// Let embedded children detect that their parent is a Metabase instance.
+window.METABASE = true;
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [

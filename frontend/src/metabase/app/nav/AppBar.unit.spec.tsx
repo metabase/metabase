@@ -380,7 +380,7 @@ function setup({
   setupCardEndpoints(card);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
-  return renderWithProviders(<Route path="*" component={AppBarContainer} />, {
+  return renderWithProviders(<Route path="*" element={<AppBarContainer />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

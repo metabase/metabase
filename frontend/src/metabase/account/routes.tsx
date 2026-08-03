@@ -4,7 +4,7 @@ import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 
-import AccountApp from "./app/containers/AccountApp";
+import { AccountApp } from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import { getNotificationRoutes } from "./notifications/routes";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
@@ -16,15 +16,15 @@ export const getAccountRoutes = (
 ) => {
   return (
     <Route path="/account" element={<IsAuthenticated />}>
-      <Route component={AccountApp}>
-        <Route index component={redirect("profile")} />
-        <Route path="profile" component={UserProfileApp} />
-        <Route path="password" component={UserPasswordApp} />
+      <Route element={<AccountApp />}>
+        <Route index element={redirect("profile")} />
+        <Route path="profile" element={<UserProfileApp />} />
+        <Route path="password" element={<UserPasswordApp />} />
         <Route
           path="security"
-          component={PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel}
+          element={<PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel />}
         />
-        <Route path="login-history" component={LoginHistoryApp} />
+        <Route path="login-history" element={<LoginHistoryApp />} />
         {getNotificationRoutes()}
       </Route>
     </Route>

@@ -88,6 +88,18 @@ const defaultSchedule: ScheduleSettings = {
 };
 export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
+export const toCronString = (schedule: ScheduleSettings): string => {
+  const { schedule_type } = schedule;
+  const keepDay = schedule_type === "weekly" || schedule_type === "monthly";
+  const keepHour = keepDay || schedule_type === "daily";
+  return scheduleSettingsToCron({
+    ...schedule,
+    schedule_day: keepDay ? schedule.schedule_day : null,
+    schedule_frame: keepDay ? schedule.schedule_frame : null,
+    schedule_hour: keepHour ? schedule.schedule_hour : null,
+  });
+};
+
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
 export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,

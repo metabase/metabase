@@ -65,7 +65,7 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={OAuthAuthorizationsPage} />,
+    <Route path={PATHNAME} element={<OAuthAuthorizationsPage />} />,
     { withRouter: true, initialRoute },
   );
 };

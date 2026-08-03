@@ -80,7 +80,7 @@ async function setup({
   });
 
   const { store } = renderWithProviders(
-    <Route path={route} component={Navbar} />,
+    <Route path={route} element={<Navbar />} />,
     {
       storeInitialState,
       initialRoute: pathname,

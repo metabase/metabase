@@ -1,11 +1,12 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
+import { getDashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -20,9 +21,11 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { LocationDescriptorObject } from "metabase/router";
 import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -38,7 +41,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   createDataSource,
-  isVisualizerDashboardCard,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -60,6 +62,7 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
@@ -178,7 +181,11 @@ export function DashCardVisualization({
   const onSameOriginNavigation = useCallback(
     (location: LocationDescriptorObject) => {
       dispatch(push(location));
-      dispatch(setParameterValuesFromQueryParams(location.query));
+      dispatch(
+        setParameterValuesFromQueryParams(
+          parseSearchQuery(location.search ?? ""),
+        ),
+      );
     },
     [dispatch],
   );
@@ -215,13 +222,12 @@ export function DashCardVisualization({
   }, [dashcard, rawSeries]);
 
   const untranslatedSeries = useMemo(() => {
-    if (
-      !dashcard ||
-      !rawSeries ||
-      rawSeries.length === 0 ||
-      !isVisualizerDashboardCard(dashcard)
-    ) {
+    if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
+    }
+
+    if (!isVisualizerDashboardCard(dashcard)) {
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -310,7 +316,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets]);
+  }, [rawSeries, dashcard, datasets, metadata]);
 
   const series =
     PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);
@@ -546,7 +552,7 @@ export function DashCardVisualization({
             isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
           }
           metadata={metadata}
-          mode={getClickActionMode}
+          mode={getClickActionMode ?? getDashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}

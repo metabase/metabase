@@ -38,14 +38,17 @@ export function initializePlugin() {
 
     PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: any) => (
       <Route path="destination-databases">
-        <Route index component={DestinationDatabasesModal} />
+        <Route index element={<DestinationDatabasesModal />} />
         <Route element={<IsAdmin />}>
-          <Route path="create" component={DestinationDatabaseConnectionModal} />
+          <Route
+            path="create"
+            element={<DestinationDatabaseConnectionModal />}
+          />
         </Route>
         <Route path=":destinationDatabaseId">
-          <Route index component={DestinationDatabaseConnectionModal} />
+          <Route index element={<DestinationDatabaseConnectionModal />} />
           <Route element={<IsAdmin />}>
-            <Route path="remove" component={RemoveDestinationDatabaseModal} />
+            <Route path="remove" element={<RemoveDestinationDatabaseModal />} />
           </Route>
         </Route>
       </Route>

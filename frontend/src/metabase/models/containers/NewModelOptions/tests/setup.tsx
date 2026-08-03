@@ -44,7 +44,7 @@ export function setup({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(<Route path="*" component={NewModelOptions}></Route>, {
+  renderWithProviders(<Route path="*" element={<NewModelOptions />}></Route>, {
     withRouter: true,
     storeInitialState: state,
   });

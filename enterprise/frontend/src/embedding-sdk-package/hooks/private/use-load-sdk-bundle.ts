@@ -4,6 +4,10 @@ import { useEffect } from "react";
 import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk-package/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkBundleScriptElement } from "embedding-sdk-package/lib/private/get-sdk-bundle-script-element";
+import {
+  SDK_BUNDLE_ERROR,
+  SDK_BUNDLE_LOADED,
+} from "embedding-sdk-shared/constants/event-names";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
   SdkLoadingError,
@@ -21,7 +25,7 @@ const SDK_PACKAGE_VERSION = process.env.VERSION || "unknown";
  *
  * - On script `load`: if `window.METABASE_EMBEDDING_SDK_BUNDLE` is already
  *   set, the monolithic bundle ran synchronously → resolve.
- * - On `"metabase-sdk-bundle-loaded"` CustomEvent: the bootstrap loaded all
+ * - On `SDK_BUNDLE_LOADED` CustomEvent: the bootstrap loaded all
  *   chunks and `index.ts` executed → resolve.
  * - First signal wins; all listeners are cleaned up after settling.
  */
@@ -62,14 +66,14 @@ const waitForScriptLoading = (script: HTMLScriptElement) => {
     };
 
     const cleanup = () => {
-      document.removeEventListener("metabase-sdk-bundle-loaded", onBundleEvent);
-      document.removeEventListener("metabase-sdk-bundle-error", onBundleError);
+      document.removeEventListener(SDK_BUNDLE_LOADED, onBundleEvent);
+      document.removeEventListener(SDK_BUNDLE_ERROR, onBundleError);
       script.removeEventListener("load", onScriptLoad);
       script.removeEventListener("error", onScriptError);
     };
 
-    document.addEventListener("metabase-sdk-bundle-loaded", onBundleEvent);
-    document.addEventListener("metabase-sdk-bundle-error", onBundleError);
+    document.addEventListener(SDK_BUNDLE_LOADED, onBundleEvent);
+    document.addEventListener(SDK_BUNDLE_ERROR, onBundleError);
     script.addEventListener("load", onScriptLoad);
     script.addEventListener("error", onScriptError);
   });

@@ -1,5 +1,4 @@
 import { useHotkeys } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
@@ -51,8 +50,13 @@ import {
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
-import type { Route, WithRouterProps } from "metabase/router";
-import { push } from "metabase/router";
+import {
+  type Location,
+  push,
+  useLocation,
+  useNavigationType,
+  useParams,
+} from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -339,13 +343,13 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps & {
-    route: Route;
-  };
+type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const location = useLocation();
+  const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
+  const navigationType = useNavigationType();
   const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
     useListTimelinesQuery({
       include: "events",
@@ -358,8 +362,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const {
     question,
     originalQuestion,
-    location,
-    params,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -374,7 +376,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
@@ -550,9 +551,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   useEffect(() => {
     if (previousLocation && location !== previousLocation) {
-      locationChanged(previousLocation, location, params);
+      locationChanged(previousLocation, location, params, navigationType);
     }
-  }, [location, params, previousLocation, locationChanged]);
+  }, [location, params, previousLocation, navigationType, locationChanged]);
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
@@ -638,7 +639,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
       />
     </>
   );

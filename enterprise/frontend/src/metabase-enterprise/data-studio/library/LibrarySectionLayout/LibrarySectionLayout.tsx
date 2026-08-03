@@ -1,14 +1,10 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { Outlet } from "metabase/router";
 
-type LibrarySectionLayoutProps = {
-  children?: ReactNode;
-};
-
-export function LibrarySectionLayout({ children }: LibrarySectionLayoutProps) {
+export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
 
-  return <>{children}</>;
+  return <Outlet />;
 }

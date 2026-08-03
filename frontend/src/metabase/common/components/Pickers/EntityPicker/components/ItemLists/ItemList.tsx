@@ -21,7 +21,7 @@ import {
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
-import { ItemListLoader } from "../LoadingSpinner";
+import { ItemListLoader } from "../ItemListLoader";
 
 const PickerColumn = ({
   children,

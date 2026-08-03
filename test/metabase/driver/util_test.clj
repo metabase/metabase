@@ -14,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -449,12 +448,12 @@
               feature (keyword (name (ns-name *ns*)) (mt/random-name))]
           (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
             (is (false? (driver.u/supports? :test-driver feature db)))
-            (is (some (fn [{:keys [level e message]}]
+            (is (some (fn [{:keys [level message]}]
                         (and (= level :error)
-                             (= (ex-message e) "test exception message")
-                             (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                             (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
                                                         (u/qualified-name feature)
-                                                        (:name db)))))
+                                                        (:id db)
+                                                        "test exception message"))))
                       (log-messages)))))))))
 
 (deftest supports?-failure-test-2
@@ -467,12 +466,12 @@
                         driver/database-supports? (fn [_ _ _] (Thread/sleep 200) true)]
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
               (is (false? (driver.u/supports? :test-driver feature db)))
-              (is (some (fn [{:keys [level e message]}]
+              (is (some (fn [{:keys [level message]}]
                           (and (= level :error)
-                               (= (ex-message e) "Timed out after 100.0 ms")
-                               (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                               (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
                                                           (u/qualified-name feature)
-                                                          (:name db)))))
+                                                          (:id db)
+                                                          "Timed out after 100.0 ms"))))
                         (log-messages)))))
           (testing "we memoize the results for the same database, so we don't log the error again"
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
@@ -607,50 +606,3 @@
           (is (some? group-info))
           (is (= "Group info message" (:placeholder group-info)))
           (is (nil? (:getter group-info)) "Getter should be removed"))))))
-
-;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
-
-(deftest ^:parallel scrub-exceptions-test
-  (testing "plain Exception: secret is redacted from message"
-    (let [e (driver.u/scrub-exceptions (Exception. "PASSWORD='s3cret'") ["s3cret"])]
-      (is (= "PASSWORD='****'" (ex-message e)))))
-  (testing "secret not present: message unchanged"
-    (let [e (driver.u/scrub-exceptions (Exception. "no secret here") ["s3cret"])]
-      (is (= "no secret here" (ex-message e)))))
-  (testing "cause chain is scrubbed"
-    (let [e (driver.u/scrub-exceptions
-             (Exception. "outer pw=s3cret" (Exception. "inner pw=s3cret"))
-             ["s3cret"])]
-      (is (= "outer pw=****" (ex-message e)))
-      (is (= "inner pw=****" (ex-message (.getCause ^Exception e))))))
-  (testing "ExceptionInfo: ex-data is preserved, message is scrubbed"
-    (let [e (driver.u/scrub-exceptions (ex-info "pw=s3cret" {:code 42}) ["s3cret"])]
-      (is (= "pw=****" (ex-message e)))
-      (is (= {:code 42} (ex-data e)))))
-  (testing "SQLException: SQLState and errorCode are preserved"
-    (let [e (driver.u/scrub-exceptions (SQLException. "pw=s3cret" "42501" 7) ["s3cret"])]
-      (is (= "pw=****" (ex-message e)))
-      (is (= "42501" (.getSQLState ^SQLException e)))
-      (is (= 7 (.getErrorCode ^SQLException e)))))
-  (testing "SQLException next-exception chain is scrubbed"
-    (let [next-ex (SQLException. "next pw=s3cret" "42501" 7)
-          main    (doto (SQLException. "main pw=s3cret" "42000" 1)
-                    (.setNextException next-ex))
-          e       (driver.u/scrub-exceptions main ["s3cret"])]
-      (is (= "main pw=****" (ex-message e)))
-      (is (= "next pw=****" (ex-message (.getNextException ^SQLException e))))
-      (is (= "42501" (.getSQLState (.getNextException ^SQLException e))))))
-  (testing "multiple secrets are all redacted"
-    (let [e (driver.u/scrub-exceptions
-             (Exception. "user=admin password=s3cret escaped=s3cr\\et")
-             ["s3cret" "s3cr\\et"])]
-      (is (= "user=admin password=**** escaped=****" (ex-message e)))))
-  (testing "password with backslash sequences is treated literally, not as regex"
-    (let [pw "p\\nass\\r\\twor$d"
-          e  (driver.u/scrub-exceptions (Exception. (str "CREATE USER x PASSWORD='" pw "'")) [pw])]
-      (is (= "CREATE USER x PASSWORD='****'" (ex-message e)))))
-  (testing "stack trace is preserved"
-    (let [original (Exception. "pw=s3cret")
-          trace    (.getStackTrace original)
-          e        (driver.u/scrub-exceptions original ["s3cret"])]
-      (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))

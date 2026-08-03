@@ -72,7 +72,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -132,7 +131,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -182,7 +180,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -236,7 +233,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -291,7 +287,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -336,7 +331,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -390,7 +384,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -442,7 +435,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner

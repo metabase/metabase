@@ -123,6 +123,8 @@
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
+      (do (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
+          tables)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
                      (if can-write (filter mi/can-write?) identity)
@@ -226,8 +228,8 @@
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -551,8 +553,8 @@
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
-                    (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
-                                              (:name database) (:name table)))
+                    (log/warn (u/format-color :red "Cannot connect to database %s in order to sync table '%s'"
+                                              (:id database) (:name table)))
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do

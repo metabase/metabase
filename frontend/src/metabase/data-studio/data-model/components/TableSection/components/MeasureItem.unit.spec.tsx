@@ -17,7 +17,7 @@ describe("MeasureItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <MeasureItem measure={measure} href={measureUrl} />}
+        element={<MeasureItem measure={measure} href={measureUrl} />}
       />,
       { withRouter: true },
     );
@@ -40,7 +40,7 @@ describe("MeasureItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <MeasureItem measure={measure} href="/test" />}
+        element={<MeasureItem measure={measure} href="/test" />}
       />,
       { withRouter: true },
     );

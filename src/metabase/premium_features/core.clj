@@ -59,6 +59,7 @@
   enable-custom-viz?
   enable-data-complexity-score?
   enable-dashboard-subscription-filters?
+  enable-data-apps?
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
@@ -91,7 +92,6 @@
   enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
-  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?

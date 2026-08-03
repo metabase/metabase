@@ -4,7 +4,7 @@ import { NotificationsAdminPage } from "./NotificationsAdminPage";
 
 export const getRoutes = () => (
   <>
-    <Route index component={NotificationsAdminPage} />
-    <Route path=":notificationId" component={NotificationsAdminPage} />
+    <Route index element={<NotificationsAdminPage />} />
+    <Route path=":notificationId" element={<NotificationsAdminPage />} />
   </>
 );

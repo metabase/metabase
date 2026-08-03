@@ -2,20 +2,18 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Navigate, Route } from "metabase/router";
 
-import { Navigate } from "./Navigate";
-import { Route } from "./route";
-
-// Stable references: `<Navigate>` keeps `state` raw in its effect deps (like v7),
-// so a fresh object literal each render would re-navigate and loop.
+// Stable references: `<Navigate>` keeps `state` raw in its effect deps, so a
+// fresh object literal each render would re-navigate and loop.
 const HOME_STATE = { from: "home" };
 const RICH_STATE = { when: new Date(0), n: NaN };
 
 describe("router/Navigate", () => {
-  it("pushes to the destination on mount, re-asserting it on back", async () => {
+  it("pushes to the destination on mount, and stays put when the location moves back", async () => {
     const Host = () => <Navigate to="/dest" />;
     const { history } = renderWithProviders(
-      <Route path="*" component={Host} />,
+      <Route path="*" element={<Host />} />,
       {
         withRouter: true,
         initialRoute: "/home",
@@ -26,18 +24,19 @@ describe("router/Navigate", () => {
       expect(history?.getCurrentLocation().pathname).toBe("/dest"),
     );
 
-    // Like v7: `navigate`'s identity changes with each navigation, so a mounted
-    // <Navigate> re-fires on the way back and snaps forward to its target again.
+    // The catch-all route keeps this <Navigate> mounted across the navigation,
+    // and its target has not changed, so going back does not re-assert it. Every
+    // call site redirects with `replace`, which leaves nothing to go back to.
     act(() => history?.goBack());
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/dest"),
+      expect(history?.getCurrentLocation().pathname).toBe("/home"),
     );
   });
 
   it("replaces the current entry and carries state when asked", async () => {
     const Host = () => <Navigate to="/dest" replace state={HOME_STATE} />;
     const { history } = renderWithProviders(
-      <Route path="*" component={Host} />,
+      <Route path="*" element={<Host />} />,
       {
         withRouter: true,
         initialRoute: "/home",
@@ -66,7 +65,7 @@ describe("router/Navigate", () => {
       );
     };
     const { history } = renderWithProviders(
-      <Route path="*" component={Host} />,
+      <Route path="*" element={<Host />} />,
       {
         withRouter: true,
         initialRoute: "/home",
@@ -87,7 +86,7 @@ describe("router/Navigate", () => {
   it("passes state through by reference without serializing it", async () => {
     const Host = () => <Navigate to="/dest" state={RICH_STATE} />;
     const { history } = renderWithProviders(
-      <Route path="*" component={Host} />,
+      <Route path="*" element={<Host />} />,
       {
         withRouter: true,
         initialRoute: "/home",

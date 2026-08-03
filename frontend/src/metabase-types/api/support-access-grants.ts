@@ -19,13 +19,13 @@ export interface CreateSupportAccessGrantRequest {
   ticket_number: string | null;
 }
 
-export interface ListSupportAccessGrantsRequest {
+export type ListSupportAccessGrantsRequest = {
   "ticket-number"?: string;
   "user-id"?: number;
   "include-revoked"?: boolean;
   limit?: number;
   offset?: number;
-}
+};
 
 export interface ListSupportAccessGrantsResponse {
   data: SupportAccessGrant[];

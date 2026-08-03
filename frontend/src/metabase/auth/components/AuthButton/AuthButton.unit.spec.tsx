@@ -29,7 +29,7 @@ describe("AuthTextLink", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <AuthTextLink to="/auth/login">Sign in</AuthTextLink>}
+        element={<AuthTextLink to="/auth/login">Sign in</AuthTextLink>}
       />,
       { withRouter: true },
     );
@@ -43,7 +43,7 @@ describe("AuthCardLink", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <AuthCardLink to="/auth/login">Sign in</AuthCardLink>}
+        element={<AuthCardLink to="/auth/login">Sign in</AuthCardLink>}
       />,
       { withRouter: true },
     );

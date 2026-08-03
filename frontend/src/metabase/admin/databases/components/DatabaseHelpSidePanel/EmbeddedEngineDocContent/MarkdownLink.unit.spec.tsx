@@ -24,7 +24,7 @@ const setup = ({ href, children }: SetupProps) => {
   });
   return renderWithProviders(
     <Route
-      component={() => <MarkdownLink href={href}>{children}</MarkdownLink>}
+      element={<MarkdownLink href={href}>{children}</MarkdownLink>}
       path="/"
     />,
     {

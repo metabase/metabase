@@ -8,7 +8,7 @@
 
 ;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
-(derive :event/semantic-search-hnsw-enabled :metabase/event)
+(events/derive! :event/semantic-search-hnsw-enabled :metabase/event)
 
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."
@@ -83,6 +83,17 @@
   :sensitive? true
   :visibility :settings-manager
   :export?    false
+  :doc        false)
+
+(defsetting semantic-search-embedder-circuit-breaker-enabled
+  (deferred-tru
+   (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "
+        "Runtime kill switch; the breaker thresholds are fixed."))
+  :type       :boolean
+  :default    true
+  :encryption :no
+  :export?    false
+  :visibility :internal
   :doc        false)
 
 (defsetting openai-max-tokens-per-batch

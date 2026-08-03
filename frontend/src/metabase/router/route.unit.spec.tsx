@@ -1,20 +1,37 @@
-import { type PropsWithChildren, useEffect } from "react";
+import { useEffect } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { Outlet, Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Outlet } from "./Outlet";
-import { Route } from "./route";
+import { useRoutePathname } from "./use-route-leave-blocker";
 
-const Parent = ({ children }: PropsWithChildren) => <div>{children}</div>;
+const Parent = () => (
+  <div>
+    <Outlet />
+  </div>
+);
 const IndexPage = () => <div>index-page</div>;
 const ChildPage = () => <div>child-page</div>;
 
+function ParentPage() {
+  return (
+    <div>
+      <span>parent chrome</span>
+      <Outlet />
+    </div>
+  );
+}
+
+function LeafPage() {
+  return <span>leaf content</span>;
+}
+
 function setup(initialRoute: string) {
   return renderWithProviders(
-    <Route path="parent" component={Parent}>
-      <Route index component={IndexPage} />
-      <Route path="child" component={ChildPage} />
+    <Route path="parent" element={<Parent />}>
+      <Route index element={<IndexPage />} />
+      <Route path="child" element={<ChildPage />} />
     </Route>,
     { withRouter: true, initialRoute },
   );
@@ -36,7 +53,7 @@ describe("router/Route", () => {
   });
 
   it("renders a plain (non-index) route like v3", async () => {
-    renderWithProviders(<Route path="solo" component={ChildPage} />, {
+    renderWithProviders(<Route path="solo" element={<ChildPage />} />, {
       withRouter: true,
       initialRoute: "/solo",
     });
@@ -45,55 +62,95 @@ describe("router/Route", () => {
   });
 });
 
-const Wrapper = () => (
-  <div>
-    <span>wrapper chrome</span>
-    <Outlet />
-  </div>
-);
-
-const Inner = () => (
-  <div>
-    <span>inner chrome</span>
-    <Outlet />
-  </div>
-);
-
-describe("router/Route element adapter", () => {
-  it("renders an `element` wrapper with the matched child exposed via <Outlet/>", async () => {
-    renderWithProviders(
-      <Route element={<Wrapper />}>
-        <Route path="/nested" component={ChildPage} />
+describe("router/Route element", () => {
+  function setupElement(initialRoute: string) {
+    return renderWithProviders(
+      <Route path="/" element={<ParentPage />}>
+        <Route path="leaf" element={<LeafPage />} />
       </Route>,
-      { withRouter: true, initialRoute: "/nested" },
+      { withRouter: true, initialRoute },
     );
+  }
 
-    expect(await screen.findByText("child-page")).toBeInTheDocument();
-    expect(screen.getByText("wrapper chrome")).toBeInTheDocument();
+  it("renders a route `element` on v3", () => {
+    setupElement("/");
+    expect(screen.getByText("parent chrome")).toBeInTheDocument();
   });
 
-  it("composes nested `element` wrappers", async () => {
+  it("renders a nested `element` into the parent's <Outlet/>", () => {
+    setupElement("/leaf");
+    expect(screen.getByText("parent chrome")).toBeInTheDocument();
+    expect(screen.getByText("leaf content")).toBeInTheDocument();
+  });
+
+  it("renders nothing in the <Outlet/> when no child matches", () => {
+    setupElement("/");
+    expect(screen.queryByText("leaf content")).not.toBeInTheDocument();
+  });
+});
+
+function RoutePathProbe({ label }: { label: string }) {
+  const pathname = useRoutePathname();
+  return (
+    <div>
+      <span>{`${label}:${pathname ?? "none"}`}</span>
+      <Outlet />
+    </div>
+  );
+}
+
+describe("router/useRoutePathname", () => {
+  function setupNested(initialRoute: string) {
+    return renderWithProviders(
+      <Route path="/" element={<RoutePathProbe label="parent" />}>
+        <Route path="child" element={<RoutePathProbe label="child" />} />
+      </Route>,
+      { withRouter: true, initialRoute },
+    );
+  }
+
+  it("exposes the matched pathname to an `element` route", () => {
+    setupNested("/child");
+    expect(screen.getByText("child:/child")).toBeInTheDocument();
+  });
+
+  it("gives each route its own pathname, not the deepest match", () => {
+    setupNested("/child");
+    // The parent still sees its own route even though a deeper child matched.
+    expect(screen.getByText("parent:/")).toBeInTheDocument();
+  });
+});
+
+describe("router/Route element={null}", () => {
+  it("falls back to an <Outlet/>, so a child of a null-element route renders", async () => {
     renderWithProviders(
-      <Route element={<Wrapper />}>
-        <Route element={<Inner />}>
-          <Route path="/deep" component={ChildPage} />
+      <Route path="/" element={<ParentPage />}>
+        <Route path="empty" element={null}>
+          <Route index element={<LeafPage />} />
         </Route>
       </Route>,
-      { withRouter: true, initialRoute: "/deep" },
+      { withRouter: true, initialRoute: "/empty" },
     );
 
-    expect(await screen.findByText("child-page")).toBeInTheDocument();
-    expect(screen.getByText("wrapper chrome")).toBeInTheDocument();
-    expect(screen.getByText("inner chrome")).toBeInTheDocument();
+    // v7 reads a nullish `element` as "this route supplies none" and renders an
+    // <Outlet/> in its place, so the index child below it shows. A route that
+    // means to render nothing has to say so with an empty fragment.
+    expect(await screen.findByText("parent chrome")).toBeInTheDocument();
+    expect(await screen.findByText("leaf content")).toBeInTheDocument();
   });
 
-  it("still passes `component` routes straight through to v3", async () => {
-    renderWithProviders(<Route path="/plain" component={ChildPage} />, {
-      withRouter: true,
-      initialRoute: "/plain",
-    });
+  it("renders nothing for an empty fragment, and provides no outlet", async () => {
+    renderWithProviders(
+      <Route path="/" element={<ParentPage />}>
+        <Route path="empty" element={<></>}>
+          <Route index element={<LeafPage />} />
+        </Route>
+      </Route>,
+      { withRouter: true, initialRoute: "/empty" },
+    );
 
-    expect(await screen.findByText("child-page")).toBeInTheDocument();
+    expect(await screen.findByText("parent chrome")).toBeInTheDocument();
+    expect(screen.queryByText("leaf content")).not.toBeInTheDocument();
   });
 });
 

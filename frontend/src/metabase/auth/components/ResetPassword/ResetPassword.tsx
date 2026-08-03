@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -8,7 +7,7 @@ import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
-import { replace } from "metabase/router";
+import { replace, useParams, useSearchParams } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -18,23 +17,16 @@ import { ResetPasswordForm } from "../ResetPasswordForm";
 
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
-interface ResetPasswordQueryParams {
+type ResetPasswordQueryParams = {
   token: string;
-  email?: string;
-}
+  email: string;
+};
 
-interface ResetPasswordProps {
-  params: ResetPasswordQueryParams;
-  location?: Location<{ redirect?: string; email?: string }>;
-}
-
-export const ResetPassword = ({
-  params,
-  location,
-}: ResetPasswordProps): JSX.Element | null => {
-  const { token } = params;
-  const redirectUrl = location?.query?.redirect;
-  const email = location?.query?.email;
+export const ResetPassword = (): JSX.Element | null => {
+  const [searchParams] = useSearchParams();
+  const { token = "" } = useParams<ResetPasswordQueryParams>();
+  const redirectUrl = searchParams.get("redirect") ?? undefined;
+  const email = searchParams.get("email") ?? undefined;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const validatePassword = useValidatePassword();

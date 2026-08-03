@@ -70,8 +70,6 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
-
 (defmethod serdes/load-find-local "Channel"
   [path]
   (t2/select-one :model/Channel :name (:id (last path))))
@@ -152,21 +150,12 @@
   [channel-template]
   (mu/validate-throw ::ChannelTemplate channel-template))
 
-(defn- user-provided-template?
-  "Returns true if the template details represent a user-provided inline template (handlebars-text)
-  as opposed to a built-in resource template."
-  [details]
-  (= :email/handlebars-text (keyword (:type details))))
-
 (defn- log-template-change!
   "Log template creation or update with relevant details for observability."
   [action {:keys [channel_type details] :as _instance}]
   (let [template-type (keyword (:type details))]
-    (if (user-provided-template? details)
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s body=%s"
-                 (name action) channel_type template-type api/*current-user-id* (pr-str (:body details)))
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
-                 (name action) channel_type template-type api/*current-user-id*))
+    (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
+               (name action) channel_type template-type api/*current-user-id*)
     (analytics/inc! (case action
                       :create :metabase-notification/template-create
                       :update :metabase-notification/template-update)

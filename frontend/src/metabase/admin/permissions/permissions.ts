@@ -209,7 +209,7 @@ export interface UpdateDataPermissionParams {
   entityId: PermissionEntityId;
   view: "database" | "group";
 }
-interface UpdateDataPermissionPayload {
+export interface UpdateDataPermissionPayload {
   groupId: GroupId;
   permissionInfo: Pick<
     PermissionSectionConfig,
@@ -289,7 +289,7 @@ export const saveDataPermissions = createThunkAction(
     const advancedPermissions =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce<{
         modifiedGroupIds: string[];
-        permissions: Record<string, undefined | { group_id: string }[]>;
+        permissions: Record<string, undefined | { group_id: number }[]>;
       }>(
         (data, selector) => {
           const [extraData, modifiedGroupIds] = selector(state);

@@ -32,7 +32,6 @@ import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
-  isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -42,11 +41,13 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -135,11 +136,12 @@ function DashCardInner({
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
+  });
 
-    if (autoScroll) {
-      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
-      reportAutoScrolledToDashcard?.();
-    }
+  useAutoScrollIntoView({
+    ref: cardRootRef,
+    enabled: Boolean(autoScroll),
+    onScrolled: () => reportAutoScrolledToDashcard?.(),
   });
 
   useUpdateEffect(() => {

@@ -65,7 +65,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           dashboard={dashboard}
           // Unjustified type cast. FIXME
@@ -74,7 +74,7 @@ export async function setup({
         >
           <DashboardInfoSidebar />
         </MockDashboardContext>
-      )}
+      }
     />,
     { storeInitialState: state, withRouter: true },
   );

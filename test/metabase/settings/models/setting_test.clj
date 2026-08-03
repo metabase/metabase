@@ -8,7 +8,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -1168,14 +1167,6 @@
              #"Setting test-warn-vs-error-setting is not enabled for this database"
              (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
 
-(deftest identity-hash-test
-  (testing "Settings are hashed based on the key"
-    (mt/with-temporary-setting-values [test-setting-1 "123"
-                                       test-setting-2 "123"]
-      (is (= "5f7f150c"
-             (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (t2/select-one :model/Setting :key "test-setting-1")))))))
-
 (deftest enabled?-test
   (testing "Settings can be disabled"
     (testing "With no default returns nil"
@@ -1222,6 +1213,22 @@
            :enabled?   (fn [] false)
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
+
+(deftest validate-settable!-ex-data-test
+  (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
+    (testing "premium feature not available"
+      (mt/with-premium-features #{}
+        (is (= {:status-code 402
+                :status      "error-premium-feature-not-available"
+                :setting     "test-feature-setting"
+                :feature     :test-feature}
+               (try (test-feature-setting! "custom")
+                    (catch ExceptionInfo e (ex-data e)))))))
+    (testing ":enabled? returns false"
+      (is (= {:status-code 400
+              :setting     "test-enabled-setting-default"}
+             (try (test-enabled-setting-default! "custom")
+                  (catch ExceptionInfo e (ex-data e))))))))
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 

@@ -40,6 +40,14 @@ describe("parseMetabaseProtocolLink", () => {
       parseMetabaseProtocolLink("metabase://question/abc"),
     ).toBeUndefined();
   });
+
+  it("should parse metabase://chart links with non-numeric ids", () => {
+    expect(
+      parseMetabaseProtocolLink(
+        "metabase://chart/8e5b8bf3-4e6e-4ee7-856a-21d37dd0e6c0",
+      ),
+    ).toEqual({ id: "8e5b8bf3-4e6e-4ee7-856a-21d37dd0e6c0", model: "chart" });
+  });
 });
 
 describe("parseMetabaseProtocolMarkdownLink", () => {

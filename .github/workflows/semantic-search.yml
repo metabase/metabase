@@ -71,9 +71,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
@@ -109,6 +107,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mariadb-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -146,9 +146,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -162,10 +160,17 @@ jobs:
             junit-name: semantic-search-tests-mysql-8-0
             mysql-image: mysql:8.0
             pgvector-image: pgvector/pgvector:pg17
-          - name: MySQL Latest with pgvector pg17
-            junit-name: semantic-search-tests-mysql-latest
-            mysql-image: mysql:latest
+          - name: MySQL 9 with pgvector pg17
+            junit-name: semantic-search-tests-mysql-9
+            mysql-image: mysql:9
             pgvector-image: pgvector/pgvector:pg17
+          # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log
+          # until the runner cancels the job. A cancelled job can't be soft-failed with
+          # continue-on-error, so the leg is disabled until 26.x is supported.
+          # - name: MySQL Latest with pgvector pg17
+          #   junit-name: semantic-search-tests-mysql-latest
+          #   mysql-image: mysql:latest
+          #   pgvector-image: pgvector/pgvector:pg17
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -184,6 +189,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mysql-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -221,9 +228,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -297,9 +302,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   # pgvector-on-the-app-db mode: the app db itself is a pgvector-capable Postgres and
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
@@ -363,9 +366,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-result:
     needs:

@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
+import { StoragePurchaseButton } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,
@@ -12,6 +13,7 @@ import {
   Center,
   Group,
   Icon,
+  Loader,
   Stack,
   Text,
   Title,
@@ -22,6 +24,13 @@ import IconCSV from "./illustrations/csv.svg?component";
 
 export const CONTENT_MAX_WIDTH = "22.5rem";
 export const INNER_WIDTH = "12.5rem";
+
+/** Shared by both tabs so their loading states can't drift apart visually. */
+export const PanelLoadingState = () => (
+  <Center h="100%">
+    <Loader data-testid="loading-indicator" />
+  </Center>
+);
 
 type ContactReason =
   | "add-database"
@@ -90,10 +99,13 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
     .exhaustive();
 
   return (
-    <Alert icon={<Icon name="info" />} maw={CONTENT_MAX_WIDTH}>
-      <Text fz="md" lh="lg">
-        {getAlertCopy}
-      </Text>
+    <Alert
+      size="compact"
+      variant="light"
+      icon={<Icon name="info" />}
+      maw={CONTENT_MAX_WIDTH}
+    >
+      {getAlertCopy}
     </Alert>
   );
 };
@@ -162,27 +174,43 @@ export const DatabasePanelEmptyState = () => {
   );
 };
 
+const CSVIllustration = () => <Box component={IconCSV} c="core-brand" h={48} />;
+
+/**
+ * Shared by the CSV and Sheets panels: the instance is entitled to storage (the
+ * `attached_dwh` token is present) but the DWH database has not shown up yet —
+ * either it is still provisioning, or the token runs ahead of the data. A reload
+ * re-fetches the databases list, so pointing at a refresh is the honest hint.
+ */
+export const getStorageNotProvisionedSubtitle = () =>
+  t`You don't have storage provisioned yet. Refresh this page after 1-2 minutes.`;
+
+export const CSVStorageNotProvisionedEmptyState = () => (
+  <AddDataEmptyState
+    title={t`Upload CSV files`}
+    subtitle={getStorageNotProvisionedSubtitle()}
+    illustration={<CSVIllustration />}
+  />
+);
+
 export const CSVPanelEmptyState = ({
   ctaLink,
   contactAdminReason,
-  secondaryAction,
+  canOfferStorage,
 }:
   | {
       ctaLink: CTALink;
       contactAdminReason?: never;
-      secondaryAction?: ReactNode;
+      canOfferStorage?: boolean;
     }
   | {
       ctaLink?: never;
       contactAdminReason: ContactReason;
-      secondaryAction?: never;
+      canOfferStorage?: never;
     }) => {
-  const storageSubtitle =
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
-    t`To work with CSVs, either enable file uploads in your database, or add Metabase Storage.`;
-
-  const ctaSubtitle = secondaryAction
-    ? storageSubtitle
+  const ctaSubtitle = canOfferStorage
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
+      t`To work with CSVs, either enable file uploads in your database, or add Metabase Storage.`
     : t`To work with CSVs, enable file uploads in your database.`;
 
   const subtitle = ctaLink
@@ -193,10 +221,14 @@ export const CSVPanelEmptyState = ({
     <AddDataEmptyState
       title={t`Upload CSV files`}
       subtitle={subtitle}
-      illustration={<Box component={IconCSV} c="core-brand" h={48} />}
+      illustration={<CSVIllustration />}
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
-      secondaryAction={secondaryAction}
+      secondaryAction={
+        canOfferStorage ? (
+          <StoragePurchaseButton location="add-data-modal-csv" />
+        ) : undefined
+      }
     />
   );
 };

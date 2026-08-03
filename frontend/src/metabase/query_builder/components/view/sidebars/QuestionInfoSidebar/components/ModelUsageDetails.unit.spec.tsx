@@ -170,7 +170,7 @@ async function setup({
   setupCollectionsEndpoints({ collections });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={() => <ModelUsageDetails model={model} />} />,
+    <Route path="*" element={<ModelUsageDetails model={model} />} />,
     {
       withRouter: true,
       storeInitialState,

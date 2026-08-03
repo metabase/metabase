@@ -1,3 +1,5 @@
+import { SDK_BUNDLE_ERROR } from "embedding-sdk-shared/constants/event-names";
+
 import { waitForAuthConfigAndStartEarlyAuthFlow } from "./bootstrap-auth";
 
 // Bootstrap entry point for the SDK bundle.
@@ -51,6 +53,6 @@ function loadScript(filename: string): Promise<string> {
 void Promise.all(manifest.chunks.map((filename) => loadScript(filename))).catch(
   (error) => {
     console.error("SDK Bootstrap: Failed to load bundle chunks:", error);
-    document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-error"));
+    document.dispatchEvent(new CustomEvent(SDK_BUNDLE_ERROR));
   },
 );

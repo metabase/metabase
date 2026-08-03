@@ -22,7 +22,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -73,6 +72,7 @@
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
+                          (perms/prime-db-perms-cache {:db-ids db-ids})
                           (->> (t2/select :model/Database :id [:in db-ids])
                                (filter mi/can-write?)
                                (map :id)
@@ -151,7 +151,6 @@
 (api.macros/defendpoint :post "/enable"
   "Enable global setting to allow databases to persist models."
   []
-  (workspaces/check-not-in-workspace-mode! "Model persistence")
   (perms/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
   (model-persistence.settings/persisted-models-enabled! true)

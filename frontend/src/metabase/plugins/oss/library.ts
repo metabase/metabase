@@ -10,6 +10,10 @@ import type {
 import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
+  DataReferenceLibraryItem,
+  DataReferencePaneProps,
+} from "metabase/querying/components/DataReference/types";
+import type {
   Collection,
   CollectionId,
   CollectionItem,
@@ -104,6 +108,9 @@ type LibraryPlugin = {
     items: CollectionItem[];
   }) => OmniPickerItem[] | undefined;
   getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
+  DataReferenceLibraryPane: ComponentType<
+    DataReferencePaneProps<DataReferenceLibraryItem>
+  >;
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
   CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
@@ -138,6 +145,9 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   }),
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
+  DataReferenceLibraryPane: PluginPlaceholder<
+    DataReferencePaneProps<DataReferenceLibraryItem>
+  >,
   CreateLibraryModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,

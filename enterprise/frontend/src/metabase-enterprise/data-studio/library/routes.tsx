@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 
-import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
 import { Route } from "metabase/router";
 
 import { LibraryPage } from "./LibraryPage";
@@ -11,11 +10,10 @@ import { getDataStudioTableRoutes } from "./tables/routes";
 
 export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
   return (
-    <Route path="library" component={LibrarySectionLayout}>
-      <Route index component={LibraryPage} />
+    <Route path="library" element={<LibrarySectionLayout />}>
+      <Route index element={<LibraryPage />} />
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
-      {getDataStudioSegmentRoutes()}
       {getDataStudioSnippetRoutes()}
     </Route>
   );

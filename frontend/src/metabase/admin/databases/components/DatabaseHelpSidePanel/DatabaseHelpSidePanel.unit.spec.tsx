@@ -57,9 +57,9 @@ const setup = (opts: SetupOptions) => {
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <DatabaseHelpSidePanel engineKey={engineKey} onClose={onClose} />
-      )}
+      }
       path="/"
     />,
     {

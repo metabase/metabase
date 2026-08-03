@@ -5,8 +5,8 @@ import { EditTableDataContainer } from "./table-edit/EditTableDataContainer";
 export function getRoutes() {
   return (
     <Route
-      path="databases/:dbId/tables/:tableId/edit(/:objectId)"
-      component={EditTableDataContainer}
+      path="databases/:dbId/tables/:tableId/edit/:objectId?"
+      element={<EditTableDataContainer />}
     />
   );
 }

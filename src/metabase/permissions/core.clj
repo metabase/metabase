@@ -51,7 +51,9 @@
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
-  prime-db-cache
+  prime-db-perms-cache
+  prime-schema-perms-cache
+  prime-table-perms-cache
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
@@ -87,6 +89,7 @@
   collection-based-visibility-search-models
   collection-id-only-read-method
   collection-id-only-read-models
+  collection-read-access-group-ids
   current-user-has-application-permissions?
   define-collection-based-visibility!
   grant-application-permissions!

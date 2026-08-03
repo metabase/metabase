@@ -96,7 +96,7 @@ const setup = async ({
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
   const { history } = renderWithProviders(
-    <Route path="search" component={SearchApp} />,
+    <Route path="search" element={<SearchApp />} />,
     {
       withRouter: true,
       initialRoute,
@@ -195,7 +195,7 @@ describe("SearchApp", () => {
         await userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
         const url = history.getCurrentLocation();
-        expect(url.query.type).toEqual(model);
+        expect(new URLSearchParams(url.search).get("type")).toEqual(model);
       },
     );
   });

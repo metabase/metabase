@@ -7,14 +7,14 @@ import { createRoot } from "react-dom/client";
 // Import the embedding SDK vendors side-effects (sets up global CSS vars, etc.)
 import "metabase/embedding-sdk/vendors-side-effects";
 
-import { setSessionTokenHeader } from "metabase/embedding/lib/embedding-request-auth";
+import { PLUGIN_API } from "metabase/api/client";
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
 
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS
 import "sdk-iframe-embedding-ee-plugins";
+import { setSessionTokenHeader } from "./embedding/lib/auth/set-session-token-header";
 
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.isMcpApp = true;

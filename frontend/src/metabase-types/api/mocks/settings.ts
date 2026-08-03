@@ -144,6 +144,7 @@ export const createMockTokenFeatures = (
   table_data_editing: false,
   semantic_search: false,
   remote_sync: false,
+  "data-apps": false,
   "transforms-basic": false,
   "transforms-python": false,
   library: false,
@@ -153,7 +154,6 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
-  workspaces: false,
   ...opts,
 });
 
@@ -366,6 +366,8 @@ export const createMockSettings = (
   "saml-attribute-group": null,
   "saml-group-sync": null,
   "saml-group-mappings": null,
+  "jwt-group-mappings": null,
+  "oidc-group-mappings": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",

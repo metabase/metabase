@@ -4,16 +4,29 @@ const createElement = ({
   pattern,
   mode,
   enforceOutgoing = true,
-}) => ({
-  type: `${type}/${name}`,
-  pattern: pattern ?? `frontend/src/metabase/${name}/**`,
-  ...(mode && { mode }),
-  enforceOutgoing,
-});
+  // Outside code must import the module root alias, and the module's own files must import relatively.
+  // Enforced by the `metabase/enforce-module-public-api` rule via `getPublicApiModules` below.
+  enforcePublicApi = false,
+}) => {
+  if (enforcePublicApi && (pattern || mode)) {
+    // Single-file elements are their own entry point, and elements outside the
+    // `metabase` alias root would need their own alias derivation.
+    throw new Error(
+      `enforcePublicApi requires a default folder element (frontend/src/metabase/<name>/**): ${name}`,
+    );
+  }
+  return {
+    type: `${type}/${name}`,
+    pattern: pattern ?? `frontend/src/metabase/${name}/**`,
+    ...(mode && { mode }),
+    enforceOutgoing,
+    ...(enforcePublicApi && { publicApiAlias: `metabase/${name}` }),
+  };
+};
 
 const elements = [
   // lib
-  createElement({ type: "lib", name: "analytics" }),
+  createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
   createElement({ type: "lib", name: "css" }),
   createElement({
     type: "lib",
@@ -44,6 +57,7 @@ const elements = [
   }),
 
   // basic
+  createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
 
   // shared
@@ -64,11 +78,6 @@ const elements = [
   createElement({ type: "shared", name: "data-grid" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({
-    type: "shared",
-    name: "embed",
-    pattern: "frontend/src/embed/**",
-  }),
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
@@ -136,16 +145,10 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
-  createElement({
-    type: "shared",
-    name: "metabase-shared",
-    pattern: "frontend/src/metabase-shared/**",
-  }),
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
@@ -161,7 +164,7 @@ const elements = [
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "rich_text_editing" }),
-  createElement({ type: "shared", name: "router" }),
+  createElement({ type: "shared", name: "route-guards" }),
   createElement({
     type: "shared",
     name: "schema",
@@ -229,6 +232,22 @@ const elements = [
       mode: "full",
     }),
   ),
+  // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
+  // contract). Feature tier on purpose: it's a library consumed by the app-tier
+  // entries (runtime + SDK package dev preset), and the tier guarantees it only
+  // reaches shared/lib — keep the sandbox's dependency surface auditable.
+  createElement({
+    type: "feature",
+    name: "data-app-sandbox",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    mode: "full",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-runtime",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    mode: "full",
+  }),
   createElement({
     type: "feature",
     name: "enterprise",
@@ -259,6 +278,7 @@ const elements = [
     "frontend/src/metabase/reducers-common.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
+    "frontend/src/metabase/routes.unit.spec.tsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/LoadCurrentUser.tsx",
     "frontend/src/metabase/LoadCurrentUser.unit.spec.tsx",
@@ -311,7 +331,7 @@ const elements = [
     mode: "full",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "routes-stable-id-aware",
     pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
     mode: "full",
@@ -319,7 +339,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "redux-store",
-    pattern: "frontend/src/metabase/store.js",
+    pattern: "frontend/src/metabase/store.ts",
     mode: "full",
   }),
 ];
@@ -365,17 +385,6 @@ const rules = [
   },
   {
     from: ["app/*"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-  },
-  // TEMP(content-optimizer): the Monitor space is mid-migration — source files are
-  // being relocated here from admin/ and data-studio/ before their routes and
-  // dependencies are moved, so monitor currently imports heavily from feature
-  // modules (admin, etc.). We allow it to import from anywhere until the migration
-  // is complete.
-  // TODO (@stasgavrylov 24/06/26): remove this rule and give monitor proper boundaries once the
-  // Monitor migration is complete.
-  {
-    from: ["shared/monitor"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
   // Whitelisted cross-tier edges. Keep this list short; every entry should
@@ -448,4 +457,16 @@ function getFeatureModules(els = elements) {
   return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
 }
 
-export { elements, rules, enforcedRules, getFeatureModules };
+// The import aliases of the modules flagged `enforcePublicApi`, for the
+// `metabase/enforce-module-public-api` rule.
+function getPublicApiModules(els = elements) {
+  return els.map((element) => element.publicApiAlias).filter(Boolean);
+}
+
+export {
+  elements,
+  rules,
+  enforcedRules,
+  getFeatureModules,
+  getPublicApiModules,
+};

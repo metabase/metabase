@@ -9,8 +9,8 @@ import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellMod
 export function getPythonTransformsRoutes() {
   return (
     <>
-      <Route path="library/:path" component={PythonLibraryEditorPage} />
-      <Route path="new/python" component={NewPythonTransformPage} />
+      <Route path="library/:path" element={<PythonLibraryEditorPage />} />
+      <Route path="new/python" element={<NewPythonTransformPage />} />
     </>
   );
 }
@@ -18,7 +18,7 @@ export function getPythonTransformsRoutes() {
 export function getPythonUpsellRoutes() {
   return (
     // Render upsell modal on python transforms routes if feature is not enabled
-    <Route path="" component={TransformListPage}>
+    <Route path="" element={<TransformListPage />}>
       {modalRoute("library/:path", PythonTransformsUpsellModal, {
         noWrap: true,
       })}

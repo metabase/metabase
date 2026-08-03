@@ -70,6 +70,7 @@ export const ChartSettingsWidgetPopover = ({
       anchorEl={anchor}
       opened={!!anchor && widgets.length > 0}
       onDismiss={onClose}
+      closeOnEscape={false}
       position="right"
       offset={{ mainAxis: 10, crossAxis: 10 }}
       middlewares={{
@@ -89,6 +90,14 @@ export const ChartSettingsWidgetPopover = ({
             pt={hasMultipleSections ? 0 : undefined}
             ref={setContentRef}
             data-testid="chart-settings-widget-popover-content"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                // Escape bubbles here after a focused *BlurChange input has
+                // discarded its pending value via flushSync; Mantine's document-level
+                // closeOnEscape would unmount the widget before the input could react.
+                onClose();
+              }
+            }}
             mah="40rem"
             miw="336px"
             className={CS.overflowYAuto}
@@ -98,7 +107,7 @@ export const ChartSettingsWidgetPopover = ({
                 px="md"
                 pt="xs"
                 value={currentSection}
-                onChange={(section) => setCurrentSection(String(section))}
+                onChange={(section) => setCurrentSection(section ?? undefined)}
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (

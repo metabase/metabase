@@ -1,7 +1,40 @@
+.aiMarkdownRoot {
+  min-width: 0;
+}
+
+/* Blocks are separate elements, so the intra-block paragraph rule can't space them. */
+.aiMarkdownRoot > :not(:last-child) {
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
 .aiMarkdown {
   line-height: 1.5;
   min-width: 0;
   max-width: 100%;
+}
+
+.aiMarkdown > :last-child {
+  margin-bottom: 0;
+}
+
+.streamedWord {
+  animation: streamed-word-fade 150ms ease;
+}
+
+@keyframes streamed-word-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streamedWord {
+    animation: none;
+  }
 }
 
 .tableWrapper {
@@ -103,10 +136,6 @@
   background: transparent;
   border: none;
   padding: 0;
-}
-
-.aiMarkdown p {
-  margin-bottom: 1rem;
 }
 
 .aiMarkdown h1,

@@ -42,6 +42,8 @@ const baseConfig = {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
     "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
+    // remend only declares an `import` export condition, so jest's CJS resolver can't find it.
+    "^remend$": "<rootDir>/node_modules/remend/dist/index.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
@@ -139,10 +141,8 @@ const baseConfig = {
 /** @type {import('jest').Config} */
 const config = {
   // `addFileAttribute` makes jest-junit emit the source path as a `file`
-  // attribute on each <testcase>. Additive — it leaves classname/name untouched,
-  // so Trunk's existing test identity is preserved — and it lets both Trunk
-  // (codeowners/file attribution) and the ci-conductor reporter resolve a real
-  // source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
+  // attribute on each <testcase>, which lets the ci-conductor reporter resolve a
+  // real source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
   reporters: ["default", ["jest-junit", { addFileAttribute: "true" }]],
   coverageReporters: ["html", "lcov"],
   watchPlugins: [
@@ -175,6 +175,10 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/frontend/test/jest-setup-env-core.js",
+      ],
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
         "<rootDir>/frontend/src/embedding-sdk-bundle",

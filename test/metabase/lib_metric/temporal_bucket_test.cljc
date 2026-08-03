@@ -96,7 +96,8 @@
       ;; Should include common datetime units
       (is (some #(= :day (:unit %)) buckets))
       (is (some #(= :month (:unit %)) buckets))
-      (is (some #(= :year (:unit %)) buckets)))))
+      (is (some #(= :year (:unit %)) buckets))
+      (is (= :month (some #(when (:default %) (:unit %)) buckets))))))
 
 (deftest ^:parallel available-temporal-buckets-date-test
   (testing "Date dimension returns date bucket options"
@@ -105,7 +106,8 @@
       (is (pos? (count buckets)))
       ;; Should include date units
       (is (some #(= :day (:unit %)) buckets))
-      (is (some #(= :month (:unit %)) buckets)))))
+      (is (some #(= :month (:unit %)) buckets))
+      (is (not-any? #(= :year-of-era (:unit %)) buckets)))))
 
 (deftest ^:parallel available-temporal-buckets-time-test
   (testing "Time dimension returns time bucket options"
@@ -114,7 +116,8 @@
       (is (pos? (count buckets)))
       ;; Should include time units
       (is (some #(= :hour (:unit %)) buckets))
-      (is (some #(= :minute (:unit %)) buckets)))))
+      (is (some #(= :minute (:unit %)) buckets))
+      (is (= :hour (some #(when (:default %) (:unit %)) buckets))))))
 
 (deftest ^:parallel available-temporal-buckets-non-temporal-test
   (testing "Non-temporal dimension returns empty list"
@@ -122,12 +125,30 @@
       (is (sequential? buckets))
       (is (zero? (count buckets))))))
 
+(deftest ^:parallel valid-temporal-unit-for-type?-test
+  (testing "units the picker offers for the type are accepted"
+    (is (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime :week))
+    (is (lib-metric.projection/valid-temporal-unit-for-type? :type/Date :month))
+    (is (lib-metric.projection/valid-temporal-unit-for-type? :type/Time :minute)))
+  (testing "units hidden from the picker are rejected, so a stored default can never name one"
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/Date :year-of-era)))
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime :millisecond))))
+  (testing "units belonging to a different temporal type are rejected"
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/Date :hour))))
+  (testing "non-temporal columns and non-units accept nothing"
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/Text :month)))
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime :not-a-unit)))
+    (is (not (lib-metric.projection/valid-temporal-unit-for-type? :type/DateTime nil)))))
+
 (deftest ^:parallel available-temporal-buckets-marks-selected-test
-  (testing "Selected unit is marked when projection has temporal-unit"
+  (testing "The configured default and explicit projection selection are marked independently"
     (let [projection [:dimension {:temporal-unit :month} uuid-datetime]
           def-with-proj (assoc definition :projections [{:type :metric :id 1 :lib/uuid "550e8400-e29b-41d4-a716-446655440099" :projection [projection]}])
-          buckets (lib-metric.projection/available-temporal-buckets def-with-proj datetime-dimension)]
-      (is (some #(and (= :month (:unit %)) (:selected %)) buckets)))))
+          dimension (assoc datetime-dimension :default-temporal-unit :week)
+          buckets (lib-metric.projection/available-temporal-buckets def-with-proj dimension)]
+      (is (some #(and (= :week (:unit %)) (:default %)) buckets))
+      (is (some #(and (= :month (:unit %)) (:selected %)) buckets))
+      (is (not-any? #(and (= :month (:unit %)) (:default %)) buckets)))))
 
 ;;; -------------------------------------------------- temporal-bucket --------------------------------------------------
 

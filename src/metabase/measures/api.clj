@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -83,25 +84,31 @@
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
-(mu/defn- hydrated-measure [id :- ms/PositiveInt]
+(mu/defn- hydrated-measure [id :- ms/PositiveInt
+                            include-orphaned? :- :boolean]
   (api/read-check (t2/select-one :model/Measure :id id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
-      metrics/filter-dimensions-for-user))
+  (cond-> (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
+              metrics/filter-dimensions-for-user)
+    (not include-orphaned?) metrics/without-orphaned-dimensions))
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [measure (hydrated-measure id)]
+                    [:id ms/PositiveInt]]
+   {:keys [include-orphaned]} :- [:map
+                                  [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [measure (hydrated-measure id (boolean include-orphaned))]
     (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
-    (filter mi/can-read? measures)
-    (t2/hydrate measures :creator :definition_description)))
+  (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
+        table-ids (into #{} (keep :table_id) measures)]
+    (perms/prime-table-perms-cache {:table-ids table-ids})
+    (-> (filterv mi/can-read? measures)
+        (t2/hydrate :creator :definition_description))))
 
 (defn- write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
@@ -127,7 +134,7 @@
           (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
       (t2/update! :model/Measure id changes))
-    (u/prog1 (hydrated-measure id)
+    (u/prog1 (hydrated-measure id false)
       (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
@@ -166,7 +173,7 @@
   [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
-  (let [measure (hydrated-measure id)]
+  (let [measure (hydrated-measure id false)]
     (metrics/dimension-values
      (:dimensions measure)
      (:dimension_mappings measure)
@@ -181,7 +188,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
-  (let [measure (hydrated-measure id)]
+  (let [measure (hydrated-measure id false)]
     (metrics/dimension-search-values
      (:dimensions measure)
      (:dimension_mappings measure)
@@ -197,7 +204,7 @@
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    {:keys [value]}             :- [:map [:value :string]]]
-  (let [measure (hydrated-measure id)]
+  (let [measure (hydrated-measure id false)]
     (metrics/dimension-remapped-value
      (:dimensions measure)
      (:dimension_mappings measure)

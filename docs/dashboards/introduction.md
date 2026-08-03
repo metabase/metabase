@@ -82,7 +82,7 @@ You can use [Markdown](https://commonmark.org/help/) to format the text in your 
 
 ![Result](images/result.png)
 
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown).
+To learn more, see [Format text with Markdown](./markdown.md).
 
 ### Including variables in text cards
 
@@ -321,11 +321,13 @@ See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching
 
 ## Sharing dashboards with public links
 
-If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
+If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **Share** icon to find its public links.
 
 ![Share icon](./images/share-icon.png)
 
 Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+
+Admins can also [create an account](../people-and-groups/managing.md#creating-an-account) for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**.
 
 ## Exporting results from a dashboard
 

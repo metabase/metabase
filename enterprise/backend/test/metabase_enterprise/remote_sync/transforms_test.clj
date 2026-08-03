@@ -21,7 +21,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each test-helpers/commit-with-temp
   (fn [f]
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]

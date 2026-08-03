@@ -1,9 +1,11 @@
-import querystring from "querystring";
-
-import type { LocationDescriptor, LocationDescriptorObject } from "history";
-
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import {
+  type LocationDescriptor,
+  type LocationDescriptorObject,
+  queryToSearch,
+} from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
 import {
   clickLink,
   getPathnameWithoutSubPath,
@@ -163,11 +165,13 @@ function isAbsoluteUrl(url: string): boolean {
 function getLocation(url: string): LocationDescriptor {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const query = querystring.parse(search.substring(1));
     return {
       pathname: getPathnameWithoutSubPath(pathname),
-      search,
-      query,
+      // Round-tripped rather than passed through, because a click behavior's
+      // custom destination is a hand-written URL whose params land in whatever
+      // order the author typed them, and the resulting URL is asserted against
+      // with the keys sorted.
+      search: queryToSearch(parseSearchQuery(search)),
       hash,
     };
   } catch {

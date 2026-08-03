@@ -8,8 +8,8 @@ default: &default
   - "bin/**/!(*.md)"
 
 actionlint:
-  - ".github/workflows/*.yml"
-  - ".github/workflows/*.yaml"
+  - added|modified: ".github/workflows/*.yml"
+  - added|modified: ".github/workflows/*.yaml"
 
 shared_sources: &shared_sources
   - "src/**/*.cljc"
@@ -53,11 +53,6 @@ frontend_sources: &frontend_sources
   - *frontend_configs
   - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
-
-# Used only in .github/workflows/conventional-commit-pr-title-reminder.yml
-frontend_embedding_sources:
-  - "enterprise/frontend/src/{embedding,embedding-*}/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
-  - "enterprise/frontend/src/metabase-enterprise/{embedding,embedding-*}**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
 # Used only in .github/workflows/embedding-sdk-labels-reminder.yml
 frontend_embedding_sdk_package_sources:

@@ -30,7 +30,7 @@ function setup() {
   const { history } = renderWithProviders(
     <Route
       path="/"
-      component={() => <MetricPageShell card={card} urls={metricUrls} />}
+      element={<MetricPageShell card={card} urls={metricUrls} />}
     />,
     { withRouter: true, withUndos: true },
   );

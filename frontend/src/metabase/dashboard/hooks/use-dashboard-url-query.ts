@@ -1,5 +1,4 @@
-import type { Location } from "history";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -7,9 +6,16 @@ import { useSetting } from "metabase/common/hooks";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
-import type { InjectedRouter } from "metabase/router";
-import { push, replace } from "metabase/router";
+import {
+  type Location,
+  push,
+  queryToSearch,
+  replace,
+  subscribeLocation,
+  useIsNavigationHeld,
+} from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {
@@ -18,17 +24,15 @@ import {
   getTabs,
   getValuePopulatedParameters,
 } from "../selectors";
-import { createTabSlug } from "../utils";
+import { createTabSlug, parseTabSlug } from "../utils";
 
-export function useDashboardUrlQuery(
-  router: InjectedRouter,
-  location: Location,
-) {
+export function useDashboardUrlQuery(location: Location) {
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
   const siteUrl = useSetting("site-url");
+  const isNavigationHeld = useIsNavigationHeld();
 
   const dispatch = useDispatch();
 
@@ -49,6 +53,7 @@ export function useDashboardUrlQuery(
   }, [parameterValuesBySlug, tabs, selectedTab]);
 
   const previousQueryParams = usePrevious(queryParams);
+  const hasDeferredSyncRef = useRef(false);
 
   useEffect(() => {
     /**
@@ -58,6 +63,18 @@ export function useDashboardUrlQuery(
      * settings because now the base URL (including the query string) is different.
      */
     if (isEmbedPreview() || !dashboardId) {
+      return;
+    }
+
+    /**
+     * A leave prompt is up, and the router holds a single pending navigation.
+     * Syncing now would replace the destination the user is being asked about,
+     * and letting them through would then take them somewhere else. Note that
+     * the sync was skipped, because `previousQueryParams` still advances and
+     * would otherwise swallow it once the prompt is answered.
+     */
+    if (isNavigationHeld) {
+      hasDeferredSyncRef.current = true;
       return;
     }
 
@@ -72,11 +89,15 @@ export function useDashboardUrlQuery(
       }
     }
 
-    if (_.isEqual(previousQueryParams, queryParams)) {
+    if (
+      !hasDeferredSyncRef.current &&
+      _.isEqual(previousQueryParams, queryParams)
+    ) {
       return;
     }
+    hasDeferredSyncRef.current = false;
 
-    const currentQuery = location?.query ?? {};
+    const currentQuery = parseSearchQuery(location.search);
 
     const nextQueryParams = toLocationQuery(queryParams);
     const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
@@ -91,7 +112,7 @@ export function useDashboardUrlQuery(
         queryParams.tab !== previousQueryParams.tab;
 
       const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, query: nextQuery }));
+      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
     }
   }, [
     dashboardId,
@@ -100,38 +121,27 @@ export function useDashboardUrlQuery(
     location,
     siteUrl,
     dispatch,
+    isNavigationHeld,
   ]);
 
   useEffect(() => {
-    // @ts-expect-error missing type declaration
-    const unsubscribe = router.listen((nextLocation) => {
+    return subscribeLocation((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {
         return;
       }
 
-      const currentTabId = parseTabId(location);
-      const nextTabId = parseTabId(nextLocation);
+      const currentTabId = parseTabSlug(location);
+      const nextTabId = parseTabSlug(nextLocation);
 
       if (nextTabId && currentTabId !== nextTabId) {
         dispatch(selectTab({ tabId: nextTabId }));
       }
     });
-
-    return () => unsubscribe();
-  }, [router, location, selectedTab, dispatch]);
+  }, [location, selectedTab, dispatch]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
-
-function parseTabId(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
-    const id = parseInt(slug, 10);
-    return Number.isSafeInteger(id) ? id : null;
-  }
-  return null;
-}
 
 function toLocationQuery(object: Record<string, any>) {
   return _.mapObject(object, (value) => (value == null ? "" : value));

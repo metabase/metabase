@@ -72,7 +72,7 @@ export const setup = ({
   });
 
   renderWithProviders(
-    <Route path="/getting-started" component={Onboarding} />,
+    <Route path="/getting-started" element={<Onboarding />} />,
     {
       initialRoute: "/getting-started",
       storeInitialState: state,

@@ -182,11 +182,11 @@ export function setup({
     <>
       <Route
         path="/admin/permissions/collections"
-        component={CollectionPermissionsPage}
+        element={<CollectionPermissionsPage />}
       />
       <Route
         path="/admin/permissions/collections/:collectionId"
-        component={CollectionPermissionsPage}
+        element={<CollectionPermissionsPage />}
       />
     </>,
     {

@@ -1,5 +1,4 @@
-import type { Location } from "history";
-
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   SORT_DIRECTIONS,
@@ -16,35 +15,34 @@ import type {
 export function getParsedParams(
   location: Location,
 ): Urls.TransformRunListParams {
-  const {
-    page,
-    statuses,
-    "transform-ids": transformIds,
-    "transform-tag-ids": transformTagIds,
-    "start-time": startTime,
-    "end-time": endTime,
-    "run-methods": runMethods,
-    "sort-column": sortColumn,
-    "sort-direction": sortDirection,
-  } = location.query;
+  const searchParams = new URLSearchParams(location.search);
 
   return {
-    page: Urls.parseNumberParam(page),
-    statuses: Urls.parseListParam(statuses, (v) =>
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    statuses: Urls.parseListParam(searchParams.getAll("statuses"), (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_STATUSES),
     ),
-    transformIds: Urls.parseListParam(transformIds, Urls.parseNumberParam),
-    transformTagIds: Urls.parseListParam(
-      transformTagIds,
+    transformIds: Urls.parseListParam(
+      searchParams.getAll("transform-ids"),
       Urls.parseNumberParam,
     ),
-    startTime: Urls.parseStringParam(startTime),
-    endTime: Urls.parseStringParam(endTime),
-    runMethods: Urls.parseListParam(runMethods, (v) =>
+    transformTagIds: Urls.parseListParam(
+      searchParams.getAll("transform-tag-ids"),
+      Urls.parseNumberParam,
+    ),
+    startTime: Urls.parseStringParam(searchParams.get("start-time")),
+    endTime: Urls.parseStringParam(searchParams.get("end-time")),
+    runMethods: Urls.parseListParam(searchParams.getAll("run-methods"), (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
     ),
-    sortColumn: Urls.parseEnumParam(sortColumn, TRANSFORM_RUN_SORT_COLUMNS),
-    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
+    sortColumn: Urls.parseEnumParam(
+      searchParams.get("sort-column"),
+      TRANSFORM_RUN_SORT_COLUMNS,
+    ),
+    sortDirection: Urls.parseEnumParam(
+      searchParams.get("sort-direction"),
+      SORT_DIRECTIONS,
+    ),
   };
 }
 

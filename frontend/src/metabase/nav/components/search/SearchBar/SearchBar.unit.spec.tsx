@@ -69,7 +69,7 @@ const setup = ({
   setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={SearchBar} />,
+    <Route path="*" element={<SearchBar />} />,
     {
       withRouter: true,
       initialRoute,
@@ -92,7 +92,7 @@ describe("SearchBar", () => {
       await userEvent.type(getSearchBar(), "BC{enter}");
 
       const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=BC");
     });
 
@@ -190,7 +190,7 @@ describe("SearchBar", () => {
 
       const location = history.getCurrentLocation();
 
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=bar&type=card");
     });
 
@@ -204,7 +204,7 @@ describe("SearchBar", () => {
 
       const location = history.getCurrentLocation();
 
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=bar");
     });
   });

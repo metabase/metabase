@@ -58,10 +58,7 @@ const setup = ({ result }: { result: ApiSearchResult }) => {
   setupUserRecipientsEndpoint({ users: [USER] });
 
   const { history } = renderWithProviders(
-    <Route
-      path="*"
-      component={() => <SearchResult result={result} index={0} />}
-    />,
+    <Route path="*" element={<SearchResult result={result} index={0} />} />,
     {
       withRouter: true,
       initialRoute: "/",

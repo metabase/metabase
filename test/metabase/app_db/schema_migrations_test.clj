@@ -1631,7 +1631,6 @@
         (migrate!)
         (is (= users-before (get-users)))))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:mb/old-migrations-test data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"
     (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-19T21:32:04"] [migrate!]
@@ -2792,68 +2791,6 @@
                 {:first_name "JWT" :provider "jwt"}]
                results))))))
 
-(deftest workspace-input-normalization-migration-test
-  (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
-            Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
-    (impl/test-migrations ["v60.2026-02-09T12:00:00" "v60.2026-02-09T12:00:14"] [migrate!]
-      ;; Create workspace
-      (let [ws-id (first (t2/insert-returning-pks! :workspace
-                                                   {:name           "Test Workspace"
-                                                    :creator_id     1
-                                                    :api_key_id     1
-                                                    :execution_user 1
-                                                    :database_id    1
-                                                    :db_status      "ready"
-                                                    :base_status    "active"
-                                                    :graph_version  1
-                                                    :created_at     :%now
-                                                    :updated_at     :%now}))]
-        ;; Insert workspace_input rows with OLD schema (includes ref_id and transform_version).
-        (t2/insert-returning-pks! :workspace_input
-                                  {:workspace_id      ws-id
-                                   :db_id             1
-                                   :schema            "public"
-                                   :table             "orders"
-                                   :ref_id            (str (random-uuid))
-                                   :access_granted    true
-                                   :transform_version 1
-                                   :created_at        :%now
-                                   :updated_at        :%now})
-        (migrate!)
-        ;; 1. Old workspace_input data is dropped (table recreated with new schema)
-        (testing "workspace_input table is empty after drop/recreate"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input]})))))
-        ;; 2. ref_id and transform_version columns no longer exist
-        (testing "ref_id column removed"
-          (is (thrown? Exception
-                       (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
-        (testing "transform_version column removed"
-          (is (thrown? Exception
-                       (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
-        ;; 3. workspace_input_transform table exists
-        (testing "workspace_input_transform table created"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input_transform]})))))
-        ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
-        (testing "can insert into new schema"
-          (t2/insert-returning-pks! :workspace_input
-                                    {:workspace_id   ws-id
-                                     :db_id          1
-                                     :schema         "public"
-                                     :table          "orders"
-                                     :access_granted false
-                                     :created_at     :%now
-                                     :updated_at     :%now}))
-        (testing "unique constraint prevents duplicate table entries"
-          (is (thrown? Exception
-                       (t2/insert-returning-pks! :workspace_input
-                                                 {:workspace_id   ws-id
-                                                  :db_id          1
-                                                  :schema         "public"
-                                                  :table          "orders"
-                                                  :access_granted false
-                                                  :created_at     :%now
-                                                  :updated_at     :%now}))))))))
-
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
@@ -3246,6 +3183,40 @@
               (when (= :mysql (mdb/db-type))
                 (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
                   (is (nil? (nid invalid))))))))))))
+
+(deftest delete-destination-db-permissions-test
+  (testing "v63.destperm-cleanup: data_permissions rows for destination dbs (router_database_id set) are deleted; rows for normal dbs remain"
+    (impl/test-migrations ["v63.destperm-cleanup" "v63.destperm-cleanup"] [migrate!]
+      (let [new-db!      (fn [name & {:as extra}]
+                           (t2/insert-returning-pk! :metabase_database
+                                                    (merge {:name       name
+                                                            :engine     "postgres"
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :details    "{}"}
+                                                           extra)))
+            group-id     (t2/insert-returning-pk! :permissions_group {:name "Destperm Test Group"})
+            router-id    (new-db! "Router DB")
+            dest-id      (new-db! "Destination DB" :router_database_id router-id)
+            normal-id    (new-db! "Normal DB")
+            new-perm!    (fn [db-id]
+                           (t2/insert-returning-pk! :data_permissions
+                                                    {:group_id   group-id
+                                                     :perm_type  "perms/view-data"
+                                                     :db_id      db-id
+                                                     :perm_value "unrestricted"}))
+            dest-perm    (new-perm! dest-id)
+            normal-perm  (new-perm! normal-id)]
+        (testing "seeded rows exist before the migration"
+          (is (some? (t2/select-one-fn :id :data_permissions :id dest-perm)))
+          (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm))))
+        (migrate!)
+        (testing "destination db permissions are deleted"
+          (is (nil? (t2/select-one-fn :id :data_permissions :id dest-perm)))
+          (is (zero? (t2/count :data_permissions :db_id dest-id))))
+        (testing "normal db permissions are untouched"
+          (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
+          (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
 
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"

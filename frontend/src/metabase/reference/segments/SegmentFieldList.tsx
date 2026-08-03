@@ -211,9 +211,19 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   );
 };
 
+// What the container has to supply: `params` feeds `mapStateToProps`, and
+// `table` is read here but selected by the container. Naming it keeps that
+// contract type-checked.
+type SegmentFieldListOwnProps = ReferenceRouteProps &
+  Pick<SegmentFieldListProps, "table">;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-  // Unjustified type cast. FIXME
-)(SegmentFieldList as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  SegmentFieldList as unknown as React.ComponentType<SegmentFieldListOwnProps>,
+);
