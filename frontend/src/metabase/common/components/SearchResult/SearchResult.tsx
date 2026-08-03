@@ -5,7 +5,7 @@ import { forwardRef, useCallback } from "react";
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { LocationDescriptorObject } from "metabase/router";
+import type { To } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
@@ -115,7 +115,7 @@ export function SearchResult({
   const navigate = useNavigate();
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) => navigate(nextLocation),
+    (nextLocation: To) => navigate(nextLocation),
     [navigate],
   );
 

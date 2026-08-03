@@ -21,7 +21,7 @@ import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useSelector } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
+import type { To } from "metabase/router";
 import {
   queryToSearch,
   useLocation,
@@ -83,7 +83,7 @@ function SearchBar({
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) => navigate(nextLocation),
+    (nextLocation: To) => navigate(nextLocation),
     [navigate],
   );
 
