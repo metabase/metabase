@@ -99,6 +99,15 @@ export const ChartSettingSelect = ({
     value: encodeWidgetValue(value) || "",
   }));
 
+  // `null` is a legitimate option value (e.g. "Display as: Text"), so it has to
+  // be encoded like any other. Mantine only clears the input when it receives
+  // `null` — an unmatched string leaves the previous label in place — so fall
+  // back to `null` whenever no option matches.
+  const encodedValue = encodeWidgetValue(value);
+  const selectedValue = data.some((option) => option.value === encodedValue)
+    ? encodedValue
+    : null;
+
   const inputPaddingRight = rightSectionWidth
     ? `${parseInt(rightSectionWidth, 10) + 8}px`
     : undefined;
@@ -128,7 +137,7 @@ export const ChartSettingSelect = ({
       }}
       data={data}
       disabled={disabled}
-      value={value === null ? value : encodeWidgetValue(value)}
+      value={selectedValue}
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
       onChange={(v) => {
         onChange(

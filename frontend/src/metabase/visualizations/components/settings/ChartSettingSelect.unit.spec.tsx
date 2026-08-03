@@ -84,6 +84,8 @@ describe("ChartSettingSelect", () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
+  // Asserts the input's display value: options stay mounted while the dropdown
+  // is closed, so a getByText check would pass even when nothing is selected.
   it("should show correct option as selected", () => {
     const { rerender } = render(
       <ChartSettingSelect
@@ -92,7 +94,7 @@ describe("ChartSettingSelect", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getByText("No value")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("No value")).toBeInTheDocument();
 
     rerender(
       <ChartSettingSelect
@@ -101,7 +103,7 @@ describe("ChartSettingSelect", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getByText("Boolean True")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Boolean True")).toBeInTheDocument();
 
     rerender(
       <ChartSettingSelect
@@ -110,7 +112,7 @@ describe("ChartSettingSelect", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getByText("Boolean False")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Boolean False")).toBeInTheDocument();
   });
 
   it("should disable select when there are no options", () => {
