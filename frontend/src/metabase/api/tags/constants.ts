@@ -65,6 +65,7 @@ export const TAG_TYPES = [
   "transform-dag-run",
   "transform-inspector-lens",
   "user",
+  "current-user",
   "public-dashboard",
   "embed-dashboard",
   "public-card",

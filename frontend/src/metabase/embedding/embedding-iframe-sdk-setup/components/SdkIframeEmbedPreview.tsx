@@ -132,8 +132,16 @@ const SdkIframeEmbedPreviewInner = () => {
       theme,
       useExistingUserSession: true,
       isGuest: settings.isGuest,
+      allowedCustomVisualizations: settings.isGuest
+        ? undefined
+        : settings.allowedCustomVisualizations,
     }),
-    [instanceUrl, theme, settings.isGuest],
+    [
+      instanceUrl,
+      theme,
+      settings.isGuest,
+      settings.allowedCustomVisualizations,
+    ],
   );
 
   // initial configuration, needed so that the element finds the config on first render

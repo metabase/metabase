@@ -22,6 +22,7 @@ import {
   Text,
   Tooltip,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -84,7 +85,7 @@ export const NotificationsTable = ({
         accessorFn: (notification) => notification.id,
         cell: ({ row }) => (
           <Flex justify="center">
-            <Badge variant="outline" size="sm" miw={29}>
+            <Badge variant="light" color="brand" size="xs" miw={29}>
               {row.original.id}
             </Badge>
           </Flex>
@@ -229,7 +230,7 @@ export const NotificationsTable = ({
     [],
   );
 
-  if (isLoading || error !== undefined) {
+  if (error !== undefined) {
     return (
       <Card
         flex="0 1 auto"
@@ -238,7 +239,7 @@ export const NotificationsTable = ({
         p="lg"
         data-testid="notifications-admin-table"
       >
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Card>
     );
   }
@@ -249,19 +250,27 @@ export const NotificationsTable = ({
       mih={0}
       p={0}
       withBorder
+      aria-busy={isLoading}
       data-testid="notifications-admin-table"
     >
-      <TreeTable
-        instance={instance}
-        hierarchical={false}
-        showCheckboxes
-        onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
-        headerCheckboxAriaLabel={t`Select all`}
-        ariaLabel={t`Notifications`}
-        onRowClick={handleRowActivate}
-        getRowProps={getRowProps}
-        emptyState={<MonitorEmptyState label={t`No alerts`} />}
-      />
+      {isLoading ? (
+        <TreeTableSkeleton
+          showCheckboxes
+          columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
+        />
+      ) : (
+        <TreeTable
+          instance={instance}
+          hierarchical={false}
+          showCheckboxes
+          onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+          headerCheckboxAriaLabel={t`Select all`}
+          ariaLabel={t`Notifications`}
+          onRowClick={handleRowActivate}
+          getRowProps={getRowProps}
+          emptyState={<MonitorEmptyState label={t`No alerts`} />}
+        />
+      )}
     </Card>
   );
 };

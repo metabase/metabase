@@ -8,7 +8,6 @@ import type {
   SkipToken,
   SubscriptionOptions,
   TSHelpersId,
-  TSHelpersNoInfer,
   TSHelpersOverride,
 } from "@reduxjs/toolkit/query";
 
@@ -34,7 +33,7 @@ type UseQuerySubscriptionResult<D extends QueryDefinition<any, any, any, any>> =
 type UseQueryStateResult<
   _D extends QueryDefinition<any, any, any, any>,
   R,
-> = TSHelpersNoInfer<R>;
+> = NoInfer<R>;
 
 type UseQueryStateOptions<
   D extends QueryDefinition<any, any, any, any>,
