@@ -73,8 +73,8 @@ export function getDependentsWithErrorsColumn(): TreeTableColumnDef<DependencyNo
   return {
     id: "dependents-with-errors" satisfies DependencySortColumn,
     header: t`Broken dependents`,
-    minWidth: 80,
-    maxWidth: 160,
+    width: "auto",
+    minWidth: 100,
     enableSorting: true,
     accessorFn: (node) =>
       getDependentErrorNodesCount(node.dependents_errors ?? []),
