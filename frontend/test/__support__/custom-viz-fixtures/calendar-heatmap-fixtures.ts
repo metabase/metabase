@@ -63,6 +63,7 @@ export function useHeatmapPlugin() {
         display_name: "Calendar Heatmap",
         identifier: PLUGIN_IDENTIFIER,
         icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
+        warnings: [],
       },
       {
         // Storybook has no backend for the sandbox-host endpoint and no strict

@@ -441,7 +441,9 @@ export const metabot = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(logout.pending, getMetabotInitialState)
+      .addCase(logout.pending, (state) => {
+        Object.assign(state, getMetabotInitialState());
+      })
       // CONVERSATION REQUEST REDUCERS
       .addCase(sendAgentRequest.pending, (state, action) => {
         const convo = getRequestConversation(state, action);

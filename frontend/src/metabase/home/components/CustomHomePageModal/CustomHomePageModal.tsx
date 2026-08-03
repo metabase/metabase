@@ -8,7 +8,6 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -60,7 +59,6 @@ export const CustomHomePageModal = ({
         canDismiss: false,
       }),
     );
-    await dispatch(refreshCurrentUser());
     trackCustomHomepageDashboardEnabled("homepage");
   };
 

@@ -103,6 +103,8 @@ jobs:
     services:
       mysql:
         image: mysql:8.0
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -129,6 +131,8 @@ jobs:
     services:
       mysql:
         image: mysql:9
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
@@ -183,6 +187,8 @@ jobs:
     services:
       mariadb:
         image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -208,6 +214,8 @@ jobs:
     services:
       mariadb:
         image: mariadb:latest
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
