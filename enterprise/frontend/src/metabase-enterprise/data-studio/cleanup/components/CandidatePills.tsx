@@ -1,25 +1,41 @@
 import { t } from "ttag";
 
-import { Flex, Pill } from "metabase/ui";
+import { Flex, Pill, Text } from "metabase/ui";
 import type {
   UsageMetadataCandidatePresentation,
+  UsageMetadataCandidateType,
   UsageMetadataPredicateKind,
 } from "metabase-types/api";
 
 import S from "./CandidatePills.module.css";
 
 type CandidatePillsProps = {
+  candidateType: UsageMetadataCandidateType;
   presentation: UsageMetadataCandidatePresentation;
 };
 
-export function CandidatePills({ presentation }: CandidatePillsProps) {
+export function CandidatePills({
+  candidateType,
+  presentation,
+}: CandidatePillsProps) {
+  const hasPredicates = presentation.predicates.length > 0;
+
   return (
-    <Flex gap="xs" wrap="wrap" miw={0}>
-      {presentation.aggregation != null && (
-        <CandidatePill
-          label={presentation.aggregation.display_name}
-          kind="aggregation"
-        />
+    <Flex gap="xs" wrap="wrap" align="center" miw={0}>
+      {candidateType === "measure" && presentation.aggregation != null && (
+        <Text component="span" fw="bold" className={S.aggregation}>
+          {presentation.aggregation.display_name}
+        </Text>
+      )}
+      {candidateType === "measure" && hasPredicates && (
+        <Text
+          component="span"
+          c="text-secondary"
+          fw="normal"
+          className={S.aggregation}
+        >
+          {t`where`}
+        </Text>
       )}
       {presentation.predicates.map((predicate) => (
         <CandidatePill
@@ -32,14 +48,12 @@ export function CandidatePills({ presentation }: CandidatePillsProps) {
   );
 }
 
-type CandidatePillKind = UsageMetadataPredicateKind | "aggregation";
-
 function CandidatePill({
   label,
   kind,
 }: {
   label: string;
-  kind: CandidatePillKind;
+  kind: UsageMetadataPredicateKind;
 }) {
   return (
     <Pill
@@ -53,10 +67,8 @@ function CandidatePill({
   );
 }
 
-function getKindLabel(kind: CandidatePillKind) {
+function getKindLabel(kind: UsageMetadataPredicateKind) {
   switch (kind) {
-    case "aggregation":
-      return t`Aggregation`;
     case "boolean":
       return t`Boolean predicate`;
     case "category":

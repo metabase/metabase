@@ -2,16 +2,3 @@
   overflow-x: auto;
   overflow-y: hidden;
 }
-
-.candidateRow {
-  width: 100%;
-  min-height: 4.5rem;
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-hover);
-  }
-
-  &[data-selected] {
-    background-color: var(--mb-color-background_surface-selected);
-  }
-}

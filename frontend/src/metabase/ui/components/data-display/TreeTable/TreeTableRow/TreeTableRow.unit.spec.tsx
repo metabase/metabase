@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { CSSProperties } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -26,12 +27,14 @@ interface SetupOpts {
   isDisabled?: boolean;
   enableRowSelection?: boolean;
   onCheckboxClick?: (index: number) => void;
+  rowStyle?: CSSProperties;
 }
 
 function setup({
   isDisabled,
   enableRowSelection = true,
   onCheckboxClick,
+  rowStyle,
 }: SetupOpts = {}) {
   function RowContainer() {
     const instance = useTreeTableInstance({
@@ -64,6 +67,7 @@ function setup({
           onCheckboxClick={
             onCheckboxClick ? (_, index) => onCheckboxClick(index) : undefined
           }
+          styles={{ row: rowStyle }}
           hierarchical={false}
         />
       </>
@@ -79,6 +83,15 @@ function getCheckboxWrapper() {
 }
 
 describe("TreeTableRow checkbox wrapper", () => {
+  it("respects a custom row height", () => {
+    setup({ rowStyle: { height: "auto", minHeight: "4rem" } });
+
+    expect(screen.getByRole("row")).toHaveStyle({
+      height: "auto",
+      minHeight: "4rem",
+    });
+  });
+
   it("does not fire onCheckboxClick when the row is disabled", async () => {
     const onCheckboxClick = jest.fn();
     setup({ isDisabled: true, onCheckboxClick });

@@ -1,23 +1,25 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { trackDataStudioCleanupTableSelected } from "metabase/common/data-studio/analytics";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { useDispatch } from "metabase/redux";
-import { replace, useSearchParams } from "metabase/router";
+import { push, replace, useSearchParams } from "metabase/router";
 import {
   Badge,
   Card,
   Center,
-  Flex,
   Group,
   Icon,
-  ScrollArea,
   Stack,
   Text,
   Title,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListUsageMetadataTablesQuery } from "metabase-enterprise/api";
@@ -31,24 +33,94 @@ import { CleanupHeader } from "../../components/CleanupHeader";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
 import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
-import S from "./CleanupPage.module.css";
-
-const PAGE_SIZE = 50;
+type CleanupTableNode = UsageMetadataTableSummary & { id: number };
 
 export function CleanupPage() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const params = parseCleanupParams(searchParams);
-  const page = params.page ?? 0;
   const refresh = useCleanupRefresh();
   const query = useListUsageMetadataTablesQuery({
     "database-id": params.databaseId,
     queue: params.queue,
     search: params.search,
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
   });
   const snapshot = query.data?.snapshot ?? null;
+  const rows = useMemo<CleanupTableNode[]>(
+    () =>
+      (query.data?.data ?? []).map((row) => ({
+        ...row,
+        id: Number(row.table.id),
+      })),
+    [query.data?.data],
+  );
+  const columns = useMemo<TreeTableColumnDef<CleanupTableNode>[]>(
+    () => [
+      {
+        id: "table",
+        header: t`Table`,
+        minWidth: 280,
+        cell: ({ row }) => (
+          <Group gap="sm" wrap="nowrap" miw={0}>
+            <Icon name="table" size={20} />
+            <Text fw="bold" truncate>
+              {row.original.table.display_name}
+            </Text>
+          </Group>
+        ),
+      },
+      {
+        id: "location",
+        header: t`Database / schema`,
+        minWidth: 240,
+        cell: ({ row }) => (
+          <Text c="text-secondary" truncate>
+            {[row.original.table.database.name, row.original.table.schema]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+        ),
+      },
+      {
+        id: "status",
+        header: t`Library status`,
+        width: 130,
+        cell: ({ row }) => (
+          <Badge
+            color={row.original.table.is_published ? "positive" : "neutral"}
+          >
+            {row.original.table.is_published ? t`Published` : t`Unpublished`}
+          </Badge>
+        ),
+      },
+      {
+        id: "count",
+        header: getQueueCountLabel(params.queue),
+        width: 110,
+        cell: ({ row }) => (
+          <Text fw="bold" ta="right" w="100%">
+            {row.original.candidate_count}
+          </Text>
+        ),
+      },
+    ],
+    [params.queue],
+  );
+  const treeTableInstance = useTreeTableInstance({
+    data: rows,
+    columns,
+    getNodeId: (row) => String(row.id),
+    onRowActivate: (row) => {
+      trackDataStudioCleanupTableSelected(row.original.id);
+      dispatch(
+        push(
+          Urls.dataStudioCleanupTable(row.original.id, {
+            queue: params.queue,
+          }),
+        ),
+      );
+    },
+  });
 
   const updateParams = (next: Urls.DataStudioCleanupParams) => {
     dispatch(replace(Urls.dataStudioCleanup(next)));
@@ -81,113 +153,53 @@ export function CleanupPage() {
             />
           </>
         )}
-        <ScrollArea
-          flex={1}
-          mih={0}
-          type="auto"
-          data-testid="cleanup-table-list"
-        >
-          {query.isLoading ? (
-            <Center h="100%">
-              <LoadingAndErrorWrapper loading />
-            </Center>
-          ) : query.error ? (
-            <Center h="100%">
-              <LoadingAndErrorWrapper error={query.error} />
-            </Center>
-          ) : snapshot == null ? (
-            <NoSnapshotState />
-          ) : query.data?.data.length === 0 ? (
-            <EmptyQueueState
-              filtered={hasActiveFilters(params)}
-              queue={params.queue}
-            />
-          ) : (
-            <Card withBorder p={0}>
-              {query.data?.data.map((row, index, rows) => (
-                <CleanupTableRow
-                  key={String(row.table.id)}
-                  row={row}
-                  params={params}
-                  isLast={index === rows.length - 1}
-                />
-              ))}
-            </Card>
-          )}
-        </ScrollArea>
-        {query.data && query.data.data.length > 0 && (
-          <Flex justify="flex-end">
-            <PaginationControls
-              page={page}
-              pageSize={PAGE_SIZE}
-              itemsLength={query.data.data.length}
-              total={query.data.total}
-              showTotal
-              onPreviousPage={() =>
-                updateParams({ ...params, page: Math.max(0, page - 1) })
+        {query.isLoading ? (
+          <Card withBorder p={0} flex={1} mih={0}>
+            <TreeTableSkeleton columnWidths={[0.4, 0.3, 0.15, 0.15]} />
+          </Card>
+        ) : query.error ? (
+          <Center h="100%" flex={1}>
+            <LoadingAndErrorWrapper error={query.error} />
+          </Center>
+        ) : snapshot == null ? (
+          <NoSnapshotState />
+        ) : rows.length === 0 ? (
+          <EmptyQueueState
+            filtered={hasActiveFilters(params)}
+            queue={params.queue}
+          />
+        ) : (
+          <Card
+            withBorder
+            p={0}
+            flex={1}
+            mih={0}
+            style={{ overflow: "hidden" }}
+            data-testid="cleanup-table-list"
+          >
+            <TreeTable
+              instance={treeTableInstance}
+              hierarchical={false}
+              ariaLabel={t`Cleanup tables`}
+              getRowProps={(row) => ({
+                "data-testid": `cleanup-table-${row.original.table.id}`,
+              })}
+              onRowClick={(row) =>
+                trackDataStudioCleanupTableSelected(row.original.id)
               }
-              onNextPage={() => updateParams({ ...params, page: page + 1 })}
+              renderRowLink={(row, props) => (
+                <Link
+                  to={Urls.dataStudioCleanupTable(row.original.id, {
+                    queue: params.queue,
+                  })}
+                  {...props}
+                />
+              )}
             />
-          </Flex>
+          </Card>
         )}
       </Stack>
     </SectionLayout>
-  );
-}
-
-function CleanupTableRow({
-  row,
-  params,
-  isLast,
-}: {
-  row: UsageMetadataTableSummary;
-  params: Urls.DataStudioCleanupParams;
-  isLast: boolean;
-}) {
-  const { table, candidate_count: candidateCount } = row;
-
-  return (
-    <Card
-      component={Link}
-      to={Urls.dataStudioCleanupTable(table.id, {
-        queue: params.queue,
-      })}
-      className={S.tableRow}
-      p="md"
-      radius={0}
-      shadow="none"
-      bd={isLast ? undefined : "0 0 1px 0 solid var(--mb-color-border-neutral)"}
-      c="inherit"
-      style={{ textDecoration: "none" }}
-      data-testid={`cleanup-table-${table.id}`}
-      onClick={() => trackDataStudioCleanupTableSelected(Number(table.id))}
-    >
-      <Flex align="center" gap="lg" wrap="nowrap">
-        <Group gap="md" flex={1} miw={0} wrap="nowrap">
-          <Icon name="table" size={24} />
-          <Stack gap={2} miw={0}>
-            <Group gap="sm">
-              <Text fw="bold" truncate>
-                {table.display_name}
-              </Text>
-              <Badge color={table.is_published ? "positive" : "neutral"}>
-                {table.is_published ? t`Published` : t`Unpublished`}
-              </Badge>
-            </Group>
-            <Text c="text-secondary" size="sm" truncate>
-              {[table.database.name, table.schema].filter(Boolean).join(" · ")}
-            </Text>
-          </Stack>
-        </Group>
-        <Stack gap={0} align="flex-end" miw="7rem">
-          <Text fw="bold">{candidateCount}</Text>
-          <Text c="text-secondary" size="xs">
-            {getQueueCountLabel(params.queue)}
-          </Text>
-        </Stack>
-        <Icon name="chevronright" />
-      </Flex>
-    </Card>
   );
 }
 
@@ -245,10 +257,10 @@ function EmptyQueueState({
 function getQueueCountLabel(queue: Urls.DataStudioCleanupParams["queue"]) {
   switch (queue) {
     case "suggested":
-      return t`suggestions`;
+      return t`Suggestions`;
     case "used-raw":
-      return t`used raw`;
+      return t`Used raw`;
     case "discarded":
-      return t`discarded`;
+      return t`Discarded`;
   }
 }

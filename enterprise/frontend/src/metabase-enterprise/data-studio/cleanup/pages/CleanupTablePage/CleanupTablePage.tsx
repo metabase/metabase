@@ -1,11 +1,10 @@
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
 import {
   trackDataStudioCleanupCandidateAction,
   trackDataStudioCleanupCandidateInspected,
@@ -16,6 +15,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
+import { isCypressActive } from "metabase/env";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
@@ -30,13 +30,15 @@ import {
   Flex,
   Group,
   Icon,
-  ScrollArea,
   Stack,
   Tabs,
   Text,
   Title,
   Tooltip,
-  UnstyledButton,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
@@ -60,8 +62,6 @@ import { parseCleanupParams } from "../../utils";
 
 import S from "./CleanupTablePage.module.css";
 
-const PAGE_SIZE = 20;
-
 dayjs.extend(relativeTime);
 
 type CleanupTablePageParams = {
@@ -75,7 +75,6 @@ export function CleanupTablePage() {
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const params = parseCleanupParams(searchParams);
-  const page = params.page ?? 0;
   const [showPublishModal, setShowPublishModal] = useState(false);
   const previousSnapshotId = useRef<number | null | undefined>(undefined);
   const refresh = useCleanupRefresh();
@@ -95,12 +94,17 @@ export function CleanupTablePage() {
       search: params.search,
       sort: "priority",
       direction: "asc",
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
     },
     { skip: tableId == null },
   );
   const snapshotId = candidatesQuery.data?.snapshot?.id ?? null;
+
+  const scrollToPanel = useCallback((element: HTMLDivElement | null) => {
+    element?.scrollIntoView({
+      behavior: isCypressActive ? "instant" : "smooth",
+      inline: "end",
+    });
+  }, []);
 
   const updateParams = (next: Urls.DataStudioCleanupParams) => {
     if (tableId != null) {
@@ -343,89 +347,54 @@ export function CleanupTablePage() {
               </Tabs>
             </Flex>
 
-            <ScrollArea
-              flex={1}
-              mih={0}
-              type="auto"
-              data-testid="cleanup-candidate-list"
-            >
-              {candidatesQuery.isLoading ? (
-                <Center mih="16rem">
-                  <LoadingAndErrorWrapper loading />
-                </Center>
-              ) : candidatesQuery.error ? (
-                <Center mih="16rem">
-                  <LoadingAndErrorWrapper error={candidatesQuery.error} />
-                </Center>
-              ) : candidatesQuery.data?.data.length === 0 ? (
-                <Center mih="16rem">
-                  <Stack align="center">
-                    <Icon name="search" size={36} />
-                    <Title order={3}>{t`No matching candidates`}</Title>
-                    <Text c="text-secondary">{t`Try changing the filters.`}</Text>
-                  </Stack>
-                </Center>
-              ) : (
-                <Card withBorder p={0}>
-                  <Stack gap={0}>
-                    {candidatesQuery.data?.data.map(
-                      (candidate, index, rows) => (
-                        <CandidateRow
-                          key={candidate.id}
-                          candidate={candidate}
-                          isSelected={params.candidateId === candidate.id}
-                          isLast={index === rows.length - 1}
-                          isMutating={
-                            dismissState.isLoading || restoreState.isLoading
-                          }
-                          onOpen={() => {
-                            trackDataStudioCleanupCandidateInspected(
-                              candidate.id,
-                              candidate.candidate_type,
-                            );
-                            updateParams({
-                              ...params,
-                              candidateId: candidate.id,
-                            });
-                          }}
-                          onDismiss={() => handleDismiss(candidate)}
-                        />
-                      ),
-                    )}
-                  </Stack>
-                </Card>
-              )}
-            </ScrollArea>
-
-            {candidatesQuery.data && candidatesQuery.data.data.length > 0 && (
-              <Flex justify="flex-end">
-                <PaginationControls
-                  page={page}
-                  pageSize={PAGE_SIZE}
-                  itemsLength={candidatesQuery.data.data.length}
-                  total={candidatesQuery.data.total}
-                  showTotal
-                  onPreviousPage={() =>
+            {candidatesQuery.isLoading ? (
+              <Card withBorder p={0} flex={1} mih={0}>
+                <TreeTableSkeleton columnWidths={[0.65, 0.2, 0.1, 0.05]} />
+              </Card>
+            ) : candidatesQuery.error ? (
+              <Center mih="16rem" flex={1}>
+                <LoadingAndErrorWrapper error={candidatesQuery.error} />
+              </Center>
+            ) : candidatesQuery.data?.data.length === 0 ? (
+              <Center mih="16rem" flex={1}>
+                <Stack align="center">
+                  <Icon name="search" size={36} />
+                  <Title order={3}>{t`No matching candidates`}</Title>
+                  <Text c="text-secondary">{t`Try changing the filters.`}</Text>
+                </Stack>
+              </Center>
+            ) : (
+              <Card
+                withBorder
+                p={0}
+                flex={1}
+                mih={0}
+                style={{ overflow: "hidden" }}
+                data-testid="cleanup-candidate-list"
+              >
+                <CandidateTable
+                  candidates={candidatesQuery.data?.data ?? []}
+                  selectedCandidateId={params.candidateId}
+                  isMutating={dismissState.isLoading || restoreState.isLoading}
+                  onOpen={(candidate) => {
+                    trackDataStudioCleanupCandidateInspected(
+                      candidate.id,
+                      candidate.candidate_type,
+                    );
                     updateParams({
                       ...params,
-                      page: Math.max(0, page - 1),
-                      candidateId: undefined,
-                    })
-                  }
-                  onNextPage={() =>
-                    updateParams({
-                      ...params,
-                      page: page + 1,
-                      candidateId: undefined,
-                    })
-                  }
+                      candidateId: candidate.id,
+                    });
+                  }}
+                  onDismiss={handleDismiss}
                 />
-              </Flex>
+              </Card>
             )}
           </PageContainer>
 
           {params.candidateId != null && (
             <CandidatePanel
+              panelRef={scrollToPanel}
               candidateId={params.candidateId}
               onClose={closeCandidate}
               onStale={handleStale}
@@ -444,76 +413,129 @@ export function CleanupTablePage() {
   );
 }
 
-function CandidateRow({
-  candidate,
-  isSelected,
-  isLast,
+function CandidateTable({
+  candidates,
+  selectedCandidateId,
   isMutating,
   onOpen,
   onDismiss,
 }: {
-  candidate: UsageMetadataCandidateSummary;
-  isSelected: boolean;
-  isLast: boolean;
+  candidates: UsageMetadataCandidateSummary[];
+  selectedCandidateId?: number;
   isMutating: boolean;
-  onOpen: () => void;
-  onDismiss: () => void;
+  onOpen: (candidate: UsageMetadataCandidateSummary) => void;
+  onDismiss: (candidate: UsageMetadataCandidateSummary) => void;
 }) {
-  return (
-    <Flex
-      className={S.candidateRow}
-      data-selected={isSelected || undefined}
-      data-testid={`cleanup-candidate-${candidate.id}`}
-      align="stretch"
-      bd={isLast ? undefined : "0 0 1px 0 solid var(--mb-color-border-neutral)"}
-    >
-      <UnstyledButton
-        aria-label={candidate.display_name}
-        p="md"
-        flex={1}
-        onClick={onOpen}
-        style={{
-          paddingInlineStart: `${1 + Math.min(candidate.family.depth, 3) * 1.25}rem`,
-        }}
-      >
-        <Flex gap="md" align="center" wrap="nowrap">
-          <Icon
-            name={getCandidateIcon(candidate)}
-            c="text-secondary"
-            aria-label={getCandidateTypeLabel(candidate.candidate_type)}
-          />
-          <Stack gap={4} flex={1} miw={0}>
-            {candidate.candidate_type === "measure" ||
-            candidate.candidate_type === "segment" ? (
-              <CandidatePills presentation={candidate.presentation} />
-            ) : (
-              <Text fw="bold" truncate>
-                {candidate.display_name}
-              </Text>
-            )}
-            <Evidence candidate={candidate} />
-          </Stack>
-          <Icon name="chevronright" c="text-secondary" />
-        </Flex>
-      </UnstyledButton>
-      <Flex align="center" pr="md">
-        {candidate.modeling_status !== "modeled" && !candidate.dismissed && (
-          <Tooltip label={t`Dismiss suggestion`}>
-            <ActionIcon
-              variant="subtle"
-              aria-label={t`Dismiss suggestion`}
-              disabled={isMutating}
-              onClick={(event) => {
-                event.stopPropagation();
-                onDismiss();
+  const columns = useMemo<TreeTableColumnDef<UsageMetadataCandidateSummary>[]>(
+    () => [
+      {
+        id: "recommendation",
+        header: t`Recommendation`,
+        minWidth: 460,
+        cell: ({ row }) => {
+          const candidate = row.original;
+          return (
+            <Group
+              gap="sm"
+              wrap="nowrap"
+              miw={0}
+              w="100%"
+              data-testid={`cleanup-candidate-content-${candidate.id}`}
+              style={{
+                paddingInlineStart: `${Math.min(candidate.family.depth, 3) * 1.25}rem`,
               }}
             >
-              <Icon name="close" />
-            </ActionIcon>
-          </Tooltip>
-        )}
-      </Flex>
-    </Flex>
+              <Icon
+                name={getCandidateIcon(candidate)}
+                c="text-secondary"
+                aria-label={getCandidateTypeLabel(candidate.candidate_type)}
+              />
+              {candidate.candidate_type === "measure" ||
+              candidate.candidate_type === "segment" ? (
+                <CandidatePills
+                  candidateType={candidate.candidate_type}
+                  presentation={candidate.presentation}
+                />
+              ) : (
+                <Text fw="bold" truncate>
+                  {candidate.display_name}
+                </Text>
+              )}
+            </Group>
+          );
+        },
+      },
+      {
+        id: "signals",
+        header: t`Signals`,
+        width: 210,
+        cell: ({ row }) => <CandidateSignals candidate={row.original} />,
+      },
+      {
+        id: "sources",
+        header: t`Used by`,
+        width: 100,
+        cell: ({ row }) => (
+          <Text c="text-secondary">
+            {t`${row.original.evidence.distinct_source_count} sources`}
+          </Text>
+        ),
+      },
+      {
+        id: "actions",
+        width: 48,
+        cell: ({ row }) => {
+          const candidate = row.original;
+          if (candidate.modeling_status === "modeled" || candidate.dismissed) {
+            return null;
+          }
+          return (
+            <Tooltip label={t`Dismiss suggestion`}>
+              <ActionIcon
+                variant="subtle"
+                aria-label={t`Dismiss suggestion`}
+                disabled={isMutating}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  onDismiss(candidate);
+                }}
+              >
+                <Icon name="close" />
+              </ActionIcon>
+            </Tooltip>
+          );
+        },
+      },
+    ],
+    [isMutating, onDismiss],
+  );
+  const treeTableInstance = useTreeTableInstance({
+    data: candidates,
+    columns,
+    getNodeId: (candidate) => String(candidate.id),
+    selectedRowId:
+      selectedCandidateId == null ? null : String(selectedCandidateId),
+    defaultRowHeight: 52,
+    onRowActivate: (row) => onOpen(row.original),
+  });
+
+  return (
+    <TreeTable
+      instance={treeTableInstance}
+      hierarchical={false}
+      ariaLabel={t`Cleanup recommendations`}
+      styles={{
+        row: { height: "auto", minHeight: "3.25rem" },
+        cell: { whiteSpace: "normal" },
+      }}
+      getRowProps={(row) => ({
+        "data-testid": `cleanup-candidate-${row.original.id}`,
+        "data-selected": row.original.id === selectedCandidateId || undefined,
+        "aria-label": row.original.display_name,
+      })}
+      onRowClick={(row) => onOpen(row.original)}
+    />
   );
 }
 
@@ -532,7 +554,11 @@ function getCandidateTypeLabel(
   }
 }
 
-function Evidence({ candidate }: { candidate: UsageMetadataCandidateSummary }) {
+function CandidateSignals({
+  candidate,
+}: {
+  candidate: UsageMetadataCandidateSummary;
+}) {
   const { evidence } = candidate;
   return (
     <Group gap="xs">
@@ -545,9 +571,6 @@ function Evidence({ candidate }: { candidate: UsageMetadataCandidateSummary }) {
       {evidence.popular_source_count > 0 && (
         <Badge variant="light">{t`Popular`}</Badge>
       )}
-      <Text size="xs" c="text-secondary">
-        {t`${evidence.distinct_source_count} sources · ${evidence.total_view_count} views`}
-      </Text>
     </Group>
   );
 }

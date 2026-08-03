@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -42,6 +42,7 @@ import type {
 import { getCreationBlockerLabel, getMatchRelationLabel } from "../utils";
 
 import { CandidateDefinition, getCandidateIcon } from "./CandidateDefinition";
+import S from "./CandidatePanel.module.css";
 import { CreateCandidateModal } from "./CreateCandidateModal";
 import { DismissCandidateModal } from "./DismissCandidateModal";
 import { ModelingStatusBadge } from "./ModelingStatusBadge";
@@ -53,6 +54,7 @@ function getErrorStatus(error: unknown) {
 }
 
 type CandidatePanelProps = {
+  panelRef?: Ref<HTMLDivElement>;
   candidateId: number;
   onClose: () => void;
   onStale: () => void;
@@ -60,6 +62,7 @@ type CandidatePanelProps = {
 };
 
 export function CandidatePanel({
+  panelRef,
   candidateId,
   onClose,
   onStale,
@@ -189,6 +192,8 @@ export function CandidatePanel({
   return (
     <>
       <Stack
+        ref={panelRef}
+        className={S.panel}
         h="100%"
         miw="36rem"
         w="40rem"
@@ -196,7 +201,6 @@ export function CandidatePanel({
         flex="0 0 40rem"
         gap={0}
         bg="background_page-secondary"
-        bd="0 0 0 1px solid var(--mb-color-border-neutral)"
         role="complementary"
         aria-label={t`Candidate report`}
         data-testid="cleanup-candidate-panel"
@@ -372,7 +376,13 @@ function CandidatePanelBody({
           )}
       </Stack>
       {candidate.modeling_status !== "modeled" && (
-        <Box mt="auto" p="lg" bd="1px 0 0 0 solid var(--mb-color-border)">
+        <Box
+          mt="auto"
+          p="lg"
+          style={{
+            borderTop: "1px solid var(--mb-color-border-neutral)",
+          }}
+        >
           <Group justify="space-between" wrap="nowrap">
             {candidate.dismissed ? (
               <Button variant="subtle" onClick={onRestore}>
