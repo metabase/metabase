@@ -73,10 +73,6 @@ const elements = [
   createElement({ type: "feature", name: "browse" }),
   createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
-  // Modules carved out of shared/common by config only — the folders still
-  // live under common/ and will be git-mv'ed once their graph stabilizes.
-  // They must precede shared/common: the first matching element wins, and
-  // their patterns are subsets of common's.
   ...[
     "frontend/src/metabase/common/metrics/**",
     "frontend/src/metabase/common/metrics-viewer/**",
@@ -465,8 +461,8 @@ const baseRules = [
   },
 ];
 
-// Intra-shared rules, see shared-tiers.mjs. The full rule set drives the
-// standalone `bun run module-boundaries` count; PR lint uses enforcedRules.
+// The full rule set drives the standalone `bun run module-boundaries` count.
+// PR lint uses enforcedRules.
 const rules = [...baseRules, ...sharedRules];
 
 /**
@@ -513,12 +509,10 @@ function buildEnforcedRules(elements, rules) {
 }
 
 /**
- * The intra-shared level rules only apply to shared modules with
- * enforceSharedTiers: true. Modules with the flag off fall back to the
- * blanket shared -> shared allow, so their level violations appear in the
- * standalone `module-boundaries` count but do not fail PR lint.
+ * Modules with enforceSharedTiers: false are dropped from the level rules,
+ * which leaves them on the blanket shared -> shared allow.
  */
-function narrowSharedTierRules(elements, rules) {
+function buildEnforcedSharedRules(elements, rules) {
   const enforcedTypes = new Set(
     elements
       .filter((el) => el.type.startsWith("shared/") && el.enforceSharedTiers)
@@ -532,7 +526,7 @@ function narrowSharedTierRules(elements, rules) {
 
 const enforcedRules = buildEnforcedRules(elements, [
   ...baseRules,
-  ...narrowSharedTierRules(elements, sharedRules),
+  ...buildEnforcedSharedRules(elements, sharedRules),
 ]);
 
 function getFeatureModules(els = elements) {

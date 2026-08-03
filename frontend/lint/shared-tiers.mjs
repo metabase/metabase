@@ -2,16 +2,12 @@
 //
 // The shared tier is split into three SUB-TIERS, each ordered into LEVELS:
 //
-//   shared-utils    — plumbing & app services; no product concepts
+//   shared-utils    — plumbing and app services, no product concepts
 //   shared-platform — building blocks the domains compose
 //   shared-domain   — domain-specific modules, no cross-domain dependencies
 //
-//
-// Existing violations are grandfathered in eslint-suppressions.json.
-// Fixed ones are pruned with:
-// `eslint --prune-suppressions`; after planned module moves
-// Re-baseline with:
-// `eslint --suppress-rule boundaries/element-types`.
+// Violations are grandfathered per module with enforceSharedTiers: false
+// in module-boundaries.mjs.
 
 const SHARED_UTILS_LEVELS = [
   // U0 — foundation: leaf plumbing.
@@ -38,8 +34,8 @@ const SHARED_UTILS_LEVELS = [
     "shared/archive",
     "shared/hooks",
   ],
-  // U6 — composition over the levels below. The store factory composes
-  // reducers, plugin middlewares, and the router, so it sits above them.
+  // U6 — composition over the levels below.
+  // The store factory composes reducers, plugin middlewares, and the router.
   ["shared/hoc", "shared/upsells", "shared/route-guards", "shared/redux-store"],
 ];
 
@@ -82,8 +78,8 @@ const SHARED_UTILS = SHARED_UTILS_LEVELS.flat();
 const SHARED_PLATFORM = SHARED_PLATFORM_LEVELS.flat();
 const TIERED_SHARED = [...SHARED_UTILS, ...SHARED_PLATFORM, ...SHARED_DOMAIN];
 
-// Allow-lists implementing the level ordering: each level may import only
-// strictly lower levels of its sub-tier (plus `base` — the sub-tiers below).
+// Each level may import only strictly lower levels of its sub-tier,
+// plus `base` (the sub-tiers below).
 // Same-level peers are deliberately not allowed.
 const levelAllows = (levels, base = []) =>
   levels.flatMap((level, i) => {
@@ -94,11 +90,8 @@ const levelAllows = (levels, base = []) =>
   });
 
 const sharedRules = [
-  // These rules assume the baseline shared/* allow in module-boundaries.mjs
-  // precedes them (they narrow it; later rules win). Edges to UNTIERED
-  // modules (common, monitor, embedding, types) fall through to that
-  // baseline.
-  // Disallow everything leveled, then re-allow per sub-tier/level.
+  // Later rules win, so these must come after the baseline shared/* allow they narrow.
+  // Edges to untiered modules (common, monitor, embedding, types) fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,
@@ -123,11 +116,10 @@ const sharedRules = [
     from: SHARED_DOMAIN,
     allow: [...SHARED_UTILS, ...SHARED_PLATFORM],
   },
-  // Self-imports are internal to a module; re-allow them explicitly since
-  // the level rules above exclude a module's own level.
+  // The level rules exclude a module's own level, so re-allow self-imports explicitly.
   ...TIERED_SHARED.map((type) => ({ from: [type], allow: [type] })),
-  // TRANSITIONAL domain clusters — bidirectional today; split to
-  // one-directional as the severs land, delete when empty.
+  // Transitional clusters: these domain modules still import each other, so both ways are allowed.
+  // Delete each entry once the imports are one-directional.
   {
     from: ["shared/visualizations"],
     allow: [
