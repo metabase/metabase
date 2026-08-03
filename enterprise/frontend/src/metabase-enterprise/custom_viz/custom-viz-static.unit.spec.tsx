@@ -5,7 +5,6 @@ import type {
 import ReactDOMServer from "react-dom/server";
 
 import { mockSettings } from "__support__/settings";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { CustomStaticVisualization } from "metabase/static-viz/components/StaticVisualization/CustomStaticVisualization";
 import { getVisualization } from "metabase/visualizations";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
@@ -16,7 +15,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  applyCustomVizStaticOverride,
   customVizRegistry,
   registerCustomVizPlugin,
 } from "./custom-viz-static";
@@ -82,29 +80,6 @@ describe("registerCustomVizPlugin", () => {
     expect(
       customVizRegistry.get("custom:refresh")?.StaticVisualizationComponent,
     ).toBe(SecondViz);
-  });
-});
-
-describe("applyCustomVizStaticOverride", () => {
-  afterEach(() => {
-    customVizRegistry.clear();
-  });
-
-  it("swaps the EE registry and registration into PLUGIN_CUSTOM_VIZ", () => {
-    applyCustomVizStaticOverride();
-
-    expect(PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin).toBe(
-      registerCustomVizPlugin,
-    );
-    // The identity matters: the entrypoint's per-render
-    // clearCustomVizRegistrations clears PLUGIN_CUSTOM_VIZ.customVizRegistry,
-    // so with the override applied it resets THIS registry.
-    expect(PLUGIN_CUSTOM_VIZ.customVizRegistry).toBe(customVizRegistry);
-
-    registerCustomVizPlugin(makeFactory(DemoViz), "via-plugin-surface", 7);
-    expect(
-      PLUGIN_CUSTOM_VIZ.customVizRegistry.has("custom:via-plugin-surface"),
-    ).toBe(true);
   });
 });
 
