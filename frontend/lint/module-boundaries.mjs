@@ -160,6 +160,7 @@ const elements = [
   }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "feature", name: "setup" }),
+  createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
@@ -277,11 +278,6 @@ const elements = [
     "frontend/src/metabase/new/components/NewModals/NewModals.tsx",
     // Its spec mounts NewModals to assert menu clicks open modals, so the test is app-tier too.
     "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
-    // Entry points for the static-viz bundles, and the spec that imports one
-    "frontend/src/metabase/static-viz/index.tsx",
-    "frontend/src/metabase/static-viz/index-custom.tsx",
-    "frontend/src/metabase/static-viz/lib/entrypoint.ts",
-    "frontend/src/metabase/static-viz/lib/entrypoint.unit.spec.ts",
     // Storybook config is a composition root: preview wires app-tier decorators.
     // Needs its own pattern because ** doesn't match dot-folders.
     "frontend/src/embedding-sdk-shared/.storybook/**",
@@ -298,11 +294,6 @@ const elements = [
     name: "nav",
     pattern: "frontend/src/metabase/app/nav/**",
   }),
-  // static-viz must come after the app entries rather than in the
-  // alphabetical shared list: its entry point (static-viz/index.tsx) is app
-  // tier, and the first matching element wins.
-  createElement({ type: "shared", name: "static-viz" }),
-
   // Loose files living directly under frontend/src/metabase that have not yet
   // been pulled into a module folder.
   ...["frontend/src/metabase/dev.ts", "frontend/src/metabase/dev-noop.ts"].map(

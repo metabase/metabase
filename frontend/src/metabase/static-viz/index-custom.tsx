@@ -3,11 +3,6 @@ import ReactDOMServer from "react-dom/server";
 import "metabase/utils/dayjs";
 
 import { CustomStaticVisualization } from "metabase/static-viz/components/StaticVisualization/CustomStaticVisualization";
-import {
-  getRawSeriesWithDashcardSettings,
-  initializeContext,
-  toRenderedChart,
-} from "metabase/static-viz/lib/entrypoint";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import { extractRemappings } from "metabase/visualizations";
@@ -16,6 +11,11 @@ import type {
   RawSeries,
 } from "metabase-types/api";
 
+import {
+  getRawSeriesWithDashcardSettings,
+  initializeContext,
+  toRenderedChart,
+} from "./lib/entrypoint";
 import type {
   IsomorphicChartInput,
   RenderChartOptions,
@@ -29,14 +29,15 @@ export {
   initializeContext,
   registerCustomVizPlugin,
   registerCustomVizPluginFromGlobal,
-} from "metabase/static-viz/lib/entrypoint";
+} from "./lib/entrypoint";
 
 function RenderChart(
   rawSeries: RawSeries,
   dashcardSettings: DashCardVisualizationSettings,
   options: RenderChartOptions,
+  enterpriseOverrides: unknown,
 ) {
-  initializeContext(options);
+  initializeContext(options, enterpriseOverrides);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
@@ -65,8 +66,16 @@ function RenderChart(
   );
 }
 
-export function renderChart(input: IsomorphicChartInput): RenderedChart {
+export function renderChart(
+  input: IsomorphicChartInput,
+  enterpriseOverrides: unknown,
+): RenderedChart {
   return toRenderedChart(
-    RenderChart(input.rawSeries, input.dashcardSettings, input.options),
+    RenderChart(
+      input.rawSeries,
+      input.dashcardSettings,
+      input.options,
+      enterpriseOverrides,
+    ),
   );
 }

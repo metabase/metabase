@@ -1,6 +1,3 @@
-// eslint-disable-next-line import/order
-import enterpriseOverrides from "ee-overrides";
-
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import MetabaseSettings from "metabase/utils/settings";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -15,9 +12,11 @@ import type { RenderChartOptions, RenderedChart } from "../types";
 
 /**
  * Initialize the static viz context: set settings and apply enterprise overrides.
- * Must be called before registerCustomVizPlugin so that the EE registry is active.
  */
-export function initializeContext(options: RenderChartOptions) {
+export function initializeContext(
+  options: RenderChartOptions,
+  enterpriseOverrides: unknown,
+) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set(
     // Unjustified type cast. FIXME

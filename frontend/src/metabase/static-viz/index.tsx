@@ -10,11 +10,6 @@ import {
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
-import {
-  getRawSeriesWithDashcardSettings,
-  initializeContext,
-  toRenderedChart,
-} from "metabase/static-viz/lib/entrypoint";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
@@ -37,6 +32,11 @@ import type {
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
+import {
+  getRawSeriesWithDashcardSettings,
+  initializeContext,
+  toRenderedChart,
+} from "./lib/entrypoint";
 import type {
   CellBackgroundColorsInput,
   RenderChartDashcardSettings,
@@ -57,7 +57,7 @@ export {
   initializeContext,
   registerCustomVizPlugin,
   registerCustomVizPluginFromGlobal,
-} from "metabase/static-viz/lib/entrypoint";
+} from "./lib/entrypoint";
 
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
@@ -111,8 +111,9 @@ function RenderChart(
   rawSeries: RawSeries,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
+  enterpriseOverrides: unknown,
 ) {
-  initializeContext(options);
+  initializeContext(options, enterpriseOverrides);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
@@ -195,7 +196,10 @@ function RenderChart(
   );
 }
 
-export function renderChart(input: RenderChartInput): RenderedChart {
+export function renderChart(
+  input: RenderChartInput,
+  enterpriseOverrides: unknown,
+): RenderedChart {
   let content: string;
   switch (input.kind) {
     case "funnel":
@@ -217,6 +221,7 @@ export function renderChart(input: RenderChartInput): RenderedChart {
         input.rawSeries,
         input.dashcardSettings,
         input.options,
+        enterpriseOverrides,
       );
   }
   return toRenderedChart(content);

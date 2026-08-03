@@ -1,5 +1,6 @@
 import "metabase/static-viz/polyfill";
 
+import enterpriseOverrides from "ee-overrides";
 import {
   clearCustomVizRegistrations,
   initializeContext,
@@ -8,11 +9,13 @@ import {
 } from "metabase/static-viz/index-custom";
 
 export function renderChartJSON(inputJSON: string): string {
-  return JSON.stringify(renderChart(JSON.parse(inputJSON)));
+  return JSON.stringify(
+    renderChart(JSON.parse(inputJSON), enterpriseOverrides),
+  );
 }
 
 export function initializeContextJSON(optionsJSON: string): void {
-  initializeContext(JSON.parse(optionsJSON));
+  initializeContext(JSON.parse(optionsJSON), enterpriseOverrides);
   clearCustomVizRegistrations();
 }
 
