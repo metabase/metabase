@@ -201,7 +201,7 @@
             (is (seq (docs-for ds "table" table-id)))
             (is (some? (reconciled-at! ds)) "a converged reconcile stamps reconciled_at"))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
-            (let [new-model (assoc model :model-name "model-v2")]
+            (let [new-model (semantic.tu/resolved-mock-embedding-model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (index-rows ds)))
               (is (nil? (reconciled-at! ds))
@@ -493,7 +493,7 @@
               (is (seq (docs-for ds "table" b-id)))
               ;; a targeted reconcile of A under a new model identity forces ensure-tables! to rebuild (empty);
               ;; it must repopulate B too, not leave it missing until the periodic backstop.
-              (let [new-model (assoc model :model-name "model-v2")]
+              (let [new-model (semantic.tu/resolved-mock-embedding-model :model-name "model-v2")]
                 (is (:rebuilt? (reconcile/reconcile-entity! ds (constantly new-model) "table" a-id)))
                 (is (seq (docs-for ds "table" a-id)) "A repopulated after the rebuild")
                 (is (seq (docs-for ds "table" b-id)) "B repopulated too (not dropped by the rebuild)")))))))))
