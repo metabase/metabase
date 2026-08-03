@@ -172,7 +172,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               { path: "search", element: <SearchApp /> },
               // Send historical /archive route to trash - can remove in v52
-              { path: "archive", element: redirect("trash") },
+              { path: "archive", element: redirect("../trash") },
               { path: "trash", element: <TrashCollectionLanding /> },
 
               {
@@ -359,7 +359,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   { path: ":dbIdAndSlug", element: <LegacyBrowseRedirect /> },
                   {
                     path: ":dbId/schema/:schemaName",
-                    element: redirect("databases/:dbId/schema/:schemaName"),
+                    element: redirect("../databases/:dbId/schema/:schemaName"),
                   },
                 ],
               },
