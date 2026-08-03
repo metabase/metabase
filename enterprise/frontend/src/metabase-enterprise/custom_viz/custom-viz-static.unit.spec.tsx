@@ -15,6 +15,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  applyCustomVizStaticOverride,
   customVizRegistry,
   registerCustomVizPlugin,
 } from "./custom-viz-static";
@@ -84,6 +85,10 @@ describe("registerCustomVizPlugin", () => {
 });
 
 describe("static rendering of a registered plugin", () => {
+  beforeEach(() => {
+    applyCustomVizStaticOverride();
+  });
+
   afterEach(() => {
     customVizRegistry.clear();
   });
