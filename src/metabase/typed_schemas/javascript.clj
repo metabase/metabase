@@ -44,7 +44,13 @@
   Rendering rules: arrays whose items are all literals print on one line;
   `:call` arguments always print inline; object keys print bare when they are
   valid JavaScript identifiers and quoted otherwise. [[render-js]] prints a
-  `:module`; [[Module]] is the Malli schema for the whole grammar."
+  `:module`; [[Module]] is the Malli schema for the whole grammar.
+
+  The printer is deliberately option-free and policy-free: decisions about
+  *what* to emit (runtime keys, comments, compaction) belong in
+  `metabase.typed-schemas.render`, which builds this AST. If the output needs
+  new syntax, add a node type and its printer here rather than concatenating
+  TypeScript strings elsewhere."
   (:require
    [clojure.string :as str]
    [metabase.util :as u]

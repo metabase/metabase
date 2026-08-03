@@ -17,7 +17,13 @@
 
   All methods return the shaped schema entities produced by the
   `metabase.typed-schemas.schema.*` builders, except [[library-tables]], which
-  returns raw table rows (only `:id` is consumed)."
+  returns raw table rows (only `:id` is consumed).
+
+  When the pipeline needs to read something new, add a protocol method and its
+  [[app-db-source]] implementation here — do not call `t2`/`metabot` directly
+  from `metabase.typed-schemas.core` or anything downstream of it. That keeps
+  the module's data-access surface enumerable and every downstream stage
+  testable with literal values."
   (:require
    [metabase.typed-schemas.schema.metric :as schema.metric]
    [metabase.typed-schemas.schema.model :as schema.model]

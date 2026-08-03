@@ -1,4 +1,15 @@
 (ns metabase.typed-schemas.core-test
+  "Typed schema tests form a pyramid; put new tests at the lowest level that
+  can express them:
+
+  - In-memory (no db): printer goldens in `javascript-test` (the output format
+    spec), structural =? AST tests in `render-test`, pure shaping in
+    `common-test` and the `schema.*` tests, assembly from literal [[Items]]
+    and scoping rules against a reified literal source here.
+  - Db seam (with-temp): `source-test` for `app-db-source`, `scope-test` for
+    library-tree classification.
+  - One end-to-end test here on `mt/dataset test-data`, through the whole
+    pipeline to rendered TypeScript."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -1,5 +1,9 @@
 (ns metabase.typed-schemas-rest.api
-  "/api/typed-schemas endpoints."
+  "/api/typed-schemas endpoints.
+
+  This is the only place REST-shaped strings exist: query parameters decode to
+  typed options in [[metabase.typed-schemas-rest.api.query-params]] at this
+  boundary, and everything in `metabase.typed-schemas.*` works on typed data."
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.typed-schemas-rest.api.query-params :as query-params]

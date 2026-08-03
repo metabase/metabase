@@ -6,7 +6,12 @@
   metric dimensions compact into `pickFields(...)` calls. The output is the
   tagged-vector AST described in [[metabase.typed-schemas.javascript]];
   [[schema->ast]] produces it and [[render-typescript]] composes it with the
-  printer."
+  printer.
+
+  Nothing here touches the database or builds strings: new rendering behavior
+  should be expressed as schema -> AST transformation (extend
+  [[schema-render-policy]] or emit different nodes), keeping it assertable
+  structurally in tests."
   (:require
    [clojure.string :as str]
    [metabase.typed-schemas.javascript :as javascript]))
