@@ -19,6 +19,7 @@ import {
   Ellipsified,
   Flex,
   Icon,
+  LoadingOverlay,
   Text,
   Tooltip,
   TreeTable,
@@ -249,8 +250,9 @@ export const NotificationsTable = ({
       flex="0 1 auto"
       mih={0}
       p={0}
+      pos="relative"
       withBorder
-      aria-busy={isLoading}
+      aria-busy={isLoading || isFetching}
       data-testid="notifications-admin-table"
     >
       {isLoading ? (
@@ -259,17 +261,20 @@ export const NotificationsTable = ({
           columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
         />
       ) : (
-        <TreeTable
-          instance={instance}
-          hierarchical={false}
-          showCheckboxes
-          onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
-          headerCheckboxAriaLabel={t`Select all`}
-          ariaLabel={t`Notifications`}
-          onRowClick={handleRowActivate}
-          getRowProps={getRowProps}
-          emptyState={<MonitorEmptyState label={t`No alerts`} />}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={instance}
+            hierarchical={false}
+            showCheckboxes
+            onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+            headerCheckboxAriaLabel={t`Select all`}
+            ariaLabel={t`Notifications`}
+            onRowClick={handleRowActivate}
+            getRowProps={getRowProps}
+            emptyState={<MonitorEmptyState label={t`No alerts`} />}
+          />
+        </>
       )}
     </Card>
   );

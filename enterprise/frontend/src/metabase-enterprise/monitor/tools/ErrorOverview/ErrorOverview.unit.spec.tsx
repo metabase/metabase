@@ -70,6 +70,7 @@ type SetupOpts = {
   error?: boolean;
   initialRoute?: string;
   deferResponse?: boolean;
+  deferRefetch?: boolean;
 };
 
 async function setup({
@@ -78,12 +79,14 @@ async function setup({
   error,
   initialRoute = "/",
   deferResponse = false,
+  deferRefetch = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   let resolveResponse:
     | ((response: ReturnType<typeof createDatasetResponse>) => void)
     | undefined;
+  let resolveRefetch: (() => void) | undefined;
   if (error) {
     fetchMock.post("path:/api/dataset", {
       status: 500,
@@ -96,6 +99,19 @@ async function setup({
       },
     );
     fetchMock.post("path:/api/dataset", () => response);
+  } else if (deferRefetch) {
+    // The initial load resolves right away; every refetch after it stays in
+    // flight until the test resolves it.
+    let callCount = 0;
+    const refetch = new Promise<ReturnType<typeof createDatasetResponse>>(
+      (resolve) => {
+        resolveRefetch = () => resolve(createDatasetResponse(cards, total));
+      },
+    );
+    fetchMock.post("path:/api/dataset", () => {
+      callCount += 1;
+      return callCount > 1 ? refetch : createDatasetResponse(cards, total);
+    });
   } else {
     fetchMock.post("path:/api/dataset", createDatasetResponse(cards, total));
   }
@@ -115,6 +131,7 @@ async function setup({
     ...utils,
     resolveResponse: () =>
       resolveResponse?.(createDatasetResponse(cards, total)),
+    resolveRefetch: () => resolveRefetch?.(),
   };
 }
 
@@ -290,6 +307,33 @@ describe("ErrorOverview", () => {
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
       expect(query.args.slice(1)).toEqual(["last_run_at", "desc"]);
+    });
+  });
+
+  it("covers the grid with a loading overlay on refetch", async () => {
+    const { resolveRefetch } = await setup({ deferRefetch: true });
+
+    const table = await screen.findByTestId("erroring-questions-table");
+    await screen.findByTestId("erroring-question");
+    expect(
+      within(table).queryByTestId("loading-overlay"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("columnheader", { name: /Question/ }),
+    );
+
+    expect(
+      await within(table).findByTestId("loading-overlay"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("erroring-question")).toBeInTheDocument();
+
+    resolveRefetch();
+
+    await waitFor(() => {
+      expect(
+        within(table).queryByTestId("loading-overlay"),
+      ).not.toBeInTheDocument();
     });
   });
 

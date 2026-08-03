@@ -16,6 +16,7 @@ import {
   Card,
   Center,
   Ellipsified,
+  LoadingOverlay,
   type RenderRowLink,
   SortableHeaderPill,
   Tooltip,
@@ -140,20 +141,24 @@ export function ConversationsTable({
       flex="0 1 auto"
       mih={0}
       p={0}
+      pos="relative"
       withBorder
       data-testid="conversations-table"
     >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          ariaLabel={t`Conversations`}
-          emptyState={<MonitorEmptyState label={t`No conversations found`} />}
-          getRowProps={() => ({ "data-testid": "conversation" })}
-          renderRowLink={renderRowLink}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Conversations`}
+            emptyState={<MonitorEmptyState label={t`No conversations found`} />}
+            getRowProps={() => ({ "data-testid": "conversation" })}
+            renderRowLink={renderRowLink}
+          />
+        </>
       )}
     </Card>
   );

@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useScrollToTop } from "metabase/common/hooks";
 import {
   Card,
+  LoadingOverlay,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
@@ -88,19 +89,23 @@ export const DiagnosticsTable = function DiagnosticsTable({
       flex="0 1 auto"
       mih={0}
       p={0}
+      pos="relative"
       withBorder
       data-testid="dependency-list"
     >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={getColumnWidths(mode)} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          emptyState={
-            <DiagnosticsEmptyState label={getNotFoundMessage(mode)} />
-          }
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            emptyState={
+              <DiagnosticsEmptyState label={getNotFoundMessage(mode)} />
+            }
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
     </Card>
   );

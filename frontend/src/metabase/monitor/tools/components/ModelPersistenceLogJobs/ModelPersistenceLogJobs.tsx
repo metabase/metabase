@@ -25,6 +25,7 @@ import {
   Ellipsified,
   Flex,
   Icon,
+  LoadingOverlay,
   Text,
   Tooltip,
   TreeTable,
@@ -96,22 +97,29 @@ export function ModelPersistenceLogJobs() {
         flex="0 1 auto"
         mih={0}
         p={0}
+        pos="relative"
         withBorder
         data-testid="model-persistence-log-jobs"
       >
         {isLoading ? (
           <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
         ) : (
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Model persistence log`}
-            emptyState={<MonitorEmptyState label={t`No log entries`} />}
-            getRowProps={() => ({
-              "data-testid": "model-persistence-log-job-row",
-            })}
-            onRowClick={handleRowActivate}
-          />
+          <>
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
+            <TreeTable
+              instance={treeTableInstance}
+              hierarchical={false}
+              ariaLabel={t`Model persistence log`}
+              emptyState={<MonitorEmptyState label={t`No log entries`} />}
+              getRowProps={() => ({
+                "data-testid": "model-persistence-log-job-row",
+              })}
+              onRowClick={handleRowActivate}
+            />
+          </>
         )}
       </Card>
 
