@@ -860,36 +860,13 @@
         populate-query-fields)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
-(def ^:private ^:dynamic *syncing-metric-dimensions*
-  "Recursion guard — `sync-dimensions!` itself performs a Card update (to persist `:dimensions`)
-   which would otherwise re-enter the after-update hook. Bind to `true` to suppress the auto-sync."
-  false)
-
-(defn- maybe-sync-metric-dimensions!
-  "If `card` is a metric, compute and persist its dimensions. Failures will not block the surrounding Card insert/update."
-  [card]
-  (when (and (not *syncing-metric-dimensions*)
-             (= :metric (:type card)))
-    (binding [*syncing-metric-dimensions* true]
-      (try ; UXW-4083
-        (metrics/sync-dimensions! :metadata/metric (:id card))
-        (catch Exception e
-          (log/warnf e "Failed to sync dimensions for metric card %s" (:id card)))))))
-
 (t2/define-after-insert :model/Card
   [card]
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       ((requiring-resolve 'metabase.sync.field-values/update-field-values-for-on-demand-dbs!) field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (maybe-sync-metric-dimensions! card)))
-
-(t2/define-after-update :model/Card
-  [card]
-  (u/prog1 card
-    (when (contains? (t2/changes card) :dataset_query)
-      (maybe-sync-metric-dimensions! card))))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]

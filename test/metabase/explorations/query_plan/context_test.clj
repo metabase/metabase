@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -303,32 +302,31 @@
     ;; block dims share a display_name, explore-filter labels should mirror query :dimension_name
     ;; disambiguation (e.g. \"Users → Created At\"), not fall back to the bare name or the raw
     ;; column display name.
-    (with-redefs [card/*syncing-metric-dimensions* true]
-      (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
-            orders-created "00000000-0000-0000-0000-00000000bbbb"
-            users-field    (mt/id :venues :latitude)
-            orders-field   (mt/id :venues :longitude)]
-        (mt/with-temp
-          [:model/User u {:email "enrich-filter-ambig@example.com"}
-           :model/Card metric (assoc {:type          :metric
-                                      :creator_id    (:id u)
-                                      :dataset_query (count-metric-query)}
-                                     :dimensions
-                                     [{:id users-created  :name "LATITUDE"  :display-name "Created At"
-                                       :group {:id "g-users"  :type "main"       :display-name "Users"}}
-                                      {:id orders-created :name "LONGITUDE" :display-name "Created At"
-                                       :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
-          (let [mp              (lib-be/application-database-metadata-provider (mt/id))
-                block           {:dimensions [{:dimension-id users-created  :display-name "Created At"}
-                                              {:dimension-id orders-created :display-name "Created At"}]}
-                metric-selection {:dimension_mappings [{:dimension-id users-created  :table-id (mt/id :venues)
-                                                        :target ["field" {} users-field]}
-                                                       {:dimension-id orders-created :table-id (mt/id :venues)
-                                                        :target ["field" {} orders-field]}]}
-                filter          {:field_ref ["field" {} users-field] :value 40.7}
-                [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter])]
-            (is (= "Users → Created At" (:dimension_name enriched))
-                "the clicked filter is labeled with the dim's group when the display_name is shared")))))))
+    (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
+          orders-created "00000000-0000-0000-0000-00000000bbbb"
+          users-field    (mt/id :venues :latitude)
+          orders-field   (mt/id :venues :longitude)]
+      (mt/with-temp
+        [:model/User u {:email "enrich-filter-ambig@example.com"}
+         :model/Card metric (assoc {:type          :metric
+                                    :creator_id    (:id u)
+                                    :dataset_query (count-metric-query)}
+                                   :dimensions
+                                   [{:id users-created  :name "LATITUDE"  :display-name "Created At"
+                                     :group {:id "g-users"  :type "main"       :display-name "Users"}}
+                                    {:id orders-created :name "LONGITUDE" :display-name "Created At"
+                                     :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
+        (let [mp              (lib-be/application-database-metadata-provider (mt/id))
+              block           {:dimensions [{:dimension-id users-created  :display-name "Created At"}
+                                            {:dimension-id orders-created :display-name "Created At"}]}
+              metric-selection {:dimension_mappings [{:dimension-id users-created  :table-id (mt/id :venues)
+                                                      :target ["field" {} users-field]}
+                                                     {:dimension-id orders-created :table-id (mt/id :venues)
+                                                      :target ["field" {} orders-field]}]}
+              filter          {:field_ref ["field" {} users-field] :value 40.7}
+              [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter])]
+          (is (= "Users → Created At" (:dimension_name enriched))
+              "the clicked filter is labeled with the dim's group when the display_name is shared"))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; build-row-context — "Explore further" filter edge cases
