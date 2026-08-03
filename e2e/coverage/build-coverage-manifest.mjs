@@ -13,10 +13,10 @@
  * document navigations. Everything captured stays in the raw per-spec
  * artifacts, so widening policy here needs no capture change.
  *
- * For files, includes only those whose function counters strictly exceeded
- * the baseline spec's (per test: the baseline spec's single test).
- * This strips boot noise. Files where every function fired the same count in baseline
- * and spec are treated as "loaded but not exercised by this spec."
+ * For files, includes only those where the spec fired a function the
+ * baseline spec never fired (per test: the baseline spec's single test).
+ * This strips boot noise. Files where the spec only re-fired baseline
+ * functions are treated as "loaded but not exercised by this spec."
  *
  * The manifests store files and route shapes, not modules; the test planner
  * can map those to modules later.

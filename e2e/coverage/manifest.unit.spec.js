@@ -158,10 +158,16 @@ describe("OpenAPI route table", () => {
 });
 
 describe("fileExceedsBaseline", () => {
-  it("is true when some function fired more than baseline", () => {
+  it("is true when some function fired that baseline never fired", () => {
     expect(
       fileExceedsBaseline({ f: { 0: 2, 1: 1 } }, { f: { 0: 2, 1: 0 } }),
     ).toBe(true);
+  });
+
+  it("is false when the spec only re-fired baseline functions", () => {
+    // Boot code re-fires on every page load, so higher counts on
+    // baseline-fired functions are still boot noise.
+    expect(fileExceedsBaseline({ f: { 0: 24 } }, { f: { 0: 2 } })).toBe(false);
   });
 
   it("is false when every function matches baseline", () => {
@@ -170,6 +176,12 @@ describe("fileExceedsBaseline", () => {
 
   it("treats a file absent from baseline as exceeding", () => {
     expect(fileExceedsBaseline({ f: { 0: 1 } }, undefined)).toBe(true);
+  });
+
+  it("ignores functions the spec did not fire", () => {
+    expect(fileExceedsBaseline({ f: { 0: 2, 1: 0 } }, { f: { 0: 2 } })).toBe(
+      false,
+    );
   });
 });
 
@@ -204,9 +216,19 @@ describe("discriminatingFilesForTest", () => {
     ).toEqual(["frontend/src/feature.js"]);
   });
 
-  it("keeps boot files when they fired beyond baseline", () => {
+  it("drops boot files that only re-fired baseline functions", () => {
+    // Extra visits re-fire boot code at higher counts; that is still boot noise.
     const testDeltas = {
       "/repo/frontend/src/boot.js": { 0: 3, 1: 1 },
+    };
+    expect(
+      discriminatingFilesForTest(testDeltas, baselineDeltas, REPO_ROOT),
+    ).toEqual([]);
+  });
+
+  it("keeps boot files when a function fired that baseline never fired", () => {
+    const testDeltas = {
+      "/repo/frontend/src/boot.js": { 0: 1, 2: 1 },
     };
     expect(
       discriminatingFilesForTest(testDeltas, baselineDeltas, REPO_ROOT),

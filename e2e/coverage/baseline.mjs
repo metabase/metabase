@@ -5,22 +5,23 @@
  * Booting Metabase executes a large fraction of the FE bundle on every spec
  * (routing, store, shared components, app shell). Raw "statement executed"
  * coverage is therefore dominated by boot noise and is near-useless for
- * deciding which specs a change affects. We instead keep only files a spec
- * exercised MORE than a boot-only baseline run.
+ * deciding which specs a change affects. We instead keep only files where a
+ * spec executed a function the boot-only baseline run never reached.
  */
 
 import path from "node:path";
 
-// A spec exercised `file` beyond boot iff some function in it fired more times
-// than it did in the baseline run. A function that fired the same
-// number of times in both is treated as boot-only and ignored. Relies on
-// function indices being identical between baseline and spec, which holds
-// because both come from the same instrumented nightly build.
+// A spec exercised `file` beyond boot iff it fired some function the baseline run never fired.
+// Comparing counts instead does not work: boot code re-fires on every page load,
+// so a spec that visits N pages beats the single-boot baseline on every boot file,
+// and render-count drift on plugin hooks beats it even without extra visits.
+// Relies on function indices being identical between baseline and spec,
+// which holds because both come from the same instrumented nightly build.
 export function fileExceedsBaseline(specFileCov, baselineFileCov) {
   const sf = specFileCov.f || {};
   const bf = baselineFileCov?.f || {};
   for (const [idx, count] of Object.entries(sf)) {
-    if (count > (bf[idx] || 0)) {
+    if (count > 0 && !(bf[idx] > 0)) {
       return true;
     }
   }
@@ -54,9 +55,9 @@ export function discriminatingFiles(coverage, baselineCov, repoRoot) {
 // Per-test variant of discriminatingFiles. `testDeltas` and `baselineDeltas`
 // are sparse {file: {fnIdx: firedCount}} maps as recorded by the
 // recordTestCapture task — counter deltas for a single test, not cumulative
-// totals. A file survives when some function fired more times during the test
-// than during the baseline spec's boot-and-visit test, so single-visit boot
-// noise cancels out just like at the spec level.
+// totals. A file survives when the test fired some function the baseline
+// spec's boot-and-visit test never fired, so boot noise cancels out at any
+// number of visits, just like at the spec level.
 export function discriminatingFilesForTest(
   testDeltas,
   baselineDeltas,
@@ -66,7 +67,7 @@ export function discriminatingFilesForTest(
     Object.entries(testDeltas || {})
       .filter(([file, deltas]) =>
         Object.entries(deltas).some(
-          ([idx, count]) => count > (baselineDeltas?.[file]?.[idx] || 0),
+          ([idx, count]) => count > 0 && !(baselineDeltas?.[file]?.[idx] > 0),
         ),
       )
       .map(([file]) => file),
@@ -75,8 +76,8 @@ export function discriminatingFilesForTest(
 }
 
 // Merges the baseline spec's per-test entries into a single per-visit noise
-// map. The baseline spec has one test; retried attempts merge by max so the
-// subtraction stays strict.
+// map. The baseline spec has one test; retried attempts merge by max,
+// so a function fired in any attempt counts as boot-fired.
 export function baselinePerTestDeltas(baselineEntry) {
   const merged = {};
   for (const test of baselineEntry?.tests || []) {
