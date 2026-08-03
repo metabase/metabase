@@ -46,6 +46,7 @@
     "jest/valid-expect",
     "jest/valid-expect-in-promise",
     "jest/valid-title",
+    "metabase/enforce-module-public-api",
     "metabase/jtag-missing-key",
     "metabase/no-analytics-import-outside-analytics-files",
     "metabase/no-base-color-literals",
