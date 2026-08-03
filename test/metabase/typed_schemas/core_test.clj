@@ -1,8 +1,13 @@
 (ns metabase.typed-schemas.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.core :as typed-schemas]
    [metabase.typed-schemas.source :as source]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private test-info
   {:generated-at "2026-01-01T00:00:00Z"
@@ -83,3 +88,59 @@
                         {:id 42, :type "table", :key "mappedTable"}]
             :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
            (typed-schemas/fetch-items {:include-data-library? true} source)))))
+
+;; One end-to-end test over real application-database rows: every entity kind
+;; created with with-temp, run through the whole pipeline to TypeScript.
+;; Everything above tests the stages with cheap literal data; this proves the
+;; composition works against the real thing.
+(deftest full-pipeline-end-to-end-test
+  (mt/with-temp [:model/Database db {:name "TS E2E DB", :settings {:database-enable-actions true}}
+                 :model/Table table {:db_id (:id db), :name "widgets", :display_name "Widgets"
+                                     :description "Fancy widgets", :active true}
+                 :model/Field _ {:table_id (:id table), :name "id", :base_type :type/Integer
+                                 :semantic_type :type/PK}
+                 :model/Field price {:table_id (:id table), :name "price", :base_type :type/Float}
+                 :model/Card _question {:name "Widget prices", :database_id (:id db), :table_id (:id table)
+                                        :type :question, :display :table
+                                        :dataset_query {:database (:id db), :type :query
+                                                        :query {:source-table (:id table)}}
+                                        :result_metadata [{:name "price", :display_name "Price"
+                                                           :base_type :type/Float}]}
+                 :model/Card _metric {:name "Widget revenue", :database_id (:id db), :table_id (:id table)
+                                      :type :metric, :display :scalar
+                                      :dataset_query {:database (:id db), :type :query
+                                                      :query {:source-table (:id table)
+                                                              :aggregation [[:sum [:field (:id price) nil]]]}}
+                                      :result_metadata [{:name "sum", :display_name "Sum of price"
+                                                         :base_type :type/Float}]}
+                 :model/Card model {:name "Widget model", :database_id (:id db), :table_id (:id table)
+                                    :type :model
+                                    :dataset_query {:database (:id db), :type :query
+                                                    :query {:source-table (:id table)}}
+                                    :result_metadata [{:name "price", :display_name "Price"
+                                                       :base_type :type/Float
+                                                       :field_ref [:field (:id price) nil]
+                                                       :id (:id price)}]}
+                 :model/Action action {:name "Update price", :model_id (:id model), :type :implicit}
+                 :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [schema (typed-schemas/build-semantic-schema {:database {:id (:id db)}} test-info)
+            body   (typed-schemas/render-typescript schema)]
+        (testing "every entity kind lands in the schema, scoped to the temp database"
+          (is (= ["widgetPrices"] (keys (:questions schema))))
+          (is (= ["widgets"] (keys (:tables schema))))
+          (is (= ["widgetRevenue"] (keys (:metrics schema))))
+          (is (= ["widgetModel"] (keys (:models schema)))))
+        (testing "entities carry their real relationships"
+          (is (= ["id" "price"] (keys (get-in schema [:tables "widgets" :fields]))))
+          (is (= [(:id table)] (get-in schema [:metrics "widgetRevenue" :mappedTableIds])))
+          (is (= ["updatePrice"] (keys (get-in schema [:models "widgetModel" :actions])))))
+        (testing "info pins the impure schema metadata"
+          (is (= "2026-01-01T00:00:00Z" (:generatedAt schema)))
+          (is (= "https://metabase.example.com" (get-in schema [:metabase :instanceUrl]))))
+        (testing "the rendered module carries the real entities"
+          (is (str/includes? body "widgets: {"))
+          (is (str/includes? body "// Description: Fancy widgets"))
+          (is (str/includes? body "name: \"Widget revenue\""))
+          (is (str/includes? body "updatePrice: {"))
+          (is (str/ends-with? body "export default schema;\n")))))))
