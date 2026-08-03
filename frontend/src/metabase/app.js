@@ -36,7 +36,7 @@ import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-e
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { LOCATION_CHANGE, createRouterNavigator } from "metabase/router";
+import { LOCATION_CHANGE } from "metabase/router";
 import { getUserId } from "metabase/selectors/user";
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -78,12 +78,7 @@ function _init(reducers, getRoutes, callback) {
     });
   }
 
-  const store = getStore(
-    reducers,
-    createRouterNavigator(),
-    undefined,
-    extraMiddlewares,
-  );
+  const store = getStore(reducers, undefined, extraMiddlewares);
   const routes = getRoutes(store);
   const mirrorLocation = createLocationMirror(store.dispatch);
 

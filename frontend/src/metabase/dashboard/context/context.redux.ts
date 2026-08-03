@@ -57,7 +57,6 @@ import {
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import type { State } from "metabase/redux/store";
-import { push } from "metabase/router";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -161,7 +160,6 @@ export const mapDispatchToProps = {
   hideAddParameterPopover,
   fetchDashboard,
   fetchDashboardCardData,
-  onChangeLocation: push,
   reset,
   closeDashboard,
   setArchivedDashboard,

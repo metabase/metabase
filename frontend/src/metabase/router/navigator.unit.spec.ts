@@ -1,8 +1,4 @@
-import {
-  createRouterNavigator,
-  setRouterNavigate,
-  toNavigateArgs,
-} from "./navigator";
+import { navigate, setRouterNavigate, toNavigateArgs } from "./navigator";
 
 describe("toNavigateArgs", () => {
   it("maps a descriptor's URL parts onto a v7 target", () => {
@@ -35,44 +31,51 @@ describe("toNavigateArgs", () => {
   });
 });
 
-// The redux navigator is built at store creation, before the router mounts and
-// registers its `navigate`. A navigation dispatched in that window (a guard
-// redirecting from a mount layout effect) must not be lost, but it also must not
-// leak into a later router once this one is gone.
-describe("createRouterNavigator pre-mount buffering", () => {
+// Non-component callers navigate before the router mounts and registers its
+// `navigate`. A navigation made in that window (a guard redirecting from a mount
+// layout effect) must not be lost, but it also must not leak into a later router
+// once this one is gone.
+describe("navigate pre-mount buffering", () => {
   afterEach(() => {
     setRouterNavigate(null);
   });
 
   it("buffers a navigation made before the router mounts and flushes it on register", () => {
-    const navigator = createRouterNavigator();
-    navigator.replace("/target");
+    navigate("/target", { replace: true });
 
-    const navigate = jest.fn();
-    setRouterNavigate(navigate);
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
 
-    expect(navigate).toHaveBeenCalledWith("/target", { replace: true });
+    expect(routerNavigate).toHaveBeenCalledWith("/target", { replace: true });
   });
 
   it("navigates immediately once the router is registered", () => {
-    const navigate = jest.fn();
-    setRouterNavigate(navigate);
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
 
-    createRouterNavigator().push("/now");
+    navigate("/now");
 
-    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(routerNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes a delta straight through", () => {
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
+
+    navigate(-1);
+
+    expect(routerNavigate).toHaveBeenCalledWith(-1);
   });
 
   it("drops a buffered navigation when the router unmounts before it flushes", () => {
-    const navigator = createRouterNavigator();
-    navigator.replace("/stale");
+    navigate("/stale", { replace: true });
 
     // Router unmounts without ever registering; the next one must not inherit it.
     setRouterNavigate(null);
 
-    const navigate = jest.fn();
-    setRouterNavigate(navigate);
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
 
-    expect(navigate).not.toHaveBeenCalled();
+    expect(routerNavigate).not.toHaveBeenCalled();
   });
 });

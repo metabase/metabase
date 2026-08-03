@@ -16,8 +16,8 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import { type Location, push, useParams } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { type Location, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -115,7 +115,7 @@ function NewTransformPageBody({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
   useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
@@ -129,11 +129,11 @@ function NewTransformPageBody({
 
   const handleCreate = (transform: Transform) => {
     isSavedRef.current = true;
-    dispatch(push(Urls.transform(transform.id)));
+    navigate(Urls.transform(transform.id));
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformList()));
+    navigate(Urls.transformList());
   };
 
   const isLocationAllowed = useCallback(

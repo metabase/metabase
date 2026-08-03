@@ -11,8 +11,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useDispatch } from "metabase/redux";
-import { replace, useLocation } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
@@ -52,7 +51,7 @@ export function RunListPage() {
     TransformRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     data,
@@ -113,9 +112,9 @@ export function RunListPage() {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformRunListParams) => {
-      dispatch(replace(Urls.transformRunList(newParams)));
+      navigate(Urls.transformRunList(newParams), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleFilterOptionsChange = useCallback(

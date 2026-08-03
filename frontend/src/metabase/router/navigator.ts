@@ -1,21 +1,20 @@
 import type { NavigateFunction, NavigateOptions, To } from "react-router";
 
-import type { RouterNavigator } from "./middleware";
 import type { Location as HistoryLocation, LocationDescriptor } from "./types";
 
 /**
- * The live v7 `navigate`, registered by the host's `AppShell` once the router mounts.
- * The redux navigator adapter is built at store creation, before the router
- * exists, so it reads `navigate` through this holder rather than capturing it.
+ * The live `navigate`, registered by the host's `AppShell` once the router
+ * mounts. Non-component callers reach it through `navigate` below, which reads
+ * this holder rather than capturing it: they run outside React, and much of the
+ * app is constructed before the router exists.
  */
 let currentNavigate: NavigateFunction | null = null;
 
 /**
- * Navigations requested before the router registered its `navigate`. On v3 the
- * history existed at store creation, so a `dispatch(replace(...))` from a mount
- * `useLayoutEffect` (e.g. a guard redirect) took effect immediately. v7's
- * `navigate` only registers in an effect, which runs after descendant layout
- * effects, so buffer these and flush them once it does rather than dropping them.
+ * Navigations requested before the router registered its `navigate`. A
+ * navigation from a mount `useLayoutEffect` (e.g. a guard redirect) is requested
+ * before `AppShell`'s effect runs, since layout effects run first, so buffer
+ * these and flush them on registration rather than dropping them.
  */
 let pendingNavigations: Array<(navigate: NavigateFunction) => void> = [];
 
@@ -60,8 +59,8 @@ export function notifyLocationListeners(location: HistoryLocation): void {
 
 /**
  * Turn a `LocationDescriptor` (string or `{ pathname, search, hash, state }`)
- * into v7 `navigate(to, options)` arguments. Shared by the imperative-router
- * shim and the redux navigator so both map descriptors the same way.
+ * into `navigate(to, options)` arguments. Used by the test harness, whose
+ * `history` handle still takes descriptors.
  */
 export function toNavigateArgs(
   location: LocationDescriptor,
@@ -81,28 +80,30 @@ export function toNavigateArgs(
 }
 
 /**
- * A `RouterNavigator` (the subset of `history` that `routerMiddleware` drives)
- * backed by the live v7 `navigate`. Passed to the store on v7 so
- * `dispatch(push(...))` navigates the v7 router. A call before the router mounts
- * is buffered and flushed on registration, so a mount-time redirect is not lost.
+ * `useNavigate`, for code that cannot call a hook: thunks, redux middleware,
+ * reducers, and the permission and visualization config objects. Same signature
+ * and same behaviour, with two differences that follow from having no component
+ * to anchor to.
+ *
+ * A relative target resolves from the root, because `AppShell` sits on a
+ * pathless layout route (see there). A component's `useNavigate` resolves
+ * against its own deepest match instead, so a caller moving between the two must
+ * spell an absolute path.
+ *
+ * A call before the router mounts is buffered and flushed on registration, so a
+ * mount-time redirect is not lost.
+ *
+ * Prefer `useNavigate` wherever there is a component to hold it.
  */
-export function createRouterNavigator(): RouterNavigator {
-  const navigate = (to: To | number, options?: NavigateOptions) => {
-    const run = (fn: NavigateFunction) =>
-      typeof to === "number" ? fn(to) : fn(to, options);
-    if (currentNavigate) {
-      run(currentNavigate);
-    } else {
-      pendingNavigations.push(run);
-    }
-  };
+export function navigate(to: To, options?: NavigateOptions): void;
+export function navigate(delta: number): void;
+export function navigate(to: To | number, options?: NavigateOptions): void {
+  const run = (fn: NavigateFunction) =>
+    typeof to === "number" ? fn(to) : fn(to, options);
 
-  return {
-    push: (location) => navigate(...toNavigateArgs(location)),
-    replace: (location) =>
-      navigate(...toNavigateArgs(location, { replace: true })),
-    go: (n) => navigate(n),
-    goBack: () => navigate(-1),
-    goForward: () => navigate(1),
-  };
+  if (currentNavigate) {
+    run(currentNavigate);
+  } else {
+    pendingNavigations.push(run);
+  }
 }

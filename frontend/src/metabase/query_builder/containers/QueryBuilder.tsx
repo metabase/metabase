@@ -52,8 +52,8 @@ import {
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import {
   type Location,
-  push,
   useLocation,
+  useNavigate,
   useNavigationType,
   useParams,
 } from "metabase/router";
@@ -337,7 +337,6 @@ const mapDispatchToProps = {
 
   // other
   closeNavbar,
-  onChangeLocation: push,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -347,6 +346,7 @@ type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
@@ -621,6 +621,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     <>
       <View
         {...props}
+        onChangeLocation={navigate}
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}

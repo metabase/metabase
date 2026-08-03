@@ -17,8 +17,8 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import { push, useLocation, useParams } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -113,7 +113,7 @@ function TransformQueryPageBody({
     transformId: transform.id,
     initialSource: transform.source,
   });
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadata);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -161,9 +161,9 @@ function TransformQueryPageBody({
   useEffect(() => {
     if (isEditMode && isRemoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      dispatch(push(Urls.transform(transform.id)));
+      navigate(Urls.transform(transform.id));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+  }, [isRemoteSyncReadOnly, isEditMode, transform.id, navigate]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);
@@ -178,7 +178,7 @@ function TransformQueryPageBody({
       sendSuccessToast(t`Transform query updated`);
 
       if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+        navigate(Urls.transform(transform.id));
       }
     }
   };
@@ -212,7 +212,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
+      navigate(Urls.transform(transform.id));
     }
   };
 

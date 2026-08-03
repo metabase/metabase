@@ -27,7 +27,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
-import { push, useLocation, useParams } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
@@ -55,6 +55,7 @@ export function getSearchResultSelection(
 
 export function AppBarContainer() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // These selectors derive app-bar visibility from the URL, so they take the
   // router props rather than reading them from the store.
@@ -113,7 +114,7 @@ export function AppBarContainer() {
     if (selection.type === "zoom") {
       dispatch(zoomInRow({ objectId: selection.objectId }));
     } else {
-      dispatch(push(selection.url));
+      navigate(selection.url);
     }
   };
 

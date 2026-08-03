@@ -8,8 +8,8 @@ import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -31,7 +31,7 @@ export function NewMeasurePage({
   breadcrumbs,
   getSuccessUrl,
 }: NewMeasurePageProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -99,9 +99,9 @@ export function NewMeasurePage({
 
   useEffect(() => {
     if (savedMeasure) {
-      dispatch(push(getSuccessUrl(savedMeasure)));
+      navigate(getSuccessUrl(savedMeasure));
     }
-  }, [savedMeasure, dispatch, getSuccessUrl]);
+  }, [savedMeasure, getSuccessUrl, navigate]);
 
   return (
     <PageContainer data-testid="new-measure-page" gap="xl">

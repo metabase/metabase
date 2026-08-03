@@ -3,7 +3,7 @@ import { parse as parseUrl } from "url";
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
 import type { LocationDescriptor } from "metabase/router";
-import { push, replace } from "metabase/router";
+import { navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -144,17 +144,18 @@ export const updateUrl = createThunkAction(
       // this is necessary because we can't get the state from history.state
       dispatch(setCurrentState(newState));
 
+      const { state, ...to } = locationDescriptor;
+
       try {
         if (replaceState) {
-          const replaceDescriptor = preserveNavbarState
-            ? {
-                ...locationDescriptor,
-                state: { ...locationDescriptor.state, preserveNavbarState },
-              }
-            : locationDescriptor;
-          dispatch(replace(replaceDescriptor));
+          navigate(to, {
+            replace: true,
+            state: preserveNavbarState
+              ? { ...state, preserveNavbarState }
+              : state,
+          });
         } else {
-          dispatch(push(locationDescriptor));
+          navigate(to, { state });
         }
       } catch (e) {
         // saving the location state can exceed the session storage quota (metabase#25312)

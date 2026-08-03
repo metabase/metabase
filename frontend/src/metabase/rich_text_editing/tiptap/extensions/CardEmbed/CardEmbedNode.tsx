@@ -24,7 +24,7 @@ import {
   MAX_GROUP_SIZE,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -177,6 +177,7 @@ export const CardEmbedComponent = memo(
       : "";
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const canWrite = editor.options.editable;
 
     const {
@@ -575,7 +576,7 @@ export const CardEmbedComponent = memo(
                           variant={isOpen ? "filled" : "default"}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
-                            dispatch(push(commentsPath));
+                            navigate(commentsPath);
                           }}
                         />
                       </Box>
