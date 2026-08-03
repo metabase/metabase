@@ -73,7 +73,7 @@ describe("usePluginMount", () => {
 
     expect(consoleError).toHaveBeenCalledWith(
       "The plugin has version warnings that may explain the failure:",
-      "Built with SDK version 1.x, which hasn't been tested with this version of Metabase.",
+      "Built with SDK version 1.x, but this version of Metabase was tested with SDK >=2.0.0 <=2.0.0.",
     );
   });
 

@@ -9,7 +9,7 @@ describe("getCustomVizPluginWarningMessage", () => {
         tested_sdk_range: ">=2.0.0 <=2.0.0",
       }),
     ).toBe(
-      "Built with SDK version 3.1.0, which hasn't been tested with this version of Metabase.",
+      "Built with SDK version 3.1.0, but this version of Metabase was tested with SDK >=2.0.0 <=2.0.0.",
     );
   });
 
@@ -21,7 +21,7 @@ describe("getCustomVizPluginWarningMessage", () => {
         tested_sdk_range: ">=2.0.0 <=2.0.0",
       }),
     ).toBe(
-      "Built with SDK version 1.x, which hasn't been tested with this version of Metabase.",
+      "Built with SDK version 1.x, but this version of Metabase was tested with SDK >=2.0.0 <=2.0.0.",
     );
   });
 

@@ -10,7 +10,9 @@ describe("CustomVizPluginSummary", () => {
     );
 
     expect(screen.getByText("My Viz")).toBeInTheDocument();
-    expect(screen.queryByText(/hasn't been tested/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Built with SDK version/),
+    ).not.toBeInTheDocument();
   });
 
   it("renders an SDK version warning with a changelog link", () => {

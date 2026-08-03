@@ -10,12 +10,14 @@ export function getCustomVizPluginWarningMessage(
   warning: CustomVizPluginWarning,
 ): string {
   return match(warning)
-    .with({ type: "sdk-version-mismatch" }, ({ sdk_version }) =>
-      sdk_version
-        ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page
-          t`Built with SDK version ${sdk_version}, which hasn't been tested with this version of Metabase.`
-        : // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page
-          t`Built with SDK version 1.x, which hasn't been tested with this version of Metabase.`,
+    .with(
+      { type: "sdk-version-mismatch" },
+      ({ sdk_version, tested_sdk_range }) =>
+        sdk_version
+          ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page
+            t`Built with SDK version ${sdk_version}, but this version of Metabase was tested with SDK ${tested_sdk_range}.`
+          : // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page
+            t`Built with SDK version 1.x, but this version of Metabase was tested with SDK ${tested_sdk_range}.`,
     )
     .with(
       { type: "metabase-version-mismatch" },
