@@ -25,7 +25,7 @@
                                        [:= :type (name card-type)]
                                        [:= :archived false]
                                        (collection/visible-collection-filter-clause :collection_id)]
-                                database-ids (conj (scope/database-id-filter-clause database-ids :database_id))
+                                database-ids (conj (scope/id-filter-clause database-ids :database_id))
                                 collection-ids (conj (scope/id-filter-clause collection-ids :collection_id)))
                     :order-by [[:name :asc] [:id :asc]]})
         (filter mi/can-read?))))

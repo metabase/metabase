@@ -55,7 +55,7 @@
   ([database-ids table-ids]
    (->> (t2/select :model/Table
                    {:where    (cond-> [:and [:= :active true]]
-                                database-ids (conj (scope/database-id-filter-clause database-ids :db_id))
+                                database-ids (conj (scope/id-filter-clause database-ids :db_id))
                                 table-ids (conj (scope/id-filter-clause table-ids :id)))
                     :order-by [[:name :asc] [:id :asc]]})
         (filter-readable-tables))))

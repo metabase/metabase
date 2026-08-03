@@ -16,7 +16,9 @@
 (deftest typescript-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/typescript")]
     (is (= "text/typescript; charset=utf-8" (get-in response [:headers "Content-Type"])))
-    (is (str/starts-with? (:body response) "const questions = "))
+    ;; `includes?` rather than `starts-with?`: instances with compactable
+    ;; metrics render the pickFields helper before the first const.
+    (is (str/includes? (:body response) "const questions = "))
     (is (str/includes? (:body response) "\nconst schema = {"))
     (is (str/includes? (:body response) "\n  schemaVersion: 2"))
     (is (str/includes? (:body response) "\n  questions: questions"))

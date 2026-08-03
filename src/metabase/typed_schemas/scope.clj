@@ -27,14 +27,6 @@
            (map :id)
            set))))
 
-(defn database-id-filter-clause
-  "Returns a Honey SQL filter clause for optional database ids."
-  [database-ids column]
-  (when database-ids
-    (if (seq database-ids)
-      [:in column database-ids]
-      [:= column -1])))
-
 (defn id-filter-clause
   "Returns a Honey SQL filter clause for optional ids."
   [ids column]
