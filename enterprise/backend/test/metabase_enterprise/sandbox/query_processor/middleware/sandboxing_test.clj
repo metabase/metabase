@@ -1328,6 +1328,40 @@
                                             (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
 
+(deftest model-metadata-overrides-preserved-for-sandboxed-users-test
+  (testing (str "Column metadata overrides on a Model (custom display_name, semantic_type set in the Edit Metadata "
+                "screen) should apply to queries sourced from that Model regardless of whether the user has a "
+                "sandbox on the underlying table (#79060)")
+    (met/with-gtaps! {:gtaps      {:people {:remappings {"state" [:dimension (mt/$ids people $state)]}}}
+                      :attributes {"state" "CA"}}
+      (let [mp            (mt/metadata-provider)
+            people-query  (lib/query mp (lib.metadata/table mp (mt/id :people)))
+            base-metadata (mt/with-test-user :crowberto
+                            (-> (qp/process-query people-query)
+                                (get-in [:data :results_metadata :columns])))
+            overrides     (mapv (fn [{col-name :name :as col}]
+                                  (case col-name
+                                    "ADDRESS"  (assoc col :display_name "Addr")
+                                    "PASSWORD" (assoc col :display_name "Pwd")
+                                    "NAME"     (assoc col :semantic_type :type/Title)
+                                    col))
+                                base-metadata)]
+        (mt/with-temp [:model/Card model {:type            :model
+                                          :dataset_query   people-query
+                                          :result_metadata overrides}]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/card mp (:id model)))]
+            (letfn [(cols-by-name [user]
+                      (mt/with-test-user user
+                        (->> (qp/process-query query) :data :cols (m/index-by :name))))]
+              (doseq [[label user] [["admin (unsandboxed)" :crowberto]
+                                    ["sandboxed user"      :rasta]]]
+                (testing label
+                  (let [cols (cols-by-name user)]
+                    (is (= "Addr"      (get-in cols ["ADDRESS"  :display_name])))
+                    (is (= "Pwd"       (get-in cols ["PASSWORD" :display_name])))
+                    (is (= :type/Title (get-in cols ["NAME"     :semantic_type])))))))))))))
+
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
