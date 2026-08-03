@@ -11,7 +11,6 @@ import {
   getStaleDefaultFilterOptions,
 } from "../stale-utils";
 import type { StaleContentFilterOptions } from "../types";
-import { ALL_FILTER_TYPES } from "../utils";
 
 type StaleContentFilterBarProps = {
   query?: string;
@@ -62,7 +61,6 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
       />
       <StaleContentFilterPicker
         filterOptions={filterOptions}
-        availableTypes={ALL_FILTER_TYPES}
         isDisabled={isLoading}
         hasDefaultOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={onFilterOptionsChange}
