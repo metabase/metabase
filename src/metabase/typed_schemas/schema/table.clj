@@ -8,7 +8,6 @@
    [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.typed-schemas.scope :as scope]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,8 +52,8 @@
   [database-ids table-ids]
   (->> (t2/select :model/Table
                   {:where    (cond-> [:and [:= :active true]]
-                               database-ids (conj (scope/id-filter-clause database-ids :db_id))
-                               table-ids (conj (scope/id-filter-clause table-ids :id)))
+                               database-ids (conj (schema.common/scope-filter-clause database-ids :db_id))
+                               table-ids (conj (schema.common/scope-filter-clause table-ids :id)))
                    :order-by [[:name :asc] [:id :asc]]})
        (filter-readable-tables)))
 
@@ -65,7 +64,7 @@
                   {:where    [:and
                               [:= :active true]
                               [:= :is_published true]
-                              (scope/id-filter-clause data-collection-ids :collection_id)]
+                              (schema.common/scope-filter-clause data-collection-ids :collection_id)]
                    :order-by [[:name :asc] [:id :asc]]})
        (filter-readable-tables)))
 

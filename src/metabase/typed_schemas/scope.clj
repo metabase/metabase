@@ -49,14 +49,6 @@
            (map :id)
            set))))
 
-(defn id-filter-clause
-  "Returns a Honey SQL filter clause for optional ids."
-  [ids column]
-  (when ids
-    (if (seq ids)
-      [:in column ids]
-      [:= column -1])))
-
 (defn- library-collection-for-ref
   [{:keys [id entity-id]}]
   (->> (if id
