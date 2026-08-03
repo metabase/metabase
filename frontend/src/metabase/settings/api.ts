@@ -31,8 +31,8 @@ const putSettingQuery = ({ key, value }: UpdateSettingArg) => ({
 
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    // The instance's settings payload. This is the read side of the whole
-    // module: `getSettings`/`useSetting` resolve out of this cache entry.
+    // The instance's settings payload.
+    // `getSettings` and `useSetting` resolve out of this cache entry.
     getSessionProperties: builder.query<EnterpriseSettings, void>({
       query: () => ({
         method: "GET",

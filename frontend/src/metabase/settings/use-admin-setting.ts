@@ -4,9 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
-// TODO(toast-home): `useToast` belongs in `metabase/ui`. Until it moves, this is
-// the module's one edge into `common` — imported by concrete path rather than the
-// barrel so the module doesn't pull all of `common/hooks` in behind it.
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/redux";
 import type {

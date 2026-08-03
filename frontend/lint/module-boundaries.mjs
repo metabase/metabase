@@ -213,9 +213,6 @@ const elements = [
     name: "selectors",
     enforceSharedTiers: false,
   }),
-  // Instance settings: endpoints, cache selectors, hooks. The tier rules allow
-  // shared→shared, but by convention this module only reaches api core, redux
-  // and lib. Not enforced here.
   createElement({ type: "shared", name: "settings" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
