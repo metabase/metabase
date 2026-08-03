@@ -36,7 +36,6 @@
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
                :label         "Anthropic"
-               :icon          "ai"
                :managed       false
                :available     true
                :default_model "claude-sonnet-4-6"

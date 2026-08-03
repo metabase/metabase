@@ -335,10 +335,11 @@
 
 (deftest ^:parallel provider-type-names-are-mirrored-on-the-frontend-test
   (testing (str "The frontend mirrors this set by hand as `LlmProviderTypeName` in "
-                "frontend/src/metabase-types/api/llm.ts, and keys `LLM_PROVIDER_LOGOS` in "
-                "frontend/src/metabase/metabot/constants.ts on it so a type without a decided logo fails to "
-                "compile. Nothing links the two, so adding a type here without updating them ships a provider "
-                "that silently falls back to the generic icon. Update both, then this list.")
+                "frontend/src/metabase-types/api/llm.ts, and keys `PROVIDER_LOGOS` in "
+                "frontend/src/metabase/metabot/components/AIProviderConfigurationForm/ProviderTypeIcon.tsx on it "
+                "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
+                "without updating them ships a provider that silently falls back to the generic icon. Update "
+                "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "azure" "bedrock" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 

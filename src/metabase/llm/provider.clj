@@ -38,7 +38,6 @@
   secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
-    :icon          "ai"
     :default-model "claude-sonnet-4-6"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -54,7 +53,6 @@
                      :default   "https://api.anthropic.com"}]}
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
-    :icon          "ai"
     :default-model "gpt-5.4"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -70,7 +68,6 @@
                      :default   "https://api.openai.com"}]}
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
-    :icon          "ai"
     :default-model "anthropic/claude-sonnet-4.6"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -86,7 +83,6 @@
                      :default   "https://openrouter.ai/api"}]}
    {:type          "mistral"
     :label         (deferred-tru "Mistral")
-    :icon          "ai"
     :default-model "mistral-medium-3-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -102,7 +98,6 @@
                      :default   "https://api.mistral.ai/v1"}]}
    {:type          "zai"
     :label         (deferred-tru "Z.AI")
-    :icon          "ai"
     :default-model "glm-5.2"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -118,7 +113,6 @@
                      :default   "https://api.z.ai/api/paas/v4"}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
-    :icon          "ai"
     :default-model nil
     ;; Azure serves deployments the customer names, and its listing endpoint returns the regional catalog rather
     ;; than those deployments, so there is nothing to fetch. The admin names the one this connection serves, and
@@ -151,7 +145,6 @@
                      :help        (deferred-tru "The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
-    :icon          "ai"
     :default-model "anthropic.claude-opus-4-8"
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")
@@ -175,7 +168,6 @@
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase")
-    :icon          "metabot"
     :managed?      true
     :singleton?    true
     :default-model "anthropic/claude-sonnet-4-6"

@@ -40,7 +40,6 @@
   [:map
    [:type :string]
    [:label :string]
-   [:icon :string]
    [:managed :boolean]
    [:singleton :boolean]
    [:available :boolean]
@@ -95,10 +94,9 @@
     options     (assoc :options options)))
 
 (defn- provider-type-response
-  [{:keys [type label icon managed? singleton? default-model fields]}]
+  [{:keys [type label managed? singleton? default-model fields]}]
   {:type          type
    :label         (str label)
-   :icon          icon
    :managed       (boolean managed?)
    :singleton     (boolean singleton?)
    :available     (llm.provider/type-available? type)
