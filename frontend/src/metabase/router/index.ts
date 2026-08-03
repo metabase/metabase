@@ -1,4 +1,5 @@
 export {
+  Navigate,
   Outlet,
   Route,
   useLocation,
@@ -9,7 +10,6 @@ export {
 } from "react-router";
 export * from "./middleware";
 export * from "./navigation";
-export * from "./Navigate";
 export * from "./redirect";
 export * from "./router-link";
 export * from "./to-route-objects";

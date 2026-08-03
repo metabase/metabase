@@ -1,7 +1,10 @@
 import { useContext, useState } from "react";
-import { UNSAFE_RouteContext, useLocation, useParams } from "react-router";
-
-import { Navigate } from "./Navigate";
+import {
+  Navigate,
+  UNSAFE_RouteContext,
+  useLocation,
+  useParams,
+} from "react-router";
 
 type RouteParams = Record<string, string | undefined>;
 
