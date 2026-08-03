@@ -166,29 +166,58 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
+  const authorityLevel = url.searchParams.get("authority_level");
 
   // When the models filter is an empty array, return all items.
   // In the API, omitting the `models` param returns all collection items.
-  const matchedItems =
-    models.length === 0
+  const matchedItems = models.includes("no_models")
+    ? []
+    : models.length === 0
       ? collectionItems
       : collectionItems.filter(({ model }) => models.includes(model));
 
+  const authorityMatchedItems = matchedItems.filter((item) => {
+    if (item.model !== "collection" || authorityLevel == null) {
+      return true;
+    }
+    return authorityLevel === "official"
+      ? item.authority_level === "official"
+      : item.authority_level !== "official";
+  });
+
   const q = url.searchParams.get("q")?.toLowerCase().trim();
   const searchedItems = q
-    ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
-    : matchedItems;
+    ? authorityMatchedItems.filter(({ name }) => name.toLowerCase().includes(q))
+    : authorityMatchedItems;
 
   const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
 
-  return {
+  const response = {
     data: searchedItems.slice(offset, offset + limit),
     total: searchedItems.length,
     models,
     limit,
     offset,
   };
+
+  return url.searchParams.get("include_available_models") === "true"
+    ? {
+        ...response,
+        available_models: Array.from(
+          new Set(collectionItems.map((item) => item.model)),
+        ),
+        available_authority_levels: Array.from(
+          new Set(
+            collectionItems
+              .filter(({ model }) => model === "collection")
+              .map(({ authority_level }) =>
+                authority_level === "official" ? "official" : "regular",
+              ),
+          ),
+        ),
+      }
+    : response;
 }
 
 export function setupCollectionItemsEndpoint({

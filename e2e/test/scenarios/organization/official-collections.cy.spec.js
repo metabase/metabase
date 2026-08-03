@@ -70,6 +70,68 @@ describe("official collections", () => {
       assertSidebarIcon(COLLECTION_NAME, "official_collection");
     });
 
+    it("filters regular and official collections independently", () => {
+      H.createCollection({ name: "Collection filter parent" }).then(
+        ({ body: parentCollection }) => {
+          H.createCollection({
+            name: "Regular child collection",
+            parent_id: parentCollection.id,
+          });
+          H.createCollection({
+            name: "Official child collection",
+            parent_id: parentCollection.id,
+            authority_level: "official",
+          });
+
+          cy.intercept(
+            "GET",
+            `/api/collection/${parentCollection.id}/items?*`,
+          ).as("getFilteredCollectionItems");
+          cy.visit(`/collection/${parentCollection.id}`);
+          cy.wait([
+            "@getFilteredCollectionItems",
+            "@getFilteredCollectionItems",
+          ]);
+        },
+      );
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Regular child collection");
+        cy.findByText("Official child collection");
+      });
+      cy.findByRole("button", { name: "Filter" }).click();
+
+      H.popover().within(() => {
+        cy.findByLabelText("Collection").should("be.checked");
+        cy.findByLabelText("Official collections").should("be.checked");
+        cy.findByLabelText("Collection").click();
+      });
+      cy.wait("@getFilteredCollectionItems")
+        .its("request.url")
+        .should("include", "authority_level=official");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Official child collection");
+        cy.findByText("Regular child collection").should("not.exist");
+      });
+
+      H.popover().within(() => {
+        cy.findByLabelText("Collection").click();
+      });
+      cy.wait("@getFilteredCollectionItems")
+        .its("request.url")
+        .should("not.include", "authority_level");
+      H.popover().within(() => {
+        cy.findByLabelText("Official collections").click();
+      });
+      cy.wait("@getFilteredCollectionItems")
+        .its("request.url")
+        .should("include", "authority_level=regular");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Regular child collection");
+        cy.findByText("Official child collection").should("not.exist");
+      });
+    });
+
     it("displays official badge throughout the application", () => {
       testOfficialBadgePresence();
     });

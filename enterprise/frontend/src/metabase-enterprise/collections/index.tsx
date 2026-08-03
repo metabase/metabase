@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
 import {
+  type CollectionItemTypeFilterOption,
+  OFFICIAL_COLLECTION_FILTER,
+  REGULAR_COLLECTION_FILTER,
+} from "metabase/common/collections/types";
+import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
@@ -81,6 +86,36 @@ export function initializePlugin() {
 
     PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics =
       filterOutItemsFromInstanceAnalytics;
+    PLUGIN_COLLECTIONS.getCollectionItemTypeFilterOptions = (
+      options,
+      availableAuthorityLevels,
+    ) => {
+      if (!availableAuthorityLevels.includes("official")) {
+        return options;
+      }
+
+      return options.flatMap((option): CollectionItemTypeFilterOption[] => {
+        if (option.model !== "collection") {
+          return [option];
+        }
+
+        return [
+          ...(availableAuthorityLevels.includes("regular")
+            ? [
+                {
+                  ...option,
+                  value: REGULAR_COLLECTION_FILTER,
+                },
+              ]
+            : []),
+          {
+            value: OFFICIAL_COLLECTION_FILTER,
+            model: "collection",
+            label: t`Official collections`,
+          },
+        ];
+      });
+    };
     PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
       FormCollectionAuthorityLevel;
     PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =

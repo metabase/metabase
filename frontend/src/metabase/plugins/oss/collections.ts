@@ -5,6 +5,7 @@ import { t } from "ttag";
 import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
+  CollectionItemTypeFilterOption,
 } from "metabase/common/collections/types";
 import { useGetIconBase } from "metabase/hooks/use-icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
@@ -13,6 +14,7 @@ import type {
   BaseEntityId,
   Bookmark,
   Collection,
+  CollectionAuthorityLevelFilter,
   CollectionEssentials,
   CollectionId,
 } from "metabase-types/api";
@@ -85,6 +87,10 @@ const getDefaultPluginCollections = () => ({
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items,
+  getCollectionItemTypeFilterOptions: (
+    options: CollectionItemTypeFilterOption[],
+    _availableAuthorityLevels: CollectionAuthorityLevelFilter[],
+  ) => options,
   // Unjustified type cast. FIXME
   canCleanUp: (_collection: Collection) => false as boolean,
   useGetCleanUpMenuItems: (

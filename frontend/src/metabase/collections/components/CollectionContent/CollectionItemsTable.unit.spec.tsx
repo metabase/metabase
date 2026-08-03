@@ -2,7 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   act,
   renderWithProviders,
@@ -21,6 +23,7 @@ import type {
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
@@ -106,6 +109,23 @@ function getSearchCalls(collectionId: CollectionId = collection.id) {
   );
 }
 
+function getItemsSearchParams() {
+  return getItemsCalls().map((call) => new URL(call.url).searchParams);
+}
+
+function findItemsSearchParamsByModels(models: string[]) {
+  return getItemsSearchParams().find(
+    (searchParams) =>
+      JSON.stringify(searchParams.getAll("models")) === JSON.stringify(models),
+  );
+}
+
+function findItemsSearchParamsByAuthorityLevel(authorityLevel: string) {
+  return getItemsSearchParams().find(
+    (searchParams) => searchParams.get("authority_level") === authorityLevel,
+  );
+}
+
 function setupUserWithFakeTimers() {
   jest.useFakeTimers();
   return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -162,6 +182,11 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("collection-items-toolbar"),
     ).not.toBeInTheDocument();
+    expect(
+      getItemsCalls().some((call) =>
+        new URL(call.url).searchParams.has("include_available_models"),
+      ),
+    ).toBe(false);
   });
 
   it("keeps the table mounted without showing a loader during a refetch with no search", async () => {
@@ -519,6 +544,117 @@ describe("CollectionItemsTable", () => {
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
   });
 
+  it("shows filter options for the available item types", async () => {
+    setup();
+
+    await waitFor(() => {
+      expect(
+        getItemsSearchParams().some(
+          (searchParams) =>
+            searchParams.get("include_available_models") === "true",
+        ),
+      ).toBe(true);
+    });
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    const popover = screen.getByTestId("collection-type-filter-popover");
+
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+    expect(within(popover).getByLabelText("Model")).toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeChecked();
+    expect(within(popover).queryByLabelText("Metric")).not.toBeInTheDocument();
+  });
+
+  it("filters by type and resets pagination", async () => {
+    setup({ pageSize: 1 });
+
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+
+    await waitFor(() => {
+      expect(
+        findItemsSearchParamsByModels(["dataset", "card"])?.get("offset"),
+      ).toBe("0");
+    });
+    expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    expect(screen.getByText("Customer 360")).toBeInTheDocument();
+    expect(screen.queryByText("Orders model")).not.toBeInTheDocument();
+  });
+
+  it("uses no_models and shows no results when every type is unchecked", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    const popover = screen.getByTestId("collection-type-filter-popover");
+    await userEvent.click(within(popover).getByLabelText("Dashboard"));
+    await userEvent.click(within(popover).getByLabelText("Model"));
+    await userEvent.click(within(popover).getByLabelText("Question"));
+
+    await waitFor(() => {
+      expect(findItemsSearchParamsByModels(["no_models"])).toBeDefined();
+    });
+    expect(await screen.findByText("Didn't find anything")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("collection-filter-empty-state"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No items of the selected types."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("collection-table")).not.toBeInTheDocument();
+    expect(popover).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole("button", { name: "Apply" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps all type options while search has no results", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    let popover = screen.getByTestId("collection-type-filter-popover");
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+    expect(within(popover).getByLabelText("Model")).toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeChecked();
+    within(popover).getByLabelText("Dashboard").focus();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("collection-type-filter-popover"),
+      ).not.toBeInTheDocument();
+    });
+
+    await userEvent.type(
+      await screen.findByPlaceholderText("Search by name or editor..."),
+      "not found",
+    );
+    expect(
+      await screen.findByTestId(
+        "collection-filter-empty-state",
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+    popover = screen.getByTestId("collection-type-filter-popover");
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+    expect(within(popover).getByLabelText("Model")).toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeChecked();
+  });
+
   it("shows the existing empty state without a toolbar for a truly empty collection", async () => {
     setup({ collectionItems: [] });
 
@@ -528,5 +664,78 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("collection-items-toolbar"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("with the official collections plugin", () => {
+    const regularCollection = createMockCollectionItem({
+      id: 4,
+      collection_id: collection.id,
+      model: "collection",
+      name: "Regular collection",
+      authority_level: null,
+    });
+    const officialCollection = createMockCollectionItem({
+      id: 5,
+      collection_id: collection.id,
+      model: "collection",
+      name: "Official collection",
+      authority_level: "official",
+    });
+
+    beforeEach(() => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({
+          official_collections: true,
+        }),
+      });
+      setupEnterpriseOnlyPlugin("collections");
+    });
+
+    it("filters official and regular collections independently", async () => {
+      setup({
+        collectionItems: [regularCollection, officialCollection],
+        pageSize: 1,
+      });
+
+      expect(await screen.findByText("Regular collection")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(
+        await screen.findByText("Official collection"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      expect(screen.getByLabelText("Collection")).toBeChecked();
+      expect(screen.getByLabelText("Official collections")).toBeChecked();
+
+      await userEvent.click(screen.getByLabelText("Collection"));
+
+      await waitFor(() => {
+        const searchParams = findItemsSearchParamsByAuthorityLevel("official");
+        expect(searchParams?.getAll("models")).toEqual(["collection"]);
+        expect(searchParams?.get("offset")).toBe("0");
+      });
+      expect(screen.queryByText("Regular collection")).not.toBeInTheDocument();
+      expect(screen.getByText("Official collection")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Collection"));
+      await userEvent.click(screen.getByLabelText("Official collections"));
+
+      await waitFor(() => {
+        expect(
+          findItemsSearchParamsByAuthorityLevel("regular")?.getAll("models"),
+        ).toEqual(["collection"]);
+      });
+      expect(await screen.findByText("Regular collection")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Official collection"),
+        ).not.toBeInTheDocument();
+      });
+      await act(async () => {
+        await fetchMock.callHistory.flush();
+      });
+    });
   });
 });
