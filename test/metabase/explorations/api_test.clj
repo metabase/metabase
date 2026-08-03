@@ -1273,6 +1273,32 @@
         (is (= "pending" (:status body)))
         (is (= qid (:id body)))))))
 
+(deftest exploration-query-error-message-is-redacted-test
+  (testing "a failed query's raw driver error never rides the wire. It names tables, columns, and
+            row values from a query the reader may not be able to run themselves, so every path that
+            surfaces an ExplorationQuery carries the generic message and the real one is only logged"
+    (mt/with-temp [:model/User u      {:email "err@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "errored"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id (duid "d1")}]})
+            qid    (-> resp :threads first :queries first :id)
+            ;; stands in for a driver error carrying SQL and row values the reader can't query
+            secret "SECRET_VALUE_FROM_DRIVER_ERROR"]
+        (t2/update! :model/ExplorationQuery qid {:status "error" :error_message secret})
+        (testing "GET /query/:id — the endpoint that already allowlists its 409 payload"
+          (let [body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
+            (is (not (str/includes? (pr-str body) secret)))
+            (is (= "This query failed to run." (:error_message body)))))
+        (testing "GET /:id — hydrates the same row onto the exploration payload"
+          (let [body (mt/user-http-request u :get 200 (str "exploration/" (:id resp)))
+                q    (->> body :threads (mapcat :queries) (filter #(= qid (:id %))) first)]
+            (is (not (str/includes? (pr-str body) secret))
+                "the raw driver error must not reach anyone who can read the exploration")
+            (is (= "This query failed to run." (:error_message q)))))))))
+
 (deftest exploration-query-result-permissions-test
   (testing "GET /query/:id enforces the parent exploration's read check"
     (mt/with-temp [:model/User owner {:email "qr-owner@example.com"}

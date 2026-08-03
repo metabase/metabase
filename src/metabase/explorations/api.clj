@@ -195,12 +195,30 @@
       (assoc :status (thread-status thread))
       (dissoc :query_plan_transcript)))
 
+(defn- redact-query-error
+  "Swap an `ExplorationQuery` row's raw driver `:error_message` for a generic one. The real message
+  names tables, columns, and row values from a query the reader may not have permission to run; it
+  stays in the logs.
+
+  Redaction has to happen on the way out: a `defendpoint` response schema validates and encodes but
+  does not strip, so declaring a narrower response map keeps nothing off the wire."
+  [q]
+  (cond-> q
+    (:error_message q) (assoc :error_message (tru "This query failed to run."))))
+
+(defn- redact-thread-query-errors
+  "[[redact-query-error]] across a hydrated thread's `:queries`."
+  [thread]
+  (update thread :queries #(some->> % (mapv redact-query-error))))
+
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator :can_write :collection
                   [:threads :queries :timelines])
       (update :threads
-              #(some->> % (mapv attach-thread-status) gate-threads-derived-data))))
+              #(some->> %
+                        (mapv (comp redact-thread-query-errors attach-thread-status))
+                        gate-threads-derived-data))))
 
 (defn- positional-rows
   "Stamp `:exploration_thread_id` and a 0-based `:position` onto each row in `rows`."
@@ -937,11 +955,11 @@
 
       ;; Pending / errored: no result blob exists. The status payload (id/status/timestamps) rides
       ;; the exploration's collection perms (already enforced by `get-exploration-query-or-404`'s
-      ;; read-check), like a dashboard card that's still loading. `error_message` a generic error message.
-      ;; The actual error with SQL details they may not have permission for is logged.
+      ;; read-check), like a dashboard card that's still loading. See [[redact-query-error]] for
+      ;; why the driver's own message can't be among those fields.
       {:status 409
-       :body   (cond-> (select-keys q [:id :status :started_at :finished_at])
-                 (:error_message q) (assoc :error_message (tru "This query failed to run.")))})))
+       :body   (-> (redact-query-error q)
+                   (select-keys [:id :status :started_at :finished_at :error_message]))})))
 
 (api.macros/defendpoint :put "/page/:id/starred" :- :nil
   "Set whether an exploration page is starred."
