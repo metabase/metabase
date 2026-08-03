@@ -2,7 +2,9 @@ import { act } from "@testing-library/react";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { refreshCurrentUser } from "metabase/redux/user";
+import { Api } from "metabase/api";
+import { useSelector } from "metabase/redux";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   DimensionId,
   ExplorationMetric,
@@ -665,46 +667,70 @@ describe("useExplorationSelection", () => {
   });
 
   describe("collection default", () => {
+    // Renders the personal-collection selector alongside the hook: the store
+    // notification for an upserted user lands on a later tick, so tests wait
+    // on this probe to know the hook has actually seen the user.
     function renderSelectionWithoutUser() {
       setupTimelinesEndpoints([]);
-      return renderHookWithProviders(() => useExplorationSelection(), {
-        storeInitialState: { currentUser: null },
+      return renderHookWithProviders(
+        () => ({
+          selection: useExplorationSelection(),
+          personalCollectionId: useSelector(getUserPersonalCollectionId),
+        }),
+        { storeInitialState: { currentUser: null } },
+      );
+    }
+
+    function upsertUser(store: { dispatch: (action: unknown) => unknown }) {
+      const entries = [
+        {
+          endpointName: "getCurrentUser",
+          arg: undefined,
+          value: createMockUser({ personal_collection_id: 42 }),
+        },
+      ];
+      act(() => {
+        store.dispatch(
+          Api.util.upsertQueryEntries(
+            // RTK validates endpointName/value at runtime against the injected
+            // endpoint registry; TS can't pick the right union branch here (same
+            // cast as `seedApiQueryCache` in metabase/redux/store/mocks/api.ts).
+            entries as unknown as Parameters<
+              typeof Api.util.upsertQueryEntries
+            >[0],
+          ),
+        );
       });
     }
 
-    it("applies the personal-collection default when the user resolves after the first render", () => {
+    it("applies the personal-collection default when the user resolves after the first render", async () => {
       const { result, store } = renderSelectionWithoutUser();
 
-      expect(result.current.collection.id).toBeUndefined();
+      expect(result.current.selection.collection.id).toBeUndefined();
 
-      act(() => {
-        store.dispatch(
-          refreshCurrentUser.fulfilled(
-            createMockUser({ personal_collection_id: 42 }),
-            "requestId",
-          ),
-        );
+      upsertUser(store);
+
+      await waitFor(() => {
+        expect(result.current.selection.collection.id).toBe(42);
       });
-
-      expect(result.current.collection.id).toBe(42);
     });
 
-    it("does not clobber an explicit collection selection with the default", () => {
+    it("does not clobber an explicit collection selection with the default", async () => {
       const { result, store } = renderSelectionWithoutUser();
 
       act(() => {
-        result.current.setCollection({ id: 7, name: "Our analytics" });
+        result.current.selection.setCollection({
+          id: 7,
+          name: "Our analytics",
+        });
       });
-      act(() => {
-        store.dispatch(
-          refreshCurrentUser.fulfilled(
-            createMockUser({ personal_collection_id: 42 }),
-            "requestId",
-          ),
-        );
+      upsertUser(store);
+
+      await waitFor(() => {
+        expect(result.current.personalCollectionId).toBe(42);
       });
 
-      expect(result.current.collection).toEqual({
+      expect(result.current.selection.collection).toEqual({
         id: 7,
         name: "Our analytics",
       });
