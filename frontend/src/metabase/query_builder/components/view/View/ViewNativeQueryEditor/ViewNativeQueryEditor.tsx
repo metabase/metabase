@@ -108,8 +108,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         isPromptInputOpen={inlineSQLPrompt?.isPromptOpen}
         onTogglePromptInput={inlineSQLPrompt?.togglePrompt}
       >
-        <NativeQueryEditor.TopBar>
-          <NativeQueryParametersList />
+        <NativeQueryEditor.TopBar leftContent={<NativeQueryParametersList />}>
           <NativeQueryEditor.Sidebar />
           <NativeQueryEditor.VisibilityToggler />
         </NativeQueryEditor.TopBar>

@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
 import { getMetadata } from "metabase/metadata-store";
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
+import { TemplateTagsSidebar } from "metabase/parameters/components/TemplateTagsSidebar";
 import {
   QueryEditor,
   type QueryEditorUiOptions,
@@ -86,6 +88,8 @@ export function TransformEditor({
       uiState={uiState}
       uiOptions={mergedUiOptions}
       proposedQuery={proposedQuery}
+      parametersList={<NativeQueryParametersList />}
+      templateTagsSidebar={TemplateTagsSidebar}
       onChangeQuery={handleQueryChange}
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}

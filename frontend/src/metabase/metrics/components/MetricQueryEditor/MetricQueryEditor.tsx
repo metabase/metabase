@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
+import { TemplateTagsSidebar } from "metabase/parameters/components/TemplateTagsSidebar";
 import { QueryEditor } from "metabase/querying/editor/components/QueryEditor";
 import type { QueryEditorUiState } from "metabase/querying/editor/types";
 import type * as Lib from "metabase-lib";
@@ -33,6 +35,8 @@ export function MetricQueryEditor({
       uiOptions={uiOptions}
       onChangeQuery={onChangeQuery}
       onChangeUiState={onChangeUiState}
+      parametersList={<NativeQueryParametersList />}
+      templateTagsSidebar={TemplateTagsSidebar}
     />
   );
 }

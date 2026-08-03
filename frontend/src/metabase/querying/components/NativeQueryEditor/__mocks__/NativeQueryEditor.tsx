@@ -1,7 +1,5 @@
 import type { ChangeEvent } from "react";
 
-import CS from "metabase/css/core/index.css";
-import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
@@ -16,7 +14,6 @@ type NativeQueryEditorProps = Pick<
   | "question"
   | "readOnly"
   | "setDatasetQuery"
-  | "setParameterValue"
 >;
 
 export const NativeQueryEditor = ({
@@ -27,7 +24,6 @@ export const NativeQueryEditor = ({
   question,
   readOnly,
   setDatasetQuery,
-  setParameterValue,
 }: NativeQueryEditorProps) => {
   const onChange = (evt: ChangeEvent<HTMLTextAreaElement>) => {
     setDatasetQuery(query.setQueryText(evt.target.value));
@@ -62,12 +58,6 @@ export const NativeQueryEditor = ({
       {query.queryText && (
         <textarea value={query.queryText()} onChange={onChange} />
       )}
-      <SyncedParametersList
-        className={CS.mt1}
-        parameters={query.question().parameters()}
-        setParameterValue={setParameterValue}
-        commitImmediately
-      />
     </div>
   );
 };
