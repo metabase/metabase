@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -12,6 +12,7 @@ import {
   queryToSearch,
   replace,
   subscribeLocation,
+  useIsNavigationHeld,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
@@ -31,6 +32,7 @@ export function useDashboardUrlQuery(location: Location) {
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
   const siteUrl = useSetting("site-url");
+  const isNavigationHeld = useIsNavigationHeld();
 
   const dispatch = useDispatch();
 
@@ -51,6 +53,7 @@ export function useDashboardUrlQuery(location: Location) {
   }, [parameterValuesBySlug, tabs, selectedTab]);
 
   const previousQueryParams = usePrevious(queryParams);
+  const hasDeferredSyncRef = useRef(false);
 
   useEffect(() => {
     /**
@@ -60,6 +63,18 @@ export function useDashboardUrlQuery(location: Location) {
      * settings because now the base URL (including the query string) is different.
      */
     if (isEmbedPreview() || !dashboardId) {
+      return;
+    }
+
+    /**
+     * A leave prompt is up, and the router holds a single pending navigation.
+     * Syncing now would replace the destination the user is being asked about,
+     * and letting them through would then take them somewhere else. Note that
+     * the sync was skipped, because `previousQueryParams` still advances and
+     * would otherwise swallow it once the prompt is answered.
+     */
+    if (isNavigationHeld) {
+      hasDeferredSyncRef.current = true;
       return;
     }
 
@@ -74,9 +89,13 @@ export function useDashboardUrlQuery(location: Location) {
       }
     }
 
-    if (_.isEqual(previousQueryParams, queryParams)) {
+    if (
+      !hasDeferredSyncRef.current &&
+      _.isEqual(previousQueryParams, queryParams)
+    ) {
       return;
     }
+    hasDeferredSyncRef.current = false;
 
     const currentQuery = parseSearchQuery(location.search);
 
@@ -102,6 +121,7 @@ export function useDashboardUrlQuery(location: Location) {
     location,
     siteUrl,
     dispatch,
+    isNavigationHeld,
   ]);
 
   useEffect(() => {

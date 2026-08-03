@@ -1,0 +1,148 @@
+import { DashboardClickAction } from "metabase/dashboard/click-behavior/DashboardClickAction";
+import {
+  getClickBehavior,
+  getClickBehaviorData,
+  getParameterIdValuePairs,
+  getParameterValuesBySlug,
+} from "metabase/dashboard/click-behavior/dashboard-click-drill";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import { CombineColumnsAction } from "metabase/visualizations/click-actions/actions/CombineColumnsAction";
+import { ExtractColumnAction } from "metabase/visualizations/click-actions/actions/ExtractColumnAction";
+import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
+import { NativeQueryClickFallback } from "metabase/visualizations/click-actions/actions/NativeQueryClickFallback";
+import type {
+  ClickObject,
+  LegacyDrill,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
+import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
+
+export type ClickBehaviorTarget = {
+  type: "dashboard" | "question";
+  id: number;
+  name: string;
+  parameters: ParameterValues;
+  /**
+   * Same parameter values as {@link parameters}, but keyed by parameter id.
+   * Used for same-dashboard click behaviors that need to dispatch per-id
+   * setParameterValue actions (mirrors core app DashboardClickAction).
+   */
+  parameterIdValuePairs: [string, ParameterValueOrArray | null][];
+  tabId?: DashboardTabId;
+};
+
+const getClickBehaviorTarget = (
+  clicked: ClickObject,
+): ClickBehaviorTarget | null => {
+  const clickBehavior = getClickBehavior(clicked);
+  if (!clickBehavior) {
+    return null;
+  }
+
+  const { linkType, targetId, extraData, parameterMapping, data, tabId } =
+    getClickBehaviorData(clicked, clickBehavior);
+
+  if (linkType !== "dashboard" && linkType !== "question") {
+    return null;
+  }
+
+  const parameters = parameterMapping
+    ? getParameterValuesBySlug(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      })
+    : {};
+
+  // Unjustified type cast. FIXME
+  const parameterIdValuePairs = (
+    parameterMapping
+      ? getParameterIdValuePairs(parameterMapping, {
+          data,
+          extraData,
+          clickBehavior,
+        })
+      : []
+  ) as [string, ParameterValueOrArray | null][];
+
+  const entitiesMap =
+    linkType === "dashboard" ? extraData?.dashboards : extraData?.questions;
+  const target = entitiesMap?.[targetId];
+
+  if (!target) {
+    console.warn(
+      `[SDK Navigation] Could not find ${linkType} with id ${targetId}`,
+    );
+    return null;
+  }
+
+  return {
+    type: linkType,
+    id: target.id,
+    name: target.name,
+    parameters,
+    parameterIdValuePairs,
+    tabId,
+  };
+};
+
+type CreateEmbeddingSdkModeOptions = {
+  pushNavigation?: (target: ClickBehaviorTarget) => void;
+};
+
+export const createEmbeddingSdkMode = (
+  options: CreateEmbeddingSdkModeOptions = {},
+): QueryClickActionsMode => {
+  const { pushNavigation } = options;
+
+  const SDKDashboardClickAction: LegacyDrill = ({ question, clicked = {} }) => {
+    const target = getClickBehaviorTarget(clicked);
+
+    if (target && pushNavigation) {
+      return [
+        {
+          name: "click_behavior",
+          defaultAlways: true,
+          onClick: () => {
+            pushNavigation(target);
+          },
+        },
+      ];
+    }
+
+    // Fall back to default behavior if no navigation handler
+    return DashboardClickAction({ question, clicked });
+  };
+
+  return {
+    name: "embedding-sdk",
+    hasDrills: true,
+    availableOnlyDrills: [
+      "drill-thru/column-extract",
+      "drill-thru/column-filter",
+      "drill-thru/distribution",
+      "drill-thru/fk-details",
+      "drill-thru/fk-filter",
+      "drill-thru/pivot",
+      "drill-thru/pk",
+      "drill-thru/quick-filter",
+      "drill-thru/sort",
+      "drill-thru/summarize-column-by-time",
+      "drill-thru/summarize-column",
+      "drill-thru/underlying-records",
+      "drill-thru/zoom-in.binning",
+      "drill-thru/zoom-in.geographic",
+      "drill-thru/zoom-in.timeseries",
+    ],
+    clickActions: [
+      HideColumnAction,
+      SDKDashboardClickAction,
+      ExtractColumnAction,
+      CombineColumnsAction,
+    ],
+    fallback: NativeQueryClickFallback,
+  };
+};
+
+// Keep backwards compat export (without navigation)
+export const EmbeddingSdkMode = createEmbeddingSdkMode();

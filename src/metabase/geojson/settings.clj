@@ -168,7 +168,7 @@
   `:region_key`/`:region_name`, read straight from the classpath. Returns nil for unknown or non-built-in
   keys. Used by static (email/Slack) rendering to embed GeoJSON without an HTTP round-trip."
   [region-key]
-  (when-let [{:keys [url region_key region_name builtin]} (get (builtin-geojson) (keyword region-key))]
+  (when-let [{:keys [url region_key region_name builtin]} (get (builtin-geojson) (some-> region-key keyword))]
     (when-let [data (and builtin url (read-classpath-geojson url))]
       {:data        data
        :region_key  region_key
