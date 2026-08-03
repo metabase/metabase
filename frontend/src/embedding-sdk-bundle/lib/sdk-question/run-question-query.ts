@@ -127,8 +127,9 @@ export async function runQuestionQuerySdk(
       // lock it so the data shape doesn't auto-reset it.
       question = question.setDisplay(initialDisplay).lockDisplay();
     } else {
-      // Built-in sensibles only (custom viz never report sensible, no `isSensible`),
-      // plus the current display if it's a custom viz that loaded this run.
+      // Built-in sensibles only, plus the current display if it's a custom viz
+      // that loaded this run — a custom viz whose bundle didn't load can't be
+      // trusted to report its own sensibility.
       const sensibleDisplays = getSensibleDisplays(datasetData).filter(
         (d) => !PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(d),
       );

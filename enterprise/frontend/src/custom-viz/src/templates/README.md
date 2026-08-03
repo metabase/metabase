@@ -130,6 +130,7 @@ export default createVisualization;
 | `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                |
 | `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                               |
 | `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                |
+| `isSensible`             | `(data) => boolean`                 | Return `false` when the data shape doesn't suit the viz, so Metabase can swap in a default chart. When omitted, the viz is always sensible. |
 | `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the viz cannot render with the current data or settings. Metabase shows the error message to the user. |
 | `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                    |
 | `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                           |

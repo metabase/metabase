@@ -1,4 +1,6 @@
+import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { CustomVizDisplayType } from "metabase-types/api";
 import {
   createMockCategoryColumn,
   createMockDatasetData,
@@ -285,5 +287,27 @@ describe("groupVisualizationsBySensibility", () => {
     });
 
     expect(recommended).toStrictEqual(["table", "object", "map", "scatter"]);
+  });
+
+  it("keeps custom visualizations in their own group even when they are sensible", () => {
+    const display: CustomVizDisplayType = "custom:sensible-viz";
+    registerVisualization({
+      identifier: display,
+      getUiName: () => "Sensible custom viz",
+      isSensible: () => true,
+      checkRenderable: () => undefined,
+    });
+
+    const data = createMockData({ numMetrics: 1, numDateDimensions: 1 });
+
+    const { recommended, sensible, nonsensible } =
+      groupVisualizationsBySensibility({
+        orderedVizTypes: [...DEFAULT_VIZ_ORDER, display],
+        data,
+      });
+
+    expect(recommended).not.toContain(display);
+    expect(sensible).not.toContain(display);
+    expect(nonsensible).toContain(display);
   });
 });

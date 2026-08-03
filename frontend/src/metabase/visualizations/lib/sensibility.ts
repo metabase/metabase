@@ -48,13 +48,13 @@ export function groupVisualizationsBySensibility({
     nonsensible: [],
   };
 
+  // Custom visualizations are never grouped by sensibility — the picker always
+  // shows them in their own separate group.
   for (const vizType of orderedVizTypes) {
-    const viz = visualizations.get(vizType);
-    if (viz?.isSensible?.(data)) {
-      groups.sensible.push(vizType);
-    } else {
-      groups.nonsensible.push(vizType);
-    }
+    const isSensible =
+      !isCustomVizDisplay(vizType) &&
+      Boolean(visualizations.get(vizType)?.isSensible?.(data));
+    groups[isSensible ? "sensible" : "nonsensible"].push(vizType);
   }
 
   const recommended = _.uniq(
@@ -80,7 +80,6 @@ export function groupVisualizationsBySensibility({
 function getRecommendedVisualizations(
   data: DatasetData,
   sensible: QueryVisualizationDisplayType[],
-  // Custom Visualizations are not grouped by sensibility, they will always have their separate group
 ): QueryVisualizationDisplayType[] {
   const { cols, rows } = data;
   const metricCount = cols.filter(isMetric).length;
@@ -211,10 +210,9 @@ export const getSensibleVisualizations = ({
 
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,
-    (vizType) => {
-      const viz = visualizations.get(vizType);
-      return Boolean(viz?.isSensible);
-    },
+    (vizType) =>
+      !isCustomVizDisplay(vizType) &&
+      Boolean(visualizations.get(vizType)?.isSensible),
   );
 
   return { sensibleVisualizations, nonSensibleVisualizations };
