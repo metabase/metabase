@@ -7,15 +7,15 @@ import type { ContentDiagnosticsStaleFinding } from "metabase-types/api";
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
 import { getLastActiveLabel } from "../stale-utils";
 
-type StaleContentDiagnosticsSidebarProps = {
+type StaleContentSidebarProps = {
   finding: ContentDiagnosticsStaleFinding;
   onClose: () => void;
 };
 
-export function StaleContentDiagnosticsSidebar({
+export function StaleContentSidebar({
   finding,
   onClose,
-}: StaleContentDiagnosticsSidebarProps) {
+}: StaleContentSidebarProps) {
   const { last_active_at } = finding;
 
   return (

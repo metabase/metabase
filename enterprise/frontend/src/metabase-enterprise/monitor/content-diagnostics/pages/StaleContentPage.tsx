@@ -5,7 +5,7 @@ import { useDispatch } from "metabase/redux";
 import { replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { StaleContentDiagnostics } from "../components";
+import { StaleContent } from "../components";
 import { getStaleParamsWithoutDefaults } from "../components/stale-utils";
 import type { ContentDiagnosticsParamsOptions } from "../components/types";
 
@@ -58,7 +58,7 @@ export function StaleContentPage() {
   }, [params, isLoadingParams, dispatch]);
 
   return (
-    <StaleContentDiagnostics
+    <StaleContent
       params={params}
       isLoadingParams={isLoadingParams}
       onParamsChange={handleParamsChange}

@@ -19,9 +19,9 @@ import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
 
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { StaleContentDiagnosticsSidebar } from "./StaleContentDiagnosticsSidebar";
-import { StaleContentDiagnosticsTable } from "./StaleContentDiagnosticsTable";
-import { StaleDiagnosticsFilterBar } from "./StaleDiagnosticsFilterBar";
+import { StaleContentFilterBar } from "./StaleContentFilterBar";
+import { StaleContentSidebar } from "./StaleContentSidebar";
+import { StaleContentTable } from "./StaleContentTable";
 import {
   getStaleEntityTypesParam,
   getStaleFilterOptions,
@@ -33,7 +33,7 @@ import type {
   StaleContentFilterOptions,
 } from "./types";
 
-type StaleContentDiagnosticsProps = {
+type StaleContentProps = {
   params: Urls.StaleContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
@@ -42,11 +42,11 @@ type StaleContentDiagnosticsProps = {
   ) => void;
 };
 
-export function StaleContentDiagnostics({
+export function StaleContent({
   params,
   isLoadingParams,
   onParamsChange,
-}: StaleContentDiagnosticsProps) {
+}: StaleContentProps) {
   const dispatch = useDispatch();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
@@ -145,7 +145,7 @@ export function StaleContentDiagnostics({
     <Flex ref={containerRef} h="100%" wrap="nowrap">
       <MonitorMain>
         <DiagnosticsHeader />
-        <StaleDiagnosticsFilterBar
+        <StaleContentFilterBar
           query={query}
           filterOptions={filterOptions}
           isFetching={isFetching}
@@ -169,7 +169,7 @@ export function StaleContentDiagnostics({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <StaleContentDiagnosticsTable
+          <StaleContentTable
             findings={findings}
             params={params}
             sortOptions={sortOptions}
@@ -190,7 +190,7 @@ export function StaleContentDiagnostics({
       </MonitorMain>
       {selectedFinding != null && (
         <Sidebar containerWidth={containerWidth}>
-          <StaleContentDiagnosticsSidebar
+          <StaleContentSidebar
             finding={selectedFinding}
             onClose={() => setSelectedFindingId(undefined)}
           />

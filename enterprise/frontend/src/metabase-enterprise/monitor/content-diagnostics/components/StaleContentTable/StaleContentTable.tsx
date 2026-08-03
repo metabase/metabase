@@ -24,7 +24,7 @@ import {
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
-type StaleContentDiagnosticsTableProps = {
+type StaleContentTableProps = {
   findings: ContentDiagnosticsStaleFinding[];
   params: Urls.StaleContentParams;
   sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined;
@@ -36,7 +36,7 @@ type StaleContentDiagnosticsTableProps = {
   ) => void;
 };
 
-export function StaleContentDiagnosticsTable({
+export function StaleContentTable({
   findings,
   params,
   sortOptions,
@@ -44,7 +44,7 @@ export function StaleContentDiagnosticsTable({
   isLoading = false,
   onSelect,
   onSortOptionsChange,
-}: StaleContentDiagnosticsTableProps) {
+}: StaleContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(
     () => getSortingState(sortOptions),

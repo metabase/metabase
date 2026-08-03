@@ -89,6 +89,7 @@ export type ContentDiagnosticsStaleFindingDetails =
   };
 
 export type ContentDiagnosticsStaleFinding = ContentDiagnosticsBaseFinding & {
+  finding_type: "stale";
   last_active_at: string | null;
   details: ContentDiagnosticsStaleFindingDetails;
 };

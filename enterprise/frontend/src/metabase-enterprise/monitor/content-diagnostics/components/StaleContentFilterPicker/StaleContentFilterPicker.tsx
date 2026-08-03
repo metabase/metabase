@@ -17,7 +17,7 @@ import type { ContentDiagnosticsFilterType } from "metabase-types/api";
 import type { StaleContentFilterOptions } from "../types";
 import { getFilterTypeLabel } from "../utils";
 
-type StaleDiagnosticsFilterPickerProps = {
+type StaleContentFilterPickerProps = {
   filterOptions: StaleContentFilterOptions;
   availableTypes: ContentDiagnosticsFilterType[];
   isDisabled?: boolean;
@@ -25,13 +25,13 @@ type StaleDiagnosticsFilterPickerProps = {
   onFilterOptionsChange: (filterOptions: StaleContentFilterOptions) => void;
 };
 
-export function StaleDiagnosticsFilterPicker({
+export function StaleContentFilterPicker({
   filterOptions,
   availableTypes,
   isDisabled = false,
   hasDefaultOptions = false,
   onFilterOptionsChange,
-}: StaleDiagnosticsFilterPickerProps) {
+}: StaleContentFilterPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   const handleTypesChange = (newValue: string[]) => {

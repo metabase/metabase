@@ -11,7 +11,7 @@ import {
   type IconName,
 } from "metabase-types/api";
 
-const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+export const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 
@@ -145,10 +145,6 @@ export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
     .with("document", () => t`Documents`)
     .with("transform", () => t`Transforms`)
     .exhaustive();
-}
-
-export function getAvailableFilterTypes(): ContentDiagnosticsFilterType[] {
-  return ALL_FILTER_TYPES;
 }
 
 export function areEntityTypesEqual(
