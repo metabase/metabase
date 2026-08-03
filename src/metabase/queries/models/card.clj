@@ -65,7 +65,7 @@
   This value is used when loading old revision records that predate the schema versioning system."
   20)
 
-(def ^:private current-schema-version
+(def current-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
   It is used to guide `after-select` logic in how to modernize a card correctly.
 

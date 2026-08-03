@@ -55,7 +55,7 @@
   (log/infof "Loading serialized Metabase files from %s" path)
   (let [ingestion (v2.ingest/ingest-yaml path)]
     (when check-version?
-      (v2.load/check-version-compatibility! ingestion))
+      (v2.load/check-import-compatibility! ingestion))
     (u/prog1 (serdes/with-cache
                (v2.load/load-metabase! ingestion opts))
       (events/publish-event! :event/serdes-load {}))))

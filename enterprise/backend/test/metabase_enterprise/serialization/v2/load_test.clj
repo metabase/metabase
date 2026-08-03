@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -64,7 +65,7 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
 
-(deftest check-version-compatibility-test
+(deftest check-import-compatibility-major-version-test
   (testing "GHY-4241: importing across major versions silently corrupted content, so it is now refused"
     (let [ingestion (fn [version]
                       (ingestion-in-memory
@@ -73,34 +74,76 @@
                           version (assoc :metabase_version version))]))]
       (testing "an export from this instance's major version is allowed"
         (with-redefs [config/current-major-version (constantly 62)]
-          (is (nil? (serdes.load/check-version-compatibility! (ingestion "v1.62.3 (abc1234)"))))))
+          (is (nil? (serdes.load/check-import-compatibility! (ingestion "v1.62.3 (abc1234)"))))))
 
       (testing "patch releases within the same major are allowed - only the major is compared"
         (with-redefs [config/current-major-version (constantly 62)]
-          (is (nil? (serdes.load/check-version-compatibility! (ingestion "v1.62.9 (deadbee)"))))))
+          (is (nil? (serdes.load/check-import-compatibility! (ingestion "v1.62.9 (deadbee)"))))))
 
       (testing "an export from a different major version is refused, naming both versions"
         (with-redefs [config/current-major-version (constantly 62)]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"produced by Metabase v1\.61\.0.*major version 61.*this instance is major version 62"
-               (serdes.load/check-version-compatibility! (ingestion "v1.61.0 (abc1234)"))))))
+               (serdes.load/check-import-compatibility! (ingestion "v1.61.0 (abc1234)"))))))
 
       (testing "an export with no version stamp is refused, since only v63+ omits the stamp"
         (with-redefs [config/current-major-version (constantly 62)]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"does not record which Metabase version produced it"
-               (serdes.load/check-version-compatibility! (ingestion nil))))))
+               (serdes.load/check-import-compatibility! (ingestion nil))))))
 
       (testing "the check is skipped when this instance cannot determine its own major version (dev builds)"
         (with-redefs [config/current-major-version (constantly nil)]
-          (is (nil? (serdes.load/check-version-compatibility! (ingestion nil))))))
+          (is (nil? (serdes.load/check-import-compatibility! (ingestion nil))))))
 
       (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of the check entirely"
         (with-redefs [config/current-major-version (constantly 62)]
           (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
-            (is (nil? (serdes.load/check-version-compatibility! (ingestion nil))))))))))
+            (is (nil? (serdes.load/check-import-compatibility! (ingestion nil))))))))))
+
+(deftest check-import-compatibility-card-schema-test
+  (testing "GHY-4241: a Card whose representation is newer than we can read is refused rather than stored verbatim"
+    ;; The version stamp rides on the Collection so that the major-version check passes and these assertions
+    ;; isolate the card_schema check. Cards carry only their schema version, as they do in a real export.
+    (let [ingestion (fn [& card-schemas]
+                      (ingestion-in-memory
+                       (cons {:serdes/meta      [{:model "Collection" :id "0123456789abcdef_0123"}]
+                              :name             "A collection"
+                              :metabase_version "v1.62.3 (abc1234)"}
+                             (for [[i card-schema] (map-indexed vector card-schemas)]
+                               {:serdes/meta [{:model "Card" :id (format "0123456789abcdef_%04d" i)}]
+                                :name        (format "Card %s" i)
+                                :card_schema card-schema}))))]
+      (with-redefs [config/current-major-version (constantly 62)]
+        (testing "the schema version this instance writes is accepted"
+          (is (nil? (serdes.load/check-import-compatibility!
+                     (ingestion queries/current-schema-version)))))
+
+        (testing "older schema versions are accepted - they have upgrade paths"
+          (is (nil? (serdes.load/check-import-compatibility!
+                     (ingestion queries/starting-card-schema-version)))))
+
+        (testing "a newer schema version is refused, naming both versions"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"schema version is 99, but this instance understands at most"
+               (serdes.load/check-import-compatibility! (ingestion 99)))))
+
+        (testing "every Card is checked, not just the first"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"schema version is 99"
+               (serdes.load/check-import-compatibility!
+                (ingestion queries/current-schema-version queries/current-schema-version 99)))))
+
+        (testing "an export with no Cards at all is accepted"
+          (is (nil? (serdes.load/check-import-compatibility! (ingestion)))))
+
+        (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of this check too"
+          (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
+            (is (nil? (serdes.load/check-import-compatibility! (ingestion 99))))))))))
 
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
