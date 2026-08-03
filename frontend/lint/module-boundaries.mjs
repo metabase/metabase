@@ -258,6 +258,7 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/app-static-viz-custom.ts",
+    "frontend/src/metabase/app-static-viz.unit.spec.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
