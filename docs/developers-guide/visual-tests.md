@@ -20,7 +20,7 @@ Before running Loki tests locally, ensure that both Storybook and Docker are run
 
 ## CI
 
-Visual tests are automatically triggered on pull requests. The Loki CI job builds the Storybook, captures new snapshots, and compares them with the references. If there are differences, the "Loki Visual Regression Testing" check will fail.
+Visual tests are automatically triggered on pull requests. The `visual-test` job (part of the "Run tests" workflow) builds the Storybook, captures new snapshots, and compares them with the references. On pull requests it only tests the stories the affected-tests plan selects for the change. If there are differences, the `visual-test` check will fail.
 
 To view the visual diff report, open the failed job page, go to the Summary section, and download the `loki-report` artifact.
 

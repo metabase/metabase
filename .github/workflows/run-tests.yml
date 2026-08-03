@@ -41,6 +41,7 @@ jobs:
       stats: ${{ steps.compute.outputs.stats }}
       fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
       fe_unit_specs_count: ${{ steps.compute.outputs.fe_unit_specs_count }}
+      loki_mode: ${{ steps.loki.outputs.mode }}
       loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
       e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
     steps:
@@ -66,7 +67,7 @@ jobs:
           e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
       # The spec lists can exceed what fits in a workflow-call input,
-      # so fe-tests-unit reads the plan from this artifact instead.
+      # so fe-tests-unit and visual-test read the plan from this artifact instead.
       - name: Upload test plan
         if: ${{ github.event_name == 'pull_request' && steps.compute.outcome == 'success' }}
         uses: actions/upload-artifact@v7
@@ -74,6 +75,31 @@ jobs:
           name: test-plan
           path: test-plan.json
           retention-days: 1
+      # On pull requests the plan decides: none skips the visual-test job,
+      # filter narrows it, all runs the whole whitelist.
+      # The merge queue runs the full suite whenever loki-relevant files changed.
+      - name: Select Loki mode
+        id: loki
+        env:
+          FRONTEND_TOUCHED: ${{ steps.changes.outputs.frontend_ci == 'true' || steps.changes.outputs.frontend_sources == 'true' || steps.changes.outputs.frontend_loki_ci == 'true' }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -f test-plan.json ]; then
+            count=$(jq '.loki_stories_to_run | length' test-plan.json)
+            total=$(jq '.stats.loki_stories_all' test-plan.json)
+            if [ "$count" -eq 0 ]; then
+              mode=none
+            elif [ "$count" -lt "$total" ]; then
+              mode=filter
+            else
+              mode=all
+            fi
+          elif [ "$FRONTEND_TOUCHED" = "true" ]; then
+            mode=all
+          else
+            mode=none
+          fi
+          echo "Loki mode: $mode"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
 
   upload-affected-tests-stats:
     needs: create-test-plan
@@ -224,6 +250,96 @@ jobs:
       # merge queue) the paths-filter still computes these file lists, so without this guard a push
       # that touched only specs would silently run a narrowed suite — we always want the full suite there.
       specs: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
+
+  # Loki visual regression tests.
+  # The job lives here to share the test plan computed above,
+  # and keeps the `visual-test` key because branch protection requires that check name.
+  visual-test:
+    needs: [create-test-plan]
+    if: |
+      !cancelled() && needs.create-test-plan.result == 'success' &&
+      (github.event_name == 'pull_request' || github.event_name == 'merge_group') &&
+      needs.create-test-plan.outputs.loki_mode != 'none'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+        ports:
+          - 2376:2376
+        env:
+          DOCKER_TLS_CERTDIR: /certs
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /tmp/docker-certs:/certs/client
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        run: NODE_ENV=development bun run build-pure:cljs
+
+      - name: Build Storybook
+        run: bun run build-storybook
+
+      - name: Download test plan
+        id: plan
+        if: ${{ needs.create-test-plan.outputs.loki_mode == 'filter' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: test-plan
+        # A missing artifact falls back to the full suite below.
+        continue-on-error: true
+
+      # Maps the plan's affected story files to concrete story names
+      # via the storybook index, re-applying the loki.config.js whitelist
+      # (a CLI --storiesFilter replaces it).
+      - name: Compute stories filter
+        id: filter
+        if: ${{ steps.plan.outcome == 'success' }}
+        run: |
+          node .github/scripts/loki-affected-stories.mjs \
+            test-plan.json storybook-static/index.json > loki-filter.json
+          count=$(jq .count loki-filter.json)
+          echo "$count affected stories pass the whitelist."
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          {
+            echo "regex<<LOKI_FILTER_EOF"
+            jq -r .regex loki-filter.json
+            echo "LOKI_FILTER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Loki Visual Tests
+        if: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.count != '0' }}
+        env:
+          STORIES_REGEX: ${{ steps.filter.outputs.regex }}
+        run: |
+          if [ -n "$STORIES_REGEX" ]; then
+            bun run test-visual:loki --reactUri file:./storybook-static \
+              --verboseRenderer --storiesFilter "$STORIES_REGEX"
+          else
+            bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer
+          fi
+
+      - name: Generate Visual Report on Failure
+        if: failure()
+        run: bun run test-visual:loki-report
+
+      - name: Upload Artifact
+        id: artifact-upload-step
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: loki-report
+          include-hidden-files: true
+          path: .loki/
+          if-no-files-found: ignore
 
   embedding-sdk-package:
     needs: [create-test-plan]

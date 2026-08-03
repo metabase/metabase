@@ -77,9 +77,9 @@ frontend_all: &frontend_all
   - *frontend_specs
 
 frontend_loki_ci: &frontend_loki_ci
-  - ".github/workflows/loki.yml"
   - ".loki/**"
   - ".storybook/**"
+  - "loki.config.js"
 
 frontend_unit_infra: &frontend_unit_infra
   - *frontend_configs
