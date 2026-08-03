@@ -1,8 +1,7 @@
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Outlet, Route } from "metabase/router";
 
-import { Outlet } from "./Outlet";
 import { redirect } from "./redirect";
-import { Route } from "./route";
 
 const Parent = () => (
   <div>

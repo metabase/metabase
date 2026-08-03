@@ -1,8 +1,7 @@
 import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router";
 
 import type { To } from "./types";
-import { useLocation } from "./use-location";
-import { useNavigate } from "./use-navigate";
 
 export interface NavigateProps {
   to: To;

@@ -1,6 +1,6 @@
-import type { Location as V7Location } from "react-router";
+import type { Location as ReactRouterLocation } from "react-router";
 
-import type { Location as HistoryLocation } from "../types";
+import type { Location as HistoryLocation } from "./types";
 
 /**
  * Serialize a query object into the `search` string a navigation target carries.
@@ -37,7 +37,9 @@ export function queryToSearch(query: Record<string, unknown>): string {
  * from a v7 location. All that is left to normalize is `state`, which the legacy
  * readers treat as absent when it is `undefined`.
  */
-export function toFacadeLocation(location: V7Location): HistoryLocation {
+export function toFacadeLocation(
+  location: ReactRouterLocation,
+): HistoryLocation {
   return {
     pathname: location.pathname,
     search: location.search,

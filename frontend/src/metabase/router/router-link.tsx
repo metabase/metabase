@@ -1,14 +1,14 @@
 import { type Ref, forwardRef } from "react";
 import {
-  Link as V7Link,
-  type LinkProps as V7LinkProps,
-  NavLink as V7NavLink,
+  Link as ReactRouterLink,
+  type LinkProps as ReactRouterLinkProps,
+  NavLink as ReactRouterNavLink,
   useInRouterContext,
 } from "react-router";
 
 import type { RouterLinkProps } from "./types";
 
-function hrefFor(target: V7LinkProps["to"]): string {
+function hrefFor(target: ReactRouterLinkProps["to"]): string {
   if (typeof target === "string") {
     return target;
   }
@@ -35,7 +35,10 @@ function toRootRelative(pathname: string): string {
   return isAlreadyAnchored || hasScheme ? pathname : `/${pathname}`;
 }
 
-function toV7Target(to: V3To): { to: V7LinkProps["to"]; state?: unknown } {
+function toReactRouterTarget(to: V3To): {
+  to: ReactRouterLinkProps["to"];
+  state?: unknown;
+} {
   if (to == null) {
     return { to: "" };
   }
@@ -83,14 +86,14 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       return <a {...rest} ref={linkRef} />;
     }
 
-    const { to: v7To, state } = toV7Target(to);
+    const { to: reactRouterTo, state } = toReactRouterTarget(to);
 
     // v7's `<Link>` reads router context and throws without one. A component
     // rendered in isolation (common in unit tests) has no router, so fall back to
     // a plain anchor with the resolved href. The real app always mounts a router,
     // so this path never runs there.
     if (!inRouter) {
-      return <a {...rest} href={hrefFor(v7To)} ref={linkRef} />;
+      return <a {...rest} href={hrefFor(reactRouterTo)} ref={linkRef} />;
     }
 
     // v3's `<Link>` highlighted itself when its route was active via
@@ -100,9 +103,9 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
     if (activeClassName != null || activeStyle != null) {
       const { className, style, ...navRest } = rest;
       return (
-        <V7NavLink
+        <ReactRouterNavLink
           {...navRest}
-          to={v7To}
+          to={reactRouterTo}
           state={state}
           ref={linkRef}
           end={onlyActiveOnIndex}
@@ -118,6 +121,13 @@ export const RouterLink = forwardRef<HTMLAnchorElement, Props>(
       );
     }
 
-    return <V7Link {...rest} to={v7To} state={state} ref={linkRef} />;
+    return (
+      <ReactRouterLink
+        {...rest}
+        to={reactRouterTo}
+        state={state}
+        ref={linkRef}
+      />
+    );
   },
 );
