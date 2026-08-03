@@ -13,6 +13,12 @@ permissions:
   checks: write
   actions: read
 
+# Exposed to the test jobs so they can reach ci-conductor. Without these the
+# quarantine gate cannot fetch the list and fails closed whenever it enforces.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   # Only run if the PR has the minimal-tests label
   check-label:
@@ -164,7 +170,7 @@ jobs:
         with:
           adapter: frontend
           test-suite: fe-tests-unit
-          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
+          enforce-quarantine: true
 
   # Summary job
   minimal-tests-result:
