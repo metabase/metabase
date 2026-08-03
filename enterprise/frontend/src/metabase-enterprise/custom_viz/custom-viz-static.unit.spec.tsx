@@ -4,12 +4,16 @@ import type {
 } from "custom-viz";
 import ReactDOMServer from "react-dom/server";
 
+import { mockSettings } from "__support__/settings";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { CustomStaticVisualization } from "metabase/static-viz/components/StaticVisualization/CustomStaticVisualization";
 import { getVisualization } from "metabase/visualizations";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
-import { createMockSingleSeries } from "metabase-types/api/mocks";
+import {
+  createMockSingleSeries,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import {
   applyCustomVizStaticOverride,
@@ -17,9 +21,11 @@ import {
   registerCustomVizPlugin,
 } from "./custom-viz-static";
 
-jest.mock("metabase-enterprise/settings", () => ({
-  hasPremiumFeature: jest.fn(() => true),
-}));
+beforeEach(() => {
+  mockSettings({
+    "token-features": createMockTokenFeatures({ "custom-viz": true }),
+  });
+});
 
 type PluginSettings = Record<string, unknown>;
 type StaticProps = CustomStaticVisualizationProps<PluginSettings>;
