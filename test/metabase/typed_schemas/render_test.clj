@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.typed-schemas.core :as typed-schemas]))
+   [metabase.typed-schemas.core :as typed-schemas]
+   [metabase.typed-schemas.javascript :as javascript]
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private orders-question
   {:type        "card"
@@ -99,6 +101,59 @@
     ;; `metricId` is only used to identify dimensions while compacting them.
     ;; The generated TypeScript module should not contain metric id.
     (is (not (str/includes? body "metricId: 5")))))
+
+(defn- module-const
+  "Returns the expression bound to `const-name` in a module AST."
+  [ast const-name]
+  (some (fn [statement]
+          (when (and (= :const (first statement))
+                     (= const-name (second statement)))
+            (nth statement 2)))
+        (rest ast)))
+
+(defn- obj-entry
+  "Returns the expression stored under `entry-key` in an `[:obj ...]` node."
+  [obj-node entry-key]
+  (some (fn [entry]
+          (when (= entry-key (first entry))
+            (last entry)))
+        (rest obj-node)))
+
+(deftest schema->ast-produces-valid-modules-test
+  (are [schema] (mr/validate javascript/Module (typed-schemas/schema->ast schema))
+    compacting-schema
+    raw-dimensions-schema))
+
+(deftest schema->ast-compacts-metric-dimensions-test
+  (let [ast        (typed-schemas/schema->ast compacting-schema)
+        dimensions (-> (module-const ast "metrics")
+                       (obj-entry "revenue")
+                       (obj-entry :dimensions))]
+    (is (= [:call "pickFields"
+            [:ref "tables" "orders" "fields"]
+            [:arr [:lit "paymentMethod"]]]
+           (obj-entry dimensions "orders")))
+    (is (= [:call "pickFields"
+            [:ref "tables" "franchises" "fields"]
+            [:arr [:lit "name"]]
+            [:obj ["sourceFieldId" [:lit 42]]]]
+           (obj-entry dimensions "franchises")))))
+
+(deftest schema->ast-splits-runtime-keys-from-comments-test
+  (let [ast    (typed-schemas/schema->ast compacting-schema)
+        fields (-> (module-const ast "tables")
+                   (obj-entry "orders")
+                   (obj-entry :fields))
+        [entry-key options field-node] (-> fields rest first)]
+    (testing "comment-only policy keys become entry comments"
+      (is (= "paymentMethod" entry-key))
+      (is (= {:comments ["Display name: Payment Method"
+                         "Semantic type: type/Category"]}
+             options)))
+    (testing "runtime policy keys become object entries"
+      (is (= [:lit "payment_method"] (obj-entry field-node :name)))
+      (is (= [:lit "string"] (obj-entry field-node :jsType)))
+      (is (nil? (obj-entry field-node :displayName))))))
 
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
   (let [body (typed-schemas/render-typescript raw-dimensions-schema)]

@@ -2,6 +2,7 @@
   "Programmatic API for building and rendering typed schemas."
   (:require
    [clojure.set :as set]
+   [metabase.typed-schemas.javascript]
    [metabase.typed-schemas.render]
    [metabase.typed-schemas.schema :as schema]
    [metabase.typed-schemas.schema.metric :as schema.metric]
@@ -16,8 +17,11 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
+ [metabase.typed-schemas.javascript
+  render-js]
  [metabase.typed-schemas.render
-  render-typescript])
+  render-typescript
+  schema->ast])
 
 (def ^:private DatabaseRef
   "References a database by id or name."
