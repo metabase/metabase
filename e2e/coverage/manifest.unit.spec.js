@@ -165,8 +165,8 @@ describe("fileExceedsBaseline", () => {
   });
 
   it("is false when the spec only re-fired baseline functions", () => {
-    // Boot code re-fires on every page load, so higher counts on
-    // baseline-fired functions are still boot noise.
+    // Boot code re-fires on every page load,
+    // so higher counts on baseline-fired functions are still boot noise.
     expect(fileExceedsBaseline({ f: { 0: 24 } }, { f: { 0: 2 } })).toBe(false);
   });
 
@@ -217,7 +217,7 @@ describe("discriminatingFilesForTest", () => {
   });
 
   it("drops boot files that only re-fired baseline functions", () => {
-    // Extra visits re-fire boot code at higher counts; that is still boot noise.
+    // Extra visits re-fire boot code at higher counts, which is still boot noise.
     const testDeltas = {
       "/repo/frontend/src/boot.js": { 0: 3, 1: 1 },
     };

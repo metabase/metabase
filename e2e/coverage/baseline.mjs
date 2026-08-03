@@ -5,16 +5,15 @@
  * Booting Metabase executes a large fraction of the FE bundle on every spec
  * (routing, store, shared components, app shell). Raw "statement executed"
  * coverage is therefore dominated by boot noise and is near-useless for
- * deciding which specs a change affects. We instead keep only files where a
- * spec executed a function the boot-only baseline run never reached.
+ * deciding which specs a change affects. We instead keep only files
+ * where a spec executed a function the boot-only baseline run never reached.
  */
 
 import path from "node:path";
 
 // A spec exercised `file` beyond boot iff it fired some function the baseline run never fired.
-// Comparing counts instead does not work: boot code re-fires on every page load,
-// so a spec that visits N pages beats the single-boot baseline on every boot file,
-// and render-count drift on plugin hooks beats it even without extra visits.
+// Counts are not comparable: boot code re-fires on every page load,
+// so any spec with more than one visit beats the single-boot baseline on every boot file.
 // Relies on function indices being identical between baseline and spec,
 // which holds because both come from the same instrumented nightly build.
 export function fileExceedsBaseline(specFileCov, baselineFileCov) {
@@ -56,8 +55,7 @@ export function discriminatingFiles(coverage, baselineCov, repoRoot) {
 // are sparse {file: {fnIdx: firedCount}} maps as recorded by the
 // recordTestCapture task — counter deltas for a single test, not cumulative
 // totals. A file survives when the test fired some function the baseline
-// spec's boot-and-visit test never fired, so boot noise cancels out at any
-// number of visits, just like at the spec level.
+// spec's single test never fired.
 export function discriminatingFilesForTest(
   testDeltas,
   baselineDeltas,
@@ -75,8 +73,8 @@ export function discriminatingFilesForTest(
   );
 }
 
-// Merges the baseline spec's per-test entries into a single per-visit noise
-// map. The baseline spec has one test; retried attempts merge by max,
+// Merges the baseline spec's per-test entries into a single per-visit noise map.
+// The baseline spec has one test. Retried attempts merge by max,
 // so a function fired in any attempt counts as boot-fired.
 export function baselinePerTestDeltas(baselineEntry) {
   const merged = {};
