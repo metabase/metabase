@@ -11,7 +11,13 @@ import {
   setupUsageMetadataTableEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import type {
   UsageMetadataCandidateDetail,
@@ -145,6 +151,7 @@ function setup(
   candidateOverride = candidate,
   initialRoute = "/data-studio/cleanup/tables/1",
 ) {
+  mockGetBoundingClientRect({ width: 1200, height: 700 });
   setupDatabaseListEndpoint([createMockDatabase({ id: 1 })]);
   setupTableQueryMetadataEndpoint(
     createMockTable({ id: 1, db_id: 1, display_name: "Orders" }),
@@ -179,7 +186,7 @@ describe("CleanupTablePage", () => {
     fetchMock.clearHistory();
   });
 
-  it("starts with 20 prioritized suggestions and supports one-click dismissal", async () => {
+  it("shows a continuous prioritized list and supports one-click dismissal", async () => {
     setupDismissUsageMetadataCandidateEndpoint(candidate.id, {
       ...candidate,
       dismissed: true,
@@ -192,23 +199,24 @@ describe("CleanupTablePage", () => {
     });
     setup();
 
-    expect(
-      await screen.findByLabelText("Aggregation: Sum of Total"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Sum of Total")).toBeInTheDocument();
+    });
     expect(screen.getByRole("img", { name: "Measure" })).toBeInTheDocument();
-    expect(screen.getByTestId("pagination-total")).toHaveTextContent("42");
+    expect(screen.queryByTestId("pagination-total")).not.toBeInTheDocument();
     expect(screen.queryByText("Sum of order totals")).not.toBeInTheDocument();
     expect(screen.queryByText("Read-only definition")).not.toBeInTheDocument();
     expect(screen.queryByText("Not in Library")).not.toBeInTheDocument();
+    expect(screen.queryByText("400 views")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Total revenue" }),
+      screen.getByRole("row", { name: "Total revenue" }),
     ).toBeInTheDocument();
 
     const listCall = fetchMock.callHistory.lastCall(
       "path:/api/ee/data-studio/usage-metadata/candidates",
     );
     expect(listCall?.url).toContain("queue=suggested");
-    expect(listCall?.url).toContain("limit=20");
+    expect(listCall?.url).toContain("limit=200");
     expect(listCall?.url).toContain("sort=priority");
 
     await userEvent.click(
@@ -224,7 +232,7 @@ describe("CleanupTablePage", () => {
     });
   });
 
-  it("uses typed presentation pills and indents related recommendations", async () => {
+  it("renders measure aggregations as text and only uses typed pills for predicates", async () => {
     setup({
       ...candidate,
       display_name: "Active accounts with recent activity",
@@ -246,11 +254,15 @@ describe("CleanupTablePage", () => {
       family: { key: "active-accounts", position: 2, depth: 2 },
     });
 
-    const row = await screen.findByRole("button", {
-      name: "Active accounts with recent activity",
-    });
-    expect(row).toHaveStyle({ paddingInlineStart: "3.5rem" });
-    expect(screen.getByLabelText("Aggregation: Count")).toBeInTheDocument();
+    const row = await screen.findByTestId(
+      `cleanup-candidate-content-${candidate.id}`,
+    );
+    expect(row).toHaveStyle({ paddingInlineStart: "2.5rem" });
+    expect(row).toHaveTextContent("Count");
+    expect(row).toHaveTextContent(/where/i);
+    expect(
+      screen.queryByLabelText("Aggregation: Count"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByLabelText("Boolean predicate: Is Active is true"),
     ).toHaveAttribute("data-kind", "boolean");
@@ -275,7 +287,9 @@ describe("CleanupTablePage", () => {
       presentation: { predicates: [] },
     });
 
-    expect(await screen.findByText("Publish Orders")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Publish Orders")).toBeInTheDocument();
+    });
     expect(screen.getByRole("img", { name: "Table" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Tables" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Metrics" })).toBeInTheDocument();
@@ -309,7 +323,7 @@ describe("CleanupTablePage", () => {
     setup(metricCandidate);
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Large order trend" }),
+      await screen.findByRole("row", { name: "Large order trend" }),
     );
 
     expect(
@@ -328,7 +342,7 @@ describe("CleanupTablePage", () => {
     setup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Total revenue" }),
+      await screen.findByRole("row", { name: "Total revenue" }),
     );
 
     const panel = await screen.findByRole("complementary", {
@@ -351,6 +365,10 @@ describe("CleanupTablePage", () => {
     expect(
       within(panel).getByText("12 sources · 400 views"),
     ).toBeInTheDocument();
+    expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      inline: "end",
+    });
     expect(screen.getByTestId("cleanup-table-page")).toBeInTheDocument();
     expect(
       screen.getByTestId(`cleanup-candidate-${candidate.id}`),
@@ -368,7 +386,7 @@ describe("CleanupTablePage", () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.getByRole("button", { name: "Total revenue" }),
+      screen.getByRole("row", { name: "Total revenue" }),
     ).toBeInTheDocument();
   });
 
@@ -381,7 +399,7 @@ describe("CleanupTablePage", () => {
     setup(statusCandidate);
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Total revenue" }),
+      await screen.findByRole("row", { name: "Total revenue" }),
     );
 
     expect(
@@ -406,7 +424,7 @@ describe("CleanupTablePage", () => {
     setup(modeledCandidate, "/data-studio/cleanup/tables/1?queue=used-raw");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Total revenue" }),
+      await screen.findByRole("row", { name: "Total revenue" }),
     );
 
     const panel = await screen.findByRole("complementary", {

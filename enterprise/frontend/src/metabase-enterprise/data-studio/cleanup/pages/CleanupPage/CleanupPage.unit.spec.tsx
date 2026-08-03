@@ -5,10 +5,14 @@ import {
   setupDatabaseListEndpoint,
   setupStartUsageMetadataRefreshEndpoint,
   setupUsageMetadataRefreshEndpoint,
-  setupUsageMetadataTablesEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import type {
   UsageMetadataRefreshStatus,
@@ -96,22 +100,28 @@ function setup({
   status?: UsageMetadataRefreshStatus;
   tables?: UsageMetadataTableSummary[];
 } = {}) {
+  mockGetBoundingClientRect({ width: 1200, height: 700 });
   setupDatabaseListEndpoint([createMockDatabase({ id: 1 })]);
   setupUserMetabotPermissionsEndpoint();
   setupUsageMetadataRefreshEndpoint(status);
-  setupUsageMetadataTablesEndpoint({
-    data: tables,
-    total: tables.length,
-    limit: 50,
-    offset: 0,
-    snapshot: status.snapshot
-      ? {
-          id: status.snapshot.id,
-          finished_at: status.snapshot.finished_at!,
-          algorithm_version: status.snapshot.algorithm_version,
-          summary: status.snapshot.summary,
-        }
-      : null,
+  fetchMock.get("path:/api/ee/data-studio/usage-metadata/tables", (call) => {
+    const url = new URL(call.url);
+    const limit = Number(url.searchParams.get("limit"));
+    const offset = Number(url.searchParams.get("offset"));
+    return {
+      data: tables.slice(offset, offset + limit),
+      total: tables.length,
+      limit,
+      offset,
+      snapshot: status.snapshot
+        ? {
+            id: status.snapshot.id,
+            finished_at: status.snapshot.finished_at!,
+            algorithm_version: status.snapshot.algorithm_version,
+            summary: status.snapshot.summary,
+          }
+        : null,
+    };
   });
 
   renderWithProviders(
@@ -147,6 +157,38 @@ describe("CleanupPage", () => {
     expect(screen.queryByLabelText("Schema")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Evidence")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Modeling status")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pagination-total")).not.toBeInTheDocument();
+
+    const listCall = fetchMock.callHistory.lastCall(
+      "path:/api/ee/data-studio/usage-metadata/tables",
+    );
+    expect(listCall?.url).toContain("limit=200");
+  });
+
+  it("loads API pages into one continuous list", async () => {
+    const tables = Array.from({ length: 201 }, (_, index) => ({
+      ...tableSummary,
+      table: {
+        ...tableSummary.table,
+        id: index + 1,
+        display_name: `Table ${index + 1}`,
+      },
+    }));
+    setup({ tables });
+
+    expect(await screen.findByText("Table 1")).toBeInTheDocument();
+    await waitFor(() => {
+      const offsets = fetchMock.callHistory
+        .calls("path:/api/ee/data-studio/usage-metadata/tables")
+        .map((call) => new URL(call.url).searchParams.get("offset"));
+      expect(new Set(offsets)).toEqual(new Set(["0", "200"]));
+    });
+
+    const lastCall = fetchMock.callHistory.lastCall(
+      "path:/api/ee/data-studio/usage-metadata/tables",
+    );
+    expect(lastCall?.url).toContain("offset=200");
+    expect(screen.queryByLabelText("Next page")).not.toBeInTheDocument();
   });
 
   it("offers an explicit first analysis when no snapshot exists", async () => {

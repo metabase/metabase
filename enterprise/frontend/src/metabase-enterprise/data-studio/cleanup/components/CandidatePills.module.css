@@ -1,41 +1,38 @@
 .pill {
   --cleanup-pill-background-color: var(--mb-color-accent7-light);
-  --cleanup-pill-border-color: var(--mb-color-accent7);
 
-  max-width: 32rem;
+  max-width: 24rem;
   height: auto;
-  min-height: 1.75rem;
-  padding: 0.25rem 0.625rem;
+  min-height: 1.25rem;
+  padding: 0.0625rem 0.4375rem;
   color: var(--mb-color-text-primary);
   background-color: var(--cleanup-pill-background-color);
-  border: 1px solid var(--cleanup-pill-border-color);
-  border-radius: 0.5rem;
-  font-weight: 700;
-  line-height: 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  line-height: 1rem;
   overflow-wrap: anywhere;
-
-  &[data-kind="aggregation"] {
-    --cleanup-pill-background-color: var(--mb-color-accent1-light);
-    --cleanup-pill-border-color: var(--mb-color-accent1);
-  }
 
   &[data-kind="category"] {
     --cleanup-pill-background-color: var(--mb-color-accent0-light);
-    --cleanup-pill-border-color: var(--mb-color-accent0);
   }
 
   &[data-kind="boolean"] {
     --cleanup-pill-background-color: var(--mb-color-accent2-light);
-    --cleanup-pill-border-color: var(--mb-color-accent2);
   }
 
   &[data-kind="number"] {
     --cleanup-pill-background-color: var(--mb-color-accent5-light);
-    --cleanup-pill-border-color: var(--mb-color-accent5);
   }
 
   &[data-kind="temporal"] {
     --cleanup-pill-background-color: var(--mb-color-accent6-light);
-    --cleanup-pill-border-color: var(--mb-color-accent6);
   }
+}
+
+.aggregation {
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.25rem;
 }
