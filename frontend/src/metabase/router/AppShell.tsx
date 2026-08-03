@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 
-import { setV7Navigate } from "./navigator";
+import { setRouterNavigate } from "./navigator";
 import { RouteLeaveGuards } from "./route-leave-guards";
 
 /**
@@ -21,8 +21,8 @@ export function AppShell(): JSX.Element {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setV7Navigate(navigate);
-    return () => setV7Navigate(null);
+    setRouterNavigate(navigate);
+    return () => setRouterNavigate(null);
   }, [navigate]);
 
   return (
