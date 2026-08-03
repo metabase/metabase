@@ -428,9 +428,8 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; OAuth bearer auth is resolved by upstream middleware, which binds the current user
-           ;; and attaches the granted scopes. Preserve those scopes rather than treating every
-           ;; current user as a browser/cookie session.
+           ;; Respect the scope set attached to an authenticated request. Sessions without one
+           ;; retain unrestricted access.
            session-auth
            (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
 
