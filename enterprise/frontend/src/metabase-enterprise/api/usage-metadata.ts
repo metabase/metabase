@@ -37,12 +37,8 @@ async function listAllUsageMetadataPages<T>(
   params: ListUsageMetadataRequest,
 ) {
   const { limit: _limit, offset: _offset, ...filters } = params;
-  const data: T[] = [];
-  let offset = 0;
-  let firstPage: UsageMetadataPage<T> | undefined;
-
-  while (true) {
-    const result = await baseQuery({
+  const fetchPage = (offset: number) =>
+    baseQuery({
       method: "GET",
       url,
       params: {
@@ -52,15 +48,32 @@ async function listAllUsageMetadataPages<T>(
       },
     });
 
+  const firstResult = await fetchPage(0);
+  if (firstResult.error != null) {
+    return { error: firstResult.error };
+  }
+
+  // RTK's base query returns unknown because it serves every API endpoint;
+  // this helper is only called with usage-metadata list endpoints.
+  const firstPage = firstResult.data as UsageMetadataPage<T>;
+  const remainingPageCount = Math.max(
+    0,
+    Math.ceil(firstPage.total / LIST_PAGE_SIZE) - 1,
+  );
+  const remainingResults = await Promise.all(
+    Array.from({ length: remainingPageCount }, (_, index) =>
+      fetchPage((index + 1) * LIST_PAGE_SIZE),
+    ),
+  );
+
+  const pages = [firstPage];
+  for (const result of remainingResults) {
     if (result.error != null) {
       return { error: result.error };
     }
 
-    // RTK's base query returns unknown because it serves every API endpoint;
-    // this helper is only called with usage-metadata list endpoints.
+    // See the RTK base-query type note above.
     const page = result.data as UsageMetadataPage<T>;
-    firstPage ??= page;
-
     if (page.snapshot?.id !== firstPage.snapshot?.id) {
       return {
         error: new Error(
@@ -68,25 +81,17 @@ async function listAllUsageMetadataPages<T>(
         ),
       };
     }
-
-    data.push(...page.data);
-    offset += page.data.length;
-
-    if (
-      data.length >= page.total ||
-      page.data.length === 0 ||
-      page.data.length < LIST_PAGE_SIZE
-    ) {
-      return {
-        data: {
-          ...firstPage,
-          data,
-          limit: null,
-          offset: null,
-        },
-      };
-    }
+    pages.push(page);
   }
+
+  return {
+    data: {
+      ...firstPage,
+      data: pages.flatMap((page) => page.data),
+      limit: null,
+      offset: null,
+    },
+  };
 }
 
 export const usageMetadataApi = EnterpriseApi.injectEndpoints({
