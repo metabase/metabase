@@ -21,6 +21,17 @@
 
 ;;; ---------------------------------------------------- collections ----------------------------------------
 
+(deftest sparse-transform-folder-test
+  (testing "transforms count as direct collection items - a folder with one transform is sparse"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-sparse-collection-threshold-items 3]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {folder :id} {:namespace "transforms"}
+                         :model/Transform _ {:collection_id folder}]
+            (let [f (get (sparse-by-entity!) [:collection folder])]
+              (is (some? f))
+              (is (= 1 (:content_count f))))))))))
+
 (deftest sparse-collection-test
   (testing "collection sparse sits on the raw direct item count, strictly < the bound and flooring at 1; a child collection counts as a direct item"
     (mt/with-premium-features #{:content-diagnostics}

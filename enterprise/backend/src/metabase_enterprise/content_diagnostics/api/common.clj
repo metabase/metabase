@@ -190,11 +190,12 @@
   columns: `collection_id` (the breadcrumb anchor) is the **parent** parsed from `location` - consistent
   \"where it lives\" semantics; the subject itself is already the finding's identity - and `owner` is the
   owning user when the collection is personal (api-design: collection carries `owner` only when personal,
-  `creator` always null). Nil at root / for regular collections respectively. Empty `ids` → nil (skips a
+  `creator` always null). Nil at root / for regular collections respectively. `namespace` rides along so
+  a root-resident subject's breadcrumb can name its own tree's root. Empty `ids` → nil (skips a
   degenerate `IN ()`; callers use `get-in`, so nil is fine)."
   [ids]
   (when (seq ids)
-    (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
+    (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
                             :id [:in (set ids)])
           owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
                    (t2/select-pk->fn #(select-keys % [:id :common_name :email])
@@ -236,12 +237,12 @@
 (defn- root-breadcrumb
   "The root-collection sentinel used as a root-resident entity's `collection` breadcrumb, normalized to the
   `{:id :name :effective_ancestors}` shape the nested-collection breadcrumbs use. `:id` is the literal
-  \"root\" (the app-wide root id - the FE detects root by id, never by the localized name); `:name` is the
-  namespace-scoped root label (\"Our analytics\", or \"Transforms\" for a transform, whose collections live in
-  the `:transforms` namespace). Root has no ancestors. Mirrors how the rest of the app links root as a
-  breadcrumb (`collection/hydrate-root-collection` / the root head of `:effective_ancestors`)."
-  [entity-type]
-  (let [root (collection/root-collection-with-ui-details (when (= entity-type :transform) :transforms))]
+  \"root\" (the app-wide root id - the FE detects root by id, never by the localized name); `:name` is
+  `collection-namespace`'s root label (e.g. \"Transforms\" for the transforms namespace). Root has no
+  ancestors. Mirrors how the rest of the app links root as a breadcrumb
+  (`collection/hydrate-root-collection` / the root head of `:effective_ancestors`)."
+  [collection-namespace]
+  (let [root (collection/root-collection-with-ui-details collection-namespace)]
     {:id (:id root) :name (:name root) :effective_ancestors []}))
 
 (defn- entity-breadcrumb
@@ -254,7 +255,12 @@
   (when entity
     (if-let [parent-id (:collection_id entity)]
       (get breadcrumbs parent-id)
-      (root-breadcrumb entity-type))))
+      (root-breadcrumb (case entity-type
+                         ;; a collection subject's own namespace names the root it sits under
+                         :collection (:namespace entity)
+                         ;; transforms live only in transforms-namespace collections
+                         :transform  collection/transforms-ns
+                         nil)))))
 
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility

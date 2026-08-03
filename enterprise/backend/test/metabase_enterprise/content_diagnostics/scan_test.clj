@@ -114,6 +114,30 @@
                        :entity_creator_name some?}
                       row)))))))))
 
+(deftest scan-stale-container-scoping-test
+  (testing "stale candidates in ineligible containers are dropped; root-resident ones are kept"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp
+          [;; the stale query arms filter collection type but not is_sample - the content-diagnostics
+           ;; container post-filter closes that gap
+           :model/Collection {sample-coll :id} {:is_sample true}
+           :model/Card {sample-card :id} {:collection_id sample-coll :last_used_at (stale-instant)}
+           ;; root-resident stale card: the root is always an eligible container
+           :model/Card {root-card :id}   {:last_used_at (stale-instant)}
+           ;; transforms are container-exempt: they run regardless of their folder's state, so a
+           ;; never-run transform in an ARCHIVED folder is still a stale finding
+           :model/Collection {archived-folder :id} {:namespace "transforms" :archived true}
+           :model/Transform {shelved-transform :id} {:collection_id archived-folder
+                                                     :created_at    (stale-instant)}]
+          (let [scan-id    (:scan_id (scan/scan!))
+                stale-key? (t2/select-fn-set (juxt :entity_type :entity_id)
+                                             :model/ContentDiagnosticsFinding
+                                             :scan_id scan-id :finding_type :stale)]
+            (is (not (contains? stale-key? [:card sample-card])))
+            (is (contains? stale-key? [:card root-card]))
+            (is (contains? stale-key? [:transform shelved-transform]))))))))
+
 (deftest scan-denormalizes-card-type-test
   (testing "scan! stamps each card finding's card_type column from report_card.type; non-card rows stay NULL"
     (mt/with-premium-features #{:content-diagnostics}

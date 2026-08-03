@@ -115,6 +115,32 @@
                     (is (= [slow-card] (get-in f [:details :slow_entity_ids])))
                     (is (= 30000 (:duration_ms f)))))))))))))
 
+(deftest slow-checker-container-scoping-test
+  (testing "slow content in ineligible containers is not flagged; root-resident slow content still is"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [now (t/offset-date-time)]
+            (mt/with-temp
+              [:model/Collection {ia-coll :id} {:namespace "analytics"
+                                                :type      collection/instance-analytics-collection-type}
+               ;; audit-resident slow card: 30s > 10s but in an ineligible container
+               :model/Card           {audit-card :id} {:collection_id ia-coll}
+               :model/QueryExecution _ {:card_id audit-card :started_at now
+                                        :cache_hit false :running_time 30000}
+               ;; root-resident slow card: the root is always an eligible container
+               :model/Card           {root-card :id} {}
+               :model/QueryExecution _ {:card_id root-card :started_at now
+                                        :cache_hit false :running_time 30000}
+               ;; an audit-resident dashboard embedding an ELIGIBLE slow card: the container clause is
+               ;; re-applied to the dashboard itself, so the roll-up must not fire either
+               :model/Dashboard     {ia-dash :id} {:collection_id ia-coll}
+               :model/DashboardCard _ {:dashboard_id ia-dash :card_id root-card}]
+              (let [by-entity (slow-findings-by-entity!)]
+                (is (nil? (by-entity [:card audit-card])))
+                (is (some? (by-entity [:card root-card])))
+                (is (nil? (by-entity [:dashboard ia-dash])))))))))))
+
 (deftest slow-checker-threshold-boundary-test
   (testing "the measured duration must strictly exceed the threshold (boundary is exclusive) for both leaf types"
     (mt/with-premium-features #{:content-diagnostics}

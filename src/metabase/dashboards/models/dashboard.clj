@@ -551,7 +551,8 @@
   {:select [:report_dashboard.id
             [(h2x/literal "Dashboard") :model]
             [:report_dashboard.name :name]
-            [:last_viewed_at :last_used_at]]
+            [:last_viewed_at :last_used_at]
+            :report_dashboard.collection_id]
    :from :report_dashboard
    :left-join [:pulse [:and
                        [:= :pulse.archived false]

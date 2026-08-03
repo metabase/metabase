@@ -5,7 +5,8 @@
   6-tab dashboard with 2 dashcards is both).
 
   What counts as sparse:
-  - Collection: between 1 and the limit direct items (empty items still count).
+  - Collection: between 1 and the limit direct items (empty items still count). Items are exactly the
+    covered kinds: child collections, cards, dashboards, documents, transforms.
   - Dashboard: between 1 and the limit dashcards total across tabs.
 
   Each finding records the measured count and the limit. Set-based, reads only the app DB."

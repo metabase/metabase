@@ -1,17 +1,64 @@
 (ns metabase-enterprise.content-diagnostics.common-test
   "Direct contract tests for the shared module core both checkers and the read layer depend on: the
-  entity-type <-> model mapping and `attach-entity-attrs`, the scan-time denormalization helper. These
-  pin the helper's semantics (batched per-type stamping, checker-set values win, missing entity is nil)
-  independently of the full scan/serve pipeline that exercises them end to end, plus the module-wide
-  fail-closed dispatch contract of the per-entity-type multimethods keyed off `common/hierarchy` and of
-  the per-finding-type `finalize-finding` multimethod in the read layer."
+  collection-subject eligibility WHERE, the entity-type <-> model mapping and `attach-entity-attrs`, the
+  scan-time denormalization helper. These pin the helper's semantics (batched per-type stamping,
+  checker-set values win, missing entity is nil) independently of the full scan/serve pipeline that
+  exercises them end to end, plus the module-wide fail-closed dispatch contract of the per-entity-type
+  multimethods keyed off `common/hierarchy` and of the per-finding-type `finalize-finding` multimethod in
+  the read layer."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.checkers.duplicated :as checkers.duplicated]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as imbalanced.common]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(deftest eligible-collection-where-contract-test
+  (testing "the shared WHERE admits exactly the collection subjects the base principle allows"
+    (mt/with-temp
+      [:model/Collection {regular :id}         {}
+       ;; transforms stands in for every non-{snippet,analytics} namespace: the WHERE treats them
+       ;; identically, so this also covers the tenant namespaces (which can't be temp-created here -
+       ;; they need `perms/use-tenants`)
+       :model/Collection {transforms-coll :id} {:namespace "transforms"}
+       :model/Collection {lib-metrics :id}     {:type collection/library-metrics-collection-type}
+       :model/Collection {tenant-root :id}     {:type collection/tenant-specific-root-collection-type}
+       :model/Collection {sample :id}          {:is_sample true}
+       :model/Collection {lib-root :id}        {:type collection/library-collection-type}
+       :model/Collection {lib-data :id}        {:type collection/library-data-collection-type}
+       :model/Collection {ia :id}              {:type collection/instance-analytics-collection-type}
+       :model/Collection {snippets :id}        {:namespace "snippets"}
+       :model/Collection {archived :id}        {:archived true}]
+      (let [eligible (t2/select-pks-set :model/Collection {:where common/eligible-collection-where})]
+        (testing "in: regular, non-internal namespaces, library-metrics (user metric cards), tenant root"
+          (doseq [[label id] {"regular"          regular
+                              "transforms-ns"    transforms-coll
+                              "library-metrics"  lib-metrics
+                              "tenant-root-type" tenant-root}]
+            (is (contains? eligible id) label)))
+        (testing "out: sample, library root (holds only the sub-roots), library-data (Tables-only),
+                  instance-analytics, snippets, archived, Trash"
+          (doseq [[label id] {"sample"             sample
+                              "library-root"       lib-root
+                              "library-data"       lib-data
+                              "instance-analytics" ia
+                              "snippets-ns"        snippets
+                              "archived"           archived
+                              "trash"              (collection/trash-collection-id)}]
+            (is (not (contains? eligible id)) label)))))))
+
+(deftest imbalanced-subjects-match-the-shared-definition-test
+  (testing "the imbalanced checkers scan exactly the shared collection-subject set"
+    (mt/with-temp [:model/Collection {regular :id}         {}
+                   :model/Collection {transforms-coll :id} {:namespace "transforms"}]
+      (let [shared     (t2/select-pks-set :model/Collection {:where common/eligible-collection-where})
+            imbalanced (into #{} (map :id) (imbalanced.common/eligible-collections))]
+        (is (= shared imbalanced))
+        (is (contains? imbalanced regular))
+        (is (contains? imbalanced transforms-coll))))))
 
 (deftest entity-type->model-is-an-invertible-source-of-truth-test
   (testing "entity-type->model and model->entity-type are mutual inverses over every covered type"
@@ -110,6 +157,31 @@
         (testing "the live-hydrated fields degrade to nil"
           (is (nil? (get-in row [:details :description])))
           (is (nil? (get-in row [:details :collection]))))))))
+
+(deftest root-resident-collection-breadcrumb-names-its-own-tree-test
+  (testing "a root-resident collection subject's root breadcrumb is labeled by its own namespace, not
+            blanket \"Our analytics\" (duplicated spans transforms-ns collections)"
+    (mt/with-temp [:model/Collection {transforms-coll :id} {:namespace "transforms"}
+                   :model/Collection {default-coll :id}    {}]
+      (let [crumb (fn [coll-id]
+                    (-> (api.common/hydrate-findings
+                         [{:id           1
+                           :finding_type :duplicated
+                           :entity_type  :collection
+                           :entity_id    coll-id
+                           :details      {}}]
+                         nil)
+                        first
+                        (get-in [:details :collection])))]
+        (testing "a transforms-namespace collection at its tree's root gets the Transforms root label"
+          (let [{:keys [id name effective_ancestors]} (crumb transforms-coll)]
+            (is (= "root" id))
+            (is (= "Transforms" (str name)))
+            (is (= [] effective_ancestors))))
+        (testing "a default-namespace collection at the root keeps Our analytics"
+          (let [{:keys [id name]} (crumb default-coll)]
+            (is (= "root" id))
+            (is (= "Our analytics" (str name)))))))))
 
 (deftest attach-entity-attrs-stamps-denormalized-columns-test
   (testing "each finding is stamped with its entity's name/created_at/creator across multiple entity types"

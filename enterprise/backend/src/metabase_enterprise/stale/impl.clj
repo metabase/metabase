@@ -20,7 +20,7 @@
    [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]
    [:include-columns {:optional true}
     [:set {:doc "Extra union columns to return on each row (rows carry only :id and :model by default)."}
-     [:enum :name :last_used_at]]]])
+     [:enum :name :last_used_at :collection_id]]]])
 
 (defn- sort-column [column]
   (case column
@@ -69,8 +69,8 @@
 
   - `sort-direction`: `:asc` or `:desc`
 
-  - `include-columns`: extra union columns (`:name`, `:last_used_at`) to return on each row; rows carry
-  only `:id` and `:model` by default
+  - `include-columns`: extra union columns (`:name`, `:last_used_at`, `:collection_id`) to return on each
+  row; rows carry only `:id` and `:model` by default
 
   Returns a map containing two keys,
 

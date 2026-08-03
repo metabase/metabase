@@ -590,6 +590,31 @@
                 (is (= [xf-b] (get-in (by-entity [:collection xf-a]) [:details :duplicate_entity_ids])))
                 (is (= [xf-a] (get-in (by-entity [:collection xf-b]) [:details :duplicate_entity_ids])))))))))))
 
+(deftest duplicated-checker-item-container-scoping-test
+  (testing "collection items in ineligible containers are not candidates; root-resident items still are"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix    (scope-prefix)
+              ia-name   (str prefix " Audit Log")
+              root-name (str prefix " Root Report")]
+          (mt/with-temp
+            [:model/Collection {coll-id :id} {}
+             :model/Collection {ia-coll :id} {:namespace "analytics"
+                                              :type      collection/instance-analytics-collection-type}
+             ;; an eligible card + an audit-resident same-name card: no cluster of 2 forms
+             :model/Card {eligible-card :id} {:collection_id coll-id :name ia-name}
+             :model/Card {ia-card :id}       {:collection_id ia-coll :name ia-name}
+             ;; root-resident same-name cards: the root is always an eligible container
+             :model/Card {root-a :id} {:name root-name}
+             :model/Card {root-b :id} {:name root-name}]
+            (let [by-entity (duplicated-findings-by-entity!)]
+              (testing "the audit-resident card neither gets a finding nor makes its eligible twin a duplicate"
+                (is (nil? (by-entity [:card ia-card])))
+                (is (nil? (by-entity [:card eligible-card]))))
+              (testing "root-resident cards still cluster"
+                (is (= [root-b] (get-in (by-entity [:card root-a]) [:details :duplicate_entity_ids])))
+                (is (= [root-a] (get-in (by-entity [:card root-b]) [:details :duplicate_entity_ids])))))))))))
+
 (deftest duplicated-api-collection-peers-hydrate-test
   (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"
     (mt/with-premium-features #{:content-diagnostics}
