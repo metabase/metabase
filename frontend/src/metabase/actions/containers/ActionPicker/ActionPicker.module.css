@@ -1,0 +1,16 @@
+.actionsList {
+  list-style: none;
+}
+
+.actionItem {
+  border-radius: var(--mantine-radius-xs);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.selected {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
