@@ -441,9 +441,6 @@ function CandidateTable({
               miw={0}
               w="100%"
               data-testid={`cleanup-candidate-content-${candidate.id}`}
-              style={{
-                paddingInlineStart: `${Math.min(candidate.family.depth, 3) * 1.25}rem`,
-              }}
             >
               <Icon
                 name={getCandidateIcon(candidate)}

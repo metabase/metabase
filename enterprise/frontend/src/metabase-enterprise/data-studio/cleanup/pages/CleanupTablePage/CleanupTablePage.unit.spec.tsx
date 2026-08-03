@@ -257,7 +257,7 @@ describe("CleanupTablePage", () => {
     const row = await screen.findByTestId(
       `cleanup-candidate-content-${candidate.id}`,
     );
-    expect(row).toHaveStyle({ paddingInlineStart: "2.5rem" });
+    expect(row).not.toHaveStyle({ paddingInlineStart: "2.5rem" });
     expect(row).toHaveTextContent("Count");
     expect(row).toHaveTextContent(/where/i);
     expect(
