@@ -163,7 +163,6 @@ export type UsageMetadataModelLineageItem = {
 };
 
 export type UsageMetadataTableDependencyPath = {
-  direct?: boolean;
   "direct?"?: boolean;
   models: UsageMetadataModelLineageItem[];
 };

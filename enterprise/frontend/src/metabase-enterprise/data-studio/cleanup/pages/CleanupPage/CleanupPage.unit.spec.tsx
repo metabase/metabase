@@ -16,6 +16,7 @@ import {
 import { Route } from "metabase/router";
 import type {
   UsageMetadataRefreshStatus,
+  UsageMetadataRun,
   UsageMetadataSnapshot,
   UsageMetadataTableSummary,
 } from "metabase-types/api";
@@ -37,17 +38,19 @@ const snapshot: UsageMetadataSnapshot = {
   },
 };
 
+const refreshRun: UsageMetadataRun = {
+  ...snapshot,
+  status: "succeeded",
+  trigger: "manual",
+  requested_by: 1,
+  source_config: {},
+  error: null,
+  created_at: snapshot.finished_at,
+  started_at: snapshot.finished_at,
+};
+
 const refreshStatus: UsageMetadataRefreshStatus = {
-  snapshot: {
-    ...snapshot,
-    status: "succeeded",
-    trigger: "manual",
-    requested_by: 1,
-    source_config: {},
-    error: null,
-    created_at: snapshot.finished_at,
-    started_at: snapshot.finished_at,
-  },
+  snapshot: refreshRun,
   active: null,
   failure: null,
   fresh: true,
@@ -96,10 +99,13 @@ const tableSummary: UsageMetadataTableSummary = {
 function setup({
   status = refreshStatus,
   tables = [tableSummary],
+  deferredQueue,
 }: {
   status?: UsageMetadataRefreshStatus;
   tables?: UsageMetadataTableSummary[];
+  deferredQueue?: "used-raw" | "discarded";
 } = {}) {
+  let resolveDeferredResponse: (() => void) | undefined;
   mockGetBoundingClientRect({ width: 1200, height: 700 });
   setupDatabaseListEndpoint([createMockDatabase({ id: 1 })]);
   setupUserMetabotPermissionsEndpoint();
@@ -108,7 +114,7 @@ function setup({
     const url = new URL(call.url);
     const limit = Number(url.searchParams.get("limit"));
     const offset = Number(url.searchParams.get("offset"));
-    return {
+    const response = {
       data: tables.slice(offset, offset + limit),
       total: tables.length,
       limit,
@@ -116,12 +122,18 @@ function setup({
       snapshot: status.snapshot
         ? {
             id: status.snapshot.id,
-            finished_at: status.snapshot.finished_at!,
+            finished_at: status.snapshot.finished_at ?? snapshot.finished_at,
             algorithm_version: status.snapshot.algorithm_version,
             summary: status.snapshot.summary,
           }
         : null,
     };
+    if (url.searchParams.get("queue") === deferredQueue) {
+      return new Promise((resolve) => {
+        resolveDeferredResponse = () => resolve(response);
+      });
+    }
+    return response;
   });
 
   renderWithProviders(
@@ -131,6 +143,10 @@ function setup({
       initialRoute: "/data-studio/cleanup",
     },
   );
+
+  return {
+    resolveDeferredResponse: () => resolveDeferredResponse?.(),
+  };
 }
 
 describe("CleanupPage", () => {
@@ -213,7 +229,7 @@ describe("CleanupPage", () => {
     const activeStatus: UsageMetadataRefreshStatus = {
       ...refreshStatus,
       active: {
-        ...refreshStatus.snapshot!,
+        ...refreshRun,
         id: 8,
         status: "running",
         summary: null,
@@ -245,7 +261,7 @@ describe("CleanupPage", () => {
       status: {
         ...refreshStatus,
         failure: {
-          ...refreshStatus.snapshot!,
+          ...refreshRun,
           id: 6,
           status: "failed",
           summary: null,
@@ -267,7 +283,7 @@ describe("CleanupPage", () => {
       status: {
         ...refreshStatus,
         failure: {
-          ...refreshStatus.snapshot!,
+          ...refreshRun,
           id: 8,
           status: "failed",
           summary: null,
@@ -308,5 +324,19 @@ describe("CleanupPage", () => {
     expect(screen.queryByLabelText("Schema")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Evidence")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Sort candidates")).not.toBeInTheDocument();
+  });
+
+  it("hides stale rows while changing queues", async () => {
+    const request = setup({ deferredQueue: "used-raw" });
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Used raw" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    });
+
+    request.resolveDeferredResponse();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 });

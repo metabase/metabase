@@ -10,14 +10,9 @@ import {
   useStartUsageMetadataRefreshMutation,
 } from "metabase-enterprise/api";
 
-const POLLING_INTERVAL = 3000;
+import { getErrorStatus } from "../utils";
 
-function getErrorStatus(error: unknown) {
-  if (typeof error === "object" && error != null && "status" in error) {
-    return error.status;
-  }
-  return undefined;
-}
+const POLLING_INTERVAL = 3000;
 
 export function useCleanupRefresh() {
   const dispatch = useDispatch();
@@ -37,6 +32,10 @@ export function useCleanupRefresh() {
   }, [status?.active]);
 
   useEffect(() => {
+    if (!statusQuery.isSuccess) {
+      return;
+    }
+
     if (
       previousSnapshotId.current !== undefined &&
       previousSnapshotId.current !== snapshotId
@@ -49,7 +48,7 @@ export function useCleanupRefresh() {
       sendSuccessToast(t`Cleanup analysis refreshed`);
     }
     previousSnapshotId.current = snapshotId;
-  }, [dispatch, sendSuccessToast, snapshotId]);
+  }, [dispatch, sendSuccessToast, snapshotId, statusQuery.isSuccess]);
 
   const start = async () => {
     setIsPolling(true);

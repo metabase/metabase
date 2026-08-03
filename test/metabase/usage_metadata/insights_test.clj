@@ -46,6 +46,25 @@
 (def ^:private rank-candidate-tables       @#'insights/rank-candidate-tables)
 (def ^:private table-candidate-evidence    @#'insights/table-candidate-evidence)
 (def ^:private usable-table-dependency?    @#'insights/usable-table-dependency?)
+(def ^:private suggestions-or-fallback     @#'insights/suggestions-or-fallback)
+
+(deftest ^:parallel malformed-candidate-naming-falls-back-test
+  (let [failure (fn [_] (throw (ex-info "stale field" {})))]
+    (is (= {:aggregation {:type :sum, :base-name "Measure"}
+            :source {:display-name "Orders"}
+            :suggested-name "Measure"
+            :suggested-description "Measure on Orders"}
+           (suggestions-or-fallback {:aggregation {:type :sum}
+                                     :source {:display-name "Orders"}}
+                                    :measure
+                                    failure)))
+    (is (= {:atoms []
+            :source {:display-name "Orders"}
+            :suggested-name "Segment"
+            :suggested-description "Filtered by Segment on Orders"}
+           (suggestions-or-fallback {:source {:display-name "Orders"}}
+                                    :segment
+                                    failure)))))
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}

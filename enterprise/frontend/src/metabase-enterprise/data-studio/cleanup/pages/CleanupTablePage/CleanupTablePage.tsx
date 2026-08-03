@@ -58,7 +58,7 @@ import {
   CleanupQueueTabs,
 } from "../../components/CleanupFilters";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
-import { parseCleanupParams } from "../../utils";
+import { getErrorStatus, parseCleanupParams } from "../../utils";
 
 import S from "./CleanupTablePage.module.css";
 
@@ -217,11 +217,11 @@ export function CleanupTablePage() {
     );
   }
 
-  if (tableQuery.isLoading || tableQuery.error || !tableQuery.data) {
+  if (tableQuery.isFetching || tableQuery.error || !tableQuery.data) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper
-          loading={tableQuery.isLoading}
+          loading={tableQuery.isFetching}
           error={tableQuery.error}
         />
       </Center>
@@ -347,7 +347,7 @@ export function CleanupTablePage() {
               </Tabs>
             </Flex>
 
-            {candidatesQuery.isLoading ? (
+            {candidatesQuery.isFetching ? (
               <Card withBorder p={0} flex={1} mih={0}>
                 <TreeTableSkeleton columnWidths={[0.65, 0.2, 0.1, 0.05]} />
               </Card>
@@ -570,10 +570,4 @@ function CandidateSignals({
       )}
     </Group>
   );
-}
-
-function getErrorStatus(error: unknown) {
-  return typeof error === "object" && error != null && "status" in error
-    ? error.status
-    : undefined;
 }

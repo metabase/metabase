@@ -82,7 +82,7 @@
                         (t/after? (t/minus (t/offset-date-time) (t/hours 25)))))}))
 
 (defn- create-run!
-  "Create a queued refresh run. Callers should use `queue-refresh!` so the active-run check is atomic."
+  "Create a queued refresh run. Callers should use [[queue-refresh!]] so the active-run check is atomic."
   [trigger requested-by]
   (t2/insert-returning-instance! :model/UsageMetadataCandidateRun
                                  {:status            :queued
@@ -387,7 +387,7 @@
        (sort-by :card-id)
        vec))
 
-(defn- add-evidence
+(defn- merged-evidence
   [candidate observation]
   (let [{:keys [verified-source-count official-source-count popular-source-count
                 distinct-source-count total-view-count]} (:evidence observation)]
@@ -408,6 +408,7 @@
                                  :run_id run-id
                                  :candidate_type (:candidate_type row)
                                  :table_id (:table_id row)
+                                 :signature_version (:signature_version row)
                                  :signature_hash (:signature_hash row))
         _         (when (and existing (not= (:signature existing) (:signature row)))
                     (throw (ex-info "Candidate signature hash collision"
@@ -419,7 +420,7 @@
       (t2/insert! :model/UsageMetadataCandidateSource source-rows))
     (if existing
       (t2/update! :model/UsageMetadataCandidate (:id candidate)
-                  (add-evidence candidate observation))
+                  (merged-evidence candidate observation))
       (reconcile-candidate! (assoc candidate
                                    :definition (:definition observation)
                                    :signature (:signature observation))
@@ -768,11 +769,22 @@
      :publish-table-count publish-table-count
      :table-count table-count}))
 
+(defn- prune-old-candidate-snapshots!
+  [current-run-id]
+  (loop []
+    (let [candidate-ids (t2/select-pks-set :model/UsageMetadataCandidate
+                                           {:where   [:not= :run_id current-run-id]
+                                            :order-by [[:id :asc]]
+                                            :limit   200})]
+      (when (seq candidate-ids)
+        (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])
+        (recur)))))
+
 (defn- prune-old-snapshots!
   [current-run-id]
   ;; Only the newest successful snapshot remains queryable. Keep bounded run rows
   ;; for diagnostics, but discard their potentially large candidate payloads.
-  (t2/delete! :model/UsageMetadataCandidate :run_id [:not= current-run-id])
+  (prune-old-candidate-snapshots! current-run-id)
   (let [keep-ids (t2/select-pks-set :model/UsageMetadataCandidateRun
                                     {:order-by [[:id :desc]]
                                      :limit retained-run-count})]
