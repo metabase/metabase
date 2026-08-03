@@ -177,29 +177,7 @@ export function createTestPlan({
     beFilesChanged > 0 ||
     e2eSpecFiles === null;
 
-  const select = (forceAll: boolean, affected: Set<string>, files: string[]) =>
-    forceAll ? files : filterAffectedTests(nodes, affected, files);
-
-  // A non-narrowing run (merge queue, pushes to master) still gates each
-  // suite, but on the same coarse signal the path filters use - any frontend
-  // change runs the full suite. The module graph only decides on pull
-  // requests, so a graph mistake can never skip a suite at the last gate.
-  const gateFull = (forceAll: boolean, files: string[]) =>
-    forceAll || feFilesChanged > 0 ? files : [];
-
   const { unit, loki, e2e } = testFilesBySuite;
-  const unitRules = narrow
-    ? select(unitForceAll, rulesAffected, unit)
-    : gateFull(unitForceAll, unit);
-  const unitUsage = narrow
-    ? select(unitForceAll, usageAffected, unit)
-    : gateFull(unitForceAll, unit);
-  const lokiRules = narrow
-    ? select(lokiForceAll, rulesAffected, loki)
-    : gateFull(lokiForceAll, loki);
-  const lokiUsage = narrow
-    ? select(lokiForceAll, usageAffected, loki)
-    : gateFull(lokiForceAll, loki);
 
   // Precompute spec -> feature modules once (null when e2e never narrows).
   const specFeatures =
@@ -208,6 +186,11 @@ export function createTestPlan({
       : specFeatureModules(nodes, featureModules, e2eSpecFiles);
   // A spec that was itself edited always runs, even when no app module changed.
   const changedSet = new Set(changedFiles);
+
+  const selectUnit = (affected: Set<string>) =>
+    filterAffectedTests(nodes, affected, unit);
+  const selectLoki = (affected: Set<string>) =>
+    filterAffectedTests(nodes, affected, loki);
   const selectE2e = (affected: Set<string>): string[] => {
     if (specFeatures === null) {
       return e2e;
@@ -217,12 +200,33 @@ export function createTestPlan({
     );
     return e2e.filter((spec) => narrowed.has(spec) || changedSet.has(spec));
   };
-  const e2eRules = narrow
-    ? selectE2e(rulesAffected)
-    : gateFull(e2eForceAll, e2e);
-  const e2eUsage = narrow
-    ? selectE2e(usageAffected)
-    : gateFull(e2eForceAll, e2e);
+
+  // One suite's selection. The decision, in order:
+  // a force-all signal runs the full suite,
+  // narrowing (pull requests) applies the module selection,
+  // and a non-narrowing run gates on any frontend change instead of the graph,
+  // so a graph mistake can never skip a suite at the last gate before master.
+  const decide = (
+    forceAll: boolean,
+    affected: Set<string>,
+    files: string[],
+    selection: (affected: Set<string>) => string[],
+  ): string[] => {
+    if (forceAll) {
+      return files;
+    }
+    if (narrow) {
+      return selection(affected);
+    }
+    return feFilesChanged > 0 ? files : [];
+  };
+
+  const unitRules = decide(unitForceAll, rulesAffected, unit, selectUnit);
+  const unitUsage = decide(unitForceAll, usageAffected, unit, selectUnit);
+  const lokiRules = decide(lokiForceAll, rulesAffected, loki, selectLoki);
+  const lokiUsage = decide(lokiForceAll, usageAffected, loki, selectLoki);
+  const e2eRules = decide(e2eForceAll, rulesAffected, e2e, selectE2e);
+  const e2eUsage = decide(e2eForceAll, usageAffected, e2e, selectE2e);
 
   return {
     stats: {
