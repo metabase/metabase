@@ -40,7 +40,6 @@ import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 const ANTHROPIC_TYPE = createMockLlmProviderType({
   type: "anthropic",
   label: "Anthropic",
-  icon: "ai",
   fields: [
     createMockLlmProviderField({
       key: "api-key",
@@ -63,7 +62,6 @@ const ANTHROPIC_TYPE = createMockLlmProviderType({
 const AZURE_TYPE = createMockLlmProviderType({
   type: "azure",
   label: "Azure",
-  icon: "cloud",
   fields: [
     createMockLlmProviderField({
       key: "api-key",
@@ -100,7 +98,6 @@ const AZURE_TYPE = createMockLlmProviderType({
 const BEDROCK_TYPE = createMockLlmProviderType({
   type: "bedrock",
   label: "Amazon Bedrock",
-  icon: "ai",
   fields: [
     createMockLlmProviderField({
       key: "access-key-id",

@@ -16,7 +16,7 @@ describe("ProviderTypeIcon", () => {
   });
 
   it("renders the Metabase logo for the managed provider", () => {
-    renderWithProviders(<ProviderTypeIcon type="metabase" icon="metabot" />);
+    renderWithProviders(<ProviderTypeIcon type="metabase" />);
 
     expect(screen.getByTestId("main-logo")).toBeInTheDocument();
     expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
@@ -31,17 +31,17 @@ describe("ProviderTypeIcon", () => {
     "azure",
     "bedrock",
   ] as const)("renders the vendor logo for %s", (type) => {
-    renderWithProviders(<ProviderTypeIcon type={type} icon="ai" />);
+    renderWithProviders(<ProviderTypeIcon type={type} />);
 
     expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
     expect(screen.getByRole("presentation")).toBeInTheDocument();
   });
 
-  it("falls back to the registry icon for a type the frontend does not know yet", () => {
+  it("falls back to a generic icon for a type the frontend does not know yet", () => {
     // the registry is the backend's, so it can serve a type this union does not list yet;
     // the cast reproduces that server response, which is unreachable through the type alone
     const unknownType = "evilai" as LlmProviderTypeName;
-    renderWithProviders(<ProviderTypeIcon type={unknownType} icon="ai" />);
+    renderWithProviders(<ProviderTypeIcon type={unknownType} />);
 
     expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
   });
@@ -57,7 +57,7 @@ describe("ProviderTypeIcon", () => {
     );
     setupEnterpriseOnlyPlugin("whitelabel");
 
-    renderWithProviders(<ProviderTypeIcon type="metabase" icon="metabot" />, {
+    renderWithProviders(<ProviderTypeIcon type="metabase" />, {
       storeInitialState: { settings: settingsState },
     });
 

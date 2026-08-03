@@ -295,7 +295,7 @@ function AdvancedSettings({
 function SelectedProvider({ providerType }: { providerType: LlmProviderType }) {
   return (
     <Group gap="sm" wrap="nowrap">
-      <ProviderTypeIcon type={providerType.type} icon={providerType.icon} />
+      <ProviderTypeIcon type={providerType.type} />
       <Stack gap={0}>
         <Text fw="bold">{providerType.label}</Text>
         <Text c="text-secondary" size="sm">{t`Selected provider`}</Text>

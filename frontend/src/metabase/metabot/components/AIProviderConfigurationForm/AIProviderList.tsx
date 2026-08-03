@@ -195,11 +195,7 @@ function ProviderConnectionRow({
 
   const summary = (
     <Group gap="sm" wrap="nowrap" flex={1}>
-      <ProviderTypeIcon
-        type={connection.type}
-        icon={providerType?.icon ?? "ai"}
-        size={PROVIDER_ICON_SIZE}
-      />
+      <ProviderTypeIcon type={connection.type} size={PROVIDER_ICON_SIZE} />
       <Stack gap={0} align="flex-start">
         <Group gap="xs" wrap="nowrap">
           <Text fw="bold">{connection.name}</Text>
