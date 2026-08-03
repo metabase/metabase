@@ -23,7 +23,11 @@ export function AIProviderSetup({ onDone }: { onDone?: () => void }) {
     return <ProviderListSkeleton />;
   }
 
-  if (connections.length > 0 || hasJustConnected) {
+  const hasUsableConnection = connections.some(
+    (connection) => connection.usable,
+  );
+
+  if (hasUsableConnection || hasJustConnected) {
     return (
       <Stack gap="lg">
         <LlmModelPicker />
