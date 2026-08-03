@@ -401,6 +401,16 @@
     #{}
     (skip-drivers statuses)))
 
+(defn- driver-gates?
+  "Whether this driver's test result is allowed to fail its CI job.
+
+   An `:info` driver is data collection only: it runs and reports, but stays green. On master and
+   release branches `:info` carries no weight — every driver that runs also gates. Consumed by the
+   workflow as the quarantine gate's `enforce-quarantine`, so a non-gating driver still gets its
+   failures checked against the quarantine list, in dry-run mode."
+  [status is-master-or-release]
+  (or is-master-or-release (not= status :info)))
+
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
   [s]
@@ -554,9 +564,11 @@
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
-                                 :driver driver
-                                 :status (get statuses driver :required)))
+                          (let [status (get statuses driver :required)]
+                            (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
+                                   :driver driver
+                                   :status status
+                                   :gates (driver-gates? status is-master-or-release))))
                         all-drivers)
         ;; Check for quarantined drivers with file changes but no break-quarantine label
         quarantined-with-changes (into #{}
@@ -569,9 +581,10 @@
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
-        (doseq [{:keys [driver should-run status]} decisions]
+        (doseq [{:keys [driver should-run status gates]} decisions]
           (println (str (name driver) "-should-run=" should-run))
-          (println (str (name driver) "-status=" (name status))))
+          (println (str (name driver) "-status=" (name status)))
+          (println (str (name driver) "-gates=" gates)))
         (doseq [driver quarantined-with-changes]
           (println (str (name driver) "-quarantine-conflict=true"))))
       (do
@@ -585,14 +598,15 @@
         (println "")
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
-        (doseq [{:keys [driver should-run status reason]} decisions]
-          (println (format "%-25s %s %s - %s"
+        (doseq [{:keys [driver should-run status gates reason]} decisions]
+          (println (format "%-25s %s %s %s - %s"
                            (name driver)
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
                            (case status
                              :info (c/blue "[info]    ")
                              :skip (c/yellow "[skip]    ")
                              "[required]")
+                           (if gates (c/green "gates    ") (c/blue "non-gating"))
                            reason)))
         (println "")
         ;; Print GITHUB_OUTPUT preview with colors

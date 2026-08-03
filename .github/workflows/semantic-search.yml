@@ -61,7 +61,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
@@ -126,7 +134,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -198,7 +214,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -262,7 +286,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   # pgvector-on-the-app-db mode: the app db itself is a pgvector-capable Postgres and
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
@@ -316,7 +348,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   semantic-search-tests-result:
     needs:

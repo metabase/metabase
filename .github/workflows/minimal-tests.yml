@@ -63,12 +63,20 @@ jobs:
         with:
           build-static-viz: true
           junit-name: "minimal-be-tests-postgres-ee"
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
           test-args: >-
             :only '["test" "enterprise/backend/test"]'
             :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
             :partition/total 2
             :partition/index 0
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: "minimal-be-tests-postgres-ee"
+          enforce-quarantine: true
 
   # Postgres driver tests
   postgres-driver-test:
@@ -102,10 +110,18 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: "minimal-be-tests-postgres-driver-ee"
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
           test-args: >-
             :only-tags [:mb/driver-tests]
             :exclude-tags [:mb/transforms-python-test]
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: "minimal-be-tests-postgres-driver-ee"
+          enforce-quarantine: true
 
   # Frontend unit tests
   frontend-unit-tests:

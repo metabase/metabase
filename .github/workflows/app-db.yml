@@ -123,7 +123,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -248,7 +256,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: ${{ matrix.version.junit-name }}
+          enforce-quarantine: true
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -348,7 +364,15 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          defer-verdict: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.test-driver.outputs.test-outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: 'be-tests-${{ matrix.version.junit-name }}'
+          enforce-quarantine: true
 
   app-db-tests-result:
     needs:

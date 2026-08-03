@@ -50,6 +50,17 @@
       (is (= #{:databricks} (#'mage.modules/effective-quarantined-drivers statuses false))
           "PR/feature branch: :skip drivers remain quarantined"))))
 
+(deftest info-drivers-gate-only-on-master-and-release
+  (testing "an :info driver never fails its job off master/release; every other status always gates"
+    (is (false? (#'mage.modules/driver-gates? :info false))
+        "PR/feature branch: :info is data collection only")
+    (is (true? (#'mage.modules/driver-gates? :info true))
+        "master/release: :info carries no weight")
+    (doseq [status [:required :skip]
+            is-master-or-release [true false]]
+      (is (true? (#'mage.modules/driver-gates? status is-master-or-release))
+          (str status " gates on every branch")))))
+
 (deftest quarantined-driver-runs-on-master
   (testing "a driver quarantined in the remote config still runs (and gates) on master/release"
     ;; Production clears the quarantine set on master/release via effective-quarantined-drivers,
