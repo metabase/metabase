@@ -31,6 +31,9 @@ outputs:
   fe_unit_specs_to_run:
     description: Unit specs to run (JSON array).
     value: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
+  fe_unit_specs_count:
+    description: Number of unit specs to run.
+    value: ${{ steps.compute.outputs.fe_unit_specs_count }}
   loki_stories_to_run:
     description: Loki stories to run (JSON array).
     value: ${{ steps.compute.outputs.loki_stories_to_run }}
@@ -89,6 +92,7 @@ runs:
         bun .github/scripts/create-test-plan.ts > test-plan.json
         echo "stats=$(jq -c '.stats' test-plan.json)" >> "$GITHUB_OUTPUT"
         echo "fe_unit_specs_to_run=$(jq -c '.fe_unit_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
+        echo "fe_unit_specs_count=$(jq '.fe_unit_specs_to_run | length' test-plan.json)" >> "$GITHUB_OUTPUT"
         echo "loki_stories_to_run=$(jq -c '.loki_stories_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
         echo "e2e_specs_to_run=$(jq -c '.e2e_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
 

@@ -6,6 +6,11 @@ on:
       skip:
         type: boolean
         default: false
+      # fe-tests-unit is gated by this alone - the caller decides,
+      # from the test plan on pull requests and from dorny elsewhere.
+      skip-unit:
+        type: boolean
+        default: false
       skip-lint:
         type: boolean
         default: false
@@ -20,7 +25,11 @@ on:
   workflow_dispatch:
     inputs:
       skip:
-        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        description: "Skip main frontend jobs (type-check, timezone tests)"
+        type: boolean
+        default: false
+      skip-unit:
+        description: "Skip frontend unit tests"
         type: boolean
         default: false
       skip-lint:
@@ -91,7 +100,7 @@ jobs:
         name: Check types
 
   fe-tests-unit:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip-unit }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -128,16 +137,9 @@ jobs:
           if [ "$USE_TEST_PLAN" = "true" ] && [ -f test-plan.json ]; then
             count=$(jq '.fe_unit_specs_to_run | length' test-plan.json)
             total=$(jq '.stats.unit_specs_all' test-plan.json)
-            if [ "$count" -eq 0 ]; then
-              echo "Test plan selected no unit specs for this change."
-              # The results uploader zips $JEST_JUNIT_OUTPUT_DIR/*.xml and fails on an empty dir,
-              # so leave a valid empty report behind.
-              mkdir -p "$JEST_JUNIT_OUTPUT_DIR"
-              printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites name="jest tests" tests="0" failures="0" errors="0" time="0"/>\n' \
-                > "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-              exit 0
-            fi
-            if [ "$count" -lt "$total" ]; then
+            # An empty selection never reaches this job - the caller skips it
+            # via skip-unit - so count is only narrowing, not gating.
+            if [ "$count" -gt 0 ] && [ "$count" -lt "$total" ]; then
               echo "Running $count of $total unit specs from the test plan."
               # -s keeps even a near-full selection in one jest invocation.
               # A split would be correct but re-run the cljs build per chunk.

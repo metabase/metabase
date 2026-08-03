@@ -40,6 +40,7 @@ jobs:
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
       stats: ${{ steps.compute.outputs.stats }}
       fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
+      fe_unit_specs_count: ${{ steps.compute.outputs.fe_unit_specs_count }}
       loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
       e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
     steps:
@@ -190,8 +191,10 @@ jobs:
       skip: ${{ needs.create-test-plan.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.create-test-plan.outputs.frontend_all != 'true' && needs.create-test-plan.outputs.e2e_all != 'true' }}
       skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
-      # Only narrow on pull requests.
-      # Pushes to master/release and the merge queue always run the full unit suite.
+      # On pull requests the plan alone decides whether and which unit specs run,
+      # and an empty selection skips the job.
+      # Pushes to master/release and the merge queue keep the dorny gate and run in full.
+      skip-unit: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.fe_unit_specs_count == '0' || github.event_name != 'pull_request' && needs.create-test-plan.outputs.frontend_all != 'true' }}
       unit-specs-from-plan: ${{ github.event_name == 'pull_request' }}
 
   e2e-tests:
