@@ -1,7 +1,12 @@
 export {
+  Link,
+  NavLink,
+  type NavLinkProps,
+  type NavLinkRenderProps,
   Navigate,
   Outlet,
   Route,
+  useInRouterContext,
   useLocation,
   useNavigate,
   useNavigationType,
@@ -11,7 +16,6 @@ export {
 export * from "./middleware";
 export * from "./navigation";
 export * from "./redirect";
-export * from "./router-link";
 export * from "./to-route-objects";
 export * from "./location-change";
 export * from "./RouterProvider";
