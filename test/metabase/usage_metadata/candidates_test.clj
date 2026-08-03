@@ -12,6 +12,7 @@
    [metabase.usage-metadata.candidates :as candidates]
    [metabase.usage-metadata.insights :as insights]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -341,7 +342,8 @@
             (is (= [{:card-id (:id card)
                      :dependency-paths [{:direct? true, :models []}]}]
                    (get-in (by-type :table) [:semantic_details :source-dependencies])))
-            (is (= definition (:definition (by-type :metric))))))))))
+            (is (= (json/decode+kw (json/encode definition))
+                   (:definition (by-type :metric))))))))))
 
 (deftest fixed-candidate-evidence-cutoffs-test
   (let [base {:candidate_type         :segment
