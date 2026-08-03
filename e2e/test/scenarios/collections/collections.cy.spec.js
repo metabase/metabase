@@ -1133,6 +1133,75 @@ describe("scenarios > collection items listing", () => {
 
   const PAGE_SIZE = 25;
 
+  describe("search", () => {
+    beforeEach(() => {
+      archiveAll();
+
+      H.createCollection({
+        name: "Quarterly revenue",
+      });
+
+      H.createQuestion({
+        name: "Customer health",
+        collection_position: null,
+        query: TEST_QUESTION_QUERY,
+      });
+    });
+
+    it("should search by item name and last editor name, clear results, and show an empty state", () => {
+      visitRootCollection();
+
+      cy.findByLabelText("Search items in this collection").type("revenue");
+      cy.wait("@getCollectionItems").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.get("q")).to.equal("revenue");
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Quarterly revenue").should("be.visible");
+        cy.findByText("Customer health").should("not.exist");
+      });
+
+      cy.findByLabelText("Clear search").click();
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Quarterly revenue").should("be.visible");
+        cy.findByText("Customer health").should("be.visible");
+      });
+
+      cy.findByLabelText("Search items in this collection").type("Robert");
+      cy.wait("@getCollectionItems").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.get("q")).to.equal("Robert");
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Customer health").should("be.visible");
+        cy.findByText("Quarterly revenue").should("not.exist");
+      });
+
+      cy.findByLabelText("Clear search").click();
+      cy.findByLabelText("Search items in this collection").type(
+        "nothing matches this",
+      );
+      cy.wait("@getCollectionItems").then(({ request }) => {
+        expect(new URL(request.url).searchParams.get("q")).to.equal(
+          "nothing matches this",
+        );
+      });
+
+      cy.findByTestId("collection-filter-empty-state").within(() => {
+        cy.findByText("Didn't find anything").should("be.visible");
+        cy.findByText("There weren't any results for your search.").should(
+          "be.visible",
+        );
+      });
+    });
+  });
+
   describe("pagination", () => {
     const SUBCOLLECTIONS = 1;
     const ADDED_QUESTIONS = 15;
