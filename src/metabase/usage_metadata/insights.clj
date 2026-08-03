@@ -239,8 +239,29 @@
 (def ^:private candidate-default-limit 50)
 (def ^:private candidate-aggregation-operators
   #{:count :sum :avg :min :max :distinct :median :stddev :var :percentile})
-(def ^:private conditional-aggregation-operators
+(def conditional-aggregation-operators
+  "Aggregation operators whose semantics include a filter predicate."
   #{:count-where :distinct-where :sum-where})
+
+(def ^:dynamic *candidate-analysis-cache*
+  "Optional run-scoped cache for instance-wide inputs shared across candidate batches."
+  nil)
+
+(defn with-candidate-analysis-cache
+  "Run `f` with a cache shared by all candidate analyses it invokes."
+  [f]
+  (binding [*candidate-analysis-cache* (or *candidate-analysis-cache* (atom {}))]
+    (f)))
+
+(defn- cached-candidate-analysis
+  [cache-key f]
+  (if-let [cache *candidate-analysis-cache*]
+    (if (contains? @cache cache-key)
+      (get @cache cache-key)
+      (let [value (f)]
+        (swap! cache assoc cache-key value)
+        value))
+    (f)))
 (def ^:private categorical-filter-operators
   #{:= :!= :in :not-in :is-null :not-null :is-empty :not-empty})
 
@@ -1372,13 +1393,20 @@
         cards))
 
 (defn- existing-metric-definition-signatures
-  [metric-cards card-index]
-  (into #{}
-        (keep (fn [card]
-                (some-> (prepare-metric-definition card card-index)
-                        :definition
-                        canonical-signature)))
-        metric-cards))
+  []
+  (cached-candidate-analysis
+   ::existing-metric-definition-signatures
+   (fn []
+     (let [metric-cards (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                                   :type :metric
+                                   :archived false)
+           card-index   (candidate-lineage-card-index metric-cards)]
+       (into #{}
+             (keep (fn [card]
+                     (some-> (prepare-metric-definition card card-index)
+                             :definition
+                             canonical-signature)))
+             metric-cards)))))
 
 (defn- metric-source-sort-key
   [{source-item ::source-item}]
@@ -1464,12 +1492,9 @@
    (lib-be/with-metadata-provider-cache
      (let [limit               (or limit candidate-default-limit)
            cards               (candidate-source-cards opts)
-           metric-cards        (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                                          :type :metric
-                                          :archived false)
-           card-index          (candidate-lineage-card-index (concat cards metric-cards))
+           card-index          (candidate-lineage-card-index cards)
            raw-candidates      (raw-metric-candidates cards card-index)
-           existing-signatures (existing-metric-definition-signatures metric-cards card-index)
+           existing-signatures (existing-metric-definition-signatures)
            table-index         (metric-required-table-index (into #{} (mapcat ::table-ids) raw-candidates))]
        (merge-metric-candidates raw-candidates existing-signatures table-index limit)))))
 
@@ -1555,35 +1580,49 @@
       (first filters))))
 
 (defn- existing-measure-signatures
-  []
-  (into #{}
-        (keep (fn [{:keys [table_id definition]}]
-                (when (and (pos-int? table_id) (seq definition))
-                  (try
-                    (let [aggregations (lib/aggregations definition 0)]
-                      (when (= 1 (count aggregations))
-                        [table_id (canonical-signature (first aggregations))]))
-                    (catch Throwable e
-                      (log/debug e "Failed to read an existing Measure definition")
-                      nil)))))
-        (t2/select [:model/Measure :table_id :definition] :archived false)))
+  [table-ids]
+  (if (seq table-ids)
+    (into #{}
+          (keep (fn [{:keys [table_id definition]}]
+                  (when (and (pos-int? table_id) (seq definition))
+                    (try
+                      (let [aggregations (lib/aggregations definition 0)]
+                        (when (= 1 (count aggregations))
+                          [table_id (canonical-signature (first aggregations))]))
+                      (catch InterruptedException e
+                        (.interrupt (Thread/currentThread))
+                        (throw e))
+                      (catch Exception e
+                        (log/debug e "Failed to read an existing Measure definition")
+                        nil)))))
+          (t2/select [:model/Measure :table_id :definition]
+                     :archived false
+                     :table_id [:in table-ids]))
+    #{}))
 
 (defn- existing-segment-signatures
-  []
-  (into #{}
-        (keep (fn [{:keys [table_id definition]}]
-                (when (and (pos-int? table_id) (seq definition))
-                  (try
-                    (when-let [predicate (full-segment-predicate definition)]
-                      (let [atoms (lib/atomic-filters
-                                   (minimal-definition definition table_id :filters predicate)
-                                   0)]
-                        (when (seq atoms)
-                          (segment-signature table_id atoms))))
-                    (catch Throwable e
-                      (log/debug e "Failed to read an existing Segment definition")
-                      nil)))))
-        (t2/select [:model/Segment :table_id :definition] :archived false)))
+  [table-ids]
+  (if (seq table-ids)
+    (into #{}
+          (keep (fn [{:keys [table_id definition]}]
+                  (when (and (pos-int? table_id) (seq definition))
+                    (try
+                      (when-let [predicate (full-segment-predicate definition)]
+                        (let [atoms (lib/atomic-filters
+                                     (minimal-definition definition table_id :filters predicate)
+                                     0)]
+                          (when (seq atoms)
+                            (segment-signature table_id atoms))))
+                      (catch InterruptedException e
+                        (.interrupt (Thread/currentThread))
+                        (throw e))
+                      (catch Exception e
+                        (log/debug e "Failed to read an existing Segment definition")
+                        nil)))))
+          (t2/select [:model/Segment :table_id :definition]
+                     :archived false
+                     :table_id [:in table-ids]))
+    #{}))
 
 (defn- combinations
   "Return all `k`-element combinations of `xs`, preserving input order inside each combination."
@@ -1697,7 +1736,7 @@
        (mapv add-measure-suggestions
              (merge-candidates candidates
                                source-idx
-                               (existing-measure-signatures)
+                               (existing-measure-signatures (into #{} (map ::table-id) candidates))
                                limit
                                eligible-measure-candidate?))))))
 
@@ -1726,7 +1765,7 @@
        (mapv add-segment-suggestions
              (merge-candidates candidates
                                source-idx
-                               (existing-segment-signatures)
+                               (existing-segment-signatures (into #{} (map ::table-id) candidates))
                                limit
                                eligible-segment-candidate?))))))
 

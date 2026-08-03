@@ -36,19 +36,22 @@
 
 (defn create-segment!
   "Create and return a hydrated Segment using the same permission, validation, and event path as the REST endpoint."
-  [{:keys [name description definition], :as body}]
-  ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
-  (let [table-id (definition-table-id definition)]
-    (api/create-check :model/Segment (assoc body :table_id table-id))
-    (let [segment (api/check-500
-                   (first (t2/insert-returning-instances! :model/Segment
-                                                          :table_id    table-id
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  definition)))]
-      (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
-      (t2/hydrate segment :creator))))
+  ([body]
+   (create-segment! body {}))
+  ([{:keys [name description definition], :as body} {:keys [publish-event?], :or {publish-event? true}}]
+   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
+   (let [table-id (definition-table-id definition)]
+     (api/create-check :model/Segment (assoc body :table_id table-id))
+     (let [segment (api/check-500
+                    (first (t2/insert-returning-instances! :model/Segment
+                                                           :table_id    table-id
+                                                           :creator_id  api/*current-user-id*
+                                                           :name        name
+                                                           :description description
+                                                           :definition  definition)))]
+       (when publish-event?
+         (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*}))
+       (t2/hydrate segment :creator)))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"

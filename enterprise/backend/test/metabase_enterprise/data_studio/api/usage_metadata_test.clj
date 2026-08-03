@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.usage-metadata :as usage-metadata.api]
+   [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.measures.test-util :as measures.tu]
    [metabase.models.interface :as mi]
@@ -365,20 +367,33 @@
                                        :suggested_name        "Mined large orders"
                                        :suggested_description "A persisted Segment candidate"})]
           (mt/with-temp-vals-in-db :model/Table table-id {:is_published true}
-            (doseq [[candidate model expected-name]
-                    [[measure-candidate :model/Measure "Created order subtotal"]
-                     [segment-candidate :model/Segment "Created large orders"]]]
-              (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
-                (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
-                      response (mt/user-http-request :crowberto :post 200 path
-                                                     {:name expected-name
-                                                      :description "Admin override"})
-                      entity   (:entity response)]
-                  (is (= expected-name (:name entity)))
-                  (is (= "Admin override" (:description entity)))
-                  (is (= (:definition candidate) (:definition entity)))
-                  (is (= "modeled" (get-in response [:candidate :modeling_status])))
-                  (is (= 1 (count (get-in response [:candidate :matches]))))
-                  (is (= (:id entity)
-                         (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
-                  (is (= 1 (t2/count model :name expected-name))))))))))))
+            (let [published-events (atom [])]
+              (with-redefs [events/publish-event!
+                            (fn [topic {:keys [object]}]
+                              (let [model (case topic
+                                            :event/measure-create :model/Measure
+                                            :event/segment-create :model/Segment)]
+                                (swap! published-events conj
+                                       {:topic topic
+                                        :in-transaction? (mdb/in-transaction?)
+                                        :visible? (t2/exists? model :id (:id object))})))]
+                (doseq [[candidate model expected-name]
+                        [[measure-candidate :model/Measure "Created order subtotal"]
+                         [segment-candidate :model/Segment "Created large orders"]]]
+                  (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
+                    (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
+                          response (mt/user-http-request :crowberto :post 200 path
+                                                         {:name expected-name
+                                                          :description "Admin override"})
+                          entity   (:entity response)]
+                      (is (= expected-name (:name entity)))
+                      (is (= "Admin override" (:description entity)))
+                      (is (= (:definition candidate) (:definition entity)))
+                      (is (= "modeled" (get-in response [:candidate :modeling_status])))
+                      (is (= 1 (count (get-in response [:candidate :matches]))))
+                      (is (= (:id entity)
+                             (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
+                      (is (= 1 (t2/count model :name expected-name)))))))
+              (is (= [{:topic :event/measure-create, :in-transaction? false, :visible? true}
+                      {:topic :event/segment-create, :in-transaction? false, :visible? true}]
+                     @published-events)))))))))

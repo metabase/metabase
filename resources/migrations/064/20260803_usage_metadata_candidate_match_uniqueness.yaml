@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.um-candidate-match-deduplicate
+      author: codex
+      comment: Remove duplicate candidate relationships before enforcing uniqueness
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM usage_metadata_candidate_match
+              WHERE id NOT IN (
+                SELECT keep_id FROM (
+                  SELECT MIN(id) AS keep_id
+                  FROM usage_metadata_candidate_match
+                  GROUP BY candidate_id, relation, measure_id, segment_id
+                ) deduplicated_matches
+              )
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-match-measure-unique
+      author: codex
+      comment: Keep one Measure relationship per usage metadata candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            columnNames: candidate_id, relation, measure_id
+            constraintName: uq_um_candidate_match_measure
+      rollback:
+        - dropUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            constraintName: uq_um_candidate_match_measure
+
+  - changeSet:
+      id: v64.um-candidate-match-segment-unique
+      author: codex
+      comment: Keep one Segment relationship per usage metadata candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            columnNames: candidate_id, relation, segment_id
+            constraintName: uq_um_candidate_match_segment
+      rollback:
+        - dropUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            constraintName: uq_um_candidate_match_segment

@@ -1277,18 +1277,20 @@
                                             :type :question
                                             :dataset_query (orders-multi-stage-query)
                                             :view_count 1000000}]
-    (let [measure  (->> (insights/candidate-measures {:min-view-count 10 :limit 1000})
-                        (candidates-from-card card-id)
-                        first)
-          segment  (->> (insights/candidate-segments {:min-view-count 10 :limit 1000})
-                        (candidates-from-card card-id)
-                        first)
+    (let [measures (->> (insights/candidate-measures {:min-view-count 10 :limit 1000})
+                        (candidates-from-card card-id))
+          segments (->> (insights/candidate-segments {:min-view-count 10 :limit 1000})
+                        (candidates-from-card card-id))
+          measure  (first measures)
+          segment  (first segments)
           field-id (fn [clause]
                      (->> clause
                           (tree-seq sequential? seq)
                           (filter #(and (vector? %) (= :field (first %))))
                           first
                           (#(nth % 2))))]
+      (is (= 1 (count measures)))
+      (is (= 1 (count segments)))
       (is (= :sum (get-in measure [:aggregation :type])))
       (is (= (mt/id :orders :subtotal)
              (field-id (get-in measure [:definition :stages 0 :aggregation 0]))))
@@ -1311,8 +1313,8 @@
             segments (candidates-from-card
                       card-id
                       (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
-        (is (seq measures))
-        (is (seq segments))
+        (is (= 1 (count measures)))
+        (is (= 1 (count segments)))
         (is (every? #(= [0] (:stage-numbers %))
                     (concat (get-in (first measures) [:evidence :source-items])
                             (get-in (first segments) [:evidence :source-items]))))))))
@@ -1400,7 +1402,7 @@
                                               :definition query}]
         (testing "the saved conjunction is excluded without suppressing either atom"
           (let [expected-signature (segment-signature (mt/id :orders) (lib/atomic-filters query 0))
-                existing           (existing-segment-signatures)
+                existing           (existing-segment-signatures #{(mt/id :orders)})
                 candidates         (candidates-from-card
                                     card-id
                                     (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
@@ -1510,9 +1512,9 @@
     (with-redefs [t2/select (fn [& _]
                               [{:table_id (mt/id :orders)
                                 :definition {:not :a-query}}])]
-      (is (= #{} (existing-measure-signatures)))))
+      (is (= #{} (existing-measure-signatures #{(mt/id :orders)})))))
   (testing "a malformed Segment does not abort candidate mining"
     (with-redefs [t2/select (fn [& _]
                               [{:table_id (mt/id :orders)
                                 :definition {:not :a-query}}])]
-      (is (= #{} (existing-segment-signatures))))))
+      (is (= #{} (existing-segment-signatures #{(mt/id :orders)}))))))

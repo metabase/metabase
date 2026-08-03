@@ -4,6 +4,8 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as app-db]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.usage-metadata.insights :as insights]
@@ -32,7 +34,6 @@
 (def ^:private queued-run-startup-grace (t/minutes 5))
 (def ^:private source-usage-window-days 90)
 (def ^:private source-minimum-recent-view-count 10)
-(def ^:private conditional-measure-types #{:count-where :distinct-where :sum-where})
 (defonce ^:private locally-running-run-ids (atom #{}))
 (def ^:private candidate-cutoffs
   "Fixed candidate-level evidence requirements applied after all source batches are aggregated."
@@ -159,7 +160,12 @@
                  (t2/select [:model/Table :id :db_id :schema :name :display_name :description
                              :data_layer :data_authority :view_count :active :visibility_type
                              :is_published :collection_id]
-                            :id [:in table-ids]))
+                            {:where [:and
+                                     [:in :id table-ids]
+                                     [:= :active true]
+                                     [:= :visibility_type nil]
+                                     [:or [:= :data_layer nil]
+                                      [:not= :data_layer [:inline "hidden"]]]]}))
         db-ids (into #{} (keep :db_id) tables)
         dbs     (when (seq db-ids)
                   (u/index-by :id
@@ -408,8 +414,9 @@
                                     {:candidate-id (:id existing)})))
         candidate (or existing
                       (t2/insert-returning-instance! :model/UsageMetadataCandidate row))]
-    (doseq [source (get-in observation [:evidence :source-items])]
-      (t2/insert! :model/UsageMetadataCandidateSource (source-row (:id candidate) source)))
+    (when-let [source-rows (not-empty (mapv #(source-row (:id candidate) %)
+                                            (get-in observation [:evidence :source-items])))]
+      (t2/insert! :model/UsageMetadataCandidateSource source-rows))
     (if existing
       (t2/update! :model/UsageMetadataCandidate (:id candidate)
                   (add-evidence candidate observation))
@@ -420,27 +427,28 @@
 
 (defn- persist-card-batch!
   [run-id card-ids]
-  (let [{:keys [measures segments]}
-        (insights/cleanup-candidates
-         {:query-source (query-source/card-id-set card-ids)
-          :min-view-count source-minimum-recent-view-count
-          :view-count-window-days source-usage-window-days
-          :include-ineligible? true})
-        opts         {:query-source (query-source/card-id-set card-ids)
-                      :min-view-count source-minimum-recent-view-count
-                      :view-count-window-days source-usage-window-days
-                      :limit 1000}
-        table-report (insights/candidate-tables opts)
-        metrics      (insights/candidate-metrics opts)
-        observations (concat measures
-                             segments
-                             (map table-candidate-observation (:candidates table-report))
-                             (keep metric-candidate-observation metrics))
-        tables       (usable-table-index (into #{} (map observation-table-id) observations))]
-    (doseq [observation observations
-            :let [table (tables (observation-table-id observation))]
-            :when table]
-      (persist-observation! run-id observation table))))
+  (lib-be/with-metadata-provider-cache
+    (let [{:keys [measures segments]}
+          (insights/cleanup-candidates
+           {:query-source (query-source/card-id-set card-ids)
+            :min-view-count source-minimum-recent-view-count
+            :view-count-window-days source-usage-window-days
+            :include-ineligible? true})
+          opts         {:query-source (query-source/card-id-set card-ids)
+                        :min-view-count source-minimum-recent-view-count
+                        :view-count-window-days source-usage-window-days
+                        :limit 1000}
+          table-report (insights/candidate-tables opts)
+          metrics      (insights/candidate-metrics opts)
+          observations (concat measures
+                               segments
+                               (map table-candidate-observation (:candidates table-report))
+                               (keep metric-candidate-observation metrics))
+          tables       (usable-table-index (into #{} (map observation-table-id) observations))]
+      (doseq [observation observations
+              :let [table (tables (observation-table-id observation))]
+              :when table]
+        (persist-observation! run-id observation table)))))
 
 (defn- semantically-eligible?
   [{:keys [candidate_type semantic_details complexity verified_source_count
@@ -450,7 +458,7 @@
       :measure
       (and (not (and (= :count semantic-type)
                      (nil? (:field semantic_details))))
-           (or (not (contains? conditional-measure-types semantic-type))
+           (or (not (contains? insights/conditional-aggregation-operators semantic-type))
                (pos? verified_source_count)
                (pos? official_source_count)
                (>= distinct_source_count 2)))
@@ -496,9 +504,12 @@
                           :id [:> last-id]
                           {:order-by [[:id :asc]], :limit 200})]
       (when (seq rows)
-        (doseq [candidate rows
-                :when (not (globally-eligible? candidate))]
-          (t2/delete! :model/UsageMetadataCandidate :id (:id candidate)))
+        (let [candidate-ids (into []
+                                  (comp (remove globally-eligible?)
+                                        (map :id))
+                                  rows)]
+          (when (seq candidate-ids)
+            (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))
         (recur (long (:id (peek rows))))))))
 
 (defn- source-provenance-index
@@ -562,33 +573,25 @@
 (defn- prune-non-closed-segment-candidates!
   "Remove Segment subsets that carry no provenance beyond a stricter Segment on the same table."
   [run-id]
-  (doseq [table-id (t2/select-fn-set :table_id :model/UsageMetadataCandidate
-                                     :run_id run-id
-                                     :candidate_type :segment)]
-    (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
-                                      :run_id run-id
-                                      :candidate_type :segment
-                                      :table_id table-id)
-          provenance-index (source-provenance-index (map :id candidates))
-          candidate-ids    (non-closed-segment-candidate-ids candidates provenance-index)]
-      (when (seq candidate-ids)
-        (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))))
+  (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
+                                    :run_id run-id
+                                    :candidate_type :segment)
+        provenance-index (source-provenance-index (map :id candidates))
+        candidate-ids    (non-closed-segment-candidate-ids candidates provenance-index)]
+    (when (seq candidate-ids)
+      (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))))
 
 (defn- prune-non-closed-measure-candidates!
   "Remove conditional Measure subsets that carry no provenance beyond a stricter condition on the
   same base aggregation and table."
   [run-id]
-  (doseq [table-id (t2/select-fn-set :table_id :model/UsageMetadataCandidate
-                                     :run_id run-id
-                                     :candidate_type :measure)]
-    (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
-                                      :run_id run-id
-                                      :candidate_type :measure
-                                      :table_id table-id)
-          provenance-index (source-provenance-index (map :id candidates))
-          candidate-ids    (non-closed-measure-candidate-ids candidates provenance-index)]
-      (when (seq candidate-ids)
-        (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))))
+  (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
+                                    :run_id run-id
+                                    :candidate_type :measure)
+        provenance-index (source-provenance-index (map :id candidates))
+        candidate-ids    (non-closed-measure-candidate-ids candidates provenance-index)]
+    (when (seq candidate-ids)
+      (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))))
 
 (defn- candidate-atom-details
   [{:keys [candidate_type semantic_details]}]
@@ -786,8 +789,9 @@
   (try
     (let [card-ids (insights/qualified-card-ids source-minimum-recent-view-count
                                                 source-usage-window-days)]
-      (doseq [batch (partition-all source-card-batch-size card-ids)]
-        (persist-card-batch! run-id batch))
+      (insights/with-candidate-analysis-cache
+        #(doseq [batch (partition-all source-card-batch-size card-ids)]
+           (persist-card-batch! run-id batch)))
       (prune-ineligible-candidates! run-id)
       (prune-non-closed-segment-candidates! run-id)
       (prune-non-closed-measure-candidates! run-id)
@@ -853,11 +857,9 @@
         match-keys {:candidate_id (:id candidate)
                     :relation     :exact
                     entity-key    (:id entity)}]
-    (when-not (t2/exists? :model/UsageMetadataCandidateMatch
-                          :candidate_id (:id candidate)
-                          :relation :exact
-                          entity-key (:id entity))
-      (t2/insert! :model/UsageMetadataCandidateMatch match-keys))
+    (app-db/select-or-insert! :model/UsageMetadataCandidateMatch
+                              match-keys
+                              (constantly match-keys))
     (t2/update! :model/UsageMetadataCandidate (:id candidate) {:modeling_status :modeled})
     entity))
 
@@ -866,16 +868,12 @@
   [candidate user-id reason]
   (let [identity (select-keys candidate [:candidate_type :table_id :signature_version
                                          :signature_hash :signature])]
-    (or (t2/select-one :model/UsageMetadataCandidateDismissal
-                       :candidate_type (:candidate_type candidate)
-                       :table_id (:table_id candidate)
-                       :signature_version (:signature_version candidate)
-                       :signature_hash (:signature_hash candidate))
-        (t2/insert-returning-instance! :model/UsageMetadataCandidateDismissal
-                                       (assoc identity
-                                              :dismissed_by user-id
-                                              :reason reason
-                                              :dismissed_at (mi/now))))))
+    (app-db/select-or-insert! :model/UsageMetadataCandidateDismissal
+                              (select-keys identity [:candidate_type :table_id :signature_version :signature_hash])
+                              #(assoc identity
+                                      :dismissed_by user-id
+                                      :reason reason
+                                      :dismissed_at (mi/now)))))
 
 (defn restore!
   "Remove the durable dismissal for `candidate`."

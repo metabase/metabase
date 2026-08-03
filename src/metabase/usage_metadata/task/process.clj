@@ -28,21 +28,37 @@
 (def ^:private trigger-key
   (triggers/key "metabase.task.usage-metadata-process.trigger"))
 
+(defn- run-step
+  [message f]
+  (try
+    (f)
+    nil
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
+      (log/error e message)
+      e)))
+
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Process query-history rollups and refresh Library cleanup candidates."}
   UsageMetadataProcess
   [_]
-  (try
-    (when (usage-metadata.settings/usage-metadata-enabled?)
-      (usage-metadata.batch/run-batch!))
-    (when (premium-features/has-feature? :library)
-      ;; `queue-refresh!` also recovers runs interrupted by a previous process, so every
-      ;; scheduled tick must go through it rather than short-circuiting on `active-run`.
-      (when-let [run (usage-metadata.candidates/queue-refresh! :scheduled nil)]
-        (usage-metadata.candidates/run-refresh! run)))
-    (catch Throwable e
-      (log/error e "Error processing usage metadata")
-      (throw e))))
+  (let [batch-error
+        (when (usage-metadata.settings/usage-metadata-enabled?)
+          (run-step "Error processing usage metadata rollups"
+                    usage-metadata.batch/run-batch!))
+        candidate-error
+        (when (premium-features/has-feature? :library)
+          (run-step
+           "Error refreshing usage metadata candidates"
+           (fn []
+             ;; `queue-refresh!` also recovers runs interrupted by a previous process, so every
+             ;; scheduled tick must go through it rather than short-circuiting on `active-run`.
+             (when-let [run (usage-metadata.candidates/queue-refresh! :scheduled nil)]
+               (usage-metadata.candidates/run-refresh! run)))))]
+    (when-let [error (or batch-error candidate-error)]
+      (throw error))))
 
 (defn- job []
   (jobs/build

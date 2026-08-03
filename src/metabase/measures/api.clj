@@ -43,17 +43,20 @@
 
 (defn create-measure!
   "Create and return a hydrated Measure using the same permission, normalization, and event path as the REST endpoint."
-  [{:keys [name description definition], :as body}]
-  (let [table-id (definition-table-id definition)]
-    (api/create-check :model/Measure (assoc body :table_id table-id))
-    (let [measure (api/check-500
-                   (first (t2/insert-returning-instances! :model/Measure
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  definition)))]
-      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
-      (t2/hydrate measure :creator))))
+  ([body]
+   (create-measure! body {}))
+  ([{:keys [name description definition], :as body} {:keys [publish-event?], :or {publish-event? true}}]
+   (let [table-id (definition-table-id definition)]
+     (api/create-check :model/Measure (assoc body :table_id table-id))
+     (let [measure (api/check-500
+                    (first (t2/insert-returning-instances! :model/Measure
+                                                           :creator_id  api/*current-user-id*
+                                                           :name        name
+                                                           :description description
+                                                           :definition  definition)))]
+       (when publish-event?
+         (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*}))
+       (t2/hydrate measure :creator)))))
 
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."

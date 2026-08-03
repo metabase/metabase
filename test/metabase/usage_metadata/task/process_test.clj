@@ -29,7 +29,8 @@
     (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
     (let [ran? (promise)]
       (with-redefs [metabase.usage-metadata.batch/run-batch! (fn []
-                                                               (deliver ran? true))]
+                                                               (deliver ran? true))
+                    usage-metadata.candidates/queue-refresh! (constantly nil)]
         (mt/with-temporary-setting-values [usage-metadata-enabled? false]
           (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
           (Thread/sleep 200)
@@ -38,7 +39,7 @@
           (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
           (is (true? (deref ran? 5000 ::timeout))))))))
 
-(deftest scheduled-candidate-refresh-goes-through-recovery-test
+(deftest scheduled-candidate-refresh-delegates-recovery-to-queue-test
   (mt/with-temp-scheduler!
     (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
     (let [replacement-run {:id 2, :status :queued}
@@ -46,7 +47,6 @@
           submitted-run   (promise)]
       (with-redefs [premium-features/has-feature?              (constantly true)
                     metabase.usage-metadata.batch/run-batch!   (constantly nil)
-                    usage-metadata.candidates/active-run       (constantly {:id 1, :status :running})
                     usage-metadata.candidates/queue-refresh!   (fn [trigger requested-by]
                                                                  (deliver queued-args [trigger requested-by])
                                                                  replacement-run)
@@ -69,3 +69,16 @@
         (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
         (is (= [:scheduled nil] (deref queued-args 5000 ::timeout)))
         (is (= ::timeout (deref submitted-run 100 ::timeout)))))))
+
+(deftest rollup-failure-does-not-skip-scheduled-candidate-recovery-test
+  (mt/with-temp-scheduler!
+    (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
+    (let [queued-args (promise)]
+      (with-redefs [premium-features/has-feature?            (constantly true)
+                    metabase.usage-metadata.batch/run-batch! #(throw (ex-info "rollup failed" {}))
+                    usage-metadata.candidates/queue-refresh! (fn [trigger requested-by]
+                                                               (deliver queued-args [trigger requested-by])
+                                                               nil)]
+        (mt/with-temporary-setting-values [usage-metadata-enabled? true]
+          (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
+          (is (= [:scheduled nil] (deref queued-args 5000 ::timeout))))))))

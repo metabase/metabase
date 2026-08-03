@@ -6,6 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.measures.api :as measures.api]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -23,6 +25,10 @@
 
 (def ^:private default-limit 50)
 (def ^:private max-limit 200)
+(def ^:private max-search-length 254)
+(def ^:private max-name-length 254)
+(def ^:private max-description-length 10000)
+(def ^:private max-dismissal-reason-length 1000)
 
 (defn- run-refresh-async!
   "TEMPORARY: run a manual refresh without Quartz so it works when the scheduler is disabled."
@@ -163,7 +169,7 @@
    [:modeling-status {:optional true} [:maybe [:enum :missing :partially-modeled :modeled]]]
    [:signal          {:optional true} [:maybe [:enum :verified :official :popular]]]
    [:queue           {:default :suggested} [:enum :suggested :used-raw :discarded]]
-   [:search          {:optional true} [:maybe :string]]
+   [:search          {:optional true} [:maybe [:string {:max max-search-length}]]]
    [:sort            {:default :priority} [:enum :priority :name :source-count :view-count]]
    [:direction       {:default :asc} [:enum :asc :desc]]])
 
@@ -467,7 +473,9 @@
   "Globally dismiss a semantic candidate."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   {:keys [reason]} :- [:map [:reason {:optional true} [:maybe :string]]]]
+   {:keys [reason]} :- [:map
+                        [:reason {:optional true}
+                         [:maybe [:string {:max max-dismissal-reason-length}]]]]]
   (api/check-superuser)
   (let [candidate (require-current-candidate id)]
     (candidates/dismiss! candidate api/*current-user-id* reason)
@@ -505,8 +513,14 @@
                                    (:suggested_description candidate))
                     :definition  (:definition candidate)}
             entity (case (:candidate_type candidate)
-                     :measure (measures.api/create-measure! body)
-                     :segment (segments.api/create-segment! body))]
+                     :measure (measures.api/create-measure! body {:publish-event? false})
+                     :segment (segments.api/create-segment! body {:publish-event? false}))
+            topic  (case (:candidate_type candidate)
+                     :measure :event/measure-create
+                     :segment :event/segment-create)
+            user-id api/*current-user-id*]
+        (mdb/do-after-commit
+         #(events/publish-event! topic {:object entity :user-id user-id}))
         (candidates/mark-modeled! candidate entity)))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
@@ -515,8 +529,10 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- [:map
-            [:name        {:optional true} [:maybe ms/NonBlankString]]
-            [:description {:optional true} [:maybe :string]]]]
+            [:name        {:optional true}
+             [:maybe [:and ms/NonBlankString [:string {:max max-name-length}]]]]
+            [:description {:optional true}
+             [:maybe [:string {:max max-description-length}]]]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (let [candidate (api/check-404
@@ -541,14 +557,11 @@
   []
   (api/check-superuser)
   (if-let [run (candidates/queue-refresh! :manual api/*current-user-id*)]
-    (try
+    (do
       (run-refresh-async! run)
       {:status 202
        :headers {}
-       :body {:run_id (:id run)}}
-      (catch Exception e
-        (candidates/fail-run! run e)
-        (throw e)))
+       :body {:run_id (:id run)}})
     (let [run (candidates/active-run)]
       (throw (ex-info "A usage-metadata candidate refresh is already running"
                       {:status-code 409, :run-id (:id run)})))))
