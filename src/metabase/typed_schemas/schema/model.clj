@@ -251,19 +251,17 @@
 
 (defn model-schemas
   "Returns model schemas, with optional database and collection scopes."
-  ([database-ids]
-   (model-schemas database-ids nil))
-  ([database-ids collection-ids]
-   (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
-     (if (seq models)
-       (let [model-ids                  (set (map :id models))
-             action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
-             action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
-         (for [model models
-               :let [action-schemas (model-action-schemas model
-                                                          (get action-rows-by-model-id (:id model))
-                                                          (get action-details-by-model-id (:id model)))
-                     schema         (model-schema model action-schemas)]
-               :when schema]
-           schema))
-       []))))
+  [database-ids collection-ids]
+  (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
+    (if (seq models)
+      (let [model-ids                  (set (map :id models))
+            action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
+            action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
+        (for [model models
+              :let [action-schemas (model-action-schemas model
+                                                         (get action-rows-by-model-id (:id model))
+                                                         (get action-details-by-model-id (:id model)))
+                    schema         (model-schema model action-schemas)]
+              :when schema]
+          schema))
+      [])))

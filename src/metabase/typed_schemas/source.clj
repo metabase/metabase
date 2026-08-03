@@ -69,7 +69,7 @@
     (questions [_ database-ids collection-ids]
       (vec (schema.question/question-schemas database-ids collection-ids)))
     (models [_ database-ids]
-      (vec (schema.model/model-schemas database-ids)))
+      (vec (schema.model/model-schemas database-ids nil)))
     (metrics [_ database-ids collection-ids]
       (vec (schema.metric/metric-schemas database-ids collection-ids)))
     (tables [_ database-ids table-ids]

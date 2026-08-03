@@ -32,7 +32,7 @@
                               :parameters []}])]
     ;; only model 42 has an action, so model 43 is omitted
     (is (= ["model42"]
-           (map :key (schema.model/model-schemas #{1}))))))
+           (map :key (schema.model/model-schemas #{1} nil))))))
 
 ; Ensures we are not doing N+1 queries for action rows and details
 (deftest model-schemas-bulk-loads-actions-test
@@ -47,7 +47,7 @@
                   actions/select-actions (fn [known-models & options]
                                            (swap! action-details-calls conj [known-models options])
                                            [])]
-      (is (= [] (vec (schema.model/model-schemas #{1}))))
+      (is (= [] (vec (schema.model/model-schemas #{1} nil))))
       (is (= [#{42 43}] @action-rows-calls))
       (is (= [[models [:model_id [:in #{42 43}]
                        :archived false

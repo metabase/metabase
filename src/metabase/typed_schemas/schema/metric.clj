@@ -273,10 +273,8 @@
 
 (defn metric-schemas
   "Returns metric schemas, with optional database and collection scopes."
-  ([database-ids]
-   (metric-schemas database-ids nil))
-  ([database-ids collection-ids]
-   (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
-         :let [details (metric-details card)]
-         :when details]
-     (metric-schema details card))))
+  [database-ids collection-ids]
+  (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
+        :let [details (metric-details card)]
+        :when details]
+    (metric-schema details card)))

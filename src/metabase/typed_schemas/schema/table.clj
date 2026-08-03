@@ -50,15 +50,13 @@
 
   Library and database endpoint paths both need the same active/readable table
   rules; only their id filters differ."
-  ([database-ids]
-   (select-tables database-ids nil))
-  ([database-ids table-ids]
-   (->> (t2/select :model/Table
-                   {:where    (cond-> [:and [:= :active true]]
-                                database-ids (conj (scope/id-filter-clause database-ids :db_id))
-                                table-ids (conj (scope/id-filter-clause table-ids :id)))
-                    :order-by [[:name :asc] [:id :asc]]})
-        (filter-readable-tables))))
+  [database-ids table-ids]
+  (->> (t2/select :model/Table
+                  {:where    (cond-> [:and [:= :active true]]
+                               database-ids (conj (scope/id-filter-clause database-ids :db_id))
+                               table-ids (conj (scope/id-filter-clause table-ids :id)))
+                   :order-by [[:name :asc] [:id :asc]]})
+       (filter-readable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."

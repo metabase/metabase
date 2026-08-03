@@ -17,18 +17,16 @@
 
   Metrics, models and saved questions are backed by cards. They need
   the same visibility, archived, database and collection filters."
-  ([card-type database-ids]
-   (select-schema-cards card-type database-ids nil))
-  ([card-type database-ids collection-ids]
-   (->> (t2/select :model/Card
-                   {:where    (cond-> [:and
-                                       [:= :type (name card-type)]
-                                       [:= :archived false]
-                                       (collection/visible-collection-filter-clause :collection_id)]
-                                database-ids (conj (scope/id-filter-clause database-ids :database_id))
-                                collection-ids (conj (scope/id-filter-clause collection-ids :collection_id)))
-                    :order-by [[:name :asc] [:id :asc]]})
-        (filter mi/can-read?))))
+  [card-type database-ids collection-ids]
+  (->> (t2/select :model/Card
+                  {:where    (cond-> [:and
+                                      [:= :type (name card-type)]
+                                      [:= :archived false]
+                                      (collection/visible-collection-filter-clause :collection_id)]
+                               database-ids (conj (scope/id-filter-clause database-ids :database_id))
+                               collection-ids (conj (scope/id-filter-clause collection-ids :collection_id)))
+                   :order-by [[:name :asc] [:id :asc]]})
+       (filter mi/can-read?)))
 
 (defn aggregation-result-column-with-metadata-provider
   "Returns an aggregation result column using an existing metadata provider."

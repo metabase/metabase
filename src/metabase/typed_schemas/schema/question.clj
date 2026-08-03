@@ -66,8 +66,6 @@
 
 (defn question-schemas
   "Returns schemas for saved questions, with optional database and collection scopes."
-  ([database-ids]
-   (question-schemas database-ids nil))
-  ([database-ids collection-ids]
-   (let [cards (schema.common/select-schema-cards :question database-ids collection-ids)]
-     (mapv question-schema (question-details cards)))))
+  [database-ids collection-ids]
+  (let [cards (schema.common/select-schema-cards :question database-ids collection-ids)]
+    (mapv question-schema (question-details cards))))

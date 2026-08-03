@@ -33,7 +33,7 @@
                                                    (swap! bulk-details-calls conj [card-type database-id selected-cards])
                                                    (map #(assoc % :fields []) selected-cards))]
         (is (= [41 42]
-               (mapv :id (schema.question/question-schemas nil))))
+               (mapv :id (schema.question/question-schemas nil nil))))
         (is (= [[:question 1 cards]]
                @bulk-details-calls))
         (is (empty? @report-details-calls))))))
