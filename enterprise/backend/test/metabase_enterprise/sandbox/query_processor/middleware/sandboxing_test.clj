@@ -1346,6 +1346,8 @@
                                     "NAME"     (assoc col :semantic_type :type/Title)
                                     col))
                                 base-metadata)]
+        ;; the sandboxing path needs a real Card in the app DB; a mock MP wouldn't trigger the sandboxing middleware
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Card model {:type            :model
                                           :dataset_query   people-query
                                           :result_metadata overrides}]
