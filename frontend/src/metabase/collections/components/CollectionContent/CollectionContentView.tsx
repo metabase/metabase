@@ -322,6 +322,7 @@ export const CollectionContentView = ({
             deleteBookmark={deleteBookmark}
             loadingPinnedItems={loading}
             hasPinnedItems={hasPinnedItems}
+            showFilterBar
             selected={selected}
             toggleItem={toggleItem}
             clear={clear}

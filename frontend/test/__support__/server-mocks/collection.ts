@@ -174,12 +174,17 @@ function handleCollectionItemsResponse({
       ? collectionItems
       : collectionItems.filter(({ model }) => models.includes(model));
 
-  const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
+  const q = url.searchParams.get("q")?.toLowerCase().trim();
+  const searchedItems = q
+    ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
+    : matchedItems;
+
+  const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
 
   return {
-    data: matchedItems.slice(offset, offset + limit),
-    total: matchedItems.length,
+    data: searchedItems.slice(offset, offset + limit),
+    total: searchedItems.length,
     models,
     limit,
     offset,
