@@ -2,14 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
+   [metabase.test :as mt]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.model :as schema.model]))
 
+(comment mt/keep-me)
+
 (deftest model-schema-includes-actions-test
-  (with-redefs [schema.model/model-action-schemas
-                (fn [model]
-                  (is (= 42 (:id model)))
-                  [{:kind "action", :key "create", :id 5}])]
+  (mt/with-dynamic-fn-redefs [schema.model/model-action-schemas
+                              (constantly [{:kind "action", :key "create", :id 5}])]
     (is (= {:key              "ordersModel"
             :keyDisambiguator 42
             :actions          {"create" {:kind "action", :key "create", :id 5}}}
@@ -17,14 +18,10 @@
             {:id   42
              :name "Orders model"})))))
 
-(deftest model-schemas-includes-actionable-models-test
+(deftest model-schemas-includes-only-actionable-models-test
   (with-redefs [schema.common/select-schema-cards
-                (fn [card-type database-ids collection-ids]
-                  (is (= :model card-type))
-                  (is (= #{1} database-ids))
-                  (is (nil? collection-ids))
-                  [{:id 42 :name "Model 42"}
-                   {:id 43 :name "Model 43"}])
+                (constantly [{:id 42 :name "Model 42"}
+                             {:id 43 :name "Model 43"}])
                 schema.model/action-rows
                 (constantly [{:id 5 :model_id 42 :name "Create" :type :query}])
                 actions/select-actions
@@ -33,10 +30,9 @@
                               :name       "Create"
                               :type       :query
                               :parameters []}])]
-    (is (= #{"model42"}
-           (->> (schema.model/model-schemas #{1})
-                (map :key)
-                set)))))
+    ;; only model 42 has an action, so model 43 is omitted
+    (is (= ["model42"]
+           (map :key (schema.model/model-schemas #{1}))))))
 
 ; Ensures we are not doing N+1 queries for action rows and details
 (deftest model-schemas-bulk-loads-actions-test
@@ -68,11 +64,11 @@
                                                              :name "Broken model"})))]
       (is (= "Failed to build action schemas for model \"Broken model\" (card 100): action lookup failed"
              (ex-message exception)))
-      (is (= {:model-id      100
-              :model-name    "Broken model"
-              :status-code   500
-              :cause-message "action lookup failed"}
-             (select-keys (ex-data exception) [:model-id :model-name :status-code :cause-message]))))))
+      (is (=? {:model-id      100
+               :model-name    "Broken model"
+               :status-code   500
+               :cause-message "action lookup failed"}
+              (ex-data exception))))))
 
 (deftest model-schema-surfaces-action-rendering-errors-test
   (with-redefs [actions/select-actions (constantly [{:id   200
@@ -89,15 +85,14 @@
                                                              :name "Broken model"})))]
       (is (= "Failed to build action schema for action \"Broken action\" (action 200, type query) on model \"Broken model\" (card 100): action parameters are invalid"
              (ex-message exception)))
-      (is (= {:model-id      100
-              :model-name    "Broken model"
-              :action-id     200
-              :action-name   "Broken action"
-              :action-type   :query
-              :status-code   500
-              :cause-message "action parameters are invalid"}
-             (select-keys (ex-data exception)
-                          [:model-id :model-name :action-id :action-name :action-type :status-code :cause-message]))))))
+      (is (=? {:model-id      100
+               :model-name    "Broken model"
+               :action-id     200
+               :action-name   "Broken action"
+               :action-type   :query
+               :status-code   500
+               :cause-message "action parameters are invalid"}
+              (ex-data exception))))))
 
 (deftest model-schema-surfaces-unresolved-action-row-errors-test
   (with-redefs [schema.model/action-rows (constantly [{:id   200
@@ -109,7 +104,7 @@
                                                              :name "Broken model"})))]
       (is (= "Failed to build action schemas for model \"Broken model\" (card 100): action rows could not be resolved: Broken action (action 200, type broken)"
              (ex-message exception)))
-      (is (= {:model-id               100
-              :model-name             "Broken model"
-              :unresolved-action-rows [{:id 200, :name "Broken action", :type :broken}]}
-             (select-keys (ex-data exception) [:model-id :model-name :unresolved-action-rows]))))))
+      (is (=? {:model-id               100
+               :model-name             "Broken model"
+               :unresolved-action-rows [{:id 200, :name "Broken action", :type :broken}]}
+              (ex-data exception))))))

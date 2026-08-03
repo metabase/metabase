@@ -66,9 +66,9 @@
                  :model/Field _ {:table_id (:id table), :name "price", :base_type :type/Float}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "returns shaped table entities for a database scope"
-        (let [[shaped :as shaped-tables] (source/tables source/app-db-source #{(:id db)} nil)]
-          (is (= 1 (count shaped-tables)))
-          (is (= "widgets" (:key shaped)))
-          (is (= ["price"] (keys (:fields shaped))))))
+        (is (=? [{:type   "table"
+                  :key    "widgets"
+                  :fields {"price" {:jsType "number"}}}]
+                (source/tables source/app-db-source #{(:id db)} nil))))
       (testing "an empty table-id scope matches nothing"
         (is (= [] (source/tables source/app-db-source nil #{})))))))

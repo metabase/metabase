@@ -28,12 +28,11 @@
                                                   :type "library-metrics"
                                                   :location (collection/children-location metrics)}]
     (mt/with-test-user :crowberto
-      (is (= {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
-              :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
-              :metric-collection-ids #{(:id metric-child)}}
-             (select-keys (#'typed-schemas.scope/library-scope
-                           {:library-collection-refs [{:id (:id data-child)} {:id (:id metric-child)}]})
-                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
+      (is (=? {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
+               :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
+               :metric-collection-ids #{(:id metric-child)}}
+              (typed-schemas.scope/library-scope
+               {:library-collection-refs [{:id (:id data-child)} {:id (:id metric-child)}]}))))))
 
 (deftest library-scope-accepts-representation-entity-ids-test
   (mt/with-temp [:model/Collection root         {:name "Library"
@@ -50,12 +49,11 @@
                                                  :type "library-data"
                                                  :location (collection/children-location website)}]
     (mt/with-test-user :crowberto
-      (is (= {:collection-ids        #{(:id website) (:id website-page)}
-              :data-collection-ids   #{(:id website) (:id website-page)}
-              :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.scope/library-scope
-                           {:library-collection-refs [{:entity-id "g-jLnamuHKdezZMthJ-z7"}]})
-                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
+      (is (=? {:collection-ids        #{(:id website) (:id website-page)}
+               :data-collection-ids   #{(:id website) (:id website-page)}
+               :metric-collection-ids #{}}
+              (typed-schemas.scope/library-scope
+               {:library-collection-refs [{:entity-id "g-jLnamuHKdezZMthJ-z7"}]}))))))
 
 (deftest library-scope-includes-canonical-data-and-metrics-libraries-test
   (with-redefs [typed-schemas.scope/library-data-entity-id    "test-library-data"
@@ -78,13 +76,12 @@
                                                    :type "library-metrics"
                                                    :location (collection/children-location metrics)}]
       (mt/with-test-user :crowberto
-        (is (= {:collection-ids        #{(:id data) (:id data-child) (:id metrics) (:id metric-child)}
-                :data-collection-ids   #{(:id data) (:id data-child)}
-                :metric-collection-ids #{(:id metrics) (:id metric-child)}}
-               (select-keys (#'typed-schemas.scope/library-scope
-                             {:include-data-library?   true
-                              :include-metric-library? true})
-                            [:collection-ids :data-collection-ids :metric-collection-ids])))))))
+        (is (=? {:collection-ids        #{(:id data) (:id data-child) (:id metrics) (:id metric-child)}
+                 :data-collection-ids   #{(:id data) (:id data-child)}
+                 :metric-collection-ids #{(:id metrics) (:id metric-child)}}
+                (typed-schemas.scope/library-scope
+                 {:include-data-library?   true
+                  :include-metric-library? true})))))))
 
 (deftest library-scope-combines-explicit-and-root-collections-test
   (with-redefs [typed-schemas.scope/library-metrics-entity-id "test-library-metrics"]
@@ -102,13 +99,12 @@
                                                    :type "library-metrics"
                                                    :location (collection/children-location metrics)}]
       (mt/with-test-user :crowberto
-        (is (= {:collection-ids        #{(:id data) (:id metrics) (:id metric-child)}
-                :data-collection-ids   #{(:id data)}
-                :metric-collection-ids #{(:id metrics) (:id metric-child)}}
-               (select-keys (#'typed-schemas.scope/library-scope
-                             {:library-collection-refs [{:id (:id data)}]
-                              :include-metric-library? true})
-                            [:collection-ids :data-collection-ids :metric-collection-ids])))))))
+        (is (=? {:collection-ids        #{(:id data) (:id metrics) (:id metric-child)}
+                 :data-collection-ids   #{(:id data)}
+                 :metric-collection-ids #{(:id metrics) (:id metric-child)}}
+                (typed-schemas.scope/library-scope
+                 {:library-collection-refs [{:id (:id data)}]
+                  :include-metric-library? true})))))))
 
 (deftest question-collection-scope-accepts-comma-separated-collection-ids-test
   (mt/with-temp [:model/Collection parent {:name "Question Parent"
@@ -117,7 +113,7 @@
                                            :location (collection/children-location parent)}]
     (mt/with-test-user :crowberto
       (is (= #{(:id parent) (:id child)}
-             (#'typed-schemas.scope/collection-scope [{:id (:id parent)}]))))))
+             (typed-schemas.scope/collection-scope [{:id (:id parent)}]))))))
 
 (deftest question-collection-scope-accepts-representation-entity-ids-test
   (mt/with-temp [:model/Collection parent {:name      "Question Parent"
@@ -127,10 +123,10 @@
                                            :location (collection/children-location parent)}]
     (mt/with-test-user :crowberto
       (is (= #{(:id parent) (:id child)}
-             (#'typed-schemas.scope/collection-scope [{:entity-id "question-entity-id-1"}]))))))
+             (typed-schemas.scope/collection-scope [{:entity-id "question-entity-id-1"}]))))))
 
 (deftest question-collection-scope-rejects-missing-collection-ref-test
   (mt/with-test-user :crowberto
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (#'typed-schemas.scope/collection-scope [{:entity-id "missing-entity-id-1"}])))]
+                         (typed-schemas.scope/collection-scope [{:entity-id "missing-entity-id-1"}])))]
       (is (= 404 (:status-code (ex-data e)))))))
