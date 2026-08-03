@@ -67,3 +67,9 @@
         ;; don't tell an unauthenticated caller "the code exists but the email failed"
         (throw (ex-info (tru "Failed to send the sign-in code. Please try again or contact your administrator.")
                         {:status-code 500}))))))
+
+(defenterprise mfa-required?
+  "Whether MFA is currently required for all users on the instance"
+  :feature :multi-factor-auth
+  []
+  (metabase-enterprise.mfa.settings/mfa-required?))
