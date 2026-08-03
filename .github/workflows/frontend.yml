@@ -146,7 +146,7 @@ jobs:
                 --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --runTestsByPath
               exit $?
             fi
-            echo "Test plan selected the full unit suite."
+            echo "Running the full unit suite."
           fi
           bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.

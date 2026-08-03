@@ -41,8 +41,8 @@ jobs:
       stats: ${{ steps.compute.outputs.stats }}
       fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
       fe_unit_specs_count: ${{ steps.compute.outputs.fe_unit_specs_count }}
-      loki_mode: ${{ steps.loki.outputs.mode }}
       loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
+      loki_mode: ${{ steps.loki.outputs.mode }}
       e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
     steps:
       - uses: actions/checkout@v6
@@ -78,8 +78,8 @@ jobs:
           path: test-plan.json
           retention-days: 1
       # The plan decides: none skips the visual-test job, filter narrows it,
-      # all runs the whole whitelist. Off pull requests the plan is built
-      # with narrow=false, so filter cannot occur there.
+      # all runs the whole whitelist.
+      # Off pull requests the plan never trims (narrow=false), so filter cannot occur there.
       - name: Select Loki mode
         id: loki
         if: ${{ steps.compute.outcome == 'success' }}
@@ -253,6 +253,7 @@ jobs:
       (github.event_name == 'pull_request' || github.event_name == 'merge_group') &&
       needs.create-test-plan.outputs.loki_mode != 'none'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 60
     services:
       docker:
         image: docker:19.03.12
@@ -324,7 +325,6 @@ jobs:
         run: bun run test-visual:loki-report
 
       - name: Upload Artifact
-        id: artifact-upload-step
         if: failure()
         uses: actions/upload-artifact@v7
         with:
