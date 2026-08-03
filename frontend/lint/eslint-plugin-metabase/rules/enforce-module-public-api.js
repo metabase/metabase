@@ -39,33 +39,39 @@ module.exports = {
       return {};
     }
 
+    // Longest alias first, so a nested module wins over its parent when both match.
+    const aliases = [...modules].sort((a, b) => b.length - a.length);
+
     const filename = context.filename.replaceAll("\\", "/");
+    const owningAlias = aliases.find((alias) =>
+      filename.includes(`/frontend/src/${alias}/`),
+    );
 
     const checkSource = (sourceNode) => {
       const source = sourceNode && sourceNode.value;
       if (typeof source !== "string") {
         return;
       }
-      for (const alias of modules) {
-        const isModuleFile = filename.includes(`/frontend/src/${alias}/`);
-        if (source === alias) {
-          if (isModuleFile) {
-            context.report({
-              node: sourceNode,
-              messageId: "useRelativeImport",
-              data: { alias },
-            });
-          }
-          return;
-        }
-        if (source.startsWith(`${alias}/`)) {
-          context.report({
-            node: sourceNode,
-            messageId: isModuleFile ? "useRelativeImport" : "useModuleIndex",
-            data: { alias },
-          });
-          return;
-        }
+      const target = aliases.find(
+        (alias) => source === alias || source.startsWith(`${alias}/`),
+      );
+      if (!target) {
+        return;
+      }
+      if (target === owningAlias) {
+        context.report({
+          node: sourceNode,
+          messageId: "useRelativeImport",
+          data: { alias: target },
+        });
+        return;
+      }
+      if (source !== target) {
+        context.report({
+          node: sourceNode,
+          messageId: "useModuleIndex",
+          data: { alias: target },
+        });
       }
     };
 
