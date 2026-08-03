@@ -16,10 +16,4 @@ export function initializeContextJSON(optionsJSON: string): void {
   clearCustomVizRegistrations();
 }
 
-/**
- * Register a custom viz plugin whose bundle the backend has just evaluated
- * in this context (see registerCustomVizPluginFromGlobal). Call
- * initializeContextJSON first so the EE registry override and site locale
- * are in place.
- */
 export const registerCustomVizPlugin = registerCustomVizPluginFromGlobal;
