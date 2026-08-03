@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.usage-metadata.core :as usage-metadata]
    [metabase.usage-metadata.insights :as insights]))
@@ -98,27 +99,27 @@
               :popular-source-count 1
               :total-view-count 12}})
 
-(deftest candidate-tables-delegate-to-insights-test
+(deftest ^:parallel candidate-tables-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/candidate-tables
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    sample-candidate-table-report)]
+    (mt/with-dynamic-fn-redefs [insights/candidate-tables
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  sample-candidate-table-report)]
       (is (= sample-candidate-table-report
              (usage-metadata/candidate-tables {:limit 3})))
       (is (= {:limit 3} @captured-args)))))
 
-(deftest candidate-metrics-delegate-to-insights-test
+(deftest ^:parallel candidate-metrics-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/candidate-metrics
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-candidate-metric])]
+    (mt/with-dynamic-fn-redefs [insights/candidate-metrics
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  [sample-candidate-metric])]
       (is (= [sample-candidate-metric]
              (usage-metadata/candidate-metrics {:limit 3})))
       (is (= {:limit 3} @captured-args)))))
 
-(deftest implicit-segments-delegate-to-insights-test
+(deftest ^:parallel implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-segments
                                             (fn [opts]
@@ -129,7 +130,7 @@
       (is (= {:source-type :card, :source-id 99, :limit 3}
              @captured-args)))))
 
-(deftest implicit-metrics-delegate-to-insights-test
+(deftest ^:parallel implicit-metrics-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-metrics
                                             (fn [opts]
@@ -140,7 +141,7 @@
       (is (= {:source-type :table, :source-id 42, :limit 7}
              @captured-args)))))
 
-(deftest implicit-dimensions-delegate-to-insights-test
+(deftest ^:parallel implicit-dimensions-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-dimensions
                                             (fn [opts]
@@ -151,7 +152,7 @@
       (is (= {:source-type :table, :source-id 42, :limit 9}
              @captured-args)))))
 
-(deftest suggested-segments-delegate-to-insights-test
+(deftest ^:parallel suggested-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/suggested-segments-for-owner
                                             (fn [opts]
@@ -162,7 +163,7 @@
       (is (= {:source-type :table, :source-id 42, :limit 5}
              @captured-args)))))
 
-(deftest profile-observations-delegate-to-insights-test
+(deftest ^:parallel profile-observations-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/profile-observations
                                             (fn [opts]

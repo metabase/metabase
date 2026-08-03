@@ -45,19 +45,22 @@
 
 (defn create-measure!
   "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
-  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
-  the create-check runs wherever a Measure is authored."
-  [{:keys [name description definition], :as body}]
-  ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
-  ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
-  ;; `definition-table-id` requires a normalized definition.
-  (let [definition (lib-be/normalize-query definition)
-        table-id   (definition-table-id definition)]
-    (api/create-check :model/Measure (assoc body :table_id table-id))
-    (let [measure (api/check-500
-                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
-      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
-      (t2/hydrate measure :creator))))
+  `:event/measure-create` (unless `publish-event?` is false) and returns the hydrated Measure. The shared
+  domain create path, so the create-check runs wherever a Measure is authored."
+  ([body]
+   (create-measure! body {}))
+  ([{:keys [name description definition], :as body} {:keys [publish-event?], :or {publish-event? true}}]
+   ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
+   ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
+   ;; `definition-table-id` requires a normalized definition.
+   (let [definition (lib-be/normalize-query definition)
+         table-id   (definition-table-id definition)]
+     (api/create-check :model/Measure (assoc body :table_id table-id))
+     (let [measure (api/check-500
+                    (measures.db/insert-measure! api/*current-user-id* name description definition))]
+       (when publish-event?
+         (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*}))
+       (t2/hydrate measure :creator)))))
 
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."

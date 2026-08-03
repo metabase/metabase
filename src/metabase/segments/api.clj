@@ -37,17 +37,20 @@
 
 (defn create-segment!
   "Create-check and insert a new Segment whose table is derived from its `definition`; publishes
-  `:event/segment-create` and returns the hydrated Segment. The shared domain create path, so
-  the create-check runs wherever a Segment is authored."
-  [{:keys [name description definition], :as body}]
-  ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
-  (let [table-id   (definition-table-id definition)
-        definition (lib-be/normalize-query definition)]
-    (api/create-check :model/Segment (assoc body :table_id table-id))
-    (let [segment (api/check-500
-                   (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
-      (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
-      (t2/hydrate segment :creator))))
+  `:event/segment-create` (unless `publish-event?` is false) and returns the hydrated Segment. The shared
+  domain create path, so the create-check runs wherever a Segment is authored."
+  ([body]
+   (create-segment! body {}))
+  ([{:keys [name description definition], :as body} {:keys [publish-event?], :or {publish-event? true}}]
+   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
+   (let [table-id   (definition-table-id definition)
+         definition (lib-be/normalize-query definition)]
+     (api/create-check :model/Segment (assoc body :table_id table-id))
+     (let [segment (api/check-500
+                    (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
+       (when publish-event?
+         (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*}))
+       (t2/hydrate segment :creator)))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"

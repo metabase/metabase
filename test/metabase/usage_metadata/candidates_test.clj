@@ -118,11 +118,11 @@
                  (candidate-families [medium-root weak-root strong-child]))))))
 
 (deftest latest-successful-snapshot-and-durable-dismissal-test
-  (mt/with-temp [:model/UsageMetadataCandidateRun old-run {:status            :succeeded
-                                                           :trigger           :scheduled
-                                                           :algorithm_version 1
-                                                           :source_config     {}
-                                                           :finished_at       (mi/now)}
+  (mt/with-temp [:model/UsageMetadataCandidateRun _old-run {:status            :succeeded
+                                                            :trigger           :scheduled
+                                                            :algorithm_version 1
+                                                            :source_config     {}
+                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidateRun run     {:status            :succeeded
                                                            :trigger           :manual
                                                            :algorithm_version 1
@@ -141,8 +141,7 @@
       (is (zero? (t2/count :model/UsageMetadataCandidateDismissal
                            :candidate_type :segment
                            :table_id (mt/id :orders)
-                           :signature_hash (:signature_hash candidate)))))
-    (is (some? old-run))))
+                           :signature_hash (:signature_hash candidate)))))))
 
 (deftest refresh-queue-is-exclusive-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :queued
