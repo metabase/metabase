@@ -691,6 +691,43 @@ describe("CollectionItemsTable", () => {
       setupEnterpriseOnlyPlugin("collections");
     });
 
+    it("keeps dashboards when filtering for official collections", async () => {
+      setup({
+        collectionItems: [
+          collectionItems[0],
+          regularCollection,
+          officialCollection,
+        ],
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      expect(screen.getByText("Regular collection")).toBeInTheDocument();
+      expect(screen.getByText("Official collection")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      await userEvent.click(screen.getByLabelText("Collection"));
+
+      await waitFor(() => {
+        const searchParams = findItemsSearchParamsByAuthorityLevel("official");
+        expect({
+          authorityLevel: searchParams?.get("authority_level"),
+          models: searchParams?.getAll("models").sort(),
+        }).toEqual({
+          authorityLevel: "official",
+          models: ["collection", "dashboard"],
+        });
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Regular collection"),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Revenue overview")).toBeInTheDocument();
+      expect(screen.getByText("Official collection")).toBeInTheDocument();
+    });
+
     it("filters official and regular collections independently", async () => {
       setup({
         collectionItems: [regularCollection, officialCollection],

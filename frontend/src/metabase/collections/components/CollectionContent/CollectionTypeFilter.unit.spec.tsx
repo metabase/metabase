@@ -127,6 +127,26 @@ describe("CollectionTypeFilter", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps official collections inside the generic Collection option when the premium feature is disabled", async () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({
+        official_collections: false,
+      }),
+    });
+    setupEnterpriseOnlyPlugin("collections");
+    setup({
+      availableModels: ["collection"],
+      availableAuthorityLevels: ["regular", "official"],
+    });
+
+    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+
+    expect(screen.getByLabelText("Collection")).toBeChecked();
+    expect(
+      screen.queryByLabelText("Official collections"),
+    ).not.toBeInTheDocument();
+  });
+
   describe("with the official collections plugin", () => {
     beforeEach(() => {
       mockSettings({
@@ -170,6 +190,22 @@ describe("CollectionTypeFilter", () => {
 
       expect(screen.queryByLabelText("Collection")).not.toBeInTheDocument();
       expect(screen.getByLabelText("Official collections")).toBeChecked();
+    });
+
+    it("shows only Collection when no official collection is available", async () => {
+      setup({
+        availableModels: ["collection"],
+        availableAuthorityLevels: ["regular"],
+      });
+
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+
+      expect(screen.getByLabelText("Collection")).toBeChecked();
+      expect(
+        screen.queryByLabelText("Official collections"),
+      ).not.toBeInTheDocument();
     });
 
     it("returns the regular alias when Official collections is unchecked", async () => {

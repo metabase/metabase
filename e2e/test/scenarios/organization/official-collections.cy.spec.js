@@ -96,8 +96,8 @@ describe("official collections", () => {
       );
 
       cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Regular child collection");
-        cy.findByText("Official child collection");
+        cy.findByText("Regular child collection").should("be.visible");
+        cy.findByText("Official child collection").should("be.visible");
       });
       cy.findByRole("button", { name: "Filter" }).click();
 
@@ -110,16 +110,17 @@ describe("official collections", () => {
         .its("request.url")
         .should("include", "authority_level=official");
       cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Official child collection");
+        cy.findByText("Official child collection").should("be.visible");
         cy.findByText("Regular child collection").should("not.exist");
       });
 
       H.popover().within(() => {
         cy.findByLabelText("Collection").click();
       });
-      cy.wait("@getFilteredCollectionItems")
-        .its("request.url")
-        .should("not.include", "authority_level");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Regular child collection").should("be.visible");
+        cy.findByText("Official child collection").should("be.visible");
+      });
       H.popover().within(() => {
         cy.findByLabelText("Official collections").click();
       });
@@ -127,7 +128,7 @@ describe("official collections", () => {
         .its("request.url")
         .should("include", "authority_level=regular");
       cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Regular child collection");
+        cy.findByText("Regular child collection").should("be.visible");
         cy.findByText("Official child collection").should("not.exist");
       });
     });
