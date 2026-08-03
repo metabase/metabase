@@ -143,6 +143,7 @@
           message-id   (volatile! nil)
           model-name   (volatile! nil)
           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+          stop-reason  (volatile! nil)
           close!       (fn [result]
                          (u/prog1 (rf result (merge {:type (case @current-type
                                                              :text          :text-end
@@ -219,13 +220,18 @@
                                                                    :toolCallId     (:toolCallId @payload)
                                                                    :inputTextDelta (:arguments (:function tool-call))})
              ;; Finish reason — close whatever is open
-             (some? finish-reason)                            (cond->
-                                                               @current-type (close!))
+             (some? finish-reason)                            (-> (u/prog1
+                                                                    (vreset! stop-reason finish-reason))
+                                                                  (cond->
+                                                                   @current-type (close!)))
              ;; Usage (often on a separate final chunk with empty choices)
-             (some? usage)                                    (rf {:type  :usage
-                                                                   :usage (usage->aisdk-usage usage)
-                                                                   :id    @message-id
-                                                                   :model @model-name}))))))))
+             (some? usage)                                    (rf (cond-> {:type  :usage
+                                                                           :usage (usage->aisdk-usage usage)
+                                                                           :id    @message-id
+                                                                           :model @model-name}
+                                                                    @stop-reason
+                                                                    (assoc :finish-reason     (core/stop-reason->finish-reason @stop-reason)
+                                                                           :raw-finish-reason @stop-reason))))))))))
 
 ;;; Request body
 

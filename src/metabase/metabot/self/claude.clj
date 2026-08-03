@@ -85,6 +85,7 @@
           ;; normally, but if the stream is interrupted we flush the last known
           ;; usage in the completion arity so we don't lose data entirely.
           last-usage   (volatile! nil)
+          stop-reason  (volatile! nil)
           close!       (fn [result]
                          (u/prog1 (if-let [end-type (case @current-type
                                                       :text              :text-end
@@ -103,10 +104,12 @@
            ;; close up latest type if incomplete
            @current-type (close!)
            ;; flush last-known usage if stream ended before message_delta.
-           @last-usage   (rf {:type  :usage
-                              :usage (claude-usage->aisdk-usage @last-usage)
-                              :id    @message-id
-                              :model @model-name})
+           @last-usage   (rf (cond-> {:type  :usage
+                                      :usage (claude-usage->aisdk-usage @last-usage)
+                                      :id    @message-id
+                                      :model @model-name}
+                               @stop-reason (assoc :finish-reason     (core/stop-reason->finish-reason @stop-reason)
+                                                   :raw-finish-reason @stop-reason)))
            true          (rf)))
         ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
@@ -169,7 +172,8 @@
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
              ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
-                                          (vreset! last-usage (:usage chunk)))
+                                          (vreset! last-usage (:usage chunk))
+                                          (vreset! stop-reason (:stop_reason delta)))
              ;; end of message
              (= t "message_stop")       identity
              ;; catch errors if any

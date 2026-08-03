@@ -186,6 +186,29 @@
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
+(deftest ^:parallel claude-stop-reason-on-usage-chunk-test
+  (letfn [(usage-chunk [stop-reason]
+            (let [events [{:type "message_start"
+                           :message {:id "msg-1" :model "claude-haiku-4-5" :usage {:input_tokens 10}}}
+                          {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                          {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "hi"}}
+                          {:type "message_delta"
+                           :delta {:stop_reason stop-reason}
+                           :usage {:input_tokens 10 :output_tokens 64}}
+                          {:type "message_stop"}]]
+              (->> (into [] (claude/claude->aisdk-chunks-xf) events)
+                   (filter #(= :usage (:type %)))
+                   first)))]
+    (testing "max_tokens truncation surfaces as AI SDK \"length\" plus the raw provider value"
+      (is (=? {:finish-reason "length" :raw-finish-reason "max_tokens"}
+              (usage-chunk "max_tokens"))))
+    (testing "a normal end_turn surfaces as \"stop\""
+      (is (=? {:finish-reason "stop" :raw-finish-reason "end_turn"}
+              (usage-chunk "end_turn"))))
+    (testing "an unknown stop reason maps to \"other\" without losing the raw value"
+      (is (=? {:finish-reason "other" :raw-finish-reason "pause_turn"}
+              (usage-chunk "pause_turn"))))))
+
 (deftest ^:parallel claude-thinking-blocks-translated-test
   (testing "thinking content blocks become reasoning chunks; signature rides the end"
     (let [events [{:type "message_start"

@@ -556,6 +556,33 @@
              (str "event does not match the wire schema: " (pr-str event))))
        events))))
 
+(deftest ^:parallel stop-reason->finish-reason-test
+  (testing "every mapped value is a legal AI SDK FinishReason"
+    (is (every? #{"stop" "length" "content-filter" "tool-calls" "error" "other"}
+                (vals @#'self.core/provider-finish-reasons))))
+  (testing "truncation — the value the agent loop keys off"
+    (is (= "length" (self.core/stop-reason->finish-reason "max_tokens"))))
+  (testing "unmapped → \"other\"; nil → nil"
+    (is (= "other" (self.core/stop-reason->finish-reason "something_new")))
+    (is (nil? (self.core/stop-reason->finish-reason nil)))))
+
+(deftest parts->aisdk-sse-xf-finish-reason-test
+  (testing "a truncated turn emits finishReason \"length\" and without an error"
+    (is (= ["text-start" "text-delta" "text-end" "finish"]
+           (mapv :type
+                 (sse-events [{:type :text :id "t1" :text "partial"}
+                              {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+                               :finish-reason "length" :raw-finish-reason "max_tokens"}]))))
+    (is (=? {:type "finish" :finishReason "length"}
+            (last (sse-events [{:type :text :id "t1" :text "partial"}
+                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+                                :finish-reason "length" :raw-finish-reason "max_tokens"}])))))
+  (testing "an in-turn error part does not override a length finish"
+    (is (=? {:type "finish" :finishReason "length"}
+            (last (sse-events [{:type :error :error {:message "tool blew up mid-turn"}}
+                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+                                :finish-reason "length" :raw-finish-reason "max_tokens"}]))))))
+
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
     (is (= [["start" "msg-1"] ["start-step" nil]

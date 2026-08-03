@@ -126,6 +126,26 @@
 
 ;;; AISDK5
 
+(def ^:private provider-finish-reasons
+  "Raw provider stop reasons → AI SDK v5 `FinishReason`."
+  {"end_turn"                      "stop"
+   "stop"                          "stop"
+   "stop_sequence"                 "stop"
+   "max_tokens"                    "length"
+   "max_output_tokens"             "length"
+   "model_context_window_exceeded" "length"
+   "length"                        "length"
+   "tool_use"                      "tool-calls"
+   "tool_calls"                    "tool-calls"
+   "refusal"                       "content-filter"
+   "content_filter"                "content-filter"})
+
+(defn stop-reason->finish-reason
+  "Unmapped reasons → \"other\"; nil → nil."
+  [raw]
+  (when raw
+    (get provider-finish-reasons raw "other")))
+
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
   Falls back to returning the raw string wrapped in a map when parsing fails,
@@ -368,6 +388,7 @@
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
+           finish-reason     (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
@@ -411,7 +432,10 @@
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
-                              :finishReason (if @error? "error" "stop")}
+                              :finishReason (cond
+                                              (= @finish-reason "length") "length"
+                                              @error?                     "error"
+                                              :else                       "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))
@@ -501,6 +525,8 @@
               ;; cumulative per-model snapshot; last-wins, emitted on finish
               (do
                 (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+                (when-let [fr (:finish-reason part)]
+                  (vreset! finish-reason fr))
                 result)
 
               ;; Unknown types: emit as data parts

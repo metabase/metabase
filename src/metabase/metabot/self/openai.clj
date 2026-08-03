@@ -164,11 +164,14 @@
              ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
              ;; still has valid partial output, so we record its usage rather than treating it as an error.
              (contains? #{"response.completed" "response.incomplete"} t)
-             (rf {:type  :usage
-                  :usage (openai-usage->aisdk-usage (:usage response))
-                  ;; non-standard extension, not in AISDK5
-                  :id    (:id response)
-                  :model @model-name})
+             (rf (let [raw (get-in response [:incomplete_details :reason])]
+                   (cond-> {:type  :usage
+                            :usage (openai-usage->aisdk-usage (:usage response))
+                            ;; non-standard extension, not in AISDK5
+                            :id    (:id response)
+                            :model @model-name}
+                     raw (assoc :finish-reason     (core/stop-reason->finish-reason raw)
+                                :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
              (= t "response.failed")            (rf {:type      :error
