@@ -6,6 +6,7 @@ import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
+  LoadingOverlay,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
@@ -24,7 +25,7 @@ import {
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
-type SlowContentDiagnosticsTableProps = {
+type SlowContentTableProps = {
   findings: ContentDiagnosticsSlowFinding[];
   params: Urls.SlowContentParams;
   sortOptions: Sorting<ContentDiagnosticsSlowSortColumn> | undefined;
@@ -36,7 +37,7 @@ type SlowContentDiagnosticsTableProps = {
   ) => void;
 };
 
-export function SlowContentDiagnosticsTable({
+export function SlowContentTable({
   findings,
   params,
   sortOptions,
@@ -44,7 +45,7 @@ export function SlowContentDiagnosticsTable({
   isLoading = false,
   onSelect,
   onSortOptionsChange,
-}: SlowContentDiagnosticsTableProps) {
+}: SlowContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(
     () => getSortingState(sortOptions),
@@ -93,17 +94,21 @@ export function SlowContentDiagnosticsTable({
       flex="0 1 auto"
       mih={0}
       p={0}
+      pos="relative"
       withBorder
       data-testid="slow-content-list"
     >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          emptyState={<MonitorEmptyState label={t`No slow content found`} />}
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            emptyState={<MonitorEmptyState label={t`No slow content found`} />}
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
     </Card>
   );

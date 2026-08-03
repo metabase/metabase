@@ -150,6 +150,7 @@ export type ContentDiagnosticsSlowFindingDetails =
   };
 
 export type ContentDiagnosticsSlowFinding = ContentDiagnosticsBaseFinding & {
+  finding_type: "slow";
   duration_ms: number;
   details: ContentDiagnosticsSlowFindingDetails;
 };

@@ -19,7 +19,7 @@ import { getDurationFilterOptions } from "../slow-utils";
 import type { SlowContentFilterOptions } from "../types";
 import { getFilterTypeLabel } from "../utils";
 
-type SlowDiagnosticsFilterPickerProps = {
+type SlowContentFilterPickerProps = {
   filterOptions: SlowContentFilterOptions;
   availableTypes: ContentDiagnosticsFilterType[];
   isDisabled?: boolean;
@@ -27,13 +27,13 @@ type SlowDiagnosticsFilterPickerProps = {
   onFilterOptionsChange: (filterOptions: SlowContentFilterOptions) => void;
 };
 
-export function SlowDiagnosticsFilterPicker({
+export function SlowContentFilterPicker({
   filterOptions,
   availableTypes,
   isDisabled = false,
   hasDefaultOptions = false,
   onFilterOptionsChange,
-}: SlowDiagnosticsFilterPickerProps) {
+}: SlowContentFilterPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
   const durationOptions = getDurationFilterOptions();
 
