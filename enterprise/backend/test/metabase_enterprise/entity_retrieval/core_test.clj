@@ -456,8 +456,13 @@
                     (is (=? [{:model "table" :id table-id}]
                             (distinct (map :entity (entity-retrieval.core/search-unfiltered "orders" 10))))
                         "the query really runs, so the [] below is the degrade path and not a fallback")
-                    ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000
-                    (is (= [] (entity-retrieval.core/search-unfiltered "q" 10))))
+                    ;; Shrink the configured model to one dimension, the way an upgrade would. "q" is a valid
+                    ;; vector for the new model, so the provider accepts it and the dim-4 index column is what
+                    ;; no longer matches -> pgvector SQLState 22000.
+                    (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                                (constantly (assoc semantic.tu/mock-embedding-model
+                                                                   :vector-dimensions 1))]
+                      (is (= [] (entity-retrieval.core/search-unfiltered "q" 10)))))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
                                             "\", \"" (index-table/meta-table) "\"")])))))))))))
