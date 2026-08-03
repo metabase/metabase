@@ -3,7 +3,6 @@ import type {
   ComponentClass,
   FunctionComponent,
   HTMLProps,
-  ReactNode,
 } from "react";
 
 /**
@@ -167,17 +166,6 @@ export type SetURLSearchParams = (
  * call sites that annotate the injected `route` / `routes` props.
  */
 export type RouteComponent = ComponentClass<any> | FunctionComponent<any>;
-
-/**
- * The `<Route>` configuration props, re-homed from v3's `RouteProps`. The
- * lifecycle hooks (`onEnter` / `onChange` / `onLeave`) are intentionally absent:
- * they have no v7 equivalent and the app does that work in components now.
- */
-export interface RouteProps {
-  children?: ReactNode;
-  path?: string;
-  component?: RouteComponent;
-}
 
 /**
  * v3's function form of a `<Link to>`, kept because `RouterLink` still handles it.
