@@ -68,21 +68,55 @@
   []
   (into (vec (mcp/v2-scopes)) (mcp/opt-in-scopes)))
 
+(def ^:private scheme-default-port
+  {"http" 80, "https" 443})
+
+(defn- canonical-resource-uri
+  "Canonical form of a resource identifier, for comparing indicators that clients spell differently.
+
+   Lowercases scheme and host, elides the scheme's default port, and trims a trailing slash. Query
+   and fragment are dropped: the canonical form has neither, and ignoring them can only cause
+   narrowing, never widening. Returns nil for anything that is not an absolute URI, which then
+   matches nothing.
+
+   Per RFC 3986 the scheme and host are case-insensitive and the default port is elidable; the path
+   is neither, so `/API/v2` deliberately does not canonicalize to `/api/v2`."
+  [s]
+  (when s
+    (try
+      (let [^java.net.URI uri (java.net.URI. (str s))
+            scheme            (some-> (.getScheme uri) u/lower-case-en)
+            host              (some-> (.getHost uri) u/lower-case-en)
+            port              (.getPort uri)
+            path              (or (.getPath uri) "")]
+        (when (and scheme host)
+          (str scheme "://" host
+               (when-not (or (neg? port) (= port (scheme-default-port scheme)))
+                 (str ":" port))
+               (cond-> path
+                 (and (> (count path) 1) (str/ends-with? path "/"))
+                 (subs 0 (dec (count path)))))))
+      (catch java.net.URISyntaxException _ nil))))
+
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
    `resources` are RFC 8707 resource indicators from the authorization request. When one names the
-   v2 MCP resource, scopes that surface does not accept are dropped, so the consent screen asks for
-   what the token can actually be used for rather than everything the client registered. Returns
-   the scope unchanged when no indicator names a resource we narrow for, and nil when nothing
-   survives (callers should drop the parameter entirely rather than send an empty one).
+   v2 MCP resource — compared as [[canonical-resource-uri]], since clients disagree on trailing
+   slashes, case, and default ports — scopes that surface does not accept are dropped, so the
+   consent screen asks for what the token can actually be used for rather than everything the
+   client registered. Returns the scope unchanged when no indicator names a resource we narrow for,
+   and nil when nothing survives (callers should drop the parameter entirely rather than send an
+   empty one).
 
    Only ever removes scopes. `mb:full` survives: it is a first-party full-access grant deliberately
    absent from the v2 resource metadata, and dropping it would break a first-party client that
    legitimately asked for it alongside the MCP scopes."
   [resources scope]
   (let [scope (some-> scope str str/trim not-empty)]
-    (if-not (and scope (contains? (set resources) (str (system/site-url) v2-resource-path)))
+    (if-not (and scope
+                 (contains? (into #{} (keep canonical-resource-uri) resources)
+                            (canonical-resource-uri (str (system/site-url) v2-resource-path))))
       scope
       (let [accepted (conj (set (v2-resource-scopes)) full-access-scope)]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))

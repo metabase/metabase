@@ -127,3 +127,39 @@
         (let [requested "agent:content:read agent:question:create mb:full"]
           (is (every? (scopes requested)
                       (scopes (oauth-server/narrow-scope-to-resource [v2-uri] requested)))))))))
+
+(deftest narrow-scope-to-resource-canonicalization-test
+  (testing "resource indicators are compared canonically, not byte-for-byte. Clients disagree on
+            trailing slashes, case, and default ports -- a live Claude Code bug appends a trailing
+            slash via WHATWG URL -- and a mismatch silently skips narrowing, handing the caller the
+            wide consent screen. RFC 3986 makes scheme and host case-insensitive and the default
+            port elidable; the path is neither."
+    (let [wide     "agent:content:read agent:question:create"
+          narrowed "agent:content:read"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (doseq [indicator ["http://localhost:3000/api/metabase-mcp/v2"
+                           "http://localhost:3000/api/metabase-mcp/v2/"
+                           "HTTP://LOCALHOST:3000/api/metabase-mcp/v2"
+                           "http://LocalHost:3000/api/metabase-mcp/v2/"]]
+          (testing (str "matches " (pr-str indicator))
+            (is (= narrowed (oauth-server/narrow-scope-to-resource [indicator] wide))))))
+      (testing "the default port is elidable in both directions"
+        (mt/with-temporary-setting-values [site-url "https://example.com"]
+          (doseq [indicator ["https://example.com/api/metabase-mcp/v2"
+                             "https://example.com:443/api/metabase-mcp/v2"]]
+            (testing (str "matches " (pr-str indicator))
+              (is (= narrowed (oauth-server/narrow-scope-to-resource [indicator] wide))))))
+        (mt/with-temporary-setting-values [site-url "http://example.com"]
+          (is (= narrowed (oauth-server/narrow-scope-to-resource
+                           ["http://example.com:80/api/metabase-mcp/v2"] wide)))))
+      (testing "canonicalization does not make unrelated resources match"
+        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+          (doseq [indicator ["http://localhost:3000/api/metabase-mcp"
+                             "http://localhost:3000/api/metabase-mcp/v2/extra"
+                             "http://localhost:3000/API/METABASE-MCP/V2"
+                             "http://localhost:3001/api/metabase-mcp/v2"
+                             "https://localhost:3000/api/metabase-mcp/v2"
+                             "http://evil.example.com/api/metabase-mcp/v2"
+                             "not-a-uri"]]
+            (testing (str "leaves scope alone for " (pr-str indicator))
+              (is (= wide (oauth-server/narrow-scope-to-resource [indicator] wide))))))))))
