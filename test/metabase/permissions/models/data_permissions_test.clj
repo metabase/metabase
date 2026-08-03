@@ -1,5 +1,6 @@
 (ns metabase.permissions.models.data-permissions-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -49,7 +50,7 @@
     (binding [api/*current-user-id*                user-id
               data-perms/*db-permission-cache*     cache
               data-perms/*all-db-permission-cache* (atom {})]
-      (mt/with-dynamic-fn-redefs [data-perms/load-db-perms
+      (mt/with-dynamic-fn-redefs [data-perms/load-database-perms
                                   (fn [_user-id db-ids]
                                     (swap! loads conj (some-> db-ids set))
                                     {:perms/manage-database {10 {:database :yes :every-table :yes :any-table :yes}
@@ -68,7 +69,7 @@
           (is (= [#{10} #{11}] @loads)))
         (testing "priming a list of databases takes them in one go, skipping those already loaded"
           (reset! loads [])
-          (data-perms/prime-db-perms-cache {:db-ids #{10 12 13}})
+          (data-perms/prime-database-perms-cache {:db-ids #{10 12 13}})
           (is (= [#{12 13}] @loads)))
         (testing "a database with no rows still counts as loaded, and is not re-queried"
           (reset! loads [])
@@ -214,6 +215,22 @@
         (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
       (testing "an empty seq does not throw"
         (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
+
+(deftest cache-miss-error-names-its-prime-function-test
+  (testing "the miss error points at the prime function for the kind of check, and names the entity"
+    (binding [data-perms/*perms-cache-misses-are-errors?* true]
+      (doseq [[kind id expected-fn] [[:table    42   "prime-table-perms-cache"]
+                                     [:schema   #{7} "prime-schema-perms-cache"]
+                                     [:database 3    "prime-database-perms-cache"]]]
+        (testing kind
+          (let [cache (atom {})
+                miss! #(#'data-perms/cache-miss! kind id cache)]
+            (testing "a handful of misses is allowed"
+              (dotimes [_ 4] (is (nil? (miss!)))))
+            (let [e (is (thrown? ExceptionInfo (miss!)))]
+              (is (str/includes? (ex-message e) (str "[[" expected-fn "]]")))
+              (is (str/includes? (ex-message e) (str id)))
+              (is (= {:kind kind :id id} (ex-data e))))))))))
 
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
