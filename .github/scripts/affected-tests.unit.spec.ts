@@ -231,11 +231,12 @@ describe("createTestPlan", () => {
     expect(plan.stats.be_files_changed).toBe(3);
   });
 
-  it("widens a non-empty selection to the full suite when narrowing is off", () => {
+  it("runs full FE suites when narrowing is off and frontend files changed", () => {
     const plan = createTestPlan({
       ...baseInput,
       narrow: false,
       changedFiles: ["src/foo/x.ts"],
+      feFilesChanged: 1,
     });
 
     // With narrowing this change selects only the two foo specs and one story.
@@ -243,7 +244,21 @@ describe("createTestPlan", () => {
     expect(plan.loki_stories_to_run.sort()).toEqual([...LOKI_FILES].sort());
   });
 
-  it("still skips suites with no selected work when narrowing is off", () => {
+  it("gates the non-narrowed run on changed files, not the module graph", () => {
+    // A frontend change the module graph cannot see still runs the full
+    // suites, so a graph mistake can never skip a suite at the last gate.
+    const plan = createTestPlan({
+      ...baseInput,
+      narrow: false,
+      changedFiles: ["frontend/unmapped/x.ts"],
+      feFilesChanged: 1,
+    });
+
+    expect(plan.fe_unit_specs_to_run.sort()).toEqual([...UNIT_FILES].sort());
+    expect(plan.loki_stories_to_run.sort()).toEqual([...LOKI_FILES].sort());
+  });
+
+  it("skips FE suites when narrowing is off and no frontend files changed", () => {
     const plan = createTestPlan({
       ...baseInput,
       narrow: false,

@@ -48,8 +48,9 @@ export type CreateTestPlanInput = {
   elements: ModuleDef[];
   rules: Rule[];
   changedFiles: string[];
-  // False disables selection: suites with any selected work run in full.
-  // Used off pull requests, where the plan gates suites but never trims them.
+  // False disables module-graph selection: each suite runs in full when any
+  // frontend file changed or its force-all flags fire, and is skipped
+  // otherwise. Used off pull requests.
   narrow: boolean;
   // Parsed dependency-cruiser edges, or null to fall back to the rules graph.
   fileDependencies: FileDependency[] | null;
@@ -179,21 +180,30 @@ export function createTestPlan({
   const select = (forceAll: boolean, affected: Set<string>, files: string[]) =>
     forceAll ? files : filterAffectedTests(nodes, affected, files);
 
-  // A non-narrowing run (merge queue, pushes to master) still uses the plan
-  // to decide whether a suite runs, but never trims it:
-  // any selected work at all widens to the full suite.
-  const widen = (selected: string[], all: string[]) =>
-    narrow || selected.length === 0 ? selected : all;
+  // A non-narrowing run (merge queue, pushes to master) still gates each
+  // suite, but on the same coarse signal the path filters use - any frontend
+  // change runs the full suite. The module graph only decides on pull
+  // requests, so a graph mistake can never skip a suite at the last gate.
+  const gateFull = (forceAll: boolean, files: string[]) =>
+    forceAll || feFilesChanged > 0 ? files : [];
 
   const { unit, loki, e2e } = testFilesBySuite;
-  const unitRules = widen(select(unitForceAll, rulesAffected, unit), unit);
-  const unitUsage = widen(select(unitForceAll, usageAffected, unit), unit);
-  const lokiRules = widen(select(lokiForceAll, rulesAffected, loki), loki);
-  const lokiUsage = widen(select(lokiForceAll, usageAffected, loki), loki);
+  const unitRules = narrow
+    ? select(unitForceAll, rulesAffected, unit)
+    : gateFull(unitForceAll, unit);
+  const unitUsage = narrow
+    ? select(unitForceAll, usageAffected, unit)
+    : gateFull(unitForceAll, unit);
+  const lokiRules = narrow
+    ? select(lokiForceAll, rulesAffected, loki)
+    : gateFull(lokiForceAll, loki);
+  const lokiUsage = narrow
+    ? select(lokiForceAll, usageAffected, loki)
+    : gateFull(lokiForceAll, loki);
 
-  // Precompute spec -> feature modules once (null when e2e runs in full).
+  // Precompute spec -> feature modules once (null when e2e never narrows).
   const specFeatures =
-    e2eForceAll || e2eSpecFiles === null
+    !narrow || e2eForceAll || e2eSpecFiles === null
       ? null
       : specFeatureModules(nodes, featureModules, e2eSpecFiles);
   // A spec that was itself edited always runs, even when no app module changed.
@@ -207,8 +217,12 @@ export function createTestPlan({
     );
     return e2e.filter((spec) => narrowed.has(spec) || changedSet.has(spec));
   };
-  const e2eRules = widen(selectE2e(rulesAffected), e2e);
-  const e2eUsage = widen(selectE2e(usageAffected), e2e);
+  const e2eRules = narrow
+    ? selectE2e(rulesAffected)
+    : gateFull(e2eForceAll, e2e);
+  const e2eUsage = narrow
+    ? selectE2e(usageAffected)
+    : gateFull(e2eForceAll, e2e);
 
   return {
     stats: {
