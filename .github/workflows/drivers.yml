@@ -706,7 +706,7 @@ jobs:
           adapter: backend
           test-suite: ${{ matrix.version.junit-name }}
           enforce-quarantine: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-gates == 'true' }}
-        - name: Cleanup python-runner
+      - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
         with:
@@ -864,7 +864,7 @@ jobs:
           adapter: backend
           test-suite: ${{ matrix.version.junit-name }}
           enforce-quarantine: ${{ needs.determine-driver-skips.outputs.mongo-ssl-gates == 'true' }}
-  
+
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
@@ -1092,7 +1092,7 @@ jobs:
           adapter: backend
           test-suite: 'be-tests-${{ matrix.version.junit-name }}'
           enforce-quarantine: ${{ needs.determine-driver-skips.outputs.postgres-gates == 'true' }}
-        - name: Cleanup python-runner
+      - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
         with:
