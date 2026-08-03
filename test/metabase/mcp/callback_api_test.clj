@@ -34,6 +34,13 @@
                                 :post expected-status "embed-mcp/feedback"
                                 body)))
 
+(defn- post-drill-with-ui-credential
+  [expected-status credential session-id]
+  (client/client-full-response :post expected-status "embed-mcp/drills"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}
+                               {:encodedQuery "ZW5jb2RlZA=="}))
+
 (deftest drills-post-stores-handle-test
   (testing "POST returns a UUID handle"
     (let [user-id    (mt/user->id :crowberto)
@@ -59,6 +66,23 @@
       (is (=? {:status 404}
               (post-drill :rasta 404 {:encodedQuery "ZW5jb2RlZA=="}
                           {"mcp-session-id" session}))))))
+
+(deftest ui-credential-session-binding-test
+  (let [user-id          (mt/user->id :crowberto)
+        credential-id    (mcp.session/create! user-id)
+        other-session-id (mcp.session/create! user-id)
+        credential       (mcp.session/issue-ui-credential credential-id user-id)]
+    (testing "a credential can use the callback surface for its own MCP session"
+      (is (= 200 (:status (post-drill-with-ui-credential 200 credential credential-id)))))
+    (testing "a credential cannot be reused with another MCP session"
+      (is (= 404 (:status (post-drill-with-ui-credential 404 credential other-session-id)))))
+    (testing "invalid and expired credentials are rejected"
+      (is (= 401 (:status (post-drill-with-ui-credential 401 "not-a-credential" credential-id))))
+      (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
+        (is (= 401 (:status (post-drill-with-ui-credential
+                             401
+                             (mcp.session/issue-ui-credential credential-id user-id)
+                             credential-id))))))))
 
 (deftest drills-post-rejects-blank-body-test
   (testing "blank encodedQuery returns 400"
