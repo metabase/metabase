@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
-   [metabase.config.core :as config]))
+   [metabase.config.core :as config]
+   [metabase.util.json :as json]))
 
 (deftest parse-manifest-test
   (testing "parses valid JSON"
@@ -73,6 +74,13 @@
       (is (false? (manifest/sdk-version-tested? 2)))
       (is (false? (manifest/sdk-version-tested? 2.0)))
       (is (false? (manifest/sdk-version-tested? {:major 2}))))))
+
+(deftest tested-sdk-version-range-covers-current-sdk-test
+  (testing "tested-sdk-version-range includes the @metabase/custom-viz version in package.json — bump the range in the same PR as the version (see custom-viz/dev.md)"
+    (let [{:keys [version]} (json/decode+kw (slurp "enterprise/frontend/src/custom-viz/package.json"))]
+      (is (true? (manifest/sdk-version-tested? version))
+          (format "@metabase/custom-viz %s is outside tested-sdk-version-range %s"
+                  version manifest/tested-sdk-version-range)))))
 
 (deftest warnings-test
   (with-redefs [config/is-dev? false
