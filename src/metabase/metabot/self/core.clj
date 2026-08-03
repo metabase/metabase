@@ -424,9 +424,10 @@
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
                               :finishReason (cond
-                                              (= @finish-reason "length") "length"
-                                              @error?                     "error"
-                                              :else                       "stop")}
+                                              (= @finish-reason "length")         "length"
+                                              @error?                             "error"
+                                              (= @finish-reason "content-filter") "content-filter"
+                                              :else                               "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))

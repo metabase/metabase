@@ -613,7 +613,17 @@
     (is (=? {:type "finish" :finishReason "length"}
             (last (sse-events [{:type :error :error {:message "tool blew up mid-turn"}}
                                {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
-                                :finish-reason "length" :raw-finish-reason "max_tokens"}]))))))
+                                :finish-reason "length" :raw-finish-reason "max_tokens"}])))))
+  (testing "a filtered turn emits finishReason \"content-filter\""
+    (is (=? {:type "finish" :finishReason "content-filter"}
+            (last (sse-events [{:type :text :id "t1" :text "I can't help with that."}
+                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+                                :finish-reason "content-filter" :raw-finish-reason "refusal"}])))))
+  (testing "an in-turn error part outranks a content-filter finish — the errored turn is rewound"
+    (is (=? {:type "finish" :finishReason "error"}
+            (last (sse-events [{:type :error :error {:message "tool blew up mid-turn"}}
+                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+                                :finish-reason "content-filter" :raw-finish-reason "refusal"}]))))))
 
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
