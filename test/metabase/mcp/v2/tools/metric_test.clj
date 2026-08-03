@@ -486,7 +486,7 @@
     (is (re-find #"not found"
                  (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
-  (testing "GHY-4146: v1's create/update scopes do not reach the v2 tool — agent:metric:write is its own leaf"
+  (testing "GHY-4146: v1's create/update scopes do not reach the v2 tool, which gates on agent:content:write"
     (is (= "Insufficient scope to call tool: metric_write"
            (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
                                    {:method "update" :id 13371337 :name "x"})))))

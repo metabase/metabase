@@ -132,7 +132,7 @@
       (is (not (t2/exists? :model/CardBookmark :card_id card-id :user_id (mt/user->id :lucky)))))))
 
 (deftest scope-test
-  (testing "GHY-4152: the tool requires agent:bookmark:write"
+  (testing "GHY-4152: the tool requires agent:content:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
       (is (= "Insufficient scope to call tool: bookmark_content"
              (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}

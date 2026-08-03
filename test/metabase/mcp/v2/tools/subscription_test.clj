@@ -633,9 +633,9 @@
                                                   :schedule     {:schedule_type "hourly"}}))))))))
 
 (deftest one-write-scope-covers-both-methods-test
-  (testing "GHY-4156: one write scope per entity type — `agent:subscription:write` gates both
-            methods, and the v1 `agent:dashboard:subscribe` no longer reaches the v2 tool (it stays
-            declared because MCP v1's own subscription tools still use it)"
+  (testing "GHY-4156: `agent:delivery:write` gates both methods, and the v1 `agent:dashboard:subscribe`
+            no longer reaches the v2 tool (it stays declared because MCP v1's own subscription tools
+            still use it)"
     (mt/with-model-cleanup [:model/Pulse]
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
