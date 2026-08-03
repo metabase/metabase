@@ -53,7 +53,7 @@ jobs:
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
 
-      # Only narrow on pull requests; the merge queue runs the full suite.
+      # Only narrow on pull requests. The merge queue runs the full suite.
       # A plan failure falls back to the full suite via the "all" mode below.
       - name: Create test plan
         id: plan
@@ -102,9 +102,9 @@ jobs:
         if: ${{ steps.stories.outputs.mode != 'none' }}
         run: bun run build-storybook
 
-      # Maps the plan's affected story files to concrete story names via the
-      # storybook index, re-applying the loki.config.js whitelist (a CLI
-      # --storiesFilter replaces it rather than combining with it).
+      # Maps the plan's affected story files to concrete story names
+      # via the storybook index, re-applying the loki.config.js whitelist
+      # (a CLI --storiesFilter replaces it).
       - name: Compute stories filter
         id: filter
         if: ${{ steps.stories.outputs.mode == 'filter' }}

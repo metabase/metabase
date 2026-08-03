@@ -1,15 +1,15 @@
 /**
- * Turns the test plan's affected story files into a Loki --storiesFilter
- * regex, so a PR's visual run tests only the stories it can affect.
+ * Turns the test plan's affected story files into a Loki --storiesFilter regex,
+ * so a PR's visual run tests only the stories it can affect.
  *
- * Loki matches its filter against "<kind> <story>" (case-insensitive), and a
- * CLI --storiesFilter replaces the loki.config.js whitelist instead of
- * combining with it. Stories outside the whitelist have no reference
- * screenshots and would fail on CI (requireReference), so the whitelist is
- * re-applied here before the regex is emitted.
+ * Loki matches its filter against "<kind> <story>" (case-insensitive),
+ * and a CLI --storiesFilter replaces the loki.config.js whitelist.
+ * Stories outside the whitelist have no reference screenshots
+ * and fail on CI (requireReference),
+ * so the whitelist is re-applied here before the regex is emitted.
  *
  * Usage: node loki-affected-stories.mjs <test-plan.json> <storybook-index.json>
- * Prints {"count": N, "regex": "..."} to stdout; count 0 means no affected
+ * Prints {"count": N, "regex": "..."} to stdout. Count 0 means no affected
  * story survives the whitelist and the Loki run can be skipped.
  */
 
@@ -20,8 +20,8 @@ import { fileURLToPath } from "node:url";
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Selects the stories whose file is in `storyFiles` and whose
-// "<title> <name>" passes the whitelist regex Loki normally applies itself.
+// Selects the stories whose file is in `storyFiles`
+// and whose "<title> <name>" passes the whitelist regex Loki normally applies itself.
 // `entries` is the storybook index.json entries map (v5).
 export function affectedStoriesFilter({ entries, storyFiles, whitelist }) {
   const files = new Set(storyFiles);
