@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :test-users-personal-collections))
 
 (def ^:private mine-itemsets               @#'insights/mine-itemsets)
 (def ^:private closed-only                 @#'insights/closed-only)
@@ -1115,6 +1115,7 @@
                           (insights/candidate-measures {:min-view-count nil :limit nil}))]
           (is (= 1 (count candidates)))
           (is (= {:type :sum
+                  :base-name "Sum of Subtotal"
                   :field {:id           (mt/id :orders :subtotal)
                           :name         "SUBTOTAL"
                           :display-name "Subtotal"}}
@@ -1332,10 +1333,11 @@
             segments (candidates-from-card
                       card-id
                       (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
-        (is (= 1 (count measures)))
+        (is (= #{:distinct :sum}
+               (into #{} (map #(get-in % [:aggregation :type])) measures)))
         (is (= 1 (count segments)))
         (is (every? #(= [0] (:stage-numbers %))
-                    (concat (get-in (first measures) [:evidence :source-items])
+                    (concat (mapcat #(get-in % [:evidence :source-items]) measures)
                             (get-in (first segments) [:evidence :source-items]))))))))
 
 (deftest candidate-segments-support-single-owner-join-filters-test
