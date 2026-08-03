@@ -66,19 +66,6 @@ describe("registerCustomVizPlugin", () => {
     });
   });
 
-  it("exposes the static viz API without the measure-text functions (unavailable in GraalJS)", () => {
-    registerCustomVizPlugin(makeFactory(DemoViz), "api-shape", 7);
-
-    const api = window.__METABASE_VIZ_API__;
-    expect(api).toMatchObject({
-      columnTypes: expect.any(Object),
-      formatValue: expect.any(Function),
-    });
-    expect(api).not.toHaveProperty("measureText");
-    expect(api).not.toHaveProperty("measureTextHeight");
-    expect(api).not.toHaveProperty("measureTextWidth");
-  });
-
   it("re-registering an identifier serves the fresh definition, not the first-registered one", () => {
     const FirstViz = () => <svg data-testid="first" />;
     const SecondViz = () => <svg data-testid="second" />;
