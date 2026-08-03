@@ -71,6 +71,7 @@ All SSO options require a Pro or Enterprise plan.
 | [Collection browser](./sdk/collections.md)                                                | ✅  | ❌    |
 | Advanced [Tenant](./tenants.md) and [permissions](../permissions/embedding.md) management | ✅  | ❌    |
 | [Advanced theming](./appearance.md)                                                       | ✅  | ❌    |
+| [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
 | [Locked filters](./guest-embedding.md#locked-parameters)\*\*\*                            | ❌  | ✅    |
@@ -106,7 +107,7 @@ For information about the anonymous usage data Metabase collects from embedded c
 ## Embedding limitations
 
 - Currently, you can't embed [documents](../documents/introduction.md) (though you can create [public documents](./public-links.md)).
-- Only the [Modular embedding SDK](./sdk/introduction.md) renders [custom visualizations](../questions/visualizations/custom.md), and only ones you allowlist with the [`allowedCustomVisualizations` prop](./sdk/config.md#custom-visualizations). In other embedding types, any card that uses a custom visualization falls back to the default visualization for the query's results.
+- [Modular embeds](./modular-embedding.md) that use SSO can render [custom visualizations](../questions/visualizations/custom.md), but only the custom visualizations you add to your [allowlist](./custom-visualizations.md). Embeds with guest authentication will fall back to a default visualization.
 
 ## Further reading
 
