@@ -21,11 +21,7 @@
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.javascript]
    [metabase.typed-schemas.render]
-   [metabase.typed-schemas.schema.metric :as schema.metric]
-   [metabase.typed-schemas.schema.model :as schema.model]
-   [metabase.typed-schemas.schema.question :as schema.question]
-   [metabase.typed-schemas.schema.table :as schema.table]
-   [metabase.typed-schemas.scope :as scope]
+   [metabase.typed-schemas.source :as source]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
@@ -111,62 +107,67 @@
 
   Tables mapped by in-scope metrics are included even when they live outside
   the library, so rendered metric dimensions can reference their fields."
-  [library-scope]
-  (let [metrics   (schema.metric/metric-schemas nil (:metric-collection-ids library-scope))
-        table-ids (set/union (into #{} (map :id) (schema.table/select-library-tables library-scope))
+  [source library-scope]
+  (let [metrics   (source/metrics source nil (:metric-collection-ids library-scope))
+        table-ids (set/union (into #{} (map :id) (source/library-tables source library-scope))
                              (into #{} (mapcat :mappedTableIds) metrics))]
-    {:tables  (schema.table/table-schemas (schema.table/select-tables nil table-ids))
+    {:tables  (source/tables source nil table-ids)
      :metrics metrics}))
 
 (defn- models-for-scope
   "Returns model schemas scoped to `database-ids`, or all readable models when requested without a database scope."
-  [database-ids include-models?]
+  [source database-ids include-models?]
   (cond
-    database-ids    (schema.model/model-schemas database-ids)
-    include-models? (schema.model/model-schemas nil)
+    database-ids    (source/models source database-ids)
+    include-models? (source/models source nil)
     :else           []))
 
 (defn fetch-items
   "Fetches the schema entities selected by [[SemanticSchemaOptions]].
 
   This is the only impure stage of the pipeline: everything downstream of the
-  returned [[Items]] is pure. Entities are filtered to what the current user
-  can read."
-  [options]
-  (let [{:keys [database library-collection-refs question-collection-refs
-                include-data-library? include-metric-library? include-models?]
-         :or {library-collection-refs  []
-              question-collection-refs []
-              include-data-library?    false
-              include-metric-library?  false
-              include-models?          false}} options]
-    (validate-options! (assoc options
-                              :library-collection-refs library-collection-refs
-                              :question-collection-refs question-collection-refs
-                              :include-data-library? include-data-library?
-                              :include-metric-library? include-metric-library?
-                              :include-models? include-models?))
-    (let [library-scope           (scope/library-scope {:library-collection-refs library-collection-refs
-                                                        :include-data-library? include-data-library?
-                                                        :include-metric-library? include-metric-library?})
-          database-ids            (scope/database-ids-for-ref database)
-          question-collection-ids (scope/collection-scope question-collection-refs)
-          models                  (models-for-scope database-ids include-models?)]
-      (if (or library-scope
-              (seq question-collection-refs)
-              (and include-models? (nil? database-ids)))
-        (let [{:keys [tables metrics]} (when library-scope
-                                         (library-items library-scope))]
-          {:questions (if (seq question-collection-refs)
-                        (vec (schema.question/question-schemas nil question-collection-ids))
-                        [])
-           :models    (vec models)
-           :tables    (vec tables)
-           :metrics   (vec metrics)})
-        {:questions (vec (schema.question/question-schemas database-ids))
-         :models    (vec models)
-         :tables    (vec (schema.table/table-schemas (schema.table/select-tables database-ids)))
-         :metrics   (vec (schema.metric/metric-schemas database-ids))}))))
+  returned [[Items]] is pure. All reads go through a
+  [[metabase.typed-schemas.source/SchemaSource]] — the application database by
+  default, filtered to what the current user can read; tests reify the
+  protocol with literal values."
+  ([options]
+   (fetch-items options source/app-db-source))
+  ([options source]
+   (let [{:keys [database library-collection-refs question-collection-refs
+                 include-data-library? include-metric-library? include-models?]
+          :or {library-collection-refs  []
+               question-collection-refs []
+               include-data-library?    false
+               include-metric-library?  false
+               include-models?          false}} options]
+     (validate-options! (assoc options
+                               :library-collection-refs library-collection-refs
+                               :question-collection-refs question-collection-refs
+                               :include-data-library? include-data-library?
+                               :include-metric-library? include-metric-library?
+                               :include-models? include-models?))
+     (let [library-scope           (source/library-scope source
+                                                         {:library-collection-refs library-collection-refs
+                                                          :include-data-library? include-data-library?
+                                                          :include-metric-library? include-metric-library?})
+           database-ids            (source/database-ids source database)
+           question-collection-ids (source/collection-ids source question-collection-refs)
+           models                  (models-for-scope source database-ids include-models?)]
+       (if (or library-scope
+               (seq question-collection-refs)
+               (and include-models? (nil? database-ids)))
+         (let [{:keys [tables metrics]} (when library-scope
+                                          (library-items source library-scope))]
+           {:questions (if (seq question-collection-refs)
+                         (source/questions source nil question-collection-ids)
+                         [])
+            :models    (vec models)
+            :tables    (vec tables)
+            :metrics   (vec metrics)})
+         {:questions (source/questions source database-ids nil)
+          :models    (vec models)
+          :tables    (source/tables source database-ids nil)
+          :metrics   (source/metrics source database-ids nil)})))))
 
 (defn create-schema
   "Assembles fetched [[Items]] into the semantic schema value rendered by

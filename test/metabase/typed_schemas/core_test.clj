@@ -2,9 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.typed-schemas.core :as typed-schemas]
-   [metabase.typed-schemas.schema.metric :as schema.metric]
-   [metabase.typed-schemas.schema.table :as schema.table]
-   [metabase.typed-schemas.scope :as scope]))
+   [metabase.typed-schemas.source :as source]))
 
 (def ^:private test-info
   {:generated-at "2026-01-01T00:00:00Z"
@@ -52,21 +50,36 @@
     (is (string? (:generatedAt schema)))
     (is (contains? (:metabase schema) :instanceUrl))))
 
-;; fetch-items decides *what* to select; the selection functions themselves are
-;; stubbed with literal rows so the test pins the scoping rules, not the db.
+(defn- literal-source
+  "A [[source/SchemaSource]] over literal values. `tables` are filtered by the
+  requested table ids so tests can see which tables fetching asked for."
+  [{:keys [database-ids collection-ids library-scope library-tables
+           questions models metrics tables]}]
+  (reify source/SchemaSource
+    (database-ids [_ _] database-ids)
+    (collection-ids [_ _] collection-ids)
+    (library-scope [_ _] library-scope)
+    (questions [_ _ _] (vec questions))
+    (models [_ _] (vec models))
+    (metrics [_ _ _] (vec metrics))
+    (tables [_ _ table-ids] (cond->> (vec tables)
+                              table-ids (filterv #(contains? table-ids (:id %)))))
+    (library-tables [_ _] (vec library-tables))))
+
+;; fetch-items decides *what* to fetch; the source supplies literal rows, so
+;; the test pins the scoping rules, not the db.
 (deftest fetch-items-includes-tables-mapped-by-library-metrics-test
-  (with-redefs [scope/library-scope                (constantly {:metric-collection-ids #{20}
-                                                                :data-collection-ids   #{10}})
-                schema.metric/metric-schemas       (fn [_database-ids _collection-ids]
-                                                     [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}])
-                schema.table/select-library-tables (constantly [{:id 10}])
-                schema.table/select-tables         (fn [_database-ids table-ids]
-                                                     (map (fn [id] {:id id}) (sort table-ids)))
-                schema.table/table-schemas         (fn [tables]
-                                                     (mapv #(assoc % :type "table" :key (str "table" (:id %))) tables))]
+  (let [source (literal-source
+                {:library-scope  {:metric-collection-ids #{20}
+                                  :data-collection-ids   #{10}}
+                 :library-tables [{:id 10}]
+                 :metrics        [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]
+                 :tables         [{:id 10, :type "table", :key "publishedTable"}
+                                  {:id 42, :type "table", :key "mappedTable"}
+                                  {:id 99, :type "table", :key "notInScope"}]})]
     (is (= {:questions []
             :models    []
-            :tables    [{:id 10, :type "table", :key "table10"}
-                        {:id 42, :type "table", :key "table42"}]
+            :tables    [{:id 10, :type "table", :key "publishedTable"}
+                        {:id 42, :type "table", :key "mappedTable"}]
             :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
-           (typed-schemas/fetch-items {:include-data-library? true})))))
+           (typed-schemas/fetch-items {:include-data-library? true} source)))))
