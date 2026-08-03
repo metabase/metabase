@@ -8,11 +8,12 @@ jobs:
   files-changed:
     name: Check which files changed
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 3
+    timeout-minutes: 15
     outputs:
       frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
+      loki_mode: ${{ steps.stories.outputs.mode }}
     steps:
       - uses: actions/checkout@v6
       - name: Test which files changed
@@ -20,38 +21,8 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
-  visual-test:
-    needs: files-changed
-    if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    services:
-      docker:
-        image: docker:19.03.12
-        options: --privileged
-        ports:
-          - 2376:2376
-        env:
-          DOCKER_TLS_CERTDIR: /certs
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
-          - /tmp/docker-certs:/certs/client
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
           list-files: csv
           filters: .github/file-paths.yaml
-
-      - name: Prepare frontend environment
-        uses: ./.github/actions/prepare-frontend
 
       # Only narrow on pull requests. The merge queue runs the full suite.
       # A plan failure falls back to the full suite via the "all" mode below.
@@ -68,6 +39,16 @@ jobs:
           loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
           e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
+
+      # The story list rides in an artifact rather than a job output,
+      # matching how fe-tests-unit reads the plan in run-tests.yml.
+      - name: Upload test plan
+        if: ${{ steps.plan.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-plan
+          path: test-plan.json
+          retention-days: 1
 
       - name: Select affected stories
         id: stories
@@ -90,24 +71,55 @@ jobs:
             echo "mode=all" >> "$GITHUB_OUTPUT"
           fi
 
+  visual-test:
+    needs: files-changed
+    if: |
+      needs.files-changed.outputs.loki_mode != 'none' &&
+      (needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+        ports:
+          - 2376:2376
+        env:
+          DOCKER_TLS_CERTDIR: /certs
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /tmp/docker-certs:/certs/client
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
       - name: Prepare back-end environment
-        if: ${{ steps.stories.outputs.mode != 'none' }}
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        if: ${{ steps.stories.outputs.mode != 'none' }}
         run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Build Storybook
-        if: ${{ steps.stories.outputs.mode != 'none' }}
         run: bun run build-storybook
+
+      - name: Download test plan
+        id: plan
+        if: ${{ needs.files-changed.outputs.loki_mode == 'filter' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: test-plan
+        # A missing artifact falls back to the full suite below.
+        continue-on-error: true
 
       # Maps the plan's affected story files to concrete story names
       # via the storybook index, re-applying the loki.config.js whitelist
       # (a CLI --storiesFilter replaces it).
       - name: Compute stories filter
         id: filter
-        if: ${{ steps.stories.outputs.mode == 'filter' }}
+        if: ${{ steps.plan.outcome == 'success' }}
         run: |
           node .github/scripts/loki-affected-stories.mjs \
             test-plan.json storybook-static/index.json > loki-filter.json
@@ -121,14 +133,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Loki Visual Tests
-        if: |
-          steps.stories.outputs.mode == 'all' ||
-          (steps.stories.outputs.mode == 'filter' && steps.filter.outputs.count != '0')
+        if: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.count != '0' }}
         env:
-          STORIES_MODE: ${{ steps.stories.outputs.mode }}
           STORIES_REGEX: ${{ steps.filter.outputs.regex }}
         run: |
-          if [ "$STORIES_MODE" = "filter" ]; then
+          if [ -n "$STORIES_REGEX" ]; then
             bun run test-visual:loki --reactUri file:./storybook-static \
               --verboseRenderer --storiesFilter "$STORIES_REGEX"
           else
