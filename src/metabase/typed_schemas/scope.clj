@@ -15,16 +15,20 @@
   - expands collection references to include their descendants;
   - distinguishes nil (no reference given: unscoped) from the empty set
     (references resolved to nothing: match nothing);
-  - throws a 404 for collection references that don't resolve, while database
-    references that don't resolve yield an empty scope — and therefore an
-    empty schema rather than an error.
+  - throws a 404 naming the collection references that don't resolve —
+    missing and unreadable are deliberately indistinguishable — while
+    database references that don't resolve yield an empty scope, and
+    therefore an empty schema rather than an error.
 
   Database and collection scopes are bare id sets; the library scope is a
   [[LibraryScope]] map classifying the in-scope library tree by collection
-  type."
+  type. Resolution is batched: query count is constant regardless of how many
+  references are passed."
   (:require
+   [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -49,38 +53,53 @@
            (map :id)
            set))))
 
-(defn- library-collection-for-ref
-  [{:keys [id entity-id]}]
-  (->> (if id
-         (t2/select :model/Collection :id id)
-         (t2/select :model/Collection :entity_id entity-id))
-       (filter #(contains? collection/library-collection-types (:type %)))
-       (filter mi/can-read?)
-       first))
-
-(defn- collection-for-ref
-  [{:keys [id entity-id]}]
-  (->> (if id
-         (t2/select :model/Collection :id id)
-         (t2/select :model/Collection :entity_id entity-id))
-       (filter mi/can-read?)
-       first))
-
 (defn- not-found!
-  []
-  (throw (ex-info "Not found." {:status-code 404})))
+  [collection-refs]
+  (throw (ex-info (str "Collections not found: "
+                       (str/join ", " (map pr-str collection-refs)))
+                  {:status-code     404
+                   :collection-refs (vec collection-refs)})))
+
+(defn- resolve-collection-refs!
+  "Batch-resolves collection references into readable collection rows, in ref
+  order.
+
+  Throws a 404 naming every reference that does not resolve to a collection
+  satisfying `usable-collection?` that the current user can read; missing and
+  unreadable references are deliberately indistinguishable."
+  [collection-refs usable-collection?]
+  (let [ids        (into #{} (keep :id) collection-refs)
+        entity-ids (into #{} (keep :entity-id) collection-refs)
+        usable?    (fn [collection]
+                     (and collection
+                          (usable-collection? collection)
+                          (mi/can-read? collection)))
+        by-id      (when (seq ids)
+                     (into {} (map (juxt :id identity))
+                           (t2/select :model/Collection :id [:in ids])))
+        ;; entity_id is a fixed-width char column; some app dbs return it
+        ;; space-padded, so key the lookup by the trimmed value.
+        by-eid     (when (seq entity-ids)
+                     (into {} (map (juxt (comp str/trimr :entity_id) identity))
+                           (t2/select :model/Collection :entity_id [:in entity-ids])))
+        resolved   (for [{:keys [id entity-id] :as collection-ref} collection-refs]
+                     [collection-ref
+                      (let [collection (if id (get by-id id) (get by-eid entity-id))]
+                        (when (usable? collection)
+                          collection))])
+        missing    (into [] (comp (remove second) (map first)) resolved)]
+    (when (seq missing)
+      (not-found! missing))
+    (mapv second resolved)))
 
 (defn collection-scope
-  "Returns ids for requested collections and its descendants."
+  "Returns ids for the referenced collections and their descendants."
   [collection-refs]
   (when (seq collection-refs)
-    (let [collections (for [collection-ref collection-refs]
-                        (or (collection-for-ref collection-ref)
-                            (not-found!)))]
-      (->> collections
-           (mapcat #(cons % (collection/descendants-flat %)))
-           (map :id)
-           set))))
+    (let [collections (resolve-collection-refs! collection-refs (constantly true))]
+      (into (into #{} (map :id) collections)
+            (map :id)
+            (collection/descendants-flat-for collections)))))
 
 (def LibraryScope
   "A resolved library scope: the readable library collection tree, expanded to
@@ -90,43 +109,31 @@
    [:data-collection-ids [:set :int]]
    [:metric-collection-ids [:set :int]]])
 
-(defn- library-collection-scope*
-  [library-collections]
-  (let [ids          (->> library-collections
-                          (mapcat #(cons % (collection/descendants-flat %)))
-                          (map :id)
-                          set)
-        rows         (t2/select [:model/Collection :id :type] :id [:in ids])
-        ids-for-type (fn [collection-type]
-                       (->> rows
-                            (filter #(= (:type %) collection-type))
-                            (map :id)
-                            set))]
-    {:data-collection-ids   (ids-for-type collection/library-data-collection-type)
-     :metric-collection-ids (ids-for-type collection/library-metrics-collection-type)}))
+(defn- library-collection?
+  [collection]
+  (contains? collection/library-collection-types (:type collection)))
 
-(defn- library-collections-for-refs
-  [collection-refs]
-  (when (seq collection-refs)
-    (for [collection-ref collection-refs]
-      (or (library-collection-for-ref collection-ref)
-          (not-found!)))))
+(defn- library-refs
+  "Returns collection references for explicit library refs plus any included
+  well-known library roots."
+  [{:keys [library-collection-refs include-data-library? include-metric-library?]}]
+  (concat library-collection-refs
+          (when include-data-library?
+            [{:entity-id library-data-entity-id}])
+          (when include-metric-library?
+            [{:entity-id library-metrics-entity-id}])))
 
-(defn- included-library-root-collections
-  [{:keys [include-data-library? include-metric-library?]}]
-  (keep (fn [[include? entity-id]]
-          (when include?
-            (or (library-collection-for-ref {:entity-id entity-id})
-                (not-found!))))
-        [[include-data-library? library-data-entity-id]
-         [include-metric-library? library-metrics-entity-id]]))
-
-(defn library-scope
+(mu/defn library-scope :- [:maybe LibraryScope]
   "Resolves library collection refs and include flags into a [[LibraryScope]],
   or nil when no library scope is requested."
-  [{:keys [library-collection-refs] :as options}]
-  (let [library-collections (library-collections-for-refs library-collection-refs)
-        included-roots      (included-library-root-collections options)
-        all-collections     (seq (concat library-collections included-roots))]
-    (when all-collections
-      (library-collection-scope* all-collections))))
+  [scope-options]
+  (when-let [refs (seq (library-refs scope-options))]
+    (let [roots       (resolve-collection-refs! refs library-collection?)
+          collections (concat roots (collection/descendants-flat-for roots))
+          ids-of-type (fn [collection-type]
+                        (into #{}
+                              (comp (filter #(= (:type %) collection-type))
+                                    (map :id))
+                              collections))]
+      {:data-collection-ids   (ids-of-type collection/library-data-collection-type)
+       :metric-collection-ids (ids-of-type collection/library-metrics-collection-type)})))

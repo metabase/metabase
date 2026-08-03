@@ -123,6 +123,9 @@
 
 (deftest question-collection-scope-rejects-missing-collection-ref-test
   (mt/with-test-user :crowberto
-    (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (typed-schemas.scope/collection-scope [{:entity-id "missing-entity-id-1"}])))]
-      (is (= 404 (:status-code (ex-data e)))))))
+    (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Collections not found: \{:entity-id \"missing-entity-id-1\"\}"
+                                  (typed-schemas.scope/collection-scope [{:entity-id "missing-entity-id-1"}])))]
+      (is (=? {:status-code     404
+               :collection-refs [{:entity-id "missing-entity-id-1"}]}
+              (ex-data e))))))

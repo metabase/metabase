@@ -60,7 +60,7 @@
                  (map :id (source/library-tables source/app-db-source scope))))))
       (testing "a non-library collection reference is not found"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found\."
+                              #"Collections not found"
                               (source/library-scope source/app-db-source
                                                     {:library-collection-refs [{:id (:id plain-collection)}]})))))))
 
