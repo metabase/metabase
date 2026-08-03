@@ -5,7 +5,7 @@ import { useDispatch } from "metabase/redux";
 import { replace, useRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { SlowContentDiagnostics } from "../components";
+import { SlowContent } from "../components";
 import { getSlowParamsWithoutDefaults } from "../components/slow-utils";
 import type { ContentDiagnosticsParamsOptions } from "../components/types";
 
@@ -56,7 +56,7 @@ export function SlowContentPage() {
   }, [params, isLoadingParams, dispatch]);
 
   return (
-    <SlowContentDiagnostics
+    <SlowContent
       params={params}
       isLoadingParams={isLoadingParams}
       onParamsChange={handleParamsChange}

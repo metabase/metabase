@@ -2,10 +2,10 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { type ChangeEvent, type ReactNode, memo, useState } from "react";
 import { t } from "ttag";
 
-import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
-import { SlowDiagnosticsFilterPicker } from "../SlowDiagnosticsFilterPicker";
+import { SlowContentFilterPicker } from "../SlowContentFilterPicker";
 import {
   areSlowFilterOptionsEqual,
   getSlowDefaultFilterOptions,
@@ -13,27 +13,24 @@ import {
 import type { SlowContentFilterOptions } from "../types";
 import { ALL_FILTER_TYPES } from "../utils";
 
-type SlowDiagnosticsFilterBarProps = {
+type SlowContentFilterBarProps = {
   query?: string;
   filterOptions: SlowContentFilterOptions;
-  isFetching: boolean;
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: SlowContentFilterOptions) => void;
   actions?: ReactNode;
 };
 
-export const SlowDiagnosticsFilterBar = memo(function SlowDiagnosticsFilterBar({
+export const SlowContentFilterBar = memo(function SlowContentFilterBar({
   query,
   filterOptions,
-  isFetching,
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
   actions,
-}: SlowDiagnosticsFilterBarProps) {
+}: SlowContentFilterBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
-  const hasLoader = isFetching && !isLoading;
   const hasDefaultFilterOptions = areSlowFilterOptionsEqual(
     filterOptions,
     getSlowDefaultFilterOptions(),
@@ -60,11 +57,10 @@ export const SlowDiagnosticsFilterBar = memo(function SlowDiagnosticsFilterBar({
         placeholder={t`Search…`}
         flex={1}
         leftSection={<FixedSizeIcon name="search" />}
-        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         data-testid="content-diagnostics-search-input"
         onChange={handleSearchChange}
       />
-      <SlowDiagnosticsFilterPicker
+      <SlowContentFilterPicker
         filterOptions={filterOptions}
         availableTypes={ALL_FILTER_TYPES}
         isDisabled={isLoading}

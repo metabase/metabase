@@ -19,9 +19,9 @@ import type { ContentDiagnosticsSlowSortColumn } from "metabase-types/api";
 
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { SlowContentDiagnosticsSidebar } from "./SlowContentDiagnosticsSidebar";
-import { SlowContentDiagnosticsTable } from "./SlowContentDiagnosticsTable";
-import { SlowDiagnosticsFilterBar } from "./SlowDiagnosticsFilterBar";
+import { SlowContentFilterBar } from "./SlowContentFilterBar";
+import { SlowContentSidebar } from "./SlowContentSidebar";
+import { SlowContentTable } from "./SlowContentTable";
 import {
   getSlowEntityTypesParam,
   getSlowFilterOptions,
@@ -33,7 +33,7 @@ import type {
   SlowContentFilterOptions,
 } from "./types";
 
-type SlowContentDiagnosticsProps = {
+type SlowContentProps = {
   params: Urls.SlowContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
@@ -42,11 +42,11 @@ type SlowContentDiagnosticsProps = {
   ) => void;
 };
 
-export function SlowContentDiagnostics({
+export function SlowContent({
   params,
   isLoadingParams,
   onParamsChange,
-}: SlowContentDiagnosticsProps) {
+}: SlowContentProps) {
   const dispatch = useDispatch();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
@@ -146,10 +146,9 @@ export function SlowContentDiagnostics({
     <Flex ref={containerRef} h="100%" wrap="nowrap">
       <MonitorMain>
         <DiagnosticsHeader />
-        <SlowDiagnosticsFilterBar
+        <SlowContentFilterBar
           query={query}
           filterOptions={filterOptions}
-          isFetching={isFetching}
           isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
@@ -170,7 +169,7 @@ export function SlowContentDiagnostics({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <SlowContentDiagnosticsTable
+          <SlowContentTable
             findings={findings}
             params={params}
             sortOptions={sortOptions}
@@ -191,7 +190,7 @@ export function SlowContentDiagnostics({
       </MonitorMain>
       {selectedFinding != null && (
         <Sidebar containerWidth={containerWidth}>
-          <SlowContentDiagnosticsSidebar
+          <SlowContentSidebar
             finding={selectedFinding}
             onClose={() => setSelectedFindingId(undefined)}
           />

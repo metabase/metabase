@@ -1,6 +1,7 @@
 import type {
   ContentDiagnosticsCollection,
   ContentDiagnosticsSlowFinding,
+  ContentDiagnosticsSlowFindingDetails,
   ContentDiagnosticsStaleFinding,
   ContentDiagnosticsStaleFindingDetails,
   ContentDiagnosticsUser,
@@ -72,7 +73,9 @@ export function createMockListStaleFindingsResponse(
 }
 
 export function createMockContentDiagnosticsSlowFinding(
-  opts?: Partial<ContentDiagnosticsSlowFinding>,
+  opts?: Partial<Omit<ContentDiagnosticsSlowFinding, "details">> & {
+    details?: Partial<ContentDiagnosticsSlowFindingDetails>;
+  },
 ): ContentDiagnosticsSlowFinding {
   return {
     id: 1,

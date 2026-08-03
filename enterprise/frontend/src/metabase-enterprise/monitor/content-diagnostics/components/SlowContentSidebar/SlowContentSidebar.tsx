@@ -5,15 +5,15 @@ import type { ContentDiagnosticsSlowFinding } from "metabase-types/api";
 
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
 
-type SlowContentDiagnosticsSidebarProps = {
+type SlowContentSidebarProps = {
   finding: ContentDiagnosticsSlowFinding;
   onClose: () => void;
 };
 
-export function SlowContentDiagnosticsSidebar({
+export function SlowContentSidebar({
   finding,
   onClose,
-}: SlowContentDiagnosticsSidebarProps) {
+}: SlowContentSidebarProps) {
   return (
     <DiagnosticsSidebar
       finding={finding}
