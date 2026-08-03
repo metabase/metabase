@@ -147,6 +147,7 @@ export function createTestPlan({
   feFilesTotal,
   beFilesTotal,
 }: CreateTestPlanInput): TestPlan {
+  // Step 1: build the module graphs and map the change onto them.
   const rulesGraph = buildModuleGraph(elements, rules);
   const usageGraph = fileDependencies
     ? buildUsageModuleGraph(elements, fileDependencies)
@@ -163,6 +164,7 @@ export function createTestPlan({
   // collapsed to (see filterAffectedE2eSpecs).
   const featureModules = new Set(getFeatureModules(elements));
 
+  // Step 2: derive the force-all signals selection must not override.
   // cljc/cljs compile into the FE bundle, so they force a full run that module
   // selection can't narrow — same effect as a suite's own infra changing.
   const unitForceAll = unitInfraTouched || sharedSourcesTouched;
@@ -177,6 +179,7 @@ export function createTestPlan({
     beFilesChanged > 0 ||
     e2eSpecFiles === null;
 
+  // Step 3: decide each suite, per graph.
   const { unit, loki, e2e } = testFilesBySuite;
 
   // Precompute spec -> feature modules once (null when e2e never narrows).
@@ -228,6 +231,7 @@ export function createTestPlan({
   const e2eRules = decide(e2eForceAll, rulesAffected, e2e, selectE2e);
   const e2eUsage = decide(e2eForceAll, usageAffected, e2e, selectE2e);
 
+  // Step 4: emit the plan and its stats.
   return {
     stats: {
       fe_files_changed: feFilesChanged,
