@@ -1,7 +1,12 @@
 export {
+  Link,
+  NavLink,
+  type NavLinkProps,
+  type NavLinkRenderProps,
   Navigate,
   Outlet,
   Route,
+  useInRouterContext,
   useLocation,
   useNavigate,
   useNavigationType,
