@@ -1787,6 +1787,22 @@
         "no-unused-expressions": "off",
         "chai-friendly/no-unused-expressions": "error"
       }
+    },
+    {
+      "files": [
+        "frontend/src/**/*.{js,jsx,ts,tsx}",
+        "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "metabase/enforce-module-public-api": [
+          "error",
+          {
+            "modules": [
+              "metabase/analytics"
+            ]
+          }
+        ]
+      }
     }
   ],
   "jsPlugins": [
