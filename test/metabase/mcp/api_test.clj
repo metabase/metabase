@@ -1472,6 +1472,27 @@
             (is (contains? tool-names "search"))
             (is (contains? tool-names "update_question"))))))))
 
+(deftest tools-call-token-scope-validation-test
+  (testing "an OAuth token with a limited scope cannot call a tool outside that scope"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Scope Validation Card"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
+          (let [sid      (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                             (get-in [:headers "Mcp-Session-Id"]))
+                response (mcp-request-with-bearer token 200
+                                                  (jsonrpc-request "tools/call"
+                                                                   {:name      "update_question"
+                                                                    :arguments {:id card-id :name "Renamed by narrow token"}})
+                                                  {"mcp-session-id" sid})]
+            (is (=? {:isError true} (get-in response [:body :result]))
+                "update_question is outside agent:search and must be refused")
+            (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card :id card-id))
+                "the card must not have been renamed")))))))
+
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
    Returns the token string."
