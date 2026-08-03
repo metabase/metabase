@@ -38,7 +38,6 @@
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.queries.models.card :as card]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -3809,52 +3808,47 @@
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query with a metric sourced from a model"
     (testing "runs for a user without collection access to the source model"
       (mt/with-non-admin-groups-no-root-collection-perms
-        ;; Suppress the after-insert metric dimension auto-sync: with seeded dimensions the dashcard
-        ;; query would apply the default time dimension as a breakout, and this test is about
-        ;; permissions, not dimension defaults.
-        (with-redefs [card/*syncing-metric-dimensions* true]
-          (mt/with-temp [:model/Collection    model-coll {}
-                         :model/Collection    dash-coll  {}
-                         :model/Card          model      {:type          :model
-                                                          :collection_id (u/the-id model-coll)
-                                                          :dataset_query (let [mp (mt/metadata-provider)]
-                                                                           (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
-                         :model/Card          metric     {:type          :metric
-                                                          :collection_id (u/the-id dash-coll)
-                                                          :dataset_query (let [mp (mt/metadata-provider)]
-                                                                           (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
-                                                                               (lib/aggregate (lib/count))))}
-                         :model/Dashboard     dashboard  {:collection_id (u/the-id dash-coll)}
-                         :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard)
-                                                          :card_id      (u/the-id metric)}]
-            (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
-            (is (= [[18760]]
-                   (mt/rows (mt/user-http-request :rasta :post 202
-                                                  (dashboard-card-query-url
-                                                   (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard))))))))))
+        (mt/with-temp [:model/Collection    model-coll {}
+                       :model/Collection    dash-coll  {}
+                       :model/Card          model      {:type          :model
+                                                        :collection_id (u/the-id model-coll)
+                                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                       :model/Card          metric     {:type          :metric
+                                                        :collection_id (u/the-id dash-coll)
+                                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                                         (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
+                                                                             (lib/aggregate (lib/count))))}
+                       :model/Dashboard     dashboard  {:collection_id (u/the-id dash-coll)}
+                       :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard)
+                                                        :card_id      (u/the-id metric)}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
+          (is (= [[18760]]
+                 (mt/rows (mt/user-http-request :rasta :post 202
+                                                (dashboard-card-query-url
+                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))
     (testing "runs for a user without query-building data perms"
-      (with-redefs [card/*syncing-metric-dimensions* true]
-        (mt/with-temp [:model/Collection    coll      {}
-                       :model/Card          model     {:type          :model
-                                                       :collection_id (u/the-id coll)
-                                                       :dataset_query (let [mp (mt/metadata-provider)]
-                                                                        (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
-                       :model/Card          metric    {:type          :metric
-                                                       :collection_id (u/the-id coll)
-                                                       :dataset_query (let [mp (mt/metadata-provider)]
-                                                                        (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
-                                                                            (lib/aggregate (lib/count))))}
-                       :model/Dashboard     dashboard {:collection_id (u/the-id coll)}
-                       :model/DashboardCard dashcard  {:dashboard_id (u/the-id dashboard)
-                                                       :card_id      (u/the-id metric)}]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
-          (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-            (is (= [[18760]]
-                   (mt/rows (mt/user-http-request :rasta :post 202
-                                                  (dashboard-card-query-url
-                                                   (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard))))))))))))
+      (mt/with-temp [:model/Collection    coll      {}
+                     :model/Card          model     {:type          :model
+                                                     :collection_id (u/the-id coll)
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                     :model/Card          metric    {:type          :metric
+                                                     :collection_id (u/the-id coll)
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
+                                                                          (lib/aggregate (lib/count))))}
+                     :model/Dashboard     dashboard {:collection_id (u/the-id coll)}
+                     :model/DashboardCard dashcard  {:dashboard_id (u/the-id dashboard)
+                                                     :card_id      (u/the-id metric)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (is (= [[18760]]
+                 (mt/rows (mt/user-http-request :rasta :post 202
+                                                (dashboard-card-query-url
+                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))))
 
 ;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-card-query-parameters-test

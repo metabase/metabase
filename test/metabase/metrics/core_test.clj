@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
-   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -63,21 +62,19 @@
 
 (deftest metric-sync-dimensions-persists-on-first-read-test
   (testing "sync-dimensions! persists dimensions and mappings to database for metrics"
-    ;; Suppress the Card after-insert auto-sync (UXW-4083) so we can verify sync-dimensions! itself.
-    (with-bindings {#'card/*syncing-metric-dimensions* true}
-      (mt/with-temp [:model/Card metric {:name "Test Metric"
-                                         :type :metric
-                                         :database_id (mt/id)
-                                         :table_id (mt/id :venues)
-                                         :dataset_query (metric-query)}]
-        (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
-            "Dimensions should be nil before sync")
-        (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [reloaded (t2/select-one :model/Card :id (:id metric))]
-          (is (some? (:dimensions reloaded))
-              "Dimensions should be persisted to database")
-          (is (some? (:dimension_mappings reloaded))
-              "Dimension mappings should be persisted to database"))))))
+    (mt/with-temp [:model/Card metric {:name "Test Metric"
+                                       :type :metric
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+      (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+          "Dimensions should be nil before sync")
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+        (is (some? (:dimensions reloaded))
+            "Dimensions should be persisted to database")
+        (is (some? (:dimension_mappings reloaded))
+            "Dimension mappings should be persisted to database")))))
 
 (deftest metric-sync-dimensions-is-idempotent-test
   (testing "re-syncing an unchanged metric must not rewrite its dimensions. Every dimension carries
@@ -159,45 +156,43 @@
 
 (deftest metric-sync-dimensions-no-op-without-query-test
   (testing "sync-dimensions! is a no-op when dataset_query is empty for metrics"
-    (with-bindings {#'card/*syncing-metric-dimensions* true}
-      (mt/with-temp [:model/Card metric {:name "Test Metric"
-                                         :type :metric
-                                         :database_id (mt/id)
-                                         :table_id (mt/id :venues)
-                                         :dataset_query (metric-query)}]
-        (t2/update! :model/Card (:id metric) {:dataset_query {}})
-        (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [reloaded (t2/select-one :model/Card :id (:id metric))]
-          (is (nil? (:dimensions reloaded))
-              "Dimensions should remain nil when query is empty")
-          (is (nil? (:dimension_mappings reloaded))
-              "Dimension mappings should remain nil when query is empty"))))))
+    (mt/with-temp [:model/Card metric {:name "Test Metric"
+                                       :type :metric
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+      (t2/update! :model/Card (:id metric) {:dataset_query {}})
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+        (is (nil? (:dimensions reloaded))
+            "Dimensions should remain nil when query is empty")
+        (is (nil? (:dimension_mappings reloaded))
+            "Dimension mappings should remain nil when query is empty")))))
 
 (deftest metric-sync-dimensions-sql-model-test
   (testing "sync-dimensions! computes dimensions for a metric built on a native-SQL model (UXW-4475)"
-    (with-bindings {#'card/*syncing-metric-dimensions* true}
-      (mt/with-temp [:model/Card model {:name            "SQL Model"
-                                        :type            :model
-                                        :database_id     (mt/id)
-                                        :dataset_query   (mt/native-query
-                                                          {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES"})
-                                        :result_metadata [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
-                                                          {:name "NAME" :display_name "Name" :base_type :type/Text}
-                                                          {:name "CATEGORY_ID" :display_name "Category ID" :base_type :type/Integer}]}
-                     :model/Card metric {:name          "Metric on SQL model"
-                                         :type          :metric
-                                         :database_id   (mt/id)
-                                         :dataset_query (let [mp (mt/metadata-provider)]
-                                                          (-> (lib/query mp (lib.metadata/card mp (:id model)))
-                                                              (lib/aggregate (lib/count))))}]
-        (is (nil? (:table_id (t2/select-one :model/Card :id (:id model))))
-            "sanity check: native-SQL model has no table_id")
-        (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [reloaded (t2/select-one :model/Card :id (:id metric))]
-          (is (= #{"ID" "NAME" "CATEGORY_ID"}
-                 (into #{} (map :name) (:dimensions reloaded)))
-              "dimensions come from the model's result_metadata")
-          (is (= (count (:dimensions reloaded)) (count (:dimension_mappings reloaded)))))))))
+    (mt/with-temp [:model/Card model {:name            "SQL Model"
+                                      :type            :model
+                                      :database_id     (mt/id)
+                                      :dataset_query   (mt/native-query
+                                                        {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES"})
+                                      :result_metadata [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
+                                                        {:name "NAME" :display_name "Name" :base_type :type/Text}
+                                                        {:name "CATEGORY_ID" :display_name "Category ID" :base_type :type/Integer}]}
+                   :model/Card metric {:name          "Metric on SQL model"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :dataset_query (let [mp (mt/metadata-provider)]
+                                                        (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                            (lib/aggregate (lib/count))))}]
+      (is (nil? (:table_id (t2/select-one :model/Card :id (:id model))))
+          "sanity check: native-SQL model has no table_id")
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+        (is (= #{"ID" "NAME" "CATEGORY_ID"}
+               (into #{} (map :name) (:dimensions reloaded)))
+            "dimensions come from the model's result_metadata")
+        (is (= (count (:dimensions reloaded)) (count (:dimension_mappings reloaded))))))))
 
 (deftest metric-sync-dimensions-does-not-re-add-removed-test
   (testing "sync-dimensions! does not re-add a user-removed dimension on subsequent syncs"
@@ -362,18 +357,15 @@
 
 (deftest sync-metric-dimensions-for-database-backfills-empty-test
   (testing "sync-metric-dimensions-for-database! backfills metrics whose dimensions were never synced"
-    ;; Suppress the Card after-insert auto-sync so the metric starts with empty dimensions, mirroring
-    ;; the sample-content metrics inserted via raw SQL in the CreateSampleContentV2 migration.
-    (with-bindings {#'card/*syncing-metric-dimensions* true}
-      (mt/with-temp [:model/Card metric {:name          "Backfill Metric"
-                                         :type          :metric
-                                         :database_id   (mt/id)
-                                         :table_id      (mt/id :venues)
-                                         :dataset_query (metric-query)}]
-        (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
-            "precondition: dimensions empty before backfill")
-        (metrics/sync-metric-dimensions-for-database! (mt/id))
-        (is (seq (:dimensions (t2/select-one :model/Card :id (:id metric))))
-            "backfill populates dimensions for the metric")
-        (is (seq (:dimension_mappings (t2/select-one :model/Card :id (:id metric))))
-            "backfill populates dimension_mappings for the metric")))))
+    (mt/with-temp [:model/Card metric {:name          "Backfill Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+      (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+          "precondition: dimensions empty before backfill")
+      (metrics/sync-metric-dimensions-for-database! (mt/id))
+      (is (seq (:dimensions (t2/select-one :model/Card :id (:id metric))))
+          "backfill populates dimensions for the metric")
+      (is (seq (:dimension_mappings (t2/select-one :model/Card :id (:id metric))))
+          "backfill populates dimension_mappings for the metric"))))
