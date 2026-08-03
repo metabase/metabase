@@ -61,9 +61,11 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.config.core :as config]
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -75,6 +77,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [toucan2.core :as t2]
@@ -1380,15 +1383,46 @@
     (m :guard map?)
     (import-mbql-map m)))
 
-(defn- normalize-imported [x]
+(defn- validate-imported-query!
+  "Throws when `query` is a full MBQL query that this instance's own query schema rejects.
+
+  The exporting Metabase decides the shape of a serialized query, so an import can carry a shape this version has no
+  representation for - v63's list-valued `template-tags` against v62's map, say. Such a query normalizes without
+  complaint and is then stored, breaking the card on read, so refuse it instead.
+
+  Only full queries are checked. Bare refs and the MBQL fragments embedded in visualization settings have no
+  standalone schema to check them against."
+  [query]
+  (when (and (= (:lib/type query) :mbql/query)
+             (not (config/config-bool :mb-serialization-skip-schema-validation)))
+    (when-let [error (mr/explain ::lib.schema/query query)]
+      (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
+                           "most likely exported by a newer Metabase whose query shape this version cannot "
+                           "represent. Set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to import it anyway.")
+                      {:schema-errors (mu.humanize/humanize error)
+                       :status        400})))))
+
+(defn- normalize-imported
+  "Normalizes ingested MBQL into this instance's representation, and refuses a result its schema rejects.
+
+  Normalization failures stay non-fatal: they fire on content this instance produced itself - pivot column refs in
+  visualization settings raise `:malli.core/invalid-schema` today - so promoting them would reject legitimate
+  imports. The un-normalized value is stored, as it has been. A query that normalizes *successfully* into something
+  the schema rejects is a different matter, and throws."
+  [x]
   (when x
-    (try
-      (if (mbql-ref? x)
-        (normalize-mbql-ref x)
-        (lib/normalize x))
-      (catch Throwable e
-        (log/warn e "Error normalizing imported MBQL")
-        x))))
+    (let [normalized (try
+                       (if (mbql-ref? x)
+                         (normalize-mbql-ref x)
+                         (lib/normalize x))
+                       (catch Throwable e
+                         (log/warn e "Error normalizing imported MBQL")
+                         ::normalize-failed))]
+      (if (= normalized ::normalize-failed)
+        x
+        (do
+          (validate-imported-query! normalized)
+          normalized)))))
 
 (defn- import-mbql*
   [x]

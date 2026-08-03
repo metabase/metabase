@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]))
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -284,3 +285,39 @@
                                        :values_source_type   :card
                                        :values_source_config {:card_id 1, :value_field [:field 53 nil]}
                                        :position             0}])))))
+
+(def ^:private native-query-with-template-tag
+  "A native query with one variable, already past FK resolution (numeric `:database`), as [[serdes/import-mbql]]
+  sees it mid-import."
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type      :mbql.stage/native
+               :native        "SELECT * FROM PRODUCTS WHERE ID = {{id}}"
+               :template-tags {"id" {:type :number :name "id" :display-name "ID" :id "abc-123"}}}]})
+
+(deftest ^:parallel import-mbql-validates-against-local-schema-test
+  (testing "GHY-4241: a query shape this version cannot represent is refused instead of stored"
+    (testing "a query matching this instance's schema imports"
+      (is (=? {:lib/type :mbql/query}
+              (serdes/import-mbql native-query-with-template-tag))))
+
+    (testing "v63 exports `template-tags` as a list where this version expects a map. It normalizes without
+              complaint, so only validating the result catches it."
+      (let [v63-shaped (update-in native-query-with-template-tag [:stages 0 :template-tags] (comp vec vals))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"does not match this Metabase's query schema"
+             (serdes/import-mbql v63-shaped)))))))
+
+(deftest import-mbql-schema-validation-opt-out-test
+  (testing "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION disables the schema check"
+    ;; It does not make the import succeed. Normalizing list-valued `template-tags` yields `:template-tags nil` -
+    ;; the variables are simply dropped - and `repair-card-template-tag-names` rejects that on its own. All this
+    ;; asserts is that our check is the thing being skipped.
+    (let [v63-shaped (update-in native-query-with-template-tag [:stages 0 :template-tags] (comp vec vals))
+          message    (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+                       (try
+                         (serdes/import-mbql v63-shaped)
+                         nil
+                         (catch Exception e (ex-message e))))]
+      (is (not (re-find #"does not match this Metabase's query schema" (str message)))))))
