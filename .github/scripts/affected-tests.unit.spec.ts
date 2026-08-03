@@ -26,6 +26,7 @@ const E2E_FILES = ["e2e/test/scenarios/a.cy.spec.ts"];
 const baseInput = {
   elements: ELEMENTS,
   rules: RULES,
+  narrow: true,
   fileDependencies: null,
   testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
   e2eSpecFiles: null,
@@ -228,6 +229,29 @@ describe("createTestPlan", () => {
 
     expect(plan.stats.fe_files_changed).toBe(5);
     expect(plan.stats.be_files_changed).toBe(3);
+  });
+
+  it("widens a non-empty selection to the full suite when narrowing is off", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      narrow: false,
+      changedFiles: ["src/foo/x.ts"],
+    });
+
+    // With narrowing this change selects only the two foo specs and one story.
+    expect(plan.fe_unit_specs_to_run.sort()).toEqual([...UNIT_FILES].sort());
+    expect(plan.loki_stories_to_run.sort()).toEqual([...LOKI_FILES].sort());
+  });
+
+  it("still skips suites with no selected work when narrowing is off", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      narrow: false,
+      changedFiles: ["docs/readme.md"],
+    });
+
+    expect(plan.fe_unit_specs_to_run).toEqual([]);
+    expect(plan.loki_stories_to_run).toEqual([]);
   });
 });
 

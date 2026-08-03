@@ -23,6 +23,12 @@ inputs:
   shared-sources-touched:
     description: Whether cljc/cljs/package.json changed.
     required: true
+  narrow:
+    description: >-
+      Whether selection may trim suites. "false" still gates suites on having
+      any selected work, but runs them in full.
+    required: false
+    default: "true"
 
 outputs:
   stats:
@@ -85,6 +91,7 @@ runs:
         LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
         E2E_INFRA_TOUCHED: ${{ inputs.e2e-infra-touched }}
         SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
+        NARROW: ${{ inputs.narrow }}
         DEP_GRAPH_JSON: dependency-graph.json
         E2E_SPEC_MANIFEST: ${{ steps.manifest.outputs.path }}
       run: |

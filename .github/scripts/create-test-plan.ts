@@ -92,6 +92,7 @@ const testPlan = createTestPlan({
   elements,
   rules,
   changedFiles: csvToList(process.env.CHANGED_FILES),
+  narrow: process.env.NARROW !== "false",
   fileDependencies: readFileDependencies(),
   testFilesBySuite: {
     unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),

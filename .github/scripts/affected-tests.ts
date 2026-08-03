@@ -48,6 +48,9 @@ export type CreateTestPlanInput = {
   elements: ModuleDef[];
   rules: Rule[];
   changedFiles: string[];
+  // False disables selection: suites with any selected work run in full.
+  // Used off pull requests, where the plan gates suites but never trims them.
+  narrow: boolean;
   // Parsed dependency-cruiser edges, or null to fall back to the rules graph.
   fileDependencies: FileDependency[] | null;
   testFilesBySuite: { unit: string[]; loki: string[]; e2e: string[] };
@@ -130,6 +133,7 @@ export function createTestPlan({
   elements,
   rules,
   changedFiles,
+  narrow,
   fileDependencies,
   testFilesBySuite,
   e2eSpecFiles,
@@ -175,11 +179,17 @@ export function createTestPlan({
   const select = (forceAll: boolean, affected: Set<string>, files: string[]) =>
     forceAll ? files : filterAffectedTests(nodes, affected, files);
 
+  // A non-narrowing run (merge queue, pushes to master) still uses the plan
+  // to decide WHETHER a suite runs, but never trims it:
+  // any selected work at all widens to the full suite.
+  const widen = (selected: string[], all: string[]) =>
+    narrow || selected.length === 0 ? selected : all;
+
   const { unit, loki, e2e } = testFilesBySuite;
-  const unitRules = select(unitForceAll, rulesAffected, unit);
-  const unitUsage = select(unitForceAll, usageAffected, unit);
-  const lokiRules = select(lokiForceAll, rulesAffected, loki);
-  const lokiUsage = select(lokiForceAll, usageAffected, loki);
+  const unitRules = widen(select(unitForceAll, rulesAffected, unit), unit);
+  const unitUsage = widen(select(unitForceAll, usageAffected, unit), unit);
+  const lokiRules = widen(select(lokiForceAll, rulesAffected, loki), loki);
+  const lokiUsage = widen(select(lokiForceAll, usageAffected, loki), loki);
 
   // Precompute spec -> feature modules once (null when e2e runs in full).
   const specFeatures =
@@ -197,8 +207,8 @@ export function createTestPlan({
     );
     return e2e.filter((spec) => narrowed.has(spec) || changedSet.has(spec));
   };
-  const e2eRules = selectE2e(rulesAffected);
-  const e2eUsage = selectE2e(usageAffected);
+  const e2eRules = widen(selectE2e(rulesAffected), e2e);
+  const e2eUsage = widen(selectE2e(usageAffected), e2e);
 
   return {
     stats: {

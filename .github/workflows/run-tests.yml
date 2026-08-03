@@ -56,7 +56,7 @@ jobs:
           filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
-        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
         uses: ./.github/actions/create-test-plan
         with:
           changed-files: ${{ steps.changes.outputs.all_changed_files }}
@@ -66,6 +66,8 @@ jobs:
           loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
           e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
+          # Off pull requests the plan still gates suites, but never trims them.
+          narrow: ${{ github.event_name == 'pull_request' }}
       # The spec lists can exceed what fits in a workflow-call input,
       # so fe-tests-unit and visual-test read the plan from this artifact instead.
       - name: Upload test plan
@@ -75,28 +77,21 @@ jobs:
           name: test-plan
           path: test-plan.json
           retention-days: 1
-      # On pull requests the plan decides: none skips the visual-test job,
-      # filter narrows it, all runs the whole whitelist.
-      # The merge queue runs the full suite whenever loki-relevant files changed.
+      # The plan decides: none skips the visual-test job, filter narrows it,
+      # all runs the whole whitelist. Off pull requests the plan is built
+      # with narrow=false, so filter cannot occur there.
       - name: Select Loki mode
         id: loki
-        env:
-          FRONTEND_TOUCHED: ${{ steps.changes.outputs.frontend_ci == 'true' || steps.changes.outputs.frontend_sources == 'true' || steps.changes.outputs.frontend_loki_ci == 'true' }}
+        if: ${{ steps.compute.outcome == 'success' }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ -f test-plan.json ]; then
-            count=$(jq '.loki_stories_to_run | length' test-plan.json)
-            total=$(jq '.stats.loki_stories_all' test-plan.json)
-            if [ "$count" -eq 0 ]; then
-              mode=none
-            elif [ "$count" -lt "$total" ]; then
-              mode=filter
-            else
-              mode=all
-            fi
-          elif [ "$FRONTEND_TOUCHED" = "true" ]; then
-            mode=all
-          else
+          count=$(jq '.loki_stories_to_run | length' test-plan.json)
+          total=$(jq '.stats.loki_stories_all' test-plan.json)
+          if [ "$count" -eq 0 ]; then
             mode=none
+          elif [ "$count" -lt "$total" ]; then
+            mode=filter
+          else
+            mode=all
           fi
           echo "Loki mode: $mode"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
@@ -217,10 +212,11 @@ jobs:
       skip: ${{ needs.create-test-plan.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.create-test-plan.outputs.frontend_all != 'true' && needs.create-test-plan.outputs.e2e_all != 'true' }}
       skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
-      # On pull requests the plan alone decides whether and which unit specs run,
-      # and an empty selection skips the job.
-      # Pushes to master/release and the merge queue keep the dorny gate and run in full.
-      skip-unit: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.fe_unit_specs_count == '0' || github.event_name != 'pull_request' && needs.create-test-plan.outputs.frontend_all != 'true' }}
+      # The plan decides whether unit specs run - an empty selection skips
+      # the job. Off pull requests the plan never trims (narrow=false),
+      # so a non-empty selection there means the full suite.
+      # No plan at all (workflow_dispatch) also skips, as before.
+      skip-unit: ${{ needs.create-test-plan.outputs.fe_unit_specs_count == '0' || needs.create-test-plan.outputs.fe_unit_specs_count == '' }}
       unit-specs-from-plan: ${{ github.event_name == 'pull_request' }}
 
   e2e-tests:
