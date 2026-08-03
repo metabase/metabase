@@ -643,8 +643,12 @@ describe("AIProviderSettingsSection", () => {
       modelRef: "anthropic/claude-sonnet-4-5",
     });
 
+    // closed, the picker names the provider too — the dropdown does not, because its group
+    // heading already does
     await waitFor(() =>
-      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.5"),
+      expect(screen.getByLabelText("Model")).toHaveValue(
+        "Anthropic · Claude Sonnet 4.5",
+      ),
     );
 
     const listbox = await openModelPicker();
@@ -678,8 +682,12 @@ describe("AIProviderSettingsSection", () => {
       modelRef: "anthropic/claude-sonnet-4-5",
     });
 
+    // closed, the picker names the provider too — the dropdown does not, because its group
+    // heading already does
     await waitFor(() =>
-      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.5"),
+      expect(screen.getByLabelText("Model")).toHaveValue(
+        "Anthropic · Claude Sonnet 4.5",
+      ),
     );
 
     fetchMock.modifyRoute("update-setting", {

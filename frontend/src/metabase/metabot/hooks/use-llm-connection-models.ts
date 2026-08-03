@@ -16,9 +16,23 @@ export function useLlmConnectionModels() {
     [connections],
   );
 
-  return { connections, modelOptions, errorByConnectionKey, isLoading, error };
+  const modelNameByRef = useMemo(
+    () => getModelNameByRef(connections),
+    [connections],
+  );
+
+  return {
+    connections,
+    modelOptions,
+    modelNameByRef,
+    errorByConnectionKey,
+    isLoading,
+    error,
+  };
 }
 
+// The label is what a closed Select shows, and a model name alone does not say which provider
+// serves it. The dropdown renders [[modelNameByRef]] instead, where the group heading already does.
 function getModelOptions(connections: LlmConnectionModels[]) {
   return connections
     .filter((connection) => connection.models.length > 0)
@@ -26,9 +40,20 @@ function getModelOptions(connections: LlmConnectionModels[]) {
       group: connection.name,
       items: connection.models.map((model) => ({
         value: `${connection.key}/${model.id}`,
-        label: model.display_name,
+        label: `${connection.name} · ${model.display_name}`,
       })),
     }));
+}
+
+function getModelNameByRef(connections: LlmConnectionModels[]) {
+  return Object.fromEntries(
+    connections.flatMap((connection) =>
+      connection.models.map((model) => [
+        `${connection.key}/${model.id}`,
+        model.display_name,
+      ]),
+    ),
+  );
 }
 
 function getErrorByConnectionKey(connections: LlmConnectionModels[]) {
