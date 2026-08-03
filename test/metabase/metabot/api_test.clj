@@ -1,6 +1,5 @@
 (ns metabase.metabot.api-test
   (:require
-   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -249,22 +248,20 @@
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
-            (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+            (mt/with-temporary-setting-values [llm.settings/llm-providers [(llm.tu/connection "openrouter" {:base-url llm-url})]
                                                metabot.settings/llm-metabot-provider test-provider]
-              (let [real-http-post http/post]
-                (with-redefs [llm.settings/llm-openrouter-api-key            (constantly "fake-key")
-                              llm.settings/llm-openrouter-api-base-url       (constantly llm-url)
-                              scope/resolve-user-permissions                 (constantly scope/all-yes-permissions)
-                              conversation-title/ensure-title!               (constantly {:status :missing})
-                              ;; The fake LLM server doesn't gzip, but clj-http wraps with
-                              ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
-                              http/post                                      (fn [url opts]
-                                                                               (real-http-post url (assoc opts :decompress-body false)))
-                              metabot.context/create-context                 (fn [ctx & _] ctx)
-                              metabot.persistence/finalize-assistant-turn!   (fn [_pk parts & kwargs]
-                                                                               (reset! stored-parts parts)
-                                                                               (reset! stored-kwargs (apply hash-map kwargs)))
-                              sr/async-cancellation-poll-interval-ms         5]
+              (let [real-llm-request self.core/request]
+                (with-redefs [scope/resolve-user-permissions               (constantly scope/all-yes-permissions)
+                              conversation-title/ensure-title!             (constantly {:status :missing})
+                              ;; The fake LLM server gzips whenever the caller accepts it, and clj-http
+                              ;; wraps the body in a GZIPInputStream. Closing mid-stream causes ZLIB errors.
+                              self.core/request                            (fn [auth req]
+                                                                             (real-llm-request auth (assoc req :decompress-body false)))
+                              metabot.context/create-context               (fn [ctx & _] ctx)
+                              metabot.persistence/finalize-assistant-turn! (fn [_pk parts & kwargs]
+                                                                             (reset! stored-parts parts)
+                                                                             (reset! stored-kwargs (apply hash-map kwargs)))
+                              sr/async-cancellation-poll-interval-ms       5]
                   (testing "Closing stream body tears down the pipeline and persists the aborted turn"
                     (reset! cnt total-chunks)
                     (reset! stored-parts nil)
