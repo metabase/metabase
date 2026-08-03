@@ -84,9 +84,8 @@ export type QueryEditorUiOptions = {
   resizable?: boolean;
 };
 
-// The contract for the template-tags sidebar that QueryEditor renders but does
-// not implement. The implementation composes parameter-editing UI, which sits
-// above this module in the layering, so consumers inject it from outside.
+// The template-tags sidebar is parameter-editing UI, which querying cannot import,
+// so QueryEditor takes the implementation as a prop and this type is its contract.
 export type TemplateTagsSidebarProps = {
   question: Question;
   query: Lib.Query;

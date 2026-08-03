@@ -12,9 +12,8 @@ type TopBarProps = PropsWithChildren<{
 
 /**
  * The top bar of the native query editor. Renders the data source selector on
- * the left (from context), then `leftContent` (typically a parameters list),
- * and pushes its children (sidebar buttons, visibility toggler, custom
- * content) into the right-aligned cluster.
+ * the left (from context), then `leftContent` (typically the parameters list),
+ * and right-aligns its children.
  */
 export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
   { leftContent, children },
