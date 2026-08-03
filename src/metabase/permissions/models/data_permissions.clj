@@ -784,7 +784,7 @@
                            (database-permission-for-user user-id perm-type database-id)
                            perm-value))
 
-(mu/defn full-db-permission-for-user :- ::permissions.schema/data-permission-value
+(mu/defn full-database-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value. The
   db-level permission is the *most* restrictive table-level permission within that database."
@@ -807,10 +807,10 @@
 (mu/defn native-download-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective download permission value for a given user and database ID, for native queries on the database.
   For each group, the native download permission for a database is equal to the lowest permission level of any table in
-  the database — exactly [[full-db-permission-for-user]] for :perms/download-results, whose cache it shares."
+  the database — exactly [[full-database-permission-for-user]] for :perms/download-results, whose cache it shares."
   [user-id     :- ::lib.schema.id/user
    database-id :- ::lib.schema.id/database]
-  (full-db-permission-for-user user-id :perms/download-results database-id))
+  (full-database-permission-for-user user-id :perms/download-results database-id))
 
 (mu/defn most-permissive-database-permission-for-user :- ::permissions.schema/data-permission-value
   "Similar to checking _partial_ permissions with permissions paths - what is the *most permissive* permission the

@@ -134,7 +134,7 @@
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (perms/full-db-permission-for-user
+                  (perms/full-database-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))

@@ -42,7 +42,7 @@
   batch-insert-permissions!
   disable-perms-cache
   download-perms-level
-  full-db-permission-for-user
+  full-database-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
   index-database-permissions

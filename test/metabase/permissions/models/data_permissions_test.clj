@@ -60,7 +60,7 @@
         (testing "one load per database serves all three of its values"
           (is (true? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 10)))
           (is (= :query-builder
-                 (data-perms/full-db-permission-for-user user-id :perms/create-queries 10)))
+                 (data-perms/full-database-permission-for-user user-id :perms/create-queries 10)))
           (is (= :query-builder-and-native
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
           (is (= [#{10}] @loads)))

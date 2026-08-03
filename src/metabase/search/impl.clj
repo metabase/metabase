@@ -79,8 +79,8 @@
   (let [user-id (:current-user-id search-ctx)
         db-id   (:database_id instance)]
     (and
-     (= :query-builder-and-native (perms/full-db-permission-for-user user-id :perms/create-queries db-id))
-     (= :unrestricted (perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
+     (= :query-builder-and-native (perms/full-database-permission-for-user user-id :perms/create-queries db-id))
+     (= :unrestricted (perms/full-database-permission-for-user user-id :perms/view-data db-id)))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]

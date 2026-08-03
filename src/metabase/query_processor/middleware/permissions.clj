@@ -195,7 +195,7 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (= (perms/full-db-permission-for-user *current-user-id* :perms/create-queries database-id)
+   (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
       :query-builder-and-native)))
 
 (defn check-current-user-has-adhoc-native-query-perms
