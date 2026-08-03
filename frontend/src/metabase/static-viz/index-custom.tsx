@@ -28,6 +28,7 @@ export {
   clearCustomVizRegistrations,
   initializeContext,
   registerCustomVizPlugin,
+  registerCustomVizPluginFromGlobal,
 } from "metabase/static-viz/lib/entrypoint";
 
 function RenderChart(
