@@ -190,8 +190,8 @@
 (defn- -llm-title-model
   "Titles are a short, high-volume call that does not need the model Metabot chats on, so with nothing stored this
   resolves to the fastest model of the connection [[llm-metabot-provider]] names. Connections whose provider type
-  has no such model (Azure, the managed provider) fall through to the Metabot model itself, so this always names
-  a model as long as Metabot does."
+  has no such model — the ones that name the single model they serve, and the managed provider — fall through to
+  the Metabot model itself, so this always names a model as long as Metabot does."
   []
   (or (explicit-title-model)
       (let [metabot-ref (llm-metabot-provider)]
