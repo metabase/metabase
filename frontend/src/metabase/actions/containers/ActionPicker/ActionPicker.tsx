@@ -1,28 +1,28 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { useListActionsQuery, useSearchQuery } from "metabase/api";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
+  Box,
   Button,
+  Flex,
   Icon,
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+  rem,
 } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
-import {
-  ActionItem,
-  ActionsList,
-  EmptyModelStateContainer,
-  EmptyState,
-  ModelCollapseSection,
-} from "./ActionPicker.styled";
+import S from "./ActionPicker.module.css";
 import { sortAndGroupActions } from "./utils";
 
 type ActionPickerModel = Pick<Card, "id" | "name" | "database_id">;
@@ -58,11 +58,13 @@ export function ActionPicker({
         />
       ))}
       {!sortedModels.length && (
-        <EmptyState
-          message={t`No models found`}
-          action={t`Create new model`}
-          link={"/model/new"}
-        />
+        <Box mb="md">
+          <EmptyState
+            message={t`No models found`}
+            action={t`Create new model`}
+            link={"/model/new"}
+          />
+        </Box>
       )}
     </div>
   );
@@ -111,44 +113,55 @@ function ModelActionPicker({
 
   return (
     <>
-      <ModelCollapseSection
-        header={<h4>{model.name}</h4>}
-        initialState={hasCurrentAction ? "expanded" : "collapsed"}
-      >
-        {actions.length ? (
-          <ActionsList>
-            {actions.map((action) => (
-              <ActionItem
-                key={action.id}
-                role="button"
-                isSelected={currentAction?.id === action.id}
-                aria-selected={currentAction?.id === action.id}
-                onClick={() => onClick(action)}
-                data-testid={`action-item-${action.name}`}
-              >
-                <span>{action.name}</span>
-                <ActionIcon
-                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                    // we have a click listener on the parent
-                    event.stopPropagation();
-
-                    setEditingActionId(action.id);
-                    toggleIsActionCreatorVisible();
-                  }}
+      <Box mb="sm">
+        <CollapseSection
+          header={<h4>{model.name}</h4>}
+          initialState={hasCurrentAction ? "expanded" : "collapsed"}
+        >
+          {actions.length ? (
+            <Box component="ul" py="sm" px="md" className={S.actionsList}>
+              {actions.map((action) => (
+                <Flex
+                  component="li"
+                  key={action.id}
+                  role="button"
+                  className={cx(S.actionItem, {
+                    [S.selected]: currentAction?.id === action.id,
+                  })}
+                  justify="space-between"
+                  fw="bold"
+                  c="core-brand"
+                  py="sm"
+                  px={rem(12)}
+                  mb="1px"
+                  aria-selected={currentAction?.id === action.id}
+                  onClick={() => onClick(action)}
+                  data-testid={`action-item-${action.name}`}
                 >
-                  <Icon name="pencil" />
-                </ActionIcon>
-              </ActionItem>
-            ))}
-            {newActionButton}
-          </ActionsList>
-        ) : (
-          <EmptyModelStateContainer>
-            <div>{t`There are no actions for this model`}</div>
-            {newActionButton}
-          </EmptyModelStateContainer>
-        )}
-      </ModelCollapseSection>
+                  <span>{action.name}</span>
+                  <ActionIcon
+                    onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                      // we have a click listener on the parent
+                      event.stopPropagation();
+
+                      setEditingActionId(action.id);
+                      toggleIsActionCreatorVisible();
+                    }}
+                  >
+                    <Icon name="pencil" />
+                  </ActionIcon>
+                </Flex>
+              ))}
+              {newActionButton}
+            </Box>
+          ) : (
+            <Box p="md" c="text-secondary" ta="center">
+              <div>{t`There are no actions for this model`}</div>
+              {newActionButton}
+            </Box>
+          )}
+        </CollapseSection>
+      </Box>
       <Modal
         {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
         opened={isActionCreatorOpen}
