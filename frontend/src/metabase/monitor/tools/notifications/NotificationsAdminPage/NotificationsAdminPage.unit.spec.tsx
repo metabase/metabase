@@ -18,7 +18,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
@@ -130,6 +129,7 @@ const multiHandlerNotification = createMockAdminNotification({
 type SetupOpts = {
   notifications?: AdminNotification[];
   total?: number;
+  allCount?: number;
   failingCount?: number;
   ownerlessCount?: number;
   users?: UserListResult[];
@@ -138,11 +138,13 @@ type SetupOpts = {
   detailDelay?: number;
   detailErrorId?: NotificationId;
   failingCountError?: boolean;
+  allCountError?: boolean;
 };
 
 const setup = ({
   notifications = [notification1],
   total = notifications.length,
+  allCount = total,
   failingCount = 0,
   ownerlessCount = 0,
   users = [],
@@ -151,6 +153,7 @@ const setup = ({
   detailDelay,
   detailErrorId,
   failingCountError = false,
+  allCountError = false,
 }: SetupOpts = {}) => {
   fetchMock.get("path:/api/notification/admin", (call) => {
     const params = new URL(call.url).searchParams;
@@ -164,6 +167,15 @@ const setup = ({
     }
     if (params.get("limit") === "1" && params.get("creatorless") === "true") {
       return { data: [], total: ownerlessCount, limit: 1, offset: 0 };
+    }
+    if (
+      params.get("limit") === "1" &&
+      !params.has("last_check_status") &&
+      !params.has("creatorless")
+    ) {
+      return allCountError
+        ? { status: 500, body: { message: "All count failed" } }
+        : { data: [], total: allCount, limit: 1, offset: 0 };
     }
     return { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
   });
@@ -214,6 +226,16 @@ const getListCalls = () =>
         new URL(call.url).searchParams.get("limit") === String(PAGE_SIZE),
     );
 
+const getAllCountCalls = () =>
+  fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
+    const params = new URL(call.url).searchParams;
+    return (
+      params.get("limit") === "1" &&
+      !params.has("last_check_status") &&
+      !params.has("creatorless")
+    );
+  });
+
 const getFailingCountCalls = () =>
   fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
     const params = new URL(call.url).searchParams;
@@ -228,6 +250,10 @@ const getBulkPosts = async () =>
     request.url.includes("/api/notification/admin/bulk"),
   );
 
+// Tabs, filters, and the table skeleton render immediately (no page-blocking
+// loader), so tests wait for the real grid to replace the skeleton instead.
+const waitForTableToLoad = () => screen.findByRole("treegrid");
+
 describe("NotificationsAdminPage", () => {
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
@@ -240,18 +266,42 @@ describe("NotificationsAdminPage", () => {
   });
 
   describe("rendering", () => {
-    it("shows a loader and then renders the table", async () => {
+    it("shows tabs, filters, and a grid skeleton immediately, then renders the table", async () => {
       setup();
-      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      await waitForLoaderToBeRemoved();
+
       expect(
-        screen.getByTestId("notifications-admin-table"),
+        screen.getByTestId("notifications-admin-tabs"),
       ).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Search by question or owner/),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("notifications-admin-table")).toHaveAttribute(
+        "aria-busy",
+        "true",
+      );
+      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+
+      await waitForTableToLoad();
+      expect(screen.getByTestId("notifications-admin-table")).toHaveAttribute(
+        "aria-busy",
+        "false",
+      );
+    });
+
+    it("hides pagination until the grid has loaded", async () => {
+      setup({ notifications: [notification1, notification2], total: 120 });
+
+      expect(screen.queryByTestId("pagination-total")).not.toBeInTheDocument();
+
+      await waitForTableToLoad();
+      expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
+        "120",
+      );
     });
 
     it("renders a row per notification with its owner and question", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
       const row2 = await screen.findByTestId("notification-row-2");
@@ -263,7 +313,7 @@ describe("NotificationsAdminPage", () => {
 
     it("counts webhook handlers as configured channels", async () => {
       setup({ notifications: [webhookNotification] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row = await screen.findByTestId("notification-row-99");
       expect(within(row).getByText("Webhook Alert")).toBeInTheDocument();
@@ -278,7 +328,7 @@ describe("NotificationsAdminPage", () => {
 
     it("merges multiple handlers across and within channels", async () => {
       setup({ notifications: [multiHandlerNotification] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row = await screen.findByTestId("notification-row-50");
       expect(within(row).getByText("Multi Channel Alert")).toBeInTheDocument();
@@ -298,24 +348,34 @@ describe("NotificationsAdminPage", () => {
 
     it("shows an empty state when there are no notifications", async () => {
       setup({ notifications: [] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
       expect(await screen.findByText("No alerts")).toBeInTheDocument();
     });
   });
 
   describe("tabs", () => {
-    it("hides the tabs when there are no failing or ownerless alerts", async () => {
+    it("shows tabs with a loading placeholder before counts resolve", async () => {
       setup({ failingCount: 0, ownerlessCount: 0 });
-      await waitForLoaderToBeRemoved();
-      expect(
-        screen.queryByTestId("notifications-admin-tabs"),
-      ).not.toBeInTheDocument();
+
+      const failingTab = screen.getByTestId("notifications-admin-tab-failing");
+      const ownerlessTab = screen.getByTestId(
+        "notifications-admin-tab-ownerless",
+      );
+      expect(within(failingTab).queryByText(/\d/)).not.toBeInTheDocument();
+      expect(within(ownerlessTab).queryByText(/\d/)).not.toBeInTheDocument();
+
+      await waitForTableToLoad();
+      expect(within(failingTab).getByText("0")).toBeInTheDocument();
+      expect(within(ownerlessTab).getByText("0")).toBeInTheDocument();
     });
 
-    it("renders failing and ownerless tabs with their counts", async () => {
-      setup({ failingCount: 2, ownerlessCount: 3 });
-      await waitForLoaderToBeRemoved();
+    it("always shows all three tabs, even when a tab has no alerts", async () => {
+      setup({ failingCount: 0, ownerlessCount: 0 });
+      await waitForTableToLoad();
 
+      expect(
+        screen.getByTestId("notifications-admin-tab-all"),
+      ).toBeInTheDocument();
       expect(
         screen.getByTestId("notifications-admin-tab-failing"),
       ).toBeInTheDocument();
@@ -324,9 +384,36 @@ describe("NotificationsAdminPage", () => {
       ).toBeInTheDocument();
     });
 
+    it("renders failing and ownerless tabs with their counts", async () => {
+      setup({ failingCount: 2, ownerlessCount: 3 });
+      await waitForTableToLoad();
+
+      const failingTab = screen.getByTestId("notifications-admin-tab-failing");
+      const ownerlessTab = screen.getByTestId(
+        "notifications-admin-tab-ownerless",
+      );
+      expect(within(failingTab).getByText("2")).toBeInTheDocument();
+      expect(within(ownerlessTab).getByText("3")).toBeInTheDocument();
+    });
+
+    it("keeps the All tab's true total after switching to a filtered tab", async () => {
+      setup({ allCount: 137, failingCount: 9, ownerlessCount: 33 });
+      await waitForTableToLoad();
+
+      const allTab = screen.getByTestId("notifications-admin-tab-all");
+      expect(within(allTab).getByText("137")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByTestId("notifications-admin-tab-failing"),
+      );
+      await waitForTableToLoad();
+
+      expect(within(allTab).getByText("137")).toBeInTheDocument();
+    });
+
     it("pushes the selected tab to the URL", async () => {
       const { history } = setup({ failingCount: 2 });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(
         screen.getByTestId("notifications-admin-tab-failing"),
@@ -340,21 +427,47 @@ describe("NotificationsAdminPage", () => {
       });
     });
 
-    it("redirects away from an empty failing tab", async () => {
+    it("does not redirect away from a failing tab with no alerts", async () => {
       const { history } = setup({
         failingCount: 0,
         initialRoute: `${PATHNAME}?tab=failing`,
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
-      await waitFor(() => {
-        expect(history?.getCurrentLocation().search).not.toContain("failing");
+      expect(history?.getCurrentLocation().search).toContain("tab=failing");
+      expect(
+        within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
+          "0",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("does not redirect away from an ownerless tab with no alerts", async () => {
+      const { history } = setup({
+        ownerlessCount: 0,
+        initialRoute: `${PATHNAME}?tab=ownerless`,
       });
+      await waitForTableToLoad();
+
+      expect(history?.getCurrentLocation().search).toContain("tab=ownerless");
+      expect(
+        within(
+          screen.getByTestId("notifications-admin-tab-ownerless"),
+        ).getByText("0"),
+      ).toBeInTheDocument();
+    });
+
+    it("counts all alerts with the active filter applied", async () => {
+      setup({ initialRoute: `${PATHNAME}?active=false` });
+      await waitForTableToLoad();
+
+      const [countCall] = getAllCountCalls();
+      expect(new URL(countCall.url).searchParams.get("active")).toBe("false");
     });
 
     it("counts inactive failing alerts when the status filter includes them", async () => {
       setup({ initialRoute: `${PATHNAME}?active=all` });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const [countCall] = getFailingCountCalls();
       expect(new URL(countCall.url).searchParams.get("active")).toBeNull();
@@ -365,12 +478,29 @@ describe("NotificationsAdminPage", () => {
 
       expect(await screen.findByText("Count failed")).toBeInTheDocument();
     });
+
+    it("keeps the page usable when only the all-count request fails", async () => {
+      setup({ allCountError: true, failingCount: 2 });
+      await waitForTableToLoad();
+
+      expect(screen.queryByText("All count failed")).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("notifications-admin-tab-all")).queryByText(
+          /\d/,
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
+          "2",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("search, sorting and pagination", () => {
     it("pushes the search query to the URL", async () => {
       const { history } = setup();
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.type(
         screen.getByPlaceholderText(/Search by question or owner/),
@@ -396,7 +526,7 @@ describe("NotificationsAdminPage", () => {
 
     it("pushes sorting changes to the URL and refetches", async () => {
       const { history } = setup();
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
 
@@ -421,7 +551,7 @@ describe("NotificationsAdminPage", () => {
         notifications: [notification1, notification2],
         total: 120,
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
         "120",
@@ -450,7 +580,7 @@ describe("NotificationsAdminPage", () => {
   describe("selection and bulk actions", () => {
     it("shows the bulk action bar when a row is selected", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
       await userEvent.click(within(row1).getByRole("checkbox"));
@@ -467,7 +597,7 @@ describe("NotificationsAdminPage", () => {
 
     it("selects every row with the header checkbox", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(
         screen.getByRole("checkbox", { name: "Select all" }),
@@ -480,7 +610,7 @@ describe("NotificationsAdminPage", () => {
 
     it("selects the keyboard-highlighted row via space", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       screen.getByRole("treegrid", { name: "Notifications" }).focus();
       await userEvent.keyboard("{ArrowDown} ");
@@ -493,7 +623,7 @@ describe("NotificationsAdminPage", () => {
 
     it("clears the selection with the Clear button", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
       await userEvent.click(within(row1).getByRole("checkbox"));
@@ -513,7 +643,7 @@ describe("NotificationsAdminPage", () => {
         notifications: [notification1, notification2],
         total: 120,
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
       await userEvent.click(within(row1).getByRole("checkbox"));
@@ -528,7 +658,7 @@ describe("NotificationsAdminPage", () => {
 
     it("removes selected alerts after confirmation", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(
         screen.getByRole("checkbox", { name: "Select all" }),
@@ -567,7 +697,7 @@ describe("NotificationsAdminPage", () => {
         notifications: [notification1, notification2],
         users: [newOwner],
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(
         screen.getByRole("checkbox", { name: "Select all" }),
@@ -609,7 +739,7 @@ describe("NotificationsAdminPage", () => {
   describe("detail sidebar", () => {
     it("opens the sidebar on row click and closes it again", async () => {
       const { history } = setup({ notifications: [notification1] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
 
@@ -638,7 +768,7 @@ describe("NotificationsAdminPage", () => {
       const { history } = setup({
         notifications: [notification1, notification2],
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
       expect(history?.getCurrentLocation().pathname).toBe(`${PATHNAME}/1`);
@@ -667,7 +797,7 @@ describe("NotificationsAdminPage", () => {
 
     it("deletes the open alert from the sidebar menu", async () => {
       const { history } = setup({ notifications: [notification1] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
@@ -700,7 +830,7 @@ describe("NotificationsAdminPage", () => {
 
     it("copies the alert link to the clipboard from the sidebar menu", async () => {
       setup({ notifications: [notification1] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
@@ -723,7 +853,7 @@ describe("NotificationsAdminPage", () => {
 
     it("keeps the edit action disabled until the question has loaded", async () => {
       setup({ notifications: [notification1], cardDelay: 10_000 });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
@@ -739,9 +869,28 @@ describe("NotificationsAdminPage", () => {
       });
     });
 
+    it("keeps the edit action disabled while a directly-linked alert is still loading", async () => {
+      setup({
+        notifications: [notification1],
+        initialRoute: `${PATHNAME}/1`,
+        cardDelay: 10_000,
+      });
+      await waitForTableToLoad();
+
+      expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
+      });
+    });
+
     it("points the run-history 'View all' links at the card runs, including today", async () => {
       setup({ notifications: [notification1] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
@@ -759,7 +908,7 @@ describe("NotificationsAdminPage", () => {
 
     it("shows loaders in the history sections while the alert detail loads", async () => {
       setup({ notifications: [notification1], detailDelay: 10_000 });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
 
@@ -796,7 +945,7 @@ describe("NotificationsAdminPage", () => {
   describe("change owner modal", () => {
     it("preselects the owner when a single alert is selected", async () => {
       setup({ notifications: [notification1, notification2] });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
       await userEvent.click(within(row1).getByRole("checkbox"));
@@ -831,7 +980,7 @@ describe("NotificationsAdminPage", () => {
         notifications: [notification1, notification2],
         users: [newOwner],
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(
         screen.getByRole("checkbox", { name: "Select all" }),
@@ -885,7 +1034,7 @@ describe("NotificationsAdminPage", () => {
         notifications: [notification1, notification2],
         users: [newOwner],
       });
-      await waitForLoaderToBeRemoved();
+      await waitForTableToLoad();
 
       await userEvent.click(
         screen.getByRole("checkbox", { name: "Select all" }),

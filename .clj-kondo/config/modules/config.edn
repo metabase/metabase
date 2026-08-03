@@ -1931,6 +1931,7 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
+                    :model/NativeQuerySnippet
                     :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
@@ -2829,6 +2830,7 @@
            lib
            lib-be
            models
+           permissions
            queries
            query-permissions
            query-processor
@@ -3280,6 +3282,7 @@
    :api  #{metabase-enterprise.erd.api}
    :uses #{api
            models
+           permissions
            util
            warehouse-schema}
    :model-imports #{:model/Database
@@ -3775,6 +3778,7 @@
    :api  #{metabase-enterprise.upload-management.api}
    :uses #{api
            models
+           permissions
            premium-features
            upload
            util}

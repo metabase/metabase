@@ -39,6 +39,8 @@ export const SidebarHeader = ({
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
+  const isEditDisabled =
+    notification == null || isQuestionLoading || isBulkLoading;
 
   const handleCopyLink = async () => {
     const url = `${window.location.origin}${Urls.monitorNotificationDetail(notificationId)}`;
@@ -113,8 +115,8 @@ export const SidebarHeader = ({
             aria-label={t`Edit`}
             size="lg"
             c="icon-primary"
-            disabled={isQuestionLoading || isBulkLoading}
-            onClick={!isQuestionLoading ? onEdit : undefined}
+            disabled={isEditDisabled}
+            onClick={!isEditDisabled ? onEdit : undefined}
           >
             {isQuestionLoading ? <Loader size="sm" /> : <Icon name="pencil" />}
           </ActionIcon>

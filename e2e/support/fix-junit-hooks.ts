@@ -4,9 +4,9 @@
 // underlying test. When a `before each` / `before all` / `after each` /
 // `after all` hook throws, mocha-junit-reporter records the failing testcase
 // as `<suite> "before each" hook for "<test name>"`. That breaks downstream
-// Trunk that keys on the test name. This script parses the
-// XML and strips the hook label from `name` and `classname`, leaving the
-// failure body intact so the error is still preserved.
+// consumers that key on the test name. This script parses the XML and strips
+// the hook label from `name` and `classname`, leaving the failure body intact
+// so the error is still preserved.
 
 import {
   copyFileSync,
