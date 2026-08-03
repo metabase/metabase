@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
+import { TemplateTagsSidebar } from "metabase/parameters/components/TemplateTagsSidebar";
 import {
   QueryEditor,
   getInitialUiState,
@@ -52,6 +54,8 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
       <QueryEditor
         query={currentQuestion.query()}
         uiState={uiState}
+        parametersList={<NativeQueryParametersList />}
+        templateTagsSidebar={TemplateTagsSidebar}
         onChangeQuery={onQueryChange}
         onChangeUiState={setUiState}
         onAcceptProposed={handleRunQuery}

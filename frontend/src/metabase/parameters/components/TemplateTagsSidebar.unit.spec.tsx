@@ -17,7 +17,7 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 
-import { NativeQuerySidebar } from "./NativeQuerySidebar";
+import { TemplateTagsSidebar } from "./TemplateTagsSidebar";
 
 const SAMPLE_DB_ID = 1;
 const WRITABLE_DB_ID = 2;
@@ -65,18 +65,11 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
   setupParameterValuesEndpoints({ values: [], has_more_values: false });
 
   renderWithProviders(
-    <NativeQuerySidebar
+    <TemplateTagsSidebar
       question={question}
       query={question.query()}
-      isNative
-      isTemplateTagsSidebarOpen
       onChangeQuery={jest.fn()}
-      onInsertSnippet={jest.fn()}
-      onToggleDataReference={jest.fn()}
-      onToggleSnippetSidebar={jest.fn()}
-      onToggleTemplateTagsSidebar={jest.fn()}
-      onChangeModalSnippet={jest.fn()}
-      onOpenSnippetModalWithSelectedText={jest.fn()}
+      onClose={jest.fn()}
       parameterValues={{}}
       setParameterValues={jest.fn()}
       canUseSampleDatabase={canUseSampleDatabase}
@@ -85,7 +78,7 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
   );
 };
 
-describe("NativeQuerySidebar template-tag help", () => {
+describe("TemplateTagsSidebar help", () => {
   it("hides the 'Try it' examples when the sample database can't be used, e.g. in transforms (metabase#78037)", async () => {
     setup({ canUseSampleDatabase: false });
 
