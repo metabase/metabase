@@ -1,14 +1,11 @@
-import type { ReactNode } from "react";
 import {
   type DataRouter,
-  Route,
+  type RouteObject,
   createBrowserRouter,
   createMemoryRouter,
-  createRoutesFromElements,
 } from "react-router";
 
 import { AppShell } from "./AppShell";
-import { mapToV7 } from "./map-to-v7";
 
 export type MemoryTestRouter = DataRouter;
 
@@ -19,34 +16,32 @@ export type MemoryTestRouter = DataRouter;
 export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
 
 /**
- * The whole facade tree as real data routes, under a pathless layout route.
+ * The app's routes under a pathless layout route.
  *
  * The layout route contributes no path, so it changes no matching. It exists so
  * relative redux navigation resolves from the root (see `AppShell`) and as the
  * seat for anything the app shell needs above the route tree.
  */
-function toDataRoutes(tree: ReactNode) {
-  return createRoutesFromElements(
-    <Route element={<AppShell />}>{mapToV7(tree)}</Route>,
-  );
+function withAppShell(routes: RouteObject[]): RouteObject[] {
+  return [{ element: <AppShell />, children: routes }];
 }
 
 export function createAppRouter(
-  tree: ReactNode,
+  routes: RouteObject[],
   basename?: string,
 ): DataRouter {
-  return createBrowserRouter(toDataRoutes(tree), { basename });
+  return createBrowserRouter(withAppShell(routes), { basename });
 }
 
 export function createMemoryAppRouter(
-  tree: ReactNode,
+  routes: RouteObject[],
   initialRoute: string,
   basename?: string,
 ): DataRouter {
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
-  return createMemoryRouter(toDataRoutes(tree), {
+  return createMemoryRouter(withAppShell(routes), {
     basename,
     initialEntries: [entry],
   });
