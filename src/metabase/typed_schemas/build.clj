@@ -1,10 +1,11 @@
-(ns metabase.typed-schemas.pipeline
-  "Implementation of the typed-schema generation pipeline.
+(ns metabase.typed-schemas.build
+  "Builds the semantic schema value: interprets [[SemanticSchemaOptions]] into
+  SchemaSource reads and assembles the fetched items into the document.
 
   Internal to the typed-schemas module: the public surface is
-  [[metabase.typed-schemas.core]], which re-exports only
-  [[build-semantic-schema]] and [[SemanticSchemaOptions]] from here. See the
-  core namespace docstring for the pipeline shape and the separation rules."
+  [[metabase.typed-schemas.core]], which composes [[fetch-items]] and
+  [[create-schema]] into its public functions. See the core namespace
+  docstring for the pipeline shape and the separation rules."
   (:require
    [clojure.set :as set]
    [metabase.system.core :as system]
@@ -166,13 +167,3 @@
     :models        (common/keyed-model-map models)
     :tables        (common/keyed-map tables)
     :metrics       (common/keyed-map metrics))))
-
-(defn build-semantic-schema
-  "Builds a semantic schema map from [[SemanticSchemaOptions]].
-
-  `info` optionally pins `:generated-at` and `:instance-url` for deterministic
-  output."
-  ([options]
-   (build-semantic-schema options nil))
-  ([options info]
-   (-> options fetch-items (create-schema info))))

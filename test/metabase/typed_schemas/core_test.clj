@@ -15,8 +15,8 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.typed-schemas.build :as build]
    [metabase.typed-schemas.core :as typed-schemas]
-   [metabase.typed-schemas.pipeline :as pipeline]
    [metabase.typed-schemas.source :as source]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -28,13 +28,13 @@
 (deftest options-reject-unknown-keys-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
                         #"Invalid semantic schema options\."
-                        (pipeline/fetch-items {:unknown-option true}))))
+                        (build/fetch-items {:unknown-option true}))))
 
 (deftest options-reject-collection-and-database-scopes-together-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
                         #"mutually exclusive"
-                        (pipeline/fetch-items {:database {:id 1}
-                                               :include-data-library? true}))))
+                        (build/fetch-items {:database {:id 1}
+                                            :include-data-library? true}))))
 
 (deftest create-schema-assembles-items-test
   (is (= {:schemaVersion 2
@@ -44,7 +44,7 @@
           :models        {"orders" {:actions {"create" {:kind "action", :id 9}}}}
           :tables        {"orders" {:type "table", :key "orders", :id 3}}
           :metrics       {"revenue" {:type "metric", :key "revenue", :id 2}}}
-         (pipeline/create-schema
+         (build/create-schema
           {:questions [{:type "card", :key "ordersByMonth", :id 1}]
            :models    [{:key "orders", :name "Orders", :actions {"create" {:kind "action", :id 9}}}]
            :tables    [{:type "table", :key "orders", :id 3}]
@@ -52,7 +52,7 @@
           test-info))))
 
 (deftest create-schema-disambiguates-duplicate-keys-test
-  (let [schema (pipeline/create-schema
+  (let [schema (build/create-schema
                 {:questions []
                  :models    []
                  :tables    [{:type "table", :key "orders", :id 3}
@@ -63,7 +63,7 @@
     (is (= ["orders3" "orders4"] (map :key (vals (:tables schema)))))))
 
 (deftest create-schema-defaults-info-test
-  (let [schema (pipeline/create-schema {:questions [], :models [], :tables [], :metrics []})]
+  (let [schema (build/create-schema {:questions [], :models [], :tables [], :metrics []})]
     (is (string? (:generatedAt schema)))
     (is (contains? (:metabase schema) :instanceUrl))))
 
@@ -99,7 +99,7 @@
             :tables    [{:id 10, :type "table", :key "publishedTable"}
                         {:id 42, :type "table", :key "mappedTable"}]
             :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
-           (pipeline/fetch-items {:include-data-library? true} source)))))
+           (build/fetch-items {:include-data-library? true} source)))))
 
 ;; One end-to-end test over the real test-data dataset: cards for every entity
 ;; kind on real synced tables, run through the whole pipeline to TypeScript.

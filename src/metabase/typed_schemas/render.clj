@@ -5,7 +5,8 @@
   schema keys become runtime data, which become `//` context comments, and how
   metric dimensions compact into `pickFields(...)` calls. The output is the
   tagged-vector AST described in [[metabase.typed-schemas.javascript]];
-  [[schema->ast]] produces it and [[render-typescript]] composes it with the
+  [[schema->ast]] produces it, and the public
+  [[metabase.typed-schemas.core/render-typescript]] composes it with the
   printer.
 
   Nothing here touches the database or builds strings: new rendering behavior
@@ -381,8 +382,3 @@
              [:const (name section-key) (section->node section-key (get schema section-key))])
            [[:const "schema" (into [:obj] schema-entries)]
             [:export-default [:ref "schema"]]]))))
-
-(defn render-typescript
-  "Render `schema` as an ES module containing `as const` TypeScript constants."
-  [schema]
-  (javascript/render-js (schema->ast schema)))
