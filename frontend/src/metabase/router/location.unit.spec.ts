@@ -16,15 +16,15 @@ describe("queryToSearch", () => {
     expect(queryToSearch({})).toBe("");
   });
 
-  // history@3 stringified with `query-string`, which sorts keys. The URL is user
-  // visible and asserted against, so the order must not follow insertion.
+  // Call sites build the query object in whatever order suits them, and the URL
+  // is user visible and asserted against, so the order must not follow insertion.
   it("sorts keys regardless of insertion order", () => {
     expect(queryToSearch({ state: "AK", city: "" })).toBe("?city=&state=AK");
     expect(queryToSearch({ city: "", state: "AK" })).toBe("?city=&state=AK");
   });
 
-  // history@3 wrote a space as `+` but left `~` literal, and both show up in URLs
-  // the app asserts on (a date filter reads `next30days~`).
+  // `~` separates the two ends of a date filter range, so it has to survive into
+  // shared links: a date filter reads `next30days~`, not `next30days%7E`.
   it("writes a space as `+` and leaves `~` literal", () => {
     expect(queryToSearch({ date_filter: "next30days~" })).toBe(
       "?date_filter=next30days~",
