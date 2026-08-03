@@ -24,6 +24,8 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { getPublicApiModules } from "../frontend/lint/module-boundaries.mjs";
+
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const snapshotPath = path.join(root, "frontend/lint/enforced-rules.json");
@@ -126,6 +128,24 @@ if (mainResolver !== boundariesResolver) {
   failed = true;
   console.error(
     "\nboundaries: import/resolver drifted from the main config. Sync .oxlintrc.boundaries.json.",
+  );
+}
+
+// metabase/enforce-module-public-api takes the flagged-module aliases as an
+// option. The registry (module-boundaries.mjs) owns that list, but JSON cannot
+// import JS, so the option is restated in .oxlintrc.json. Guard against drift.
+const publicApiRuleOption = (mainConfig.overrides ?? [])
+  .map((override) => override.rules?.["metabase/enforce-module-public-api"])
+  .find((value) => Array.isArray(value));
+const declaredModules = [...(publicApiRuleOption?.[1]?.modules ?? [])].sort();
+const registryModules = [...getPublicApiModules()].sort();
+if (JSON.stringify(declaredModules) !== JSON.stringify(registryModules)) {
+  failed = true;
+  console.error(
+    "\nmain: metabase/enforce-module-public-api `modules` drifted from " +
+      "module-boundaries.mjs (getPublicApiModules). Sync the option in .oxlintrc.json.\n" +
+      `  registry: ${JSON.stringify(registryModules)}\n` +
+      `  config:   ${JSON.stringify(declaredModules)}`,
   );
 }
 
