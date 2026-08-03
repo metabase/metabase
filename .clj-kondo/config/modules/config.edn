@@ -1989,6 +1989,7 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
+                    :model/NativeQuerySnippet
                     :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}

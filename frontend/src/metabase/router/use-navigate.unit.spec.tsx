@@ -2,9 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { Route } from "./route";
-import { useNavigate } from "./use-navigate";
+import { Route, useNavigate } from "metabase/router";
 
 function NavigateProbe() {
   const navigate = useNavigate();

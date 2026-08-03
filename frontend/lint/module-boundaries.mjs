@@ -4,16 +4,29 @@ const createElement = ({
   pattern,
   mode,
   enforceOutgoing = true,
-}) => ({
-  type: `${type}/${name}`,
-  pattern: pattern ?? `frontend/src/metabase/${name}/**`,
-  ...(mode && { mode }),
-  enforceOutgoing,
-});
+  // Outside code must import the module root alias, and the module's own files must import relatively.
+  // Enforced by the `metabase/enforce-module-public-api` rule via `getPublicApiModules` below.
+  enforcePublicApi = false,
+}) => {
+  if (enforcePublicApi && (pattern || mode)) {
+    // Single-file elements are their own entry point, and elements outside the
+    // `metabase` alias root would need their own alias derivation.
+    throw new Error(
+      `enforcePublicApi requires a default folder element (frontend/src/metabase/<name>/**): ${name}`,
+    );
+  }
+  return {
+    type: `${type}/${name}`,
+    pattern: pattern ?? `frontend/src/metabase/${name}/**`,
+    ...(mode && { mode }),
+    enforceOutgoing,
+    ...(enforcePublicApi && { publicApiAlias: `metabase/${name}` }),
+  };
+};
 
 const elements = [
   // lib
-  createElement({ type: "lib", name: "analytics" }),
+  createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
   createElement({ type: "lib", name: "css" }),
   createElement({
     type: "lib",
@@ -445,4 +458,16 @@ function getFeatureModules(els = elements) {
   return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
 }
 
-export { elements, rules, enforcedRules, getFeatureModules };
+// The import aliases of the modules flagged `enforcePublicApi`, for the
+// `metabase/enforce-module-public-api` rule.
+function getPublicApiModules(els = elements) {
+  return els.map((element) => element.publicApiAlias).filter(Boolean);
+}
+
+export {
+  elements,
+  rules,
+  enforcedRules,
+  getFeatureModules,
+  getPublicApiModules,
+};
