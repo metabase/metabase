@@ -15,16 +15,16 @@ EMBEDDING_SDK_CONFIG.isMcpApp = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
-// Set session token immediately so all SDK API calls include X-Metabase-Session.
+// Set the MCP UI credential immediately so all SDK API calls carry the purpose-bound header.
 // @ts-expect-error -- this is ONLY set in the MCP Apps route
-const { instanceUrl = "", sessionToken = "" } = window.metabaseConfig ?? {};
+const { instanceUrl = "", uiCredential = "" } = window.metabaseConfig ?? {};
 
 if (instanceUrl) {
   api.basename = instanceUrl;
 }
 
-if (sessionToken) {
-  api.sessionToken = sessionToken;
+if (uiCredential) {
+  api.mcpUiCredential = uiCredential;
 }
 
 function init() {
