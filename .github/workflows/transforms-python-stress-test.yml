@@ -25,7 +25,6 @@ on:
           - sqlserver
 
 permissions:
-  id-token: write
   contents: read
   checks: write
   actions: read
@@ -63,15 +62,6 @@ jobs:
         junit-name: 'be-tests-bigquery-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -122,15 +112,6 @@ jobs:
         junit-name: 'be-tests-clickhouse-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -171,15 +152,6 @@ jobs:
         junit-name: 'be-tests-mongo-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -224,15 +196,6 @@ jobs:
         junit-name: 'be-tests-mysql-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -278,15 +241,6 @@ jobs:
         junit-name: 'be-tests-postgres-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -322,15 +276,6 @@ jobs:
         junit-name: 'be-tests-redshift-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -375,15 +320,6 @@ jobs:
         junit-name: 'be-tests-snowflake-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
@@ -426,15 +362,6 @@ jobs:
         junit-name: 'be-tests-sqlserver-transforms'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: always()
       uses: ./.github/actions/cleanup-python-runner
