@@ -213,7 +213,7 @@ const elements = [
     name: "selectors",
     enforceSharedTiers: false,
   }),
-  createElement({ type: "shared", name: "settings" }),
+  createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({
