@@ -125,6 +125,25 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
+    if (canAccessEmbeddingHub) {
+      items.push(
+        <Menu.Item
+          key="embedding-hub-app-link"
+          component={ForwardRefLink}
+          to={Urls.embeddingHub()}
+          leftSection={
+            <Icon
+              name="embed"
+              {...(currentApp === "embedding-hub"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
+            />
+          }
+        >
+          {t`Embedding hub`}
+        </Menu.Item>,
+      );
+    }
     if (canAccessMonitor) {
       items.push(
         <Menu.Item
@@ -143,26 +162,6 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           }
         >
           {t`Monitor`}
-        </Menu.Item>,
-      );
-    }
-    // TODO (Kelvin 2026-07-31) slot order is a starting point, not a decision — item 4 of 01-questions-for-roman.md is still with Kyle and Alessio.
-    if (canAccessEmbeddingHub) {
-      items.push(
-        <Menu.Item
-          key="embedding-hub-app-link"
-          component={ForwardRefLink}
-          to={Urls.embeddingHub()}
-          leftSection={
-            <Icon
-              name="embed"
-              {...(currentApp === "embedding-hub"
-                ? CURRENT_APP_ICON_OVERRIDES
-                : null)}
-            />
-          }
-        >
-          {t`Embedding hub`}
         </Menu.Item>,
       );
     }

@@ -220,6 +220,26 @@ describe("ProfileLink", () => {
       expect(screen.queryByText("Embedding hub")).not.toBeInTheDocument();
     });
 
+    it("should render the app entries in the designed order", async () => {
+      await setup({ isAdmin: true });
+
+      const appOrder = [
+        "Main app",
+        "Data studio",
+        "Embedding hub",
+        "Monitor",
+        "Admin",
+      ];
+      const menuItems = await screen.findAllByRole("menuitem");
+      const appMenuItems = menuItems.filter((menuItem) =>
+        appOrder.includes(menuItem.textContent ?? ""),
+      );
+
+      expect(appMenuItems.map((menuItem) => menuItem.textContent)).toEqual(
+        appOrder,
+      );
+    });
+
     it("tracks opening Monitor from the app switcher", async () => {
       trackMonitorOpened.mockClear();
       await setup({ isAdmin: true });
