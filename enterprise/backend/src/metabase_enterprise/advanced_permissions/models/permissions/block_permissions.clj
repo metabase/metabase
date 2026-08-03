@@ -25,13 +25,13 @@
   ;; block.
   :feature :none
   [{database-id :database :as query}]
-  (let [{:keys [table-ids]} (query-perms/query->source-ids query)
-        table-permissions   (map (partial perms/table-permission-for-user api/*current-user-id*
-                                          :perms/view-data database-id)
-                                 table-ids)]
-    ;; Make sure we don't have block permissions for the entire DB or individual tables referenced by the query.
-    (or
-     (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-     (= #{:unrestricted} (set table-permissions))
-     (throw-block-permissions-exception))
-    true))
+  (or
+   (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
+   (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
+     (perms/prime-table-perms-cache {:table-ids table-ids})
+     (= #{:unrestricted}
+        (into #{}
+              (map (partial perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id))
+              table-ids)))
+   (throw-block-permissions-exception))
+  true)

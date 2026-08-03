@@ -24,9 +24,11 @@
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
                 #{(perms/native-download-permission-for-user user-id db-id)}
-                (set (map (fn table-perms-lookup [table-id]
-                            (perms/table-permission-for-user user-id :perms/download-results db-id table-id))
-                          table-ids)))]
+                (do
+                  (perms/prime-table-perms-cache {:table-ids table-ids})
+                  (set (map (fn table-perms-lookup [table-id]
+                              (perms/table-permission-for-user user-id :perms/download-results db-id table-id))
+                            table-ids))))]
     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
     (or (perms :no)
         (perms :ten-thousand-rows)

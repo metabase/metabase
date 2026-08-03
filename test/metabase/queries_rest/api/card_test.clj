@@ -202,13 +202,19 @@
                                 :value  2}]})))))))
 
 (deftest dashboard-and-collection-context-metric-query-uses-default-dimension-test
-  (testing "POST card query endpoints use the metric's default dimension in dashboard and collection contexts (UXW-4769, UXW-4771)"
+  (testing "POST card query endpoints use collection-specific metric dimension fallbacks (UXW-4769, UXW-4771, UXW-4958)"
     (mt/dataset test-data
       (let [mp           (mt/metadata-provider)
             orders       (lib.metadata/table mp (mt/id :orders))
             created-at   (lib.metadata/field mp (mt/id :orders :created_at))
             product-id   (lib.metadata/field mp (mt/id :orders :product_id))
-            dimension-id (str (random-uuid))]
+            dimension-id (str (random-uuid))
+            dimension    {:id             dimension-id
+                          :display-name   "Product ID"
+                          :effective-type :type/Integer
+                          :semantic-type  :type/FK
+                          :status         :status/active
+                          :sources        [{:type :field, :field-id (mt/id :orders :product_id)}]}]
         (mt/with-temp [:model/Card {metric-id :id}
                        {:name               "Orders metric"
                         :type               :metric
@@ -218,13 +224,7 @@
                         :dataset_query      (-> (lib/query mp orders)
                                                 (lib/aggregate (lib/count))
                                                 (lib/breakout (lib/with-temporal-bucket created-at :month)))
-                        :dimensions         [{:id             dimension-id
-                                              :display-name   "Product ID"
-                                              :effective-type :type/Integer
-                                              :semantic-type  :type/FK
-                                              :status         :status/active
-                                              :sources        [{:type :field, :field-id (mt/id :orders :product_id)}]
-                                              :default        true}]
+                        :dimensions         [dimension]
                         :dimension_mappings [{:type         :table
                                               :table-id     (mt/id :orders)
                                               :dimension-id dimension-id
@@ -234,6 +234,15 @@
                 canonical      (mt/user-http-request :crowberto :post 202 path)
                 stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
             (is (= "CREATED_AT" (-> canonical mt/cols first :name)))
+            (testing "without a curated default, dashboards keep the saved breakout and collection previews are scalar"
+              (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
+                                                            {:dashboard_id dashboard-id})
+                    collection-result (mt/user-http-request :crowberto :post 202 path
+                                                            {:collection_preview true})]
+                (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
+                (is (= 1 (count (mt/cols collection-result))))
+                (is (= 1 (count (mt/rows collection-result))))))
+            (t2/update! :model/Card metric-id {:dimensions [(assoc dimension :default true)]})
             (doseq [query-path [path (format "card/pivot/%d/query" metric-id)]]
               (let [result (mt/user-http-request :crowberto :post 202 query-path {:dashboard_id dashboard-id})]
                 (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
@@ -243,6 +252,19 @@
               (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
               (is (= stored-metadata
                      (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
+            (t2/update! :model/Card metric-id {:dimensions [(assoc dimension
+                                                                   :default true
+                                                                   :status :status/orphaned)]})
+            (testing "an orphaned default keeps the saved dashboard breakout and makes collection previews scalar"
+              (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
+                                                            {:dashboard_id dashboard-id})
+                    collection-result (mt/user-http-request :crowberto :post 202 path
+                                                            {:collection_preview true})]
+                (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
+                (is (= 1 (count (mt/cols collection-result))))
+                (is (= 1 (count (mt/rows collection-result))))))
+            (is (= stored-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id metric-id)))
             (mt/user-http-request :crowberto :post 404 path {:dashboard_id Integer/MAX_VALUE})))))))
 
 (deftest execute-card-with-default-parameters-test
@@ -800,9 +822,8 @@
                               :last-edit-info         {:timestamp true :id true :first_name "Rasta"
                                                        :last_name "Toucan" :email "rasta@metabase.com"}
                               :creator                (merge
-                                                       (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                       (select-keys (mt/fetch-user :rasta) [:id])
                                                        {:common_name  "Rasta Toucan"
-                                                        :is_superuser false
                                                         :last_name    "Toucan"
                                                         :first_name   "Rasta"
                                                         :email        "rasta@metabase.com"})
@@ -815,7 +836,6 @@
                                 (update :dataset_query map?)
                                 (update :entity_id string?)
                                 (update :result_metadata (partial every? map?))
-                                (update :creator dissoc :is_qbnewb)
                                 (update :last-edit-info (fn [edit-info]
                                                           (-> edit-info
                                                               (update :id boolean)
@@ -1618,10 +1638,8 @@
                     :parameter_usage_count  0
                     :creator_id             (mt/user->id :rasta)
                     :creator                (merge
-                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                             (select-keys (mt/fetch-user :rasta) [:id])
                                              {:common_name  "Rasta Toucan"
-                                              :is_superuser false
-                                              :is_qbnewb    true
                                               :last_name    "Toucan"
                                               :first_name   "Rasta"
                                               :email        "rasta@metabase.com"})

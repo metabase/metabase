@@ -10,7 +10,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import { isPythonTransformSource } from "../../utils";
+import { canRunPythonTransformSource } from "../../utils";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
@@ -35,6 +35,7 @@ export function PythonTransformEditor({
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
+  const isRunnable = canRunPythonTransformSource(source);
 
   useEffect(() => {
     const errMsg = [executionResult?.error?.message, executionResult?.logs]
@@ -116,7 +117,7 @@ export function PythonTransformEditor({
     }
     if (isRunning) {
       cancel();
-    } else if (isPythonTransformSource(source)) {
+    } else if (isRunnable) {
       handleRun();
     }
   };
@@ -145,7 +146,7 @@ export function PythonTransformEditor({
         <Stack w="100%" h="100%" gap={0}>
           <PythonEditorBody
             disabled={uiOptions?.readOnly}
-            isRunnable={isPythonTransformSource(source)}
+            isRunnable={isRunnable}
             isRunning={isRunning}
             isDirty={isDirty}
             isEditMode={isEditMode}

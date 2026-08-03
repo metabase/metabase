@@ -46,12 +46,14 @@ import {
   type LocationDescriptor,
   type MemoryTestRouterHolder,
   Route,
-  RouterProviderV7Memory,
+  type RouteObject,
+  RouterProviderMemory,
   createLocationMirror,
-  createV7Navigator,
+  createRouterNavigator,
   routerMiddleware,
   toFacadeLocation,
   toNavigateArgs,
+  toRouteObjects,
 } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -128,6 +130,27 @@ export function renderWithProviders(
   };
 }
 
+/**
+ * Renders route objects, for a spec that has them already, such as the app's own
+ * `getRoutes`. Pass a function to build them from the store the harness makes.
+ */
+export function renderRoutes(
+  routes: RouteObject[] | ((store: Store<State>) => RouteObject[]),
+  { initialRoute = "/", ...options }: RenderWithProvidersOptions = {},
+) {
+  const {
+    wrapper: Wrapper,
+    store,
+    history,
+  } = getTestStoreAndWrapper({ ...options, initialRoute, withRouter: true });
+
+  const utils = testingLibraryRender(
+    <Wrapper routes={typeof routes === "function" ? routes(store) : routes} />,
+  );
+
+  return { ...utils, store, history };
+}
+
 export function renderHookWithProviders<TProps, TResult>(
   hook: (props: TProps) => TResult,
   {
@@ -189,7 +212,10 @@ export function getTestStoreAndWrapper({
   theme,
 }: GetTestStoreAndWrapperOptions) {
   let {
-    settings, // pull settings out because they aren't in the store
+    // Pull settings and currentUser out because they have no reducer;
+    // createMockState mirrors them into the bootstrap / getCurrentUser cache.
+    settings,
+    currentUser,
     ...initialState
   }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
@@ -216,7 +242,7 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
-  const routerNavigator = withRouter ? createV7Navigator() : undefined;
+  const routerNavigator = withRouter ? createRouterNavigator() : undefined;
   const storeMiddleware = _.compact([
     Api.middleware,
     routerNavigator && routerMiddleware(routerNavigator),
@@ -288,6 +314,7 @@ const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
 
 export function TestWrapper({
   children,
+  routes,
   store,
   routerHolder,
   withRouter,
@@ -299,7 +326,12 @@ export function TestWrapper({
   displayTheme,
   withCssVariables = false,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  /**
+   * Routes to mount, for a spec that has them as objects already, such as the
+   * app's own `getRoutes`. Takes the place of rendering a `<Route>` tree.
+   */
+  routes?: RouteObject[];
   store: any;
   routerHolder?: MemoryTestRouterHolder;
   withRouter: boolean;
@@ -338,6 +370,7 @@ export function TestWrapper({
                 <MaybeKBar hasKBar={withKBar}>
                   <MaybeRouter
                     hasRouter={withRouter}
+                    routes={routes}
                     routerHolder={routerHolder}
                     initialRoute={initialRoute}
                   >
@@ -425,7 +458,7 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
       return true;
     }
     // Routes are often grouped in a fragment (`<><Route/><Route/></>`); descend
-    // so the tree is still recognized, matching how `mapToV7` unwraps fragments.
+    // so the tree is still recognized, matching how react-router unwraps fragments.
     if (child.type === Fragment) {
       return childrenAreRouteTree(child.props.children);
     }
@@ -435,11 +468,13 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
 
 function MaybeRouter({
   children,
+  routes,
   hasRouter,
   routerHolder,
   initialRoute,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  routes?: RouteObject[];
   hasRouter: boolean;
   routerHolder?: MemoryTestRouterHolder;
   initialRoute: string;
@@ -451,24 +486,33 @@ function MaybeRouter({
   );
 
   if (!hasRouter) {
-    return children;
+    return <>{children}</>;
   }
-  // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
-  // `<Routes>` only renders `<Route>` children, so wrap a bare component in a
-  // catch-all route.
-  const content = childrenAreRouteTree(children) ? (
-    children
-  ) : (
-    <Route path="*" element={children} />
-  );
   return (
-    <RouterProviderV7Memory
+    <RouterProviderMemory
+      routes={routes ?? toRoutes(children)}
       initialRoute={initialRoute}
       routerHolder={routerHolder}
       onLocationChange={onLocationChange}
-    >
-      {content}
-    </RouterProviderV7Memory>
+    />
+  );
+}
+
+/**
+ * Tests render either a `<Route>` tree or a bare component. Only a bare
+ * component needs anything doing to it: it gets a catch-all route to sit in.
+ * A spec that has routes as objects passes them as `routes` instead.
+ */
+function toRoutes(children?: React.ReactElement): RouteObject[] {
+  if (!children) {
+    return [];
+  }
+  return toRouteObjects(
+    childrenAreRouteTree(children) ? (
+      children
+    ) : (
+      <Route path="*" element={children} />
+    ),
   );
 }
 

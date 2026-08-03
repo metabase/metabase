@@ -267,7 +267,7 @@ async function setup({
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
           element={redirect(
-            "database/:databaseId/schema/:schemaId/table/:tableId/details",
+            "../database/:databaseId/schema/:schemaId/table/:tableId/details",
           )}
         />
         <Route
