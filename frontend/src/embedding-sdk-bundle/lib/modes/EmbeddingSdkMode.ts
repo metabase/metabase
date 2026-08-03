@@ -1,22 +1,21 @@
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
-
-import type {
-  ClickObject,
-  LegacyDrill,
-  QueryClickActionsMode,
-} from "../../types";
-import { CombineColumnsAction } from "../actions/CombineColumnsAction";
-import { DashboardClickAction } from "../actions/DashboardClickAction";
-import { ExtractColumnAction } from "../actions/ExtractColumnAction";
-import { HideColumnAction } from "../actions/HideColumnAction";
-import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
+import { DashboardClickAction } from "metabase/dashboard/click-behavior/DashboardClickAction";
 import {
   getClickBehavior,
   getClickBehaviorData,
   getParameterIdValuePairs,
   getParameterValuesBySlug,
-} from "../lib/dashboard-click-drill";
+} from "metabase/dashboard/click-behavior/dashboard-click-drill";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import { CombineColumnsAction } from "metabase/visualizations/click-actions/actions/CombineColumnsAction";
+import { ExtractColumnAction } from "metabase/visualizations/click-actions/actions/ExtractColumnAction";
+import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
+import { NativeQueryClickFallback } from "metabase/visualizations/click-actions/actions/NativeQueryClickFallback";
+import type {
+  ClickObject,
+  LegacyDrill,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
+import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
 
 export type ClickBehaviorTarget = {
   type: "dashboard" | "question";

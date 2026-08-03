@@ -1,8 +1,8 @@
 import _ from "underscore";
 
+import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import { getStructuredQuestionUrlWithParameters } from "metabase/visualizations/click-actions/lib/question-url";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
