@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.typed-schemas.core :as typed-schemas]
    [metabase.typed-schemas.javascript :as javascript]
+   [metabase.typed-schemas.render :as render]
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private orders-question
@@ -120,12 +121,12 @@
         (rest obj-node)))
 
 (deftest schema->ast-produces-valid-modules-test
-  (are [schema] (mr/validate javascript/Module (typed-schemas/schema->ast schema))
+  (are [schema] (mr/validate javascript/Module (render/schema->ast schema))
     compacting-schema
     raw-dimensions-schema))
 
 (deftest schema->ast-compacts-metric-dimensions-test
-  (let [ast        (typed-schemas/schema->ast compacting-schema)
+  (let [ast        (render/schema->ast compacting-schema)
         dimensions (-> (module-const ast "metrics")
                        (obj-entry "revenue")
                        (obj-entry :dimensions))]
@@ -140,7 +141,7 @@
            (obj-entry dimensions "franchises")))))
 
 (deftest schema->ast-splits-runtime-keys-from-comments-test
-  (let [ast    (typed-schemas/schema->ast compacting-schema)
+  (let [ast    (render/schema->ast compacting-schema)
         fields (-> (module-const ast "tables")
                    (obj-entry "orders")
                    (obj-entry :fields))

@@ -46,14 +46,10 @@
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."
   [_route-params
-   query-params :- TypedSchemaQueryParams
-   _body
-   _request
-   respond
-   _raise]
-  (respond {:status  200
-            :headers typescript-response-headers
-            :body    (-> query-params
-                         query-params/query-params->options
-                         typed-schemas/build-semantic-schema
-                         typed-schemas/render-typescript)}))
+   query-params :- TypedSchemaQueryParams]
+  {:status  200
+   :headers typescript-response-headers
+   :body    (-> query-params
+                query-params/query-params->options
+                typed-schemas/build-semantic-schema
+                typed-schemas/render-typescript)})

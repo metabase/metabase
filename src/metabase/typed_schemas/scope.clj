@@ -42,16 +42,23 @@
   "librarylibrarymetrics")
 
 (defn database-ids-for-ref
-  "Returns readable database ids matching a typed database reference."
+  "Returns readable database ids matching a typed database reference.
+
+  An id matches at most one database. Database names are not unique, so a
+  name reference can genuinely match several databases — currently their
+  content is unioned into one scope."
   [database-ref]
   (when database-ref
     (let [{:keys [id name]} database-ref]
-      (->> (if id
-             (t2/select :model/Database :id id)
-             (t2/select :model/Database :name name))
-           (filter mi/can-read?)
-           (map :id)
-           set))))
+      (if id
+        (let [database (t2/select-one :model/Database :id id)]
+          (if (and database (mi/can-read? database))
+            #{id}
+            #{}))
+        (->> (t2/select :model/Database :name name)
+             (filter mi/can-read?)
+             (map :id)
+             set)))))
 
 (defn- not-found!
   [collection-refs]
