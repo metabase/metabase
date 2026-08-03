@@ -6,10 +6,10 @@ describe("getCustomVizPluginWarningMessage", () => {
       getCustomVizPluginWarningMessage({
         type: "sdk-version-mismatch",
         sdk_version: "3.1.0",
-        tested_sdk_range: ">=2.0.0 <=2.0.0",
+        tested_sdk_range: "2.0",
       }),
     ).toBe(
-      "Built with SDK version 3.1.0, but this version of Metabase was tested with SDK >=2.0.0 <=2.0.0.",
+      "Built with SDK version 3.1.0, but this version of Metabase was tested with SDK 2.0.",
     );
   });
 
@@ -18,10 +18,10 @@ describe("getCustomVizPluginWarningMessage", () => {
       getCustomVizPluginWarningMessage({
         type: "sdk-version-mismatch",
         sdk_version: null,
-        tested_sdk_range: ">=2.0.0 <=2.0.0",
+        tested_sdk_range: "2.0",
       }),
     ).toBe(
-      "Built with SDK version 1.x, but this version of Metabase was tested with SDK >=2.0.0 <=2.0.0.",
+      "Built with SDK version 1.x, but this version of Metabase was tested with SDK 2.0.",
     );
   });
 

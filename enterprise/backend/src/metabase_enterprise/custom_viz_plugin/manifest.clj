@@ -67,9 +67,10 @@
 
 (def tested-sdk-version-range
   "npm-semver range of @metabase/custom-viz versions this Metabase release was
-   tested against. Update it on every SDK release. Keep it closed on both ends
-   so it never includes unreleased SDK versions."
-  ">=2.0.0 <=2.0.0")
+   tested against. Any npm range syntax works (e.g. `2.0`, `2.0 - 2.1`,
+   `>=2.0.0 <3.0.0`) — keep it to versions that were actually tested, and keep
+   it readable: it's shown verbatim in admin UI warnings."
+  "2.0")
 
 (defn sdk-version-tested?
   "Whether `sdk-version` satisfies [[tested-sdk-version-range]]. A nil/blank

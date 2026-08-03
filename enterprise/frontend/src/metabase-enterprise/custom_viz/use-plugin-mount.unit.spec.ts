@@ -64,7 +64,7 @@ describe("usePluginMount", () => {
             {
               type: "sdk-version-mismatch",
               sdk_version: null,
-              tested_sdk_range: ">=2.0.0 <=2.0.0",
+              tested_sdk_range: "2.0",
             },
           ],
         }),
@@ -73,7 +73,7 @@ describe("usePluginMount", () => {
 
     expect(consoleError).toHaveBeenCalledWith(
       "The plugin has version warnings that may explain the failure:",
-      "Built with SDK version 1.x, but this version of Metabase was tested with SDK >=2.0.0 <=2.0.0.",
+      "Built with SDK version 1.x, but this version of Metabase was tested with SDK 2.0.",
     );
   });
 

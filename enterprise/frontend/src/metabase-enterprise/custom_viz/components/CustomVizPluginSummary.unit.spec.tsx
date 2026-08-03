@@ -23,7 +23,7 @@ describe("CustomVizPluginSummary", () => {
             {
               type: "sdk-version-mismatch",
               sdk_version: null,
-              tested_sdk_range: ">=2.0.0 <=2.0.0",
+              tested_sdk_range: "2.0",
             },
           ],
         })}
@@ -44,7 +44,7 @@ describe("CustomVizPluginSummary", () => {
             {
               type: "sdk-version-mismatch",
               sdk_version: "3.1.0",
-              tested_sdk_range: ">=2.0.0 <=2.0.0",
+              tested_sdk_range: "2.0",
             },
             {
               type: "metabase-version-mismatch",

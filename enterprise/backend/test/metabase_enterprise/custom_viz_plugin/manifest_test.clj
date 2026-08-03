@@ -75,6 +75,19 @@
       (is (false? (manifest/sdk-version-tested? 2.0)))
       (is (false? (manifest/sdk-version-tested? {:major 2}))))))
 
+(deftest sdk-version-tested?-range-syntax-test
+  (testing "a bare minor matches every patch of that minor"
+    (with-redefs [manifest/tested-sdk-version-range "2.0"]
+      (is (true? (manifest/sdk-version-tested? "2.0.0")))
+      (is (true? (manifest/sdk-version-tested? "2.0.7")))
+      (is (false? (manifest/sdk-version-tested? "2.1.0")))))
+  (testing "hyphen ranges span tested minors, upper minor inclusive"
+    (with-redefs [manifest/tested-sdk-version-range "2.0 - 2.1"]
+      (is (true? (manifest/sdk-version-tested? "2.0.0")))
+      (is (true? (manifest/sdk-version-tested? "2.1.9")))
+      (is (false? (manifest/sdk-version-tested? "1.9.9")))
+      (is (false? (manifest/sdk-version-tested? "2.2.0"))))))
+
 (deftest tested-sdk-version-range-covers-current-sdk-test
   (testing "tested-sdk-version-range includes the @metabase/custom-viz version in package.json — bump the range in the same PR as the version (see custom-viz/dev.md)"
     (let [{:keys [version]} (json/decode+kw (slurp "enterprise/frontend/src/custom-viz/package.json"))]
