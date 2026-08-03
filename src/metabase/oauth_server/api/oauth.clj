@@ -263,6 +263,12 @@
     (or (when-let [provider (oauth-server/get-provider)]
           (try
             (let [parsed       (oidc/parse-authorization-request provider query-params)
+                  ;; Narrow before signing: the signature then binds the narrowed scope through the
+                  ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
+                  parsed       (if-let [narrowed (oauth-server/narrow-scope-to-resource
+                                                  (:resource parsed) (:scope parsed))]
+                                 (assoc parsed :scope narrowed)
+                                 (dissoc parsed :scope))
                   client       (proto/get-client (:client-store provider) (:client_id parsed))
                   csrf-token   (generate-csrf-token)
                   oauth-params (select-keys parsed oauth-param-keys)

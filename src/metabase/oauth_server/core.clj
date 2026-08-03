@@ -52,6 +52,11 @@
   []
   (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
 
+(def v2-resource-path
+  "Path of the v2 MCP surface. Its RFC 9728 metadata advertises `<site-url><this>` as the resource
+   identifier, and that is the string an RFC 8707 `resource` indicator must match."
+  "/api/metabase-mcp/v2")
+
 (defn v2-resource-scopes
   "The scopes advertised for the v2 MCP resource specifically. RFC 9728 metadata answers \"what
    does *this* resource accept\", and the v2 surface accepts exactly the scopes its tool registry
@@ -62,6 +67,25 @@
    what makes a client's consent screen list per-entity v1 scopes the v2 tools no longer use."
   []
   (into (vec (mcp/v2-scopes)) (mcp/opt-in-scopes)))
+
+(defn narrow-scope-to-resource
+  "Narrow an OAuth `scope` string to what the requested `resources` accept.
+
+   `resources` are RFC 8707 resource indicators from the authorization request. When one names the
+   v2 MCP resource, scopes that surface does not accept are dropped, so the consent screen asks for
+   what the token can actually be used for rather than everything the client registered. Returns
+   the scope unchanged when no indicator names a resource we narrow for, and nil when nothing
+   survives (callers should drop the parameter entirely rather than send an empty one).
+
+   Only ever removes scopes. `mb:full` survives: it is a first-party full-access grant deliberately
+   absent from the v2 resource metadata, and dropping it would break a first-party client that
+   legitimately asked for it alongside the MCP scopes."
+  [resources scope]
+  (let [scope (some-> scope str str/trim not-empty)]
+    (if-not (and scope (contains? (set resources) (str (system/site-url) v2-resource-path)))
+      scope
+      (let [accepted (conj (set (v2-resource-scopes)) full-access-scope)]
+        (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."

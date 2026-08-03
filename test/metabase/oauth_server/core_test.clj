@@ -1,5 +1,6 @@
 (ns metabase.oauth-server.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    ;; load-bearing: all-agent-scopes reads the agent-api routes and the v2 tool registry, so both
    ;; must be loaded for the snippet-scope assertions to see the real surface
@@ -85,3 +86,44 @@
         (is (= "http://localhost:3000" (:issuer config)))
         (is (= "http://localhost:3000/oauth/authorize" (:authorization-endpoint config)))
         (is (= "http://localhost:3000/oauth/token" (:token-endpoint config)))))))
+
+;;; ----------------------------------- RFC 8707 resource narrowing -----------------------------------
+
+(deftest narrow-scope-to-resource-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (let [v2-uri "http://localhost:3000/api/metabase-mcp/v2"
+          scopes #(set (some-> % (str/split #"\s+")))]
+      (testing "an indicator naming the v2 resource drops scopes that surface does not accept"
+        (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
+                                [v2-uri]
+                                "agent:content:read agent:question:create agent:sql:execute agent:viz:mcp-ui"))]
+          (is (= #{"agent:content:read" "agent:viz:mcp-ui"} narrowed))))
+      (testing "every scope v2 advertises survives narrowing — otherwise the resource doc would
+                advertise a scope its own consent flow strips"
+        (let [advertised (oauth-server/v2-resource-scopes)]
+          (is (= (set advertised)
+                 (scopes (oauth-server/narrow-scope-to-resource
+                          [v2-uri] (str/join " " advertised)))))))
+      (testing "`mb:full` survives: a first-party client may legitimately request it alongside MCP
+                scopes, and it is deliberately absent from the v2 resource doc"
+        (is (= #{"mb:full" "agent:content:read"}
+               (scopes (oauth-server/narrow-scope-to-resource
+                        [v2-uri] "mb:full agent:content:read agent:question:create")))))
+      (testing "no indicator, or one naming a different resource, leaves the scope alone"
+        (let [wide "agent:content:read agent:question:create"]
+          (is (= wide (oauth-server/narrow-scope-to-resource nil wide)))
+          (is (= wide (oauth-server/narrow-scope-to-resource [] wide)))
+          (is (= wide (oauth-server/narrow-scope-to-resource
+                       ["http://localhost:3000/api/metabase-mcp"] wide)))))
+      (testing "nil rather than an empty scope when nothing survives, so the caller drops the
+                parameter instead of sending a blank one"
+        (is (nil? (oauth-server/narrow-scope-to-resource [v2-uri] "agent:question:create"))))
+      (testing "blank and missing scopes stay absent rather than becoming an empty parameter"
+        (doseq [blank [nil "" "   "]]
+          (testing (pr-str blank)
+            (is (nil? (oauth-server/narrow-scope-to-resource [v2-uri] blank)))
+            (is (nil? (oauth-server/narrow-scope-to-resource nil blank))))))
+      (testing "narrowing only ever removes — a client cannot gain a scope it did not request"
+        (let [requested "agent:content:read agent:question:create mb:full"]
+          (is (every? (scopes requested)
+                      (scopes (oauth-server/narrow-scope-to-resource [v2-uri] requested)))))))))
