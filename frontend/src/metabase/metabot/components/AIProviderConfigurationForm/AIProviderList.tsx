@@ -37,7 +37,6 @@ import { ProviderConnectionModal } from "./ProviderConnectionModal";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 
 const PROVIDER_ICON_SIZE = 32;
-const PROVIDER_ROW_HEIGHT = "3rem";
 const PROVIDER_DETAILS_INDENT = "2.5rem";
 // The warning glyph fills its viewBox, so it only sits on the label's cap band at this size.
 const WARNING_ICON_SIZE = 12;
@@ -48,12 +47,20 @@ export function ProviderListSkeleton() {
   return (
     <Stack gap="sm" data-testid="provider-list-skeleton">
       <Stack gap={0}>
-        <Skeleton h={PROVIDER_ROW_HEIGHT} />
+        <ProviderRowSkeleton />
         <Divider />
-        <Skeleton h={PROVIDER_ROW_HEIGHT} />
+        <ProviderRowSkeleton />
       </Stack>
       <Skeleton h="1.5rem" w="10rem" />
     </Stack>
+  );
+}
+
+function ProviderRowSkeleton() {
+  return (
+    <Box py="sm">
+      <Skeleton h={PROVIDER_ICON_SIZE} />
+    </Box>
   );
 }
 
