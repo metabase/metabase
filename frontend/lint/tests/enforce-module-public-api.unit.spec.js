@@ -85,7 +85,16 @@ ruleTester.run("enforce-module-public-api", rule, {
 });
 
 describe("getPublicApiModules", () => {
-  it("returns the aliases of flagged elements", () => {
-    expect(getPublicApiModules()).toContain("metabase/analytics");
+  it("returns the aliases of flagged elements only", () => {
+    expect(
+      getPublicApiModules([
+        {
+          type: "lib",
+          pattern: "frontend/src/metabase/flagged/**",
+          publicApiAlias: "metabase/flagged",
+        },
+        { type: "shared", pattern: "frontend/src/metabase/unflagged/**" },
+      ]),
+    ).toEqual(["metabase/flagged"]);
   });
 });
