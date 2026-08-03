@@ -1,7 +1,6 @@
 import type { Api } from "metabase/api/api";
 import type { DocumentsState } from "metabase/redux/store/documents";
 import type { ExplorationsState } from "metabase/redux/store/explorations";
-import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
 import type { AnalyticsExportState } from "./analytics-export";
@@ -29,7 +28,6 @@ export interface State {
   analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
-  currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;

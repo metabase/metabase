@@ -6,6 +6,11 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { CollectionItemModel } from "metabase-types/api";
 import {
+  createMockDatasetData,
+  createMockDatetimeColumn,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
+import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -53,6 +58,41 @@ describe("PinnedQuestionCard", () => {
     expect(await screen.findByTestId("visualization-root")).toHaveAttribute(
       "data-viz-ui-name",
       "Bar",
+    );
+  });
+
+  it("uses result metadata for a cold pinned metric preview (UXW-4958)", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+          ],
+        },
+      ],
+    });
+
+    setup(
+      { model: "metric", collection_preview: true },
+      {
+        card: { type: "metric", display: "line" },
+        dataset: {
+          json_query: Lib.toJsQuery(query),
+          data: createMockDatasetData({
+            cols: [
+              createMockDatetimeColumn({ source: "breakout" }),
+              createMockNumericColumn({ source: "aggregation" }),
+            ],
+          }),
+        },
+      },
+    );
+
+    expect(await screen.findByTestId("visualization-root")).toHaveAttribute(
+      "data-viz-ui-name",
+      "Line",
     );
   });
 });

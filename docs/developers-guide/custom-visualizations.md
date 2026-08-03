@@ -59,7 +59,6 @@ public/
     icon.svg            # Visualization icon (shown in the chart type picker)
 package.json
 vite.config.ts          # Build configuration — don't edit
-pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
 ```
 
@@ -94,16 +93,17 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
   "name": "my-viz",
   "icon": "icon.svg",
   "metabase": {
-    "version": ">=1.62.0"
+    "version": ">=1.62 <1.64"
   }
 }
 ```
 
-| Field              | Description                                                                                                                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles.                                                            |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets). |
-| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                              |
+| Field              | Description                                                                                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles.                                                             |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets).  |
+| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62 <1.64"`). Keep the range closed on both ends. See [Versioning and compatibility](#versioning-and-compatibility). |
+| `sdk.version`      | The exact `@metabase/custom-viz` version the plugin was built with. Written automatically at pack time — don't set it by hand.                                                                |
 
 ## Defining a visualization
 
@@ -175,15 +175,15 @@ export default createVisualization;
 
 ### Props passed to your component
 
-| Prop          | Type                                     | Description                                                                                 |
-| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `series`      | `Series`                                 | Query results — an array of series; each has `data.rows` and `data.cols`.                   |
-| `settings`    | `CustomVisualizationSettings<TSettings>` | The resolved visualization settings.                                                        |
-| `width`       | `number \| null`                         | Container width in pixels. `null` until the first measure — render `null` to avoid a flash. |
-| `height`      | `number \| null`                         | Container height in pixels. `null` until the first measure.                                 |
-| `colorScheme` | `"light" \| "dark"`                      | Metabase's current color scheme.                                                            |
-| `onClick`     | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                      |
-| `onHover`     | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                     |
+| Prop               | Type                                     | Description                                                                                                                      |
+| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `series`           | `Series`                                 | Query results — an array of series; each has `data.rows` and `data.cols`.                                                        |
+| `settings`         | `CustomVisualizationSettings<TSettings>` | The resolved visualization settings.                                                                                             |
+| `width`            | `number \| null`                         | Container width in pixels. `null` until the first measure — render `null` to avoid a flash.                                      |
+| `height`           | `number \| null`                         | Container height in pixels. `null` until the first measure.                                                                      |
+| `renderingContext` | `RenderingContext`                       | Host helpers for colors, text measurement, and the current color scheme — see [Formatting and theming](#formatting-and-theming). |
+| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                                                           |
+| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                                                          |
 
 ## Handling query results
 
@@ -278,6 +278,12 @@ settings: {
 | `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                                           |
 | `persistDefault`               | When `true`, writes the value from `getDefault` to stored settings on first render.              |
 
+### Reserved setting ids
+
+Metabase adds a few settings of its own to every custom visualization. They power built-in behavior, like the column formatting popover that opens when a `"field"` or `"fields"` widget sets `showColumnSetting: true`. The setting ids `column_settings` and `column` are reserved for those settings: TypeScript rejects a `Settings` type that declares either key, and Metabase ignores any setting definition that uses one (and logs a warning to the console).
+
+Your visualization can still _read_ the per-column formatting: the resolved `settings` object includes `column`, a function that returns a column's effective formatting settings. See [Formatting and theming](#formatting-and-theming) for how to apply it with `formatValue`.
+
 ### Built-in widgets
 
 Widgets for the settings UI.
@@ -342,13 +348,19 @@ formatValue(row[1], { column: cols[1] });
 formatValue(0.084, { number_style: "percent", decimals: 1 }); // "8.4%"
 ```
 
+To honor the formatting people pick in the column formatting popover (the one `showColumnSetting: true` enables on `"field"` and `"fields"` widgets - see [built-in widgets](#built-in-widgets)), format with `settings.column(col)`. It resolves a column's effective settings (instance-wide defaults, the column's metadata settings, and the card-level popover settings, merged in that order) into ready-to-use `formatValue` options:
+
+```tsx
+formatValue(row[1], settings.column?.(cols[1]));
+```
+
 `formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. If you call them outside of Metabase, like in a unit test, they'll throw `Metabase Viz API not initialized`.
 
-For layout math (like fitting labels or sizing axes), `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels. There's also `measureTextWidth` and `measureTextHeight` if you only need one dimension.
+For layout math (like fitting labels or sizing axes), use the `renderingContext` prop: `renderingContext.measureText(text, style)` returns `{ width, height }` in pixels, where `style` is `{ size, weight, family }`. The optional `style.family` defaults to the font your Metabase is rendering with, so measurements match what people see; pass it explicitly only when you render text in a different font. That font is also available as `renderingContext.fontFamily` for styling your own markup.
 
 To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
+Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 
@@ -396,13 +408,21 @@ npm run build
 
 This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MiB. The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
 
+Packaging runs through the `@metabase/custom-viz` CLI, so you can also run it on its own:
+
+```
+npx @metabase/custom-viz pack
+```
+
+> **Upgrading an older project**: earlier versions (`1.*`) of the CLI scaffolded a `pack.mjs` script into your project. To switch to the built-in command instead, update `@metabase/custom-viz` to the latest version, set `build` to `vite build && metabase-custom-viz pack` in `package.json`, then delete `pack.mjs` and the `tar-stream` and `@types/tar-stream` devDependencies.
+
 For uploading and managing plugins, see [Custom visualizations](../questions/visualizations/custom.md).
 
 ## Versioning and compatibility
 
-The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. Write the range against the full version number (`">=1.62.0"`), not a bare major version (`">=62"`), which won't match.
+The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends: an open-ended range like `">=1.62.0"` claims compatibility with future Metabase versions your plugin has never run against. Write the range against the full version number (`">=1.62 <1.64"`), not a bare major version (`">=62 <64"`), which won't match.
 
-If you upload a bundle to a Metabase outside the plugin's declared range, Metabase rejects the upload.
+If a plugin's declared range doesn't include the Metabase version it's installed on — at upload time, or later after a Metabase upgrade — the plugin still uploads and runs, and Metabase shows a warning on the **Manage visualizations** page.
 
 ## Custom visualization limitations
 
