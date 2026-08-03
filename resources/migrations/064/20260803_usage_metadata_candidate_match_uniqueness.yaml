@@ -16,6 +16,7 @@ databaseChangeLog:
               )
       rollback: []
 
+  # A legacy writer can recreate a duplicate before the constraints land; retrying safely repeats the cleanup above.
   - changeSet:
       id: v64.um-candidate-match-measure-unique
       author: codex
