@@ -453,7 +453,7 @@ jobs:
         with:
           adapter: e2e
           test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
-          enforce-quarantine: ${{ env.CI_CONDUCTOR_QUARANTINE_ACTIVE }}
+          enforce-quarantine: true
 
       - name: Fail job if tests failed
         if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' && env.CI_CONDUCTOR_QUARANTINE_ACTIVE != 'true' }}

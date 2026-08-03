@@ -225,7 +225,7 @@ jobs:
         with:
           adapter: e2e
           test-suite: e2e
-          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
+          enforce-quarantine: true
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7

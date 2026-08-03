@@ -119,7 +119,7 @@ jobs:
         with:
           adapter: e2e
           test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
-          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
+          enforce-quarantine: true
 
       - name: "SDK component tests > Upload Cypress Artifacts upon failure"
         uses: actions/upload-artifact@v7
@@ -288,7 +288,7 @@ jobs:
         with:
           adapter: e2e
           test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
-          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
+          enforce-quarantine: true
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7

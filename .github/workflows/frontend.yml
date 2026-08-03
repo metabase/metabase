@@ -128,7 +128,7 @@ jobs:
         with:
           adapter: frontend
           test-suite: fe-tests-unit
-          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
+          enforce-quarantine: true
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}
