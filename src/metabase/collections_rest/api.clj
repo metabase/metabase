@@ -335,6 +335,10 @@
   "Collection types that the root/items endpoint can filter on"
   [:enum "remote-synced"])
 
+(def ^:private CollectionAuthorityLevelFilter
+  "Collection authority levels accepted by the collection items endpoints. `regular` represents a nil authority level."
+  [:enum "official" "regular"])
+
 (def ^:private CollectionChildrenOptions
   [:map
    [:show-dashboard-questions?     :boolean]
@@ -342,6 +346,7 @@
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
+   [:authority-level {:optional true} [:maybe [:enum :official :regular]]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
    [:search-text  {:optional true} [:maybe :string]]
@@ -794,7 +799,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? authority-level collection-namespace pinned-state collection-type include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -804,6 +809,10 @@
            (if (= collection-type "remote-synced")
              [:= :is_remote_synced true]
              [:= :type collection-type]))
+         (when authority-level
+           (case authority-level
+             :official [:= :authority_level "official"]
+             :regular  [:= :authority_level nil]))
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type [collection/library-collection-type
@@ -1251,32 +1260,54 @@
        :offset (request/offset)
        :models valid-models})))
 
-(mu/defn- collection-available-models :- [:sequential :string]
-  "Return sorted distinct models that have at least one visible item in `collection`. Respect the requested scope and
-  visibility, but ignore model and search filters. When present, `restrict-models` limits the candidate models."
+(mu/defn- collection-filter-metadata :- [:map
+                                         [:available_models [:sequential :string]]
+                                         [:available_authority_levels [:sequential :string]]]
+  "Return the models and collection authority levels that have at least one visible item in `collection`. Respect the
+  requested scope and visibility, but ignore model, authority-level, and search filters. When present,
+  `restrict-models` limits the candidate models."
   [collection restrict-models {:keys [archived?] :as options}]
   (let [candidates (cond->> (valid-collection-models (:namespace collection))
                      (seq restrict-models) (filter (set restrict-models)))
         options    (-> options
-                       (dissoc :models :search-text)
+                       (dissoc :models :authority-level :search-text)
                        (assoc :collection-namespace (:namespace collection)))]
     (if (empty? candidates)
-      []
+      {:available_models [] :available_authority_levels []}
       (let [viz-config {:include-archived-items    :all
                         :archive-operation-id      nil
                         :permission-level          (if archived? :write :read)
                         :include-trash-collection? archived?}
+            has-collections? (contains? (set candidates) :collection)
             row        (first
                         (mdb/query
                          {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                          :select (vec (for [model candidates]
-                                         [[:exists (collection-children-query model collection options)] model]))}))]
-        (->> row
-             (keep (fn [[model present?]]
-                     (when (api/bit->boolean present?)
-                       (name model))))
-             sort
-             vec)))))
+                          :select (vec
+                                   (concat
+                                    (for [model candidates]
+                                      [[:exists (collection-children-query model collection options)] model])
+                                    (when has-collections?
+                                      (for [authority-level [:official :regular]]
+                                        [[:exists (collection-children-query
+                                                   :collection
+                                                   collection
+                                                   (assoc options :authority-level authority-level))]
+                                         (keyword (str "authority_level_" (name authority-level)))]))))}))]
+        {:available_models
+         (->> candidates
+              (keep (fn [model]
+                      (when (api/bit->boolean (get row model))
+                        (name model))))
+              sort
+              vec)
+         :available_authority_levels
+         (if-not has-collections?
+           []
+           (->> [:official :regular]
+                (filter (fn [authority-level]
+                          (api/bit->boolean
+                           (get row (keyword (str "authority_level_" (name authority-level)))))))
+                (mapv name)))}))))
 
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -1472,13 +1503,15 @@
 
   By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
 
-  Pass `?q=` to filter items by name or last editor. Pass `?include_available_models=true` to include the models that
-  have at least one visible item in the requested scope.
+  Pass `?q=` to filter items by name or last editor. Pass `?authority_level=official` or
+  `?authority_level=regular` to filter child collections by authority level without affecting other requested models.
+  Pass `?include_available_models=true` to include the models and collection authority levels that have at least one
+  visible item in the requested scope.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
-   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
+   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first authority_level
            include_can_run_adhoc_query include_library collection_type
            show_dashboard_questions q include_available_models]} :- [:map
                                                                      [:models                      {:optional true} [:maybe Models]]
@@ -1492,6 +1525,7 @@
                                                                      [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
                                                                      [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                      [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                     [:authority_level             {:optional true} [:maybe CollectionAuthorityLevelFilter]]
                                                                      [:q                           {:optional true} [:maybe :string]]
                                                                      [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
@@ -1511,6 +1545,7 @@
                                                         #{:collection}
                                                         model-kwds)
                          :pinned-state                (keyword pinned_state)
+                         :authority-level             (keyword authority_level)
                          :search-text                 q
                          :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                                        :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
@@ -1519,8 +1554,7 @@
                                                                                         (boolean official_collections_first))}}
         children        (cond-> (collection-children root-collection options)
                           include_available_models
-                          (assoc :available_models
-                                 (collection-available-models root-collection restrict-models options)))]
+                          (merge (collection-filter-metadata root-collection restrict-models options)))]
     children))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -1787,14 +1821,17 @@
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
   *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
+  *  `authority_level` - when `official` or `regular`, filter child collections by that authority level. Other requested
+                        models are unaffected.
   *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.
-  *  `include_available_models` - include the models that have at least one visible item in the requested scope.
+  *  `include_available_models` - include the models and collection authority levels that have at least one visible
+                                  item in the requested scope.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
+   {:keys [models archived pinned_state sort_column sort_direction official_collections_first authority_level
            include_can_run_adhoc_query
            show_dashboard_questions q include_available_models]} :- [:map
                                                                      [:models                      {:optional true} [:maybe Models]]
@@ -1805,6 +1842,7 @@
                                                                      [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
                                                                      [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                      [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:authority_level             {:optional true} [:maybe CollectionAuthorityLevelFilter]]
                                                                      [:q                           {:optional true} [:maybe :string]]
                                                                      [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
@@ -1815,6 +1853,7 @@
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                      :pinned-state                (keyword pinned_state)
+                     :authority-level             (keyword authority_level)
                      :include-can-run-adhoc-query include_can_run_adhoc_query
                      :search-text                 q
                      :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
@@ -1826,6 +1865,6 @@
                                                                                   (boolean official_collections_first))}}
         children    (cond-> (collection-children collection options)
                       include_available_models
-                      (assoc :available_models (collection-available-models collection nil options)))]
+                      (merge (collection-filter-metadata collection nil options)))]
     (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
     children))

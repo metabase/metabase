@@ -989,6 +989,66 @@
         (is (= #{"a_b"} (item-names "a_b")))
         (is (= #{"path\\name"} (item-names "path\\name")))))))
 
+(deftest collection-items-authority-level-filter-test
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection parent             {}
+                   :model/Collection regular-child      {:name     "Regular child"
+                                                         :location (collection/children-location parent)}
+                   :model/Collection first-official      {:name            "First official child"
+                                                          :location        (collection/children-location parent)
+                                                          :authority_level "official"}
+                   :model/Collection second-official     {:name            "Second official child"
+                                                          :location        (collection/children-location parent)
+                                                          :authority_level "official"}
+                   :model/Dashboard  dashboard           {:name "Mixed dashboard" :collection_id (u/the-id parent)}]
+      (letfn [(fetch [& params]
+                (apply mt/user-http-request
+                       :crowberto :get 200 (str "collection/" (u/the-id parent) "/items") params))
+              (item-identities [response]
+                (set (map (juxt :model :name) (:data response))))]
+        (testing "omitting authority_level preserves all collections"
+          (is (set/subset? #{["collection" (:name regular-child)]
+                             ["collection" (:name first-official)]
+                             ["collection" (:name second-official)]}
+                           (item-identities (fetch :models "collection")))))
+        (testing "filters official collections before pagination"
+          (let [first-page        (fetch :models "collection" :authority_level "official" :limit "1" :offset "0")
+                second-page       (fetch :models "collection" :authority_level "official" :limit "1" :offset "1")
+                out-of-range-page (fetch :models "collection" :authority_level "official" :limit "1" :offset "2")]
+            (is (= 2 (:total first-page)))
+            (is (= 2 (:total second-page)))
+            (is (= 2 (:total out-of-range-page)))
+            (is (= 1 (count (:data first-page))))
+            (is (= 1 (count (:data second-page))))
+            (is (not= (item-identities first-page) (item-identities second-page)))
+            (is (= [] (:data out-of-range-page)))
+            (is (not-any? #(= (:id regular-child) (:id %))
+                          (concat (:data first-page) (:data second-page))))))
+        (testing "filters regular collections"
+          (let [response (fetch :models "collection" :authority_level "regular")]
+            (is (= 1 (:total response)))
+            (is (= #{["collection" "Regular child"]} (item-identities response)))))
+        (testing "composes with search and applies only to collection rows in a mixed-model request"
+          (is (= #{["collection" "Second official child"]}
+                 (item-identities
+                  (fetch :models "collection" :models "dashboard"
+                         :authority_level "official" :q "second"))))
+          (is (= #{["collection" "First official child"]
+                   ["collection" "Second official child"]
+                   ["dashboard" (:name dashboard)]}
+                 (item-identities
+                  (fetch :models "collection" :models "dashboard" :authority_level "official")))))
+        (testing "collections remain absent from pinned-only scope"
+          (is (= {:data [] :total 0}
+                 (select-keys (fetch :models "collection"
+                                     :authority_level "official"
+                                     :pinned_state "is_pinned")
+                              [:data :total]))))
+        (testing "rejects unsupported authority levels"
+          (mt/user-http-request :crowberto :get 400
+                                (str "collection/" (u/the-id parent) "/items")
+                                :authority_level "verified"))))))
+
 (deftest collection-items-available-models-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection collection {}
@@ -1000,6 +1060,9 @@
                                                  :collection_position 1}
                    :model/Collection _          {:name     "Child collection"
                                                  :location (collection/children-location collection)}
+                   :model/Collection _          {:name            "Official child collection"
+                                                 :location        (collection/children-location collection)
+                                                 :authority_level "official"}
                    :model/Timeline   _          {:name "Timeline" :collection_id (u/the-id collection)}]
       (letfn [(fetch [& params]
                 (apply mt/user-http-request
@@ -1010,27 +1073,43 @@
               unpinned-response (fetch :include_available_models true :pinned_state "is_not_pinned")
               pinned-response   (fetch :include_available_models true :pinned_state "is_pinned")
               search-response   (fetch :include_available_models true :q "zzz")
-              models-response   (fetch :include_available_models true :models "card")]
+              models-response   (fetch :include_available_models true :models "card")
+              authority-response (fetch :include_available_models true
+                                        :models "collection"
+                                        :authority_level "official")]
           (testing "is absent unless explicitly requested"
-            (is (not (contains? (fetch) :available_models))))
+            (let [response (fetch)]
+              (is (not (contains? response :available_models)))
+              (is (not (contains? response :available_authority_levels)))))
           (testing "is sorted and respects the pinned-state scope"
             (is (= all-models (:available_models all-response)))
             (is (= unpinned-models (:available_models unpinned-response)))
-            (is (= ["metric"] (:available_models pinned-response))))
+            (is (= ["metric"] (:available_models pinned-response)))
+            (is (= ["official" "regular"] (:available_authority_levels all-response)))
+            (is (= ["official" "regular"] (:available_authority_levels unpinned-response)))
+            (is (= [] (:available_authority_levels pinned-response))))
           (testing "ignores search text"
             (is (= all-models (:available_models search-response)))
+            (is (= ["official" "regular"] (:available_authority_levels search-response)))
             (is (= [] (:data search-response)))
             (is (= 0 (:total search-response))))
           (testing "ignores the requested models"
             (is (= all-models (:available_models models-response)))
+            (is (= ["official" "regular"] (:available_authority_levels models-response)))
             (is (= #{["card" "Question"]}
-                   (set (map (juxt :model :name) (:data models-response)))))))))))
+                   (set (map (juxt :model :name) (:data models-response))))))
+          (testing "ignores the requested authority level"
+            (is (= all-models (:available_models authority-response)))
+            (is (= ["official" "regular"] (:available_authority_levels authority-response)))
+            (is (= #{["collection" "Official child collection"]}
+                   (set (map (juxt :model :name) (:data authority-response)))))))))))
 
 (deftest collection-items-available-models-permissions-test
   (testing "GET /api/collection/:id/items"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection parent-collection {}
-                     :model/Collection child-collection  {:location (collection/children-location parent-collection)}]
+                     :model/Collection child-collection  {:location        (collection/children-location parent-collection)
+                                                          :authority_level "official"}]
         (let [group (perms/all-users-group)]
           (perms/revoke-collection-permissions! group parent-collection)
           (perms/revoke-collection-permissions! group child-collection)
@@ -1042,11 +1121,13 @@
             (testing "does not include a child collection the user cannot read"
               (let [response (fetch)]
                 (is (not (contains? (set (:available_models response)) "collection")))
+                (is (not (contains? (set (:available_authority_levels response)) "official")))
                 (is (not-any? #(= (:id child-collection) (:id %)) (:data response)))))
             (testing "includes the child collection after read permission is granted"
               (perms/grant-collection-read-permissions! group child-collection)
               (let [response (fetch)]
                 (is (contains? (set (:available_models response)) "collection"))
+                (is (contains? (set (:available_authority_levels response)) "official"))
                 (is (some #(= (:id child-collection) (:id %)) (:data response)))))))))))
 
 (deftest collection-items-search-and-available-models-archived-test
@@ -1056,6 +1137,10 @@
                                                  :collection_id     (u/the-id collection)
                                                  :archived          true
                                                  :archived_directly false}
+                   :model/Collection _          {:name            "Archived official collection"
+                                                 :location        (collection/children-location collection)
+                                                 :archived        true
+                                                 :authority_level "official"}
                    :model/Dashboard  _          {:name "Current revenue" :collection_id (u/the-id collection)}]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (str "collection/" (u/the-id collection) "/items")
@@ -1065,13 +1150,17 @@
         (is (= 1 (:total response)))
         (is (= #{["card" "Old revenue"]}
                (set (map (juxt :model :name) (:data response)))))
-        (is (= ["card"] (:available_models response)))))))
+        (is (= ["card" "collection"] (:available_models response)))
+        (is (= ["official"] (:available_authority_levels response)))))))
 
 (deftest root-collection-items-search-and-available-models-test
   (testing "GET /api/collection/root/items"
     (mt/with-temp [:model/Card       _                   {:name "UXW4950 root revenue" :collection_id nil}
                    :model/Dashboard  _                   {:name "UXW4950 root dashboard" :collection_id nil}
                    :model/Collection visible-collection  {:name "UXW4950 visible child" :location "/"}
+                   :model/Collection official-collection {:name            "UXW4950 official child"
+                                                          :location        "/"
+                                                          :authority_level "official"}
                    :model/Collection currency-collection {:name      "UXW4950 currency child"
                                                           :namespace "currency"
                                                           :location  "/"}
@@ -1084,12 +1173,26 @@
           (is (= #{["card" "UXW4950 root revenue"]}
                  (set (map (juxt :model :name) (:data response)))))
           (is (set/subset? #{"card" "collection" "dashboard"}
-                           (set (:available_models response))))))
+                           (set (:available_models response))))
+          (is (set/subset? #{"official" "regular"}
+                           (set (:available_authority_levels response))))))
+      (testing "filters root collections by authority level"
+        (let [official-response (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                                      :models "collection"
+                                                      :authority_level "official"
+                                                      :q "UXW4950 official child")
+              regular-response  (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                                      :models "collection"
+                                                      :authority_level "regular"
+                                                      :q "UXW4950 visible child")]
+          (is (= #{(:id official-collection)} (set (map :id (:data official-response)))))
+          (is (= #{(:id visible-collection)} (set (map :id (:data regular-response)))))))
       (testing "restricts metadata to namespace-valid models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "currency"
                                              :include_available_models true)]
           (is (= ["collection"] (:available_models response)))
+          (is (= ["regular"] (:available_authority_levels response)))
           (is (some #(= (:id currency-collection) (:id %)) (:data response)))))
       (testing "does not report non-pinnable snippets in pinned scope"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
@@ -1097,9 +1200,11 @@
                                              :pinned_state "is_pinned"
                                              :include_available_models true)]
           (is (not (contains? (set (:available_models response)) "snippet")))
+          (is (= [] (:available_authority_levels response)))
           (is (not-any? #(= (:model %) "snippet") (:data response)))))
       (testing "restricts metadata to collections for a user without root read permission"
         (mt/with-non-admin-groups-no-root-collection-perms
+          (perms/revoke-collection-permissions! (perms/all-users-group) official-collection)
           (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
           (let [response         (mt/user-http-request :rasta :get 200 "collection/root/items"
                                                        :q "UXW4950 ROOT revenue"
@@ -1107,7 +1212,8 @@
                 available-models (set (:available_models response))]
             (is (= [] (:data response)))
             (is (contains? available-models "collection"))
-            (is (set/subset? available-models #{"collection"}))))))))
+            (is (set/subset? available-models #{"collection"}))
+            (is (not (contains? (set (:available_authority_levels response)) "official")))))))))
 
 (deftest collection-items-children-test
   (testing "GET /api/collection/:id/items"
