@@ -219,9 +219,10 @@
 (deftest cache-miss-error-names-its-prime-function-test
   (testing "the miss error points at the prime function for the kind of check, and names the entity"
     (binding [data-perms/*perms-cache-misses-are-errors?* true]
-      (doseq [[kind id expected-fn] [[:table    42   "prime-table-perms-cache"]
-                                     [:schema   #{7} "prime-schema-perms-cache"]
-                                     [:database 3    "prime-database-perms-cache"]]]
+      ;; ids past the thousands, so a regression to formatting them as numbers -- "1,234,567" -- is caught
+      (doseq [[kind id expected-fn] [[:table    1234567    "prime-table-perms-cache"]
+                                     [:schema   #{7654321} "prime-schema-perms-cache"]
+                                     [:database 9876543    "prime-database-perms-cache"]]]
         (testing kind
           (let [cache (atom {})
                 miss! #(#'data-perms/cache-miss! kind id cache)]

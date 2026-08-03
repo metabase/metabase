@@ -314,8 +314,8 @@
   (when *perms-cache-misses-are-errors?*
     (let [{:keys [misses]} (swap! cache update :misses (fnil inc 0))]
       (when (>= misses max-cache-misses)
-        (throw (ex-info (tru "Permission checks are running one query per entity, this one for {0} {1}. Load the scope up front with [[{2}]]."
-                             (name kind) id (prime-fn-for-kind kind))
+        (throw (ex-info (format "Permission checks are running one query per entity, this one for %s %s. Load the scope up front with [[%s]]."
+                                (name kind) id (prime-fn-for-kind kind))
                         {:kind kind, :id id}))))))
 
 (defn is-superuser?
@@ -587,8 +587,9 @@
         (doseq [batch (partition-all max-ids-per-query
                                      (into #{} (remove (:table-ids cache)) table-ids))]
           (load-table-perms! user-id {:table-ids (set batch)}))
-        (when-let [missing-db-ids (not-empty (into #{} (remove (:db-ids cache)) db-ids))]
-          (load-table-perms! user-id {:db-ids missing-db-ids})))
+        (doseq [batch (partition-all max-ids-per-query
+                                     (into #{} (remove (:db-ids cache)) db-ids))]
+          (load-table-perms! user-id {:db-ids (set batch)})))
       (prime-database-perms-cache {:db-ids db-ids})
       nil)))
 
