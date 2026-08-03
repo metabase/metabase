@@ -24,6 +24,12 @@ Run Metabase in a [Docker container](./running-metabase-on-docker.md).
 
 If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase JAR](./running-the-metabase-jar-file.md).
 
+### Third-party managed hosting
+
+If you want the self-hosted edition without running the server yourself, Zenith deploys and manages a Metabase instance for you. Storage, backups, email and a subdomain are included.
+
+[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/metabase)
+
 ## Air-gapped Metabase
 
 If you're self-hosting because you need an air-gapped environment, check out the [air-gapped edition of Metabase](https://www.metabase.com/product/air-gapping).
