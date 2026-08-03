@@ -365,8 +365,8 @@
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
-  token, API key, OR OAuth bearer access token was passed. A bearer token additionally sets `:token-scopes` (the access
-  it was granted); precedence is session > API key > bearer."
+  token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
+  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential."
   [handler]
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
