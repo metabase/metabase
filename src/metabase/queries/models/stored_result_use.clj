@@ -1,7 +1,7 @@
 (ns metabase.queries.models.stored-result-use
   "Tracks references to a `stored_result` snapshot. Each row records the `exploration_id`
-  (the exploration that produced the snapshot). Used for lifecycle/GC and serdes — not
-  for read authorization. Lives in the queries module alongside `:model/StoredResult`."
+  (the exploration that produced the snapshot). Used for lifecycle/GC — not for read
+  authorization. Lives in the queries module alongside `:model/StoredResult`."
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

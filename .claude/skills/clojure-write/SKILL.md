@@ -82,24 +82,29 @@ either a bug, or it means callers must handle each case themselves — and
 in *that* case it is the *absence* of the property that must be
 documented. Document deviations from expectation, not conformance to it.
 
-Heuristic, in two parts — the second is the one that gets skipped:
+Heuristic — a sentence earns its place in the docstring only if it
+passes both tests:
 
-1. If a sentence describes *how the current body works*, it belongs in
-   the body, as an inline comment if it is non-obvious.
-2. If a sentence would survive a rewrite of this body **because it is
-   about someone else's code**, cut it. Surviving the rewrite is not the
-   test; *owning the fact* is. "Lib only offers binning strategies when
-   the column has a defined min/max" stays true no matter what you do
-   here — which is exactly the problem. You have written a claim about a
-   namespace you do not control, in a place no test or compiler checks,
-   and it will rot without anyone noticing. Name the callee and let its
-   docstring answer for it.
+1. Rewrite test (necessary, not sufficient): if rewriting the body to a
+   different implementation with an identical contract could make the
+   sentence false, it describes the implementation, not the contract.
+   Relocate it to an inline comment at the point in the body where it
+   applies.
 
-Say each fact once. A namespace docstring that re-summarizes its own
-multimethods, a caller that re-explains its callee's gating, three
-sibling functions with the same paragraph about retries — these are the
-same defect as a stale comment, just pre-staged. Pick the one var that
-owns the fact and point the others at it.
+2. Ownership test: if the sentence states a fact about code this
+   function does not own — a callee's behavior, a library's guarantee —
+   it survives any rewrite trivially, which is exactly why the rewrite
+   test alone is not enough. If this body *relies* on that fact, it is
+   implementation context: relocate it to the call site. If nothing here
+   relies on it, it is blather about someone else's code: delete it, and
+   let the callee's own docstring answer for it.
+
+Say each fact once. Duplicated prose is a stale comment in advance: when
+the fact changes, one copy gets updated and the rest quietly rot. This
+holds even within code you own — a namespace docstring that
+re-summarizes its own multimethods, three sibling functions carrying the
+same paragraph about retry behavior. Give the fact one home, and have
+the other places name it rather than restate it.
 
 Multi-line docstrings are not banned — a genuinely non-obvious constraint
 the code had to deal with can be worth explaining. But be prudent; the
