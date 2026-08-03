@@ -6,6 +6,7 @@ import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
+  LoadingOverlay,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
@@ -92,17 +93,21 @@ export function StaleContentTable({
       flex="0 1 auto"
       mih={0}
       p={0}
+      pos="relative"
       withBorder
       data-testid="stale-content-list"
     >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          emptyState={<MonitorEmptyState label={t`No stale content found`} />}
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            emptyState={<MonitorEmptyState label={t`No stale content found`} />}
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
     </Card>
   );

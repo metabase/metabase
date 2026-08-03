@@ -148,7 +148,6 @@ export function StaleContent({
         <StaleContentFilterBar
           query={query}
           filterOptions={filterOptions}
-          isFetching={isFetching}
           isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}

@@ -2,7 +2,7 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { type ChangeEvent, type ReactNode, memo, useState } from "react";
 import { t } from "ttag";
 
-import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { StaleContentFilterPicker } from "../StaleContentFilterPicker";
@@ -16,7 +16,6 @@ import { ALL_FILTER_TYPES } from "../utils";
 type StaleContentFilterBarProps = {
   query?: string;
   filterOptions: StaleContentFilterOptions;
-  isFetching: boolean;
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: StaleContentFilterOptions) => void;
@@ -26,14 +25,12 @@ type StaleContentFilterBarProps = {
 export const StaleContentFilterBar = memo(function StaleContentFilterBar({
   query,
   filterOptions,
-  isFetching,
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
   actions,
 }: StaleContentFilterBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
-  const hasLoader = isFetching && !isLoading;
   const hasDefaultFilterOptions = areStaleFilterOptionsEqual(
     filterOptions,
     getStaleDefaultFilterOptions(),
@@ -60,7 +57,6 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
         placeholder={t`Search…`}
         flex={1}
         leftSection={<FixedSizeIcon name="search" />}
-        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         data-testid="content-diagnostics-search-input"
         onChange={handleSearchChange}
       />
