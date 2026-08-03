@@ -11,6 +11,7 @@ databaseChangeLog:
               - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
               - column: {name: status, type: varchar(32), remarks: Queued running succeeded or failed, constraints: {nullable: false}}
               - column: {name: trigger, type: varchar(32), remarks: Manual or scheduled trigger, constraints: {nullable: false}}
+              # Intentionally no User FK so refresh diagnostics survive deletion of the requesting user.
               - column: {name: requested_by, type: int, remarks: User that requested a manual run}
               - column: {name: algorithm_version, type: int, remarks: Materialization algorithm version, constraints: {nullable: false}}
               - column: {name: source_config, type: "${text.type}", remarks: JSON query population configuration, constraints: {nullable: false}}
@@ -177,6 +178,7 @@ databaseChangeLog:
               - column: {name: signature_version, type: int, remarks: Canonical signature format version, constraints: {nullable: false}}
               - column: {name: signature_hash, type: char(64), remarks: SHA-256 semantic identity, constraints: {nullable: false}}
               - column: {name: signature, type: "${text.type}", remarks: Canonical semantic identity, constraints: {nullable: false}}
+              # Intentionally no User FK so the dismissal remains durable after the administrator is deleted.
               - column: {name: dismissed_by, type: int, remarks: User that dismissed the candidate, constraints: {nullable: false}}
               - column: {name: reason, type: "${text.type}", remarks: Optional dismissal reason}
               - column: {name: dismissed_at, type: "${timestamp_type}", remarks: Time the candidate was dismissed, defaultValueComputed: current_timestamp, constraints: {nullable: false}}

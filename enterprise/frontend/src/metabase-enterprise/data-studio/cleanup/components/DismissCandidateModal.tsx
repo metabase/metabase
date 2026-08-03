@@ -7,6 +7,8 @@ import { Button, Group, Modal, Stack, Text, Textarea } from "metabase/ui";
 import { useDismissUsageMetadataCandidateMutation } from "metabase-enterprise/api";
 import type { UsageMetadataCandidateDetail } from "metabase-types/api";
 
+import { getErrorStatus } from "../utils";
+
 type DismissCandidateModalProps = {
   candidate: UsageMetadataCandidateDetail;
   opened: boolean;
@@ -14,12 +16,6 @@ type DismissCandidateModalProps = {
   onDismissed: () => void;
   onStale: () => void;
 };
-
-function getErrorStatus(error: unknown) {
-  return typeof error === "object" && error != null && "status" in error
-    ? error.status
-    : undefined;
-}
 
 export function DismissCandidateModal({
   candidate,

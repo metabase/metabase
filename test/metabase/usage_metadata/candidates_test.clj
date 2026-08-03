@@ -29,6 +29,7 @@
 (def ^:private non-closed-measure-candidate-ids
   @#'candidates/non-closed-measure-candidate-ids)
 (def ^:private candidate-families @#'candidates/candidate-families)
+(def ^:private prune-old-candidate-snapshots! @#'candidates/prune-old-candidate-snapshots!)
 
 (defn- candidate-row
   [run-id table-id]
@@ -142,6 +143,21 @@
                            :candidate_type :segment
                            :table_id (mt/id :orders)
                            :signature_hash (:signature_hash candidate)))))))
+
+(deftest old-candidate-snapshots-are-deleted-in-batches-test
+  (let [pages   (atom [#{1 2} #{3} #{}])
+        deleted (atom [])]
+    (mt/with-dynamic-fn-redefs
+      [t2/select-pks-set (fn [_model query]
+                           (is (= [:not= :run_id 9] (:where query)))
+                           (is (= 200 (:limit query)))
+                           (let [page (first @pages)]
+                             (swap! pages subvec 1)
+                             page))
+       t2/delete!         (fn [_model _id ids]
+                            (swap! deleted conj ids))]
+      (prune-old-candidate-snapshots! 9))
+    (is (= [[:in #{1 2}] [:in #{3}]] @deleted))))
 
 (deftest refresh-queue-is-exclusive-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :queued

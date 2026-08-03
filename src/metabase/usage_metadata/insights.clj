@@ -1143,13 +1143,20 @@
 
 (defn- atom-predicate-kind
   [definition atom]
-  (let [field-ids (lib/all-field-ids atom)
-        columns   (mapv #(lib.metadata/field definition %) field-ids)
-        kinds     (into #{} (map column-predicate-kind) columns)]
-    (if (and (seq field-ids)
-             (every? some? columns)
-             (= 1 (count kinds)))
-      (first kinds)
+  (try
+    (let [field-ids (lib/all-field-ids atom)
+          columns   (mapv #(lib.metadata/field definition %) field-ids)
+          kinds     (into #{} (map column-predicate-kind) columns)]
+      (if (and (seq field-ids)
+               (every? some? columns)
+               (= 1 (count kinds)))
+        (first kinds)
+        :other))
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
+      (log/debug e "Failed to determine candidate predicate kind")
       :other)))
 
 (defn- candidate-atom-details
@@ -1204,7 +1211,7 @@
   (cond-> definition
     metadata-provider (assoc :lib/metadata metadata-provider)))
 
-(defn- add-measure-suggestions
+(defn- measure-with-suggestions
   [{:keys [aggregation source] :as candidate}]
   (let [naming-definition (candidate-naming-definition candidate)
         suggested-name    (measure-suggested-name naming-definition aggregation)
@@ -1221,7 +1228,7 @@
                :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
 
-(defn- add-segment-suggestions
+(defn- segment-with-suggestions
   [{:keys [predicate source] :as candidate}]
   (let [naming-definition (candidate-naming-definition candidate)
         compact-name      (safe-display-name naming-definition predicate (tru "Segment"))
@@ -1237,6 +1244,40 @@
         (assoc :atoms atoms
                :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
+
+(defn- fallback-suggestions
+  [{:keys [aggregation source] :as candidate} candidate-type]
+  (let [entity-name (case candidate-type
+                      :measure (tru "Measure")
+                      :segment (tru "Segment"))
+        description (case candidate-type
+                      :measure entity-name
+                      :segment (tru "Filtered by {0}" entity-name))]
+    (cond-> (-> candidate
+                (dissoc ::metadata-provider)
+                (assoc :suggested-name entity-name
+                       :suggested-description (description-on-source description source)))
+      (= candidate-type :measure) (assoc :aggregation (assoc aggregation :base-name entity-name))
+      (= candidate-type :segment) (assoc :atoms []))))
+
+(defn- suggestions-or-fallback
+  [candidate candidate-type suggestions-fn]
+  (try
+    (suggestions-fn candidate)
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
+      (log/debug e "Failed to generate candidate suggestions")
+      (fallback-suggestions candidate candidate-type))))
+
+(defn- add-measure-suggestions
+  [candidate]
+  (suggestions-or-fallback candidate :measure measure-with-suggestions))
+
+(defn- add-segment-suggestions
+  [candidate]
+  (suggestions-or-fallback candidate :segment segment-with-suggestions))
 
 (defn- resolve-transparent-card-source
   [database-id source-card-id card-index seen]

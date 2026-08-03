@@ -39,19 +39,17 @@ import type {
   UsageMetadataCandidateType,
 } from "metabase-types/api";
 
-import { getCreationBlockerLabel, getMatchRelationLabel } from "../utils";
+import {
+  getCreationBlockerLabel,
+  getErrorStatus,
+  getMatchRelationLabel,
+} from "../utils";
 
 import { CandidateDefinition, getCandidateIcon } from "./CandidateDefinition";
 import S from "./CandidatePanel.module.css";
 import { CreateCandidateModal } from "./CreateCandidateModal";
 import { DismissCandidateModal } from "./DismissCandidateModal";
 import { ModelingStatusBadge } from "./ModelingStatusBadge";
-
-function getErrorStatus(error: unknown) {
-  return typeof error === "object" && error != null && "status" in error
-    ? error.status
-    : undefined;
-}
 
 type CandidatePanelProps = {
   panelRef?: Ref<HTMLDivElement>;
@@ -97,13 +95,13 @@ export function CandidatePanel({
 
   const handleCreated = (type: UsageMetadataCandidateType, id: number) => {
     setShowCreateModal(false);
-    if (type !== "measure" && type !== "segment") {
+    if (!candidate || (type !== "measure" && type !== "segment")) {
       return;
     }
     const url =
       type === "measure"
-        ? Urls.dataStudioPublishedTableMeasure(candidate!.table.id, id)
-        : Urls.dataStudioPublishedTableSegment(candidate!.table.id, id);
+        ? Urls.dataStudioPublishedTableMeasure(candidate.table.id, id)
+        : Urls.dataStudioPublishedTableSegment(candidate.table.id, id);
     sendSuccessToast(
       type === "measure" ? t`Measure created` : t`Segment created`,
       () => dispatch(push(url)),
@@ -111,7 +109,7 @@ export function CandidatePanel({
     );
   };
 
-  const handleRestore = async () => {
+  const handleRestore = async ({ showToast = true } = {}) => {
     if (!candidate) {
       return;
     }
@@ -123,7 +121,9 @@ export function CandidatePanel({
         candidateType: candidate.candidate_type,
         result: "success",
       });
-      sendSuccessToast(t`Candidate restored`);
+      if (showToast) {
+        sendSuccessToast(t`Candidate restored`);
+      }
     } catch (error) {
       trackDataStudioCleanupCandidateAction({
         action: "restore",
@@ -147,29 +147,7 @@ export function CandidatePanel({
     onClose();
     sendSuccessToast(
       t`Candidate dismissed`,
-      async () => {
-        try {
-          await restoreCandidate(candidate.id).unwrap();
-          trackDataStudioCleanupCandidateAction({
-            action: "restore",
-            candidateId: candidate.id,
-            candidateType: candidate.candidate_type,
-            result: "success",
-          });
-        } catch (error) {
-          trackDataStudioCleanupCandidateAction({
-            action: "restore",
-            candidateId: candidate.id,
-            candidateType: candidate.candidate_type,
-            result: "failure",
-          });
-          if (getErrorStatus(error) === 409) {
-            handleStale();
-          } else {
-            sendErrorToast(t`The candidate could not be restored`);
-          }
-        }
-      },
+      () => handleRestore({ showToast: false }),
       t`Undo`,
     );
   };
@@ -205,7 +183,7 @@ export function CandidatePanel({
         aria-label={t`Candidate report`}
         data-testid="cleanup-candidate-panel"
       >
-        {candidateQuery.isLoading ? (
+        {candidateQuery.isFetching ? (
           <Flex h="100%" align="center" justify="center">
             <LoadingAndErrorWrapper loading />
           </Flex>
@@ -599,7 +577,7 @@ function SourceRow({
         )}
         {source.dependency_paths?.map((path, pathIndex) => (
           <Text key={pathIndex} size="sm" c="text-secondary">
-            {path["direct?"] || path.direct ? (
+            {path["direct?"] ? (
               t`Direct table dependency`
             ) : path.models.length > 0 ? (
               <>

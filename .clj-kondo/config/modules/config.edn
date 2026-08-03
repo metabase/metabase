@@ -2660,9 +2660,7 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.candidates
-           metabase.usage-metadata.init
-           metabase.usage-metadata.task.process}
+   :api  #{metabase.usage-metadata.candidates metabase.usage-metadata.init}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -2682,7 +2680,11 @@
            premium-features
            settings
            task
-           util}}
+           util}
+   :model-exports #{:model/UsageMetadataCandidate
+                    :model/UsageMetadataCandidateDismissal
+                    :model/UsageMetadataCandidateMatch
+                    :model/UsageMetadataCandidateSource}}
 
   user-key-value
   {:team "UX West"

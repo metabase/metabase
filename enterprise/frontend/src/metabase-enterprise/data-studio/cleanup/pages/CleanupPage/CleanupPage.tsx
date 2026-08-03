@@ -153,7 +153,7 @@ export function CleanupPage() {
             />
           </>
         )}
-        {query.isLoading ? (
+        {query.isFetching ? (
           <Card withBorder p={0} flex={1} mih={0}>
             <TreeTableSkeleton columnWidths={[0.4, 0.3, 0.15, 0.15]} />
           </Card>

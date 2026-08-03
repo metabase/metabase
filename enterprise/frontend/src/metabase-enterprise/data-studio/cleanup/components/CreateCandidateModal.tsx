@@ -18,6 +18,8 @@ import type {
   UsageMetadataCandidateType,
 } from "metabase-types/api";
 
+import { getErrorStatus } from "../utils";
+
 import { CandidateDefinition } from "./CandidateDefinition";
 
 type CreateCandidateModalProps = {
@@ -27,12 +29,6 @@ type CreateCandidateModalProps = {
   onCreated: (type: UsageMetadataCandidateType, id: number) => void;
   onStale: () => void;
 };
-
-function getErrorStatus(error: unknown) {
-  return typeof error === "object" && error != null && "status" in error
-    ? error.status
-    : undefined;
-}
 
 export function CreateCandidateModal({
   candidate,

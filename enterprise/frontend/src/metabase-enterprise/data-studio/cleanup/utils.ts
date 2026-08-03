@@ -14,6 +14,12 @@ const SORTS = ["priority", "name", "source-count", "view-count"] as const;
 const DIRECTIONS = ["asc", "desc"] as const;
 const QUEUES = ["suggested", "used-raw", "discarded"] as const;
 
+export function getErrorStatus(error: unknown) {
+  return typeof error === "object" && error != null && "status" in error
+    ? error.status
+    : undefined;
+}
+
 export function parseCleanupParams(
   searchParams: URLSearchParams,
 ): Urls.DataStudioCleanupParams {

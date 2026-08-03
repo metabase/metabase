@@ -44,3 +44,199 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: usage_metadata_candidate_match
             constraintName: uq_um_candidate_match_segment
+
+  - changeSet:
+      id: v64.um-candidate-match-one-entity
+      author: codex
+      comment: Require each candidate relationship to target exactly one Library entity
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM usage_metadata_candidate_match
+              WHERE (measure_id IS NULL AND segment_id IS NULL)
+                 OR (measure_id IS NOT NULL AND segment_id IS NOT NULL);
+              ALTER TABLE usage_metadata_candidate_match
+              ADD CONSTRAINT ck_um_candidate_match_one_entity
+              CHECK (
+                (measure_id IS NULL AND segment_id IS NOT NULL)
+                OR (measure_id IS NOT NULL AND segment_id IS NULL)
+              )
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE usage_metadata_candidate_match
+              DROP CONSTRAINT ck_um_candidate_match_one_entity
+
+  - changeSet:
+      id: v64.um-candidate-signature-version-unique
+      author: codex
+      comment: Include the canonical signature version in candidate identity
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE usage_metadata_candidate
+              DROP CONSTRAINT uq_um_candidate_run_signature;
+              ALTER TABLE usage_metadata_candidate
+              ADD CONSTRAINT uq_um_candidate_run_signature
+              UNIQUE (run_id, candidate_type, table_id, signature_version, signature_hash)
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE usage_metadata_candidate
+              DROP CONSTRAINT uq_um_candidate_run_signature;
+              ALTER TABLE usage_metadata_candidate
+              ADD CONSTRAINT uq_um_candidate_run_signature
+              UNIQUE (run_id, candidate_type, table_id, signature_hash)
+
+  - changeSet:
+      id: v64.um-candidate-table-index
+      author: codex
+      comment: Index candidate table ownership and cascade deletes
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_table
+            columns:
+              - column: {name: table_id}
+      rollback:
+        - dropIndex: {tableName: usage_metadata_candidate, indexName: idx_um_candidate_table}
+
+  - changeSet:
+      id: v64.um-candidate-source-card-index
+      author: codex
+      comment: Index candidate source Card cascade deletes
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_source
+            indexName: idx_um_candidate_source_card
+            columns:
+              - column: {name: card_id}
+      rollback:
+        - dropIndex: {tableName: usage_metadata_candidate_source, indexName: idx_um_candidate_source_card}
+
+  - changeSet:
+      id: v64.um-candidate-match-measure-index
+      author: codex
+      comment: Index candidate match Measure cascade deletes
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_match
+            indexName: idx_um_candidate_match_measure
+            columns:
+              - column: {name: measure_id}
+      rollback:
+        - dropIndex: {tableName: usage_metadata_candidate_match, indexName: idx_um_candidate_match_measure}
+
+  - changeSet:
+      id: v64.um-candidate-match-segment-index
+      author: codex
+      comment: Index candidate match Segment cascade deletes
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_match
+            indexName: idx_um_candidate_match_segment
+            columns:
+              - column: {name: segment_id}
+      rollback:
+        - dropIndex: {tableName: usage_metadata_candidate_match, indexName: idx_um_candidate_match_segment}
+
+  - changeSet:
+      id: v64.um-candidate-dismissal-table-index
+      author: codex
+      comment: Index candidate dismissal table ownership and cascade deletes
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_dismissal
+            indexName: idx_um_candidate_dismissal_table
+            columns:
+              - column: {name: table_id}
+      rollback:
+        - dropIndex: {tableName: usage_metadata_candidate_dismissal, indexName: idx_um_candidate_dismissal_table}
+
+  - changeSet:
+      id: v64.um-candidate-table-remarks
+      author: codex
+      comment: Document the expanded recommendation types
+      changes:
+        - setTableRemarks:
+            tableName: usage_metadata_candidate
+            remarks: Table Metric Measure or Segment recommendations in an isolated successful snapshot
+      rollback:
+        - setTableRemarks:
+            tableName: usage_metadata_candidate
+            remarks: Measure and Segment candidates in an isolated successful snapshot
+
+  - changeSet:
+      id: v64.um-candidate-type-remarks
+      author: codex
+      comment: Document all persisted candidate types
+      changes:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate
+            columnName: candidate_type
+            remarks: Table Metric Measure or Segment
+      rollback:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate
+            columnName: candidate_type
+            remarks: Measure or Segment
+
+  - changeSet:
+      id: v64.um-candidate-semantic-details-remarks
+      author: codex
+      comment: Document type-specific candidate details
+      changes:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate
+            columnName: semantic_details
+            remarks: JSON type-specific recommendation details
+      rollback:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate
+            columnName: semantic_details
+            remarks: JSON Measure or Segment shape
+
+  - changeSet:
+      id: v64.um-candidate-requested-by-remarks
+      author: codex
+      comment: Document the durable requesting user audit reference
+      changes:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate_run
+            columnName: requested_by
+            remarks: Requesting user ID retained without a foreign key so run diagnostics survive user deletion
+      rollback:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate_run
+            columnName: requested_by
+            remarks: User that requested a manual run
+
+  - changeSet:
+      id: v64.um-candidate-dismissal-type-remarks
+      author: codex
+      comment: Document all dismissible candidate types
+      changes:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate_dismissal
+            columnName: candidate_type
+            remarks: Table Metric Measure or Segment
+      rollback:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate_dismissal
+            columnName: candidate_type
+            remarks: Measure or Segment
+
+  - changeSet:
+      id: v64.um-candidate-dismissed-by-remarks
+      author: codex
+      comment: Document the durable dismissing user audit reference
+      changes:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate_dismissal
+            columnName: dismissed_by
+            remarks: Dismissing user ID retained without a foreign key so the durable dismissal survives user deletion
+      rollback:
+        - setColumnRemarks:
+            tableName: usage_metadata_candidate_dismissal
+            columnName: dismissed_by
+            remarks: User that dismissed the candidate
