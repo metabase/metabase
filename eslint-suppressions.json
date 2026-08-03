@@ -129,11 +129,6 @@
       "count": 2
     }
   },
-  "frontend/src/metabase/notifications/pulse/actions.ts": {
-    "boundaries/element-types": {
-      "count": 1
-    }
-  },
   "frontend/src/metabase/plugins/oss/audit.ts": {
     "boundaries/element-types": {
       "count": 1
