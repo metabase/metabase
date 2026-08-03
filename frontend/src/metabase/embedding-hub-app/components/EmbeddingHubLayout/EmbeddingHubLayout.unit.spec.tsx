@@ -39,7 +39,7 @@ type SetupOptions = {
 };
 
 function setup({
-  initialRoute = "/embedding-hub",
+  initialRoute = "/embedding",
   hasSimpleEmbedding = true,
 }: SetupOptions = {}) {
   const tokenFeatures = createMockTokenFeatures({
@@ -57,7 +57,7 @@ function setup({
   });
 
   return renderWithProviders(
-    <Route path="/embedding-hub" element={<EmbeddingHubLayout />}>
+    <Route path="/embedding" element={<EmbeddingHubLayout />}>
       <Route index element={<div>{"Get started body"}</div>} />
       <Route path="security" element={<div>{"Security body"}</div>} />
       <Route path="appearance" element={<div>{"Appearance body"}</div>} />
@@ -95,18 +95,18 @@ describe("EmbeddingHubLayout", () => {
 
     expect(
       await within(nav).findByRole("link", { name: "Get started" }),
-    ).toHaveAttribute("href", "/embedding-hub");
+    ).toHaveAttribute("href", "/embedding");
     expect(within(nav).getByRole("link", { name: "Security" })).toHaveAttribute(
       "href",
-      "/embedding-hub/security",
+      "/embedding/security",
     );
     expect(
       within(nav).getByRole("link", { name: "Localization" }),
-    ).toHaveAttribute("href", "/embedding-hub/localization");
+    ).toHaveAttribute("href", "/embedding/localization");
   });
 
   it("marks only the Get started tab as current on the index route", async () => {
-    setup({ initialRoute: "/embedding-hub" });
+    setup({ initialRoute: "/embedding" });
 
     const nav = await findNav();
 
@@ -119,7 +119,7 @@ describe("EmbeddingHubLayout", () => {
   });
 
   it("marks the matching tab as current on a child route", async () => {
-    setup({ initialRoute: "/embedding-hub/security" });
+    setup({ initialRoute: "/embedding/security" });
 
     const nav = await findNav();
 
@@ -132,7 +132,7 @@ describe("EmbeddingHubLayout", () => {
   });
 
   it("renders the routed body", async () => {
-    setup({ initialRoute: "/embedding-hub/security" });
+    setup({ initialRoute: "/embedding/security" });
 
     expect(await screen.findByText("Security body")).toBeInTheDocument();
   });

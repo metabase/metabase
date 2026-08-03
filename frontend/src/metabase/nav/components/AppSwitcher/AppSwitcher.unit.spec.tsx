@@ -86,7 +86,7 @@ async function setup({
       <Route path="/admin" element={<AppSwitcher />} />
       <Route path="/data-studio" element={<AppSwitcher />} />
       <Route path="/monitor" element={<AppSwitcher />} />
-      <Route path="/embedding-hub" element={<AppSwitcher />} />
+      <Route path="/embedding" element={<AppSwitcher />} />
     </>,
     {
       withRouter: true,

@@ -80,11 +80,11 @@ describe("embedding hub routes", () => {
   });
 
   it.each([
-    ["/embedding-hub", "get-started-page"],
-    ["/embedding-hub/authentication", "Authentication"],
-    ["/embedding-hub/permissions", "Permissions"],
-    ["/embedding-hub/tenancy", "Tenancy"],
-    ["/embedding-hub/localization", "Localization"],
+    ["/embedding", "get-started-page"],
+    ["/embedding/authentication", "Authentication"],
+    ["/embedding/permissions", "Permissions"],
+    ["/embedding/tenancy", "Tenancy"],
+    ["/embedding/localization", "Localization"],
   ])("renders the body for %s", async (route, marker) => {
     setup(route);
 
@@ -96,31 +96,31 @@ describe("embedding hub routes", () => {
   });
 
   it("folds the guest embeds block into the Security tab", async () => {
-    setup("/embedding-hub/security");
+    setup("/embedding/security");
 
     expect(await screen.findByTestId("security-widgets")).toBeInTheDocument();
     expect(screen.getByTestId("guest-embeds-block")).toBeInTheDocument();
   });
 
   it("renders the theme listing on the appearance tab, scoped to the hub path", async () => {
-    setup("/embedding-hub/appearance");
+    setup("/embedding/appearance");
 
     expect(await screen.findByTestId("theme-listing-page")).toHaveTextContent(
-      "/embedding-hub/appearance",
+      "/embedding/appearance",
     );
   });
 
   it("renders the theme editor for a single theme, scoped to the hub path", async () => {
-    setup("/embedding-hub/appearance/12");
+    setup("/embedding/appearance/12");
 
     expect(await screen.findByTestId("theme-editor-page")).toHaveTextContent(
-      "/embedding-hub/appearance",
+      "/embedding/appearance",
     );
   });
 
   it("does not render anything when the guard denies access", async () => {
     mockGuardDenies = true;
-    setup("/embedding-hub");
+    setup("/embedding");
 
     expect(
       await screen.findByTestId("unauthorized-marker"),
