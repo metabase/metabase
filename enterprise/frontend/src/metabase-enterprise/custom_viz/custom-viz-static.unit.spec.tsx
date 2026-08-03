@@ -127,15 +127,17 @@ describe("static rendering of a registered plugin", () => {
       ).startsWith("<svg"),
     ).toBe(true);
 
-    expect(received?.series).toBe(rawSeries);
-    expect(received?.settings).toEqual(expect.any(Object));
-    expect(received?.width).toBe(640);
-    expect(received?.height).toBe(480);
-    expect(received?.renderingContext).toEqual({
-      getColor: hostRenderingContext.getColor,
-      measureTextWidth: hostRenderingContext.measureText,
-      measureTextHeight: hostRenderingContext.measureTextHeight,
-      fontFamily: hostRenderingContext.fontFamily,
+    expect(received).toMatchObject({
+      settings: expect.any(Object),
+      width: 640,
+      height: 480,
+      renderingContext: {
+        getColor: hostRenderingContext.getColor,
+        measureTextWidth: hostRenderingContext.measureText,
+        measureTextHeight: hostRenderingContext.measureTextHeight,
+        fontFamily: hostRenderingContext.fontFamily,
+      },
     });
+    expect(received?.series).toBe(rawSeries);
   });
 });
