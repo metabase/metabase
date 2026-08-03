@@ -54,7 +54,6 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       }
 
       const { instanceUrl, uiCredential, mcpSessionId } =
-        // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
       if (isClaudeHost(app)) {

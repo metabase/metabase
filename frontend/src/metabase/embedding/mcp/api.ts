@@ -1,6 +1,5 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
@@ -36,7 +35,7 @@ export async function storeDrillQuery({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Client": "mcp-apps",
       "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
@@ -62,7 +61,7 @@ export async function submitMcpFeedback({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Client": "mcp-apps",
       "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },

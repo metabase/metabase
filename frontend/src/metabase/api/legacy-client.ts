@@ -131,6 +131,8 @@ export class LegacyApi extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
+  /** Purpose-bound MCP UI credential; set only by the MCP Apps entry point. */
+  mcpUiCredential: string | undefined;
   requestClient: RequestClientInfo | undefined;
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
@@ -158,6 +160,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
     if (this.sessionToken) {
       headers["X-Metabase-Session"] = self.sessionToken!;
+    }
+
+    if (this.mcpUiCredential) {
+      headers["X-Metabase-Mcp-Ui-Auth"] = self.mcpUiCredential!;
     }
 
     if (isWithinIframe() && !isEmbeddingSdk()) {

@@ -5,7 +5,7 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
+import { getIsHosted } from "metabase/setup";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
@@ -51,7 +51,6 @@ export function McpUiAppRoute() {
   const { app, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", uiCredential = "" } =
-    // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const scheme: ResolvedColorScheme =
@@ -103,7 +102,6 @@ function McpUiAppRouteContent({
   const isHosted = useSelector(getIsHosted);
 
   const { mcpSessionId = "" } =
-    // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
