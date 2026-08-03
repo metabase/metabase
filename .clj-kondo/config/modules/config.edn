@@ -1233,7 +1233,6 @@
            app-db
            config
            llm
-           metabot
            oauth-server
            request
            server

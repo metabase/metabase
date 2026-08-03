@@ -111,8 +111,8 @@
    Invalid and expired inputs intentionally have the same result and are never logged."
   [credential]
   (try
-    (let [[payload signature & extra] (str/split (or credential "") #"\." -1)
-          expected (when (and payload signature (empty? extra)) (ui-credential-signature payload))]
+    (let [[payload ^String signature & extra] (str/split (or credential "") #"\." -1)
+          ^String expected (when (and payload signature (empty? extra)) (ui-credential-signature payload))]
       (when (and expected
                  (MessageDigest/isEqual (.getBytes expected StandardCharsets/UTF_8)
                                         (.getBytes signature StandardCharsets/UTF_8)))

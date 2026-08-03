@@ -1609,7 +1609,7 @@
                                                    (jsonrpc-request "resources/read" {:uri "ui://metabase/visualize-query.html"})
                                                    {"mcp-session-id" session-id})
               html        (-> resource :body :result :contents first :text)
-              credential  (second (re-find #"uiCredential:\\s*\\\"([^\\\"]+)" html))
+              credential  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
               headers     {"x-metabase-mcp-ui-auth" credential}]
           (is (string? credential))
           (is (= 200 (:status (client/client-full-response :get 200 "user/current"
