@@ -8,6 +8,7 @@ module.exports = {
     version: "1.0.0",
   },
   rules: {
+    "enforce-module-public-api": require("./rules/enforce-module-public-api"),
     "jtag-missing-key": require("./rules/jtag-missing-key"),
     "no-color-literals": require("./rules/no-color-literals"),
     "no-direct-helper-import": require("./rules/no-direct-helper-import"),
