@@ -99,21 +99,12 @@
                                (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
      false)))
 
-(defn- remove-plugins-with-satisfied-deps [plugins registered-plugin-names ready-to-register-atom]
-  ;; since `remove-plugins-with-satisfied-deps` could theoretically be called multiple times we need to reset the atom
-  ;; used to return the plugins ready to register so we don't accidentally include something in there twice etc.
-  (reset! ready-to-register-atom nil)
-  (set
-   (for [info  plugins
-         :let  [ready? (when (all-dependencies-satisfied?* registered-plugin-names info)
-                         (swap! ready-to-register-atom conj info))]
-         :when (not ready?)]
-     info)))
-
 (defn update-unsatisfied-deps!
-  "Updates internal list of plugins that still have unmet dependencies; returns sequence of plugin infos for all plugins
-  that are now ready to register."
+  "Updates the internal list of plugins that still have unmet dependencies.
+  Returns info on the plugins which are now ready to register."
   [registered-plugin-names]
-  (let [ready-to-register (atom nil)]
-    (swap! plugins-with-unsatisfied-deps remove-plugins-with-satisfied-deps registered-plugin-names ready-to-register)
-    @ready-to-register))
+  ;; Callers hold `plugin-lock`, so nothing else touches the atom between the read and the reset.
+  (let [{ready true, waiting false} (group-by (partial all-dependencies-satisfied?* registered-plugin-names)
+                                              @plugins-with-unsatisfied-deps)]
+    (reset! plugins-with-unsatisfied-deps (set waiting))
+    ready))
