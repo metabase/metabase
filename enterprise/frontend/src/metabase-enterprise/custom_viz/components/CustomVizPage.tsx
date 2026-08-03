@@ -94,16 +94,19 @@ export function CustomVizPage({ params }: Props) {
       }
       if (isEdit && plugin) {
         try {
-          await replaceBundle({ id: plugin.id, file }).unwrap();
-          trackCustomVizPluginUpdated("success");
+          const updatedPlugin = await replaceBundle({
+            id: plugin.id,
+            file,
+          }).unwrap();
+          trackCustomVizPluginUpdated("success", updatedPlugin.warnings);
         } catch (error) {
           trackCustomVizPluginUpdated("failure");
           throw error;
         }
       } else {
         try {
-          await createPlugin({ file }).unwrap();
-          trackCustomVizPluginCreated("success");
+          const createdPlugin = await createPlugin({ file }).unwrap();
+          trackCustomVizPluginCreated("success", createdPlugin.warnings);
         } catch (error) {
           trackCustomVizPluginCreated("failure");
           throw error;
