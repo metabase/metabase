@@ -18,6 +18,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
@@ -88,7 +89,10 @@
     (when-let [ctx (qp.context/build-row-context q)]
       (when-let [dq (qp.variants/dataset-query (:query_type q) ctx)]
         (t2/update! :model/ExplorationQuery (:id q)
-                    {:dataset_query dq})))))
+                    {:dataset_query     dq
+                     :data_access_token (perms/data-access-token
+                                         {:database-id (:database_id q)
+                                          :table-ids   (query-perms/query->resolved-source-table-ids dq)})})))))
 
 (defn- vectorize-clauses
   "`mt/user-http-request` decodes JSON arrays as lists, but MBQL normalization (and

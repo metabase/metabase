@@ -34,7 +34,9 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [clojure.edn :as edn]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,3 +118,30 @@
   with empty dimensions omitted."
   [creator-token viewer-token]
   (= creator-token viewer-token))
+
+(defn- token-in
+  "Serialize a token as EDN. JSON can't be used: the token is keyed by integer table-id /
+  database-id, and JSON mangles non-string map keys. `nil` is stored as SQL NULL rather than the
+  string \"nil\"."
+  [v]
+  (when (some? v)
+    (pr-str v)))
+
+(defn- token-out
+  "Read a token back. Reader tags are refused rather than dispatched — this parses a column, and
+  nothing legitimately writes a tagged literal into one. An unreadable blob decodes to `nil`, which
+  every gate built on [[data-access-compatible?]] denies to non-superusers: fail closed, never widen
+  access on a parse error. Logged at ERROR because a write path that persisted an unreadable token
+  is a bug, and the denial it causes is otherwise hard to trace."
+  [s]
+  (when (string? s)
+    (try
+      (edn/read-string {:readers {} :default (fn [_tag v] v)} s)
+      (catch Throwable e
+        (log/error e "Failed to parse a stored data_access_token; the read gate will deny non-admins")
+        nil))))
+
+(def data-access-token-transform
+  "Toucan transform for a persisted [[data-access-token]]. Used by every table that stamps the lens
+  its content was produced under."
+  {:in token-in :out token-out})

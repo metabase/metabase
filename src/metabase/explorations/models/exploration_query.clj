@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query
   (:require
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,7 +16,8 @@
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json
    :dataset_query          mi/transform-json
-   :params                 mi/transform-json})
+   :params                 mi/transform-json
+   :data_access_token      perms/data-access-token-transform})
 
 (defmethod mi/can-read? :model/ExplorationQuery
   ([instance]

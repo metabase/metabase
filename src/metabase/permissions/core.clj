@@ -161,7 +161,8 @@
 (p/import-vars
  [metabase.permissions.data-access-token
   data-access-token
-  data-access-compatible?])
+  data-access-compatible?
+  data-access-token-transform])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)

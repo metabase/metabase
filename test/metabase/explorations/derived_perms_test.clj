@@ -24,7 +24,8 @@
                            (lib/aggregate (lib/count))))))
 
 (defn- thread-with-snapshots!
-  "A thread whose queries are each backed by one StoredResult built from `snapshot-specs`
+  "A thread whose queries are each finalized (`dataset_query` + `data_access_token` stamped, as the
+  runner's `finalize-row!` does) and backed by one StoredResult built from `snapshot-specs`
   (`{:creator-id, :table, :token}`). Returns the thread id."
   [snapshot-specs]
   (let [creator (mt/user->id :lucky)
@@ -44,6 +45,7 @@
                                           {:exploration_thread_id thread :card_id card
                                            :database_id (mt/id) :page_id page
                                            :dimension_id "d1" :dataset_query dq
+                                           :data_access_token token
                                            :status "done" :position i})
             sr   (t2/insert-returning-pk! :model/StoredResult
                                           {:result_data       (byte-array [0])
@@ -60,10 +62,66 @@
   (request/with-current-user (mt/user->id user-kw)
     (contains? (derived-perms/thread-ids-with-visible-derived-data [thread-id]) thread-id)))
 
+(defn- drilled-thread!
+  "What `POST /:id/explore-further` persists: a thread whose `name` embeds the warehouse value the
+  drilling user clicked, stamped with the lens they saw it under, plus the copied block carrying the
+  metric Card the value was read from. Its one query is finalized under the same lens. Returns the
+  thread id."
+  [token]
+  (let [creator (mt/user->id :lucky)
+        card    (t2/insert-returning-pk! :model/Card
+                                         {:name "m" :type :metric :creator_id creator
+                                          :database_id (mt/id) :dataset_query (count-query :venues)
+                                          :display "table" :visualization_settings {}})
+        expl    (t2/insert-returning-pk! :model/Exploration {:name "drill" :creator_id creator})
+        src     (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
+        srcblk  (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id src})
+        srcpage (t2/insert-returning-pk! :model/ExplorationPage
+                                         {:exploration_block_id srcblk :card_id card
+                                          :dimension_id "d1" :query_type "default"})
+        thread  (t2/insert-returning-pk! :model/ExplorationThread
+                                         {:exploration_id    expl
+                                          :position          1
+                                          :name              "Number of Orders → Customer: ACME Corp"
+                                          :source_page_id    srcpage
+                                          :data_access_token token})
+        block   (t2/insert-returning-pk! :model/ExplorationBlock
+                                         {:exploration_thread_id thread
+                                          :metrics               [{:card_id card}]
+                                          :position              0})
+        page    (t2/insert-returning-pk! :model/ExplorationPage
+                                         {:exploration_block_id block :card_id card
+                                          :dimension_id "d1" :query_type "default"})]
+    (t2/insert! :model/ExplorationQuery
+                {:exploration_thread_id thread :card_id card
+                 :database_id (mt/id) :page_id page
+                 :dimension_id "d1" :dataset_query (count-query :venues)
+                 :data_access_token token
+                 :status "done" :position 0})
+    thread))
+
 (deftest thread-with-no-results-stays-visible-test
   (testing "a thread with nothing materialized has no values computed under anyone's lens"
     (let [thread (thread-with-snapshots! [])]
       (is (true? (visible? thread :rasta))))))
+
+(deftest drill-named-thread-verdict-survives-losing-its-queries-test
+  (testing "an \"Explore further\" thread is named for the warehouse value the creator clicked, and
+            that name is durable in a way the thread's queries are not: restart deletes every
+            `exploration_query` row, and a thread whose queries all error never produces a result at
+            all. Neither changes any viewer's permissions, so neither may change the verdict — it
+            has to come from the lens stamped on the thread itself."
+    (testing "control — a viewer whose lens matches the one the value was seen under"
+      (let [thread (drilled-thread! {})]
+        (is (true? (visible? thread :rasta)))))
+    (let [thread (drilled-thread! {:sandbox {1 "creators-sandbox-digest"}})]
+      (testing "an incompatible lens is blocked while the thread's queries are intact"
+        (is (false? (visible? thread :rasta))))
+      (testing "and stays blocked once they are gone — the state restart leaves behind"
+        (t2/delete! :model/ExplorationQuery :exploration_thread_id thread)
+        (is (false? (visible? thread :rasta))
+            "the drilled value outlives the queries, so the verdict protecting it must too")
+        (is (true? (visible? thread :crowberto)) "superuser")))))
 
 (deftest nil-token-is-fail-closed-including-for-the-creator-test
   (testing "a snapshot with no captured lens can't be compared against, so it is fail-closed for

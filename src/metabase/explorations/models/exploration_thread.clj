@@ -2,6 +2,7 @@
   (:require
    [clojure.edn :as edn]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -36,7 +37,8 @@
         nil))))
 
 (t2/deftransforms :model/ExplorationThread
-  {:query_plan_transcript {:in transcript-in :out transcript-out}})
+  {:query_plan_transcript {:in transcript-in :out transcript-out}
+   :data_access_token     perms/data-access-token-transform})
 
 (defmethod mi/can-read? :model/ExplorationThread
   ([instance]

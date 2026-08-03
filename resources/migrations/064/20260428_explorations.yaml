@@ -1372,3 +1372,38 @@ databaseChangeLog:
                   remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v64.expthreadlens
+      author: nvoxland
+      comment: >-
+        Capture the data-access lens on exploration_thread.
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: data_access_token
+                  type: ${text.type}
+                  remarks: >-
+                    EDN sandbox/impersonation/routing fingerprint of the lens this thread was derived under.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.expquerylens
+      author: nvoxland
+      comment: >-
+        Capture the data-access lens on exploration_query.
+      changes:
+        - addColumn:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: data_access_token
+                  type: ${text.type}
+                  remarks: >-
+                    EDN sandbox/impersonation/routing fingerprint of the creator's lens when this
+                    row was finalized; null until then
+                  constraints:
+                    nullable: true

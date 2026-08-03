@@ -92,6 +92,15 @@
                                 (m/update-existing :preprocessed_query lib/prepare-for-serialization))))
      (result-fn))))
 
+(defn- compute-data-access-token
+  "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
+  fingerprint the query is computed under, stored on the `StoredResult` and on the
+  `ExplorationQuery` itself, and compared against a viewer's token to gate reads. Must be called
+  inside the creator's `with-current-user` (+ routing-on) binding."
+  [dataset-query db-id]
+  (perms/data-access-token {:database-id db-id
+                            :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)}))
+
 (defn- finalize-row!
   "If `row` carries a nil `:dataset_query` (planner deferred the MBQL build),
   resolve the per-row context, invoke `qp.variants/dataset-query` and
@@ -113,9 +122,10 @@
         (when (nil? dq)
           (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
                           {:row-id (:id row) :variant variant})))
-        (t2/update! :model/ExplorationQuery (:id row)
-                    {:dataset_query dq :name nm})
-        (assoc row :dataset_query dq :name nm)))))
+        (let [token (compute-data-access-token dq (:database_id row))]
+          (t2/update! :model/ExplorationQuery (:id row)
+                      {:dataset_query dq :name nm :data_access_token token})
+          (assoc row :dataset_query dq :name nm :data_access_token token))))))
 
 (defn- safe-chart-config
   "Best-effort `qp-result->chart-config`. Returns nil on failure (>2 cols,
@@ -297,15 +307,6 @@
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))
       nil)))
-
-(defn- compute-data-access-token
-  "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
-  fingerprint the snapshot is computed under, stored on the `StoredResult` and compared against a
-  viewer's token to gate cached reads. Must be called inside the creator's `with-current-user` (+
-  routing-on) binding."
-  [dataset-query db-id]
-  (perms/data-access-token {:database-id db-id
-                            :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)}))
 
 (defn- compute-query-result
   "The slow half of running `row`: the warehouse query, its serialization, and the chart-config /

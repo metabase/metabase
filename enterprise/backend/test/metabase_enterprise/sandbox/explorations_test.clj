@@ -86,10 +86,12 @@
                    :model/ExplorationQuery q {:exploration_thread_id (:id th)
                                               :page_id               (:id p)
                                               :card_id               (:id metric)
+                                              :database_id           (mt/id)
                                               :dimension_id          "d1"
                                               :name                  (str "Count for " discovered-value)
                                               :status                "done"
-                                              :dataset_query         dataset-query}
+                                              :dataset_query         dataset-query
+                                              :data_access_token     data-access-token}
                    :model/StoredResult sr {:result_data       (fake-result-bytes)
                                            :creator_id        creator-id
                                            :database_id       (mt/id)

@@ -19,7 +19,9 @@
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
    [metabase.metrics.core :as metrics]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -699,6 +701,10 @@
                               :name           (explore-further-thread-name card-name
                                                                            enriched-filters
                                                                            top-level-follow-up?)
+                              :data_access_token (perms/data-access-token
+                                                  {:database-id (:database_id card)
+                                                   :table-ids   (query-perms/query->resolved-source-table-ids
+                                                                 (:dataset_query card))})
                               :position       next-position
                               ;; drill lineage — lets the sidebar nest this thread
                               ;; under the one owning the drilled page
