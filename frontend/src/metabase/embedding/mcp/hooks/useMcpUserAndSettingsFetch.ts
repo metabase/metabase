@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { refetchSiteSettings, userApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { userUpdated } from "metabase/redux/user";
+import { refetchCurrentUser, refetchSiteSettings } from "metabase/api";
 
 import {
   type McpAppsUserAndSettingsFetchErrorType,
@@ -55,20 +53,17 @@ export function useMcpUserAndSettingsFetch({
           return;
         }
 
-        const [currentUser] = await Promise.all([
-          runRtkEndpoint(
-            undefined,
-            store.dispatch,
-            userApi.endpoints.getCurrentUser,
-          ),
-          store.dispatch(refetchSiteSettings()),
+        // `unwrap` both so an auth/network failure lands in the catch below
+        // instead of silently reporting ready.
+        await Promise.all([
+          store.dispatch(refetchCurrentUser()).unwrap(),
+          store.dispatch(refetchSiteSettings()).unwrap(),
         ]);
 
         if (!isMounted) {
           return;
         }
 
-        store.dispatch(userUpdated(currentUser));
         setIsSettingsReady(true);
       } catch (error) {
         console.error("Error initializing MCP app", error);
