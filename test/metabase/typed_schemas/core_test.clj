@@ -115,20 +115,20 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (let [schema (typed-schemas/build-semantic-schema {:database {:id (mt/id)}} test-info)
                 body   (typed-schemas/render-typescript schema)]
-            (testing "every entity kind lands in the schema, scoped to the dataset database"
-              (is (= ["orderTotals"] (keys (:questions schema))))
-              (is (= ["orderRevenue"] (keys (:metrics schema))))
-              (is (= ["orderModel"] (keys (:models schema))))
-              (is (contains? (set (keys (:tables schema))) "orders")))
-            (testing "entities carry their real relationships"
-              (is (contains? (set (keys (get-in schema [:tables "orders" :fields]))) "total"))
-              (is (= [(mt/id :orders)] (get-in schema [:metrics "orderRevenue" :mappedTableIds])))
-              (is (= ["updateOrder"] (keys (get-in schema [:models "orderModel" :actions]))))
-              (is (= "Sum of Total"
-                     (-> (get-in schema [:metrics "orderRevenue" :columns]) first :displayName))))
-            (testing "info pins the impure schema metadata"
-              (is (= "2026-01-01T00:00:00Z" (:generatedAt schema)))
-              (is (= "https://metabase.example.com" (get-in schema [:metabase :instanceUrl]))))
+            (testing "every entity kind lands in the schema with its real relationships"
+              (is (=? {:generatedAt "2026-01-01T00:00:00Z"
+                       :metabase    {:instanceUrl "https://metabase.example.com"}
+                       :questions   {"orderTotals" {:type "card", :id int?}}
+                       :tables      {"orders" {:fields {"total" {:jsType "number"}}}}
+                       :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
+                                                     :columns        [{:displayName "Sum of Total"
+                                                                       :jsType      "number"}]}}
+                       :models      {"orderModel" {:actions {"updateOrder" {:kind "action"}}}}}
+                      schema)))
+            (testing "only the temp cards are in scope for the dataset database"
+              (is (= {:questions ["orderTotals"], :metrics ["orderRevenue"], :models ["orderModel"]}
+                     (update-vals (select-keys schema [:questions :metrics :models])
+                                  (comp vec keys)))))
             (testing "the rendered module carries the real entities"
               (is (str/includes? body "orders: {"))
               (is (str/includes? body "name: \"Order revenue\""))
