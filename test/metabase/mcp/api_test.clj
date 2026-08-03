@@ -21,6 +21,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -70,6 +71,13 @@
                                {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
                                                                   extra-headers)}}
                                body))
+
+(defn- save-access-token!
+  "Persist an OAuth access token into the provider backing the MCP endpoint."
+  [token user-id scopes]
+  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                token (str user-id) "test-client" (vec scopes)
+                                (+ (inst-ms (java.util.Date.)) 3600000) nil))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
@@ -1368,6 +1376,37 @@
     (let [tools (mcp.tools/list-tools #{})]
       (is (empty? tools)
           "Empty scopes should not grant access to scoped tools"))))
+
+(deftest oauth-token-scope-validation-test
+  (testing "an OAuth token with a limited scope exposes only matching tools"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
+          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                    {"mcp-session-id" sid})
+                tool-names (set (map :name (get-in response [:body :result :tools])))]
+            (is (contains? tool-names "search"))
+            (is (not (contains? tool-names "update_question"))
+                "Only matching tools should be available")))))))
+
+(deftest full-access-token-scope-validation-test
+  (testing "an OAuth token with the full-access grant exposes all tools"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{oauth-server/full-access-scope})
+          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                    {"mcp-session-id" sid})
+                tool-names (set (map :name (get-in response [:body :result :tools])))]
+            (is (contains? tool-names "search"))
+            (is (contains? tool-names "update_question"))))))))
 
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
