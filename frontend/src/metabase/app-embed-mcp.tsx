@@ -1,4 +1,3 @@
-/* eslint-disable metabase/no-literal-metabase-strings */
 // Must run before any dynamic import(): sets webpack's runtime publicPath so
 // on-demand chunks (leaflet, echarts) resolve to the Metabase instance.
 import "./app-embed-mcp-public-path";
@@ -29,6 +28,7 @@ setBasename(instanceUrl);
 
 if (uiCredential) {
   PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- request header name
     async () => ({ headers: { "X-Metabase-Mcp-Ui-Auth": uiCredential } });
 }
 

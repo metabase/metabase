@@ -290,9 +290,9 @@
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
   [tag]
   (fn [opts]
-    (let [site-url    (system/site-url)
+    (let [site-url      (system/site-url)
           ui-credential (:ui-credential opts)
-          session-id  (:session-id opts)]
+          session-id    (:session-id opts)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
