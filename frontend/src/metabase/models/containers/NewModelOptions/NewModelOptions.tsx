@@ -8,7 +8,6 @@ import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { getLearnUrl } from "metabase/selectors/settings";
-import { getSetting } from "metabase/settings";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
