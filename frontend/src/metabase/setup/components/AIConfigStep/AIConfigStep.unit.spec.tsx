@@ -303,7 +303,7 @@ describe("AIConfigStep", () => {
     expect(await screen.findByText("I'll set up AI later")).toBeInTheDocument();
   });
 
-  it("should still offer to skip when only an unusable connection is listed", async () => {
+  it("should offer a way out when only an unusable connection is listed", async () => {
     setup({
       connections: [
         createMockLlmProviderConnection({
@@ -318,5 +318,11 @@ describe("AIConfigStep", () => {
     expect(
       await screen.findByRole("button", { name: "I'll set this up later" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Anthropic" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
   });
 });
