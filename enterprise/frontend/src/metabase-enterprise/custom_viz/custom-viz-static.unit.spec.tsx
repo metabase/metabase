@@ -20,12 +20,6 @@ import {
   registerCustomVizPlugin,
 } from "./custom-viz-static";
 
-beforeEach(() => {
-  mockSettings({
-    "token-features": createMockTokenFeatures({ "custom-viz": true }),
-  });
-});
-
 type PluginSettings = Record<string, unknown>;
 type StaticProps = CustomStaticVisualizationProps<PluginSettings>;
 
@@ -85,6 +79,12 @@ describe("registerCustomVizPlugin", () => {
 });
 
 describe("static rendering of a registered plugin", () => {
+  beforeEach(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ "custom-viz": true }),
+    });
+  });
+
   beforeEach(() => {
     applyCustomVizStaticOverride();
   });
