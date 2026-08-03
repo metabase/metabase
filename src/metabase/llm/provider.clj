@@ -87,6 +87,7 @@
    {:type          "mistral"
     :label         (deferred-tru "Mistral")
     :default-model "mistral-medium-3-5"
+    :mini-model    "mistral-medium-3-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -102,6 +103,7 @@
    {:type          "zai"
     :label         (deferred-tru "Z.AI")
     :default-model "glm-5.2"
+    :mini-model    "glm-5.2"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -117,6 +119,7 @@
    {:type          "moonshot"
     :label         (deferred-tru "Moonshot AI")
     :default-model "kimi-k3"
+    :mini-model    "kimi-k3"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
