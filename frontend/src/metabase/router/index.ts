@@ -16,7 +16,6 @@ export {
 export * from "./middleware";
 export * from "./navigation";
 export * from "./redirect";
-export * from "./router-link";
 export * from "./to-route-objects";
 export * from "./location-change";
 export * from "./RouterProvider";

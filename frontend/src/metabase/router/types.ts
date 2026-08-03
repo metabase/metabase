@@ -1,9 +1,4 @@
-import type {
-  CSSProperties,
-  ComponentClass,
-  FunctionComponent,
-  HTMLProps,
-} from "react";
+import type { ComponentClass, FunctionComponent } from "react";
 import type { Location, Path } from "react-router";
 
 export type {
@@ -81,14 +76,3 @@ export interface History {
  * call sites that annotate the injected `route` / `routes` props.
  */
 export type RouteComponent = ComponentClass<any> | FunctionComponent<any>;
-
-/**
- * Props of the app's `<Link>`, re-homed from v3's `LinkProps`. `RouterLink` reads
- * `to` (and the active-styling props) and forwards the rest to the anchor.
- */
-export interface RouterLinkProps extends HTMLProps<any> {
-  to: LocationDescriptor;
-  activeClassName?: string;
-  activeStyle?: CSSProperties;
-  onlyActiveOnIndex?: boolean;
-}
