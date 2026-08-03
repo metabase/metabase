@@ -44,8 +44,8 @@
   (collection-ids [source collection-refs]
     "Ids of the referenced collections and their descendants, or nil without refs.")
   (library-scope [source scope-options]
-    "Resolved library scope for library collection refs and include flags, or
-    nil when none are requested.")
+    "Resolved [[metabase.typed-schemas.scope/LibraryScope]] for library
+    collection refs and include flags, or nil when none are requested.")
   (questions [source database-ids collection-ids]
     "Question schema entities.")
   (models [source database-ids]

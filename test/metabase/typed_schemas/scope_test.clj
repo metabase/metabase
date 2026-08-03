@@ -28,8 +28,7 @@
                                                   :type "library-metrics"
                                                   :location (collection/children-location metrics)}]
     (mt/with-test-user :crowberto
-      (is (=? {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
-               :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
+      (is (=? {:data-collection-ids   #{(:id data-child) (:id data-grandkid)}
                :metric-collection-ids #{(:id metric-child)}}
               (typed-schemas.scope/library-scope
                {:library-collection-refs [{:id (:id data-child)} {:id (:id metric-child)}]}))))))
@@ -49,8 +48,7 @@
                                                  :type "library-data"
                                                  :location (collection/children-location website)}]
     (mt/with-test-user :crowberto
-      (is (=? {:collection-ids        #{(:id website) (:id website-page)}
-               :data-collection-ids   #{(:id website) (:id website-page)}
+      (is (=? {:data-collection-ids   #{(:id website) (:id website-page)}
                :metric-collection-ids #{}}
               (typed-schemas.scope/library-scope
                {:library-collection-refs [{:entity-id "g-jLnamuHKdezZMthJ-z7"}]}))))))
@@ -76,8 +74,7 @@
                                                    :type "library-metrics"
                                                    :location (collection/children-location metrics)}]
       (mt/with-test-user :crowberto
-        (is (=? {:collection-ids        #{(:id data) (:id data-child) (:id metrics) (:id metric-child)}
-                 :data-collection-ids   #{(:id data) (:id data-child)}
+        (is (=? {:data-collection-ids   #{(:id data) (:id data-child)}
                  :metric-collection-ids #{(:id metrics) (:id metric-child)}}
                 (typed-schemas.scope/library-scope
                  {:include-data-library?   true
@@ -99,8 +96,7 @@
                                                    :type "library-metrics"
                                                    :location (collection/children-location metrics)}]
       (mt/with-test-user :crowberto
-        (is (=? {:collection-ids        #{(:id data) (:id metrics) (:id metric-child)}
-                 :data-collection-ids   #{(:id data)}
+        (is (=? {:data-collection-ids   #{(:id data)}
                  :metric-collection-ids #{(:id metrics) (:id metric-child)}}
                 (typed-schemas.scope/library-scope
                  {:library-collection-refs [{:id (:id data)}]

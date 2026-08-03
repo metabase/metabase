@@ -8,7 +8,9 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.typed-schemas.source :as source]))
+   [metabase.typed-schemas.scope :as scope]
+   [metabase.typed-schemas.source :as source]
+   [metabase.util.malli.registry :as mr]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -49,8 +51,10 @@
       (let [scope (source/library-scope source/app-db-source
                                         {:library-collection-refs [{:id (:id data-collection)}]})]
         (testing "library scope classifies collection ids by type"
-          (is (= #{(:id data-collection)} (:data-collection-ids scope)))
-          (is (= #{} (:metric-collection-ids scope))))
+          (is (mr/validate scope/LibraryScope scope))
+          (is (= {:data-collection-ids   #{(:id data-collection)}
+                  :metric-collection-ids #{}}
+                 scope)))
         (testing "library tables are the published tables in the data collections"
           (is (= [(:id published)]
                  (map :id (source/library-tables source/app-db-source scope))))))
