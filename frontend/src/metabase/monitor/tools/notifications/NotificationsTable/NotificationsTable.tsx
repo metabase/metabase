@@ -51,8 +51,6 @@ type Props = {
 
 const getNodeId = (notification: AdminNotification) => String(notification.id);
 
-const SKELETON_COLUMN_WIDTHS = [0.06, 0.28, 0.18, 0.16, 0.16, 0.16];
-
 export const NotificationsTable = ({
   notifications,
   error,
@@ -241,7 +239,7 @@ export const NotificationsTable = ({
         p="lg"
         data-testid="notifications-admin-table"
       >
-        <LoadingAndErrorWrapper loading={false} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Card>
     );
   }
@@ -258,7 +256,7 @@ export const NotificationsTable = ({
       {isLoading ? (
         <TreeTableSkeleton
           showCheckboxes
-          columnWidths={SKELETON_COLUMN_WIDTHS}
+          columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
         />
       ) : (
         <TreeTable

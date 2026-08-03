@@ -33,7 +33,7 @@ import {
 import type {
   NotificationsTab,
   NotificationsUrlState,
-  TabCount,
+  TabCountState,
 } from "./types";
 
 const parsePage = (param: QueryParam): number => {
@@ -207,7 +207,7 @@ export const getTabCount = (
   isLoading: boolean,
   error: unknown,
   value: number,
-): TabCount => {
+): TabCountState => {
   if (isLoading) {
     return { status: "loading" };
   }

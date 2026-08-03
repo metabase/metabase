@@ -276,8 +276,6 @@ export const NotificationsAdminPage = () => {
   );
 
   const isSidebarOpen = notificationId !== undefined;
-  // The all-count request only feeds the "All" tab badge, so its failure degrades to a
-  // missing badge instead of blocking the page.
   const countError = failingError ?? ownerlessError;
   const allTabCount = getTabCount(isAllCountFetching, allCountError, allCount);
   const failingTabCount = getTabCount(
@@ -319,7 +317,7 @@ export const NotificationsAdminPage = () => {
     }, [notificationId, notifications]);
 
   if (countError) {
-    return <LoadingAndErrorWrapper loading={false} error={countError} />;
+    return <LoadingAndErrorWrapper error={countError} />;
   }
 
   return (

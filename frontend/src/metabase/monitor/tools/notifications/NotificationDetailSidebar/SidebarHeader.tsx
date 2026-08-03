@@ -39,7 +39,6 @@ export const SidebarHeader = ({
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
-  // On a direct link the alert itself is still loading, so there is nothing to edit yet.
   const isEditDisabled =
     notification == null || isQuestionLoading || isBulkLoading;
 

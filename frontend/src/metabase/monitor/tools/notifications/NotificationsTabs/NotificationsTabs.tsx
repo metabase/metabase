@@ -7,7 +7,7 @@ import type { IconName } from "metabase-types/api";
 import type {
   NotificationsTab,
   NotificationsUrlState,
-  TabCount,
+  TabCountState,
 } from "../NotificationsAdminPage/types";
 import { trackAlertsManagementTabClicked } from "../analytics";
 
@@ -15,9 +15,9 @@ import S from "./NotificationsTabs.module.css";
 
 type Props = {
   tab: NotificationsTab;
-  allCount: TabCount;
-  failingCount: TabCount;
-  ownerlessCount: TabCount;
+  allCount: TabCountState;
+  failingCount: TabCountState;
+  ownerlessCount: TabCountState;
   onChange: (patch: Partial<NotificationsUrlState>) => void;
 };
 
@@ -25,7 +25,7 @@ type TabConfig = {
   value: NotificationsTab;
   icon: IconName;
   label: string;
-  count: TabCount;
+  count: TabCountState;
   patch: Partial<NotificationsUrlState>;
 };
 
@@ -33,7 +33,7 @@ const TabCountBadge = ({
   count,
   isActive,
 }: {
-  count: TabCount;
+  count: TabCountState;
   isActive: boolean;
 }) =>
   match(count)
@@ -45,7 +45,6 @@ const TabCountBadge = ({
         data-testid="tab-count-skeleton"
       />
     ))
-    .with({ status: "error" }, () => null)
     .with({ status: "loaded" }, ({ value }) =>
       isActive ? (
         <Badge variant="filled" size="xs" color="brand" c="white">
@@ -57,6 +56,7 @@ const TabCountBadge = ({
         </Badge>
       ),
     )
+    .with({ status: "error" }, () => null)
     .exhaustive();
 
 export const NotificationsTabs = ({
