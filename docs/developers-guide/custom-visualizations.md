@@ -93,17 +93,17 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
   "name": "my-viz",
   "icon": "icon.svg",
   "metabase": {
-    "version": ">=1.62.0"
+    "version": ">=1.62 <1.64"
   }
 }
 ```
 
-| Field              | Description                                                                                                                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles.                                                            |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets). |
-| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                              |
-| `sdk.version`      | The exact `@metabase/custom-viz` version the plugin was built with. Written automatically at pack time — don't set it by hand.                                                               |
+| Field              | Description                                                                                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles.                                                             |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets).  |
+| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62 <1.64"`). Keep the range closed on both ends. See [Versioning and compatibility](#versioning-and-compatibility). |
+| `sdk.version`      | The exact `@metabase/custom-viz` version the plugin was built with. Written automatically at pack time — don't set it by hand.                                                                |
 
 ## Defining a visualization
 
@@ -420,7 +420,7 @@ For uploading and managing plugins, see [Custom visualizations](../questions/vis
 
 ## Versioning and compatibility
 
-The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. Write the range against the full version number (`">=1.62.0"`), not a bare major version (`">=62"`), which won't match.
+The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends: an open-ended range like `">=1.62.0"` claims compatibility with future Metabase versions your plugin has never run against. Write the range against the full version number (`">=1.62 <1.64"`), not a bare major version (`">=62 <64"`), which won't match.
 
 If you upload a bundle to a Metabase outside the plugin's declared range, Metabase rejects the upload.
 
