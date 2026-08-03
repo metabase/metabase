@@ -105,9 +105,10 @@ function _init(reducers, getRoutes, callback) {
               <GlobalStyles />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
-                <RouterProvider onLocationChange={mirrorLocation}>
-                  {routes}
-                </RouterProvider>
+                <RouterProvider
+                  routes={routes}
+                  onLocationChange={mirrorLocation}
+                />
               </MetabotProvider>
             </AppThemeProvider>
           </OverlayStackProvider>

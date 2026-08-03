@@ -12,6 +12,7 @@ export * from "./navigation";
 export * from "./Navigate";
 export * from "./redirect";
 export * from "./router-link";
+export * from "./to-route-objects";
 export * from "./location-change";
 export * from "./RouterProvider";
 export * from "./types";
