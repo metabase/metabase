@@ -48,6 +48,24 @@
          (is (thrown? PolyglotException
                       (graal/load-js-string context "Java.type('java.lang.System')" "escape.js"))))))))
 
+(deftest untrusted-context-denies-node-module-access-test
+  (testing "the UNTRUSTED isolate is a bare JS engine: plugin code gets no Node globals or module system"
+    (do-with-untrusted-context
+     (fn [^Context context]
+       (testing "the Node `process` and `require` globals are absent"
+         (is (= "undefined" (.asString ^Value (graal/load-js-string context "typeof process" "typeof-process.js"))))
+         (is (= "undefined" (.asString ^Value (graal/load-js-string context "typeof require" "typeof-require.js")))))
+       (testing "a static `import` declaration is rejected at parse time — bundles are evaluated as classic scripts, not ES modules"
+         (is (thrown-with-msg? PolyglotException #"found import"
+                               (graal/load-js-string context "import process from 'node:process'; process" "static-import.js"))))
+       (testing "the dynamic import() escape hatch (legal inside a classic script) cannot load Node built-ins either"
+         (graal/load-js-string
+          context
+          "var __import_result = 'pending'; import('node:process').then(function () { __import_result = 'loaded'; }, function () { __import_result = 'rejected'; });"
+          "dynamic-import.js")
+         ;; the promise reaction has run by the next eval: the microtask queue drains at the eval boundary
+         (is (= "rejected" (.asString ^Value (graal/load-js-string context "__import_result" "dynamic-import-check.js")))))))))
+
 (deftest untrusted-context-load-resource-test
   (testing "load-resource evals into the UNTRUSTED isolate (regression: a URL-backed Source fails to marshal
             across the native-isolate boundary from a jar: URL — SourceCopyMarshaller ShouldNotReachHere — so
