@@ -115,6 +115,12 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
+;; The v2 UI resources gate on the single `agent:viz:mcp-ui`. The two `:query`/`:drill-through`
+;; leaves below shipped in v0.62 and still gate v1's, so they stay declared — tokens carry the
+;; literal string and a bare `agent:viz:mcp-ui` grant does not cover them (wildcard matching only
+;; fires on grants ending in `:*`).
+(api-scope/defscope agent-viz-mcp-ui "agent:viz:mcp-ui"
+  (deferred-tru "Visualize within the chat"))
 (api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
   (deferred-tru "Render query visualizations in the MCP UI"))
 (api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"

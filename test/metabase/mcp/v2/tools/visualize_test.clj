@@ -29,7 +29,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private viz-scopes
-  #{"agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"})
+  #{"agent:viz:mcp-ui"})
 
 (def ^:private mcp-ui-client
   "A client that advertises the MCP Apps UI extension. Both tools are gated on it."
@@ -303,8 +303,10 @@
   (testing "GHY-4157: resources/list only shows shells the token can read"
     (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
            (set (map :uri (:resources (v2.resources/list-resources viz-scopes))))))
-    (is (= #{v2.resources/visualize-query-uri}
-           (set (map :uri (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))))
+    (testing "the v0.62 per-shell leaves gate v1's resources, not v2's — a token carrying one
+              unlocks nothing here, since a bare grant matches only itself"
+      (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))
+      (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:drill-through"})))))
     (is (empty? (:resources (v2.resources/list-resources #{"agent:query:run"})))))
   (testing "GHY-4157: reading a shell without its scope is denied, not served"
     (is (= :scope-denied (:status (v2.resources/read-resource v2.resources/visualize-query-uri
