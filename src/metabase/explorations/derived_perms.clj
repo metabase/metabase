@@ -19,6 +19,7 @@
   would let its absence read as \"nothing to hide\"."
   (:require
    [clojure.set :as set]
+   [metabase.lib-be.core :as lib-be]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
@@ -33,18 +34,43 @@
 
   Keying on the `dataset_query` itself would never dedupe: an exploration's charts are variants
   over one metric card, so their queries differ textually while requiring identical permissions.
-  `query->source-ids` is the pure, no-DB projection that `required-perms-for-query` derives table
-  and card perms from, so two artifacts sharing it require the same perms.
 
-  It cannot account for every query — a raw source-card reference (`\"card__1\"`) matches none of
-  its patterns and yields nothing. When it accounts for no source at all, we fall back to keying on
-  the whole query so those artifacts are never merged with each other."
-  [{:keys [database_id dataset_query data_access_token]}]
+  The verdict's two halves project the query *differently*, so the key has to carry both or it is not
+  a partition. `can-run-query?` derives its perms from the raw query via `query->source-ids`, while
+  the lens comparison resolves the query first (`query->resolved-source-table-ids` preprocesses, which
+  expands implicit joins and card chains). An FK-traversed breakout is the case that separates them:
+  it reads an extra table while leaving the raw projection identical to a plain breakout on the same
+  source, and metric dimensions are built with `:include-implicitly-joinable? true`, so a thread
+  mixing the two is ordinary planner output rather than an exotic shape. Keyed on the raw projection
+  alone, those two share a group, one representative decides for both, and a viewer restricted on the
+  joined table is handed the one they cannot read.
+
+  Neither projection accounts for every query — a raw source-card reference (`\"card__1\"`) matches
+  none of `query->source-ids`'s patterns and yields nothing, and resolution *throws* on an
+  unpreprocessable query (a deleted card in the source chain). Both fall back to a value that merges
+  nothing it shouldn't: the whole query in the first case, and in the second a marker shared only
+  with other unresolvable artifacts, which the lens check denies without exception.
+
+  `resolve-tables` is the resolving half, passed in so a batch can share one memo — resolution is a
+  pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
+  to collapse."
+  [resolve-tables {:keys [database_id dataset_query data_access_token]}]
   (let [source-ids (some-> dataset_query query-perms/query->source-ids)]
-    [database_id data_access_token
+    [database_id data_access_token (resolve-tables dataset_query)
      (if (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids)))
        source-ids
        dataset_query)]))
+
+(defn- table-resolver
+  "A memoized [[metabase.query-permissions.core/query->resolved-source-table-ids]] for one batch.
+  Throws are absorbed into a marker rather than propagated: an unpreprocessable query (a deleted card
+  in its source chain) is one the lens check denies anyway, and it must not take the batch down with
+  it."
+  []
+  (memoize (fn [query]
+             (try
+               (some-> query query-perms/query->resolved-source-table-ids)
+               (catch Throwable _ ::unresolvable)))))
 
 (defn- finalized-queries
   "The `exploration_query` rows for `thread-ids` that can be adjudicated, in the shape the gate takes.
@@ -56,7 +82,8 @@
   (t2/select [:model/ExplorationQuery
               :id :exploration_thread_id :database_id :dataset_query :data_access_token]
              :exploration_thread_id [:in thread-ids]
-             :dataset_query [:not= nil]))
+             :dataset_query [:not= nil]
+             {:order-by [[:id :asc]]}))
 
 (defn- lens-stamped-threads
   "The `exploration_thread` rows for `thread-ids` carrying a tracked lens, in the shape the gate takes.
@@ -99,7 +126,7 @@
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
   the expensive check run once per group rather than once per artifact."
   [artifacts]
-  (->> (group-by visibility-key artifacts)
+  (->> (group-by (partial visibility-key (table-resolver)) artifacts)
        (remove (fn [[_key [representative]]]
                  (queries/viewer-can-view-cached-result? representative)))
        (mapcat val)
@@ -111,14 +138,20 @@
   text derived from warehouse values must pass the gate
   ([[metabase.queries.cached-result/viewer-can-view-cached-result?]]) for the *current* user — the
   creator included. A thread carrying no such text yet stays visible, because there is nothing on it
-  that was computed under anyone's lens. Returns a set."
+  that was computed under anyone's lens. Returns a set.
+
+  Held inside one metadata-provider cache: [[visibility-key]] preprocesses each artifact's query, and
+  a thread's charts are variants over the same card, so they read the same tables and fields over and
+  over. REST requests already arrive with a cache bound and the macro leaves it alone; this is for the
+  callers that don't, such as the document-content gate below."
   [thread-ids]
   (let [thread-ids (set thread-ids)]
     (if (empty? thread-ids)
       #{}
-      (set/difference thread-ids
-                      (blocked-thread-ids (concat (finalized-queries thread-ids)
-                                                  (lens-stamped-threads thread-ids)))))))
+      (lib-be/with-metadata-provider-cache
+        (set/difference thread-ids
+                        (blocked-thread-ids (concat (finalized-queries thread-ids)
+                                                    (lens-stamped-threads thread-ids))))))))
 
 (defn doc-content-visible-to-current-user?
   "Content-visibility gate installed via

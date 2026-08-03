@@ -10,8 +10,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +28,8 @@
 (defn- thread-with-snapshots!
   "A thread whose queries are each finalized (`dataset_query` + `data_access_token` stamped, as the
   runner's `finalize-row!` does) and backed by one StoredResult built from `snapshot-specs`
-  (`{:creator-id, :table, :token}`). Returns the thread id."
+  (`{:creator-id, :table, :token}`, or `:query` in place of `:table` for a shape `count-query`
+  can't express). Returns the thread id."
   [snapshot-specs]
   (let [creator (mt/user->id :lucky)
         card    (t2/insert-returning-pk! :model/Card
@@ -36,8 +39,8 @@
         expl    (t2/insert-returning-pk! :model/Exploration {:name "derived" :creator_id creator})
         thread  (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
         block   (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread})]
-    (doseq [[i {:keys [creator-id table token]}] (map-indexed vector snapshot-specs)]
-      (let [dq   (count-query table)
+    (doseq [[i {:keys [creator-id table token query]}] (map-indexed vector snapshot-specs)]
+      (let [dq   (or query (count-query table))
             page (t2/insert-returning-pk! :model/ExplorationPage
                                           {:exploration_block_id block :card_id card
                                            :dimension_id "d1" :query_type "default"})
@@ -153,10 +156,59 @@
             (is (false? (visible? thread :rasta))
                 "if the two snapshots were collapsed into one verdict this would wrongly pass")))))))
 
-(deftest verdict-cost-does-not-scale-with-chart-count-test
-  (testing "this rollup runs on polled read paths, so its app-DB cost must stay flat as a thread
-            grows charts — the underlying permission check is worth ~a dozen queries each time it
-            runs, and an exploration's charts all require the same permissions"
+(defn- fk-breakout-query
+  "A venues count broken out through an FK, so it *reads* `categories` while its raw source-ids stay
+  `#{venues}` — only preprocessing surfaces the second table. The mechanical planner emits these
+  routinely: metric dimensions are computed with `:include-implicitly-joinable? true`."
+  []
+  (let [mp   (mt/metadata-provider)
+        base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                 (lib/aggregate (lib/count)))]
+    (lib/->legacy-MBQL
+     (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base)))))))
+
+(deftest batching-does-not-merge-a-plain-breakout-with-an-fk-traversed-one-test
+  (testing "the two halves of the verdict project the query differently — perms from the raw query,
+            the lens from the resolved one. A plain breakout and an FK-traversed breakout on the same
+            source share a raw projection while reading different tables, so a key built from the raw
+            projection alone would collapse them into one verdict and hand the viewer a chart reading
+            a table they are blocked on."
+    (mt/with-no-data-perms-for-all-users!
+      (let [group (perms-group/all-users)]
+        (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+        (testing "control: the plain breakout alone is visible"
+          (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])]
+            (is (true? (visible? thread :rasta)))))
+        (testing "adding the FK-traversed one blocks the thread"
+          (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}
+                                                {:creator-id (mt/user->id :lucky) :query (fk-breakout-query) :token {}}])]
+            (is (false? (visible? thread :rasta))
+                "collapsed into one verdict, whichever row was picked would decide for both")))))))
+
+(deftest verdict-runs-once-per-group-not-once-per-chart-test
+  (testing "this rollup runs on polled read paths and the verdict it batches is worth ~a dozen
+            app-DB queries every time it runs. Charts sharing a permission shape must resolve to one
+            group and be adjudicated once, however many of them a thread grows."
+    (let [specs    (fn [n] (repeat n {:creator-id (mt/user->id :lucky) :table :venues :token {}}))
+          verdicts (fn [n]
+                     (let [thread (thread-with-snapshots! (specs n))
+                           calls  (atom 0)]
+                       (dynamic-redefs/with-dynamic-fn-redefs
+                         [queries/viewer-can-view-cached-result? (fn [_] (swap! calls inc) true)]
+                         (request/with-current-user (mt/user->id :rasta)
+                           (derived-perms/thread-ids-with-visible-derived-data [thread])))
+                       @calls))]
+      (is (= 1 (verdicts 2)))
+      (is (= 1 (verdicts 25))
+          "one verdict for the group — before batching, 25 charts cost 25 of them"))))
+
+(deftest verdict-cost-grows-only-with-distinct-chart-shapes-test
+  (testing "grouping cannot be free: [[visibility-key]] resolves each chart's query, because the
+            lens half of the verdict compares *resolved* tables and two charts can share a raw
+            footprint while reading different ones. That resolution is per chart and mostly metadata
+            reads, so cost grows — but it must stay far below re-running the verdict itself, which
+            would be ~13 queries a chart (~325 for 25)."
     (let [specs   (fn [n] (repeat n {:creator-id (mt/user->id :lucky) :table :venues :token {}}))
           measure (fn [n]
                     (let [thread (thread-with-snapshots! (specs n))]
@@ -166,9 +218,5 @@
                           (call-count)))))
           small   (measure 2)
           large   (measure 25)]
-      ;; Exact equality is too strict — wider `IN` lists shift the count by a query or so. What
-      ;; matters is that the expensive per-snapshot check is not re-run per chart: before this was
-      ;; batched, 25 charts cost ~13 queries each (~325 total) against ~26 for 2.
-      (is (<= large (+ small 3))
-          (format "cost must stay flat as charts grow (2 charts: %d queries, 25 charts: %d)"
-                  small large)))))
+      (is (< large (* 2 small))
+          (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
