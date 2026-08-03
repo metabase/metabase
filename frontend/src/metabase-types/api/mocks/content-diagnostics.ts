@@ -1,6 +1,7 @@
 import type {
   ContentDiagnosticsCollection,
   ContentDiagnosticsStaleFinding,
+  ContentDiagnosticsStaleFindingDetails,
   ContentDiagnosticsUser,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
@@ -29,7 +30,9 @@ export function createMockContentDiagnosticsCollection(
 }
 
 export function createMockContentDiagnosticsStaleFinding(
-  opts?: Partial<ContentDiagnosticsStaleFinding>,
+  opts?: Partial<Omit<ContentDiagnosticsStaleFinding, "details">> & {
+    details?: Partial<ContentDiagnosticsStaleFindingDetails>;
+  },
 ): ContentDiagnosticsStaleFinding {
   return {
     id: 1,
