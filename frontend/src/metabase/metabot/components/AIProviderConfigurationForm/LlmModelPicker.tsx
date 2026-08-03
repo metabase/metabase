@@ -4,7 +4,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { Select, Stack } from "metabase/ui";
+import { DefaultSelectItem, Select, Stack } from "metabase/ui";
 
 export function LlmModelPicker() {
   const {
@@ -12,7 +12,8 @@ export function LlmModelPicker() {
     updateSetting,
     settingDetails,
   } = useAdminSetting("llm-metabot-provider");
-  const { modelOptions, isLoading, error } = useLlmConnectionModels();
+  const { modelOptions, modelNameByRef, isLoading, error } =
+    useLlmConnectionModels();
 
   const isEnvSetting = !!settingDetails?.is_env_setting;
   const envVarName = isEnvSetting ? settingDetails?.env_name : undefined;
@@ -37,6 +38,13 @@ export function LlmModelPicker() {
         disabled={isEnvSetting || isLoading}
         searchable
         nothingFoundMessage={t`No models found`}
+        renderOption={(item) => (
+          <DefaultSelectItem
+            {...item.option}
+            selected={item.checked}
+            label={modelNameByRef[item.option.value] ?? item.option.label}
+          />
+        )}
       />
       {envVarName && <SetByEnvVar varName={envVarName} />}
     </Stack>
