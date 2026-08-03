@@ -39,22 +39,26 @@
             [:reindex? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
-             require-initialized-db?]
-      :or   {token-check? true
-             require-initialized-db? true}}]
+             require-initialized-db?
+             check-version?]
+      :or   {token-check?            true
+             require-initialized-db? true
+             ;; Off by default: internal callers load content bundled with this jar (eg. instance analytics),
+             ;; which carries no version stamp but is matched to the running version by construction.
+             check-version?          false}}]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
   (when (and require-initialized-db? (not (setup/has-user-setup)))
     (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
     (check-premium-token!))
-  ;; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
-  ;;(when-not (load/compatible? path)
-  ;;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
-  (u/prog1 (serdes/with-cache
-             (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
-    (events/publish-event! :event/serdes-load {})))
+  (let [ingestion (v2.ingest/ingest-yaml path)]
+    (when check-version?
+      (v2.load/check-version-compatibility! ingestion))
+    (u/prog1 (serdes/with-cache
+               (v2.load/load-metabase! ingestion opts))
+      (events/publish-event! :event/serdes-load {}))))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.
@@ -68,7 +72,7 @@
   (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
-                   (v2-load-internal! path opts :token-check? true)
+                   (v2-load-internal! path opts :token-check? true :check-version? true)
                    (catch ExceptionInfo e
                      (reset! err e))
                    (catch Exception e

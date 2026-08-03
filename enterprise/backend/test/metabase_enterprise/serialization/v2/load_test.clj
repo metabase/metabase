@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -62,6 +63,44 @@
 ;;; WARNING for test authors: [[extract/extract]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
+
+(deftest check-version-compatibility-test
+  (testing "GHY-4241: importing across major versions silently corrupted content, so it is now refused"
+    (let [ingestion (fn [version]
+                      (ingestion-in-memory
+                       [(cond-> {:serdes/meta [{:model "Collection" :id "0123456789abcdef_0123"}]
+                                 :name        "Some collection"}
+                          version (assoc :metabase_version version))]))]
+      (testing "an export from this instance's major version is allowed"
+        (with-redefs [config/current-major-version (constantly 62)]
+          (is (nil? (serdes.load/check-version-compatibility! (ingestion "v1.62.3 (abc1234)"))))))
+
+      (testing "patch releases within the same major are allowed - only the major is compared"
+        (with-redefs [config/current-major-version (constantly 62)]
+          (is (nil? (serdes.load/check-version-compatibility! (ingestion "v1.62.9 (deadbee)"))))))
+
+      (testing "an export from a different major version is refused, naming both versions"
+        (with-redefs [config/current-major-version (constantly 62)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"produced by Metabase v1\.61\.0.*major version 61.*this instance is major version 62"
+               (serdes.load/check-version-compatibility! (ingestion "v1.61.0 (abc1234)"))))))
+
+      (testing "an export with no version stamp is refused, since only v63+ omits the stamp"
+        (with-redefs [config/current-major-version (constantly 62)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"does not record which Metabase version produced it"
+               (serdes.load/check-version-compatibility! (ingestion nil))))))
+
+      (testing "the check is skipped when this instance cannot determine its own major version (dev builds)"
+        (with-redefs [config/current-major-version (constantly nil)]
+          (is (nil? (serdes.load/check-version-compatibility! (ingestion nil))))))
+
+      (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of the check entirely"
+        (with-redefs [config/current-major-version (constantly 62)]
+          (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
+            (is (nil? (serdes.load/check-version-compatibility! (ingestion nil))))))))))
 
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"

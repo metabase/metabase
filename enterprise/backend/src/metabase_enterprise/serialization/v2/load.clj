@@ -162,6 +162,52 @@
         (when (not (nil? *warned-version-mismatch*))
           (reset! *warned-version-mismatch* true))))))
 
+(defn- exported-version
+  "The `:metabase_version` recorded by the instance that produced `ingestion`, or nil if no entity carries one.
+
+  Scans until the first entity that records a version, so a well-formed export costs a single extra file read.
+  Settings carry no version stamp, and neither does anything exported by Metabase v63+."
+  [ingestion]
+  (reduce (fn [_ path]
+            (when-let [version (:metabase_version (serdes.ingest/ingest-one ingestion path))]
+              (reduced version)))
+          nil
+          (serdes.ingest/ingest-list ingestion)))
+
+(defn check-version-compatibility!
+  "Throws unless `ingestion` was produced by a Metabase with the same major version as this instance.
+
+  Imports across major versions are unsupported and can silently corrupt content, so they are refused. An export
+  that records no version at all is refused for the same reason: Metabase v63 dropped the version stamp, so the
+  absence of one means the source is v63 or newer.
+
+  No-ops when this instance cannot determine its own major version (dev builds have no `version.properties`), or
+  when `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH` is set."
+  [ingestion]
+  (when-not (config/config-bool :mb-serialization-allow-version-mismatch)
+    (when-let [current-major (config/current-major-version)]
+      (let [source       (exported-version ingestion)
+            source-major (some-> source config/major-version)]
+        (when-not (= current-major source-major)
+          (throw (ex-info (if source
+                            (format (str "Refusing to import: this export was produced by Metabase %s (major version %s), "
+                                         "but this instance is major version %s. Importing content between major "
+                                         "versions is not supported and can corrupt existing content. Export from a "
+                                         "Metabase %s instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true "
+                                         "to import anyway.")
+                                    source source-major current-major current-major)
+                            (format (str "Refusing to import: this export does not record which Metabase version "
+                                         "produced it, which means it came from Metabase 63 or newer. This instance "
+                                         "is major version %s. Importing content between major versions is not "
+                                         "supported and can corrupt existing content. Export from a Metabase %s "
+                                         "instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true to import "
+                                         "anyway.")
+                                    current-major current-major))
+                          {:source-version source
+                           :source-major   source-major
+                           :current-major  current-major
+                           :status         400})))))))
+
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
   avoid cycles.

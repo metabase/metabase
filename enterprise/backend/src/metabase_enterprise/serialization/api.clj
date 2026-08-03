@@ -143,10 +143,11 @@
                                           :count  cnt
                                           :files  (.listFiles dst)})))
                        (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
-                       (serdes/with-cache
-                         (-> (v2.ingest/ingest-yaml (.getPath path))
-                             (v2.load/load-metabase! {:continue-on-error continue-on-error
-                                                      :reindex?          reindex?}))))
+                       (let [ingestion (v2.ingest/ingest-yaml (.getPath path))]
+                         (v2.load/check-version-compatibility! ingestion)
+                         (serdes/with-cache
+                           (v2.load/load-metabase! ingestion {:continue-on-error continue-on-error
+                                                              :reindex?          reindex?}))))
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
