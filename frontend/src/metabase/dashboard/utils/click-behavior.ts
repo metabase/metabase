@@ -1,3 +1,4 @@
+import { parseParameterValue } from "metabase/parameters/utils/parameter-parsing";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNotNull } from "metabase/utils/types";
 import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
@@ -29,8 +30,6 @@ import type {
   Parameter,
   QuestionDashboardCard,
 } from "metabase-types/api";
-
-import { parseParameterValue } from "./parameter-parsing";
 
 interface Target {
   id: Parameter["id"];

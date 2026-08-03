@@ -1,15 +1,14 @@
-import type { Location as V7Location } from "react-router";
+import type { Location as ReactRouterLocation } from "react-router";
 
-import type { Location as HistoryLocation } from "../types";
+import type { Location as HistoryLocation } from "./types";
 
 /**
  * Serialize a query object into the `search` string a navigation target carries.
  * Repeated values become repeated keys. Returns `""` for an empty query.
  *
- * Keys are sorted, because history@3 stringified the query with `query-string`,
- * which sorts by default. Call sites build the query from an object whose key
- * order is incidental, and the URL is user visible and asserted against, so the
- * order has to stay stable rather than follow insertion.
+ * Keys are sorted so the URL is deterministic. Call sites build the query from
+ * an object whose key order is incidental, and these URLs are user visible and
+ * asserted against, so the order must not follow insertion.
  */
 export function queryToSearch(query: Record<string, unknown>): string {
   const params = new URLSearchParams();
@@ -25,9 +24,9 @@ export function queryToSearch(query: Record<string, unknown>): string {
       params.append(key, String(item));
     }
   }
-  // `URLSearchParams` matches history@3 apart from `~`, which it escapes and
-  // history@3 left alone. Both write a space as `+`. These URLs are user visible
-  // and asserted against, so a date filter has to read `next30days~`.
+  // `~` separates the two ends of a date filter range, and those URLs are shared
+  // and asserted against, so a date filter has to read `next30days~` rather than
+  // the `next30days%7E` that `URLSearchParams` writes.
   const search = params.toString().replace(/%7E/gi, "~");
   return search ? `?${search}` : "";
 }
@@ -37,7 +36,9 @@ export function queryToSearch(query: Record<string, unknown>): string {
  * from a v7 location. All that is left to normalize is `state`, which the legacy
  * readers treat as absent when it is `undefined`.
  */
-export function toFacadeLocation(location: V7Location): HistoryLocation {
+export function toFacadeLocation(
+  location: ReactRouterLocation,
+): HistoryLocation {
   return {
     pathname: location.pathname,
     search: location.search,

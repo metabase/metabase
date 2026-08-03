@@ -6,7 +6,7 @@ import _ from "underscore";
 import {
   formatSourceForTarget,
   getTargetForQueryParams,
-} from "metabase/parameters/utils/click-behavior";
+} from "metabase/dashboard/utils/click-behavior";
 import * as Urls from "metabase/urls";
 import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
 import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";

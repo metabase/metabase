@@ -1,13 +1,5 @@
 import { selectTab } from "metabase/redux/dashboard";
 import type { Dispatch } from "metabase/redux/store";
-import {
-  getDashboardDrillLinkUrl,
-  getDashboardDrillParameters,
-  getDashboardDrillQuestionUrl,
-  getDashboardDrillTab,
-  getDashboardDrillType,
-  getDashboardDrillUrl,
-} from "metabase/visualizations/click-actions/lib/dashboard-click-drill";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
@@ -16,6 +8,15 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValueOrArray } from "metabase-types/api";
+
+import {
+  getDashboardDrillLinkUrl,
+  getDashboardDrillParameters,
+  getDashboardDrillQuestionUrl,
+  getDashboardDrillTab,
+  getDashboardDrillType,
+  getDashboardDrillUrl,
+} from "./dashboard-click-drill";
 
 type DashboardDrillType =
   | "link-url"
