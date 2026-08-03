@@ -523,7 +523,7 @@
           (is (=? {:data          {}
                    :cache/details {:cached     true
                                    :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
-                                   :hash some?}
+                                   :cache-hash some?}
                    :row_count     8
                    :status        :completed}
                   result)))))))
@@ -619,7 +619,9 @@
                     cached-result   (qp/process-query query)]
                 (is (=? {:cache/details  {:cached     true
                                           :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                          :hash       some?}
+                                          :hash       some?
+                                          ;; TODO: this check is not working if the key is not present in the data
+                                          :cache-hash some?}
                          :row_count 5
                          :status    :completed}
                         (dissoc cached-result :data))
@@ -726,7 +728,10 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                   :hash       some?}
+                                                   :hash       some?
+                                                   ;; TODO: this check is not working if the key is not present in the
+                                                   ;; data
+                                                   :cache-hash some?}
                                    :row_count     5
                                    :status        :completed}
                                   (dissoc cached-results :data))))
@@ -748,7 +753,9 @@
                   (testing "\n\nOuter queries are cached *separately*"
                     (is (=? {:cache/details {:cached     true
                                              :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                             :hash       some?}
+                                             :hash       some?
+                                             ;; TODO: this check is not working if the key is not present in the data
+                                             :cache-hash some?}
                              :row_count     5
                              :status        :completed}
                             (dissoc rerun-outer1 :data))
@@ -818,7 +825,10 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                    :hash       some?}
+                                                    :hash       some?
+                                                    ;; TODO: this check is not working if the key is not present in the
+                                                    ;; data
+                                                    :cache-hash some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
@@ -960,7 +970,7 @@
                 (request/with-current-user (mt/user->id :crowberto)
                   (is (=? {:cache/details {:cached     true
                                            :updated_at some?
-                                           :hash some?}}
+                                           :cache-hash some?}}
                           (run-forbidden-query)))))
               (testing "Run query as regular user, should get perms Exception even though result is cached"
                 (is (thrown-with-msg?
