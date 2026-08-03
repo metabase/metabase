@@ -208,8 +208,9 @@ export function buildModuleGraph(
     allTypes.map((type) => [type, new Set()]),
   );
   for (const rule of rules) {
-    // The graph over-approximates which imports are possible, so disallow
-    // rules (which only narrow permissions) are safely ignored.
+    // Disallow rules only remove permissions that some allow rule granted.
+    // Ignoring them makes this graph a superset of the legal imports,
+    // which for test selection just means selecting extra tests.
     const fromTypes = rule.from.flatMap(expandPattern);
     const allowTypes = (rule.allow ?? []).flatMap(expandPattern);
     for (const target of allowTypes) {
