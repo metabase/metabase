@@ -13,15 +13,36 @@ let currentNavigate: NavigateFunction | null = null;
 /**
  * Navigations requested before the router registered its `navigate`. A
  * navigation from a mount `useLayoutEffect` (e.g. a guard redirect) is requested
- * before `AppShell`'s effect runs, since layout effects run first, so buffer
- * these and flush them on registration rather than dropping them.
+ * before `AppShell`'s effect runs, since layout effects run first, so hold these
+ * and flush them on registration rather than dropping them.
+ *
+ * They are held as a queue, not as a single latest value, so the history stack
+ * ends up the way it would have without the registration gap. Collapsing a push
+ * and a following replace into just the replace would overwrite the entry the
+ * user arrived on rather than the intermediate one.
  */
 let pendingNavigations: Array<(navigate: NavigateFunction) => void> = [];
+
+/**
+ * Whether a router is on its way. `createAppRouter` and `createMemoryAppRouter`
+ * set this, because both put an `AppShell` above the tree and so guarantee a
+ * registration.
+ *
+ * A host that builds no router never registers a `navigate`, so anything held
+ * for it is held for the life of the page. The SDK is such a host and runs for a
+ * long time. Holding nothing until a router is on its way keeps that queue from
+ * retaining every closure, and the `state` each one captures.
+ */
+let isRouterExpected = false;
+
+export function setRouterExpected(expected: boolean): void {
+  isRouterExpected = expected;
+}
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {
-    // The router unmounted. Anything still buffered was meant for it, not for
+    // The router unmounted. Anything still held was meant for it, not for
     // whatever router mounts next, so drop it rather than replay it later.
     pendingNavigations = [];
     return;
@@ -90,8 +111,9 @@ export function toNavigateArgs(
  * against its own deepest match instead, so a caller moving between the two must
  * spell an absolute path.
  *
- * A call before the router mounts is buffered and flushed on registration, so a
- * mount-time redirect is not lost.
+ * A call before the router mounts is held and flushed on registration, so a
+ * mount-time redirect is not lost. Where the host builds no router at all, the
+ * call is a no-op and nothing is retained.
  *
  * Prefer `useNavigate` wherever there is a component to hold it.
  */
@@ -103,7 +125,7 @@ export function navigate(to: To | number, options?: NavigateOptions): void {
 
   if (currentNavigate) {
     run(currentNavigate);
-  } else {
+  } else if (isRouterExpected) {
     pendingNavigations.push(run);
   }
 }

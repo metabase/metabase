@@ -6,6 +6,7 @@ import {
 } from "react-router";
 
 import { AppShell } from "./AppShell";
+import { setRouterExpected } from "./navigator";
 
 export type MemoryTestRouter = DataRouter;
 
@@ -23,6 +24,10 @@ export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
  * seat for anything the app shell needs above the route tree.
  */
 function withAppShell(routes: RouteObject[]): RouteObject[] {
+  // Every router this module builds gets an `AppShell`, and every `AppShell`
+  // registers a `navigate`. That is what lets the navigator hold a navigation
+  // made before the registration, knowing one is coming.
+  setRouterExpected(true);
   return [{ element: <AppShell />, children: routes }];
 }
 
