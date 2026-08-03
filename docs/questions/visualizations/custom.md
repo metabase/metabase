@@ -38,7 +38,7 @@ Once you've [built the custom visualization](../../developers-guide/custom-visua
 3. Click **Add visualization**.
 
 - Bundles must be smaller than 5 MiB.
-- Each custom visualization lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). If your Metabase version isn't in that range, Metabase rejects the upload and tells you which version the visualization needs.
+- Each custom visualization lists the Metabase versions it supports (for example, "Requires Metabase >=1.62 <1.64"). If your Metabase version isn't in that range, the upload still works, but Metabase shows a warning telling you which versions the visualization supports.
 - The **Manage visualizations** page shows each custom visualization's icon, name, the first eight characters of the bundle's hash, and its required Metabase version range, so you can tell which version is installed.
 
 ## Using a custom visualization

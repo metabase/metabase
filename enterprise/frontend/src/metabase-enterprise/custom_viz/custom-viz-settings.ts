@@ -8,7 +8,7 @@ import type {
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import type { CustomVizPluginId } from "metabase-types/api";
+import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { wrapPluginWidget } from "./widget-mount";
@@ -31,7 +31,7 @@ export function sanitizePluginSettings(
     | CustomVisualization<Record<string, unknown>>["settings"]
     | undefined,
   mount: CustomVisualizationMount,
-  pluginId: CustomVizPluginId,
+  plugin: CustomVizPluginRuntime,
 ): CustomVisualization<Record<string, unknown>>["settings"] {
   if (!settings) {
     return settings;
@@ -64,7 +64,7 @@ export function sanitizePluginSettings(
         ...value,
         widget: wrapPluginWidget(
           (container, initialProps) => mount(Widget, container, initialProps),
-          pluginId,
+          plugin,
         ),
       } as unknown as CustomVisualizationSettingDefinition<
         Record<string, unknown>

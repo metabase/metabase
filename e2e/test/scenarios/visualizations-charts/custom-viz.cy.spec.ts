@@ -1465,27 +1465,6 @@ describe("admin > custom visualizations", () => {
         },
       );
 
-      // The scaffolded template requires Metabase >= 60.0, but the e2e runner may
-      // run an older version. Rewrite the manifest to a permissive range so the
-      // dev-only plugin is included in /api/ee/custom-viz-plugin/list and becomes
-      // selectable in the visualization picker.
-      cy.readFile(`${projectDir}/metabase-plugin.json`).then((manifest) => {
-        cy.writeFile(
-          `${projectDir}/metabase-plugin.json`,
-          JSON.stringify(
-            {
-              ...manifest,
-              metabase: {
-                ...(manifest?.metabase ?? {}),
-                version: "", // empty strings means compatibility with any version
-              },
-            },
-            null,
-            2,
-          ),
-        );
-      });
-
       // Use current version of the SDK in the plugin.
       cy.readFile(`${projectDir}/package.json`).then((pkg) => {
         cy.writeFile(

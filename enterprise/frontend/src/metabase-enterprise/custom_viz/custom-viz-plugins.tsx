@@ -399,7 +399,7 @@ export async function loadCustomVizPlugin(
     const Wrapper = createCustomVizWrapper(
       vizDef.mount,
       vizDef.VisualizationComponent,
-      plugin.id,
+      plugin,
     );
 
     // core app resolves these to a plain same-origin url like
@@ -416,7 +416,7 @@ export async function loadCustomVizPlugin(
       vizDef,
       {
         identifier,
-        pluginId: plugin.id,
+        plugin,
         getUiName: () => plugin.display_name,
         iconUrl: resolvedIconUrl,
         isDev: Boolean(plugin.dev_bundle_url),
@@ -455,7 +455,9 @@ export async function loadCustomVizPlugin(
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
       onInfo?.(
-        t`The "${plugin.display_name}" visualization is currently unavailable.`,
+        plugin.warnings.length > 0
+          ? t`The "${plugin.display_name}" visualization is currently unavailable. It was built for a different version and may need to be updated.`
+          : t`The "${plugin.display_name}" visualization is currently unavailable.`,
       );
     }
     failedPluginHashes.set(plugin.id, currentHash);
@@ -500,7 +502,7 @@ function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
 function createCustomVizWrapper(
   mount: GenericVizMount,
   VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
-  pluginId: CustomVizPluginId,
+  plugin: CustomVizPluginRuntime,
 ) {
   return function CustomVizWrapper({
     width,
@@ -550,12 +552,13 @@ function createCustomVizWrapper(
     const containerRef = usePluginMount<GenericVizPluginProps>(
       (container, props) => mount(VisualizationComponent, container, props),
       pluginProps,
+      plugin,
     );
 
     return (
       <div
         ref={containerRef}
-        data-plugin-sandbox={pluginId}
+        data-plugin-sandbox={plugin.id}
         style={{ width: "100%", height: "100%" }}
       />
     );

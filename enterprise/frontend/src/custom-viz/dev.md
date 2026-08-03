@@ -77,6 +77,8 @@ Convention:
 
    For a stable release, add a section for the new version to [CHANGELOG.md](CHANGELOG.md) in the same PR. The changelog is maintained by hand. Canary releases don't get changelog sections.
 
+   In the same PR, make sure `tested-sdk-version-range` in [manifest.clj](../../backend/src/metabase_enterprise/custom_viz_plugin/manifest.clj) includes the new version — `manifest-test` fails when it doesn't. Plugins built with SDK versions outside that range get a soft warning in Metabase. Any npm semver range syntax works (e.g. `2.0`, `2.0 - 2.1`, `>=2.0.0 <3.0.0`); keep the range to versions that were actually tested.
+
 2. (Optional) Preview what the workflow will resolve, from the repo root:
 
    ```bash

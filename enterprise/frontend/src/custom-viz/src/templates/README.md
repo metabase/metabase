@@ -62,16 +62,17 @@ To develop against a live Metabase instance with hot-reload:
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "icon.svg",
   "metabase": {
-    "version": ">=1.60.0"
+    "version": ">=1.64 <1.66"
   }
 }
 ```
 
-| Field              | Description                                                                                   |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory. |
-| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                       |
-| `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.60.0"`, `"^1.60"`).                  |
+| Field              | Description                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory.      |
+| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                            |
+| `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.64 <1.66"`). Keep it closed on both ends. |
+| `sdk.version`      | Written automatically at pack time — no need to set it by hand.                                    |
 
 ---
 
