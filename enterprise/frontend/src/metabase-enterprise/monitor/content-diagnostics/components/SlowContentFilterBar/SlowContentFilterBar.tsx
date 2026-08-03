@@ -11,7 +11,6 @@ import {
   getSlowDefaultFilterOptions,
 } from "../slow-utils";
 import type { SlowContentFilterOptions } from "../types";
-import { ALL_FILTER_TYPES } from "../utils";
 
 type SlowContentFilterBarProps = {
   query?: string;
@@ -62,7 +61,6 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
       />
       <SlowContentFilterPicker
         filterOptions={filterOptions}
-        availableTypes={ALL_FILTER_TYPES}
         isDisabled={isLoading}
         hasDefaultOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={onFilterOptionsChange}
