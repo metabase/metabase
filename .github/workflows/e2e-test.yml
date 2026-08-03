@@ -68,6 +68,7 @@ jobs:
       # deleted in after:spec so recording is ~5-10% slowdown per shard and almost
       # never yields an artifact. Failure screenshots are unaffected, and the
       # stress-test workflows have their own config and keep video.
+      # Re-run attempts override this on the run steps below.
       CYPRESS_VIDEO: "false"
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
@@ -173,6 +174,8 @@ jobs:
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          # Re-run attempts run only the previously-failed specs (env.specs), so record them.
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         shell: bash
         run: |
@@ -189,6 +192,8 @@ jobs:
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          # Re-run attempts run only the previously-failed specs (env.specs), so record them.
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
