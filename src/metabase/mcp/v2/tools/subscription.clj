@@ -20,6 +20,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.notifications :as mcp.notifications]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -373,4 +374,5 @@
     (common/success-content
      (common/readback token-scopes [metabot.scope/agent-content-read]
                       (projections/project :subscription :concise
-                                           (projections/subscription-row (pulse/retrieve-pulse id)))))))
+                                           (projections/subscription-row
+                                            (mcp.notifications/redact-pulse (pulse/retrieve-pulse id))))))))

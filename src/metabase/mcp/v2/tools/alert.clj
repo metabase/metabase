@@ -17,6 +17,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.notifications :as mcp.notifications]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -254,7 +255,8 @@
   [notification]
   (projections/project :alert :concise
                        (projections/notification-row
-                        (projections/hydrate-notification-row notification))))
+                        (mcp.notifications/redact-notification
+                         (mcp.notifications/hydrate-notification notification)))))
 
 (defn- create!
   [{:keys [card_id condition schedule active] :as args}]

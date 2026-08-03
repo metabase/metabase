@@ -14,6 +14,7 @@
    [metabase.dashboards.write :as dashboards.write]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
+   [metabase.mcp.v2.dashboards :as mcp.dashboards]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -73,6 +74,7 @@
   [id]
   (-> (t2/select-one :model/Dashboard :id id)
       (t2/hydrate [:dashcards :series :card] :tabs)
+      mcp.dashboards/redact-dashboard
       projections/dashboard-row))
 
 (defn- attach-card-metadata
@@ -93,6 +95,7 @@
   [dash attrs payload cards]
   (-> (merge dash attrs payload)
       (update :dashcards (partial mapv (partial attach-card-metadata cards)))
+      mcp.dashboards/redact-dashboard
       projections/dashboard-row))
 
 (defn- normalize-parameters

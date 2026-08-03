@@ -23,6 +23,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.dashboards :as mcp.dashboards]
+   [metabase.mcp.v2.notifications :as mcp.notifications]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -296,7 +298,8 @@
   [id-or-eid]
   (let [dash (-> (common/resolve-and-read :model/Dashboard id-or-eid
                                           (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
-                 (t2/hydrate [:dashcards :series :card] :tabs))]
+                 (t2/hydrate [:dashcards :series :card] :tabs)
+                 mcp.dashboards/redact-dashboard)]
     (assoc (projections/dashboard-row dash) ::dashboard dash)))
 
 (defn- dashboard-layout
@@ -327,7 +330,9 @@
   (let [notification (t2/select-one :model/Notification :id id-or-eid :payload_type payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
-    (projections/notification-row (projections/hydrate-notification-row notification))))
+    (projections/notification-row
+     (mcp.notifications/redact-notification
+      (mcp.notifications/hydrate-notification notification)))))
 
 ;;; ------------------------------------------------- subscription -------------------------------------------------
 
@@ -352,14 +357,16 @@
     (if (and pulse-id (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
         (if (and pulse-row (mi/can-read? pulse-row))
-          (projections/subscription-row pulse-row)
+          (projections/subscription-row (mcp.notifications/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
             (let [notification (t2/select-one :model/Notification
                                               :id id-or-eid
                                               :payload_type :notification/dashboard)]
               (when (and notification (mi/can-read? notification))
-                (projections/notification-row (projections/hydrate-notification-row notification)))))
+                (projections/notification-row
+                 (mcp.notifications/redact-notification
+                  (mcp.notifications/hydrate-notification notification))))))
           (common/throw-not-found :subscription id-or-eid)))))
 
 ;;; --------------------------------------------------- transform --------------------------------------------------
