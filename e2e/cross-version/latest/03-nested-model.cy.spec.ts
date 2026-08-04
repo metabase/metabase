@@ -48,8 +48,11 @@ describe("Cross-version questions - nested model", () => {
       H.rightSidebar().findByDisplayValue("Euro").should("be.visible");
 
       H.saveMetadataChanges();
-      cy.location("pathname").should("not.include", "columns");
 
+      // Reload to ensure a scalar is displayed, not a table.
+      cy.intercept("GET", "/api/card/*/query_metadata").as("modelQuery");
+      cy.reload();
+      cy.wait("@modelQuery");
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
     },
   );
