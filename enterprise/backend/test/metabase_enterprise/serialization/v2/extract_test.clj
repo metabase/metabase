@@ -45,7 +45,7 @@
        set))
 
 (defn- transforms-root-eid []
-  (:entity_id (collection/transforms-root-collection)))
+  (t2/select-one-fn :entity_id :model/Collection :id (collection/transforms-root-collection-id)))
 
 (defn- extract-aborts!
   "Realize `(extract/extract opts)`, asserting it aborts with the escape-analysis error (#75176).

@@ -105,24 +105,15 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
-(def ^:private transforms-root-collection*
+(def ^{:arglists '([])} transforms-root-collection-id
+  "The (memoized) ID of the root collection of the `transforms` namespace, which holds every transform not filed
+  under a collection of its own. It sits at `location = \"/\"` beside the other top-level transforms collections
+  rather than above them, so listings of the top level filter it out."
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one :model/Collection :is_root true :namespace transforms-ns)
+     (u/prog1 (t2/select-one-pk :model/Collection :is_root true :namespace transforms-ns)
        (when-not <>
          (throw (ex-info "Fatal error: Transforms root collection is missing" {})))))))
-
-(defn transforms-root-collection
-  "Get the (memoized) root collection of the `transforms` namespace, which holds every transform not filed under a
-  collection of its own. It sits at `location = \"/\"` beside the other top-level transforms collections rather
-  than above them, so listings of the top level filter it out."
-  []
-  (assoc (transforms-root-collection*) :name (deferred-tru "Transforms")))
-
-(defn transforms-root-collection-id
-  "The ID of the Transforms root collection."
-  []
-  (u/the-id (transforms-root-collection)))
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
@@ -322,7 +313,10 @@
     (assoc :name (tru "Data"))
 
     (and (is-library-metrics-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Metrics"))))
+    (assoc :name (tru "Metrics"))
+
+    (and (:is_root collection) (= (keyword (:namespace collection)) transforms-ns))
+    (assoc :name (tru "Transforms"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
