@@ -31,7 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlite, :parent #{:sql-mbql5 :sql-jdbc})
+(driver/register! :sqlite, :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :sqlite
   [_driver]
