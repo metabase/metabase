@@ -428,6 +428,35 @@ export function setupDeleteCollectionEndpoint(collectionId: number) {
   );
 }
 
+/**
+ * A namespace with a real root collection serves it from `/api/collection/root?namespace=...`. Register this before
+ * `setupCollectionsEndpoints`, whose unqualified root route would otherwise answer first.
+ */
+export function setupNamespaceRootCollectionEndpoint(
+  namespace: string,
+  rootCollection: Collection,
+) {
+  fetchMock.get({
+    url: "path:/api/collection/root",
+    query: { namespace },
+    response: rootCollection,
+    name: `collection-root-${namespace}`,
+  });
+}
+
+export function setupNamespaceCollectionsEndpoint(
+  namespace: string,
+  collections: Collection[],
+) {
+  fetchMock.removeRoute(`collections-${namespace}`);
+  fetchMock.get({
+    url: "path:/api/collection",
+    query: { namespace },
+    response: collections,
+    name: `collections-${namespace}`,
+  });
+}
+
 export function setupGetCollectionEndpoint(collection: Collection) {
   fetchMock.get(`path:/api/collection/${collection.id}`, collection, {
     name: `get-collection-${collection.id}`,

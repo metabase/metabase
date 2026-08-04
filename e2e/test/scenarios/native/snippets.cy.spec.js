@@ -95,13 +95,11 @@ describe("scenarios > question > snippets", () => {
     cy.request("POST", "/api/native-query-snippet", {
       content: "ORDERS",
       name: "Table: Orders",
-      collection_id: null,
     }).then(({ body: { id: SNIPPET_ID } }) => {
       // Create snippet 2
       cy.request("POST", "/api/native-query-snippet", {
         content: "REVIEWS",
         name: "Table: Reviews",
-        collection_id: null,
       });
 
       // Create native question using snippet 1
@@ -174,7 +172,6 @@ describe("scenarios > question > snippets", () => {
     cy.request("POST", "/api/native-query-snippet", {
       content: "'foo'",
       name: "Foo",
-      collection_id: null,
     });
 
     H.startNewNativeQuestion();
@@ -250,7 +247,6 @@ describe("scenarios > question > snippets (EE)", () => {
     cy.request("POST", "/api/native-query-snippet", {
       content: "snippet 1",
       name: "snippet 1",
-      collection_id: null,
     });
 
     H.startNewNativeQuestion();

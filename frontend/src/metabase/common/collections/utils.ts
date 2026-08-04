@@ -191,6 +191,16 @@ export function isRootCollection(
   return canonicalCollectionId(collection?.id) === null;
 }
 
+/**
+ * Whether this collection is the top level of its namespace. Namespaces whose top level is a real row say so with
+ * `is_root`; the rest are still served as the `"root"` placeholder, which `isRootCollection` recognises.
+ */
+export function isNamespaceRootCollection(
+  collection: Pick<Collection, "id" | "is_root"> | null | undefined,
+): boolean {
+  return Boolean(collection?.is_root) || isRootCollection(collection);
+}
+
 export function normalizedCollection<
   CollectionType extends Pick<Collection, "id"> = Collection,
 >(collection: CollectionType | null | undefined) {

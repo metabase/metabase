@@ -8,7 +8,10 @@ import {
   useListCollectionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/common/collections/utils";
+import {
+  canonicalCollectionId,
+  isNamespaceRootCollection,
+} from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
@@ -169,7 +172,7 @@ class SnippetSidebarInner extends Component<
       <SidebarContent footer={this.footer()}>
         {!showSearch &&
         displayedItems.length === 0 &&
-        snippetCollection.id === "root" ? (
+        isNamespaceRootCollection(snippetCollection) ? (
           <SnippetSidebarEmptyState
             areSnippetsReadOnly={isRemoteSyncReadOnly}
             onClick={openSnippetModalWithSelectedText}
@@ -202,7 +205,7 @@ class SnippetSidebarInner extends Component<
                 </>
               ) : (
                 <>
-                  {snippetCollection.id === "root" ? (
+                  {isNamespaceRootCollection(snippetCollection) ? (
                     <SidebarHeader title={t`Snippets`} />
                   ) : (
                     <SidebarHeader

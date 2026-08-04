@@ -1,6 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import {
+  setupCollectionItemsEndpoint,
+  setupCreateNativeQuerySnippetEndpoint,
+  setupGetCollectionEndpoint,
+  setupNamespaceCollectionsEndpoint,
+  setupNamespaceRootCollectionEndpoint,
+  setupUpdateNativeQuerySnippetEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -15,12 +22,12 @@ import {
 
 import { SnippetFormModal } from "./SnippetFormModal";
 
-const TOP_SNIPPETS_FOLDER = {
+const TOP_SNIPPETS_FOLDER = createMockCollection({
   id: 100,
   name: "SQL snippets",
   can_write: true,
   is_root: true,
-};
+});
 
 type SetupOpts = {
   snippet?:
@@ -33,52 +40,24 @@ async function setup({
   snippet = {},
   withDefaultFoldersList = true,
 }: SetupOpts = {}) {
-  fetchMock.get({
-    url: "path:/api/collection/root",
-    query: { namespace: "snippets" },
-    response: TOP_SNIPPETS_FOLDER,
+  setupNamespaceRootCollectionEndpoint("snippets", TOP_SNIPPETS_FOLDER);
+  setupGetCollectionEndpoint(TOP_SNIPPETS_FOLDER);
+  setupCollectionItemsEndpoint({
+    collection: TOP_SNIPPETS_FOLDER,
+    collectionItems: [],
   });
-
-  fetchMock.get(
-    "path:/api/collection/root",
+  setupGetCollectionEndpoint(
     createMockCollection({ id: "root", name: "Our analytics" }),
   );
 
-  fetchMock.get(
-    `path:/api/collection/${TOP_SNIPPETS_FOLDER.id}`,
-    TOP_SNIPPETS_FOLDER,
-  );
-  fetchMock.get(`path:/api/collection/${TOP_SNIPPETS_FOLDER.id}/items`, {
-    data: [],
-    total: 0,
-    models: ["collection"],
-    limit: null,
-    offset: null,
-  });
-
   if (withDefaultFoldersList) {
-    fetchMock.get({
-      url: "path:/api/collection",
-      query: { namespace: "snippets" },
-      response: [TOP_SNIPPETS_FOLDER],
-    });
+    setupNamespaceCollectionsEndpoint("snippets", [TOP_SNIPPETS_FOLDER]);
   }
 
-  fetchMock.post("path:/api/native-query-snippet", async (call) => {
-    return createMockNativeQuerySnippet(
-      await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
-    );
-  });
+  setupCreateNativeQuerySnippetEndpoint();
 
   if (snippet.id) {
-    fetchMock.put(
-      `path:/api/native-query-snippet/${snippet.id}`,
-      async (call) => {
-        return createMockNativeQuerySnippet(
-          await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
-        );
-      },
-    );
+    setupUpdateNativeQuerySnippetEndpoint(snippet.id);
   }
 
   const onCreate = jest.fn();
@@ -140,11 +119,10 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      fetchMock.get({
-        url: "path:/api/collection",
-        query: { namespace: "snippets" },
-        response: [TOP_SNIPPETS_FOLDER, createMockCollection()],
-      });
+      setupNamespaceCollectionsEndpoint("snippets", [
+        TOP_SNIPPETS_FOLDER,
+        createMockCollection(),
+      ]);
 
       await setup({ withDefaultFoldersList: false });
 
@@ -234,11 +212,10 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      fetchMock.get({
-        url: "path:/api/collection",
-        query: { namespace: "snippets" },
-        response: [TOP_SNIPPETS_FOLDER, createMockCollection()],
-      });
+      setupNamespaceCollectionsEndpoint("snippets", [
+        TOP_SNIPPETS_FOLDER,
+        createMockCollection(),
+      ]);
 
       await setupEditing({ withDefaultFoldersList: false });
 

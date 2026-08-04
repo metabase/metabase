@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
-import {
-  coerceCollectionId,
-  isRootCollection,
-} from "metabase/common/collections/utils";
+import { isNamespaceRootCollection } from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
-import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  NativeQuerySnippet,
+} from "metabase-types/api";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {
@@ -24,14 +25,14 @@ function buildSnippetCollectionNode(
   allCollections: Collection[],
   allSnippets: NativeQuerySnippet[],
 ): TreeItem {
-  const isRoot = isRootCollection(collection);
-  const parentIdToMatch = isRoot ? null : collection.id;
+  const isRoot = isNamespaceRootCollection(collection);
 
+  // The root sits beside the namespace's top-level folders rather than above them, so they have no parent at all.
   const childCollections = allCollections.filter(
-    (c) => c.parent_id === parentIdToMatch,
+    (c) => c.parent_id === (isRoot ? null : collection.id),
   );
   const childSnippets = allSnippets.filter(
-    (s) => s.collection_id === parentIdToMatch,
+    (s) => s.collection_id === collection.id,
   );
 
   const children = [
@@ -59,12 +60,14 @@ export function buildActiveSnippetTree(
   const collections = snippetCollections.filter((c) => !c.archived);
   const activeSnippets = snippets.filter((s) => !s.archived);
 
-  const rootCollection = collections.find(isRootCollection);
+  const rootCollection = collections.find(isNamespaceRootCollection);
   if (!rootCollection) {
     return [];
   }
 
-  const nonRootCollections = collections.filter((c) => !isRootCollection(c));
+  const nonRootCollections = collections.filter(
+    (c) => !isNamespaceRootCollection(c),
+  );
   const rootNode = buildSnippetCollectionNode(
     rootCollection,
     nonRootCollections,
@@ -83,6 +86,7 @@ export function buildActiveSnippetTree(
 export function buildArchivedSnippetTree(
   archivedCollections: Collection[],
   archivedSnippets: NativeQuerySnippet[],
+  rootCollectionId: CollectionId,
 ): TreeItem[] {
   const hasContent =
     archivedSnippets.length > 0 || archivedCollections.length > 0;
@@ -100,7 +104,7 @@ export function buildArchivedSnippetTree(
       ),
     ),
     ...archivedSnippets
-      .filter((snippet) => coerceCollectionId(snippet.collection_id) === "root")
+      .filter((snippet) => snippet.collection_id === rootCollectionId)
       .map(createSnippetNode),
   ];
 }

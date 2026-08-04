@@ -14,7 +14,7 @@ export function createSnippet({
   name = "Test snippet",
   description = null,
   content,
-  collection_id = null,
+  collection_id,
 }: NativeQuerySnippetDetails): Cypress.Chainable<
   Cypress.Response<NativeQuerySnippet>
 > {
@@ -22,6 +22,7 @@ export function createSnippet({
     name,
     description,
     content,
-    collection_id,
+    // the snippets root is a real collection now, and the API fills it in when no collection is given
+    ...(collection_id == null ? {} : { collection_id }),
   });
 }
