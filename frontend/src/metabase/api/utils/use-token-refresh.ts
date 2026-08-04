@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { Api, useRefreshTokenStatusMutation } from "metabase/api";
-import { useDispatch } from "metabase/redux";
+import { Api, useApiDispatch, useRefreshTokenStatusMutation } from "metabase/api";
 import { useGetSettingsQuery } from "metabase/settings";
 import type { TokenStatusFeature } from "metabase-types/api";
 
@@ -15,7 +14,7 @@ const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
 export function useTokenRefresh() {
   /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
   const res = useGetSettingsQuery();
-  const dispatch = useDispatch();
+  const dispatch = useApiDispatch();
 
   useEffect(() => {
     const tokenStatusFeatures = res?.data?.["token-status"]?.features;
@@ -52,7 +51,7 @@ export function useTokenRefreshUntil(
 ) {
   /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
   const res = useGetSettingsQuery(undefined, { skip });
-  const dispatch = useDispatch();
+  const dispatch = useApiDispatch();
   const [refreshTokenStatus] = useRefreshTokenStatusMutation();
   const hasCalledOnSatisfied = useRef(false);
 
