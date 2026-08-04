@@ -110,18 +110,11 @@
    :kind         kind})
 
 (defn- candidate-presentation
-  [{:keys [candidate_type semantic_details display_name suggested_name]}]
-  (let [predicates (or (:display-atoms semantic_details)
-                       (case candidate_type
-                         :segment (:atoms semantic_details)
-                         :measure (:condition-atoms semantic_details)
-                         nil)
-                       [])]
+  [{:keys [candidate_type semantic_details]}]
+  (let [predicates (:display-atoms semantic_details)]
     (cond-> {:predicates (mapv presented-atom predicates)}
       (= candidate_type :measure)
-      (assoc :aggregation {:display_name (or (:base-name semantic_details)
-                                             display_name
-                                             suggested_name)}))))
+      (assoc :aggregation {:display_name (:base-name semantic_details)}))))
 
 (defn- candidate-summary
   [candidate table dismissals]
@@ -134,14 +127,14 @@
                                                        :data_layer :data_authority :view_count :is_published
                                                        :collection_id])
                                    :database (:database table))
-     :display_name          (or (:display_name candidate) (:suggested_name candidate))
+     :display_name          (:display_name candidate)
      :suggested_name        (:suggested_name candidate)
      :suggested_description (:suggested_description candidate)
      :required_tables       (or (:required-tables (:semantic_details candidate)) [])
      :presentation          (candidate-presentation candidate)
-     :family                {:key      (or (:family_key candidate) (:signature_hash candidate))
-                             :position (or (:family_position candidate) 0)
-                             :depth    (or (:family_depth candidate) 0)}
+     :family                {:key      (:family_key candidate)
+                             :position (:family_position candidate)
+                             :depth    (:family_depth candidate)}
      :definition            (:definition candidate)
      :modeling_status       (:modeling_status candidate)
      :dismissed             (dismissed? dismissals candidate)
@@ -242,7 +235,7 @@
   [sort-column direction]
   (let [ordered (case sort-column
                   :name
-                  [[[:lower [:coalesce :candidate.display_name :candidate.suggested_name]] :asc]]
+                  [[[:lower :candidate.display_name] :asc]]
 
                   :source-count
                   [[:candidate.distinct_source_count :desc]]
@@ -254,8 +247,8 @@
                   ;; and official evidence is binary; source count then breaks ties.
                   ;; Recommendation families inherit the priority of their strongest member,
                   ;; then use a deterministic parent-first traversal inside the family.
-                  [[[:coalesce :candidate.family_order [:inline 2147483647]] :asc]
-                   [[:coalesce :candidate.family_position [:inline 2147483647]] :asc]
+                  [[:candidate.family_order :asc]
+                   [:candidate.family_position :asc]
                    [[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
                    [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
                    [:candidate.distinct_source_count :desc]

@@ -24,11 +24,11 @@
 
 (def ^:const algorithm-version
   "Version of persisted candidate materialization behavior."
-  12)
+  1)
 
 (def ^:const signature-version
   "Version of the canonical identity used by durable dismissals."
-  2)
+  1)
 (def ^:private retained-run-count 20)
 (def ^:private source-card-batch-size 100)
 (def ^:private queued-run-startup-grace (t/minutes 5))
@@ -230,18 +230,19 @@
   [run-id observation]
   (let [{:keys [verified-source-count official-source-count popular-source-count
                 distinct-source-count total-view-count]} (:evidence observation)
-        type       (:candidate-type observation)
-        complexity (case type
-                     :segment (:atom-count observation)
-                     :measure (or (get-in observation [:aggregation :condition-atom-count]) 0)
-                     :metric  (count (get-in observation [:definition :stages 0 :filters]))
-                     :table   0)
-        signature  (:signature observation)]
+        type           (:candidate-type observation)
+        complexity     (case type
+                         :segment (:atom-count observation)
+                         :measure (or (get-in observation [:aggregation :condition-atom-count]) 0)
+                         :metric  (count (get-in observation [:definition :stages 0 :filters]))
+                         :table   0)
+        signature      (:signature observation)
+        signature-hash (sha256 signature)]
     {:run_id                 run-id
      :candidate_type         type
      :table_id               (observation-table-id observation)
      :signature_version      signature-version
-     :signature_hash         (sha256 signature)
+     :signature_hash         signature-hash
      :signature              signature
      :definition             (:definition observation)
      :semantic_details       (case type
@@ -249,6 +250,7 @@
                                :segment (select-keys observation [:predicate :fields :atoms :composite? :atom-count])
                                (:metric :table) (:semantic-details observation))
      :suggested_name         (:suggested-name observation)
+     :display_name           (:suggested-name observation)
      :suggested_description  (:suggested-description observation)
      :modeling_status        :missing
      :verified_source_count  verified-source-count
@@ -256,7 +258,11 @@
      :popular_source_count   popular-source-count
      :distinct_source_count  distinct-source-count
      :total_view_count       total-view-count
-     :complexity             complexity}))
+     :complexity             complexity
+     :family_key             signature-hash
+     :family_order           0
+     :family_position        0
+     :family_depth           0}))
 
 (defn- source-row
   [candidate-id source]

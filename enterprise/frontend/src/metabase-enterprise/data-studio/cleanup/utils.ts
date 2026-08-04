@@ -8,10 +8,6 @@ import type {
 } from "metabase-types/api";
 
 const CANDIDATE_TYPES = ["table", "metric", "measure", "segment"] as const;
-const MODELING_STATUSES = ["missing", "partially-modeled", "modeled"] as const;
-const SIGNALS = ["verified", "official", "popular"] as const;
-const SORTS = ["priority", "name", "source-count", "view-count"] as const;
-const DIRECTIONS = ["asc", "desc"] as const;
 const QUEUES = ["suggested", "used-raw", "discarded"] as const;
 
 export function getErrorStatus(error: unknown) {
@@ -24,22 +20,12 @@ export function parseCleanupParams(
   searchParams: URLSearchParams,
 ): Urls.DataStudioCleanupParams {
   return {
-    page: Urls.parseNumberParam(searchParams.get("page")),
     search: Urls.parseStringParam(searchParams.get("search")),
     databaseId: Urls.parseNumberParam(searchParams.get("database")),
-    schema: Urls.parseStringParam(searchParams.get("schema")),
     candidateType: Urls.parseEnumParam(
       searchParams.get("type"),
       CANDIDATE_TYPES,
     ),
-    modelingStatus: Urls.parseEnumParam(
-      searchParams.get("status"),
-      MODELING_STATUSES,
-    ),
-    signal: Urls.parseEnumParam(searchParams.get("signal"), SIGNALS),
-    sort: Urls.parseEnumParam(searchParams.get("sort"), SORTS) ?? "priority",
-    direction:
-      Urls.parseEnumParam(searchParams.get("direction"), DIRECTIONS) ?? "asc",
     queue:
       Urls.parseEnumParam(searchParams.get("queue"), QUEUES) ?? "suggested",
     candidateId: Urls.parseNumberParam(searchParams.get("candidate")),

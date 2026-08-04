@@ -21,7 +21,7 @@ export function CleanupFilters({
   const { data: databaseResponse } = useListDatabasesQuery();
 
   const update = (values: Partial<Urls.DataStudioCleanupParams>) =>
-    onChange({ ...params, ...values, page: undefined, candidateId: undefined });
+    onChange({ ...params, ...values, candidateId: undefined });
 
   return (
     <Flex gap="sm" wrap="wrap">
@@ -83,7 +83,6 @@ export function CleanupQueueTabs({
         onChange({
           ...params,
           queue: isCleanupQueue(value) ? value : "suggested",
-          page: undefined,
           candidateId: undefined,
         })
       }

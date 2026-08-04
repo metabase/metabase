@@ -117,20 +117,14 @@ describe("urls > data-studio", () => {
     it("should serialize URL-backed cleanup state", () => {
       expect(
         dataStudioCleanup({
-          page: 2,
           search: "order total",
           databaseId: 1,
-          schema: "analytics",
           candidateType: "measure",
-          modelingStatus: "partially-modeled",
-          signal: "verified",
-          sort: "view-count",
-          direction: "desc",
           queue: "discarded",
           candidateId: 17,
         }),
       ).toBe(
-        "/data-studio/cleanup?page=2&search=order+total&database=1&schema=analytics&type=measure&status=partially-modeled&signal=verified&sort=view-count&direction=desc&queue=discarded&candidate=17",
+        "/data-studio/cleanup?search=order+total&database=1&type=measure&queue=discarded&candidate=17",
       );
     });
 

@@ -54,31 +54,31 @@
    (candidate-row run-id {}))
   ([run-id overrides]
    (merge
-    {:run_id                 run-id
-     :candidate_type         :segment
-     :table_id               (mt/id :orders)
-     :signature_version      candidates/signature-version
-     :signature_hash         (apply str (repeat 64 "b"))
-     :signature              "[\"segment-api\"]"
-     :definition             {:lib/type :mbql/query}
-     :semantic_details       {:atom-count 1
-                              :display-atoms [{:signature "recent"
-                                               :display-name "Created At is recent"
-                                               :kind :temporal}]}
-     :display_name           "Recent orders"
-     :suggested_name         "Recent orders"
-     :suggested_description  "Recent orders on Orders"
-     :family_key             (apply str (repeat 64 "f"))
-     :family_order           0
-     :family_position        0
-     :family_depth           0
-     :modeling_status        :missing
-     :verified_source_count  1
-     :official_source_count  0
-     :popular_source_count   1
-     :distinct_source_count  1
-     :total_view_count       10
-     :complexity             1}
+    {:run_id                run-id
+     :candidate_type        :segment
+     :table_id              (mt/id :orders)
+     :signature_version     candidates/signature-version
+     :signature_hash        (apply str (repeat 64 "b"))
+     :signature             "[\"segment-api\"]"
+     :definition            {:lib/type :mbql/query}
+     :semantic_details      {:atom-count 1
+                             :display-atoms [{:signature "recent"
+                                              :display-name "Created At is recent"
+                                              :kind :temporal}]}
+     :display_name          "Recent orders"
+     :suggested_name        "Recent orders"
+     :suggested_description "Recent orders on Orders"
+     :family_key            (apply str (repeat 64 "f"))
+     :family_order          0
+     :family_position       0
+     :family_depth          0
+     :modeling_status       :missing
+     :verified_source_count 1
+     :official_source_count 0
+     :popular_source_count  1
+     :distinct_source_count 1
+     :total_view_count      10
+     :complexity            1}
     overrides)))
 
 (deftest manual-refresh-runs-without-quartz-test
@@ -172,12 +172,14 @@
                                                          :finished_at       (mi/now)}
                    :model/UsageMetadataCandidate _first (candidate-row (:id run)
                                                                        {:suggested_name "Alpha"
+                                                                        :display_name "Alpha"
                                                                         :signature_hash (apply str (repeat 64 "c"))
                                                                         :signature "[\"alpha\"]"})
                    :model/UsageMetadataCandidate second-candidate (candidate-row
                                                                    (:id run)
                                                                    {:candidate_type :measure
                                                                     :suggested_name "Zulu"
+                                                                    :display_name "Zulu"
                                                                     :signature_hash (apply str (repeat 64 "d"))
                                                                     :signature "[\"zulu\"]"
                                                                     :verified_source_count 0
@@ -206,6 +208,7 @@
                    (candidate-row (:id run)
                                   {:candidate_type :table
                                    :suggested_name "Publish Orders"
+                                   :display_name "Publish Orders"
                                    :signature_hash (apply str (repeat 64 "4"))
                                    :signature "[\"publish-orders\"]"
                                    :semantic_details {:table {:id (mt/id :orders)}}})
@@ -213,6 +216,7 @@
                    (candidate-row (:id run)
                                   {:candidate_type :metric
                                    :suggested_name "Large order trend"
+                                   :display_name "Large order trend"
                                    :signature_hash (apply str (repeat 64 "5"))
                                    :signature "[\"large-order-trend\"]"
                                    :semantic_details {:required-tables
@@ -290,17 +294,20 @@
                    :model/UsageMetadataCandidate missing-candidate
                    (candidate-row (:id run)
                                   {:suggested_name "Missing"
+                                   :display_name "Missing"
                                    :signature_hash (apply str (repeat 64 "1"))
                                    :signature "[\"missing\"]"})
                    :model/UsageMetadataCandidate _review-candidate
                    (candidate-row (:id run)
                                   {:suggested_name "Review"
+                                   :display_name "Review"
                                    :modeling_status :partially-modeled
                                    :signature_hash (apply str (repeat 64 "2"))
                                    :signature "[\"review\"]"})
                    :model/UsageMetadataCandidate modeled-candidate
                    (candidate-row (:id run)
                                   {:suggested_name "Modeled"
+                                   :display_name "Modeled"
                                    :modeling_status :modeled
                                    :signature_hash (apply str (repeat 64 "3"))
                                    :signature "[\"modeled\"]"})]
@@ -374,6 +381,7 @@
                                        :signature             measure-signature
                                        :definition            measure-definition
                                        :suggested_name        "Mined order subtotal"
+                                       :display_name          "Mined order subtotal"
                                        :suggested_description "A persisted Measure candidate"})
                        :model/UsageMetadataCandidate segment-candidate
                        (candidate-row (:id run)
@@ -381,6 +389,7 @@
                                        :signature             segment-signature
                                        :definition            segment-definition
                                        :suggested_name        "Mined large orders"
+                                       :display_name          "Mined large orders"
                                        :suggested_description "A persisted Segment candidate"})]
           (mt/with-temp-vals-in-db :model/Table table-id {:is_published true}
             (mt/user->id :crowberto)
