@@ -12,7 +12,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.queries.core :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
@@ -73,7 +73,7 @@
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+  (queries/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]
@@ -157,6 +157,25 @@
       (events/publish-event! :event/document-read
                              {:object-id id
                               :user-id api/*current-user-id*}))))
+
+(defn- draft-stored-result-pairings
+  "From the incoming document AST and a draft→new card-id map, collect distinct
+  `[new-card-id stored-result-id]` pairs for draft embeds that carry a `stored_result_id`.
+
+  Only negative keys from `card-id-map` are considered (the draft-created set); clone
+  remappings are irrelevant here."
+  [document content-type draft-card-id-map]
+  (when (and (seq draft-card-id-map) document)
+    (->> (prose-mirror/collect-ast
+          {:document document :content_type content-type}
+          (fn [{:keys [type attrs]}]
+            (when (and (= prose-mirror/card-embed-type type)
+                       (contains? draft-card-id-map (:id attrs))
+                       (:stored_result_id attrs))
+              [(get draft-card-id-map (:id attrs))
+               (:stored_result_id attrs)])))
+         distinct
+         vec)))
 
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
@@ -277,20 +296,29 @@
                                                                                         collection_id
                                                                                         (:collection_id existing-document))
                                                                        :collection_position collection_position}))
-        (t2/update! :model/Document document-id
-                    (cond-> document-updates
-                      document (merge (update-cards-in-ast
-                                       {:document document
-                                        :content_type (:content_type existing-document)}
-                                       (merge
-                                        (clone-cards-in-document! (assoc existing-document :document document))
-                                        (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
-                      name (assoc :name name)
-                      (contains? body :collection_id) (assoc :collection_id collection_id)
-                      ;; First body/title save clears the auto-created Summary placeholder flag.
-                      (and (:is_placeholder existing-document)
-                           (or (contains? body :document) (contains? body :name)))
-                      (assoc :is_placeholder false)))
+        (let [card-id-map (when document
+                            (merge
+                             (clone-cards-in-document! (assoc existing-document :document document))
+                             (when-not (empty? cards)
+                               (create-cards-for-document! cards document-id collection_id @api/*current-user*))))
+              draft-card-id-map (into {} (filter (comp neg? key) card-id-map))
+              pairings (draft-stored-result-pairings document
+                                                     (:content_type existing-document)
+                                                     draft-card-id-map)]
+          (t2/update! :model/Document document-id
+                      (cond-> document-updates
+                        document (merge (update-cards-in-ast
+                                         {:document document
+                                          :content_type (:content_type existing-document)}
+                                         card-id-map))
+                        name (assoc :name name)
+                        (contains? body :collection_id) (assoc :collection_id collection_id)
+                        ;; First body/title save clears the auto-created Summary placeholder flag.
+                        (and (:is_placeholder existing-document)
+                             (or (contains? body :document) (contains? body :name)))
+                        (assoc :is_placeholder false)))
+          (when (seq pairings)
+            (queries/carry-pairings-for-document! document-id pairings)))
         (collections/check-for-remote-sync-update existing-document))
       (let [updated-document (get-document document-id)]
         ;; Publish appropriate events

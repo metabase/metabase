@@ -460,6 +460,29 @@
             (is (= "Updated Document with Generated Cards" (:name document)))
             (is (= col-id (:collection_id document)))))))))
 
+(deftest put-document-adhoc-card-without-stored-result-inserts-no-pairings-test
+  (testing "PUT /api/document/:id creating an ad-hoc card with no stored_result_id inserts no stored_result_use rows"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Document {document-id :id} {:name "Test Document"
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
+                                                      :collection_id col-id}]
+      (let [before (t2/count :model/StoredResultUse)
+            result (mt/user-http-request :crowberto
+                                         :put 200 (format "document/%s" document-id)
+                                         {:name "Updated"
+                                          :document {:type "doc"
+                                                     :content [{:type "cardEmbed"
+                                                                :attrs {:id -10}}]}
+                                          :cards {-10 {:name "Ad hoc Card"
+                                                       :dataset_query (mt/mbql-query venues)
+                                                       :display :table
+                                                       :visualization_settings {}}}})
+            new-card-id (-> result :document :content first :attrs :id)]
+        (is (pos-int? new-card-id))
+        (is (= before (t2/count :model/StoredResultUse))
+            "no stored_result_use rows are created for a live ad-hoc embed")
+        (is (zero? (t2/count :model/StoredResultUse :card_id new-card-id)))))))
+
 (deftest cards-to-create-schema-validation-test
   (testing "POST /api/document/ - cards schema validation"
     (mt/with-model-cleanup [:model/Document]

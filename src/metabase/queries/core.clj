@@ -56,7 +56,9 @@
   allowed-chart-sorts
   assert-can-view-cached-result!
   viewer-can-view-cached-result?
-  cached-dataset])
+  cached-dataset]
+ [metabase.queries.models.stored-result-use
+  carry-pairings-for-document!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

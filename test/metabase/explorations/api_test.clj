@@ -1760,6 +1760,61 @@
           (is (= [src-sr-id] (mapv :stored_result_id use-rows))
               "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
+(deftest exploration-summary-save-carries-stored-result-pairing-test
+  (testing "PUT /api/document/:id carries (card, stored_result) pairings onto draft-created Cards so Summary embeds stay readable"
+    (mt/with-temp [:model/User u {:email "summary-carry@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "summary-carry"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1")
+                                                                          :table_id (mt/id :venues)
+                                                                          :target ["field" {} (mt/id :venues :price)]}]}]
+                                         :dimensions [{:dimension_id (duid "d1") :display_name "Price"
+                                                       :effective_type "type/Number"}]})
+            eid    (:id resp)
+            qid    (-> resp :threads first :queries first :id)
+            doc-id (-> resp :document :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (mt/user-http-request u :post 200
+                              (format "exploration/%d/summary/append" eid)
+                              (assoc append-display+viz :exploration_query_ids [qid]))
+        (let [attrs   (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                          :content last :content first :attrs)
+              sr-id   (:stored_result_id attrs)
+              old-card-id (:id attrs)
+              draft-id -10
+              ;; Simulate the editor forking the embed into a negative-id draft card on save.
+              updated (mt/user-http-request u :put 200 (format "document/%d" doc-id)
+                                            {:document {:type "doc"
+                                                        :content [{:type "cardEmbed"
+                                                                   :attrs {:id draft-id
+                                                                           :stored_result_id sr-id}}]}
+                                             :cards {draft-id {:name "Edited Summary Chart"
+                                                               :dataset_query (:dataset_query metric)
+                                                               :display "bar"
+                                                               :visualization_settings {:graph.colors ["#509EE3"]}}}})
+              new-card-id (-> updated :document :content first :attrs :id)]
+          (is (pos-int? new-card-id)
+              "draft id is rewritten to a real Card id")
+          (is (not= old-card-id new-card-id)
+              "save creates a brand-new Card rather than updating in place")
+          (is (some? (t2/select-one :model/StoredResultUse
+                                    :stored_result_id sr-id
+                                    :card_id new-card-id))
+              "pairing is carried onto the new Card")
+          (is (=? {:status "completed" :row_count 2 :data {:rows [["a" 3] ["b" 1]]}}
+                  (mt/user-http-request u :post 200 (format "card/%d/query" new-card-id)
+                                        {:stored_result_id sr-id}))
+              "cached read against the new card id succeeds"))))))
+
 (deftest ^:parallel page-url-test
   (testing "page-url builds a research deep link to a page by id"
     (is (= "/question/research/7/page/42"

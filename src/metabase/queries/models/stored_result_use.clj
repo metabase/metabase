@@ -5,6 +5,8 @@
   the cached card-query endpoint to validate that a client-supplied `stored_result_id` is actually
   paired with the card being read-checked. Lives in the queries module alongside `:model/StoredResult`."
   (:require
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,3 +22,29 @@
     (throw (ex-info "stored_result_use requires exactly one of :card_id or :exploration_id to be set"
                     {:card_id (:card_id row) :exploration_id (:exploration_id row)})))
   row)
+
+(mu/defn carry-pairings-for-document!
+  "Copy `(card_id, stored_result_id)` pairings onto newly created Cards for a document save.
+
+  `pairs` is a seq of `[new-card-id stored-result-id]`. A pairing is inserted only when the
+  snapshot is already reachable through this same document — i.e. a `stored_result_use` row
+  exists for it against some Card whose `document_id` is `document-id`. That keeps the carry
+  monotone: it can move an existing (document, snapshot) reachability onto another Card in that
+  document, and can never widen a snapshot to a document that could not already read it."
+  [document-id :- ms/PositiveInt
+   pairs :- [:sequential [:tuple ms/PositiveInt ms/PositiveInt]]]
+  (when (seq pairs)
+    (let [distinct-pairs (distinct pairs)
+          sr-ids         (into #{} (map second) distinct-pairs)
+          doc-card-ids   (t2/select-pks-set :model/Card :document_id document-id)
+          reachable      (if (seq doc-card-ids)
+                           (t2/select-fn-set :stored_result_id
+                                             :model/StoredResultUse
+                                             :card_id [:in doc-card-ids]
+                                             :stored_result_id [:in sr-ids])
+                           #{})]
+      (doseq [[new-card-id sr-id] distinct-pairs
+              :when (contains? reachable sr-id)]
+        (t2/insert! :model/StoredResultUse
+                    {:stored_result_id sr-id
+                     :card_id          new-card-id})))))
