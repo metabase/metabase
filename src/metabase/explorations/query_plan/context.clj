@@ -96,14 +96,14 @@
         enriched-thread-dims (update-vals dim-by-id #(block/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm base-query)
         default-temp         (when base-query
-                               (qp.mbql/default-temporal-breakout-col base-query))]
+                               (qp.mbql/default-time-dimension-col base-query card))]
     {:metric-id                         (:card_id tm)
      :card                              card
      :mp                                mp
      :applicability                     appl
      :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
                                           {:column display-name
-                                           :unit   (some-> unit name)})
+                                           :unit   (name unit)})
      :segments                          (segment-blurbs base-query)
      :name                              (:name card)
      :description                       (some-> (:description card) str/trim not-empty)
@@ -193,14 +193,14 @@
               ...]}
 
   The underlying Card is hydrated with the columns the variant builders need
-  (`:id :name :description :database_id :dataset_query :card_schema :dimensions`), once per
-  Card even when it appears in several blocks."
+  (`:id :name :description :database_id :dataset_query :card_schema :dimensions
+  :dimension_mappings`), once per Card even when it appears in several blocks."
   [blocks]
   (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) blocks))
         cards    (when (seq card-ids)
                    (t2/select-pk->fn identity
                                      [:model/Card :id :name :description :database_id
-                                      :dataset_query :card_schema :dimensions]
+                                      :dataset_query :card_schema :dimensions :dimension_mappings]
                                      :id [:in card-ids]))
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
     {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
