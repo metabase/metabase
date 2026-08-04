@@ -1027,12 +1027,12 @@
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                          (events/publish-event! :event/card-public-link-created
-                                                 {:object-id card-id
-                                                  :user-id api/*current-user-id*})
-                          (t2/update! :model/Card card-id
-                                      {:public_uuid       <>
-                                       :made_public_by_id api/*current-user-id*})))]
+                   (events/publish-event! :event/card-public-link-created
+                                          {:object-id card-id
+                                           :user-id api/*current-user-id*})
+                   (t2/update! :model/Card card-id
+                               {:public_uuid       <>
+                                :made_public_by_id api/*current-user-id*})))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

@@ -5,7 +5,6 @@ import {
   type EditorHost,
   EditorHostProvider,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 
 import { navigateToCardFromDocument } from "../../actions";
 import {
@@ -43,6 +42,8 @@ import {
   getSelectedEmbedIndex,
   getSelectedTimelineEventIds,
 } from "../../selectors";
+
+import { DocumentMode } from "./DocumentMode";
 
 /**
  * Concrete {@link EditorHost} that wires the document editor's state, actions,
