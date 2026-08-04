@@ -420,9 +420,14 @@ For uploading and managing plugins, see [Custom visualizations](../questions/vis
 
 ## Versioning and compatibility
 
-The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends: an open-ended range like `">=1.62.0"` claims compatibility with future Metabase versions your plugin has never run against. Write the range against the full version number (`">=1.62 <1.64"`), not a bare major version (`">=62 <64"`), which won't match.
+Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`.
 
-If a plugin's declared range doesn't include the Metabase version it's installed on — at upload time, or later after a Metabase upgrade — the plugin still uploads and runs, and Metabase shows a warning on the **Manage visualizations** page.
+Metabase checks both:
+
+- **Which custom viz SDK you used to build the plugin**: `pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Metabase compares that stamp against the SDK versions it was tested with.
+- **Which Metabase your plugin supports**: declare it with `metabase.version` in `metabase-plugin.json`, for example, `">=1.62 <1.64"`. Keep the range closed on both ends. Write the range against the full version number (`">=1.62 <1.64"`), not a bare major version (`">=62 <64"`), which won't match.
+
+Neither check blocks anything. The plugin may still work, even if it's out of range.
 
 ## Custom visualization limitations
 
