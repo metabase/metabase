@@ -18,8 +18,8 @@ jest.mock("metabase/visualizations/lib/save-dashboard-pdf", () => ({
   saveDashboardPdf: jest.fn(() => new Promise(() => {})),
 }));
 
-jest.mock("metabase/redux/analytics", () => ({
-  ...jest.requireActual("metabase/redux/analytics"),
+jest.mock("metabase/visualizations/redux/analytics", () => ({
+  ...jest.requireActual("metabase/visualizations/redux/analytics"),
   trackExportDashboardToPDF: jest.fn(),
 }));
 

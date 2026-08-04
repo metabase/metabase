@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/redux";
-import { clearAll, getDownloads } from "metabase/redux/downloads";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
+import {
+  clearAll,
+  getDownloads,
+} from "metabase/visualizations/redux/downloads";
 
 import { DownloadsStatusLarge } from "../DownloadsStatusLarge";
 import { DownloadsStatusSmall } from "../DownloadsStatusSmall";

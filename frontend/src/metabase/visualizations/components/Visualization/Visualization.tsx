@@ -21,7 +21,6 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
-import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import type { Path } from "metabase/router";
@@ -48,6 +47,7 @@ import {
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
+import { getIsDownloadingToImage } from "metabase/visualizations/redux/downloads";
 import {
   type CardSlownessStatus,
   type ClickActionModeGetter,
