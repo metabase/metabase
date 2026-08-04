@@ -1,9 +1,9 @@
 import { createSelector } from "reselect";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getSetting } from "metabase/settings";
 
 import { getIsEmbeddingIframe } from "./embed";
-import { getSetting } from "./settings";
 
 export const getIsWebApp = createSelector(
   [(state) => getSetting(state, "site-url"), getIsEmbeddingIframe],

@@ -133,10 +133,7 @@ export const ErrorOverview = () => {
         <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Erroring questions`}</MonitorHeaderTitle>
 
-          <ErroringQuestionsSearch
-            hasLoader={isFetching && !isLoading}
-            onFiltersChange={handleFiltersChange}
-          />
+          <ErroringQuestionsSearch onFiltersChange={handleFiltersChange} />
 
           {pageError ? (
             <Center flex={1}>

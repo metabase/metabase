@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
+import { useAdminSetting } from "metabase/settings";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 import S from "./EditUserStrategyModal.module.css";

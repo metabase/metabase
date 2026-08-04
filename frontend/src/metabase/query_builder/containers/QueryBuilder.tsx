@@ -59,12 +59,12 @@ import {
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import {
   canManageSubscriptions,
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import type { Series } from "metabase-types/api";
 
 import {

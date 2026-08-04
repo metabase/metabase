@@ -1,12 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import {
-  refetchSiteSettings,
-  settingsApi,
-  setupApi,
-  userApi,
-} from "metabase/api";
+import { refetchCurrentUser, setupApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -19,9 +14,12 @@ import type {
   State,
   UserInfo,
 } from "metabase/redux/store";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getSetting,
+  refetchSiteSettings,
+  settingsApi,
+} from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
@@ -122,7 +120,7 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
     dispatch(refetchSiteSettings());
     //  the AI config step needs to know the created user is an admin
-    dispatch(refreshCurrentUser());
+    dispatch(refetchCurrentUser());
   },
 );
 

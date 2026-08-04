@@ -1,12 +1,11 @@
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { sessionApi } from "metabase/api/session";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, settingsApi } from "metabase/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { RedirectIfSetup } from "./RedirectIfSetup";
@@ -53,7 +52,7 @@ describe("RedirectIfSetup", () => {
       // The store's test-harness dispatch type isn't thunk-aware,
       // the app DispatchFn is.
       await (store.dispatch as DispatchFn)(
-        sessionApi.util.upsertQueryData(
+        settingsApi.util.upsertQueryData(
           "getSessionProperties",
           undefined,
           createMockSettings({ "has-user-setup": true }),

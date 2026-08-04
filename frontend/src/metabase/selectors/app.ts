@@ -8,8 +8,7 @@ import {
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-
-import { getSetting } from "./settings";
+import { getSetting } from "metabase/settings";
 
 export interface RouterProps {
   location: Location;

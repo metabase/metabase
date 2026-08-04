@@ -9,7 +9,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, RouterProviderV7Memory } from "metabase/router";
+import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -205,9 +205,11 @@ describe("SmartLink", () => {
 
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <RouterProviderV7Memory initialRoute="/subpath" basename="/subpath">
-          <Route path="*" element={<SmartLinkComponent {...props} />} />
-        </RouterProviderV7Memory>,
+        <RouterProviderMemory
+          initialRoute="/subpath"
+          basename="/subpath"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {
@@ -231,9 +233,10 @@ describe("SmartLink", () => {
 
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <RouterProviderV7Memory initialRoute="/">
-          <Route path="*" element={<SmartLinkComponent {...props} />} />
-        </RouterProviderV7Memory>,
+        <RouterProviderMemory
+          initialRoute="/"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {

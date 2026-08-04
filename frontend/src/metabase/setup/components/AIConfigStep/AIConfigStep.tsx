@@ -1,7 +1,6 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import {
   AIProviderConfigurationForm,
   getProviderOptions,
@@ -9,6 +8,7 @@ import {
 } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { Text } from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
 

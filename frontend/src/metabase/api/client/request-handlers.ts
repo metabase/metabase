@@ -52,10 +52,10 @@ const getDefaultPluginApi = () => ({
     // which tags requests when running inside an embed preview (see
     // `embedding-request-auth`).
     setEmbedPreviewHeader: noop,
-    // Emit the embedding auth header (`X-Api-Key` or `X-Metabase-Session`). A
-    // no-op slot: the embedding auth flow installs exactly one strategy here —
-    // `setApiKeyHeader` or `setSessionTokenHeader` — based on the auth method in
-    // use (see `embedding-request-auth`).
+    // Emit the embedding auth header (`X-Api-Key`, `X-Metabase-Session`, or
+    // `X-Metabase-Mcp-Ui-Auth`). A no-op slot: the embedding auth flow installs
+    // exactly one strategy here based on the auth method in use (see
+    // `embedding-request-auth` and the MCP Apps entry point).
     setEmbeddingRequestAuthHeaders: noop,
     // Resolve and emit the SDK session token, refreshing it when expired.
     // Installed by SDK auth (`embedding-sdk-ee/auth`).
