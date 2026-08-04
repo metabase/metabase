@@ -1,9 +1,9 @@
-import type { MetabaseProtocolEntity } from "./links";
+import type { MetabaseProtocolEntity } from "./metabase-protocol";
 import {
   createMetabaseProtocolLink,
   parseMetabaseProtocolLink,
   parseMetabaseProtocolMarkdownLink,
-} from "./links";
+} from "./metabase-protocol";
 
 describe("parseMetabaseProtocolLink", () => {
   it("should parse metabase://model/id for various entities", () => {
