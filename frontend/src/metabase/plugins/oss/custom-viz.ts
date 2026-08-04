@@ -1,10 +1,15 @@
-import type { WidgetMount } from "custom-viz";
+import type {
+  CreateCustomVisualization,
+  CustomVisualization,
+  WidgetMount,
+} from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
 import type {
+  CustomVizDisplayType,
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
@@ -86,11 +91,12 @@ const getDefaultPluginCustomViz = () => ({
   }>,
 
   // Static viz rendering (GraalJS context)
-  customVizRegistry: new Map<string, Record<string, ComponentType<any>>>(),
+  customVizRegistry: new Map<
+    CustomVizDisplayType,
+    CustomVisualization<Record<string, unknown>>
+  >(),
   registerCustomVizPlugin: (
-    _factory: (
-      props: Record<string, unknown>,
-    ) => Record<string, ComponentType<any>>,
+    _factory: CreateCustomVisualization<Record<string, unknown>>,
     _identifier: string,
     _pluginId: CustomVizPluginId,
   ) => {},

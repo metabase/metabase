@@ -1,4 +1,7 @@
-import type { RenderingContext as CustomVizRenderingContext } from "custom-viz";
+import type {
+  CustomStaticVisualizationProps,
+  RenderingContext as CustomVizRenderingContext,
+} from "custom-viz";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { getVisualizationTransformed } from "metabase/visualizations";
@@ -6,11 +9,13 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
+type PluginStaticProps = CustomStaticVisualizationProps<
+  Record<string, unknown>
+>;
+
 export const CustomStaticVisualization = ({
   rawSeries,
   renderingContext,
-  isStorybook,
-  hasDevWatermark,
   width,
   height,
 }: StaticVisualizationProps) => {
@@ -53,9 +58,10 @@ export const CustomStaticVisualization = ({
     <StaticVisualizationComponent
       series={rawSeries}
       renderingContext={customVizRenderingContext}
-      settings={settings}
-      isStorybook={isStorybook}
-      hasDevWatermark={hasDevWatermark}
+      // The runtime value is the host's computed settings; the types clash
+      // only on the `column` function, whose plugin-facing parameter type is
+      // a looser public mirror of the host column type (contravariance).
+      settings={settings as unknown as PluginStaticProps["settings"]}
       width={width}
       height={height}
     />
