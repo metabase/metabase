@@ -247,9 +247,10 @@
   An instance at or under this budget gets its entire tree in one request, exactly as it did before lazy loading, so
   the overwhelming majority of instances see no change at all. Only instances above the budget pay for lazy loading.
 
-  E2E runs use a budget small enough that the ordinary Cypress snapshot already exceeds it. That way the suite
-  exercises the lazy path for real, instead of needing hundreds of seeded collections to cross a production budget."
-  (if config/is-e2e? 2 500))
+  E2E runs use a much smaller budget so that both branches are reachable without seeding hundreds of collections. The
+  default Cypress snapshot sits well under it and exercises the complete branch, and the `large-collection-tree`
+  snapshot sits well over it and exercises the lazy branch."
+  (if config/is-e2e? 50 500))
 
 (defn- select-collections-up-to
   "Reads at most `limit` collections. Returns `[collections complete?]`, where `complete?` is false when there may be
