@@ -3305,10 +3305,11 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace :transforms}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot change whether a Collection is a root"
                               (t2/update! :model/Collection collection-id {:is_root true})))))
-    (testing "the root itself cannot be updated at all"
-      (doseq [changes [{:is_root nil} {:name "Renamed"} {:archived true}]]
-        (testing (pr-str changes)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot modify a root Collection"
-                                (t2/update! :model/Collection root-id changes)))))
-      (is (true? (t2/select-one-fn :is_root :model/Collection :id root-id)))
-      (is (= "Transforms" (t2/select-one-fn :name :model/Collection :id root-id))))))
+    (testing "nor demote the root"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot change whether a Collection is a root"
+                            (t2/update! :model/Collection root-id {:is_root nil})))
+      (is (true? (t2/select-one-fn :is_root :model/Collection :id root-id))))
+    (testing "the root is otherwise an ordinary collection, so deserializing over it works"
+      (is (some? (t2/update! :model/Collection root-id {:description "From an import"})))
+      (is (= "From an import"
+             (t2/select-one-fn :description :model/Collection :id root-id))))))

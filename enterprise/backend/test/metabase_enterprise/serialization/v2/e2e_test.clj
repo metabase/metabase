@@ -215,8 +215,9 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            ;; +1 for the Trash collection
-            (is (= 110 (-> @entities (get "Collection") count))))
+            ;; +1 for the Trash collection, +1 per namespace root collection
+            (is (= (+ 110 (count (ts/root-collection-entity-ids)))
+                   (-> @entities (get "Collection") count))))
           (testing "storage"
             (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"
@@ -227,9 +228,11 @@
                     coll-count (count (for [f (file-set colls-dir)
                                             :when (= "Collection" (yaml-model-at colls-dir f))]
                                         f))]
-                ;; +1 for Trash collection; exact count may vary by 1 depending on naming collisions
-                (is (<= 109 coll-count 111)
-                    "which all go in collections/, even the snippets ones")))
+                ;; +1 for Trash collection, +1 per namespace root collection; exact count may vary by 1 depending
+                ;; on naming collisions
+                (let [roots (count (ts/root-collection-entity-ids))]
+                  (is (<= (+ 109 roots) coll-count (+ 111 roots))
+                      "which all go in collections/, even the snippets ones"))))
             (testing "for Databases"
               (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
             (testing "for Tables"

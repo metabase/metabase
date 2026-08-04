@@ -61,6 +61,27 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
 
+(deftest root-collection-load-test
+  (testing "a root collection deserializes onto the destination's own root rather than creating a second one"
+    (ts/with-dbs [db]
+      (ts/with-db db
+        (let [root-id     (collection/transforms-root-collection-id)
+              root        (t2/select-one :model/Collection :id root-id)
+              new-created "2020-01-02T03:04:05Z"
+              ingested    (assoc (serdes/extract-one "Collection" {} root)
+                                 :created_at new-created
+                                 :description "From an import")]
+          (serdes.load/load-metabase! (ingestion-in-memory [ingested]))
+          (let [reloaded (t2/select-one :model/Collection :id root-id)]
+            (testing "the root is still a single row, still flagged, still the resolved root"
+              (is (= 1 (t2/count :model/Collection :is_root true :namespace (name collection/transforms-ns))))
+              (is (true? (:is_root reloaded)))
+              (is (= root-id (collection/transforms-root-collection-id))))
+            (testing "and ordinary fields are updated from the import"
+              (is (= "From an import" (:description reloaded)))
+              (is (= (t/instant new-created) (t/instant (:created_at reloaded))))
+              (is (not= (t/instant (:created_at root)) (t/instant (:created_at reloaded)))))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
@@ -1957,7 +1978,7 @@
                       {errors true
                        others false} (group-by #(instance? Exception %) ser)]
                   (is (= 1 (count errors)))
-                  (is (= 3 (count others))))
+                  (is (= (+ 3 (count (ts/root-collection-entity-ids))) (count others))))
                 (is (= [["Card" (str (:id c1))]]
                        (logs-extract #"Skipping (\w+) (\d+)"
                                      (messages))))))))
@@ -1969,7 +1990,7 @@
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
                 (is (= 1 (count (:errors report))))
-                (is (= 3 (count (:seen report)))))
+                (is (= (+ 3 (count (ts/root-collection-entity-ids))) (count (:seen report)))))
               (let [log-msgs (logs-extract #"Skipping deserialization error: (.*)" (messages))]
                 (is (= 1 (count log-msgs)))
                 (is (str/includes? (ffirst log-msgs) "Collection 'does-not-exist' was not found"))))))))))
@@ -2270,6 +2291,45 @@
                 (testing "a transform serialized without a collection lands in the Transforms root"
                   (is (= (collection/transforms-root-collection-id)
                          (:collection_id transform))))))))))))
+
+(deftest legacy-rootless-collection-id-load-test
+  (testing "content exported before the namespaces had real roots carries no collection_id and lands in the root"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))]
+              (ts/create! :model/Transform
+                          :name "Rootless Transform"
+                          :collection_id (collection/transforms-root-collection-id)
+                          :source {:query (mbql5-query (:id db) (:id table))
+                                   :type  "query"}
+                          :target {:database (:id db)
+                                   :type     "table"
+                                   :schema   "public"
+                                   :name     "target_table"})
+              (ts/create! :model/NativeQuerySnippet
+                          :name "Rootless Snippet"
+                          :content "WHERE id = 1"
+                          :collection_id (collection/snippets-root-collection-id)))
+            (reset! serialized (into [] (serdes.extract/extract {}))))
+          (doseq [[what age] [["with collection_id dropped entirely" #(dissoc % :collection_id)]
+                              ["with collection_id explicitly null" #(assoc % :collection_id nil)]]]
+            (testing what
+              (let [legacy (mapv (fn [entity]
+                                   (if (#{"Transform" "NativeQuerySnippet"} (-> entity :serdes/meta last :model))
+                                     (age entity)
+                                     entity))
+                                 @serialized)]
+                (ts/with-db dest-db
+                  (t2/delete! :model/TransformTag)
+                  (serdes.load/load-metabase! (ingestion-in-memory legacy))
+                  (is (= (collection/transforms-root-collection-id)
+                         (t2/select-one-fn :collection_id :model/Transform :name "Rootless Transform")))
+                  (is (= (collection/snippets-root-collection-id)
+                         (t2/select-one-fn :collection_id :model/NativeQuerySnippet :name "Rootless Snippet"))))))))))))
 
 (deftest transform-checkpoint-field-remap-test
   (testing "checkpoint-filter-field-id survives serdes into an instance with different field IDs (GDGT-2906)"

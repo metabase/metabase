@@ -397,8 +397,7 @@
                                                         :transform_target     {:type     "table"
                                                                                :schema   schema
                                                                                :name     (:name target)
-                                                                               :database (mt/id)}
-                                                        :target_collection_id nil})
+                                                                               :database (mt/id)}})
                         run-id   (:run_id response)
                         final    (poll-run run-id :timeout-ms 30000)]
                     (is (= "succeeded" (:status final)))
@@ -517,8 +516,7 @@
                                                       :transform_target     {:type     "table"
                                                                              :schema   schema
                                                                              :name     (:name target)
-                                                                             :database (mt/id)}
-                                                      :target_collection_id nil})
+                                                                             :database (mt/id)}})
                       run-id   (:run_id response)
                       final    (poll-run run-id :timeout-ms 30000)
                       transform (t2/select-one :model/Transform :name "Shapes Transform")

@@ -460,22 +460,18 @@
     (serdes/*export-field-fk* field-id)
     field-id))
 
-(def ^:private collection-fk
-  "`collection_id` travels as an ordinary reference, root included: the root's `entity_id` is fixed by the migration
-  that creates it, so it resolves against the destination's own root without the row ever being serialized. The
-  import side also accepts a missing collection, which is the shape of exports taken before the root existed."
-  (merge (serdes/fk :model/Collection)
-         {:import (fn [collection-ref]
-                    (if collection-ref
-                      (serdes/*import-fk* collection-ref :model/Collection)
-                      (collection/transforms-root-collection-id)))}))
-
 (defn- update-checkpoint-field
   "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
   [source f]
   (m/update-existing source :source-incremental-strategy
                      (fn [strategy]
                        (m/update-existing strategy :checkpoint-filter-field-id f))))
+
+(def ^:private collection-fk
+  "`collection_id` is NOT NULL as of v64. Exports taken before that carry no collection for transforms that sat at
+  the top level, and those belong in the Transforms root."
+  (let [{:keys [import] :as spec} (serdes/fk :model/Collection)]
+    (assoc spec :import #(or (some-> % import) (collection/transforms-root-collection-id)))))
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
@@ -550,9 +546,7 @@
 (defmethod serdes/required "Transform"
   [_model id]
   (when-let [collection-id (t2/select-one-fn :collection_id :model/Transform :id id)]
-    ;; the root is never extracted, so naming it as required would demand a file that cannot exist
-    (when-not (= collection-id (collection/transforms-root-collection-id))
-      {["Collection" collection-id] {"Transform" id}})))
+    {["Collection" collection-id] {"Transform" id}}))
 
 (defn- maybe-extract-transform-query-text
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.

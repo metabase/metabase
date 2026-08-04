@@ -101,13 +101,13 @@
           (is (not (contains? ser :id)))))
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
-          (is (= #{coll-eid child-eid}
+          (is (= (into #{coll-eid child-eid} (ts/root-collection-entity-ids))
                  (ids-by-model "Collection" (extract/extract nil)))))
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid}
+          (is (= (into #{coll-eid child-eid pc-eid} (ts/root-collection-entity-ids))
                  (ids-by-model "Collection" (extract/extract {:user-id mark-id})))))
         (testing "invalid user specified"
-          (is (= #{coll-eid child-eid}
+          (is (= (into #{coll-eid child-eid} (ts/root-collection-entity-ids))
                  (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
@@ -476,11 +476,11 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid mark-coll-eid}
+          (is (= (into #{coll-eid mark-coll-eid} (ts/root-collection-entity-ids))
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid}
+          (is (= (into #{coll-eid dave-coll-eid} (ts/root-collection-entity-ids))
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))))
@@ -1707,7 +1707,7 @@
         (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
-        (is (= #{} (ids-by-model "Collection" ser)))))))
+        (is (= (ts/root-collection-entity-ids) (ids-by-model "Collection" ser)))))))
 
 (deftest skip-h2-databases-test
   (testing "H2 databases must not be extracted because import rejects them (see GHY-3633)"

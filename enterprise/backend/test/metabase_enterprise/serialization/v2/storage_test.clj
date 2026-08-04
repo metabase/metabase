@@ -24,6 +24,11 @@
                :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
+(def ^:private root-collection-files
+  "A namespace's root collection is stored like any other, and since it contributes no path segment of its own its
+  file lands beside the namespace folder holding its content."
+  #{["snippets.yaml"] ["transforms.yaml"]})
+
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
@@ -32,8 +37,9 @@
         (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
-            (is (= #{["main" "some_collection.yaml"]
-                     ["main" "some_collection" "child_collection.yaml"]}
+            (is (= (into root-collection-files
+                         #{["main" "some_collection.yaml"]
+                           ["main" "some_collection" "child_collection.yaml"]})
                    (file-set (io/file dump-dir "collections")))
                 "collections form a tree, with files as siblings of their content folders")
             (is (contains? (file-set (io/file dump-dir))
@@ -78,14 +84,15 @@
         (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
-            (is (= #{["main" "grandparent_collection.yaml"]
-                     ["main" "grandparent_collection" "parent_collection.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "child_collection.yaml"]
-                     ["main" "root_card.yaml"]
-                     ["main" "grandparent_collection" "grandparent_card.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "parent_card.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "child_collection" "child_card.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "parent_dash.yaml"]}
+            (is (= (into root-collection-files
+                         #{["main" "grandparent_collection.yaml"]
+                           ["main" "grandparent_collection" "parent_collection.yaml"]
+                           ["main" "grandparent_collection" "parent_collection" "child_collection.yaml"]
+                           ["main" "root_card.yaml"]
+                           ["main" "grandparent_collection" "grandparent_card.yaml"]
+                           ["main" "grandparent_collection" "parent_collection" "parent_card.yaml"]
+                           ["main" "grandparent_collection" "parent_collection" "child_collection" "child_card.yaml"]
+                           ["main" "grandparent_collection" "parent_collection" "parent_dash.yaml"]})
                    (file-set (io/file dump-dir "collections"))))))))))
 
 (deftest snippets-collections-nesting-test
@@ -109,13 +116,14 @@
                                                 :no-transforms true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "all snippet collections and snippets under collections/snippets/"
-            (is (= #{["snippets" "grandparent_collection.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "child_collection.yaml"]
-                     ["snippets" "root_snippet.yaml"]
-                     ["snippets" "grandparent_collection" "grandparent_snippet.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "parent_snippet.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "child_collection" "child_snippet.yaml"]}
+            (is (= (into root-collection-files
+                         #{["snippets" "grandparent_collection.yaml"]
+                           ["snippets" "grandparent_collection" "parent_collection.yaml"]
+                           ["snippets" "grandparent_collection" "parent_collection" "child_collection.yaml"]
+                           ["snippets" "root_snippet.yaml"]
+                           ["snippets" "grandparent_collection" "grandparent_snippet.yaml"]
+                           ["snippets" "grandparent_collection" "parent_collection" "parent_snippet.yaml"]
+                           ["snippets" "grandparent_collection" "parent_collection" "child_collection" "child_snippet.yaml"]})
                    (file-set (io/file dump-dir "collections"))))))))))
 
 (deftest embedded-slash-test

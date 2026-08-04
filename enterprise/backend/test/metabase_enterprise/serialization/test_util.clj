@@ -44,6 +44,12 @@
   []
   (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto)))
 
+(defn root-collection-entity-ids
+  "Entity IDs of the per-namespace root collections. They are ordinary collections as far as serdes is concerned, so
+  every unfiltered extraction picks them up and tests that pin down an exact set or count have to include them."
+  []
+  (t2/select-fn-set :entity_id :model/Collection :is_root true))
+
 ;;; TODO -- this is a bad name, how is anyone supposed to know what this does without reading the docstring?
 (defmacro with-temp-dpc
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections

@@ -167,20 +167,16 @@
                                                                    (when-let [collection-ids (not-empty (remove nil? collection-set))]
                                                                      [:in :collection_id collection-ids])
                                                                    (when (some nil? collection-set)
-                                                                     [:= :collection_id (collection/snippets-root-collection-id)])]]
+                                                                     [:= :collection_id nil])]]
                                                           ;; stable filename de-dup suffixes across exports, see GHY-3754
                                                           :order-by serdes/stable-storage-order}
                                                    where (sql.helpers/where :or where))))
 
 (def ^:private collection-fk
-  "`collection_id` travels as an ordinary reference, root included: the root's `entity_id` is fixed by the migration
-  that creates it, so it resolves against the destination's own root without the row ever being serialized. The
-  import side also accepts a missing collection, which is the shape of exports taken before the root existed."
-  (merge (serdes/fk :model/Collection)
-         {:import (fn [collection-ref]
-                    (if collection-ref
-                      (serdes/*import-fk* collection-ref :model/Collection)
-                      (collection/snippets-root-collection-id)))}))
+  "`collection_id` is NOT NULL as of v64. Exports taken before that carry no collection for snippets that sat at the
+  top level, and those belong in the SQL snippets root."
+  (let [{:keys [import] :as spec} (serdes/fk :model/Collection)]
+    (assoc spec :import #(or (some-> % import) (collection/snippets-root-collection-id)))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
@@ -197,8 +193,7 @@
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
   (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
-    (when-not (= collection_id (collection/snippets-root-collection-id))
-      {["Collection" collection_id] {"NativeQuerySnippet" id}})))
+    {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
@@ -208,8 +203,7 @@
 (defmethod serdes/serialization-dependencies "NativeQuerySnippet"
   [_model-name {:keys [collection_id]}]
   ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
-  (when (and collection_id
-             (not= collection_id (collection/snippets-root-collection-id)))
+  (when collection_id
     #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]

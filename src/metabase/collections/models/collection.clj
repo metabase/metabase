@@ -1993,9 +1993,6 @@
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
     (api/check
-     (not (:is_root collection-before-updates))
-     [400 "You cannot modify a root Collection."])
-    (api/check
      (not (contains? collection-updates :is_root))
      [400 "You cannot change whether a Collection is a root Collection."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
@@ -2111,8 +2108,7 @@
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
-                          [:not= :type trash-collection-type]]
-        not-root-clause  [:= :is_root nil]]
+                          [:not= :type trash-collection-type]]]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
                            {:where
@@ -2122,7 +2118,6 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
-                             not-root-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order})
@@ -2132,7 +2127,6 @@
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
-                             not-root-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
@@ -2223,12 +2217,13 @@
           :description
           :entity_id
           :is_remote_synced
+          :is_root
           :is_sample
           :name
           :namespace
           :slug
           :type]
-   :skip [:is_root]
+   :skip []
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
