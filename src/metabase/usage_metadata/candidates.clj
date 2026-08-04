@@ -355,6 +355,9 @@
                          :measure relation-for-measure
                          :segment relation-for-segment
                          nil)]
+    ;; Measures and Segments only count as Library entities while their owning table is published.
+    ;; Definitions left behind on an unpublished table are deliberately ignored: the report should
+    ;; recommend restoring the table to the Library before treating those entities as modeled.
     (let [matches (when published?
                     (keep (fn [entity]
                             (when-let [relation (relation-fn candidate entity)]
@@ -428,28 +431,26 @@
 
 (defn- persist-card-batch!
   [run-id card-ids]
-  (lib-be/with-metadata-provider-cache
-    (let [{:keys [measures segments]}
-          (insights/cleanup-candidates
-           {:query-source (query-source/card-id-set card-ids)
-            :min-view-count source-minimum-recent-view-count
-            :view-count-window-days source-usage-window-days
-            :include-ineligible? true})
-          opts         {:query-source (query-source/card-id-set card-ids)
-                        :min-view-count source-minimum-recent-view-count
-                        :view-count-window-days source-usage-window-days
-                        :limit 1000}
-          table-report (insights/candidate-tables opts)
-          metrics      (insights/candidate-metrics opts)
-          observations (concat measures
-                               segments
-                               (map table-candidate-observation (:candidates table-report))
-                               (keep metric-candidate-observation metrics))
-          tables       (usable-table-index (into #{} (map observation-table-id) observations))]
-      (doseq [observation observations
-              :let [table (tables (observation-table-id observation))]
-              :when table]
-        (persist-observation! run-id observation table)))))
+  (insights/with-candidate-batch-cache
+    #(lib-be/with-metadata-provider-cache
+       (let [query-source (query-source/card-id-set card-ids)
+             opts         {:query-source query-source
+                           :min-view-count source-minimum-recent-view-count
+                           :view-count-window-days source-usage-window-days
+                           :limit 1000}
+             {:keys [measures segments]}
+             (insights/cleanup-candidates (assoc opts :include-ineligible? true))
+             table-report (insights/candidate-tables opts)
+             metrics      (insights/candidate-metrics opts)
+             observations (concat measures
+                                  segments
+                                  (map table-candidate-observation (:candidates table-report))
+                                  (keep metric-candidate-observation metrics))
+             tables       (usable-table-index (into #{} (map observation-table-id) observations))]
+         (doseq [observation observations
+                 :let [table (tables (observation-table-id observation))]
+                 :when table]
+           (persist-observation! run-id observation table))))))
 
 (defn- semantically-eligible?
   [{:keys [candidate_type semantic_details complexity verified_source_count

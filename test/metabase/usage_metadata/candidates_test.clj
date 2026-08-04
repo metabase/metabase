@@ -11,6 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidates :as candidates]
    [metabase.usage-metadata.insights :as insights]
+   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -31,6 +32,7 @@
   @#'candidates/non-closed-measure-candidate-ids)
 (def ^:private candidate-families @#'candidates/candidate-families)
 (def ^:private prune-old-candidate-snapshots! @#'candidates/prune-old-candidate-snapshots!)
+(def ^:private reconcile-candidate! @#'candidates/reconcile-candidate!)
 
 (defn- candidate-row
   [run-id table-id]
@@ -144,6 +146,61 @@
                            :candidate_type :segment
                            :table_id (mt/id :orders)
                            :signature_hash (:signature_hash candidate)))))))
+
+(deftest candidate-reconciliation-round-trips-mined-signatures-test
+  (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        table             (lib.metadata/table metadata-provider (mt/id :orders))
+        subtotal          (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+        query             (lib/aggregate (lib/query metadata-provider table) (lib/sum subtotal))]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Mined revenue"
+                                              :type :question
+                                              :dataset_query query
+                                              :view_count 100}]
+      (let [mined (-> (insights/cleanup-candidates
+                       {:query-source (query-source/card-id-set [card-id])
+                        :include-ineligible? true})
+                      :measures
+                      first)]
+        (mt/with-temp [:model/Measure measure {:name "Revenue"
+                                               :creator_id (mt/user->id :crowberto)
+                                               :definition (:definition mined)}
+                       :model/UsageMetadataCandidateRun published-run {:status :running
+                                                                       :trigger :manual
+                                                                       :algorithm_version 1
+                                                                       :source_config {}}
+                       :model/UsageMetadataCandidate published-candidate
+                       (merge (candidate-row (:id published-run) (mt/id :orders))
+                              {:candidate_type :measure
+                               :signature (:signature mined)
+                               :definition (:definition mined)
+                               :semantic_details (:aggregation mined)})
+                       :model/UsageMetadataCandidateRun unpublished-run {:status :running
+                                                                         :trigger :manual
+                                                                         :algorithm_version 1
+                                                                         :source_config {}}
+                       :model/UsageMetadataCandidate unpublished-candidate
+                       (merge (candidate-row (:id unpublished-run) (mt/id :orders))
+                              {:candidate_type :measure
+                               :signature (:signature mined)
+                               :definition (:definition mined)
+                               :semantic_details (:aggregation mined)})]
+          (testing "a mined definition and its saved Library entity have the same exact signature"
+            (is (= :modeled
+                   (reconcile-candidate! (assoc published-candidate
+                                                :definition (:definition mined)
+                                                :signature (:signature mined))
+                                         true)))
+            (is (= {:relation :exact, :measure_id (:id measure)}
+                   (t2/select-one [:model/UsageMetadataCandidateMatch :relation :measure_id]
+                                  :candidate_id (:id published-candidate)))))
+          (testing "entities on an unpublished table are not treated as Library matches"
+            (is (= :missing
+                   (reconcile-candidate! (assoc unpublished-candidate
+                                                :definition (:definition mined)
+                                                :signature (:signature mined))
+                                         false)))
+            (is (zero? (t2/count :model/UsageMetadataCandidateMatch
+                                 :candidate_id (:id unpublished-candidate))))))))))
 
 (deftest old-candidate-snapshots-are-deleted-in-batches-test
   (let [pages   (atom [#{1 2} #{3} #{}])
