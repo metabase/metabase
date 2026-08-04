@@ -36,7 +36,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -57,6 +56,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
+import { DocumentMode } from "./DocumentMode";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
