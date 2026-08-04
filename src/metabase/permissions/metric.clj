@@ -141,6 +141,8 @@
           field-info     (batch-field-info all-field-ids)
           table-ids      (into #{} (keep :table_id) (vals field-info))
           table->db      (batch-table-db-ids table-ids)
+          _              (perms/prime-table-perms-cache {:db-ids    (set (vals table->db))
+                                                         :table-ids table-ids})
           sandbox-map    (sandbox-restricted-fields table-ids)
           can-access?    (memoize (fn [db-id table-id]
                                     (user-can-access-table? api/*current-user-id* db-id table-id)))

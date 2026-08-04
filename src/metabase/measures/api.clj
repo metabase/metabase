@@ -117,7 +117,9 @@
   []
   (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
         table-ids (into #{} (keep :table_id) measures)]
-    (perms/prime-table-perms-cache {:table-ids table-ids})
+    (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
+                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                    :table-ids table-ids})
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))
 

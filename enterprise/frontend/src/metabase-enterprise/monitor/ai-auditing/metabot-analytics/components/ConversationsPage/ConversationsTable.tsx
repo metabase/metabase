@@ -9,6 +9,7 @@ import { useScrollToTop } from "metabase/common/hooks";
 import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-change";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
@@ -16,6 +17,7 @@ import {
   Card,
   Center,
   Ellipsified,
+  LoadingOverlay,
   type RenderRowLink,
   SortableHeaderPill,
   Tooltip,
@@ -136,26 +138,23 @@ export function ConversationsTable({
   }
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
-      data-testid="conversations-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="conversations-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          ariaLabel={t`Conversations`}
-          emptyState={<MonitorEmptyState label={t`No conversations found`} />}
-          getRowProps={() => ({ "data-testid": "conversation" })}
-          renderRowLink={renderRowLink}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Conversations`}
+            emptyState={<MonitorEmptyState label={t`No conversations found`} />}
+            getRowProps={() => ({ "data-testid": "conversation" })}
+            renderRowLink={renderRowLink}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 }
 

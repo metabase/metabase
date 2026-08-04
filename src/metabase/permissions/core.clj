@@ -44,7 +44,7 @@
   batch-insert-permissions!
   disable-perms-cache
   download-perms-level
-  full-db-permission-for-user
+  full-database-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
   index-database-permissions
@@ -53,7 +53,7 @@
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
-  prime-db-perms-cache
+  prime-database-perms-cache
   prime-schema-perms-cache
   prime-table-perms-cache
   sandboxes-for-user
