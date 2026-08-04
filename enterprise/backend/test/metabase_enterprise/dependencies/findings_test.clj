@@ -366,10 +366,11 @@
            own query, a batch of 500 retains 500 providers' worth of fetched metadata. upsert-analysis! already throws
            when no cache is bound, so the cache is meant to cover this work; only the select sat outside it."
     (backfill-all-entity-analyses!)
-    (let [providers (atom [])]
+    (let [providers   (atom [])
+          native-card (fn [sql] {:database (mt/id) :type :native :native {:query sql}})]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (mt/mbql-query orders)}
-                       :model/Card {card2-id :id} {:dataset_query (mt/mbql-query products)}]
+        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
+                       :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
           (let [wanted #{card1-id card2-id}
                 upsert-analysis! deps.findings/upsert-analysis!]
             (with-redefs [deps.findings/upsert-analysis!
