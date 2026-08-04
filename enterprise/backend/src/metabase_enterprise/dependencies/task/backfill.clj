@@ -159,6 +159,29 @@
 
 (declare schedule-run!)
 
+(defn- next-run-delay []
+  (deps.task-util/job-delay
+   (deps.settings/dependency-backfill-delay-minutes)
+   (deps.settings/dependency-backfill-variance-minutes)))
+
+(defn- run-and-reschedule!
+  "Process a batch, then schedule the next run if there is more to do.
+
+  Reschedules on the way out of a failure too, then rethrows. This job is one-shot self-rescheduling with no cron
+  backstop, so anything escaping the batch would otherwise end the chain until a content-change event or a restart —
+  survivable for an `OutOfMemoryError` that takes the process with it, not for a `StackOverflowError` from
+  pathological SQL that leaves a live process behind."
+  [scheduler]
+  (try
+    (let [full-batch-selected? (backfill-dependencies!)
+          retries?             (has-pending-retries?)]
+      (if (or full-batch-selected? retries?)
+        (schedule-run! scheduler (next-run-delay))
+        (log/info "No more entities to backfill for, stopping.")))
+    (catch Throwable e
+      (schedule-run! scheduler (next-run-delay))
+      (throw e))))
+
 (defn- log-job-start
   [^JobExecutionContext ctx]
   (let [scheduler (.getScheduler ctx)
@@ -173,51 +196,44 @@
   BackfillDependencies [ctx]
   (let [ctx ^JobExecutionContext ctx]
     (log-job-start ctx)
-    (let [full-batch-selected? (backfill-dependencies!)
-          retries? (has-pending-retries?)]
-      (if (or full-batch-selected?
-              retries?)
-        (let [delay-in-seconds (deps.task-util/job-delay
-                                (deps.settings/dependency-backfill-delay-minutes)
-                                (deps.settings/dependency-backfill-variance-minutes))]
-          (schedule-run! (.getScheduler ctx) delay-in-seconds))
-        (log/info "No more entities to backfill for, stopping.")))))
+    (run-and-reschedule! (.getScheduler ctx))))
 
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
 (defn- schedule-run!
-  "Schedule the next run of the backfill job, unless the batch size disables it.
-
-  Disable with MB_DEPENDENCY_BACKFILL_BATCH_SIZE=0"
+  "Schedule a run of the backfill job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (if-not (pos? (deps.settings/dependency-backfill-batch-size))
-    (log/debug "Not scheduling job Dependency Backfill because the batch size is not positive")
-    (let [start-at (-> (t/instant)
-                       (t/+ (t/duration delay-in-seconds :seconds))
-                       java.util.Date/from)
-          trigger  (triggers/build
-                    (triggers/with-identity (triggers/key trigger-key))
-                    (triggers/for-job job-key)
-                    (triggers/start-at start-at))
-          job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
-      (log/info "Scheduling next run of job Dependency Backfill at" start-at)
-      (task/schedule-task! scheduler job trigger))))
+  (let [start-at (-> (t/instant)
+                     (t/+ (t/duration delay-in-seconds :seconds))
+                     java.util.Date/from)
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/for-job job-key)
+                  (triggers/start-at start-at))
+        job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
+    (log/info "Scheduling next run of job Dependency Backfill at" start-at)
+    (task/schedule-task! scheduler job trigger)))
 
 (defn trigger-backfill-job!
-  "Trigger the BackfillDependencies job to run after a brief delay.
-  The 1-second delay ensures the calling transaction has committed before
-  the job checks for stale entities."
+  "Trigger the BackfillDependencies job to run after a brief delay, unless the batch size disables it.
+
+  The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
+  changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own
+  periodic schedule is left alone so it still resumes if the batch size becomes positive.
+
+  Disable with MB_DEPENDENCY_BACKFILL_BATCH_SIZE=0"
   []
-  (schedule-run! (task/scheduler) 1))
+  (when (pos? (deps.settings/dependency-backfill-batch-size))
+    (schedule-run! (task/scheduler) 1)))
 
 (defmethod task/init! ::DependencyBackfill [_]
-  (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-run!
-     (task/scheduler)
-     (deps.task-util/job-initial-delay
-      (deps.settings/dependency-backfill-variance-minutes)))
-    (log/info "Not starting dependency backfill job because the batch size is not positive")))
+  (when-not (pos? (deps.settings/dependency-backfill-batch-size))
+    (log/info "Dependency backfill batch size is not positive; the job will run but process nothing"))
+  (schedule-run!
+   (task/scheduler)
+   (deps.task-util/job-initial-delay
+    (deps.settings/dependency-backfill-variance-minutes))))
 
 (events/derive! ::backfill :metabase/event)
 (events/derive! :event/serdes-load ::backfill)

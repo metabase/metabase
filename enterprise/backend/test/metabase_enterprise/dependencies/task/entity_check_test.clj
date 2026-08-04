@@ -12,24 +12,26 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:sequential batch-size-zero-blocks-all-scheduling-test
-  (testing "GHY-4251: a non-positive entity check batch size is the supported off-switch, so no path may schedule the
-           job. The event-driven trigger used to ignore the setting and wake the job every ~1 second to do nothing;
-           because entity changes fire it, this is the dominant source of that cadence on a busy instance."
-    (let [scheduled (atom [])
-          ;; Reset per case so each assertion stands on its own rather than tripping over an earlier leak.
+(deftest ^:sequential batch-size-zero-suppresses-event-triggers-but-stays-warm-test
+  (testing "A non-positive batch size stops the job doing work, but leaves it on its slow periodic schedule so it
+           resumes if the setting ever becomes positive. What it must not do is keep firing the 1-second event-driven
+           trigger: entity changes fire it, and it never consulted the batch size, so a disabled job woke roughly once
+           a second on a busy instance."
+    (let [scheduled    (atom [])
           scheduled-by (fn [thunk]
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
       (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
-        (testing "the 1-second event-driven trigger does not schedule when disabled"
-          (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "0")]
-            (is (zero? (scheduled-by dependencies.entity-check/trigger-entity-check-job!)))))
-        (testing "nor does task/init!"
-          (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "0")]
-            (is (zero? (scheduled-by #(task/init! ::dependencies.entity-check/DependencyEntityCheck))))))
-        (testing "but a positive batch size still schedules normally"
+        (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "0")]
+          (testing "the 1-second event-driven trigger is suppressed"
+            (is (zero? (scheduled-by dependencies.entity-check/trigger-entity-check-job!))))
+          (testing "but task/init! still puts the job on its periodic schedule"
+            (is (= 1 (scheduled-by #(task/init! ::dependencies.entity-check/DependencyEntityCheck)))))
+          (testing "and a run keeps the periodic chain going"
+            (with-redefs [premium-features/canonically-has-feature? (constantly true)]
+              (is (= 1 (scheduled-by #(#'dependencies.entity-check/reschedule-after-run! nil)))))))
+        (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
             (is (= 1 (scheduled-by dependencies.entity-check/trigger-entity-check-job!)))))))))
 

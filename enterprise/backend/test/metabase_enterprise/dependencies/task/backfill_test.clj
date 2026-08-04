@@ -472,24 +472,26 @@
         (is (false? (deps.dependency-status/has-stale-or-outdated?))
             "Expected no pending work once the card has been processed")))))
 
-(deftest ^:sequential batch-size-zero-blocks-all-scheduling-test
-  (testing "GHY-4251: a non-positive backfill batch size is the supported off-switch, so no path may schedule the
-           job. The event-driven trigger used to ignore the setting and wake the job every ~1 second to do nothing,
-           which is what customers on the documented workaround observed."
-    (let [scheduled (atom [])
-          ;; Reset per case so each assertion stands on its own rather than tripping over an earlier leak.
+(deftest ^:sequential batch-size-zero-suppresses-event-triggers-but-stays-warm-test
+  (testing "A non-positive batch size stops the job doing work, but leaves it on its slow periodic schedule so it
+           resumes if the setting ever becomes positive. What it must not do is keep firing the 1-second event-driven
+           trigger, which is what made a disabled job wake roughly once a second on a busy instance -- entity changes
+           fire it, and it never consulted the batch size."
+    (let [scheduled    (atom [])
           scheduled-by (fn [thunk]
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
       (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
-        (testing "the 1-second event-driven trigger does not schedule when disabled"
-          (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
-            (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!)))))
-        (testing "nor does task/init!"
-          (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
-            (is (zero? (scheduled-by #(task/init! ::dependencies.backfill/DependencyBackfill))))))
-        (testing "but a positive batch size still schedules normally"
+        (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
+          (testing "the 1-second event-driven trigger is suppressed"
+            (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))
+          (testing "but task/init! still puts the job on its periodic schedule"
+            (is (= 1 (scheduled-by #(task/init! ::dependencies.backfill/DependencyBackfill)))))
+          (testing "and a run keeps the chain going rather than stopping"
+            (mt/with-premium-features #{:dependencies}
+              (is (= 1 (scheduled-by #(#'dependencies.backfill/run-and-reschedule! nil)))))))
+        (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "5")]
             (is (= 1 (scheduled-by dependencies.backfill/trigger-backfill-job!)))))))))
 
@@ -587,3 +589,19 @@
                 (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
             (is (= 1 fail_count))
             (is (some? next_retry_at))))))))
+
+(deftest ^:sequential fatal-error-still-reschedules-test
+  (testing "A failure must not leave the job unscheduled. The job is one-shot self-rescheduling with no cron
+           backstop, so an Error propagating out of the batch skipped schedule-run! entirely and the chain ended
+           until a content-change event or a restart. A real OutOfMemoryError usually takes the process with it and
+           task/init! recovers on boot, but survivable Errors -- StackOverflowError from deeply nested SQL, an
+           AssertionError, a LinkageError -- leave a live process with a dead job."
+    (let [scheduled (atom [])]
+      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
+                    dependencies.backfill/backfill-dependencies!
+                    (fn [& _] (throw (Error. "simulated fatal error")))]
+        (testing "the Error still propagates"
+          (is (thrown-with-msg? Error #"simulated fatal error"
+                                (#'dependencies.backfill/run-and-reschedule! nil))))
+        (testing "and the next run was scheduled anyway"
+          (is (= 1 (count @scheduled))))))))

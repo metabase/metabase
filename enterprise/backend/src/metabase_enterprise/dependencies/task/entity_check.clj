@@ -84,40 +84,38 @@
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
 
 (defn- schedule-run!
-  "Schedule the next run of the entity check job, unless the batch size disables it.
-
-  A non-positive batch size is the supported off-switch for the job. The setting is `:setter :none`, so there is no
-  supported way to change it at runtime — in practice it comes from an env var or the default — and waking up to
-  re-read it would buy nothing. So the job stays unscheduled until a restart. Every scheduling path goes through here,
-  including the event-driven [[trigger-entity-check-job!]], so this is the one place the switch has to be honoured."
+  "Schedule a run of the entity check job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (if-not (pos? (deps.settings/dependency-entity-check-batch-size))
-    (log/debug "Not scheduling job Dependency Entity Check because the batch size is not positive")
-    (let [start-at (-> (t/instant)
-                       (t/+ (t/duration delay-in-seconds :seconds))
-                       java.util.Date/from)
-          trigger  (triggers/build
-                    (triggers/with-identity (triggers/key trigger-key))
-                    (triggers/for-job job-key)
-                    (triggers/start-at start-at))
-          job      (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
-      (log/info "Scheduling next run of job Dependency Entity Check at" start-at)
-      (task/schedule-task! scheduler job trigger))))
+  (let [start-at (-> (t/instant)
+                     (t/+ (t/duration delay-in-seconds :seconds))
+                     java.util.Date/from)
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/for-job job-key)
+                  (triggers/start-at start-at))
+        job      (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
+    (log/info "Scheduling next run of job Dependency Entity Check at" start-at)
+    (task/schedule-task! scheduler job trigger)))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
-  (if (pos? (deps.settings/dependency-entity-check-batch-size))
-    (schedule-run!
-     (task/scheduler)
-     (deps.task-util/job-initial-delay
-      (deps.settings/dependency-entity-check-variance-minutes)))
-    (log/info "Not starting dependency entity check job because the batch size is not positive")))
+  (when-not (pos? (deps.settings/dependency-entity-check-batch-size))
+    (log/info "Dependency entity check batch size is not positive; the job will run but process nothing"))
+  (schedule-run!
+   (task/scheduler)
+   (deps.task-util/job-initial-delay
+    (deps.settings/dependency-entity-check-variance-minutes))))
 
 (defn trigger-entity-check-job!
-  "Trigger the DependencyEntityCheck job to run after a brief delay.
-  The 1-second delay ensures the calling transaction has committed before
-  the job checks for stale entities."
+  "Trigger the DependencyEntityCheck job to run after a brief delay, unless the batch size disables it.
+
+  The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
+  changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own
+  periodic schedule is left alone so it still resumes if the batch size becomes positive.
+
+  Disable with MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE=0"
   []
-  (schedule-run! (task/scheduler) 1))
+  (when (pos? (deps.settings/dependency-entity-check-batch-size))
+    (schedule-run! (task/scheduler) 1)))
 
 ;;; Mirrors the backfill job's wiring: enabling the feature has to restart the job, because
 ;;; [[reschedule-after-run!]] stops the periodic chain while it is disabled and the content-change handlers that
