@@ -67,6 +67,7 @@ export function useHostSdkStore(
     });
 
     store.dispatch({ type: initAuth.fulfilled.type });
+    store.dispatch(loadCurrentUser());
     store.dispatch(setPluginsReady(true));
     store.dispatch(loadCurrentUser());
   }, [store]);

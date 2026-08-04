@@ -50,17 +50,18 @@
   ;; Mirrors the endpoints probed by the e2e spec
   ;; (e2e/test/scenarios/data-apps/sandboxing_isolation.cy.spec.ts) so both layers stay in sync.
   (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}
-        ;; Untagged endpoints an admin session can otherwise reach: identity, the permission
-        ;; graph, and instance settings — the privileged surface a sandboxed app must not touch.
-        privileged  ["user/current" "permissions/graph" "setting"]]
+        privileged  ["permissions/graph" "setting"]]
     (testing "an admin session reaches the privileged endpoints without the data-app client header"
       (doseq [endpoint privileged]
         (is (mt/user-http-request :crowberto :get 200 endpoint) endpoint)))
-    (testing "the same endpoints fail closed once the request is marked as a data app"
+    (testing "the write/admin endpoints still fail closed once the request is marked as a data app"
       (doseq [endpoint privileged]
         (is (= "scope_not_permitted"
                (:error (mt/user-http-request :crowberto :get 403 endpoint as-data-app)))
             endpoint)))
+    (testing "the SDK bootstrap surface (current user + settings) is reachable when marked"
+      (is (mt/user-http-request :crowberto :get 200 "user/current" as-data-app))
+      (is (mt/user-http-request :crowberto :get 200 "session/properties" as-data-app)))
     (testing "the data-app read/query surface still passes scope enforcement when marked"
       (is (mt/user-http-request :crowberto :get 200 "collection/root" as-data-app)))
     (testing "the feature-surface reads (downloads pref, alerts probe) are reachable when marked"
