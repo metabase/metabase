@@ -37,7 +37,6 @@ describe("Transform Embedding Theme Override", () => {
       lineHeight: 1.5,
       fontFamily: "Roboto",
       colors: {
-        brand: expect.arrayContaining(["hotpink"]),
         "core-brand": expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
         "text-tertiary": expect.arrayContaining(["green"]),

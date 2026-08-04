@@ -96,7 +96,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
       const theme: MetabaseTheme = {};
 
       const applicationColors = {
-        "background-primary": "#2d3030",
+        "background_page-primary": "#2d3030",
         "text-primary": "#eee",
       };
 

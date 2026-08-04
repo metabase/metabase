@@ -40,32 +40,35 @@ export const ColorCustomizationSection = ({
 
   return (
     <Group align="start" gap="xl">
-      {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
-        // Use the default from appearance settings. If not set, use the default Metabase color.
-        const originalColor =
-          applicationColors?.[originalColorKey] ??
-          defaultMetabaseColorsWithoutAlpha[originalColorKey];
+      {getConfigurableThemeColors().map(
+        ({ key, name, settingKey, tokenKey }) => {
+          const whitelabelColor = settingKey
+            ? applicationColors?.[settingKey]
+            : undefined;
+          const originalColor =
+            whitelabelColor ?? defaultMetabaseColorsWithoutAlpha[tokenKey];
 
-        const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
+          const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
 
-        return (
-          <Stack gap="xs" align="start" key={key}>
-            <Text size="sm" fw="bold">
-              {name}
-            </Text>
+          return (
+            <Stack gap="xs" align="start" key={key}>
+              <Text size="sm" fw="bold">
+                {name}
+              </Text>
 
-            <ColorPillPicker
-              onChange={(color) => onColorChange({ [key]: color })}
-              originalColor={originalColor}
-              previewValue={previewValue}
-              onPreviewChange={(color: string) =>
-                setColorPreviewValues((prev) => ({ ...prev, [key]: color }))
-              }
-              data-testid={`${key}-color-picker`}
-            />
-          </Stack>
-        );
-      })}
+              <ColorPillPicker
+                onChange={(color) => onColorChange({ [key]: color })}
+                originalColor={originalColor}
+                previewValue={previewValue}
+                onPreviewChange={(color: string) =>
+                  setColorPreviewValues((prev) => ({ ...prev, [key]: color }))
+                }
+                data-testid={`${key}-color-picker`}
+              />
+            </Stack>
+          );
+        },
+      )}
     </Group>
   );
 };
