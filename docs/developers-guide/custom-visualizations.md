@@ -417,11 +417,13 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### When embedding, custom visualizations are only available in the SDK
+### When embedding, custom visualizations need SSO
 
-The [Modular embedding SDK](../embedding/sdk/introduction.md) renders custom visualizations when you allowlist them with the [`allowedCustomVisualizations` prop](../embedding/sdk/config.md#custom-visualizations) on `MetabaseProvider`.
+[Modular embeds](../embedding/modular-embedding.md) that use SSO can render custom visualizations when you allowlist them with the `allowedCustomVisualizations` setting, both with web components and with the [React SDK](../embedding/sdk/introduction.md). See [Custom visualizations in embeds](../embedding/custom-visualizations.md).
 
-Other embedding types don't render custom visualizations. In [modular embedding](../embedding/modular-embedding.md) with web components and [public links](../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
+[Full app embedding](../embedding/full-app-embedding.md) renders every custom visualization the Metabase has enabled, with no allowlist to set up.
+
+Embeds without an authenticated person don't render custom visualizations. In [guest embeds](../embedding/guest-embedding.md).
 
 ### Custom visualizations don't render in exports and subscriptions
 

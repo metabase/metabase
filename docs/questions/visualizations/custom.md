@@ -55,11 +55,13 @@ Custom visualizations behave like built-in charts in most places:
 - **Dark mode.** Custom visualizations that use Metabase's colors adapt to [dark mode](../../people-and-groups/account-settings.md#theme) automatically.
 - **Icons.** A custom visualization shows its own icon in the visualization picker, and questions that use it show that icon in collections and bookmarks.
 
-### Custom visualizations in embeds only work when using the SDK
+### Custom visualizations in embeds only work when people log in
 
-The [Modular embedding SDK](../../embedding/sdk/introduction.md) can render custom visualizations. You allowlist the custom visualizations you want to load with the [`allowedCustomVisualizations` prop](../../embedding/sdk/config.md#custom-visualizations) on `MetabaseProvider`.
+[Modular embeds](../../embedding/modular-embedding.md) that use SSO can render custom visualizations, whether you embed with web components or with the [React SDK](../../embedding/sdk/introduction.md). You allowlist the custom visualizations you want to load with the `allowedCustomVisualizations` setting. See [Custom visualizations in embeds](../../embedding/custom-visualizations.md).
 
-Other embedding types don't render custom visualizations. In [modular embedding](../../embedding/modular-embedding.md) with web components, [guest and static embeds](../../embedding/introduction.md), and [public links](../../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
+[Full app embedding](../../embedding/full-app-embedding.md) renders every custom visualization you've enabled, with no allowlist to set up.
+
+Embeds without an authenticated person don't render custom visualizations. In [guest and static embeds](../../embedding/introduction.md) and [public links](../../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
 
 ## Managing custom visualizations
 

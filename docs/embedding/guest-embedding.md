@@ -533,6 +533,7 @@ Guest embeds can't take advantage of:
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
 - [AI chat](./sdk/ai-chat.md)
+- [Custom visualizations](./custom-visualizations.md)
 
 For those features, check out [Modular embedding with SSO](./modular-embedding.md).
 
