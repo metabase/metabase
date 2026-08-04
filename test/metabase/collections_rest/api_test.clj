@@ -400,6 +400,98 @@
                           (map #(select-keys % [:name]))
                           (into #{})))))))))))
 
+;;; ---------------------------------------- GET /collection/tree?lazy=true ------------------------------------------
+
+(defn- lazy-tree-view
+  "Keeps just `:name`, `:has_children` and `:children` of the collections we care about, so the assertions below read
+  as the shape of the tree."
+  [ids-to-keep collections]
+  (vec (for [collection collections
+             :when      (contains? (set ids-to-keep) (:id collection))]
+         (cond-> (select-keys collection [:name :has_children])
+           (some? (:children collection))
+           (assoc :children (lazy-tree-view ids-to-keep (:children collection)))))))
+
+(deftest collection-tree-lazy-under-budget-test
+  (testing "GET /api/collection/tree?lazy=true returns the whole tree when the instance fits in the budget"
+    (with-collection-hierarchy! [a b c d e f g]
+      (let [ids      (map :id [a b c d e f g])
+            response (mt/user-http-request :rasta :get 200 "collection/tree" :lazy true)]
+        (testing "every level is present, and has_children mirrors children"
+          (is (= [{:name         "A"
+                   :has_children true
+                   :children     [{:name "B", :has_children false, :children []}
+                                  {:name         "C"
+                                   :has_children true
+                                   :children     [{:name         "D"
+                                                   :has_children true
+                                                   :children     [{:name "E", :has_children false, :children []}]}
+                                                  {:name         "F"
+                                                   :has_children true
+                                                   :children     [{:name "G", :has_children false, :children []}]}]}]}]
+                 (lazy-tree-view ids response))))))))
+
+(deftest collection-tree-lazy-over-budget-test
+  (testing "GET /api/collection/tree?lazy=true returns only the root level once the instance exceeds the budget"
+    (with-collection-hierarchy! [a b c d e f g]
+      (with-redefs [api.collection/lazy-tree-collection-budget 1]
+        (let [ids      (map :id [a b c d e f g])
+              response (mt/user-http-request :rasta :get 200 "collection/tree" :lazy true)]
+          (testing "only A comes back, flagged as expandable but with its children unread"
+            (is (= [{:name "A", :has_children true}]
+                   (lazy-tree-view ids response))))
+          (testing "children is null rather than empty, so the FE can tell unread from childless"
+            (is (nil? (:children (first (filter #(= (:id %) (:id a)) response)))))))))))
+
+(deftest collection-tree-lazy-expand-to-test
+  (testing "GET /api/collection/tree?lazy=true&expand-to= reveals the whole ancestor path in one request"
+    (with-collection-hierarchy! [a b c d e f g]
+      (with-redefs [api.collection/lazy-tree-collection-budget 1]
+        (let [ids      (map :id [a b c d e f g])
+              response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                             :lazy true :expand-to (:id d))]
+          (testing "A > C > D are expanded, D's children are read, and the siblings are not"
+            (is (= [{:name         "A"
+                     :has_children true
+                     :children     [{:name "B", :has_children false}
+                                    {:name         "C"
+                                     :has_children true
+                                     :children     [{:name         "D"
+                                                     :has_children true
+                                                     :children     [{:name "E", :has_children false}]}
+                                                    {:name "F", :has_children true}]}]}]
+                   (lazy-tree-view ids response)))))))))
+
+(deftest collection-tree-lazy-collection-id-test
+  (testing "GET /api/collection/tree?lazy=true&collection-id= returns one node's direct children"
+    (with-collection-hierarchy! [a b c d e f g]
+      (let [ids      (map :id [a b c d e f g])
+            response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                           :lazy true :collection-id (:id c))]
+        (is (= [{:name "D", :has_children true}
+                {:name "F", :has_children true}]
+               (lazy-tree-view ids response)))))))
+
+(deftest collection-tree-lazy-permissions-test
+  (testing "GET /api/collection/tree?lazy=true never reveals a collection the user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection visible {:name "Visible"}
+                     :model/Collection hidden  {:name "Hidden"}
+                     :model/Collection _child  {:name     "Hidden Child"
+                                                :location (collection/children-location hidden)}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) visible)
+        (let [ids (map :id [visible hidden])]
+          (testing "the unreadable collection is absent from the root level"
+            (is (= [{:name "Visible", :has_children false, :children []}]
+                   (lazy-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :lazy true)))))
+          (testing "asking for its children directly is a 403"
+            (mt/user-http-request :rasta :get 403 "collection/tree"
+                                  :lazy true :collection-id (:id hidden))))))))
+
+(deftest collection-tree-lazy-rejects-shallow-test
+  (testing "GET /api/collection/tree rejects lazy and shallow together, they mean different response shapes"
+    (mt/user-http-request :rasta :get 400 "collection/tree" :lazy true :shallow true)))
+
 (deftest collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
     (testing "Excludes other user collections"
