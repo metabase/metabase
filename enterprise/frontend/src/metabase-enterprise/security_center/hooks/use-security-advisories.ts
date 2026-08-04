@@ -2,7 +2,7 @@ import {
   useAcknowledgeAdvisoriesMutation,
   useAcknowledgeAdvisoryMutation,
   useListSecurityAdvisoriesQuery,
-} from "metabase/api";
+} from "../api";
 
 const POLLING_INTERVAL = 2000;
 

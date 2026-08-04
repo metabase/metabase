@@ -35,7 +35,6 @@ export * from "./pulse";
 export * from "./retry-dropped-refetch";
 export * from "./revision";
 export * from "./search";
-export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./setup";

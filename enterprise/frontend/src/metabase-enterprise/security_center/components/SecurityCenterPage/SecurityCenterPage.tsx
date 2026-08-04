@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
-import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -20,6 +19,7 @@ import {
 } from "metabase/ui";
 
 import { trackSecurityCenterPageViewed } from "../../analytics";
+import { useSyncSecurityAdvisoriesMutation } from "../../api";
 import {
   NotificationConfigProvider,
   useNotificationConfigState,
