@@ -17,10 +17,7 @@ import CS from "metabase/css/core/index.css";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
-import {
-  getDocsUrl,
-  getIsPaidPlan,
-} from "metabase/selectors/settings";
+import { getDocsUrl, getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
