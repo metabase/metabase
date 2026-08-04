@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { DatabaseSchema } from "metabase/schema";
 import type { DatabaseData } from "metabase-types/api";

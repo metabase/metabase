@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
@@ -16,6 +15,7 @@ import {
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
+import { updateMetadata } from "./utils/hydrate-metadata-store";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 interface IgnorableError {

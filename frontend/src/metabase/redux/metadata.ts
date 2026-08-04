@@ -1,7 +1,7 @@
-import { type Schema, normalize } from "normalizr";
 import _ from "underscore";
 
 import { databaseApi, fieldApi, segmentApi, tableApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import { fetchRevisions } from "metabase/redux/revisions";
@@ -17,17 +17,6 @@ import type {
   SegmentId,
   Table,
 } from "metabase-types/api";
-
-const UPDATE = "metabase/entities/UPDATE";
-
-// Normalizes an entity (or list) and dispatches it into `state.entities`.
-// Handled by the per-slice reducers in `metabase/redux/entities` — see
-// `makeSliceReducer` there, which merges `payload.entities.<name>` into the
-// matching `state.entities.<name>` slice so `getMetadata` picks up the change.
-export function updateMetadata(data: unknown, schema: Schema) {
-  const payload = normalize(data, schema);
-  return { type: UPDATE, payload };
-}
 
 export const fetchSegments =
   () =>

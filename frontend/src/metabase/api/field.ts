@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import type {
   CreateFieldDimensionRequest,
@@ -26,6 +25,7 @@ import {
   provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
+import { updateMetadata } from "./utils/hydrate-metadata-store";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const fieldApi = Api.injectEndpoints({

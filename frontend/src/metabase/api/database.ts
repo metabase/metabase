@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import {
   DatabaseSchema,
   FieldSchema,
@@ -43,6 +42,7 @@ import {
   provideDatabaseTags,
   tag,
 } from "./tags";
+import { updateMetadata } from "./utils/hydrate-metadata-store";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 /**

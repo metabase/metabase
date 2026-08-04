@@ -1,10 +1,10 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { databaseApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
-import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { navigate } from "metabase/router";
 import { DatabaseSchema } from "metabase/schema";

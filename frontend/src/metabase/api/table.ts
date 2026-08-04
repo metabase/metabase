@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
   BulkTableRequest,
@@ -30,6 +29,7 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
+import { updateMetadata } from "./utils/hydrate-metadata-store";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const tableApi = Api.injectEndpoints({

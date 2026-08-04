@@ -1,8 +1,17 @@
-import type { Schema } from "normalizr";
-
-import { updateMetadata } from "metabase/redux/metadata";
+import { type Schema, normalize } from "normalizr";
 
 import { handleQueryFulfilled } from "./lifecycle";
+
+const UPDATE = "metabase/entities/UPDATE";
+
+// Normalizes an entity (or list) and dispatches it into `state.entities`.
+// Handled by the per-slice reducers in `metabase/redux/entities` — see
+// `makeSliceReducer` there, which merges `payload.entities.<name>` into the
+// matching `state.entities.<name>` slice so `getMetadata` picks up the change.
+export function updateMetadata(data: unknown, schema: Schema) {
+  const payload = normalize(data, schema);
+  return { type: UPDATE, payload };
+}
 
 /**
  * `onQueryStarted` helper that mirrors an RTK Query response into the
