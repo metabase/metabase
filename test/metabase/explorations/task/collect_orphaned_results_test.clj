@@ -3,10 +3,21 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.explorations.task.collect-orphaned-results :as collect]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- venues-count-query
+  "A valid metric query. These rows are inserted raw (no `with-temp` cleanup) and so outlive the test,
+  and `metabase.health-inspector` scores every non-archived card in the app DB against the query
+  schema — an invalid `dataset_query` here would drag that score down for the whole run."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                           (lib/aggregate (lib/count))))))
 
 (defn- blob!
   "A `stored_result`, back-dated past the sweep's grace period unless `:fresh?`."
@@ -31,7 +42,7 @@
   (let [creator (mt/user->id :lucky)
         card    (t2/insert-returning-pk! :model/Card
                                          {:name "m" :type :metric :creator_id creator
-                                          :database_id (mt/id) :dataset_query {}
+                                          :database_id (mt/id) :dataset_query (venues-count-query)
                                           :display "table" :visualization_settings {}})
         expl    (t2/insert-returning-pk! :model/Exploration {:name "sweep" :creator_id creator})
         thread  (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
