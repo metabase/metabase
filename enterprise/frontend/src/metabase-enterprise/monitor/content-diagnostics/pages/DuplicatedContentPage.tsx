@@ -30,8 +30,14 @@ export function DuplicatedContentPage() {
     key: "duplicated",
   });
 
+  // Saved filters only seed a visit that asked for nothing; once the URL has been canonicalized
+  // it is the sole source of truth, or stripping a default out of it would restore them again.
+  const shouldRestoreLastUsedParamsRef = useRef(
+    isEmptyDuplicatedParams(location),
+  );
+
   const params = useMemo(() => {
-    return isEmptyDuplicatedParams(location)
+    return shouldRestoreLastUsedParamsRef.current
       ? parseDuplicatedUserParams(rawLastUsedParams)
       : parseDuplicatedUrlParams(location);
   }, [location, rawLastUsedParams]);
@@ -51,6 +57,7 @@ export function DuplicatedContentPage() {
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
+      shouldRestoreLastUsedParamsRef.current = false;
       dispatch(
         replace(
           Urls.duplicatedContent(getDuplicatedParamsWithoutDefaults(params)),

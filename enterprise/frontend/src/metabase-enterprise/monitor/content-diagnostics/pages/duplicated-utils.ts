@@ -7,8 +7,6 @@ import {
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
-import { getDuplicatedParamsWithoutDefaults } from "../components/duplicated-utils";
-
 export function parseDuplicatedUrlParams(
   location: Location,
 ): Urls.DuplicatedContentParams {
@@ -68,8 +66,20 @@ export function parseDuplicatedUserParams(
   };
 }
 
+const DUPLICATED_URL_PARAM_KEYS = [
+  "page",
+  "query",
+  "entity-types",
+  "include-personal-collections",
+  "min-duplicate-count",
+  "sort-column",
+  "sort-direction",
+] as const;
+
+/**
+ * Whether the URL asked for nothing at all. Explicitly passed default values still count as a
+ * request, so a shared "reset to defaults" link wins over the visitor's own saved filters.
+ */
 export function isEmptyDuplicatedParams(location: Location): boolean {
-  return Object.values(
-    getDuplicatedParamsWithoutDefaults(parseDuplicatedUrlParams(location)),
-  ).every((value) => value == null);
+  return DUPLICATED_URL_PARAM_KEYS.every((key) => location.query[key] == null);
 }

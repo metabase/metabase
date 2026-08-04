@@ -104,9 +104,8 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
   const name = getDuplicateEntityName(entity);
   const typeLabel = getEntityTypeLabel(entity);
   // Duplicates share a name by definition, so the name alone cannot tell the links apart.
-  const linkLabel = c(
-    "{0} is an item name, {1} is its type, e.g. “Revenue, Question”",
-  ).t`${name}, ${typeLabel}`;
+  // Both halves are already localized; ttag can't own the joining punctuation on its own.
+  const linkLabel = `${name}, ${typeLabel}`;
 
   return (
     <Group

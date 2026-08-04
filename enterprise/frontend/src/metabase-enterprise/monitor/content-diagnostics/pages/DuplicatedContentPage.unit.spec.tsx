@@ -513,4 +513,22 @@ describe("DuplicatedContentPage", () => {
       "5",
     );
   });
+
+  it("lets an explicit default-valued URL win over the last-used filter", async () => {
+    const { history } = setup({
+      findings: FINDINGS,
+      urlParams: { page: 0, includePersonalCollections: true },
+      lastUsedParams: { min_duplicate_count: 5 },
+    });
+
+    await waitForListToLoad();
+
+    expect(
+      getLastRequestUrl().searchParams.get("min-duplicate-count"),
+    ).toBeNull();
+    expect(
+      getLastRequestUrl().searchParams.get("include-personal-collections"),
+    ).toBe("true");
+    expect(history?.getCurrentLocation().query).toEqual({});
+  });
 });

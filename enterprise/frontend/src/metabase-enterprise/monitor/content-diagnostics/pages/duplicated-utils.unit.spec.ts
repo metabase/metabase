@@ -62,7 +62,14 @@ describe("parseDuplicatedUrlParams", () => {
 });
 
 describe("isEmptyDuplicatedParams", () => {
-  it("treats default params as empty", () => {
+  it("returns true when the URL carries no recognized params", () => {
+    expect(isEmptyDuplicatedParams(createLocation({}))).toBe(true);
+    expect(isEmptyDuplicatedParams(createLocation({ unrelated: "1" }))).toBe(
+      true,
+    );
+  });
+
+  it("returns false when the URL explicitly asks for default values", () => {
     expect(
       isEmptyDuplicatedParams(
         createLocation({
@@ -79,7 +86,7 @@ describe("isEmptyDuplicatedParams", () => {
           "include-personal-collections": "true",
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("returns false for non-default params", () => {
