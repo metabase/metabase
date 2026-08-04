@@ -781,10 +781,28 @@
       (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
 
 (deftest warehouse-allowed-networks-default-test
-  (testing "with nothing configured, all networks are allowed"
+  (testing "self-hosted, with nothing configured, all networks are allowed"
+    ;; a self-hosted warehouse on a private network is the normal case, not an attack
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
-      (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
-      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))))
+      (mt/with-premium-features #{}
+        (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+  (testing "hosted, with nothing configured, only public addresses are allowed"
+    ;; on Metabase Cloud a warehouse is always reached across the public internet, so anything else is somebody
+    ;; reaching for our own infrastructure
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (mt/with-premium-features #{:hosting}
+        (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "8.8.8.8"}))))))
+  (testing "an explicit setting is honored on Cloud too, in either direction"
+    (mt/with-premium-features #{:hosting}
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+        (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+        (is (= :allow-private (driver.settings/warehouse-allowed-networks))))))
   (testing "an explicit setting overrides the default"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))

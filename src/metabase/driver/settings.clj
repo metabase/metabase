@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
@@ -14,12 +15,21 @@
                      "Options:\n"
                      "- external-only (only globally routable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
-                     "- allow-all (default - no restrictions).\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
                      "Also covers the SSH tunnel host and the database auth-provider URLs."))
   :type       :keyword
   :visibility :internal
-  :default    :allow-all
   :export?    false
+  ;; No `:default`, because it depends on where we are running. On Cloud a warehouse is always reached across the
+  ;; public internet, so an internal address is somebody reaching for our own infrastructure rather than their
+  ;; database. Self-hosted, a warehouse on a private network is the ordinary case, and defaulting to anything
+  ;; stricter would break working instances on upgrade.
+  :getter     (fn []
+                (or (setting/get-value-of-type :keyword :warehouse-allowed-networks)
+                    (if (premium-features/is-hosted?)
+                      :external-only
+                      :allow-all)))
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
