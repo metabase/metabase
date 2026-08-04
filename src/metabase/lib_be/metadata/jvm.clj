@@ -514,7 +514,7 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id :- ::lib.schema.id/database
+  [database-id                                                                                                             :- ::lib.schema.id/database
    {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
