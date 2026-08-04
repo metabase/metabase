@@ -50,6 +50,11 @@ import {
 } from "./CollectionContent.styled";
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 
+const shouldDebounceSearchText = (
+  _lastSearchText: string,
+  nextSearchText: string,
+) => nextSearchText.trim().length > 0;
+
 const getDefaultSortingOptions = (
   collection: Collection | undefined,
 ): SortingOptions<ListCollectionItemsSortColumn> => {
@@ -138,12 +143,15 @@ export const CollectionItemsTable = ({
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
 }: CollectionItemsTableProps) => {
-  const [searchText, setSearchText] = useState("");
+  const [search, setSearch] = useState({ collectionId, value: "" });
+  const searchText = search.collectionId === collectionId ? search.value : "";
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
+    shouldDebounceSearchText,
   );
-  const trimmedSearchText = debouncedSearchText.trim();
+  const trimmedSearchText =
+    searchText.trim().length > 0 ? debouncedSearchText.trim() : "";
 
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState<
     SortingOptions<ListCollectionItemsSortColumn>
@@ -153,18 +161,16 @@ export const CollectionItemsTable = ({
     usePagination();
 
   useEffect(() => {
-    if (collectionId) {
-      resetPage();
-      setSearchText("");
-    }
+    resetPage();
+    setSearch({ collectionId, value: "" });
   }, [collectionId, resetPage]);
 
   const handleSearchTextChange = useCallback(
     (value: string) => {
-      setSearchText(value);
+      setSearch({ collectionId, value });
       setPage(0);
     },
-    [setPage],
+    [collectionId, setPage],
   );
 
   const handleUnpinnedItemsSortingChange = useCallback(
