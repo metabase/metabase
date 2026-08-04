@@ -26,7 +26,6 @@ import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
-import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
@@ -64,6 +63,7 @@ import {
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
+import { getFont } from "metabase/whitelabel";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

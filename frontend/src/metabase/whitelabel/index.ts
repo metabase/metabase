@@ -8,6 +8,8 @@
 export {
   getApplicationName,
   getCanWhitelabel,
+  getFont,
+  getFontFiles,
   getIsWhiteLabeling,
   getLandingPageIllustration,
   getLoginPageIllustration,

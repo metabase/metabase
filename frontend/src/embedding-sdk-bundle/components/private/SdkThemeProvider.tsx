@@ -12,11 +12,11 @@ import {
 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getFont } from "metabase/whitelabel";
 
 interface Props {
   theme?: MetabaseEmbeddingTheme;

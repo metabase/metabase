@@ -12,10 +12,10 @@ import {
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { getColorShades } from "metabase/ui/utils/colors";
+import { getFont } from "metabase/whitelabel";
 
 /**
  * Returns the Mantine theme override for modular embedding.
