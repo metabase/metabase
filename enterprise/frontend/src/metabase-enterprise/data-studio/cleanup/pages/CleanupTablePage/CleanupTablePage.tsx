@@ -332,7 +332,6 @@ export function CleanupTablePage() {
                       value === "segment"
                         ? value
                         : undefined,
-                    page: undefined,
                     candidateId: undefined,
                   })
                 }

@@ -9,12 +9,8 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
-  UsageMetadataCandidateSort,
   UsageMetadataCandidateType,
   UsageMetadataCleanupQueue,
-  UsageMetadataModelingStatus,
-  UsageMetadataSignal,
-  UsageMetadataSortDirection,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -112,59 +108,29 @@ export function dataStudioLibrary({
 }
 
 export type DataStudioCleanupParams = {
-  page?: number;
   search?: string;
   databaseId?: DatabaseId;
-  schema?: string;
   candidateType?: UsageMetadataCandidateType;
-  modelingStatus?: UsageMetadataModelingStatus;
-  signal?: UsageMetadataSignal;
-  sort?: UsageMetadataCandidateSort;
-  direction?: UsageMetadataSortDirection;
   queue?: UsageMetadataCleanupQueue;
   candidateId?: number;
 };
 
 function getCleanupQueryString({
-  page,
   search,
   databaseId,
-  schema,
   candidateType,
-  modelingStatus,
-  signal,
-  sort,
-  direction,
   queue,
   candidateId,
 }: DataStudioCleanupParams = {}) {
   const params = new URLSearchParams();
-  if (page != null && page > 0) {
-    params.set("page", String(page));
-  }
   if (search) {
     params.set("search", search);
   }
   if (databaseId != null) {
     params.set("database", String(databaseId));
   }
-  if (schema) {
-    params.set("schema", schema);
-  }
   if (candidateType) {
     params.set("type", candidateType);
-  }
-  if (modelingStatus) {
-    params.set("status", modelingStatus);
-  }
-  if (signal) {
-    params.set("signal", signal);
-  }
-  if (sort && sort !== "priority") {
-    params.set("sort", sort);
-  }
-  if (direction && direction !== "asc") {
-    params.set("direction", direction);
   }
   if (queue && queue !== "suggested") {
     params.set("queue", queue);

@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: v64.um-candidate-run
-      author: codex
+      author: retro
       comment: Create usage metadata candidate refresh runs
       changes:
         - createTable:
@@ -23,7 +23,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate
-      author: codex
+      author: retro
       comment: Create materialized usage metadata candidates
       changes:
         - createTable:
@@ -48,6 +48,7 @@ databaseChangeLog:
               - column: {name: definition, type: "${text.type}", remarks: JSON creation-ready MBQL definition, constraints: {nullable: false}}
               - column: {name: semantic_details, type: "${text.type}", remarks: JSON type-specific recommendation details, constraints: {nullable: false}}
               - column: {name: suggested_name, type: varchar(254), remarks: Deterministically suggested name, constraints: {nullable: false}}
+              - column: {name: display_name, type: varchar(254), remarks: Cluster-aware deterministic display name, constraints: {nullable: false}}
               - column: {name: suggested_description, type: "${text.type}", remarks: Deterministically suggested description, constraints: {nullable: false}}
               - column: {name: modeling_status, type: varchar(32), remarks: Missing partially modeled or modeled, constraints: {nullable: false}}
               - column: {name: verified_source_count, type: int, remarks: Distinct verified source cards, constraints: {nullable: false}}
@@ -56,12 +57,16 @@ databaseChangeLog:
               - column: {name: distinct_source_count, type: int, remarks: Distinct source cards, constraints: {nullable: false}}
               - column: {name: total_view_count, type: int, remarks: Sum of source card views, constraints: {nullable: false}}
               - column: {name: complexity, type: int, remarks: Predicate or condition atom count, constraints: {nullable: false}}
+              - column: {name: family_key, type: char(64), remarks: Signature hash of the recommendation-family root, constraints: {nullable: false}}
+              - column: {name: family_order, type: int, remarks: Global family order within the snapshot, constraints: {nullable: false}}
+              - column: {name: family_position, type: int, remarks: Depth-first position inside the recommendation family, constraints: {nullable: false}}
+              - column: {name: family_depth, type: int, remarks: Primary subset-parent depth inside the family, constraints: {nullable: false}}
 
   # These indexes precede constraints that can replace MySQL's automatically generated foreign-key indexes. They are
   # intentionally retained during partial rollback and marked as already applied when migrations run forward again.
   - changeSet:
       id: v64.um-candidate-run-index
-      author: codex
+      author: retro
       comment: Index candidate refresh ownership and cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -79,7 +84,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-table-index
-      author: codex
+      author: retro
       comment: Index candidate table ownership and cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -97,17 +102,17 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-unique
-      author: codex
+      author: retro
       comment: Enforce one semantic candidate per refresh and table
       changes:
         - addUniqueConstraint:
             tableName: usage_metadata_candidate
-            columnNames: run_id, candidate_type, table_id, signature_hash
+            columnNames: run_id, candidate_type, table_id, signature_version, signature_hash
             constraintName: uq_um_candidate_run_signature
 
   - changeSet:
       id: v64.um-candidate-index
-      author: codex
+      author: retro
       comment: Index candidate list filtering
       changes:
         - createIndex:
@@ -120,8 +125,21 @@ databaseChangeLog:
               - column: {name: modeling_status}
 
   - changeSet:
+      id: v64.um-candidate-families-index
+      author: retro
+      comment: Index deterministic recommendation-family ordering
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_family_order
+            columns:
+              - column: {name: run_id}
+              - column: {name: family_order}
+              - column: {name: family_position}
+
+  - changeSet:
       id: v64.um-candidate-source
-      author: codex
+      author: retro
       comment: Create candidate source provenance
       changes:
         - createTable:
@@ -151,7 +169,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-source-candidate-index
-      author: codex
+      author: retro
       comment: Index candidate source ownership and cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -169,7 +187,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-source-card-index
-      author: codex
+      author: retro
       comment: Index candidate source Card cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -187,7 +205,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-source-unique
-      author: codex
+      author: retro
       comment: Count each source Card once per semantic candidate
       changes:
         - addUniqueConstraint:
@@ -197,7 +215,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-match
-      author: codex
+      author: retro
       comment: Create candidate Library reconciliation matches
       changes:
         - createTable:
@@ -224,7 +242,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-match-index
-      author: codex
+      author: retro
       comment: Index candidate reconciliation lookup and cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -242,7 +260,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-match-measure-index
-      author: codex
+      author: retro
       comment: Index candidate match Measure cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -260,7 +278,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-match-segment-index
-      author: codex
+      author: retro
       comment: Index candidate match Segment cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -277,8 +295,47 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
+      id: v64.um-candidate-match-measure-unique
+      author: retro
+      comment: Keep one Measure relationship per usage metadata candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            columnNames: candidate_id, relation, measure_id
+            constraintName: uq_um_candidate_match_measure
+
+  - changeSet:
+      id: v64.um-candidate-match-segment-unique
+      author: retro
+      comment: Keep one Segment relationship per usage metadata candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            columnNames: candidate_id, relation, segment_id
+            constraintName: uq_um_candidate_match_segment
+
+  - changeSet:
+      id: v64.um-candidate-match-one-entity
+      author: retro
+      comment: Require each candidate relationship to target exactly one Library entity
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE usage_metadata_candidate_match
+              ADD CONSTRAINT ck_um_candidate_match_one_entity
+              CHECK (
+                (measure_id IS NULL AND segment_id IS NOT NULL)
+                OR (measure_id IS NOT NULL AND segment_id IS NULL)
+              )
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE usage_metadata_candidate_match
+              DROP CONSTRAINT ck_um_candidate_match_one_entity
+
+  - changeSet:
       id: v64.um-candidate-dismissal
-      author: codex
+      author: retro
       comment: Create durable global candidate dismissals
       changes:
         - createTable:
@@ -302,7 +359,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-dismissal-table-index
-      author: codex
+      author: retro
       comment: Index candidate dismissal table ownership and cascade deletes
       preConditions:
         - onFail: MARK_RAN
@@ -320,7 +377,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-dismissal-unique
-      author: codex
+      author: retro
       comment: Keep one global dismissal per semantic candidate
       changes:
         - addUniqueConstraint:

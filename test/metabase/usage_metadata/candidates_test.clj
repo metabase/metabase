@@ -45,7 +45,12 @@
    :definition             {:lib/type :mbql/query}
    :semantic_details       {:atom-count 1}
    :suggested_name         "Recent orders"
+   :display_name           "Recent orders"
    :suggested_description  "Recent orders on Orders"
+   :family_key             (apply str (repeat 64 "a"))
+   :family_order           0
+   :family_position        0
+   :family_depth           0
    :modeling_status        :missing
    :verified_source_count  1
    :official_source_count  0
