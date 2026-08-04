@@ -559,3 +559,22 @@
       (testing "without the feature, it must not"
         (mt/with-premium-features #{}
           (is (false? (#'dependencies.backfill/has-pending-retries?))))))))
+
+(deftest ^:sequential backfill-records-failure-for-never-processed-entity-test
+  (testing "An entity with no dependency_status row yet must still get a failure recorded when it fails. Such entities
+           are explicitly selected for processing (instances-for-dependency-calculation matches a null status row), so
+           on a first backfill every entity is in this state -- exactly the population most likely to fail on a large
+           instance. record-failure! only updated an existing row, so nothing was recorded and the next run selected
+           the identical batch: the crash loop, unbroken for the entities most likely to cause it."
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
+            "test setup: the card must have no status row, which is what makes it eligible")
+        (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
+          (backfill-dependencies-single-trigger!))
+        (testing "the failure is recorded, so the entity backs off instead of being reselected unchanged"
+          (let [{:keys [fail_count next_retry_at]}
+                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
+            (is (= 1 fail_count))
+            (is (some? next_retry_at))))))))
