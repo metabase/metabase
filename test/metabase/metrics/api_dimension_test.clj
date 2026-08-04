@@ -643,6 +643,7 @@
                 "correspond to a live dimension.")
     (pre-curation-metric!
      (fn [metric-id]
+       (prn (t2/query-one ["SELECT dimensions FROM report_card WHERE id = ?" metric-id]))
        (let [cat-field (mt/id :products :category)   ; reachable from ORDERS only via the implicit FK join
              dims      (:dimensions (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id)))
              groups    (into #{} (comp (map :group)
