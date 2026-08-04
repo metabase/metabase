@@ -7,6 +7,7 @@ import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  Collection,
   CollectionNamespace,
   Database,
   DatabaseId,
@@ -263,13 +264,15 @@ export const isMbqlQuery = (
 
 export const getRootCollectionItem = ({
   namespace,
+  rootCollection,
 }: {
   namespace: CollectionNamespace;
+  rootCollection: Collection | undefined;
 }): OmniPickerCollectionItem | null => {
   if (namespace === "transforms") {
     return {
       model: "collection",
-      id: "root",
+      id: rootCollection?.id ?? "root",
       namespace: "transforms",
       location: "/",
       name: t`Transforms`,

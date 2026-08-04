@@ -1,6 +1,8 @@
 (ns metabase.transforms.crud-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.collections.core :as collections]
    [metabase.test :as mt]
    [metabase.transforms.crud :as transforms.crud]))
 
@@ -50,3 +52,31 @@
            (validates?! (lookback-transform num-field {:value 4 :unit "day"})))))
     (testing "no configured lookback is a no-op"
       (is (validates?! (lookback-transform dt-field nil))))))
+
+(deftest root-collection-is-the-real-transforms-collection-test
+  (mt/with-premium-features #{:transforms-basic :hosting}
+    (testing "GET /api/collection/root?namespace=transforms returns the real root collection"
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (doseq [user [:crowberto :lucky]]
+          (testing (str "as " user)
+            (let [response (mt/user-http-request user :get 200 "collection/root" :namespace "transforms")]
+              (is (= (collections/transforms-root-collection-id) (:id response)))
+              (is (true? (:is_root response))))))
+        (testing "a user who is neither an admin nor a data analyst cannot see it"
+          (mt/user-http-request :rasta :get 403 "collection/root" :namespace "transforms"))))))
+
+(deftest root-collection-listing-visibility-test
+  (mt/with-premium-features #{:transforms-basic :hosting}
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (let [root-id (collections/transforms-root-collection-id)]
+        (testing "the tree carries the root so the frontend can recognize it by :is_root"
+          (let [root (->> (mt/user-http-request :lucky :get 200 "collection/tree" :namespace "transforms")
+                          (m/find-first (comp #{root-id} :id)))]
+            (is (some? root))
+            (is (true? (:is_root root)))))
+        (testing "but it is not listed as a child of itself"
+          (is (not (contains? (into #{} (map :id)
+                                    (:data (mt/user-http-request :lucky :get 200 "collection/root/items"
+                                                                 :namespace "transforms"
+                                                                 :models "collection")))
+                              root-id))))))))
