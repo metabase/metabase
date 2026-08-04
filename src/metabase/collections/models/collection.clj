@@ -2080,6 +2080,7 @@
        [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
      [:or [:= (maybe-alias :namespace) nil]
       [:not= (maybe-alias :namespace) [:inline "analytics"]]]
+     [:not (maybe-alias :is_root)]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]

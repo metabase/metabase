@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.collections.core :as collections]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -99,7 +100,9 @@
                   (is (= lucky-id (:owner_user_id response))))
                 (testing "Response hydrates owner"
                   (is (map? (:owner response)))
-                  (is (= lucky-id (get-in response [:owner :id]))))))))))))
+                  (is (= lucky-id (get-in response [:owner :id]))))
+                (testing "A transform created without a collection lands in the Transforms root"
+                  (is (= (collections/transforms-root-collection-id) (:collection_id response))))))))))))
 
 (deftest update-transform-without-schema-test
   (testing "Updating a transform to clear its schema is rejected on schemas-supporting databases"
@@ -1356,6 +1359,38 @@
 ;;; ------------------------------------------------------------
 ;;; Collection Items Integration Tests
 ;;; ------------------------------------------------------------
+
+(deftest move-transform-to-root-collection-test
+  (testing "PUT /api/transform/:id with a nil collection_id moves the transform to the Transforms root"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-temp [:model/Collection {collection-id :id} {:name      "Transforms Collection"
+                                                                :namespace :transforms}]
+            (with-transform-cleanup! [table-name "moved_products"]
+              (let [created (mt/user-http-request :crowberto :post 200 "transform"
+                                                  {:name          "Moved Products"
+                                                   :collection_id collection-id
+                                                   :source        {:type  "query"
+                                                                   :query (make-query "Gadget")}
+                                                   :target        {:type   "table"
+                                                                   :schema (get-test-schema)
+                                                                   :name   table-name}})
+                    updated (mt/user-http-request :crowberto :put 200
+                                                  (format "transform/%d" (:id created))
+                                                  {:collection_id nil})]
+                (is (= collection-id (:collection_id created)))
+                (is (= (collections/transforms-root-collection-id)
+                       (:collection_id updated)))))))))))
+
+(deftest root-collection-items-include-transforms-test
+  (mt/with-premium-features #{:transforms-basic :hosting}
+    (testing "GET /api/collection/root/items?namespace=transforms lists transforms in the Transforms root"
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "Root Transform"}]
+        (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                                 :namespace "transforms"
+                                                 :models "transform"))]
+          (is (= [transform-id] (map :id items))))))))
 
 (deftest collection-items-include-transforms-test
   (mt/with-premium-features #{:transforms-basic :hosting}
