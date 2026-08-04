@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { documentEditorHost } from "metabase/documents/components/Editor/DocumentEditorHost";
 import { useExplorationClickActionsMode } from "metabase/explorations/hooks/useExplorationClickActionsMode";
+import { useExplorationCommentUrl } from "metabase/explorations/hooks/useExplorationCommentUrl";
 import {
   getCurrentExploration,
   getHighlightedForChildTarget,
@@ -10,11 +11,33 @@ import {
 } from "metabase/explorations/selectors";
 import type { CommentDrafts } from "metabase/explorations/types";
 import { useSelector } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
 import type { EditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { push } from "metabase/router";
+import * as Urls from "metabase/urls";
 import type { HighlightedObject } from "metabase/visualizations/types";
 import type { ExplorationQueryId, Series } from "metabase-types/api";
 
 import { resolveHighlightForSeries } from "../ExplorationVisualization/utils";
+
+// preserve the search params when navigating to CardEmbed's chart_href
+function navigateToCardFromExploration(url: string) {
+  return (dispatch: Dispatch) => {
+    const pathname = url.split("?")[0] ?? url;
+    const destination = Urls.isExplorationUrl(pathname)
+      ? Urls.explorationPathWithSearch(pathname, window.location.search)
+      : url;
+    dispatch(push(destination));
+  };
+}
+
+function useExplorationSummaryCommentUrl({
+  childTargetId,
+}: {
+  childTargetId: string | null;
+}) {
+  return useExplorationCommentUrl({ childTargetId, view: "summary" });
+}
 
 function useUnresolvedExplorationCommentsCount(
   childTargetId: string,
@@ -106,6 +129,8 @@ export const explorationEditorHost: EditorHost = {
     canUseMetabot: false,
     canOpenCardInQueryBuilder: false,
   },
+  navigateToCard: navigateToCardFromExploration,
+  useCommentUrl: useExplorationSummaryCommentUrl,
   useUnresolvedCommentsCount: useUnresolvedExplorationCommentsCount,
   useHighlighted: useExplorationHighlighted,
   useVisualizationMode: useExplorationVisualizationMode,

@@ -168,7 +168,9 @@ export function ExplorationSummary({
                   fw="bold"
                   fz="h3"
                   lh="h3"
-                  isDisabled={!canWrite || isSaving}
+                  // don't allow editing the title
+                  // if we want to allow editing the title, use `!canWrite || isSaving`
+                  isDisabled={true}
                   p={0}
                   flex={1}
                   maxLength={DOCUMENT_TITLE_MAX_LENGTH}
@@ -195,6 +197,7 @@ export function ExplorationSummary({
               </Group>
               <Box w="100%" maw="42.5rem" mx="auto">
                 <Editor
+                  placeholder={t`Document your research findings here. You can add interesting charts to this summary by clicking "Add to Summary" from the chart's page...`}
                   hostOverride={explorationEditorHost}
                   onEditorReady={setEditorInstance}
                   onCardEmbedsChange={updateCardEmbeds}
@@ -216,6 +219,7 @@ export function ExplorationSummary({
                 <ExplorationComments
                   explorationId={explorationId}
                   pageId={commentsChildTargetId}
+                  view="summary"
                   onClose={onCloseCommentsSidebar}
                   timelines={timelines}
                 />

@@ -1,6 +1,5 @@
 import { type ReactNode, useMemo } from "react";
 
-import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
   DEFAULT_EDITOR_CAPABILITIES,
   type EditorHost,
@@ -28,6 +27,7 @@ import {
   updateVizSettings,
 } from "../../documents.slice";
 import { useCardData } from "../../hooks/use-card-data";
+import { useDocumentCommentUrl } from "../../hooks/use-document-comment-url";
 import { useDraftCardOperations } from "../../hooks/use-draft-card-operations";
 import { useExternalCardDataLoader } from "../../hooks/use-external-card-data";
 import {
@@ -80,7 +80,7 @@ export const documentEditorHost: EditorHost = {
   navigateToCard: navigateToCardFromDocument,
   useCardData,
   useExternalCardDataLoader,
-  useCommentUrl,
+  useCommentUrl: useDocumentCommentUrl,
   useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
   useHighlighted: () => null,
   useVisualizationMode: () => DocumentMode,

@@ -1138,9 +1138,8 @@
   - `display` / `visualization_settings` are required FE-computed render settings (from
     `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.
 
-  All source EQs must belong to a thread of this exploration. When the Summary is still a
-  placeholder, its body is replaced with just this embed and `is_placeholder` is cleared;
-  otherwise the embed is appended."
+  All source EQs must belong to a thread of this exploration. Appending clears
+  `is_placeholder` when it was set."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [exploration_query_ids display visualization_settings]}
@@ -1168,8 +1167,7 @@
                          :host_data        {:query_ids exploration_query_ids}}]
         (documents/add-card-to-document!
          (:id doc) card-id nil
-         :extra-attrs extra-attrs
-         :replace? (:is_placeholder doc))))
+         :extra-attrs extra-attrs)))
     (document-summary (:id doc))))
 
 ;;; ----------------------------------------- routes -----------------------------------------

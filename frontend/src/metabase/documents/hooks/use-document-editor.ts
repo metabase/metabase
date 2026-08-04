@@ -39,6 +39,7 @@ import type {
 
 import {
   clearDraftCards,
+  resetDocuments,
   setCurrentDocument,
   setHasUnsavedChanges,
   setSidebarEmbedIndex,
@@ -153,10 +154,10 @@ export function useDocumentEditor({
     }
   }, [documentData, documentId, dispatch, isNewDocument]);
 
-  // This is important as it will affect collection breadcrumbs in the appbar
+  // Clear documents redux state on unmount (breadcrumbs, sidebar, drafts, etc.)
   useEffect(() => {
     return () => {
-      dispatch(setCurrentDocument(null));
+      dispatch(resetDocuments());
     };
   }, [dispatch]);
 

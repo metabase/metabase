@@ -185,18 +185,14 @@
   Optional kwargs:
   - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
     `:chart_href`, `:child_target_id`, `:host_data`).
-  - `:replace?` — when true, discard the existing body and insert the embed into an empty doc
-    (used when materialising the first chart into a placeholder Summary).
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a
   concurrent edit cannot be overwritten. Returns the updated document."
-  [document-id card-id position & {:keys [extra-attrs replace?]}]
+  [document-id card-id position & {:keys [extra-attrs]}]
   (t2/with-transaction [_conn]
     (let [document (api/check-404 (t2/select-one :model/Document :id document-id))
-          doc-for-insert (cond-> document
-                           replace? (assoc :document {:type "doc" :content []}))
-          updated  (prose-mirror/insert-card-embed doc-for-insert card-id position extra-attrs)
+          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
           updates  (cond-> (select-keys updated [:document])
                      (:is_placeholder document) (assoc :is_placeholder false))]
       (t2/update! :model/Document document-id updates)
@@ -313,9 +309,9 @@
                                          card-id-map))
                         name (assoc :name name)
                         (contains? body :collection_id) (assoc :collection_id collection_id)
-                        ;; First body/title save clears the auto-created Summary placeholder flag.
+                        ;; First body save clears the auto-created Summary placeholder flag.
                         (and (:is_placeholder existing-document)
-                             (or (contains? body :document) (contains? body :name)))
+                             (contains? body :document))
                         (assoc :is_placeholder false)))
           (when (seq pairings)
             (queries/carry-pairings-for-document! document-id pairings)))

@@ -22,7 +22,6 @@ import { CommentEditor } from "metabase/comments/components";
 import DiscussionS from "metabase/comments/components/Discussion/Discussion.module.css";
 import { DiscussionActionPanel } from "metabase/comments/components/Discussion/DiscussionActionPanel";
 import { DiscussionReactions } from "metabase/comments/components/Discussion/DiscussionReactions";
-import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
   formatCommentDate,
   getCommentNodeId,
@@ -32,6 +31,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
 import { setHighlightedComment } from "metabase/explorations/explorations.slice";
+import {
+  type ExplorationCommentView,
+  useExplorationCommentUrl,
+} from "metabase/explorations/hooks/useExplorationCommentUrl";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -61,6 +64,7 @@ import S from "./ExplorationComments.module.css";
 interface ExplorationCommentsProps {
   explorationId: ExplorationId;
   pageId: string;
+  view: ExplorationCommentView;
   context?: CommentContext;
   disableAutoFocus?: boolean;
   onClose: () => void;
@@ -76,6 +80,7 @@ const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
 export function ExplorationComments({
   explorationId,
   pageId,
+  view,
   context,
   disableAutoFocus = false,
   onClose,
@@ -220,6 +225,7 @@ export function ExplorationComments({
               key={comment.id}
               comment={comment}
               pageId={pageId}
+              view={view}
               timelines={timelines}
               onSelectTimelineId={onSelectTimelineId}
             />
@@ -241,6 +247,7 @@ export function ExplorationComments({
 interface ExplorationCommentProps {
   comment: Comment;
   pageId: string;
+  view: ExplorationCommentView;
   timelines: Timeline[];
   onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }
@@ -248,6 +255,7 @@ interface ExplorationCommentProps {
 function ExplorationComment({
   comment,
   pageId,
+  view,
   timelines,
   onSelectTimelineId,
 }: ExplorationCommentProps) {
@@ -257,7 +265,10 @@ function ExplorationComment({
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
   const [sendToast] = useToast();
-  const commentsUrl = useCommentUrl({ childTargetId: pageId });
+  const commentsUrl = useExplorationCommentUrl({
+    childTargetId: pageId,
+    view,
+  });
 
   const location = useLocation();
   const commentNodeId = getCommentNodeId(comment);

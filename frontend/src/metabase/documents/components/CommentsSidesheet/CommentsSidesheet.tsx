@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Comments } from "metabase/comments/components/Comments";
 import Animation from "metabase/css/core/animation.module.css";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
+import { useDocumentCommentUrl } from "metabase/documents/hooks/use-document-comment-url";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
@@ -49,6 +50,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           target_type: "document",
         }}
         childTargetId={childTargetId}
+        useCommentUrl={useDocumentCommentUrl}
         onCloseComments={onClose}
         title={
           childTargetId === "all" ? t`All comments` : t`Comments about this`

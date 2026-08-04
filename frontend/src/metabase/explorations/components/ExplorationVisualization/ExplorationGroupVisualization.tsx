@@ -397,6 +397,7 @@ function ExplorationGroupVisualizationChart({
             disableAutoFocus={wasCommentsSidebarOpen}
             explorationId={explorationId}
             pageId={pageChildTargetId}
+            view="page"
             onClose={onCloseCommentsSidebar}
             context={{
               timeline_id: selectedTimelineId,

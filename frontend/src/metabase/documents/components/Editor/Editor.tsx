@@ -99,6 +99,7 @@ export interface EditorProps {
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
   hostOverride?: Partial<EditorHost>;
+  placeholder?: string;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -112,6 +113,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     isLoading = false,
     editorContainerRef,
     hostOverride,
+    placeholder,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -143,7 +145,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
           defaultProtocol: "https",
         }),
         Placeholder.configure({
-          placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
+          placeholder:
+            placeholder ??
+            t`Start writing, type "/" to list commands, or "@" to mention an item...`,
         }),
         CardEmbed,
         FlexContainer,
@@ -174,7 +178,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         HandleEditorDrop,
         createChartPasteExtension(dispatch),
       ],
-      [siteUrl, getState, dispatch],
+      [siteUrl, getState, dispatch, placeholder],
     );
 
     const editor = useEditor(

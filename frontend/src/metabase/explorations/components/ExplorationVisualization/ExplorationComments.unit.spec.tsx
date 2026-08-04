@@ -91,6 +91,7 @@ function setup({
         <ExplorationComments
           explorationId={EXPLORATION_ID}
           pageId={pageId}
+          view="page"
           context={context}
           onClose={onClose}
           timelines={timelines}

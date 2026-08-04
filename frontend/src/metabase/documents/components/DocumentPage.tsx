@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePrevious, useUnmount } from "react-use";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -166,11 +166,6 @@ export const DocumentPage = () => {
       dispatch(setErrorPage(error));
     }
   }, [dispatch, error]);
-
-  // This is important as it will affect collection breadcrumbs in the appbar
-  useUnmount(() => {
-    dispatch(resetDocuments());
-  });
 
   // Reset state when we navigate back to /new
   const resetDocument = useCallback(() => {

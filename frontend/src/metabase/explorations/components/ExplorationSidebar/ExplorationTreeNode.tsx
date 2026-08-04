@@ -372,7 +372,6 @@ function ExplorationTreeDocumentItem({
   item,
   isSelected,
   depth,
-  explorationId,
   shouldScrollSelectionRef,
   getSelectedSummaryUrl,
 }: ExplorationTreeDocumentItemProps) {
@@ -386,12 +385,6 @@ function ExplorationTreeDocumentItem({
       shouldScrollSelectionRef.current = false;
     }
   }, [isSelected, shouldScrollSelectionRef]);
-
-  const handleClick = useCallback(() => {
-    if (!isSelected) {
-      trackExplorationVisualizationChanged(explorationId, "click");
-    }
-  }, [isSelected, explorationId]);
 
   const iconProps: IconProps = {
     color: isSelected ? "brand" : "icon-secondary",
@@ -408,7 +401,6 @@ function ExplorationTreeDocumentItem({
         [S.treeRowSelected]: isSelected,
         [S.treeRowNested]: depth > 0,
       })}
-      onClick={handleClick}
       // custom css var used for tree styles
       style={{ "--tree-depth": depth } as React.CSSProperties}
       data-testid={`exploration-tree-item-${EXPLORATION_SUMMARY_TREE_ID}`}
