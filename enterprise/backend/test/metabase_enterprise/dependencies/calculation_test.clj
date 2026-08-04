@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
@@ -280,6 +281,25 @@
       (is (= {:card #{category-values-card-id}
               :table #{products-id}}
              (calculation/calculate-deps :card native-card))))))
+
+(deftest ^:parallel upstream-deps-card-native-unqualified-non-default-schema-test
+  (testing "an unqualified reference to a table outside the driver's default schema is still a dependency"
+    ;; :postgres' default-schema is the fixed literal "public", but a table can be synced under any
+    ;; schema. Resolving only against the literal drops the dependency, so renaming or deleting the
+    ;; table reports nothing broken while the card starts failing.
+    (sql-tools.tu/test-parser-backends
+     (mt/with-temp [:model/Database db    {:engine :postgres, :name "dep-probe-db", :details {}}
+                    :model/Table    probe {:db_id  (:id db)
+                                           :schema "analytics"
+                                           :name   "dep_probe_orders"
+                                           :active true}
+                    :model/Field    _     {:table_id (:id probe), :name "id", :base_type :type/Integer}
+                    :model/Card     card  {:database_id   (:id db)
+                                           :dataset_query {:database (:id db)
+                                                           :type     :native
+                                                           :native   {:query "SELECT id FROM dep_probe_orders"}}}]
+       (is (= {:table #{(:id probe)}}
+              (calculation/calculate-deps :card card)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-test
   (let [mp (mt/metadata-provider)

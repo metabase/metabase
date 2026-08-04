@@ -22,23 +22,31 @@
    :schema (some->> schema (normalize-name driver))})
 
 (defn find-table-or-transform
-  "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
-   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
+  "Find the table or transform target named by a table reference parsed out of a native query.
+   Returns `{:table table-id}`, `{:transform transform-id}`, or nil if neither matches.
+
+   An unqualified reference resolves across schemas when the name is unique. Otherwise -- ambiguous,
+   or a schema was given -- the schema must match too, `default-schema` standing in for a reference
+   that gave none."
   [driver tables transforms {search-table :table raw-schema :schema}]
-  (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver))
-        normalize (partial normalize-name driver)
-        matches? (fn [db-table db-schema]
-                   (and (= (normalize search-table) (normalize db-table))
-                        (= (some-> search-schema normalize) (some-> db-schema normalize))))]
-    (or (some (fn [{:keys [name schema id]}]
-                (when (matches? name schema)
-                  {:table id}))
-              tables)
-        (some (fn [{:keys [id] {:keys [name schema]} :target}]
-                (when (matches? name schema)
-                  {:transform id}))
-              transforms))))
+  ;; An unqualified name resolves across schemas the way a warehouse's search path would.
+  ;; `default-schema` is a fixed per-driver literal but a synced table can live anywhere:
+  ;; BigQuery's is nil while every table carries a dataset, ClickHouse's is "public" while tables
+  ;; live in the connection's database -- requiring the literal never matches on either.
+  (let [normalize      (partial normalize-name driver)
+        norm-table     (normalize search-table)
+        name-matches?  #(= norm-table (normalize %))
+        table-hits     (filter (comp name-matches? :name) tables)
+        transform-hits (filter (comp name-matches? :name :target) transforms)]
+    (if (and (not raw-schema) (= 1 (+ (count table-hits) (count transform-hits))))
+      (if (seq table-hits)
+        {:table (:id (first table-hits))}
+        {:transform (:id (first transform-hits))})
+      (let [search-schema  (or raw-schema (sql.normalize/default-schema driver))
+            schema-matches? #(= (some-> search-schema normalize) (some-> % normalize))]
+        (or (some (fn [{:keys [schema id]}] (when (schema-matches? schema) {:table id})) table-hits)
+            (some (fn [{:keys [id] {:keys [schema]} :target}] (when (schema-matches? schema) {:transform id}))
+                  transform-hits))))))
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
