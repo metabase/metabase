@@ -7,7 +7,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
+import type { EmbeddingHubChecklist } from "metabase/embedding/embedding-hub/api/embedding-hub";
 import {
   createMockSettingsState,
   createMockState,
