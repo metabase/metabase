@@ -96,18 +96,21 @@
 (mu/defn- referenced-tables
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (lib.metadata/tables query)
+  (let [specs         (-> query
+                          lib/raw-native-query
+                          (parsed-query driver)
+                          (macaw/query->components {:strip-contexts? true})
+                          :tables
+                          (->> (map :component))
+                          (->> (map split-compound-table-spec))
+                          (->> (mapv #(sql-tools.common/normalize-table-spec driver %))))
+        ;; Fetch only the tables the SQL actually names. Fetching the Database's whole catalog here is what made
+        ;; dependency analysis scale with warehouse size rather than query size (GHY-4251).
+        db-tables     (lib.metadata/tables-by-name query (keep :table specs))
         db-transforms (lib.metadata/transforms query)]
-    (-> query
-        lib/raw-native-query
-        (parsed-query driver)
-        (macaw/query->components {:strip-contexts? true})
-        :tables
-        (->> (map :component))
-        (->> (map split-compound-table-spec))
-        (->> (into #{}
-                   (keep #(->> (sql-tools.common/normalize-table-spec driver %)
-                               (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
+    (into #{}
+          (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
+          specs)))
 
 (defmethod sql-tools/referenced-tables-impl :macaw
   [_parser driver query]

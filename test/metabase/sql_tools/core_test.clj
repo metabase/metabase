@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -60,6 +61,36 @@
          (is (= #{{:table (mt/id :orders)}
                   {:table (mt/id :products)}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
+
+(deftest ^:parallel referenced-tables-fetches-only-named-tables-test
+  (testing "GHY-4251: referenced-tables looks up only the Tables the SQL names, never the Database's whole catalog.
+           Fetching the catalog per entity made dependency analysis scale with warehouse size instead of query size,
+           OOM-killing instances with ~20k synced tables."
+    (sql-tools.tu/test-parser-backends
+     (mt/test-driver :h2
+       (let [requested (atom [])
+             delegate  (mt/metadata-provider)
+             spy       (reify lib.metadata.protocols/MetadataProvider
+                         (database [_this]
+                           (lib.metadata.protocols/database delegate))
+                         (metadatas [_this metadata-spec]
+                           (swap! requested conj metadata-spec)
+                           (lib.metadata.protocols/metadatas delegate metadata-spec))
+                         (setting [_this setting-key]
+                           (lib.metadata.protocols/setting delegate setting-key)))
+             query     (lib/native-query spy "select id from orders")]
+         (testing "the referenced table still resolves"
+           ;; H2 stores table names upper-cased while the query spells them lower-case, so this also covers the
+           ;; case-folding that makes an exact name match unusable (the same mismatch Snowflake has).
+           (is (= #{{:table (mt/id :orders)}}
+                  (sql-tools/referenced-tables driver/*driver* query))))
+         (let [table-specs (filter #(= (:lib/type %) :metadata/table) @requested)]
+           (testing "at least one Table fetch happened, so the assertion below is meaningful"
+             (is (seq table-specs)))
+           (testing "and every Table fetch is narrowed by name rather than fetching the catalog"
+             (is (every? :name-ci table-specs)
+                 (str "unnarrowed Table fetch(es): "
+                      (pr-str (remove :name-ci table-specs)))))))))))
 
 ;;; ------------------------------------------------ replace-names -------------------------------------------------
 

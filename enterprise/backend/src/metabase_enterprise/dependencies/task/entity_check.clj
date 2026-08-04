@@ -63,17 +63,26 @@
 (def ^:private job-key     "metabase.dependencies.task.entity-check.job")
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
 
-(defn- schedule-run! [scheduler delay-in-seconds]
-  (let [start-at (-> (t/instant)
-                     (t/+ (t/duration delay-in-seconds :seconds))
-                     java.util.Date/from)
-        trigger  (triggers/build
-                  (triggers/with-identity (triggers/key trigger-key))
-                  (triggers/for-job job-key)
-                  (triggers/start-at start-at))
-        job      (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
-    (log/info "Scheduling next run of job Dependency Entity Check at" start-at)
-    (task/schedule-task! scheduler job trigger)))
+(defn- schedule-run!
+  "Schedule the next run of the entity check job, unless the batch size disables it.
+
+  A non-positive batch size is the supported off-switch for the job. It is env-var-only
+  (`:setter :none`), so it cannot change while the process runs and there is nothing to be gained by waking up to
+  re-read it: the job stays unscheduled until restart. Every scheduling path goes through here, including the
+  event-driven [[trigger-entity-check-job!]], so this is the one place the switch has to be honoured."
+  [scheduler delay-in-seconds]
+  (if-not (pos? (deps.settings/dependency-entity-check-batch-size))
+    (log/debug "Not scheduling job Dependency Entity Check because the batch size is not positive")
+    (let [start-at (-> (t/instant)
+                       (t/+ (t/duration delay-in-seconds :seconds))
+                       java.util.Date/from)
+          trigger  (triggers/build
+                    (triggers/with-identity (triggers/key trigger-key))
+                    (triggers/for-job job-key)
+                    (triggers/start-at start-at))
+          job      (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
+      (log/info "Scheduling next run of job Dependency Entity Check at" start-at)
+      (task/schedule-task! scheduler job trigger))))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (if (pos? (deps.settings/dependency-entity-check-batch-size))

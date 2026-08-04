@@ -514,8 +514,11 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                                             :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  [database-id :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, name-ci-set :name-ci
+    :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  ;; `:name-ci` is deliberately absent from `active-only?`: it narrows by name without widening to
+  ;; inactive/archived/hidden objects. See the `::lib.metadata.protocols/metadata-spec` docstring.
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
@@ -523,6 +526,10 @@
                           database-id-key         (conj [:= database-id-key database-id])
                           id-set                  (conj [:in (id-key metadata-type) id-set])
                           name-set                (conj [:in (name-key metadata-type) name-set])
+                          ;; `lower()` cannot use an index on the name column, but it still beats fetching every row
+                          ;; for the Database and filtering in memory.
+                          name-ci-set             (conj [:in [:lower (name-key metadata-type)]
+                                                         (into #{} (map u/lower-case-en) name-ci-set)])
                           table-ids               (conj [:in (table-id-key metadata-type) table-ids])
                           card-ids                (conj [:in (card-id-key metadata-type) card-ids])
                           active-only?            (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))

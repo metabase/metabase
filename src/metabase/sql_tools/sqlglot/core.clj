@@ -51,19 +51,21 @@
 (defn- referenced-tables
   [driver query]
   (try
-    (let [db-tables (lib.metadata/tables query)
-          db-transforms (lib.metadata/transforms query)
-          sql (lib/raw-native-query query)
+    (let [sql (lib/raw-native-query query)
           default-schema (sql.normalize/default-schema driver)
-          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
+          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)
+          specs (map (fn [[_catalog table-schema table]]
+                       (sql-tools.common/normalize-table-spec
+                        driver {:table table
+                                :schema (or table-schema default-schema)}))
+                     query-tables)
+          ;; Fetch only the tables the SQL actually names. Fetching the Database's whole catalog here is what made
+          ;; dependency analysis scale with warehouse size rather than query size (GHY-4251).
+          db-tables (lib.metadata/tables-by-name query (keep :table specs))
+          db-transforms (lib.metadata/transforms query)]
       (into #{}
-            (keep (fn [[_catalog table-schema table]]
-                    (sql-tools.common/find-table-or-transform
-                     driver db-tables db-transforms
-                     (sql-tools.common/normalize-table-spec
-                      driver {:table table
-                              :schema (or table-schema default-schema)}))))
-            query-tables))
+            (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
+            specs))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
       (if (sql-parsing/parse-error? e)

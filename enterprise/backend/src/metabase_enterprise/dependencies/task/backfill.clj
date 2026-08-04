@@ -18,6 +18,7 @@
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.transforms.core :as transforms]
@@ -92,37 +93,42 @@
 
 (defn- backfill-entity-batch!
   [entity-type batch-size]
-  (let [type-name (name entity-type)
-        instances (processable-instances entity-type batch-size)]
-    (when (seq instances)
-      (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
-    (reduce (fn [total entity]
-              (+ total
-                 (try
-                   (compute-deps-for-entity! entity-type entity)
-                   1
-                   (catch Exception e
-                     (let [id (:id entity)]
-                       (try
-                         (deps.dependency-status/record-failure!
-                          entity-type id max-retries
-                          (deps.settings/dependency-backfill-delay-minutes))
-                         (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
-                                                                            :entity_type entity-type
-                                                                            :entity_id id)]
-                           (if terminal
-                             (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
-                                         type-name id fail_count (ex-message e))
-                             (log/warnf "Entity %s %s failed, failure count: %d. %s"
-                                        type-name id fail_count (ex-message e))))
-                         (catch Exception record-ex
-                           (log/errorf "Entity %s %s failed during dependency calculation: %s"
-                                       type-name id (ex-message e))
-                           (log/errorf "Additionally, failed to record the failure for %s %s: %s"
-                                       type-name id (ex-message record-ex)))))
-                     0))))
-            0
-            instances)))
+  ;; The cache has to span the `t2/select` as well as the processing loop: reading an entity attaches a
+  ;; `MetadataProvider` to its query (see `metabase.lib-be.models.transforms/transform-query`), and without a cache
+  ;; each entity in the batch gets its own. Native-query dep calculation loads the whole table catalog of the query's
+  ;; database, so per-entity providers means the batch retains one full catalog per entity.
+  (lib-be/with-metadata-provider-cache
+    (let [type-name (name entity-type)
+          instances (processable-instances entity-type batch-size)]
+      (when (seq instances)
+        (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
+      (reduce (fn [total entity]
+                (+ total
+                   (try
+                     (compute-deps-for-entity! entity-type entity)
+                     1
+                     (catch Exception e
+                       (let [id (:id entity)]
+                         (try
+                           (deps.dependency-status/record-failure!
+                            entity-type id max-retries
+                            (deps.settings/dependency-backfill-delay-minutes))
+                           (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
+                                                                              :entity_type entity-type
+                                                                              :entity_id id)]
+                             (if terminal
+                               (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
+                                           type-name id fail_count (ex-message e))
+                               (log/warnf "Entity %s %s failed, failure count: %d. %s"
+                                          type-name id fail_count (ex-message e))))
+                           (catch Exception record-ex
+                             (log/errorf "Entity %s %s failed during dependency calculation: %s"
+                                         type-name id (ex-message e))
+                             (log/errorf "Additionally, failed to record the failure for %s %s: %s"
+                                         type-name id (ex-message record-ex)))))
+                       0))))
+              0
+              instances))))
 
 (defn- backfill-dependencies!
   "Job to backfill dependencies for all entities.
@@ -172,17 +178,26 @@
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
-(defn- schedule-run! [scheduler delay-in-seconds]
-  (let [start-at (-> (t/instant)
-                     (t/+ (t/duration delay-in-seconds :seconds))
-                     java.util.Date/from)
-        trigger  (triggers/build
-                  (triggers/with-identity (triggers/key trigger-key))
-                  (triggers/for-job job-key)
-                  (triggers/start-at start-at))
-        job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
-    (log/info "Scheduling next run of job Dependency Backfill at" start-at)
-    (task/schedule-task! scheduler job trigger)))
+(defn- schedule-run!
+  "Schedule the next run of the backfill job, unless the batch size disables it.
+
+  A non-positive batch size is the supported off-switch for the job. It is env-var-only
+  (`:setter :none`), so it cannot change while the process runs and there is nothing to be gained by waking up to
+  re-read it: the job stays unscheduled until restart. Every scheduling path goes through here, including the
+  event-driven [[trigger-backfill-job!]], so this is the one place the switch has to be honoured."
+  [scheduler delay-in-seconds]
+  (if-not (pos? (deps.settings/dependency-backfill-batch-size))
+    (log/debug "Not scheduling job Dependency Backfill because the batch size is not positive")
+    (let [start-at (-> (t/instant)
+                       (t/+ (t/duration delay-in-seconds :seconds))
+                       java.util.Date/from)
+          trigger  (triggers/build
+                    (triggers/with-identity (triggers/key trigger-key))
+                    (triggers/for-job job-key)
+                    (triggers/start-at start-at))
+          job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
+      (log/info "Scheduling next run of job Dependency Backfill at" start-at)
+      (task/schedule-task! scheduler job trigger))))
 
 (defn trigger-backfill-job!
   "Trigger the BackfillDependencies job to run after a brief delay.

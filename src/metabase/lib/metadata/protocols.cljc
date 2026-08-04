@@ -1,11 +1,14 @@
 (ns metabase.lib.metadata.protocols
+  (:refer-clojure :exclude [not-empty])
   (:require
    #?@(:clj [[potemkin :as p]])
    [medley.core :as m]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty]]))
 
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
@@ -16,7 +19,11 @@
   "Spec for fetching objects from a metadata provider. `:lib/type` is the type of the object to fetch, and the other
   keys in the spec are filters to restrict the resulting set of objects somehow.
 
-  `:id` and `:name` are mutually exclusive.
+  `:id`, `:name`, and `:name-ci` are mutually exclusive.
+
+  `:name-ci` matches `:name` case-insensitively. Unlike `:id` and `:name` it does *not* widen the result set to
+  inactive/archived/hidden objects, so it can narrow an otherwise-unfiltered fetch by name without also changing which
+  objects are eligible. Callers that need a case-sensitive match, or that want hidden objects, should use `:name`.
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
   unless `:id` or `:name` is specified.
@@ -28,12 +35,14 @@
     [:lib/type           [:ref ::metadata-type-excluding-database]]
     [:id                 {:optional true} [:set {:min 1} pos-int?]]
     [:name               {:optional true} [:set {:min 1} :string]]
+    [:name-ci            {:optional true} [:set {:min 1} :string]]
     [:table-ids          {:optional true} [:set {:min 1} ::lib.schema.id/table]]
     [:card-ids           {:optional true} [:set {:min 1} ::lib.schema.id/card]]
     [:include-sensitive? {:optional true} :boolean]]
    [:fn
-    {:error/message ":id and :name cannot be used at the same time."}
-    (complement (every-pred :id :name))]
+    {:error/message ":id, :name, and :name-ci cannot be used at the same time."}
+    (fn [spec]
+      (< (count (filter spec [:id :name :name-ci])) 2))]
    [:fn
     {:error/message ":table-ids is currently only supported for Fields, Measures, Metrics, and Segments."}
     (fn [spec]
@@ -46,7 +55,8 @@
           (#{:metadata/metric} (:lib/type spec))))]
    [:fn
     {:error/message "All metadata types except for :metadata/table and :metadata/transform must include at least one filter"}
-    (some-fn :id :name :table-ids :card-ids #(= (:lib/type %) :metadata/table) #(= (:lib/type %) :metadata/transform))]])
+    (some-fn :id :name :name-ci :table-ids :card-ids
+             #(= (:lib/type %) :metadata/table) #(= (:lib/type %) :metadata/transform))]])
 
 (defn active-column-pred
   "Returns a predicate that filters out columns that should not be visible based on `:active` status and
@@ -69,13 +79,20 @@
 
   This should match [[metabase.lib-be.metadata.jvm/metadata-spec->honey-sql]] as closely as
   possible."
-  [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::metadata-spec]
+  [{metadata-type :lib/type, id-set :id, name-set :name, name-ci-set :name-ci
+    :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::metadata-spec]
+  ;; `:name-ci` is deliberately absent from `active-only?`: it narrows by name without widening to
+  ;; inactive/archived/hidden objects. See the `::metadata-spec` docstring.
   (let [active-only? (not (or id-set name-set))
         metric?      (= metadata-type :metadata/metric)
+        lowered      (when name-ci-set
+                       (into #{} (map u/lower-case-en) name-ci-set))
         preds        [(when id-set
                         #(contains? id-set (:id %)))
                       (when name-set
                         #(contains? name-set (:name %)))
+                      (when lowered
+                        #(contains? lowered (some-> (:name %) u/lower-case-en)))
                       (when table-ids
                         #(contains? table-ids (:table-id %)))
                       (when (and table-ids metric?)
@@ -216,6 +233,21 @@
   schema."
   [metadata-provider :- ::metadata-provider]
   (metadatas metadata-provider {:lib/type :metadata/table}))
+
+(mu/defn tables-by-name :- [:maybe [:sequential ::lib.schema.metadata/table]]
+  "Return the active Tables in this Database whose name case-insensitively matches one of `table-names`.
+
+  Matches the eligibility rules of [[tables]] (active, non-hidden) rather than those of a `:name` lookup, so callers
+  can substitute this for [[tables]] to avoid fetching a whole Database's catalog. Case-insensitive because the
+  spelling stored by sync need not match the spelling in a query; callers that need exact matching should filter the
+  result."
+  [metadata-provider :- ::metadata-provider
+   table-names       :- [:sequential :string]]
+  ;; `::metadata-spec` requires `:name-ci` to be non-empty, so an empty request short-circuits rather than degrading
+  ;; into a fetch of every Table.
+  (if-let [names (not-empty (set table-names))]
+    (metadatas metadata-provider {:lib/type :metadata/table, :name-ci names})
+    []))
 
 (mu/defn metadatas-for-table :- [:maybe [:sequential ::metadata]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Measures, Metrics, or

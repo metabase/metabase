@@ -43,6 +43,13 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (lib.metadata.protocols/tables (->metadata-provider metadata-providerable)))
 
+(mu/defn tables-by-name :- [:sequential ::lib.schema.metadata/table]
+  "Get metadata about the Tables in the Database we're querying whose name case-insensitively matches one of
+  `table-names`. See [[metabase.lib.metadata.protocols/tables-by-name]]."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-names           :- [:sequential :string]]
+  (lib.metadata.protocols/tables-by-name (->metadata-provider metadata-providerable) table-names))
+
 (mu/defn table :- ::lib.schema.metadata/table
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

@@ -470,3 +470,51 @@
         (assert-processed :card card-id)
         (is (false? (deps.dependency-status/has-stale-or-outdated?))
             "Expected no pending work once the card has been processed")))))
+
+(deftest ^:sequential batch-size-zero-blocks-all-scheduling-test
+  (testing "GHY-4251: a non-positive backfill batch size is the supported off-switch, so no path may schedule the
+           job. The event-driven trigger used to ignore the setting and wake the job every ~1 second to do nothing,
+           which is what customers on the documented workaround observed."
+    (let [scheduled (atom [])
+          ;; Reset per case so each assertion stands on its own rather than tripping over an earlier leak.
+          scheduled-by (fn [thunk]
+                         (reset! scheduled [])
+                         (thunk)
+                         (count @scheduled))]
+      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+        (testing "the 1-second event-driven trigger does not schedule when disabled"
+          (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
+            (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!)))))
+        (testing "nor does task/init!"
+          (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
+            (is (zero? (scheduled-by #(task/init! ::dependencies.backfill/DependencyBackfill))))))
+        (testing "but a positive batch size still schedules normally"
+          (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "5")]
+            (is (= 1 (scheduled-by dependencies.backfill/trigger-backfill-job!)))))))))
+
+(deftest ^:sequential backfill-batch-shares-one-metadata-provider-test
+  (testing "GHY-4251: every entity in a batch must share one MetadataProvider per database. Reading an entity attaches
+           a provider to its query, so without a batch-scoped cache each entity gets a private one; native dep
+           calculation then fills each with that database's table metadata and the batch retains one copy per entity,
+           which is what exhausted the heap on instances with large warehouses."
+    (backfill-all-existing-entities!)
+    (let [providers (atom [])
+          calculate-deps deps.calculation/calculate-deps
+          native-card (fn [sql] {:database (mt/id) :type :native :native {:query sql}})]
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
+                       :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
+          (mark-stale! :card card1-id)
+          (mark-stale! :card card2-id)
+          (with-redefs [deps.calculation/calculate-deps
+                        (fn [entity-type entity]
+                          (when-let [mp (:lib/metadata (:dataset_query entity))]
+                            (swap! providers conj mp))
+                          (calculate-deps entity-type entity))]
+            (backfill-dependencies-single-trigger!))
+          (testing "both cards were analyzed, so the assertion below is meaningful"
+            (is (<= 2 (count @providers))))
+          (testing "and they were analyzed through the same provider instance"
+            ;; Identity, not equality: providers compare equal when they wrap the same database id, so `=` would be
+            ;; satisfied by two separate caches and would not detect the regression.
+            (is (= 1 (count (into #{} (map #(System/identityHashCode %)) @providers))))))))))
