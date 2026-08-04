@@ -13,7 +13,6 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
@@ -35,6 +34,7 @@
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.visualization-settings.core :as mb.viz]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))

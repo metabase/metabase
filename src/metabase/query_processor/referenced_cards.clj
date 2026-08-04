@@ -8,9 +8,9 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.util.dynamic-goals :as u.dynamic-goals]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
 (def ^:const max-specs
@@ -105,7 +105,7 @@
 (defn viz-settings->specs
   "Extract referenced-card specs from merged viz settings; nil when there are none."
   [viz]
-  (let [sources (keep u.dynamic-goals/card-ref (u.dynamic-goals/goal-values viz))]
+  (let [sources (keep dynamic-goals/card-ref (dynamic-goals/goal-values viz))]
     (when (seq sources)
       (perf/mapv (fn [[card-id ss]]
                    {:card_id card-id

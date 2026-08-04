@@ -1,7 +1,7 @@
-(ns metabase.util.ui-logic-test
+(ns metabase.visualization-settings.ui-logic-test
   (:require
    [clojure.test :refer :all]
-   [metabase.util.ui-logic :as ui-logic]))
+   [metabase.visualization-settings.ui-logic :as ui-logic]))
 
 (deftest ^:parallel find-goal-value-with-numeric-goal-test
   (testing "Progress chart goal value extraction with numeric goal"

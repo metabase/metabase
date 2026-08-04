@@ -5,10 +5,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (defn- update-viz-settings
   ([query] (update-viz-settings query true))

@@ -10,12 +10,12 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
-   [metabase.util.dynamic-goals :as u.dynamic-goals]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.markdown :as markdown]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [toucan2.core :as t2]))
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
@@ -219,7 +219,7 @@
                           (cond-> m
                             (:visualization_settings m)
                             (update :visualization_settings
-                                    u.dynamic-goals/resolve-dynamic-goals (:referenced_cards data))))
+                                    dynamic-goals/resolve-dynamic-goals (:referenced_cards data))))
           card          (resolve-goals card)
           dashcard      (some-> dashcard resolve-goals)
           chart-type    (or (detect-pulse-chart-type card dashcard data)

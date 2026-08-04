@@ -1,4 +1,4 @@
-(ns metabase.util.dynamic-goals
+(ns metabase.visualization-settings.dynamic-goals
   "Dynamic goals: goal values in viz settings that reference another card's value
   (`{:card_id 1, :column \"total\"}`) instead of holding a literal number. Single source of truth for
   which settings carry goal values, so deriving the queries to run and substituting their results

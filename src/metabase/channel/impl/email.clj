@@ -30,7 +30,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
-   [metabase.util.ui-logic :as ui-logic]
+   [metabase.visualization-settings.ui-logic :as ui-logic]
    [ring.util.codec :as codec])
   (:import
    (java.io File)))

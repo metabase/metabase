@@ -6,12 +6,12 @@
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
-   [metabase.models.visualization-settings :as mb.viz]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.performance :as perf :refer [mapv select-keys not-empty get-in]])
+   [metabase.util.performance :as perf :refer [mapv select-keys not-empty get-in]]
+   [metabase.visualization-settings.core :as mb.viz])
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))

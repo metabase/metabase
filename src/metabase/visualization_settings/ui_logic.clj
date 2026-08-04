@@ -1,8 +1,8 @@
-(ns metabase.util.ui-logic
+(ns metabase.visualization-settings.ui-logic
   "This namespace has clojure implementations of logic currently found in the UI, but is needed for the
   backend. Idealling code here would be refactored such that the logic for this isn't needed in two places"
   (:require
-   [metabase.util.dynamic-goals :as u.dynamic-goals]))
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -175,7 +175,7 @@
   `[:result :data :referenced_cards]` and throws when it can't produce a number.
   Matches the frontend behavior: invalid self-column goals fallback to default value (0)."
   [result]
-  (let [resolve-ref #(u.dynamic-goals/resolve-goal-value
+  (let [resolve-ref #(dynamic-goals/resolve-goal-value
                       %
                       (get-in result [:result :data :referenced_cards]))]
     (case (get-in result [:card :display])
