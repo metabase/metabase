@@ -26,8 +26,8 @@ export function mapWhitelabelColorToTokens<T>(
   }
 
   return Object.fromEntries(
-    // Widen WHITELABEL_KEY_TO_COLOR_KEY to generic mapping so arbitrary setting keys can be looked up, misses fall through.
     Object.entries(colors).map(([key, value]) => [
+      // Widen WHITELABEL_KEY_TO_COLOR_KEY to a generic mapping so arbitrary setting keys can be looked up, misses fall through.
       (WHITELABEL_KEY_TO_COLOR_KEY as Record<string, string>)[key] ?? key,
       value,
     ]),
