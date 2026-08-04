@@ -3,9 +3,9 @@ import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useToast } from "metabase/common/hooks";
+import { getErrorMessage } from "metabase/api/utils/errors";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/redux";
-import { getSetting, getSettings } from "metabase/selectors/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
@@ -13,14 +13,13 @@ import type {
   SettingDefinition,
 } from "metabase-types/api";
 
-import { useGetSettingsQuery } from "../session";
 import {
   useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
-} from "../settings";
-
-import { getErrorMessage } from "./errors";
+} from "./api";
+import { getSetting, getSettings } from "./selectors";
 
 /**
  * One hook to get setting values and mutators for a given setting

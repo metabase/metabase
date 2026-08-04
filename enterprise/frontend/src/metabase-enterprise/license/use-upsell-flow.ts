@@ -2,10 +2,11 @@ import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
-import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
+import { useStoreUrl, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getIsHosted } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 const NOTIFICATION_TIMEOUT = 30_000;

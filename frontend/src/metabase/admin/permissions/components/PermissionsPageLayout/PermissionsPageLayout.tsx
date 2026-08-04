@@ -15,9 +15,9 @@ import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/hel
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useUserSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { push } from "metabase/router";
+import { useUserSetting } from "metabase/settings";
 import {
   Group,
   Button as NewButton,

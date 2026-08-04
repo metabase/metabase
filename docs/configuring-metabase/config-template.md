@@ -219,6 +219,8 @@ config:
     llm-connection-timeout-ms: 5000
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-mistral-api-base-url: https://api.mistral.ai/v1
+    llm-mistral-api-key: null
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
@@ -227,6 +229,8 @@ config:
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 60000
+    llm-zai-api-base-url: https://api.z.ai/api/paas/v4
+    llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -346,5 +350,6 @@ config:
     usage-metadata-last-completed-day: null
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
+    use-native-pivot-tables: false
     user-visibility: all
 ```

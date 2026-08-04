@@ -1,9 +1,10 @@
 import { createAction } from "redux-actions";
 
-import { cardApi, settingsApi } from "metabase/api";
+import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { settingsApi } from "metabase/settings";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,

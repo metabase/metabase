@@ -3,17 +3,18 @@ import { useState } from "react";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  sessionApi,
-  useGetSessionPropertiesQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
-import { getSetting } from "metabase/selectors/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
+
+import {
+  settingsApi,
+  useGetSessionPropertiesQuery,
+  useGetSettingsQuery,
+} from "./api";
+import { getSetting } from "./selectors";
+import { useSetting } from "./use-setting";
 
 const TestGetComponent = () => {
   const siteNameFromSelector = useSelector((state: State) =>
@@ -55,12 +56,12 @@ const TestUpdateComponent = () => {
   const dispatch = useDispatch();
   const refresh = () =>
     dispatch(
-      sessionApi.endpoints.getSessionProperties.initiate(undefined, {
+      settingsApi.endpoints.getSessionProperties.initiate(undefined, {
         forceRefetch: true,
       }),
     );
   const invalidate = () =>
-    dispatch(sessionApi.util.invalidateTags(["session-properties"]));
+    dispatch(settingsApi.util.invalidateTags(["session-properties"]));
 
   return (
     <div>
