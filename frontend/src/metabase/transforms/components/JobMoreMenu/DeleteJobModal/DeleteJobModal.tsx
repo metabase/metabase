@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useDeleteTransformJobMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { useDeleteTransformJobMutation } from "metabase/transforms/api/transform-job";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
 

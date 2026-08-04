@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useDeleteTransformTagMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { useDeleteTransformTagMutation } from "metabase/transforms/api/transform-tag";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import type { TransformTag } from "metabase-types/api";
 

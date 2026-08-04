@@ -1,15 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
-import {
-  useCancelJobRunMutation,
-  useRunTransformJobMutation,
-} from "metabase/api";
+import { useCancelJobRunMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Schedule } from "metabase/common/components/Schedule";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSetting } from "metabase/settings";
+import { useRunTransformJobMutation } from "metabase/transforms/api/transform-job";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";

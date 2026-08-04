@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListTransformJobsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -13,6 +12,7 @@ import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
+import { useListTransformJobsQuery } from "metabase/transforms/api/transform-job";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import type { TreeTableColumnDef } from "metabase/ui";

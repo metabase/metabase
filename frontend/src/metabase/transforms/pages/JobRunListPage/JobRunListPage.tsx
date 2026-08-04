@@ -3,15 +3,15 @@ import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetTransformJobQuery,
-  useListTransformJobRunsQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useLocation, useNavigate, useParams } from "metabase/router";
+import {
+  useGetTransformJobQuery,
+  useListTransformJobRunsQuery,
+} from "metabase/transforms/api/transform-job";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";

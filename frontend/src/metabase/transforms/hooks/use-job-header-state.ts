@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  skipToken,
   useListTransformJobTransformsQuery,
   useUpdateTransformJobMutation,
-} from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+} from "metabase/transforms/api/transform-job";
 import type { TransformJobId } from "metabase-types/api";
 
 import {

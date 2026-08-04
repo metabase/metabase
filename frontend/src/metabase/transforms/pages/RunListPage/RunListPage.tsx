@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import {
   useListTransformRunsQuery,
-  useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -13,6 +12,7 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { useListTransformTagsQuery } from "metabase/transforms/api/transform-tag";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
