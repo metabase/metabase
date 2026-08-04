@@ -76,10 +76,6 @@ const DUPLICATED_URL_PARAM_KEYS = [
   "sort-direction",
 ] as const;
 
-/**
- * Whether the URL asked for nothing at all. Explicitly passed default values still count as a
- * request, so a shared "reset to defaults" link wins over the visitor's own saved filters.
- */
 export function isEmptyDuplicatedParams(location: Location): boolean {
   return DUPLICATED_URL_PARAM_KEYS.every((key) => location.query[key] == null);
 }

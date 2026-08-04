@@ -39,14 +39,14 @@ export type SidebarExtraInfo = {
 type DiagnosticsSidebarProps<T extends ContentDiagnosticsBaseFinding> = {
   finding: T;
   extraInfo?: SidebarExtraInfo;
-  extraSections?: ReactNode;
+  children?: ReactNode;
   onClose: () => void;
 };
 
 export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
   finding,
   extraInfo,
-  extraSections,
+  children,
   onClose,
 }: DiagnosticsSidebarProps<T>) {
   const entityName = getEntityName(finding);
@@ -64,7 +64,7 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
       <SidebarHeader finding={finding} onClose={onClose} />
       <LocationSection finding={finding} />
       <InfoSection finding={finding} extraInfo={extraInfo} />
-      {extraSections}
+      {children}
     </Stack>
   );
 }

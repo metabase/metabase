@@ -34,7 +34,6 @@ export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
 export type ContentDiagnosticsCoveredFilterType =
   (typeof CONTENT_DIAGNOSTICS_FILTER_TYPES)[number];
 
-/** The duplicated endpoint pins its own vocabulary: same-named collections are duplicates too. */
 export const CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
   "collection",
@@ -124,7 +123,6 @@ export type ContentDiagnosticsStaleFindingDetails =
     threshold_days?: number;
   };
 
-/** Entity types the stale and slow findings can emit - neither of them covers collections. */
 export type ContentDiagnosticsCoveredEntityType = Exclude<
   ContentDiagnosticsEntityType,
   "collection"
@@ -215,7 +213,7 @@ export type ContentDiagnosticsDuplicatedUserParams = {
 };
 
 /**
- * A peer of a duplicated finding: another entity of the same type sharing its normalized name.
+ * Another kind of duplicate finding: entity of the same type sharing its normalized name.
  * Transforms and collections have no view concept, hence the optional `view_count`.
  */
 export type ContentDiagnosticsDuplicateEntity = {

@@ -30,8 +30,6 @@ export function DuplicatedContentPage() {
     key: "duplicated",
   });
 
-  // Saved filters only seed a visit that asked for nothing; once the URL has been canonicalized
-  // it is the sole source of truth, or stripping a default out of it would restore them again.
   const shouldRestoreLastUsedParamsRef = useRef(
     isEmptyDuplicatedParams(location),
   );

@@ -98,7 +98,7 @@ export function DuplicatedContent({
     }
   };
 
-  const findings = data?.data ?? [];
+  const findings = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.total ?? 0;
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,

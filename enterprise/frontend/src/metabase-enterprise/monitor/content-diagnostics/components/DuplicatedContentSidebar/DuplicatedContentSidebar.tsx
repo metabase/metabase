@@ -38,16 +38,12 @@ export function DuplicatedContentSidebar({
   onClose,
 }: DuplicatedContentSidebarProps) {
   return (
-    <DiagnosticsSidebar
-      finding={finding}
-      onClose={onClose}
-      extraSections={
-        <DuplicatesSection
-          duplicateCount={finding.duplicate_count}
-          duplicateEntities={finding.details.duplicate_entities}
-        />
-      }
-    />
+    <DiagnosticsSidebar finding={finding} onClose={onClose}>
+      <DuplicatesSection
+        duplicateCount={finding.duplicate_count}
+        duplicateEntities={finding.details.duplicate_entities}
+      />
+    </DiagnosticsSidebar>
   );
 }
 
@@ -62,7 +58,7 @@ function DuplicatesSection({
 }: DuplicatesSectionProps) {
   const title = c("{0} is the number of duplicates of an item")
     .t`Duplicates (${duplicateCount})`;
-  // Peers are permission- and personal-collection-filtered server-side, so the list can be
+  // Duplicates are filtered by permission- and personal-collection- server-side, so the list can be
   // shorter than the count the heading shows.
   const hiddenCount = duplicateCount - duplicateEntities.length;
 
@@ -103,8 +99,6 @@ type DuplicateEntityRowProps = {
 function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
   const name = getDuplicateEntityName(entity);
   const typeLabel = getEntityTypeLabel(entity);
-  // Duplicates share a name by definition, so the name alone cannot tell the links apart.
-  // Both halves are already localized; ttag can't own the joining punctuation on its own.
   const linkLabel = `${name}, ${typeLabel}`;
 
   return (

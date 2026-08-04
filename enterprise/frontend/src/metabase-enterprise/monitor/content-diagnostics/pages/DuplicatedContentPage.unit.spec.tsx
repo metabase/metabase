@@ -388,17 +388,24 @@ describe("DuplicatedContentPage", () => {
     ).toBe("false");
   });
 
-  it("sends the minimum duplicate count picked in the Filter popover and clears it again", async () => {
-    const { history } = setup({ findings: FINDINGS });
+  it("reflects the minimum duplicate count from the URL and sends changes made in the Filter popover", async () => {
+    const { history } = setup({
+      findings: FINDINGS,
+      urlParams: { minDuplicateCount: 3 },
+    });
     await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.get("min-duplicate-count")).toBe(
+      "3",
+    );
 
     await userEvent.click(
       screen.getByTestId("content-diagnostics-filter-button"),
     );
     const popover = await screen.findByRole("dialog");
-    await userEvent.click(
-      within(popover).getByPlaceholderText("Any number of duplicates"),
-    );
+    const input = within(popover).getByDisplayValue("3 or more");
+
+    await userEvent.click(input);
     await userEvent.click(
       await within(popover).findByRole("option", { name: "5 or more" }),
     );
@@ -422,21 +429,6 @@ describe("DuplicatedContentPage", () => {
     ).toHaveValue("");
   });
 
-  it("sends the minimum duplicate count filter to the server and reflects it in the Filter popover", async () => {
-    setup({ findings: FINDINGS, urlParams: { minDuplicateCount: 3 } });
-    await waitForListToLoad();
-
-    expect(getLastRequestUrl().searchParams.get("min-duplicate-count")).toBe(
-      "3",
-    );
-
-    await userEvent.click(
-      screen.getByTestId("content-diagnostics-filter-button"),
-    );
-    const popover = await screen.findByRole("dialog");
-    expect(within(popover).getByDisplayValue("3 or more")).toBeInTheDocument();
-  });
-
   it("sends the query parameter to the server when searching", async () => {
     setup({
       getResponse: (url) =>
@@ -458,25 +450,28 @@ describe("DuplicatedContentPage", () => {
   });
 
   it("offers collections as an entity type and sends the selection to the server", async () => {
-    const { history } = setup({ findings: FINDINGS });
+    const { history } = setup({
+      findings: FINDINGS,
+      urlParams: { entityTypes: ["question"] },
+    });
     await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
+      "question",
+    ]);
 
     await userEvent.click(
       screen.getByTestId("content-diagnostics-filter-button"),
     );
     const popover = await screen.findByRole("dialog");
-    await userEvent.click(
-      within(popover).getByRole("checkbox", { name: "Collections" }),
-    );
+    const collectionsCheckbox = within(popover).getByRole("checkbox", {
+      name: "Collections",
+    });
+    expect(collectionsCheckbox).not.toBeChecked();
 
-    const expectedTypes = [
-      "question",
-      "model",
-      "metric",
-      "dashboard",
-      "document",
-      "transform",
-    ];
+    await userEvent.click(collectionsCheckbox);
+
+    const expectedTypes = ["question", "collection"];
 
     await waitFor(() => {
       expect(history?.getCurrentLocation().query).toEqual({
@@ -486,9 +481,10 @@ describe("DuplicatedContentPage", () => {
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual(
       expectedTypes,
     );
+    expect(collectionsCheckbox).toBeChecked();
   });
 
-  it("shows the error state and suppresses the table when the request fails", async () => {
+  it("shows the error state and doesn't render the table when request fails", async () => {
     setup({ error: true });
 
     expect(
