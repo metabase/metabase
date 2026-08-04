@@ -35,6 +35,18 @@
         (is (= all-columns
                (field-names :crowberto)))))))
 
+(deftest query-metadata-data-app-scope-test
+  (testing "GET /api/table/:id/query_metadata carries the data-app scope even under sandboxing"
+    ;; Regression: the EE sandbox *replaces* the OSS query_metadata endpoint when sandboxing is active,
+    ;; so it must be tagged `{:scope "data-app"}` too — otherwise a sandboxed data app gets
+    ;; scope_not_permitted (403) on tables it can otherwise read.
+    (met/with-gtaps! {:gtaps      {:venues {:query (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
+      (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+        (testing "a data-app-marked request passes scope enforcement (not scope_not_permitted)"
+          (is (mt/user-http-request :rasta :get 200
+                                    (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))))
+
 (deftest query-metadata-not-sandboxed-for-admins-test
   (testing "GET /api/table/:id/query_metadata"
     ;; checks that admins are exempt from normal perms checking.
