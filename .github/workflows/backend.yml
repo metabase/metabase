@@ -250,7 +250,11 @@ jobs:
       - name: Collect failed tests for rerun
         if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
         continue-on-error: true
-        run: bun release/ci-conductor/src/collect-failed-backend.ts
+        # Clear the restored set first, so a collector that dies before deciding
+        # can't leave the previous attempt's file to be uploaded as this one's.
+        run: |
+          rm -f target/failed-tests
+          bun release/ci-conductor/src/collect-failed-backend.ts
 
       - name: Upload failed tests for rerun
         if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}

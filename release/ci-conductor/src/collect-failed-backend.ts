@@ -18,13 +18,14 @@
 // only possible when every failure is attributable to a var.
 // This collector therefore writes the selector file ONLY when it found at least
 // one failure and every one carries a namespace + name. Otherwise (nothing
-// parsed, or any failure missing its namespace) it writes nothing, and the
-// caller — seeing no file — reruns the whole suite. "Narrow only when certain;
-// otherwise rerun everything."
+// parsed, or any failure missing its namespace) it leaves no file behind —
+// clearing any set the caller restored from a previous attempt — and the caller,
+// seeing no file, reruns the whole suite. "Narrow only when certain; otherwise
+// rerun everything."
 //
 // Run directly with bun (no build step):  bun src/collect-failed-backend.ts
 
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 
 import type { NormalizedTest } from "./contract.ts";
 import { normalizeBackendJunit } from "./adapters/backend.ts";
@@ -61,6 +62,10 @@ function main(): void {
   log("backend granular-rerun collector starting");
   const vector = buildOnlySelector(normalizeBackendJunit());
   if (vector === null) {
+    // On a rerun this path already holds the PREVIOUS attempt's set, restored by
+    // the caller for the test step to read. "No confident set" has to mean "no
+    // file", or that stale set is what gets uploaded and narrowed on next time.
+    rmSync(OUTPUT_FILE, { force: true });
     log(`not writing ${OUTPUT_FILE}: no confident failed-test set — caller should rerun the full suite`);
     return;
   }
