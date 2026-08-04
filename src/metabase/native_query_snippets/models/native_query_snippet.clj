@@ -167,16 +167,29 @@
                                                                    (when-let [collection-ids (not-empty (remove nil? collection-set))]
                                                                      [:in :collection_id collection-ids])
                                                                    (when (some nil? collection-set)
-                                                                     [:= :collection_id nil])]]
+                                                                     [:= :collection_id (collection/root-collection-id collection/snippets-ns)])]]
                                                           ;; stable filename de-dup suffixes across exports, see GHY-3754
                                                           :order-by serdes/stable-storage-order}
                                                    where (sql.helpers/where :or where))))
+
+(def ^:private collection-fk
+  "The snippets root is a per-instance row created by a migration rather than exportable content, so a snippet living
+  in it travels with no collection at all and is re-rooted against the destination's own root on import. That is also
+  the shape of every export taken before the root existed, so those keep importing unchanged."
+  (merge (serdes/fk :model/Collection)
+         {:export (fn [collection-id]
+                    (when-not (= collection-id (collection/root-collection-id collection/snippets-ns))
+                      (serdes/*export-fk* collection-id :model/Collection)))
+          :import (fn [collection-ref]
+                    (if collection-ref
+                      (serdes/*import-fk* collection-ref :model/Collection)
+                      (collection/root-collection-id collection/snippets-ns)))}))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
    :skip      []
    :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+               :collection_id collection-fk
                :creator_id    (serdes/fk :model/User)
                ;; Normalize on import so template-tag name keys come back as strings (YAML ingest keywordizes
                ;; them).
@@ -187,7 +200,8 @@
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
   (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
-    {["Collection" collection_id] {"NativeQuerySnippet" id}}))
+    (when-not (= collection_id (collection/root-collection-id collection/snippets-ns))
+      {["Collection" collection_id] {"NativeQuerySnippet" id}})))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]

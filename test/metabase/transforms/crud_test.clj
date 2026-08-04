@@ -60,7 +60,7 @@
         (doseq [user [:crowberto :lucky]]
           (testing (str "as " user)
             (let [response (mt/user-http-request user :get 200 "collection/root" :namespace "transforms")]
-              (is (= (collections/transforms-root-collection-id) (:id response)))
+              (is (= (collections/root-collection-id collections/transforms-ns) (:id response)))
               (is (true? (:is_root response))))))
         (testing "a user who is neither an admin nor a data analyst cannot see it"
           (mt/user-http-request :rasta :get 403 "collection/root" :namespace "transforms"))))))
@@ -68,7 +68,7 @@
 (deftest root-collection-listing-visibility-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (let [root-id (collections/transforms-root-collection-id)]
+      (let [root-id (collections/root-collection-id collections/transforms-ns)]
         (testing "the tree carries the root so the frontend can recognize it by :is_root"
           (let [root (->> (mt/user-http-request :lucky :get 200 "collection/tree" :namespace "transforms")
                           (m/find-first (comp #{root-id} :id)))]

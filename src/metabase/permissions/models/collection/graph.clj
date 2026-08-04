@@ -91,6 +91,7 @@
                              (perms/namespace-clause
                               :namespace (u/qualified-name collection-namespace))
                              [:not :archived]
+                             [:not :is_root]
                              [:= :personal_owner_id nil]
                              (when (seq ids-without-root)
                                [:in :id ids-without-root])

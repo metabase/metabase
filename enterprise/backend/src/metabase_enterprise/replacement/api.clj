@@ -110,7 +110,7 @@
                                     :query (:dataset_query card)}
                     :target        transform_target
                     :collection_id (or target_collection_id
-                                       (collections/transforms-root-collection-id))
+                                       (collections/root-collection-id collections/transforms-ns))
                     :tag_ids       transform_tag_ids})
         job-row   (replacement-run/create-run!
                    :card card_id

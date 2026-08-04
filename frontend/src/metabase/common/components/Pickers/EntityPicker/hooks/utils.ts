@@ -49,7 +49,6 @@ export const getRootCollectionItem = async ({
 
   const transformRootItem = getTransformsRootCollectionItem({
     namespace,
-    rootCollection: rootCollectionFromApi ? rootCollectionFromApi : undefined,
   });
   if (transformRootItem) {
     return {

@@ -36,7 +36,10 @@ export const useCreateTransform = (
       values,
       databaseId,
     );
-    const transform = await createTransformMutation(request).unwrap();
+    const transform = await createTransformMutation({
+      ...request,
+      collection_id: request.collection_id ?? rootCollectionId,
+    }).unwrap();
     trackTransformCreated({
       transformId: transform.id,
       isIncremental: transform.target.type === "table-incremental",

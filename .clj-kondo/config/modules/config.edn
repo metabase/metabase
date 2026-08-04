@@ -3646,7 +3646,8 @@
   enterprise/snippet-collections
   {:team "Graphy"
    :api  #{}
-   :uses #{models
+   :uses #{collections
+           models
            native-query-snippets
            permissions
            premium-features

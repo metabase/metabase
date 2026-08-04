@@ -69,13 +69,13 @@
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                                        [:collection_id {:optional true} ms/PositiveInt]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
                  :name          name
-                 :collection_id collection_id}]
+                 :collection_id (or collection_id (collections/root-collection-id collections/snippets-ns))}]
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 
@@ -111,5 +111,5 @@
             [:content       {:optional true} [:maybe :string]]
             [:description   {:optional true} [:maybe :string]]
             [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+            [:collection_id {:optional true} ms/PositiveInt]]]
   (check-perms-and-update-snippet! id body))

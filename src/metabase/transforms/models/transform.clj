@@ -466,12 +466,12 @@
   is also the shape of every export taken before the root existed, so those keep importing unchanged."
   (merge (serdes/fk :model/Collection)
          {:export (fn [collection-id]
-                    (when-not (= collection-id (collection/transforms-root-collection-id))
+                    (when-not (= collection-id (collection/root-collection-id collection/transforms-ns))
                       (serdes/*export-fk* collection-id :model/Collection)))
           :import (fn [collection-ref]
                     (if collection-ref
                       (serdes/*import-fk* collection-ref :model/Collection)
-                      (collection/transforms-root-collection-id)))}))
+                      (collection/root-collection-id collection/transforms-ns)))}))
 
 (defn- update-checkpoint-field
   "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
@@ -553,7 +553,9 @@
 (defmethod serdes/required "Transform"
   [_model id]
   (when-let [collection-id (t2/select-one-fn :collection_id :model/Transform :id id)]
-    {["Collection" collection-id] {"Transform" id}}))
+    ;; the root is never extracted, so naming it as required would demand a file that cannot exist
+    (when-not (= collection-id (collection/root-collection-id collection/transforms-ns))
+      {["Collection" collection-id] {"Transform" id}})))
 
 (defn- maybe-extract-transform-query-text
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.

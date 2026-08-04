@@ -46,11 +46,11 @@ export function MoveTransformModal({
     async ({ id }: OmniPickerItem) => {
       await updateTransform({
         id: transform.id,
-        collection_id: canonicalCollectionId(id),
+        collection_id: canonicalCollectionId(id) ?? rootCollection?.id,
       }).unwrap();
       onMove();
     },
-    [transform.id, updateTransform, onMove],
+    [transform.id, updateTransform, onMove, rootCollection?.id],
   );
 
   const pickerValue: OmniPickerValue = useMemo(

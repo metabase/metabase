@@ -31,8 +31,9 @@
   non-remote-synced-dependencies
   remote-synced-collection
   remote-synced-collection?
+  root-collection-id
   shared-tenant-collection?
-  transforms-ns
-  transforms-root-collection-id]
+  snippets-ns
+  transforms-ns]
  [metabase.collections.util
   annotate-dashboards])

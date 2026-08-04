@@ -1,5 +1,6 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet
   (:require
+   [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -16,5 +17,6 @@
   {:select [:id :collection_id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
    :where  [:and
-            [:= :collection_id (:id collection)]
+            [:= :collection_id (or (:id collection)
+                                   (collections/root-collection-id collections/snippets-ns))]
             [:= :archived (boolean archived?)]]})

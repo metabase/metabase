@@ -105,16 +105,24 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
-(def ^{:arglists '([])} transforms-root-collection-id
-  "The (memoized) ID of the `transforms` namespace's root collection — the real row holding every transform not
-  filed under a collection of its own. Not to be confused with [[root-collection]], the placeholder record the API
-  still hands the frontend. It sits at `location = \"/\"` beside the other top-level transforms collections rather
-  than above them, so listings of the top level filter it out."
+(def ^{:arglists '([collection-namespace])} root-collection-id
+  "The (memoized) ID of `collection-namespace`'s root collection — the real row holding content that isn't filed
+  under a collection of its own. Not to be confused with [[root-collection]], the placeholder record the API still
+  hands the frontend. Root rows sit at `location = \"/\"` beside the other top-level collections of their namespace
+  rather than above them, so listings of the top level filter them out.
+
+  `memoize-for-application-db` keys on the arguments alongside the app db, so once worktrees give each worktree its
+  own roots this can take a worktree id and each one caches separately."
   (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (t2/select-one-pk :model/Collection :is_root true :namespace transforms-ns)
+   (fn [collection-namespace]
+     (u/prog1 (t2/select-one-pk :model/Collection :is_root true :namespace collection-namespace)
        (when-not <>
-         (throw (ex-info "Fatal error: Transforms root collection is missing" {})))))))
+         (throw (ex-info "Fatal error: root collection is missing"
+                         {:namespace collection-namespace})))))))
+
+(def namespaces-with-real-roots
+  "Namespaces whose top level is a real `is_root` collection row rather than the synthesized placeholder."
+  #{transforms-ns snippets-ns})
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"

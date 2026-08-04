@@ -502,7 +502,7 @@
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)
-        collection-id (or (:id collection) (collection/transforms-root-collection-id))]
+        collection-id (or (:id collection) (collection/root-collection-id collection/transforms-ns))]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
@@ -1296,8 +1296,8 @@
   that row, so callers get an id they can file content under; the rest still get the synthesized placeholder."
   [collection-namespace]
   (collection-detail
-   (or (when (= (keyword collection-namespace) collection/transforms-ns)
-         (t2/select-one :model/Collection :id (collection/transforms-root-collection-id)))
+   (or (when-let [collection-namespace (collection/namespaces-with-real-roots (keyword collection-namespace))]
+         (t2/select-one :model/Collection :id (collection/root-collection-id collection-namespace)))
        (collection/root-collection-with-ui-details collection-namespace))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

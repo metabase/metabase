@@ -1204,7 +1204,7 @@
       (case export-scope
         :root-only
         (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
-               :collection_id (collections/transforms-root-collection-id)
+               :collection_id (collections/root-collection-id collections/transforms-ns)
                (into [] cat conditions))
         :all
         (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key

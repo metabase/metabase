@@ -2268,7 +2268,7 @@
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))
                 (testing "a transform serialized without a collection lands in the Transforms root"
-                  (is (= (collection/transforms-root-collection-id)
+                  (is (= (collection/root-collection-id collection/transforms-ns)
                          (:collection_id transform))))))))))))
 
 (deftest transform-checkpoint-field-remap-test

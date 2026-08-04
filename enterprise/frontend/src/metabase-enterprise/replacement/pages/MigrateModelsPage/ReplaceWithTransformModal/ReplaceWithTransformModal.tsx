@@ -165,7 +165,7 @@ function ReplaceWithTransformForm({
         schema: values.targetSchema,
         database: database.id,
       },
-      target_collection_id: values.collectionId,
+      target_collection_id: values.collectionId ?? rootCollection.id,
       transform_tag_ids: values.tagIds,
     });
     await action.unwrap();

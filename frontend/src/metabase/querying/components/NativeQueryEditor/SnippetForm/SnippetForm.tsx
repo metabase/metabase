@@ -61,6 +61,11 @@ function SnippetFormInner({
   onCancel,
 }: SnippetFormProps) {
   const hasManyCollections = snippetCollections.length > 1;
+  const rootCollection = snippetCollections.find(
+    (collection) => collection.is_root,
+  );
+  const rootCollectionId =
+    typeof rootCollection?.id === "number" ? rootCollection.id : null;
 
   const initialValues = useMemo(
     () =>
@@ -68,17 +73,23 @@ function SnippetFormInner({
         {
           ...snippet,
           content: snippet?.content || "",
+          collection_id: snippet?.collection_id ?? rootCollectionId,
         },
         { stripUnknown: true },
       ),
-    [snippet],
+    [snippet, rootCollectionId],
   );
 
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={SNIPPET_SCHEMA}
-      onSubmit={onSubmit}
+      onSubmit={(values) =>
+        onSubmit({
+          ...values,
+          collection_id: values.collection_id ?? rootCollectionId,
+        })
+      }
     >
       {({ dirty }) => (
         <Form
