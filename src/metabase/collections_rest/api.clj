@@ -17,6 +17,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -244,8 +245,11 @@
   "How many collections the lazy tree is willing to materialize in a single response.
 
   An instance at or under this budget gets its entire tree in one request, exactly as it did before lazy loading, so
-  the overwhelming majority of instances see no change at all. Only instances above the budget pay for lazy loading."
-  500)
+  the overwhelming majority of instances see no change at all. Only instances above the budget pay for lazy loading.
+
+  E2E runs use a budget small enough that the ordinary Cypress snapshot already exceeds it. That way the suite
+  exercises the lazy path for real, instead of needing hundreds of seeded collections to cross a production budget."
+  (if config/is-e2e? 2 500))
 
 (defn- select-collections-up-to
   "Reads at most `limit` collections. Returns `[collections complete?]`, where `complete?` is false when there may be
