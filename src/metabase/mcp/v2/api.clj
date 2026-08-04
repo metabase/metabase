@@ -142,6 +142,16 @@
        "visualization settings — read the matching skill unless it is already in context.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 
+(def default-ask-scopes
+  "What an uninstructed client is asked to request for this surface: read only.
+
+   The surface still *accepts* the write scopes, and its resource metadata still advertises them,
+   so a client that wants to write can request them and the user can consent. This only decides
+   what a client asks for when nothing tells it otherwise — which for the major MCP clients is
+   every scope the resource advertises, writes included."
+  [metabot.scope/agent-content-read
+   metabot.scope/agent-query-run])
+
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the v2 MCP endpoint."
   (transport/make-handler
@@ -151,4 +161,5 @@
     :instructions       server-instructions
     :tools-hash-fn      registry/tools-hash
     :endpoint-paths     #{"/api/metabase-mcp/v2"}
-    :default-path       "/api/metabase-mcp/v2"}))
+    :default-path       "/api/metabase-mcp/v2"
+    :default-ask-scopes default-ask-scopes}))
