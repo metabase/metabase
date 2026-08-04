@@ -218,7 +218,10 @@
                     [:moderation_reviews :moderator_details]
                     :param_fields
                     :is_remote_synced)
+        (update :creator select-keys [:id :first_name :last_name :email :common_name])
         (update :param_fields (fn [param-fields]
+                                (perms/prime-table-perms-cache
+                                 {:table-ids (into #{} (comp cat (keep :table_id)) (vals param-fields))})
                                 (let [viewable? (memoize (fn [table-id]
                                                            (perms/user-has-permission-for-table?
                                                             api/*current-user-id*
@@ -884,6 +887,18 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
+(defn- metric-card-without-query-breakouts
+  [card]
+  (if-not (= :metric (:type card))
+    card
+    (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
+          query             (lib/query metadata-provider (:dataset_query card))]
+      (cond-> card
+        (and (= 1 (count (:stages query)))
+             (lib/mbql-stage? query -1)
+             (seq (lib/breakouts query -1)))
+        (assoc :dataset_query (lib/remove-all-breakouts query))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -907,8 +922,11 @@
      :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
-     :card-transform (when (or dashboard_id collection_preview)
-                       qp.dashboard/card-with-default-metric-dimension)
+     :card-transform (cond
+                       ;; Collection previews start from the aggregate so no usable default stays scalar
+                       collection_preview (comp qp.dashboard/card-with-default-metric-dimension
+                                                metric-card-without-query-breakouts)
+                       dashboard_id       qp.dashboard/card-with-default-metric-dimension)
      :context (cond
                 collection_preview :collection
                 dashboard_id       :dashboard

@@ -567,7 +567,7 @@
   ([checker token]
    (-check-token checker token)))
 
-(derive :event/set-premium-embedding-token :metabase/event)
+(events/derive! :event/set-premium-embedding-token :metabase/event)
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."

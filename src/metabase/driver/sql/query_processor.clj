@@ -2346,15 +2346,16 @@
         ;; so the CTAS lands in that database. The target namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
-        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
-        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
-        ;; Server / BigQuery cross-DB) aren't expressible through this single-
-        ;; keyword shape; supporting those would need `output-table` to carry
-        ;; both qualifiers or a different HoneySQL form.
+        ;; 3-part `db.schema.name` writes (Snowflake / SQL Server / BigQuery
+        ;; cross-DB) aren't expressible here; supporting those would need
+        ;; `output-table` to carry both qualifiers.
         target-id (cond
                     (and (not (str/blank? output-db))
                          (str/blank? (namespace (keyword output-table))))
-                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    ;; a dot-joined string, not (keyword output-db name): HoneySQL munges dashes to
+                    ;; underscores in a keyword's namespace, so a catalog named test-data would
+                    ;; target the nonexistent test_data. A string splits on `.`, quoted verbatim.
+                    (str output-db "." (clojure.core/name (keyword output-table)))
                     :else
                     (keyword output-table))]
     [(first (format-honeysql driver

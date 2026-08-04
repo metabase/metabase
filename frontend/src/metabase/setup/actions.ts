@@ -2,6 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import {
+  refetchCurrentUser,
   refetchSiteSettings,
   settingsApi,
   setupApi,
@@ -26,6 +27,9 @@ import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
 import {
   trackAddDataLaterClicked,
+  trackAiProviderConnected,
+  trackAiSetupLaterClicked,
+  trackAiSetupStarted,
   trackDatabaseSelected,
   trackLicenseTokenStepSubmitted,
   trackTrackingChanged,
@@ -117,6 +121,8 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     dispatch(goToNextStep());
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
     dispatch(refetchSiteSettings());
+    //  the AI config step needs to know the created user is an admin
+    dispatch(refetchCurrentUser());
   },
 );
 
@@ -194,6 +200,33 @@ export const submitUserInvite = createAsyncThunk(
       });
       return rejectWithValue(error);
     }
+  },
+);
+
+export const START_AI_CONFIG = "metabase/setup/START_AI_CONFIG";
+export const startAiConfig = createAsyncThunk(
+  START_AI_CONFIG,
+  (_: void, { dispatch }) => {
+    trackAiSetupStarted();
+    dispatch(selectStep("ai_config"));
+  },
+);
+
+export const SUBMIT_AI_CONFIG = "metabase/setup/SUBMIT_AI_CONFIG";
+export const submitAiConfig = createAsyncThunk(
+  SUBMIT_AI_CONFIG,
+  (provider: string | undefined, { dispatch }) => {
+    trackAiProviderConnected(provider);
+    dispatch(selectStep("completed"));
+  },
+);
+
+export const SKIP_AI_CONFIG = "metabase/setup/SKIP_AI_CONFIG";
+export const skipAiConfig = createAsyncThunk(
+  SKIP_AI_CONFIG,
+  (_: void, { dispatch }) => {
+    trackAiSetupLaterClicked();
+    dispatch(selectStep("completed"));
   },
 );
 

@@ -1216,6 +1216,7 @@
            premium-features
            request
            settings
+           setup
            sql-tools
            sync
            util
@@ -1930,6 +1931,7 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
+                    :model/NativeQuerySnippet
                     :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
@@ -1939,6 +1941,7 @@
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
+           events
            models
            premium-features}
    :model-imports #{:model/Collection}}
@@ -2046,6 +2049,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -2080,7 +2084,8 @@
            metabase.server.middleware.session
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
-   :uses #{analytics
+   :uses #{agent-api
+           analytics
            analytics-interface
            api
            api-keys
@@ -2826,6 +2831,7 @@
            lib
            lib-be
            models
+           permissions
            queries
            query-permissions
            query-processor
@@ -3071,6 +3077,7 @@
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.api.sandbox-host
            metabase-enterprise.custom-viz-plugin.init
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
@@ -3276,6 +3283,7 @@
    :api  #{metabase-enterprise.erd.api}
    :uses #{api
            models
+           permissions
            util
            warehouse-schema}
    :model-imports #{:model/Database
@@ -3408,6 +3416,7 @@
            config
            events
            premium-features
+           request
            settings
            sso
            util}
@@ -3770,6 +3779,7 @@
    :api  #{metabase-enterprise.upload-management.api}
    :uses #{api
            models
+           permissions
            premium-features
            upload
            util}

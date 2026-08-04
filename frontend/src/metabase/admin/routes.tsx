@@ -38,7 +38,6 @@ import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
-  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_SECURITY_CENTER,
@@ -126,13 +125,13 @@ export const getRoutes = (
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId",
               )}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
               )}
             />
           </Route>
@@ -286,9 +285,6 @@ export const getRoutes = (
           path="metabot"
           element={createElement(createAdminRouteGuard("metabot"))}
         >
-          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
-          {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
-          {PLUGIN_AUDIT.getCliAnalyticsRoutes()}
           <Route key="index-layout" element={<MetabotAdminLayout />}>
             <Route index key="index" element={<AISettingsPage />} />
             <Route key="mcp" path="mcp" element={<McpSettingsPage />} />

@@ -9,6 +9,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { trackMetricDimensionAdded } from "metabase/metrics/analytics";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -73,7 +74,9 @@ export function AddDimensionsPanel({
           },
         ],
       }).unwrap();
+      trackMetricDimensionAdded(metricId, dimension.id, "success");
     } catch {
+      trackMetricDimensionAdded(metricId, dimension.id, "failure");
       dispatch(addUndo({ message: t`Couldn't add ${dimension.display_name}` }));
     }
   };

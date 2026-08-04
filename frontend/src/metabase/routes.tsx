@@ -1,6 +1,6 @@
 import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
-import App from "metabase/AppComponent";
+import { App } from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
@@ -77,10 +77,10 @@ import {
 } from "metabase/route-guards";
 import {
   Navigate,
-  Route,
+  type RouteObject,
   redirect,
+  toRouteObjects,
   useParams,
-  withRouteProps,
 } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
@@ -93,10 +93,6 @@ import { createEntityIdRedirect } from "./routes-stable-id-aware";
 type AppStore = Store<State> & {
   dispatch: ThunkDispatch<State, void, UnknownAction>;
 };
-
-// Legacy containers that still read v3 router props (`params`/`location`/
-// `route`/`router`/`routes`), fed from the router context so they run as
-// `element` routes. Removed with the shim.
 
 /**
  * v48 and earlier linked databases as `/browse/<dbId>-<slug>`. That was a
@@ -116,314 +112,377 @@ export function LegacyBrowseRedirect() {
   return <Navigate to={`/browse/databases/${dbIdAndSlug}`} replace />;
 }
 
-// Reads the route location through `connect`'s `mapStateToProps`, so the hooks
-// cannot reach it. Migrating it means rewriting the connected container,
-// tracked separately.
-const RoutedApp = withRouteProps(App);
+export const getRoutes = (store: AppStore): RouteObject[] => [
+  {
+    element: <App />,
+    children: [
+      // SETUP
+      {
+        element: <RedirectIfSetup />,
+        children: [{ path: "/setup", element: <Setup /> }],
+      },
 
-export const getRoutes = (store: AppStore) => {
-  return (
-    <Route element={<RoutedApp />}>
-      {/* SETUP */}
-      <Route element={<RedirectIfSetup />}>
-        <Route path="/setup" element={<Setup />} />
-      </Route>
+      // For compatibility: use the standard setup for embedding
+      { path: "/setup/embedding", element: redirect("/setup") },
 
-      {/* For compatibility: use the standard setup for embedding */}
-      <Route path="/setup/embedding" element={redirect("/setup")} />
+      // APP
+      {
+        element: <LoadCurrentUser />,
+        children: [
+          // AUTH
+          {
+            path: "/auth",
+            children: [
+              { index: true, element: redirect("/auth/login") },
+              {
+                element: <IsNotAuthenticated />,
+                children: [
+                  { path: "login", element: <Login /> },
+                  { path: "login/:provider", element: <Login /> },
+                ],
+              },
+              { path: "logout", element: <Logout /> },
+              { path: "forgot_password", element: <ForgotPassword /> },
+              { path: "reset_password/:token", element: <ResetPassword /> },
+              // FE routes can sometimes be prioritized over BE
+              // reloading will correctly pick the SSO flow back up from the BE
+              { path: "sso", element: <SsoReload /> },
+              { path: "sso/:provider", element: <SsoReload /> },
+            ],
+          },
 
-      {/* APP */}
-      <Route element={<LoadCurrentUser />}>
-        {/* AUTH */}
-        <Route path="/auth">
-          <Route index element={redirect("/auth/login")} />
-          <Route element={<IsNotAuthenticated />}>
-            <Route path="login" element={<Login />} />
-            <Route path="login/:provider" element={<Login />} />
-          </Route>
-          <Route path="logout" element={<Logout />} />
-          <Route path="forgot_password" element={<ForgotPassword />} />
-          <Route path="reset_password/:token" element={<ResetPassword />} />
-          {/* FE routes can sometimes be prioritized over BE
-              reloading will correctly pick the SSO flow back up from the BE  */}
-          <Route path="sso" element={<SsoReload />} />
-          <Route path="sso/:provider" element={<SsoReload />} />
-        </Route>
+          // MAIN
+          {
+            element: <IsAuthenticated />,
+            children: [
+              ...toRouteObjects(getMetabotRoutes()),
 
-        {/* MAIN */}
-        <Route element={<IsAuthenticated />}>
-          {getMetabotRoutes()}
+              ...(PLUGIN_DATA_APPS.isEnabled
+                ? toRouteObjects(PLUGIN_DATA_APPS.getRoutes())
+                : []),
 
-          {PLUGIN_DATA_APPS.isEnabled && PLUGIN_DATA_APPS.getRoutes()}
+              // The global all hands routes, things in here are for all the folks
+              { path: "/", element: <LandingPageRedirect /> },
 
-          {/* The global all hands routes, things in here are for all the folks */}
-          <Route path="/" element={<LandingPageRedirect />} />
+              {
+                path: "getting-started",
+                element: <CanAccessOnboarding />,
+                children: [{ index: true, element: <Onboarding /> }],
+              },
 
-          <Route path="getting-started" element={<CanAccessOnboarding />}>
-            <Route index element={<Onboarding />} />
-          </Route>
+              { path: "search", element: <SearchApp /> },
+              // Send historical /archive route to trash - can remove in v52
+              { path: "archive", element: redirect("../trash") },
+              { path: "trash", element: <TrashCollectionLanding /> },
 
-          <Route path="search" element={<SearchApp />} />
-          {/* Send historical /archive route to trash - can remove in v52 */}
-          <Route path="archive" element={redirect("trash")} />
-          <Route path="trash" element={<TrashCollectionLanding />} />
+              {
+                path: "document/:entityId",
+                element: <DocumentPageOuter />,
+                children: toRouteObjects(
+                  modalRoute("comments/:childTargetId", CommentsSidesheet, {
+                    noWrap: true,
+                  }),
+                ),
+              },
 
-          <Route path="document/:entityId" element={<DocumentPageOuter />}>
-            {modalRoute("comments/:childTargetId", CommentsSidesheet, {
-              noWrap: true,
-            })}
-          </Route>
+              {
+                path: "collection/entity/:entity_id/*",
+                element: createEntityIdRedirect({
+                  parametersToTranslate: [
+                    {
+                      name: "entity_id",
+                      resourceType: "collection",
+                      type: "param",
+                    },
+                  ],
+                }),
+              },
 
-          <Route
-            path="collection/entity/:entity_id/*"
-            element={createEntityIdRedirect({
-              parametersToTranslate: [
-                {
-                  name: "entity_id",
-                  resourceType: "collection",
-                  type: "param",
-                },
-              ],
-            })}
-          />
+              {
+                path: "collection/users",
+                element: <IsAdmin />,
+                children: [{ index: true, element: <UserCollectionList /> }],
+              },
 
-          <Route path="collection/users" element={<IsAdmin />}>
-            <Route index element={<UserCollectionList />} />
-          </Route>
-
-          <Route
-            path="collection/tenant-specific"
-            element={<PLUGIN_TENANTS.CanAccessTenantSpecificRoute />}
-          >
-            <Route index element={<PLUGIN_TENANTS.TenantCollectionList />} />
-          </Route>
-
-          <Route path="collection/tenant-users" element={<IsAdmin />}>
-            <Route index element={<PLUGIN_TENANTS.TenantUsersList />} />
-            <Route
-              path=":tenantId"
-              element={<PLUGIN_TENANTS.TenantUsersPersonalCollectionList />}
-            />
-          </Route>
-
-          <Route path="collection/:slug" element={<CollectionLanding />}>
-            {modalRoute("move", MoveCollectionModal, { noWrap: true })}
-            {modalRoute("archive", ArchiveCollectionModal, { noWrap: true })}
-            {modalRoute("permissions", CollectionPermissionsModal)}
-            {modalRoute(
-              "move-questions-dashboard",
-              MoveQuestionsIntoDashboardsModal,
-            )}
-            {PLUGIN_COLLECTIONS.cleanUpRoute}
-            {getCollectionTimelineRoutes()}
-          </Route>
-
-          <Route
-            path="dashboard/entity/:entity_id/*"
-            element={createEntityIdRedirect({
-              parametersToTranslate: [
-                {
-                  name: "entity_id",
-                  resourceType: "dashboard",
-                  type: "param",
-                },
-                {
-                  name: "tab",
-                  resourceType: "dashboard-tab",
-                  type: "search",
-                },
-              ],
-            })}
-          />
-
-          <Route path="dashboard/:slug" element={<DashboardApp />}>
-            {modalRoute("move", DashboardMoveModalConnected, { noWrap: true })}
-            {modalRoute("copy", DashboardCopyModalConnected, { noWrap: true })}
-            {modalRoute("archive", ArchiveDashboardModalConnected, {
-              noWrap: true,
-            })}
-          </Route>
-
-          <Route path="/question">
-            <Route
-              path="/question/entity/:entity_id/*"
-              element={createEntityIdRedirect({
-                parametersToTranslate: [
+              {
+                path: "collection/tenant-specific",
+                element: <PLUGIN_TENANTS.CanAccessTenantSpecificRoute />,
+                children: [
                   {
-                    name: "entity_id",
-                    resourceType: "card",
-                    type: "param",
+                    index: true,
+                    element: <PLUGIN_TENANTS.TenantCollectionList />,
                   },
                 ],
-              })}
-            />
-            <Route index element={<QueryBuilder />} />
-            <Route path="notebook" element={<QueryBuilder />} />
-            <Route path="ask" element={<MetabotQueryBuilder />} />
-            <Route path=":slug" element={<QueryBuilder />} />
-            <Route path=":slug/notebook" element={<QueryBuilder />} />
-            <Route path=":slug/metabot" element={<QueryBuilder />} />
-            <Route path=":slug/:objectId" element={<QueryBuilder />} />
-          </Route>
+              },
 
-          {/* MODELS */}
-          {getModelRoutes()}
+              {
+                path: "collection/tenant-users",
+                element: <IsAdmin />,
+                children: [
+                  { index: true, element: <PLUGIN_TENANTS.TenantUsersList /> },
+                  {
+                    path: ":tenantId",
+                    element: (
+                      <PLUGIN_TENANTS.TenantUsersPersonalCollectionList />
+                    ),
+                  },
+                ],
+              },
 
-          <Route path="/model">
-            <Route index element={<QueryBuilder />} />
-            <Route path="new" element={<NewModelOptions />} />
-            <Route path=":slug" element={<QueryBuilder />} />
-            <Route path=":slug/notebook" element={<QueryBuilder />} />
-            <Route path=":slug/query" element={<QueryBuilder />} />
-            <Route path=":slug/columns" element={<QueryBuilder />} />
-            <Route path=":slug/metadata" element={<QueryBuilder />} />
-            <Route path=":slug/metabot" element={<QueryBuilder />} />
-            <Route path=":slug/:objectId" element={<QueryBuilder />} />
-            <Route path="query" element={<QueryBuilder />} />
-            <Route path="metabot" element={<QueryBuilder />} />
-          </Route>
+              {
+                path: "collection/:slug",
+                element: <CollectionLanding />,
+                children: toRouteObjects(
+                  <>
+                    {modalRoute("move", MoveCollectionModal, { noWrap: true })}
+                    {modalRoute("archive", ArchiveCollectionModal, {
+                      noWrap: true,
+                    })}
+                    {modalRoute("permissions", CollectionPermissionsModal)}
+                    {modalRoute(
+                      "move-questions-dashboard",
+                      MoveQuestionsIntoDashboardsModal,
+                    )}
+                    {PLUGIN_COLLECTIONS.cleanUpRoute}
+                    {getCollectionTimelineRoutes()}
+                  </>,
+                ),
+              },
 
-          {getMetricRoutes()}
+              {
+                path: "dashboard/entity/:entity_id/*",
+                element: createEntityIdRedirect({
+                  parametersToTranslate: [
+                    {
+                      name: "entity_id",
+                      resourceType: "dashboard",
+                      type: "param",
+                    },
+                    {
+                      name: "tab",
+                      resourceType: "dashboard-tab",
+                      type: "search",
+                    },
+                  ],
+                }),
+              },
 
-          <Route path="browse">
-            <Route index element={redirect("/browse/models")} />
-            <Route path="metrics" element={<BrowseMetrics />} />
-            <Route path="models" element={<BrowseModels />} />
-            <Route path="databases" element={<BrowseDatabases />} />
-            <Route path="databases/:slug" element={<BrowseSchemas />} />
-            <Route
-              path="databases/:dbId/schema/:schemaName"
-              element={<BrowseTables />}
-            />
-            <Route
-              path="databases/:dbName/schema/:schemaName/table/:tableName"
-              element={<TablePermalinkRedirect />}
-            />
-            <Route
-              path="databases/:dbName/table/:tableName"
-              element={<TablePermalinkRedirect />}
-            />
+              {
+                path: "dashboard/:slug",
+                element: <DashboardApp />,
+                children: toRouteObjects(
+                  <>
+                    {modalRoute("move", DashboardMoveModalConnected, {
+                      noWrap: true,
+                    })}
+                    {modalRoute("copy", DashboardCopyModalConnected, {
+                      noWrap: true,
+                    })}
+                    {modalRoute("archive", ArchiveDashboardModalConnected, {
+                      noWrap: true,
+                    })}
+                  </>,
+                ),
+              },
 
-            {PLUGIN_TABLE_EDITING.getRoutes()}
+              {
+                path: "/question",
+                children: [
+                  {
+                    path: "/question/entity/:entity_id/*",
+                    element: createEntityIdRedirect({
+                      parametersToTranslate: [
+                        {
+                          name: "entity_id",
+                          resourceType: "card",
+                          type: "param",
+                        },
+                      ],
+                    }),
+                  },
+                  { index: true, element: <QueryBuilder /> },
+                  { path: "notebook", element: <QueryBuilder /> },
+                  { path: "ask", element: <MetabotQueryBuilder /> },
+                  { path: ":slug", element: <QueryBuilder /> },
+                  { path: ":slug/notebook", element: <QueryBuilder /> },
+                  { path: ":slug/metabot", element: <QueryBuilder /> },
+                  { path: ":slug/:objectId", element: <QueryBuilder /> },
+                ],
+              },
 
-            {/* These two Redirects support legacy paths in v48 and earlier */}
-            <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
-            <Route
-              path=":dbId/schema/:schemaName"
-              element={redirect("databases/:dbId/schema/:schemaName")}
-            />
-          </Route>
+              // MODELS
+              ...toRouteObjects(getModelRoutes()),
 
-          <Route path="explore" element={<MetricsViewerPage />} />
+              {
+                path: "/model",
+                children: [
+                  { index: true, element: <QueryBuilder /> },
+                  { path: "new", element: <NewModelOptions /> },
+                  { path: ":slug", element: <QueryBuilder /> },
+                  { path: ":slug/notebook", element: <QueryBuilder /> },
+                  { path: ":slug/query", element: <QueryBuilder /> },
+                  { path: ":slug/columns", element: <QueryBuilder /> },
+                  { path: ":slug/metadata", element: <QueryBuilder /> },
+                  { path: ":slug/metabot", element: <QueryBuilder /> },
+                  { path: ":slug/:objectId", element: <QueryBuilder /> },
+                  { path: "query", element: <QueryBuilder /> },
+                  { path: "metabot", element: <QueryBuilder /> },
+                ],
+              },
 
-          <Route path="table">
-            <Route path=":slug" element={<QueryBuilder />} />
-            <Route
-              path=":tableId/detail/:rowId"
-              element={<TableDetailPage />}
-            />
-          </Route>
+              ...toRouteObjects(getMetricRoutes()),
 
-          {/* INDIVIDUAL DASHBOARDS */}
+              {
+                path: "browse",
+                children: [
+                  { index: true, element: redirect("/browse/models") },
+                  { path: "metrics", element: <BrowseMetrics /> },
+                  { path: "models", element: <BrowseModels /> },
+                  { path: "databases", element: <BrowseDatabases /> },
+                  { path: "databases/:slug", element: <BrowseSchemas /> },
+                  {
+                    path: "databases/:dbId/schema/:schemaName",
+                    element: <BrowseTables />,
+                  },
+                  {
+                    path: "databases/:dbName/schema/:schemaName/table/:tableName",
+                    element: <TablePermalinkRedirect />,
+                  },
+                  {
+                    path: "databases/:dbName/table/:tableName",
+                    element: <TablePermalinkRedirect />,
+                  },
 
-          <Route path="/auto/dashboard/*" element={<AutomaticDashboardApp />} />
+                  ...toRouteObjects(PLUGIN_TABLE_EDITING.getRoutes()),
 
-          {/* REFERENCE */}
-          <Route path="/reference">
-            <Route index element={redirect("/reference/databases")} />
-            <Route path="segments" element={<SegmentListContainer />} />
-            <Route
-              path="segments/:segmentId"
-              element={<SegmentDetailContainer />}
-            />
-            <Route
-              path="segments/:segmentId/fields"
-              element={<SegmentFieldListContainer />}
-            />
-            <Route
-              path="segments/:segmentId/fields/:fieldId"
-              element={<SegmentFieldDetailContainer />}
-            />
-            <Route
-              path="segments/:segmentId/questions"
-              element={<SegmentQuestionsContainer />}
-            />
-            <Route
-              path="segments/:segmentId/revisions"
-              element={<SegmentRevisionsContainer />}
-            />
-            <Route path="databases" element={<DatabaseListContainer />} />
-            <Route
-              path="databases/:databaseId"
-              element={<DatabaseDetailContainer />}
-            />
-            <Route
-              path="databases/:databaseId/tables"
-              element={<TableListContainer />}
-            />
-            <Route
-              path="databases/:databaseId/tables/:tableId"
-              element={<TableDetailContainer />}
-            />
-            <Route
-              path="databases/:databaseId/tables/:tableId/fields"
-              element={<FieldListContainer />}
-            />
-            <Route
-              path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-              element={<FieldDetailContainer />}
-            />
-            <Route
-              path="databases/:databaseId/tables/:tableId/questions"
-              element={<TableQuestionsContainer />}
-            />
-            <Route path="glossary" element={<GlossaryContainer />} />
-          </Route>
+                  // These two redirects support legacy paths in v48 and earlier
+                  { path: ":dbIdAndSlug", element: <LegacyBrowseRedirect /> },
+                  {
+                    path: ":dbId/schema/:schemaName",
+                    element: redirect("../databases/:dbId/schema/:schemaName"),
+                  },
+                ],
+              },
 
-          {/* ACCOUNT */}
-          {getAccountRoutes(store, IsAuthenticated)}
+              { path: "explore", element: <MetricsViewerPage /> },
 
-          {/* ADMIN */}
-          {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+              {
+                path: "table",
+                children: [
+                  { path: ":slug", element: <QueryBuilder /> },
+                  {
+                    path: ":tableId/detail/:rowId",
+                    element: <TableDetailPage />,
+                  },
+                ],
+              },
 
-          {/* DATA STUDIO */}
-          {getDataStudioRoutes(IsAdmin)}
+              // INDIVIDUAL DASHBOARDS
+              { path: "/auto/dashboard/*", element: <AutomaticDashboardApp /> },
 
-          {/* MONITOR */}
-          {getMonitorRoutes()}
-        </Route>
-      </Route>
+              // REFERENCE
+              {
+                path: "/reference",
+                children: [
+                  { index: true, element: redirect("/reference/databases") },
+                  { path: "segments", element: <SegmentListContainer /> },
+                  {
+                    path: "segments/:segmentId",
+                    element: <SegmentDetailContainer />,
+                  },
+                  {
+                    path: "segments/:segmentId/fields",
+                    element: <SegmentFieldListContainer />,
+                  },
+                  {
+                    path: "segments/:segmentId/fields/:fieldId",
+                    element: <SegmentFieldDetailContainer />,
+                  },
+                  {
+                    path: "segments/:segmentId/questions",
+                    element: <SegmentQuestionsContainer />,
+                  },
+                  {
+                    path: "segments/:segmentId/revisions",
+                    element: <SegmentRevisionsContainer />,
+                  },
+                  { path: "databases", element: <DatabaseListContainer /> },
+                  {
+                    path: "databases/:databaseId",
+                    element: <DatabaseDetailContainer />,
+                  },
+                  {
+                    path: "databases/:databaseId/tables",
+                    element: <TableListContainer />,
+                  },
+                  {
+                    path: "databases/:databaseId/tables/:tableId",
+                    element: <TableDetailContainer />,
+                  },
+                  {
+                    path: "databases/:databaseId/tables/:tableId/fields",
+                    element: <FieldListContainer />,
+                  },
+                  {
+                    path: "databases/:databaseId/tables/:tableId/fields/:fieldId",
+                    element: <FieldDetailContainer />,
+                  },
+                  {
+                    path: "databases/:databaseId/tables/:tableId/questions",
+                    element: <TableQuestionsContainer />,
+                  },
+                  { path: "glossary", element: <GlossaryContainer /> },
+                ],
+              },
 
-      {/* DEPRECATED */}
-      {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-      <Route path="/q" element={<QuestionHashRedirect />} />
-      <Route path="/card/:slug" element={<QuestionHashRedirect />} />
-      <Route
-        path="/dash/:dashboardId"
-        element={redirect("/dashboard/:dashboardId")}
-      />
-      <Route
-        path="/collections/permissions"
-        element={redirect("/admin/permissions/collections")}
-      />
+              // ACCOUNT
+              ...toRouteObjects(getAccountRoutes(store, IsAuthenticated)),
 
-      {/* Transforms moved from /admin to /data-studio */}
-      <Route
-        path="/admin/transforms"
-        element={redirect("/data-studio/transforms")}
-      />
-      <Route
-        path="/admin/transforms/*"
-        element={redirect("/data-studio/transforms/*")}
-      />
+              // ADMIN
+              ...toRouteObjects(
+                getAdminRoutes(store, CanAccessSettings, IsAdmin),
+              ),
 
-      {/* Dependency diagnostics moved from /data-studio to /monitor */}
-      {getMonitorRedirects()}
+              // DATA STUDIO
+              ...toRouteObjects(getDataStudioRoutes(IsAdmin)),
 
-      {/* MISC */}
-      <Route path="/unsubscribe" element={<UnsubscribePage />} />
-      <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="/*" element={<NotFoundFallbackPage />} />
-    </Route>
-  );
-};
+              // MONITOR
+              ...toRouteObjects(getMonitorRoutes()),
+            ],
+          },
+        ],
+      },
+
+      // DEPRECATED
+      // NOTE: these custom routes are needed because a redirect doesn't preserve the hash
+      { path: "/q", element: <QuestionHashRedirect /> },
+      { path: "/card/:slug", element: <QuestionHashRedirect /> },
+      {
+        path: "/dash/:dashboardId",
+        element: redirect("/dashboard/:dashboardId"),
+      },
+      {
+        path: "/collections/permissions",
+        element: redirect("/admin/permissions/collections"),
+      },
+
+      // Transforms moved from /admin to /data-studio
+      {
+        path: "/admin/transforms",
+        element: redirect("/data-studio/transforms"),
+      },
+      {
+        path: "/admin/transforms/*",
+        element: redirect("/data-studio/transforms/*"),
+      },
+
+      // Dependency diagnostics moved from /data-studio to /monitor
+      ...toRouteObjects(getMonitorRedirects()),
+
+      // MISC
+      { path: "/unsubscribe", element: <UnsubscribePage /> },
+      { path: "/unauthorized", element: <Unauthorized /> },
+      { path: "/*", element: <NotFoundFallbackPage /> },
+    ],
+  },
+];

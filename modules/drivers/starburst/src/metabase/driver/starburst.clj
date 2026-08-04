@@ -67,6 +67,7 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
                               :connection-impersonation        true}]
@@ -999,7 +1000,7 @@
 
 (defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
-  (str \' (sql.u/escape-sql s :ansi) \'))
+  (sql.u/quote-literal s :ansi))
 
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]

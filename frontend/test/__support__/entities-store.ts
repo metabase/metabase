@@ -8,9 +8,11 @@ import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { reducer as entitiesReducer } from "metabase/redux/entities";
 import type { State } from "metabase/redux/store";
-import type { StoreSeedState } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  seedApiQueryCache,
+} from "metabase/redux/store/mocks";
 
-import { seedApiQueryCache } from "./rtk-query-cache";
 // Re-exported from the test-support tier so specs can build a main-app store
 // without importing `metabase/reducers-main` directly, which would
 // cross module boundaries. The test-support tier is exempt from those rules.

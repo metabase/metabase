@@ -23,7 +23,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push, useParams, useRouter } from "metabase/router";
+import { push, useLocation, useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
@@ -49,10 +49,10 @@ import {
   SORT_COLUMN_VALUES,
 } from "./constants";
 import type { RouteParams } from "./types";
-import { buildListParams, urlStateConfig } from "./utils";
+import { buildListParams, getTabCount, urlStateConfig } from "./utils";
 
 export const NotificationsAdminPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { notificationId: notificationIdParam } = useParams<RouteParams>();
   const notificationId = Urls.extractEntityId(notificationIdParam);
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -77,9 +77,18 @@ export const NotificationsAdminPage = () => {
   const selectedCount = selectedNotifications.length;
 
   const {
-    data: failingData,
+    currentData: allCountData,
+    error: allCountError,
+    isFetching: isAllCountFetching,
+  } = useAdminListNotificationsQuery({
+    limit: 1,
+    offset: 0,
+    active: urlState.active ?? undefined,
+  });
+  const {
+    currentData: failingData,
     error: failingError,
-    isLoading: isFailingLoading,
+    isFetching: isFailingFetching,
   } = useAdminListNotificationsQuery({
     limit: 1,
     offset: 0,
@@ -87,33 +96,18 @@ export const NotificationsAdminPage = () => {
     last_check_status: "failing",
   });
   const {
-    data: ownerlessData,
+    currentData: ownerlessData,
     error: ownerlessError,
-    isLoading: isOwnerlessLoading,
+    isFetching: isOwnerlessFetching,
   } = useAdminListNotificationsQuery({
     limit: 1,
     offset: 0,
     active: urlState.active ?? undefined,
     creatorless: true,
   });
+  const allCount = allCountData?.total ?? 0;
   const failingCount = failingData?.total ?? 0;
   const ownerlessCount = ownerlessData?.total ?? 0;
-
-  useEffect(() => {
-    if (
-      (urlState.tab === "failing" && failingData && failingCount === 0) ||
-      (urlState.tab === "ownerless" && ownerlessData && ownerlessCount === 0)
-    ) {
-      patchUrlState({ tab: "all", page: 0 });
-    }
-  }, [
-    urlState.tab,
-    failingData,
-    failingCount,
-    ownerlessData,
-    ownerlessCount,
-    patchUrlState,
-  ]);
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
@@ -282,8 +276,18 @@ export const NotificationsAdminPage = () => {
   );
 
   const isSidebarOpen = notificationId !== undefined;
-  const isPageLoading = isLoading || isFailingLoading || isOwnerlessLoading;
   const countError = failingError ?? ownerlessError;
+  const allTabCount = getTabCount(isAllCountFetching, allCountError, allCount);
+  const failingTabCount = getTabCount(
+    isFailingFetching,
+    failingError,
+    failingCount,
+  );
+  const ownerlessTabCount = getTabCount(
+    isOwnerlessFetching,
+    ownerlessError,
+    ownerlessCount,
+  );
 
   const { prevNotificationId, nextNotificationId, notificationSummary } =
     useMemo(() => {
@@ -312,10 +316,8 @@ export const NotificationsAdminPage = () => {
       };
     }, [notificationId, notifications]);
 
-  if (isPageLoading || countError) {
-    return (
-      <LoadingAndErrorWrapper loading={isPageLoading} error={countError} />
-    );
+  if (countError) {
+    return <LoadingAndErrorWrapper error={countError} />;
   }
 
   return (
@@ -326,8 +328,9 @@ export const NotificationsAdminPage = () => {
 
           <NotificationsTabs
             tab={urlState.tab}
-            failingCount={failingCount}
-            ownerlessCount={ownerlessCount}
+            allCount={allTabCount}
+            failingCount={failingTabCount}
+            ownerlessCount={ownerlessTabCount}
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
@@ -354,17 +357,29 @@ export const NotificationsAdminPage = () => {
             onRowClick={handleRowClick}
           />
 
-          <Flex justify="end">
-            <PaginationControls
-              page={urlState.page}
-              pageSize={PAGE_SIZE}
-              itemsLength={notifications.length}
-              total={total}
-              showTotal
-              onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
-              onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
-            />
-          </Flex>
+          {!isLoading && error === undefined && (
+            <Flex justify="end">
+              <PaginationControls
+                page={urlState.page}
+                pageSize={PAGE_SIZE}
+                itemsLength={notifications.length}
+                total={total}
+                showTotal
+                onPreviousPage={() =>
+                  patchUrlState(
+                    { page: urlState.page - 1 },
+                    { immediate: true },
+                  )
+                }
+                onNextPage={() =>
+                  patchUrlState(
+                    { page: urlState.page + 1 },
+                    { immediate: true },
+                  )
+                }
+              />
+            </Flex>
+          )}
         </MonitorMain>
 
         {isSidebarOpen && (

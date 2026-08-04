@@ -18,6 +18,7 @@ import {
   type MetabotAgentTurnErroredMessage,
   type MetabotChatMessage,
   type MetabotDataPart,
+  type MetabotDebugToolCallMessage,
   type MetabotUserChatMessage,
   forkConversation,
   isChainOfThoughtMessage,
@@ -200,6 +201,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   supportsReasoning?: boolean;
   onFork?: (messageId: string) => void;
   isForking?: boolean;
+  onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
 }
 
 export const AgentMessage = ({
@@ -220,6 +222,7 @@ export const AgentMessage = ({
   supportsReasoning = true,
   onFork,
   isForking,
+  onToolCallSelect,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -252,7 +255,7 @@ export const AgentMessage = ({
           />
         ))
         .with({ type: "tool_call" }, (m) => (
-          <AgentToolCallMessage message={m} />
+          <AgentToolCallMessage message={m} onSelect={onToolCallSelect} />
         ))
         .with({ type: "chain_of_thought" }, (m) =>
           supportsReasoning ? (
@@ -514,6 +517,7 @@ export const Messages = ({
   onInternalLinkClick,
   getExtraActions,
   renderAfterMessage,
+  onToolCallSelect,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -527,6 +531,7 @@ export const Messages = ({
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
   renderAfterMessage?: (message: MetabotChatMessage) => ReactNode;
+  onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
 }) => {
   const dispatch = useDispatch();
   const visibleMessages = useMemo(
@@ -645,6 +650,7 @@ export const Messages = ({
               }
               onInternalLinkClick={onInternalLinkClick}
               supportsReasoning={supportsReasoning}
+              onToolCallSelect={onToolCallSelect}
               isStreaming={
                 isChainOfThoughtMessage(message)
                   ? isDoingScience && !nextContent

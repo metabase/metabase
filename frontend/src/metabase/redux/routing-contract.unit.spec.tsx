@@ -84,15 +84,16 @@ describe("routing transport contract", () => {
     expect(location()?.state).toEqual({ preserveNavbarState: true });
   });
 
-  it("distinguishes push from replace via location.action", async () => {
+  it("push adds a history entry, replace does not", async () => {
     const { location, navigate } = setup();
 
     await navigate(push("/a"));
-    expect(location()?.action).toBe("PUSH");
-
     await navigate(replace("/b"));
     expect(location()?.pathname).toBe("/b");
-    expect(location()?.action).toBe("REPLACE");
+
+    // `/b` replaced `/a`, so going back lands on the entry before it.
+    await navigate(goBack());
+    expect(location()?.pathname).toBe("/");
   });
 
   it("goBack returns to the previous entry", async () => {

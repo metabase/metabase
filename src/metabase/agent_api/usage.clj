@@ -1,9 +1,12 @@
 (ns metabase.agent-api.usage
   "Agent API (CLI) usage logging.
 
-  One write point feeds the analytics table: a lean `agent_api_call_log` row per direct Agent
-  API HTTP call, recorded from the `routes` respond callback in `metabase.agent-api.api`. The
-  write is a `defenterprise` no-op in OSS — an OSS instance records nothing — with the real
+  [[wrap-record-cli-usage]] is the single write point: a Ring middleware in the main handler
+  stack that records one `agent_api_call_log` row for every `/api/*` HTTP call whose
+  `User-Agent` identifies the Metabase CLI. MCP's synthetic in-process dispatch bypasses the
+  Ring stack entirely, so it's never double-counted (those calls land in `mcp_tool_call_log`).
+
+  The write is a `defenterprise` no-op in OSS — an OSS instance records nothing — with the real
   insert in `metabase-enterprise.agent-api.usage`. Like `ai_usage_log`, collection runs on every
   EE instance (`:feature :none`); the `:audit-app` feature gates the surfaces that read these
   rows (the audit view + page), not the writing.
@@ -14,8 +17,11 @@
   the caller's self-reported `User-Agent` (analytics only — never used to gate access)."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]))
+   [metabase.request.core :as request]
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (def supported-client-keys
   "Canonical client keys [[detect-client]] classifies callers into for analytics. Keep in sync
@@ -43,3 +49,55 @@
   metabase-enterprise.agent-api.usage
   [_call-info]
   nil)
+
+(defn templatize-uri
+  "Replace variable path segments in `uri` with `:id` (numeric) or `:uuid` (UUID v4) to reduce
+  cardinality for analytics. `/api/card/134` → `/api/card/:id`,
+  `/api/card/abc-def-…/query` → `/api/card/:uuid/query`."
+  [^String uri]
+  (-> uri
+      (str/replace #"(?<=/)\d+(?=/|$)" ":id")
+      (str/replace u/uuid-regex ":uuid")))
+
+(defn- error-message-from-response
+  "Best-effort human-readable error string from a response, for the gated `error_message` column.
+  The body may be a Clojure map (inside the handler), a JSON string, or a bare string (after
+  serialization). Handles all three; returns nil for streaming/opaque bodies."
+  [{:keys [body]}]
+  (cond
+    (map? body)    (or (:message body) (:error body))
+    (string? body) (or (try
+                         (let [parsed (json/decode body keyword)]
+                           (or (:message parsed) (:error parsed)))
+                         (catch Exception _ nil))
+                       body)
+    :else          nil))
+
+(defn wrap-record-cli-usage
+  "Ring middleware that records one `agent_api_call_log` row for every `/api/*` call whose
+  `User-Agent` identifies the Metabase CLI. MCP's synthetic in-process dispatch bypasses the
+  Ring middleware stack entirely, so it's never double-counted (those calls are already in
+  `mcp_tool_call_log`). Non-CLI callers pay zero overhead — a single header check."
+  [handler]
+  (fn [request respond raise]
+    (let [user-agent (get-in request [:headers "user-agent"])
+          ^String uri (:uri request)]
+      (if-not (and (= "metabase-cli" (detect-client user-agent))
+                   (str/starts-with? uri "/api/"))
+        (handler request respond raise)
+        (let [timer (u/start-timer)]
+          (handler request
+                   (fn [{:keys [status] :as response}]
+                     (let [error? (or (nil? status) (>= status 400))]
+                       (record-agent-api-call!
+                        {:user-id       (or (:metabase-user-id request) api/*current-user-id*)
+                         :tenant-id     (some-> api/*current-user* deref :tenant_id)
+                         :user-agent    user-agent
+                         :operation     (str (some-> (:request-method request) name u/upper-case-en)
+                                             " " (templatize-uri uri))
+                         :status        (if error? "error" "success")
+                         :duration-ms   (long (u/since-ms timer))
+                         :ip-address    (request/ip-address request)
+                         :error-message (when error? (error-message-from-response response))}))
+                     (respond response))
+                   raise))))))

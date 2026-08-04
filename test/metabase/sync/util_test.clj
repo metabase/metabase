@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -223,8 +224,8 @@
           (is (true?
                (str/includes? results "4.0 s"))))))))
 
-(derive ::sync-error-handling-begin ::sync-util/event)
-(derive ::sync-error-handling-end ::sync-util/event)
+(events/derive! ::sync-error-handling-begin ::sync-util/event)
+(events/derive! ::sync-error-handling-end ::sync-util/event)
 
 (deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"

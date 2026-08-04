@@ -6,7 +6,10 @@ import {
   useGetMetricQuery,
 } from "metabase/api";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
-import { DEFAULT_DISPLAY_TYPE_BY_DIMENSION } from "metabase/common/metrics/utils/dimension-types";
+import {
+  DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
+  type DimensionType,
+} from "metabase/common/metrics/utils/dimension-types";
 import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import {
   useMetricDefinition,
@@ -14,7 +17,44 @@ import {
 } from "metabase/metrics/common/hooks";
 import * as LibMetric from "metabase-lib/metric";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { Card } from "metabase-types/api";
+import type { Card, DatasetColumn } from "metabase-types/api";
+
+const COLUMN_DISPLAY_NAME_SEPARATOR = ": ";
+
+function getDimensionSelectLabel(
+  dimensionLabel: string | undefined,
+  dimensionType: DimensionType | null,
+  column: DatasetColumn | undefined,
+) {
+  const hasConcreteTemporalUnit =
+    dimensionType === "time" &&
+    column?.unit != null &&
+    column.unit !== "default";
+  const hasBinningSuffix =
+    dimensionType === "numeric" && column?.binning_info != null;
+
+  if (
+    !dimensionLabel ||
+    !column ||
+    (!hasConcreteTemporalUnit && !hasBinningSuffix)
+  ) {
+    return dimensionLabel;
+  }
+
+  const separatorIndex = column.display_name.lastIndexOf(
+    COLUMN_DISPLAY_NAME_SEPARATOR,
+  );
+  if (separatorIndex < 0) {
+    return dimensionLabel;
+  }
+
+  const suffix = column.display_name.slice(separatorIndex);
+  if (dimensionLabel.endsWith(suffix)) {
+    return dimensionLabel;
+  }
+
+  return `${dimensionLabel}${suffix}`;
+}
 
 export function useMetricAboutQuery(
   card: Card,
@@ -80,10 +120,11 @@ export function useMetricAboutQuery(
   const activeDimensionLabel = dimensionOptions.find(
     (option) => option.value === activeDimensionId,
   )?.label;
-  const activeDimensionSelectLabel =
-    activeDimensionType === "numeric"
-      ? (data?.data.cols[0]?.display_name ?? activeDimensionLabel)
-      : activeDimensionLabel;
+  const activeDimensionSelectLabel = getDimensionSelectLabel(
+    activeDimensionLabel,
+    activeDimensionType,
+    data?.data.cols[0],
+  );
   const isLoading =
     isLoadingMetric ||
     isWaitingForDefinition ||

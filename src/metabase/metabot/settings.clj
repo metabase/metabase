@@ -106,7 +106,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "openai" "openrouter"})
+  #{"anthropic" "azure" "bedrock" "mistral" "openai" "openrouter" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -115,6 +115,10 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-mistral-llm-metabot-model
+  "Default Mistral model used for Metabot when no explicit model is selected."
+  "mistral-medium-3-5")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."
@@ -125,6 +129,10 @@
   Note that OpenRouter model IDs use dots in version numbers (`claude-sonnet-4.6`),
   unlike the Anthropic API's hyphenated IDs (`claude-sonnet-4-6`)."
   "anthropic/claude-sonnet-4.6")
+
+(def ^:private default-zai-llm-metabot-model
+  "Default Z.AI model used for Metabot when no explicit model is selected."
+  "glm-5.2")
 
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
@@ -137,8 +145,10 @@
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "mistral"                              default-mistral-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
    "openrouter"                           default-openrouter-llm-metabot-model
+   "zai"                                  default-zai-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -300,8 +310,10 @@
                     :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
                     :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
                     :region            (non-blank (llm.settings/llm-bedrock-region))})
+    "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
+    "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))
     nil))
 
 (defn provider-credentials-complete?
