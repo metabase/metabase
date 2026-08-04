@@ -2,14 +2,14 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useCreateTransformJobMutation,
-  useLazyGetTransformJobQuery,
-} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
+import {
+  useCreateTransformJobMutation,
+  useLazyGetTransformJobQuery,
+} from "metabase/transforms/api/transform-job";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 

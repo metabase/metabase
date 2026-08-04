@@ -2,12 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useCreateTableIndexMutation,
-  useGetTableQueryMetadataQuery,
-  useUpdateTableIndexMutation,
-} from "metabase/api";
+import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
@@ -16,6 +11,10 @@ import {
   trackTransformIndexCreated,
   trackTransformIndexUpdated,
 } from "metabase/transforms/analytics";
+import {
+  useCreateTableIndexMutation,
+  useUpdateTableIndexMutation,
+} from "metabase/transforms/api/index-manager";
 import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {

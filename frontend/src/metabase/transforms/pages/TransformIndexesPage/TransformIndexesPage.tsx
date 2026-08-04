@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useDeleteTableIndexMutation,
-  useGetTransformQuery,
-  useListTableIndexesQuery,
-} from "metabase/api";
+import { skipToken, useGetTransformQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -15,6 +10,10 @@ import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useParams } from "metabase/router";
 import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
+import {
+  useDeleteTableIndexMutation,
+  useListTableIndexesQuery,
+} from "metabase/transforms/api/index-manager";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";

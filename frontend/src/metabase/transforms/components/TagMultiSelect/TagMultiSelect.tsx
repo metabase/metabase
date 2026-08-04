@@ -2,11 +2,11 @@ import cx from "classnames";
 import { type MouseEvent, useState } from "react";
 import { jt, t } from "ttag";
 
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   useCreateTransformTagMutation,
   useListTransformTagsQuery,
-} from "metabase/api/transform-tag";
-import { useMetadataToasts } from "metabase/common/hooks";
+} from "metabase/transforms/api/transform-tag";
 import {
   ActionIcon,
   Icon,

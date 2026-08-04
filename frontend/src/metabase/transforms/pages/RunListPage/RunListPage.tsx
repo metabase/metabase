@@ -4,12 +4,12 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
 import {
   useListTransformRunsQuery,
-  useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { useListTransformTagsQuery } from "metabase/transforms/api/transform-tag";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
