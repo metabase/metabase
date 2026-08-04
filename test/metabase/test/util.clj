@@ -248,6 +248,7 @@
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
+             :collection_id (collection/root-collection-id collection/snippets-ns)
              :entity_id (u/generate-nano-id)
              :name (u.random/random-name)
              :content "1 = 1"}))

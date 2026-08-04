@@ -11,7 +11,11 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
+(defn- root-collection
+  "The snippets root is a real collection row now, so its id has to be resolved against the app db."
+  []
+  (assoc (t2/select-one :model/Collection :id (collection/root-collection-id collection/snippets-ns))
+         :name "Root Collection"))
 
 (defn- test-perms!
   "Test whether we have permissions to see/edit/etc. a Snippet by calling `(has-perms? snippet)`. `required-perms` is
@@ -22,7 +26,7 @@
       ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
       (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
       ;; run tests with both a normal Collection and the Root Collection
-      (doseq [{collection-name :name, :as collection} [normal-collection root-collection]]
+      (doseq [{collection-name :name, :as collection} [normal-collection (root-collection)]]
         (testing (format "\nSnippet in %s" collection-name)
           (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
@@ -104,9 +108,9 @@
                        :model/Collection dest   {:name "New Parent Collection", :namespace "snippets"}]
           ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-          (doseq [source-collection [source root-collection]]
+          (doseq [source-collection [source (root-collection)]]
             (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
-              (doseq [dest-collection [dest root-collection]]
+              (doseq [dest-collection [dest (root-collection)]]
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
                           (t2/update! :model/NativeQuerySnippet (:id snippet) {:collection_id (:id source-collection)})

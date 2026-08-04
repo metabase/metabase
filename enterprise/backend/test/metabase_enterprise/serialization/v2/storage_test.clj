@@ -100,7 +100,7 @@
                          :model/Collection         child       {:name      "Child Collection"
                                                                 :namespace :snippets
                                                                 :location  (str "/" (:id grandparent) "/" (:id parent) "/")}
-                         :model/NativeQuerySnippet _c1         {:name "root snippet" :collection_id nil}
+                         :model/NativeQuerySnippet _c1         {:name "root snippet"}
                          :model/NativeQuerySnippet _c2         {:name "grandparent snippet" :collection_id (:id grandparent)}
                          :model/NativeQuerySnippet _c3         {:name "parent snippet" :collection_id (:id parent)}
                          :model/NativeQuerySnippet _c4         {:name "child snippet" :collection_id (:id child)}]
@@ -173,7 +173,7 @@
                          :model/Dashboard          d1  {:name "some dash" :collection_id (:id col)}
                          :model/DashboardCard      _   {:card_id (:id c1) :dashboard_id (:id d1)}
                          :model/DashboardCard      _   {:card_id (:id c2) :dashboard_id (:id d1)}
-                         :model/NativeQuerySnippet _   {:name "root snippet" :collection_id nil}]
+                         :model/NativeQuerySnippet _   {:name "root snippet"}]
         (let [export     (extract/extract nil)
               check-sort (fn [coll order]
                            (loop [[k :as ks] (keys coll)

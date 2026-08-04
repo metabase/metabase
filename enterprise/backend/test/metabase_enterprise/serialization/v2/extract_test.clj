@@ -616,7 +616,6 @@
                                                                          :creator_id    ann-id}
                        :model/NativeQuerySnippet {s2-id  :id
                                                   s2-eid :entity_id}    {:name          "Snippet 2"
-                                                                         :collection_id nil
                                                                          :creator_id    ann-id}
                        :model/Card               {card-id :id}          {:name          "Card using Snippet 1"
                                                                          :creator_id    ann-id

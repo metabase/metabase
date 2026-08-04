@@ -50,8 +50,28 @@ databaseChangeLog:
               SET collection_id = NULL
               WHERE collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets');
 
+  ## The FK was ON DELETE SET NULL, which MySQL and MariaDB refuse to combine with a NOT NULL column. Nothing
+  ## relied on it: `before-delete` on Collection already deletes the snippets in a collection before the row goes,
+  ## so it comes back without an action, matching `fk_transform_collection_id`.
   - changeSet:
       id: v64.2026-08-04T11:00:02
+      author: ranquild
+      comment: Drop the SET NULL fk_snippet_collection_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-08-04T11:00:03
       author: ranquild
       comment: Make native_query_snippet.collection_id NOT NULL
       changes:
@@ -59,3 +79,15 @@ databaseChangeLog:
             tableName: native_query_snippet
             columnName: collection_id
             columnDataType: int
+
+  - changeSet:
+      id: v64.2026-08-04T11:00:04
+      author: ranquild
+      comment: Restore fk_snippet_collection_id without an on-delete action
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
