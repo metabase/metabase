@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.transforms.core :as transforms]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
@@ -98,7 +99,7 @@
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
        [:transform_target     :map]
-       [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
+       [:target_collection_id {:optional true} ::replacement.schema/source-entity-id]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
   (let [user-id   api/*current-user-id*
@@ -108,7 +109,8 @@
                     :source        {:type  :query
                                     :query (:dataset_query card)}
                     :target        transform_target
-                    :collection_id target_collection_id
+                    :collection_id (or target_collection_id
+                                       (collections/transforms-root-collection-id))
                     :tag_ids       transform_tag_ids})
         job-row   (replacement-run/create-run!
                    :card card_id

@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import {
   skipToken,
+  useGetCollectionQuery,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
@@ -32,13 +33,18 @@ import {
 import * as Errors from "metabase/utils/errors";
 import { slugify } from "metabase/visualizations/lib/formatting/url";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
-import type { Card, Database } from "metabase-types/api";
+import type {
+  Card,
+  Collection,
+  CollectionId,
+  Database,
+} from "metabase-types/api";
 
 const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
-  collectionId: Yup.number().nullable().defined(),
+  collectionId: Yup.mixed<CollectionId>().defined(),
   tagIds: Yup.array().of(Yup.number().required()).defined(),
 });
 
@@ -91,10 +97,22 @@ function ReplaceWithTransformLoader({
     error: schemasError,
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
-  const isLoading = isDatabaseLoading || isSchemasLoading;
-  const error = databaseError ?? schemasError;
+  const {
+    data: rootCollection,
+    isLoading: isRootCollectionLoading,
+    error: rootCollectionError,
+  } = useGetCollectionQuery({ id: "root", namespace: "transforms" });
 
-  if (isLoading || error != null || database == null) {
+  const isLoading =
+    isDatabaseLoading || isSchemasLoading || isRootCollectionLoading;
+  const error = databaseError ?? schemasError ?? rootCollectionError;
+
+  if (
+    isLoading ||
+    error != null ||
+    database == null ||
+    rootCollection == null
+  ) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
@@ -103,6 +121,7 @@ function ReplaceWithTransformLoader({
       card={card}
       database={database}
       schemas={schemas}
+      rootCollection={rootCollection}
       onClose={onClose}
     />
   );
@@ -112,6 +131,7 @@ type ReplaceWithTransformFormProps = {
   card: Card;
   database: Database;
   schemas: string[];
+  rootCollection: Collection;
   onClose: () => void;
 };
 
@@ -119,6 +139,7 @@ function ReplaceWithTransformForm({
   card,
   database,
   schemas,
+  rootCollection,
   onClose,
 }: ReplaceWithTransformFormProps) {
   const [replaceModelWithTransform] = useReplaceModelWithTransformMutation();
@@ -128,10 +149,10 @@ function ReplaceWithTransformForm({
       name: card.name,
       targetSchema: schemas[0] ?? null,
       targetName: slugify(card.name),
-      collectionId: null,
+      collectionId: rootCollection.id,
       tagIds: [],
     }),
-    [card.name, schemas],
+    [card.name, schemas, rootCollection.id],
   );
 
   const handleSubmit = async (values: ReplaceWithTransformValues) => {

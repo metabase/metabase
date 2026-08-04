@@ -102,7 +102,7 @@ export type ReplaceModelWithTransformRequest = {
   card_id: CardId;
   transform_name: string;
   transform_target: TransformTarget;
-  target_collection_id: CollectionId | null;
+  target_collection_id: CollectionId;
   transform_tag_ids?: TransformTagId[];
 };
 

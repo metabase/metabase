@@ -2501,6 +2501,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           collections
            models
            request
            transforms
@@ -3483,6 +3484,7 @@
    :uses #{analytics
            api
            app-db
+           collections
            events
            lib
            lib-be

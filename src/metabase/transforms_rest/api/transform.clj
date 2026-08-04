@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.collections.core :as collections]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -175,18 +176,19 @@
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:collection_id {:optional true} ms/PositiveInt]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (transforms.core/check-feature-enabled! body)
-  (api/create-check :model/Transform body)
-  (transforms.core/check-database-feature body)
-  (transforms.core/validate-incremental-column-type! body)
-  (api/check (not (transforms-base.u/target-table-exists? body))
-             403
-             (deferred-tru "A table with that name already exists."))
-  (-> (transforms.core/create-transform! body)
-      transforms.u/add-source-readable))
+  (let [body (update body :collection_id #(or % (collections/transforms-root-collection-id)))]
+    (transforms.core/check-feature-enabled! body)
+    (api/create-check :model/Transform body)
+    (transforms.core/check-database-feature body)
+    (transforms.core/validate-incremental-column-type! body)
+    (api/check (not (transforms-base.u/target-table-exists? body))
+               403
+               (deferred-tru "A table with that name already exists."))
+    (-> (transforms.core/create-transform! body)
+        transforms.u/add-source-readable)))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -301,7 +303,7 @@
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:collection_id {:optional true} ms/PositiveInt]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (api/write-check :model/Transform id)
