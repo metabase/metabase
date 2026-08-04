@@ -6,7 +6,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import {
   type MetabotAgentChatMessage,
@@ -23,6 +23,7 @@ import {
   isChainOfThoughtMessage,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,

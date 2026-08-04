@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import { AuthTextLink } from "../AuthButton";

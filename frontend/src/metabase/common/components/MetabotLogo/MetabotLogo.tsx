@@ -6,7 +6,7 @@ import cloud from "assets/img/metabot-cloud-96x96.svg?component";
 import happy from "assets/img/metabot-happy.svg?component";
 import sad from "assets/img/metabot-sad.svg?component";
 import cool from "assets/img/metabot-shades.svg?component";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 import Styles from "./MetabotLogo.module.css";
 

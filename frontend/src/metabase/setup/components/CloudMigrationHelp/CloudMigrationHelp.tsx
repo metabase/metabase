@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { HelpCard } from "metabase/common/components/HelpCard";
-import { useSetting } from "metabase/common/hooks";
 import { migrateToCloudGuideUrl } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 
 import { useStep } from "../../useStep";
 import { SetupCardContainer } from "../SetupCardContainer";

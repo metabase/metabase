@@ -2,7 +2,8 @@ import { t } from "ttag";
 
 import { UpsellPill } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 export const UpsellEmailWhitelabelPill = ({ source }: { source: string }) => {
   const isHosted = useSetting("is-hosted?");

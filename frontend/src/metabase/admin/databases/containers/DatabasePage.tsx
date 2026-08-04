@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useSetting } from "metabase/common/hooks";
 import { useParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,

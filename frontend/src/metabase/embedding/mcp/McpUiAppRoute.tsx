@@ -4,7 +4,7 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 

@@ -1,7 +1,7 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
@@ -10,6 +10,7 @@ import {
 } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import { useSetting } from "metabase/settings";
 import { Button } from "metabase/ui";
 
 import { trackQueryFixClicked } from "../../analytics";

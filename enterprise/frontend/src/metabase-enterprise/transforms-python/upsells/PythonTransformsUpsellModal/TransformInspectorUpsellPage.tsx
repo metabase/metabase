@@ -1,11 +1,11 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux/hooks";
 import { useParams } from "metabase/router";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";

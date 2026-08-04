@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 import { identity } from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Code } from "metabase/ui";
 
 import type { TipProps as _TipProps } from "./TroubleshootingTip";

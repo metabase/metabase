@@ -1,6 +1,6 @@
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,

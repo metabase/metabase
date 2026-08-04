@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { UserInfo } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 
 import { submitUser } from "../../actions";
 import { getUser } from "../../selectors";

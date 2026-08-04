@@ -1,6 +1,6 @@
 import { c } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";

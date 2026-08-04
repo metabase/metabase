@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useSetting } from "metabase/settings";
 
 import { trackExplainChartClicked } from "../analytics";
 

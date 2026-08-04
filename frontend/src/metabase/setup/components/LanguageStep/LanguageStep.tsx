@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Locale } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import { Button, Stack } from "metabase/ui";
 
 import { useStep } from "../..//useStep";

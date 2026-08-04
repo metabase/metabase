@@ -4,10 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useSetting } from "metabase/common/hooks";
 import animationStyles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Flex, Tooltip } from "metabase/ui";
 
 import S from "./HomeGreeting.module.css";

@@ -1,10 +1,11 @@
 import { updateIn } from "icepick";
 import { c, t } from "ttag";
 
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { InviteInfo } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import {
   getDatabase,
   getDatabaseEngine,

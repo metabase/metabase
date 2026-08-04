@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { METAKEY } from "metabase/utils/browser";

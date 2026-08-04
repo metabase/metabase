@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { forgotPassword } from "metabase/redux/auth";
 import type { Location } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Button } from "metabase/ui";
 
 import { AuthLayout } from "../AuthLayout";

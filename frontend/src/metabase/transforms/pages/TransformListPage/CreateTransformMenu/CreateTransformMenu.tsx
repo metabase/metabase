@@ -4,13 +4,14 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
