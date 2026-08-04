@@ -35,6 +35,7 @@ import type {
 import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
+import { getAddableProviderTypes } from "./addable-provider-types";
 
 const PROVIDER_ICON_SIZE = 32;
 const PROVIDER_DETAILS_INDENT = "2.5rem";
@@ -105,10 +106,9 @@ export function AIProviderList() {
 
   const hasConnections = connections.length > 0;
 
-  const addableProviderTypes = providerTypes.filter(
-    (providerType) =>
-      !providerType.singleton ||
-      !connections.some((connection) => connection.type === providerType.type),
+  const addableProviderTypes = getAddableProviderTypes(
+    providerTypes,
+    connections,
   );
 
   return (

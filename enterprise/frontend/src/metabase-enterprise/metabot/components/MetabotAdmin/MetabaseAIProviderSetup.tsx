@@ -31,15 +31,12 @@ import { formatNumber } from "metabase/utils/formatting";
 import {
   type MetabotUsageResponse,
   useGetMetabotUsageQuery,
-  useRemoveCloudAddOnMutation,
 } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   METABASE_MANAGED_AI_FEATURE,
-  METABASE_MANAGED_AI_PRODUCT_TYPE,
   METABASE_MANAGED_AI_TERMS_URL,
-  METABASE_TIERED_AI_PRODUCT_TYPE,
   METABOT_V3_FEATURE,
   OFFER_METABASE_MANAGED_AI_FEATURE,
 } from "../../constants";
@@ -94,9 +91,6 @@ export function MetabaseAIProviderSetup({
   );
 
   const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi();
-  const [removeCloudAddOn, removeCloudAddOnResult] =
-    useRemoveCloudAddOnMutation();
-
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSettingUpModalOpen, setIsSettingUpModalOpen] = useState(false);
 
@@ -128,55 +122,8 @@ export function MetabaseAIProviderSetup({
   const needsTermsAcceptance =
     connectAction === handleMetabasePurchase && !hasAcceptedTerms;
 
-  const onDisconnect = useCallback(async () => {
-    const feature = match({
-      offerMetabaseManagedAi,
-      hasMetabaseManagedAiProviderFeature,
-      hasDeprecatedMetabaseAiProvider,
-    })
-      .returnType<
-        | typeof METABASE_MANAGED_AI_PRODUCT_TYPE
-        | typeof METABASE_TIERED_AI_PRODUCT_TYPE
-        | null
-      >()
-      .with(
-        { hasMetabaseManagedAiProviderFeature: true },
-        () => METABASE_MANAGED_AI_PRODUCT_TYPE,
-      )
-      .with(
-        { offerMetabaseManagedAi: true, hasDeprecatedMetabaseAiProvider: true },
-        () => METABASE_TIERED_AI_PRODUCT_TYPE,
-      )
-      .with(
-        {
-          offerMetabaseManagedAi: false,
-          hasDeprecatedMetabaseAiProvider: true,
-        },
-        // If we can't upgrade to managed AI, we don't want to disable the existing one.
-        () => null,
-      )
-      .otherwise(() => {
-        throw new Error("No feature is enabled to cancel");
-      });
-
-    if (!feature) {
-      return;
-    }
-
-    await removeCloudAddOn({
-      product_type: feature,
-    }).unwrap();
-  }, [
-    offerMetabaseManagedAi,
-    hasMetabaseManagedAiProviderFeature,
-    hasDeprecatedMetabaseAiProvider,
-    removeCloudAddOn,
-  ]);
-
   const isMutating =
-    createLlmProviderResult.isLoading ||
-    removeCloudAddOnResult.isLoading ||
-    metabaseManagedAiPurchase.isLoading;
+    createLlmProviderResult.isLoading || metabaseManagedAiPurchase.isLoading;
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -192,13 +139,6 @@ export function MetabaseAIProviderSetup({
       )
     : undefined;
 
-  const removeMetabaseManagedAiError = removeCloudAddOnResult.error
-    ? getErrorMessage(
-        removeCloudAddOnResult.error,
-        t`Unable to disconnect from this AI provider.`,
-      )
-    : undefined;
-
   return (
     <>
       {isConfigured ? (
@@ -210,7 +150,6 @@ export function MetabaseAIProviderSetup({
             hasMetabaseManagedAiProviderFeature
           }
           offerMetabaseManagedAi={offerMetabaseManagedAi}
-          onDisconnect={onDisconnect}
         />
       ) : (
         <>
@@ -314,12 +253,6 @@ export function MetabaseAIProviderSetup({
         </Text>
       )}
 
-      {removeMetabaseManagedAiError && (
-        <Text size="sm" c="feedback-negative">
-          {removeMetabaseManagedAiError}
-        </Text>
-      )}
-
       <MetabotSettingUpModal
         isSavingConfiguration={
           isSettingUpModalOpen &&
@@ -339,14 +272,12 @@ function MetabaseManagedProviderCard({
   hasDeprecatedMetabaseAiProvider,
   hasMetabaseManagedAiProviderFeature,
   offerMetabaseManagedAi,
-  onDisconnect,
 }: {
   isLoadingPricing: boolean;
   pricing: MetabaseManagedAiPricing | null;
   hasDeprecatedMetabaseAiProvider: boolean;
   hasMetabaseManagedAiProviderFeature: boolean;
   offerMetabaseManagedAi: boolean;
-  onDisconnect: () => Promise<void>;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
   const isLocked = metabotUsage?.is_locked;
@@ -384,11 +315,7 @@ function MetabaseManagedProviderCard({
             <Text c="text-secondary" fz="sm" lh={1.4}>
               {t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`}
             </Text>
-            <MetabotManagedProviderLimitActions
-              inline
-              mt="sm"
-              onConfigure={onDisconnect}
-            />
+            <MetabotManagedProviderLimitActions inline mt="sm" />
           </Flex>
         ))
         .with(
