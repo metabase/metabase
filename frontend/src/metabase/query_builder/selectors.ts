@@ -11,7 +11,6 @@ import { getSortedTimelines } from "metabase/common/utils/timelines";
 import {
   isQuestionDirty,
   isQuestionRunnable,
-  isSavedQuestionChanged,
 } from "metabase/querying/common/utils/question";
 import type { State } from "metabase/redux/store";
 import {
@@ -61,10 +60,30 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { cleanIndexFlags } from "./model-indexes/actions";
+import {
+  getCard,
+  getOriginalCard,
+  getOriginalQuestion,
+  getParameterValues,
+  getQueryBuilderMode,
+  getQuestion,
+  getQuestionWithoutComposing,
+  getUiControls,
+} from "./selectors/question";
 import { getWritableColumnProperties } from "./utils";
 
-// This selector can be called from public questions / dashboards, which do not have state.qb
-export const getUiControls = (state: State) => state.qb?.uiControls;
+export {
+  getCard,
+  getIsSavedQuestionChanged,
+  getOriginalCard,
+  getOriginalQuestion,
+  getParameterValues,
+  getQueryBuilderMode,
+  getQuestion,
+  getQuestionWithoutComposing,
+  getUiControls,
+} from "./selectors/question";
+
 export const getQueryStatus = (state: State) => state.qb.queryStatus;
 export const getLoadingControls = (state: State) => state.qb.loadingControls;
 
@@ -105,11 +124,7 @@ export const getIsRunning = (state: State) => getUiControls(state).isRunning;
 export const getIsLoadingComplete = (state: State) =>
   getQueryStatus(state) === "complete";
 
-export const getCard = (state: State) => state.qb.card;
-export const getOriginalCard = (state: State) => state.qb.originalCard;
 export const getLastRunCard = (state: State) => state.qb.lastRunCard;
-
-export const getParameterValues = (state: State) => state.qb.parameterValues;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
@@ -128,11 +143,6 @@ export const getIsBookmarked = (
     (bookmark) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  (uiControls) => uiControls.queryBuilderMode,
-);
 
 export const getQueryStartTime = (state: State) => state.qb.queryStartTime;
 
@@ -165,12 +175,6 @@ export const getDatasetEditorTab = createSelector(
   (uiControls) => uiControls.datasetEditorTab,
 );
 
-export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) =>
-    (metadata && card && new Question(card, metadata)) ?? undefined,
-);
-
 export const getOriginalQuestionWithParameterValues = createSelector(
   [getMetadata, getOriginalCard, getParameterValues],
   (metadata, card, parameterValues) =>
@@ -181,40 +185,6 @@ export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
     card && metadata && new Question(card, metadata, parameterValues),
-);
-
-export const getQuestionWithoutComposing = createSelector(
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) => {
-    if (!card || !metadata) {
-      return;
-    }
-    return new Question(card, metadata, parameterValues);
-  },
-);
-
-export const getQuestion = createSelector(
-  [getQuestionWithoutComposing, getQueryBuilderMode],
-  (question, queryBuilderMode) => {
-    if (!question) {
-      return;
-    }
-
-    const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
-    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
-      return isModel ? question.lockDisplay() : question;
-    }
-
-    // When opening a model or a metric, we construct a question
-    // with a clean, ad-hoc, query.
-    // This has to be skipped for users without data permissions.
-    // See https://github.com/metabase/metabase/issues/20042
-    const composedQuestion =
-      isModel || isMetric ? question.composeQuestion() : question;
-    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
-    return isEditable ? composedQuestion : question;
-  },
 );
 
 /**
@@ -625,11 +595,6 @@ export const getZoomRow = createSelector(
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
   isQuestionDirty,
-);
-
-export const getIsSavedQuestionChanged = createSelector(
-  [getQuestion, getOriginalQuestion],
-  isSavedQuestionChanged,
 );
 
 export const getIsRunnable = createSelector(
