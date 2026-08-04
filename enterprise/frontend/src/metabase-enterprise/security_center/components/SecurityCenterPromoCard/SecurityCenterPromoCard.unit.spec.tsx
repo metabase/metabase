@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { securityCenterApi, subscriptionApi } from "metabase/api";
+import { subscriptionApi } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
@@ -13,6 +13,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
+
+import { securityCenterApi } from "../../api";
 
 import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
 

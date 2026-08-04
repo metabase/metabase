@@ -34,7 +34,6 @@ export * from "./public";
 export * from "./pulse";
 export * from "./revision";
 export * from "./search";
-export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./setup";
