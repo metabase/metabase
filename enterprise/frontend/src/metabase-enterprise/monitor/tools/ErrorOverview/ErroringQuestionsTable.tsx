@@ -12,10 +12,10 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
   LoadingOverlay,
   type RenderRowLink,
@@ -130,12 +130,8 @@ export const ErroringQuestionsTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
+    <MonitorTableCard
+      aria-busy={isFetching}
       data-testid="erroring-questions-table"
     >
       {isLoading ? (
@@ -160,7 +156,7 @@ export const ErroringQuestionsTable = ({
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 

@@ -16,11 +16,11 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { Outlet, push } from "metabase/router";
 import {
   ActionIcon,
-  Card,
   Center,
   Ellipsified,
   Flex,
@@ -93,12 +93,8 @@ export function ModelPersistenceLogJobs() {
 
   return (
     <>
-      <Card
-        flex="0 1 auto"
-        mih={0}
-        p={0}
-        pos="relative"
-        withBorder
+      <MonitorTableCard
+        aria-busy={isFetching}
         data-testid="model-persistence-log-jobs"
       >
         {isLoading ? (
@@ -121,7 +117,7 @@ export function ModelPersistenceLogJobs() {
             />
           </>
         )}
-      </Card>
+      </MonitorTableCard>
 
       {!isLoading && hasPagination && (
         <Flex justify="end">

@@ -2,8 +2,8 @@ import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
 import { useScrollToTop } from "metabase/common/hooks";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import {
-  Card,
   LoadingOverlay,
   TreeTable,
   TreeTableSkeleton,
@@ -85,14 +85,7 @@ export const DiagnosticsTable = function DiagnosticsTable({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
-      data-testid="dependency-list"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="dependency-list">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={getColumnWidths(mode)} />
       ) : (
@@ -107,6 +100,6 @@ export const DiagnosticsTable = function DiagnosticsTable({
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };

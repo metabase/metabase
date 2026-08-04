@@ -9,6 +9,7 @@ import { useScrollToTop } from "metabase/common/hooks";
 import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-change";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
@@ -137,14 +138,7 @@ export function ConversationsTable({
   }
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
-      data-testid="conversations-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="conversations-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
@@ -160,7 +154,7 @@ export function ConversationsTable({
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 }
 

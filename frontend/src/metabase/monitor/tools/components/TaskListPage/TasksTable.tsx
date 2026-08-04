@@ -6,11 +6,11 @@ import _ from "underscore";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
   LoadingOverlay,
   Text,
@@ -92,14 +92,7 @@ export const TasksTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
-      data-testid="tasks-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="tasks-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
@@ -115,7 +108,7 @@ export const TasksTable = ({
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 

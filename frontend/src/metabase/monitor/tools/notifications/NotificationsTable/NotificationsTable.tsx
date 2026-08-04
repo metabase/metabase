@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { listChannelSummaries } from "metabase/monitor/tools/notifications/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
@@ -246,13 +247,8 @@ export const NotificationsTable = ({
   }
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
-      aria-busy={isLoading || isFetching}
+    <MonitorTableCard
+      aria-busy={isFetching}
       data-testid="notifications-admin-table"
     >
       {isLoading ? (
@@ -276,6 +272,6 @@ export const NotificationsTable = ({
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };

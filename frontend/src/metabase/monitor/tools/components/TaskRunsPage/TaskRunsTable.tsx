@@ -5,10 +5,10 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
   LoadingOverlay,
   Text,
@@ -85,14 +85,7 @@ export const TaskRunsTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
-      data-testid="task-runs-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="task-runs-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
@@ -108,7 +101,7 @@ export const TaskRunsTable = ({
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 

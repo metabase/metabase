@@ -3,10 +3,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
   LoadingOverlay,
   TreeTable,
@@ -51,14 +51,7 @@ export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      pos="relative"
-      withBorder
-      data-testid="jobs-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="jobs-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
@@ -74,7 +67,7 @@ export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
           />
         </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 
