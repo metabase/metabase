@@ -51,6 +51,27 @@
                (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response)))))))))))
 
+(deftest get-library-tree-test
+  (testing "GET /ee/library/tree marks the Library roots"
+    (mt/with-premium-features #{:library}
+      (mt/with-discard-model-updates! [:model/Collection]
+        (without-library
+         (collection/create-library-collection!)
+         (let [[library & others] (mt/user-http-request :crowberto :get 200 "ee/library/tree")]
+           (testing "only the Library comes back, at the top level"
+             (is (empty? others))
+             (is (= "Library" (:name library))))
+           (testing "the Library and its magic subcollections are flagged as roots
+
+  The nav sidebar uses this flag to find them. Without it the Library section falls back to a synthetic,
+  non-navigable node and clicking Data goes nowhere."
+             (is (true? (:is_library_root library)))
+             (is (= #{true}
+                    (set (map :is_library_root (:children library)))))
+             (is (= #{collection/library-data-collection-type
+                      collection/library-metrics-collection-type}
+                    (set (map :type (:children library))))))))))))
+
 (deftest disallow-cross-type-collection-move-via-api-test
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection data-parent    {:name "Data Parent"    :type collection/library-data-collection-type}

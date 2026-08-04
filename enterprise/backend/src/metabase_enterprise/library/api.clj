@@ -89,7 +89,11 @@
                                          (t2/reducible-query {:select-distinct [:collection_id :type]
                                                               :from            [:report_card]
                                                               :where           [:= :archived false]}))]
-    (collection/collections->tree collection-type-ids collections)))
+    ;; `/api/collection/tree` marks the Library and its magic top-level collections, and the FE keys off that flag to
+    ;; find them. Without it the sidebar cannot tell a real Library root from an ordinary library-typed collection.
+    (->> collections
+         (map collection/maybe-mark-collection-as-library-root)
+         (collection/collections->tree collection-type-ids))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library` routes."
