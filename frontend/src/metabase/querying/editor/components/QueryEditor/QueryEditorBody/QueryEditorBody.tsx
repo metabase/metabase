@@ -7,6 +7,7 @@ import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import type { QueryModalType } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -16,7 +17,6 @@ import type {
   RecentCollectionItem,
 } from "metabase-types/api";
 
-import type { QueryModalType } from "../../../../constants";
 import type {
   QueryEditorDatabasePickerItem,
   SelectionRange,

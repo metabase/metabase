@@ -1,3 +1,5 @@
+import type { QueryModalType } from "metabase/redux/store";
+
 export const MODAL_TYPES = {
   SAVE: "save",
   ADD_TO_DASHBOARD: "add-to-dashboard",
@@ -13,8 +15,6 @@ export const MODAL_TYPES = {
   MOVE_EVENT: "move-event",
   PREVIEW_QUERY: "preview-query",
   QUESTION_EMBED: "question-embed",
-} as const;
-
-export type QueryModalType = (typeof MODAL_TYPES)[keyof typeof MODAL_TYPES];
+} as const satisfies Record<string, QueryModalType>;
 
 export const VISUALIZATION_SLOW_TIMEOUT = 15 * 1000;

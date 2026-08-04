@@ -5,8 +5,8 @@ import { MetabotPromptButton } from "metabase/querying/components/NativeQueryEdi
 import { NativeVariablesButton } from "metabase/querying/components/NativeQueryEditor/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEditor/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SidebarFeatures } from "metabase/querying/editor/types";
+import type { QueryModalType } from "metabase/redux/store";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";

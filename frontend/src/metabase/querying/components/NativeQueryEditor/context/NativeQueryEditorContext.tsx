@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-import type { QueryModalType } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";

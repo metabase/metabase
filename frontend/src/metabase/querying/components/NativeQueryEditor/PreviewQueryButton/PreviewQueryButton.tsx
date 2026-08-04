@@ -2,7 +2,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
