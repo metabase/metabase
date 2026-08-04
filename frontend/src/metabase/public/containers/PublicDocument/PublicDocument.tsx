@@ -24,7 +24,7 @@ import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLin
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { useLocation, useParams } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 import type { Document } from "metabase-types/api";

@@ -1,12 +1,15 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetVersionInfoQuery, useUpdateSettingMutation } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
+import {
+  useGetVersionInfoQuery,
+  useSetting,
+  useUpdateSettingMutation,
+} from "metabase/settings";
 
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";

@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { getEmbedOptions } from "metabase/selectors/embed";
-import { getSettings } from "metabase/selectors/settings";
+import { getSettings } from "metabase/settings";
 
 export const getFont = createSelector(
   [getSettings, getEmbedOptions],

@@ -16,7 +16,7 @@ import {
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Navigate, useParams } from "metabase/router";
-import { getSettingsLoading } from "metabase/selectors/settings";
+import { getSettingsLoading } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

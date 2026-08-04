@@ -2,14 +2,10 @@ import { type ComponentProps, useCallback, useMemo, useRef } from "react";
 import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useListCollectionItemsQuery,
-} from "metabase/api";
+import { useListCollectionItemsQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
+import { useDocsUrl, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   Form,
@@ -23,6 +19,11 @@ import {
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
 import {
   Box,
   Button,

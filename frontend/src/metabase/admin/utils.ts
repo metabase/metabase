@@ -7,7 +7,7 @@ import type { AdminPath } from "metabase/redux/store/admin";
 import { createRedirectGuard } from "metabase/route-guards";
 import { push, replace } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 
 export const createAdminRouteGuard = (routeKey: string) =>
   createRedirectGuard(

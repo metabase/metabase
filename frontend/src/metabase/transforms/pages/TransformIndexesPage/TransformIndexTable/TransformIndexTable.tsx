@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { TreeTable, useTreeTableInstance } from "metabase/ui";
 import { isNullOrUndefined } from "metabase/utils/types";

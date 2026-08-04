@@ -19,7 +19,7 @@ import {
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import {

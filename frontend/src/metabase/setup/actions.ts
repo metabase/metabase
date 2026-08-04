@@ -1,13 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import {
-  refetchCurrentUser,
-  refetchSiteSettings,
-  settingsApi,
-  setupApi,
-  userApi,
-} from "metabase/api";
+import { refetchCurrentUser, setupApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -21,7 +15,11 @@ import type {
   UserInfo,
 } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getSetting,
+  refetchSiteSettings,
+  settingsApi,
+} from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 

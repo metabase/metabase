@@ -9,10 +9,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { push } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import type { TreeTableColumnDef } from "metabase/ui";

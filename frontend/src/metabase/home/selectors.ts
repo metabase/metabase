@@ -1,5 +1,5 @@
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 
 export const getIsXrayEnabled = (state: State) => {
   return getSetting(state, "enable-xrays");

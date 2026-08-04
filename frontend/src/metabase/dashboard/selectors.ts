@@ -27,8 +27,8 @@ import {
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { isNotNull } from "metabase/utils/types";
