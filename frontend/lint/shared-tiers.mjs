@@ -120,12 +120,7 @@ const sharedRules = [
   // Delete each entry once the imports are one-directional.
   {
     from: ["shared/visualizations"],
-    allow: [
-      "shared/custom-viz",
-      "shared/data-grid",
-      "shared/static-viz",
-      "shared/visualizer",
-    ],
+    allow: ["shared/data-grid", "shared/static-viz"],
   },
   {
     from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
