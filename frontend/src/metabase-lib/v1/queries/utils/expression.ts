@@ -1,4 +1,5 @@
 import { unique_expression_name } from "cljs/metabase.xrays.domain_entities.queries.util";
+import type { ExpressionClause } from "metabase-types/api";
 
 /**
  * Ensures expression's name uniqueness
@@ -11,7 +12,7 @@ import { unique_expression_name } from "cljs/metabase.xrays.domain_entities.quer
  * If the original name is already unique, the fn just returns it
  */
 export function getUniqueExpressionName(
-  expressions: Record<string, unknown>,
+  expressions: ExpressionClause,
   originalName: string,
 ): string {
   return unique_expression_name(expressions, originalName);

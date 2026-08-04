@@ -13,77 +13,59 @@ import {
   TYPE,
   UNKNOWN,
 } from "metabase-lib/v1/types/constants";
-import type { FieldTypeInfo } from "metabase-lib/v1/types/utils/isa";
 import {
   isBoolean,
   isDate,
   isLongitude,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
-import type { FieldId, ParameterOptions } from "metabase-types/api";
-
-type FilterArgumentField = FieldTypeInfo & {
-  id: FieldId;
-  display_name: string;
-};
-
-type FilterArgumentTable = {
-  fields: FilterArgumentField[];
-};
+import type { Field, ParameterOptions, Table } from "metabase-types/api";
 
 type FilterArgument =
   | { type: "text" }
   | { type: "number" }
   | { type: "date" }
-  | { type: "hidden"; default: FieldId }
+  | { type: "hidden"; default: Field["id"] }
   | {
       type: "select";
-      values: { key: boolean | FieldId; name: string }[];
+      values: { key: boolean | Field["id"]; name: string }[];
       default?: boolean;
     };
 
-type FilterArgumentFn = (
-  field: FilterArgumentField,
-  table: FilterArgumentTable,
-) => FilterArgument;
+export type FilterArgumentFormatOptions = {
+  hide?: boolean;
+  compact?: boolean;
+  column?: { semantic_type: string };
+};
 
 export type FieldFilterOperator = {
-  validArgumentsFilters: FilterArgumentFn[];
+  validArgumentsFilters: ((field: Field, table: Table) => FilterArgument)[];
   multi?: boolean;
   placeholders?: string[];
-  formatOptions?: Record<string, unknown>[];
+  formatOptions?: FilterArgumentFormatOptions[];
   options?: Record<string, { defaultValue: boolean }>;
   optionsDefaults?: ParameterOptions;
 };
 
-type NamedFilterOperator = {
+export type NamedFilterOperator = {
   name: string;
-  verboseName: string;
+  readonly verboseName: string;
   multi?: boolean;
 };
 
-function freeformArgument(
-  _field: FilterArgumentField,
-  _table: FilterArgumentTable,
-): FilterArgument {
+function freeformArgument(_field: Field, _table: Table): FilterArgument {
   return {
     type: "text",
   };
 }
 
-function numberArgument(
-  _field: FilterArgumentField,
-  _table: FilterArgumentTable,
-): FilterArgument {
+function numberArgument(_field: Field, _table: Table): FilterArgument {
   return {
     type: "number",
   };
 }
 
-function comparableArgument(
-  field: FilterArgumentField,
-  _table: FilterArgumentTable,
-): FilterArgument {
+function comparableArgument(field: Field, _table: Table): FilterArgument {
   if (isDate(field)) {
     return {
       type: "date",
@@ -101,10 +83,7 @@ function comparableArgument(
   };
 }
 
-function equivalentArgument(
-  field: FilterArgumentField,
-  _table: FilterArgumentTable,
-): FilterArgument {
+function equivalentArgument(field: Field, _table: Table): FilterArgument {
   if (isBoolean(field)) {
     return {
       type: "select",
@@ -134,26 +113,27 @@ function equivalentArgument(
 }
 
 function longitudeFieldSelectArgument(
-  _field: FilterArgumentField,
-  table: FilterArgumentTable,
+  _field: Field,
+  table: Table,
 ): FilterArgument {
-  const values = table.fields
+  const values = (table.fields ?? [])
     .filter((field) => isLongitude(field))
     .map((field) => ({
       key: field.id,
       name: field.display_name,
     }));
+
   if (values.length === 1) {
     return {
       type: "hidden",
       default: values[0].key,
     };
-  } else {
-    return {
-      type: "select",
-      values: values,
-    };
   }
+
+  return {
+    type: "select",
+    values,
+  };
 }
 
 const CASE_SENSITIVE_OPTION = {
@@ -163,7 +143,7 @@ const CASE_SENSITIVE_OPTION = {
 };
 
 // each of these has an implicit field argument, followed by 0 or more additional arguments
-export const FIELD_FILTER_OPERATORS: Record<string, FieldFilterOperator> = {
+export const FIELD_FILTER_OPERATORS = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
@@ -251,7 +231,9 @@ export const FIELD_FILTER_OPERATORS: Record<string, FieldFilterOperator> = {
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
-};
+} satisfies Record<string, FieldFilterOperator>;
+
+export type FilterOperatorName = keyof typeof FIELD_FILTER_OPERATORS;
 
 const DEFAULT_FILTER_OPERATORS: NamedFilterOperator[] = [
   {
@@ -338,10 +320,7 @@ const KEY_FILTER_OPERATORS: NamedFilterOperator[] = [
 ];
 
 // ordered list of operators and metadata per type
-export const FILTER_OPERATORS_BY_TYPE_ORDERED: Record<
-  string,
-  NamedFilterOperator[]
-> = {
+export const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
     {
       name: "=",
@@ -666,4 +645,6 @@ export const FILTER_OPERATORS_BY_TYPE_ORDERED: Record<
   [FOREIGN_KEY]: KEY_FILTER_OPERATORS,
   [PRIMARY_KEY]: KEY_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
-};
+} satisfies Record<string, NamedFilterOperator[]>;
+
+export type FilterOperatorType = keyof typeof FILTER_OPERATORS_BY_TYPE_ORDERED;
