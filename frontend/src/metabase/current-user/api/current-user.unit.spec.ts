@@ -6,7 +6,6 @@ import { findRequests } from "__support__/server-mocks";
 import { Api } from "metabase/api/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
-
 import { currentUserApi } from "./current-user";
 
 let activeStore: ReturnType<typeof getStore> | undefined;

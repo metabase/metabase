@@ -1,7 +1,7 @@
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { getUserAttributes, getUserIsAdmin } from "./user";
+import { getUserAttributes, getUserIsAdmin } from "./selectors";
 
 describe("metabase/current-user", () => {
   it("should return true if user is an admin", () => {
