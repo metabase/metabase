@@ -23,6 +23,7 @@ import {
   isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
+import { getVisualizerSeriesCardIndex } from "metabase/visualizations/lib/series";
 import type {
   RenderingContext,
   VisualizationProps,
@@ -36,7 +37,6 @@ import {
   getSeriesClickData,
   getSeriesHovered,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
 import type { CartesianHoveredObject } from "./types";
