@@ -714,7 +714,7 @@
          (when (rs-settings/remote-sync-transforms)
            (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns) :is_root nil))
          (when (rs-settings/library-is-remote-synced?)
-           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
+           (t2/select-pks-vec :model/Collection :namespace "snippets" :is_root nil))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -1193,6 +1193,7 @@
                          {:where [:and
                                   [:= :namespace "snippets"]
                                   [:= :location "/"]
+                                  [:= :is_root nil]
                                   [:not :archived]]})))
     :derived
     nil))

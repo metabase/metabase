@@ -819,18 +819,23 @@
   - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
-    `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
+    `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export.
+
+  A namespace's root collection contributes no path segment of its own — the namespace folder already stands for
+  it — so content filed in the root stays at the top of `collections/<ns>/` rather than in a folder named after
+  the root."
   []
-  (let [colls     (t2/select ['Collection :id :entity_id :location :name])
+  (let [colls     (t2/select ['Collection :id :entity_id :location :name :is_root])
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
+        segment   (fn [cid]
+                    (let [c (id->coll cid)]
+                      (when-not (:is_root c)
+                        {:label (:name c) :key (:entity_id c)})))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
                                :let [parent-ids (rest (str/split location #"/"))
                                      all-ids    (concat parent-ids [(str id)])
-                                     path-maps  (mapv (fn [cid]
-                                                        (let [c (id->coll cid)]
-                                                          {:label (:name c) :key (:entity_id c)}))
-                                                      all-ids)]]
+                                     path-maps  (into [] (keep segment) all-ids)]]
                            [entity_id path-maps]))
         dashboards (into {}
                          (for [{:keys [entity_id name]} (t2/select ['Dashboard :entity_id :name])]

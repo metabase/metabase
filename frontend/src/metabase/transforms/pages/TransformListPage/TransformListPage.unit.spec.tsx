@@ -66,6 +66,7 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
     response: createMockCollection({
       id: MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
       name: "Transforms",
+      namespace: "transforms",
       is_root: true,
     }),
   });

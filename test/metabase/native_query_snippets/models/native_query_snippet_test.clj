@@ -30,10 +30,10 @@
     (testing (format "Should be allowed to move snippets from %s to %s" (name source) (name dest))
       (mt/with-temp [:model/Collection {source-collection-id :id} {:namespace "snippets"}
                      :model/Collection {dest-collection-id :id}   {:namespace "snippets"}]
-        (let [root-id     (collection/snippets-root-collection-id)
-              collection# {:root root-id :collection source-collection-id}
-              dest-id     (if (= dest :root) root-id dest-collection-id)]
-          (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:collection_id (collection# source)}]
+        (let [root-id   (collection/snippets-root-collection-id)
+              id-by-key {:root root-id :collection source-collection-id}
+              dest-id   (if (= dest :root) root-id dest-collection-id)]
+          (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:collection_id (id-by-key source)}]
             (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id dest-id})
             (is (= dest-id
                    (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))))

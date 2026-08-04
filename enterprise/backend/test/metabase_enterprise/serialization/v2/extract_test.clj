@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -647,19 +648,22 @@
             (testing "and will bring collection to extraction"
               (is (= {["Collection" coll-id] {"NativeQuerySnippet" s1-id}}
                      (serdes/required "NativeQuerySnippet" s1-id))))))
-        (testing "or can be outside collections"
-          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s2-id))]
+        (testing "or can live in the root collection"
+          (let [root-eid (t2/select-one-fn :entity_id :model/Collection
+                                           :id (collection/snippets-root-collection-id))
+                ser      (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s2-id))]
             (is (malli= [:map
                          [:serdes/meta [:= [{:model "NativeQuerySnippet"
                                              :id    s2-eid
                                              :label "snippet_2"}]]]
                          [:creator_id  [:= "ann@heart.band"]]
                          [:created_at  :string]
-                         [:collection_id {:optional true} :nil]]
+                         [:collection_id [:= root-eid]]]
                         ser))
             (is (not (contains? ser :id)))
-            (testing "and has no deps"
-              (is (empty? (serdes/deserialization-dependencies ser))))))
+            (testing "and depends on the root collection, which resolves locally on import"
+              (is (= [[{:model "Collection" :id root-eid}]]
+                     (serdes/deserialization-dependencies ser))))))
         (testing "Snippet collection is exported when snippet is exported as a card dep (#51901)"
           (is (= {["Collection" coll2-id]      nil
                   ["Card" card-id]             {"Collection" coll2-id}

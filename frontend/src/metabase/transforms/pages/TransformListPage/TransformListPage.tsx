@@ -128,10 +128,11 @@ export const TransformListPage = () => {
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
-  const { data: rootCollection } = useGetCollectionQuery({
-    id: "root",
-    namespace: "transforms",
-  });
+  const {
+    data: rootCollection,
+    error: rootCollectionError,
+    isLoading: isLoadingRootCollection,
+  } = useGetCollectionQuery({ id: "root", namespace: "transforms" });
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
@@ -155,8 +156,11 @@ export const TransformListPage = () => {
   } = useListTransformsQuery({});
 
   const isLoading =
-    isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
-  const error = collectionsError ?? transformsError;
+    isLoadingCollections ||
+    isLoadingTransforms ||
+    isLoadingDatabases ||
+    isLoadingRootCollection;
+  const error = collectionsError ?? transformsError ?? rootCollectionError;
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
