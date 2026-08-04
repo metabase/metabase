@@ -12,11 +12,12 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
+  LoadingOverlay,
   type RenderRowLink,
   TreeTable,
   type TreeTableColumnDef,
@@ -129,33 +130,33 @@ export const ErroringQuestionsTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
+    <MonitorTableCard
+      aria-busy={isFetching}
       data-testid="erroring-questions-table"
     >
       {isLoading ? (
         <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          showCheckboxes
-          onHeaderCheckboxClick={() =>
-            treeTableInstance.table.toggleAllRowsSelected()
-          }
-          headerCheckboxAriaLabel={t`Select all`}
-          ariaLabel={t`Erroring questions`}
-          isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
-          emptyState={<MonitorEmptyState label={t`No results`} />}
-          getRowProps={() => ({ "data-testid": "erroring-question" })}
-          renderRowLink={renderRowLink}
-          onRowClick={handleRowClick}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            showCheckboxes
+            onHeaderCheckboxClick={() =>
+              treeTableInstance.table.toggleAllRowsSelected()
+            }
+            headerCheckboxAriaLabel={t`Select all`}
+            ariaLabel={t`Erroring questions`}
+            isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
+            emptyState={<MonitorEmptyState label={t`No results`} />}
+            getRowProps={() => ({ "data-testid": "erroring-question" })}
+            renderRowLink={renderRowLink}
+            onRowClick={handleRowClick}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 
