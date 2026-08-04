@@ -10,7 +10,10 @@ import {
 import { t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
-import { getDefaultExplorationName } from "metabase/explorations/constants";
+import {
+  getDefaultExplorationName,
+  isInterestingDimension,
+} from "metabase/explorations/constants";
 import type { ExplorationCollection } from "metabase/explorations/types";
 import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -147,10 +150,18 @@ function buildMetricBlock(
   );
   let selectedDimensionIds: Set<DimensionId>;
   if (replace && requested.length > 0) {
-    // Pin the block to exactly the requested dimensions.
+    // Pin the block to exactly the requested dimensions (no interesting defaults).
     selectedDimensionIds = new Set(requested.map((d) => d.id));
   } else {
-    selectedDimensionIds = new Set(referencedDims.map((d) => d.id));
+    const interesting = referencedDims.filter(isInterestingDimension);
+    // Select the interesting dimensions; fall back to all so the block is
+    // never created with an empty selection (BE rejects a metric with no dims).
+    const base = interesting.length > 0 ? interesting : referencedDims;
+    selectedDimensionIds = new Set(base.map((d) => d.id));
+    // Add the explicitly-requested dimensions on top of the interesting defaults.
+    for (const d of requested) {
+      selectedDimensionIds.add(d.id);
+    }
   }
   return {
     kind: "metric",

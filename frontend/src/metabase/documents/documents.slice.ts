@@ -43,7 +43,6 @@ export const initialState: DocumentsState = {
   isHistorySidebarOpen: false,
 };
 
-// @ts-expect-error - possibly infinite type instantiation (TS2589), same known issue as explorations.slice.ts
 const documentsSlice = createSlice({
   name: "documents",
   initialState,
