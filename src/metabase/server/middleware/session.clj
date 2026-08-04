@@ -228,9 +228,9 @@
                                               (setting/get :use-tenants))
                                          timeout
                                          (session/mfa-required?))
-          params  (clojure.core/concat [session-key (session/hash-session-key session-key)]
-                                       (when (seq anti-csrf-token)
-                                         [anti-csrf-token]))]
+          params  (concat [session-key (session/hash-session-key session-key)]
+                          (when (seq anti-csrf-token)
+                            [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
