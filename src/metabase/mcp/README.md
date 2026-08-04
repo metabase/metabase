@@ -98,7 +98,7 @@ Tools are declared with `deftool` in [`v2/tools/`](v2/tools/) and registered in
 | Tool                 | Description                                                            |
 | -------------------- | ------------------------------------------------------------------------ |
 | `execute_query`      | Validate and execute a query, returning rows plus a `query_handle`.    |
-| `execute_sql`        | Execute a raw SQL string against a database, returning rows plus a handle. |
+| `execute_sql`        | Execute a raw SQL string against a database, returning rows plus a handle. Requires native-query permission on the database, and the instance-level `mcp-execute-sql-enabled` setting. |
 | `run_saved_question` | Run a saved question by id or entity id, returning rows inline.        |
 
 ### Visualization

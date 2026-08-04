@@ -80,7 +80,7 @@ These render inline visualizations in your AI client, and only work in clients t
 ### Query tools
 
 - **Execute query** (`execute_query`): Validate and run a query, returning rows plus a query handle that the visualization tools can reuse.
-- **Execute SQL** (`execute_sql`): Run a raw SQL string against a database. Requires native-query permission on the target database.
+- **Execute SQL** (`execute_sql`): Run a raw SQL string against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default).
 - **Run saved question** (`run_saved_question`): Run a saved question by id and return its rows.
 
 ### Write tools

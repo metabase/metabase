@@ -213,12 +213,7 @@
    ;; back-compat with existing client configs. See [[metabase.mcp.paths/endpoint-paths]].
    "/mcp"                  (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
-   ;; Route-map dispatch matches one path segment at a time, so the `/v2` alias needs its own
-   ;; sub-entry; anything else under `/metabase-mcp` falls through to the same handler.
-   "/metabase-mcp"         (handlers/routes
-                            (handlers/route-map-handler
-                             {"/v2" (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)})
-                            (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler))
+   "/metabase-mcp"         (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)

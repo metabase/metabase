@@ -41,7 +41,7 @@
 ;; Exercises the whole surface (tools/list, tools/call, scope filtering, kill switches) until
 ;; real tools land in tasks 05+.
 (registry/deftool ping-v2
-  "Health-check tool for the v2 MCP surface. Returns a fixed acknowledgement."
+  "Health-check tool for the MCP surface. Returns a fixed acknowledgement."
   {:name        "ping_v2"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
@@ -96,7 +96,7 @@
   (transport/jsonrpc-response id {}))
 
 (defn- dispatch-method
-  "Route a single JSON-RPC `method` to its v2 handler, returning a response map or nil
+  "Route a single JSON-RPC `method` to its handler, returning a response map or nil
   (notifications). `resources/*` serves the MCP Apps iframe shells only; documentation and skill
   resources land with the skills work. `prompts/*` is still unimplemented and falls through to
   method-not-found. A handler that throws is turned into a JSON-RPC internal error by the
@@ -128,7 +128,7 @@
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 
 (def ^{:arglists '([request respond raise])} handler
-  "Ring async handler for the v2 MCP endpoint."
+  "Ring async handler for the MCP endpoint."
   (transport/make-handler
    {:dispatch-method-fn dispatch-method
     ;; No :prompts — a surface must not advertise methods it answers with method-not-found.

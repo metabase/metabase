@@ -19,9 +19,9 @@
 
 (def ^:private endpoint "metabase-mcp")
 
-(defn- mcp-v2-request
+(defn- mcp-request
   ([body]
-   (mcp-v2-request body {}))
+   (mcp-request body {}))
   ([body extra-headers]
    (client/client-full-response (test.users/username->token :crowberto)
                                 :post endpoint
@@ -33,20 +33,20 @@
   ([method params] {:jsonrpc "2.0" :method method :params params :id 1}))
 
 (defn- initialize!
-  "Perform the v2 initialize handshake; returns [session-id init-response]."
+  "Perform the initialize handshake; returns [session-id init-response]."
   []
-  (let [response   (mcp-v2-request (jsonrpc-request "initialize" {:capabilities {}}))
+  (let [response   (mcp-request (jsonrpc-request "initialize" {:capabilities {}}))
         session-id (get-in response [:headers "Mcp-Session-Id"])]
-    (mcp-v2-request {:jsonrpc "2.0" :method "notifications/initialized" :params {}}
-                    {"mcp-session-id" session-id})
+    (mcp-request {:jsonrpc "2.0" :method "notifications/initialized" :params {}}
+                 {"mcp-session-id" session-id})
     [session-id response]))
 
 (deftest mcp-enabled-gate-test
   (testing "the route serves by default — `mcp-enabled?` is the admin toggle and defaults to true"
-    (is (= 200 (:status (mcp-v2-request (jsonrpc-request "initialize"))))))
+    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize"))))))
   (testing "GHY-4250: the admin toggle darkens the surface"
     (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
-      (let [response (mcp-v2-request (jsonrpc-request "initialize"))]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
         (is (= 403 (:status response)))
         (is (= "MCP server is not enabled." (:body response)))))))
 
@@ -63,7 +63,7 @@
           (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))))
 
 (deftest initialize-test
-  (testing "initialize on the v2 path returns the handshake and a session header"
+  (testing "initialize returns the handshake and a session header"
     (let [[session-id response] (initialize!)]
       (is (= 200 (:status response)))
       (is (some? session-id))
@@ -77,8 +77,8 @@
 
 (deftest tools-list-test
   (let [[session-id _] (initialize!)
-        response       (mcp-v2-request (jsonrpc-request "tools/list")
-                                       {"mcp-session-id" session-id})
+        response       (mcp-request (jsonrpc-request "tools/list")
+                                    {"mcp-session-id" session-id})
         tools          (get-in response [:body :result :tools])]
     (testing "the registry drives tools/list; cookie sessions see every tool"
       (is (= 200 (:status response)))
@@ -91,21 +91,21 @@
 (deftest tools-call-test
   (let [[session-id _] (initialize!)]
     (testing "tools/call dispatches through the registry"
-      (let [response (mcp-v2-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
-                                     {"mcp-session-id" session-id})
+      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
+                                  {"mcp-session-id" session-id})
             result   (get-in response [:body :result])]
         (is (= 200 (:status response)))
         (is (not (:isError result)))
         (is (= {:ok true :message "pong"} (:structuredContent result)))))
     (testing "argument validation failures are teaching errors, not schema dumps"
-      (let [response (mcp-v2-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {:message 42}})
-                                     {"mcp-session-id" session-id})
+      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {:message 42}})
+                                  {"mcp-session-id" session-id})
             result   (get-in response [:body :result])]
         (is (:isError result))
         (is (str/starts-with? (-> result :content first :text) "Invalid arguments"))))
     (testing "an unknown tool is a method-not-found style error"
-      (let [response (mcp-v2-request (jsonrpc-request "tools/call" {:name "nope" :arguments {}})
-                                     {"mcp-session-id" session-id})
+      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "nope" :arguments {}})
+                                  {"mcp-session-id" session-id})
             result   (get-in response [:body :result])]
         (is (:isError result))
         (is (= "Unknown tool: nope" (-> result :content first :text)))))))
@@ -114,29 +114,29 @@
   (let [[session-id _] (initialize!)]
     (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["ping_v2"]]
       (testing "a disabled tool disappears from tools/list"
-        (let [response (mcp-v2-request (jsonrpc-request "tools/list")
-                                       {"mcp-session-id" session-id})]
+        (let [response (mcp-request (jsonrpc-request "tools/list")
+                                    {"mcp-session-id" session-id})]
           (is (not (some #(= "ping_v2" (:name %))
                          (get-in response [:body :result :tools]))))))
       (testing "a disabled tool is rejected by tools/call as if it never existed"
-        (let [response (mcp-v2-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
-                                       {"mcp-session-id" session-id})
+        (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
+                                    {"mcp-session-id" session-id})
               result   (get-in response [:body :result])]
           (is (:isError result))
           (is (= "Unknown tool: ping_v2" (-> result :content first :text))))))))
 
 (deftest method-dispatch-fallthrough-test
   (let [[session-id _] (initialize!)]
-    (testing "methods the v2 surface can't serve fall through to JSON-RPC method-not-found"
+    (testing "methods the surface can't serve fall through to JSON-RPC method-not-found"
       (doseq [method ["prompts/list"]]
         (testing method
-          (let [response (mcp-v2-request (jsonrpc-request method)
-                                         {"mcp-session-id" session-id})]
+          (let [response (mcp-request (jsonrpc-request method)
+                                      {"mcp-session-id" session-id})]
             (is (= -32601 (get-in response [:body :error :code])))
             (is (str/includes? (get-in response [:body :error :message]) "Method not found"))))))
     (testing "ping is handled and returns an empty success result, not a fallthrough error"
-      (let [response (mcp-v2-request (jsonrpc-request "ping")
-                                     {"mcp-session-id" session-id})]
+      (let [response (mcp-request (jsonrpc-request "ping")
+                                  {"mcp-session-id" session-id})]
         (is (= 200 (:status response)))
         (is (nil? (get-in response [:body :error])))
         (is (= {} (get-in response [:body :result])))))))
@@ -144,29 +144,29 @@
 (deftest resources-list-and-read-test
   (mcp.ui-resource/with-fallback-template
     (let [[session-id _] (initialize!)
-          listed (-> (mcp-v2-request (jsonrpc-request "resources/list")
-                                     {"mcp-session-id" session-id})
+          listed (-> (mcp-request (jsonrpc-request "resources/list")
+                                  {"mcp-session-id" session-id})
                      (get-in [:body :result :resources]))]
       (testing "GHY-4157: resources/list serves the MCP Apps iframe shells"
         (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
                (set (map :uri listed))))
         (is (every? #(= "text/html;profile=mcp-app" (:mimeType %)) listed)))
       (testing "GHY-4157: resources/read renders a shell the host can sandbox"
-        (let [content (-> (mcp-v2-request (jsonrpc-request "resources/read"
-                                                           {:uri v2.resources/visualize-query-uri})
-                                          {"mcp-session-id" session-id})
+        (let [content (-> (mcp-request (jsonrpc-request "resources/read"
+                                                        {:uri v2.resources/visualize-query-uri})
+                                       {"mcp-session-id" session-id})
                           (get-in [:body :result :contents])
                           first)]
           (is (= v2.resources/visualize-query-uri (:uri content)))
           (is (str/includes? (:text content) "metabaseConfig"))
           (is (contains? (get-in content [:_meta :ui]) :csp))))
       (testing "GHY-4157: an unknown URI is an invalid-params error, not a rendered shell"
-        (let [response (mcp-v2-request (jsonrpc-request "resources/read" {:uri "ui://metabase/nope.html"})
-                                       {"mcp-session-id" session-id})]
+        (let [response (mcp-request (jsonrpc-request "resources/read" {:uri "ui://metabase/nope.html"})
+                                    {"mcp-session-id" session-id})]
           (is (= -32602 (get-in response [:body :error :code])))))
       (testing "GHY-4157: a missing uri parameter is rejected"
-        (let [response (mcp-v2-request (jsonrpc-request "resources/read" {})
-                                       {"mcp-session-id" session-id})]
+        (let [response (mcp-request (jsonrpc-request "resources/read" {})
+                                    {"mcp-session-id" session-id})]
           (is (= -32602 (get-in response [:body :error :code]))))))))
 
 (deftest unauthenticated-discovery-test
