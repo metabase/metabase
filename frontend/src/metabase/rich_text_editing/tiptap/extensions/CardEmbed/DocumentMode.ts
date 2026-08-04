@@ -1,7 +1,7 @@
-import type { QueryClickActionsMode } from "../../types";
-import { ColumnFormattingAction } from "../actions/ColumnFormattingAction";
-import { HideColumnAction } from "../actions/HideColumnAction";
-import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
+import { ColumnFormattingAction } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction";
+import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
+import { NativeQueryClickFallback } from "metabase/visualizations/click-actions/actions/NativeQueryClickFallback";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 
 export const DocumentMode: QueryClickActionsMode = {
   name: "document-mode",
