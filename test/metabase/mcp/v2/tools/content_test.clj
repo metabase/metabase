@@ -157,6 +157,52 @@
                    (mapv #(select-keys % [:id :kind :card :dashboard_tab_id :row :col])
                          (:dashcards row))))))))))
 
+(defn- dashcard-refs
+  "dashcard id -> its projected `:card` and `:series` references, for the redaction assertions."
+  [row]
+  (into {} (map (juxt :id #(select-keys % [:card :series]))) (:dashcards row)))
+
+(deftest get-content-dashboard-redacts-unreadable-cards-test
+  (testing "GHY-4219: a dashcard card and a series entry the caller cannot read collapse to an id
+            with no name. The redaction runs in the tool before the pure projection sees the row,
+            so this pins that get_content still applies it."
+    (mt/with-temp [:model/Collection    {open-id :id}       {}
+                   :model/Collection    {locked-id :id}     {}
+                   :model/Dashboard     {dash-id :id}       {:collection_id open-id}
+                   :model/Card          {open-card :id}     {:name "Open" :collection_id open-id}
+                   :model/Card          {hidden-card :id}   {:name "Hidden" :collection_id locked-id}
+                   :model/Card          {hidden-series :id} {:name "Hidden Series"
+                                                             :collection_id locked-id}
+                   :model/DashboardCard {open-dc :id}       {:dashboard_id dash-id
+                                                             :card_id      open-card
+                                                             :row          0 :col 0}
+                   :model/DashboardCard {hidden-dc :id}     {:dashboard_id dash-id
+                                                             :card_id      hidden-card
+                                                             :row          1 :col 0}
+                   :model/DashboardCardSeries _             {:dashboardcard_id open-dc
+                                                             :card_id          hidden-series
+                                                             :position         0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (testing "an admin, who can read everything, sees every name"
+          (mt/with-test-user :crowberto
+            (let [refs (dashcard-refs (content-one {:items [{:type "dashboard" :id dash-id}]}))]
+              (is (= {:card   {:id open-card :name "Open"}
+                      :series [{:id hidden-series :name "Hidden Series"}]}
+                     (get refs open-dc)))
+              (is (= {:card {:id hidden-card :name "Hidden"}}
+                     (get refs hidden-dc))))))
+        (mt/with-test-user :rasta
+          (let [row  (content-one {:items [{:type "dashboard" :id dash-id}]})
+                refs (dashcard-refs row)]
+            (is (nil? (:error row))
+                "the dashboard itself is readable — only the nested cards are not")
+            (testing "the readable card keeps its name"
+              (is (= {:id open-card :name "Open"} (:card (get refs open-dc)))))
+            (testing "the unreadable card is an id and nothing else"
+              (is (= {:id hidden-card} (:card (get refs hidden-dc)))))
+            (testing "and so is an unreadable series entry"
+              (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
+
 (deftest get-content-alert-test
   (testing "GHY-4140: alert reads carry condition, schedule, and handlers"
     (notification.tu/with-card-notification
@@ -174,6 +220,32 @@
           (is (= "0 0 0 * * ?" (-> row :subscriptions first :cron_schedule)))
           (is (= "channel/email" (-> row :handlers first :channel_type))))))))
 
+(deftest get-content-alert-strips-recipients-without-payload-read-test
+  (testing "GHY-4219: a caller who can read an alert only as its creator — not its card — gets
+            handlers with no recipients at all, the way /api/pulse redacts them. The strip runs in
+            the tool now, so this pins that get_content still applies it."
+    (mt/with-temp [:model/Collection {locked-id :id} {}]
+      (notification.tu/with-card-notification
+        [notification {:card         {:collection_id locked-id}
+                       :notification {:creator_id (mt/user->id :rasta)}
+                       :handlers     [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}]}]}]
+        (mt/with-non-admin-groups-no-collection-perms locked-id
+          (testing "an admin, who can read the card, sees the recipient list"
+            (mt/with-test-user :crowberto
+              (let [handler (-> (content-one {:items [{:type "alert" :id (:id notification)}]})
+                                :handlers first)]
+                (is (= [(mt/user->id :crowberto)] (mapv :user_id (:recipients handler)))))))
+          (mt/with-test-user :rasta
+            (let [row (content-one {:items [{:type "alert" :id (:id notification)}]})]
+              (is (nil? (:error row))
+                  "the creator can still read the alert itself")
+              (is (seq (:handlers row))
+                  "the handler is still projected — only its recipients are withheld")
+              (is (not (contains? (-> row :handlers first) :recipients))
+                  "the recipient list is gone entirely, not merely filtered to empty"))))))))
+
 (deftest get-content-subscription-pulse-test
   (testing "GHY-4140: a live Pulse row reads as a subscription, with its channels and cards"
     (mt/with-temp [:model/Card         {card-id :id}  {:name "Sub Card"}
@@ -190,6 +262,40 @@
           (is (= dash-id (:dashboard_id row)))
           (is (= [(mt/user->id :rasta)]
                  (keep :id (-> row :channels first :recipients)))))))))
+
+(deftest get-content-subscription-strips-sensitive-metadata-test
+  (testing "GHY-4219: a caller who can read a Pulse only as its creator, without collection read
+            perms, loses its cards and its channel recipient lists. The strip runs in the tool now,
+            so this pins that get_content still applies it."
+    (mt/with-temp [:model/Collection   {locked-id :id} {}
+                   :model/Card         {card-id :id}   {:name "Sub Card"}
+                   :model/Dashboard    {dash-id :id}   {}
+                   :model/Pulse        {pulse-id :id}  {:name          "Private Weekly"
+                                                        :dashboard_id  dash-id
+                                                        :collection_id locked-id
+                                                        :creator_id    (mt/user->id :rasta)}
+                   :model/PulseCard    _               {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel {pc-id :id}     {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _      {:pulse_channel_id pc-id
+                                                        :user_id          (mt/user->id :crowberto)}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (testing "an admin, who has collection read perms, sees the cards and the recipients"
+          (mt/with-test-user :crowberto
+            (let [row (content-one {:items [{:type "subscription" :id pulse-id}]})]
+              (is (= [card-id] (mapv :id (:cards row))))
+              (is (= [(mt/user->id :crowberto)]
+                     (mapv :id (-> row :channels first :recipients)))))))
+        (mt/with-test-user :rasta
+          (let [row (content-one {:items [{:type "subscription" :id pulse-id}]})]
+            (is (nil? (:error row))
+                "the creator can still read the subscription itself")
+            (is (= "Private Weekly" (:name row)))
+            (is (nil? (:cards row))
+                "its cards are stripped")
+            (is (seq (:channels row))
+                "the channel is still projected — only its recipients are withheld")
+            (is (not (contains? (-> row :channels first) :recipients))
+                "and the channel recipient list is gone")))))))
 
 (deftest get-content-transform-test
   (testing "GHY-4140: a transform read carries source type and target"

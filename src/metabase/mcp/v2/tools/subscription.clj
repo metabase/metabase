@@ -21,6 +21,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.pulse.api :as pulse.api]
@@ -373,4 +374,5 @@
     (common/success-content
      (common/readback token-scopes [metabot.scope/agent-content-read]
                       (projections/project :subscription :concise
-                                           (projections/subscription-row (pulse/retrieve-pulse id)))))))
+                                           (projections/subscription-row
+                                            (redaction/redact-pulse (pulse/retrieve-pulse id))))))))
