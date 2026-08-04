@@ -10,6 +10,7 @@
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -539,11 +540,16 @@
             (is (some? next_retry_at))
             (is (false? terminal))))))))
 
-(deftest ^:sequential pending-retries-do-not-keep-job-awake-without-feature-test
-  (testing "A pending retry keeps the backfill job scheduled, but only when the :dependencies feature is present.
-           A retry marker is cleared by processing the entity -- on success via upsert-status!, or by going terminal
-           past max-retries -- and both are gated on the feature. Without it the job could never resolve the condition
-           keeping it awake, so it rescheduled hourly forever over rows it was not allowed to touch."
+(deftest ^:sequential pending-retries-licence-states-test
+  (testing "A pending retry keeps the backfill job scheduled, but only when the licence permits acting on it. A retry
+           marker is cleared by processing the entity -- on success via upsert-status!, or by going terminal past
+           max-retries -- and both are gated on the feature, so without it the job could never resolve the condition
+           keeping it awake and rescheduled hourly forever.
+
+           The licence is resolved with canonically-has-feature? rather than has-feature?, which collapses 'no licence'
+           and 'could not check' into the same false. Both inputs to the job's reschedule decision consult the licence,
+           so a transient token failure would take the job down permanently -- nothing re-fires when the check
+           recovers, because the token never changed."
     (backfill-all-existing-entities!)
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
       (mark-stale! :card card-id)
@@ -553,12 +559,15 @@
                       :entity_type :card :entity_id card-id
                       :terminal false :next_retry_at [:not= nil])
           "test setup: the card must be in retry backoff")
-      (testing "with the feature, the pending retry keeps the job scheduled"
-        (mt/with-premium-features #{:dependencies}
-          (is (true? (#'dependencies.backfill/has-pending-retries?)))))
-      (testing "without the feature, it must not"
-        (mt/with-premium-features #{}
-          (is (false? (#'dependencies.backfill/has-pending-retries?))))))))
+      (let [actionable? (fn [licence]
+                          (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
+                            (#'dependencies.backfill/has-pending-retries?)))]
+        (testing "licensed: the pending retry keeps the job scheduled"
+          (is (true? (actionable? true))))
+        (testing "indeterminate: treated as actionable, so a blip cannot end the chain"
+          (is (true? (actionable? nil))))
+        (testing "definitively unlicensed: not actionable"
+          (is (false? (actionable? false))))))))
 
 (deftest ^:sequential backfill-records-failure-for-never-processed-entity-test
   (testing "An entity with no dependency_status row yet must still get a failure recorded when it fails. Such entities

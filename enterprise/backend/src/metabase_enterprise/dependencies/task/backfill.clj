@@ -145,9 +145,16 @@
         (< 1))))
 
 (defn- has-pending-retries?
-  "Whether any entity is in retry backoff that this instance can actually act on."
+  "Whether any entity is in retry backoff that this instance can actually act on.
+
+  Fails open on an indeterminate token status. `has-feature?` cannot tell a network failure from being unlicensed, and
+  both inputs to the job's reschedule decision consult the licence, so reading a blip as `false` would stop the job
+  for good — nothing re-fires when the check recovers, because the token never changed. Only a definitive `false`
+  counts as unlicensed here — which is the common case, since no token at all answers `false`. A token that cannot be
+  validated answers `nil` and keeps the job alive. Doing the work still fails closed — see
+  [[backfill-dependencies!]]."
   []
-  (and (premium-features/has-feature? :dependencies)
+  (and (not (false? (premium-features/canonically-has-feature? :dependencies)))
        (deps.dependency-status/has-pending-retries?)))
 
 (declare schedule-run!)
