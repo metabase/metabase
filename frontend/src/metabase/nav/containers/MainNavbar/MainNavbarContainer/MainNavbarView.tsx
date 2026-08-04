@@ -61,6 +61,8 @@ type Props = {
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
+  expandedCollectionIds: Set<string | number>;
+  onToggleCollectionExpand: (id: string | number) => void;
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
   canAccessTenantSpecificCollections: boolean;
@@ -82,6 +84,8 @@ const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 export function MainNavbarView({
   bookmarks,
   collections,
+  expandedCollectionIds,
+  onToggleCollectionExpand,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -247,7 +251,6 @@ export function MainNavbarView({
           )}
 
           <NavbarLibrarySection
-            collections={collections}
             selectedId={collectionItem?.id}
             onItemSelect={onItemSelect}
           />
@@ -284,12 +287,16 @@ export function MainNavbarView({
                     collections={regularCollections}
                     selectedId={collectionItem?.id}
                     onSelect={onItemSelect}
+                    expandedIds={expandedCollectionIds}
+                    onToggleExpand={onToggleCollectionExpand}
                   />
                 ) : (
                   <Tree
                     data={regularCollections}
                     selectedId={collectionItem?.id}
                     onSelect={onItemSelect}
+                    expandedIds={expandedCollectionIds}
+                    onToggleExpand={onToggleCollectionExpand}
                     TreeNode={SidebarCollectionLink}
                     role="tree"
                     aria-label="collection-tree"

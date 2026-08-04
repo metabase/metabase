@@ -28,13 +28,48 @@ export interface CollectionEndpoints {
   rootCollection?: Collection;
   trashCollection?: Collection;
   currentUserId?: number;
+  /**
+   * Makes `GET /api/collection/tree?lazy=true` behave the way it does on an instance too large to return in one
+   * response: a level at a time, with `has_children` in place of `children`. Off by default, because a small
+   * fixture models a small instance, where the real endpoint returns the whole tree.
+   */
+  simulateLargeInstance?: boolean;
 }
+
+/** Mirrors what the tree endpoint does to a node whose children it has not read. */
+const withoutChildren = (collection: Collection): Collection => {
+  const { children, ...rest } = collection;
+  return { ...rest, has_children: (children?.length ?? 0) > 0 };
+};
+
+/** Mirrors what the tree endpoint does when the whole tree fits in one response. */
+const withChildFlags = (collection: Collection): Collection => ({
+  ...collection,
+  has_children: (collection.children?.length ?? 0) > 0,
+  children: collection.children?.map(withChildFlags),
+});
+
+const findCollection = (
+  collections: Collection[],
+  id: string,
+): Collection | undefined => {
+  for (const collection of collections) {
+    if (String(collection.id) === id) {
+      return collection;
+    }
+    const match = findCollection(collection.children ?? [], id);
+    if (match) {
+      return match;
+    }
+  }
+};
 
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
   currentUserId,
+  simulateLargeInstance = false,
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -76,6 +111,17 @@ export function setupCollectionsEndpoints({
     const url = new URL(call.url);
     const excludeArchived = url.searchParams.get("exclude-archived") === "true";
 
+    const isLazy = url.searchParams.get("lazy") === "true";
+
+    // A lazy request for one node's children returns just that node's direct children.
+    const parentId = url.searchParams.get("collection-id");
+    if (parentId != null) {
+      const children = findCollection(collections, parentId)?.children ?? [];
+      return children.map(
+        simulateLargeInstance ? withoutChildren : withChildFlags,
+      );
+    }
+
     const excludeOtherUserCollections =
       url.searchParams.get("exclude-other-user-collections") === "true";
 
@@ -85,7 +131,7 @@ export function setupCollectionsEndpoints({
     const requestedNamespaces =
       namespaces.length > 0 ? namespaces : namespace ? [namespace] : null;
 
-    return collections.filter((collection) => {
+    const visible = collections.filter((collection) => {
       // Filter out other users' personal collections if requested
       // But keep the current user's personal collection
       if (
@@ -118,6 +164,13 @@ export function setupCollectionsEndpoints({
 
       return true;
     });
+
+    if (!isLazy) {
+      return visible;
+    }
+    return visible.map(
+      simulateLargeInstance ? withoutChildren : withChildFlags,
+    );
   });
 }
 

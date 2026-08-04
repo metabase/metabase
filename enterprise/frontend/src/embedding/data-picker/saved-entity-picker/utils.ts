@@ -1,9 +1,14 @@
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
-export const findCollectionById = (
-  collections: Collection[],
+type SearchableCollection = {
+  id: CollectionId;
+  children?: SearchableCollection[] | null;
+};
+
+export const findCollectionById = <T extends SearchableCollection>(
+  collections: T[],
   collectionId: CollectionId,
-): Collection | null => {
+): T | null => {
   if (!collections || collections.length === 0) {
     return null;
   }
@@ -15,7 +20,9 @@ export const findCollectionById = (
   }
 
   return findCollectionById(
-    collections.flatMap((c) => c.children ?? []),
+    // A node's children are the same concrete type as the node, but the recursive constraint only records them as
+    // `SearchableCollection`, so the narrowing has to be asserted.
+    collections.flatMap((c) => (c.children ?? []) as T[]),
     collectionId,
   );
 };

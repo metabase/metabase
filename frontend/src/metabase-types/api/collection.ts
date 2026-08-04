@@ -64,7 +64,15 @@ export interface Collection {
   can_restore: boolean;
   can_delete: boolean;
   archived?: boolean;
+  /**
+   * Absent together with `has_children: true` means the children exist but have not been fetched yet. Only the lazy
+   * collection tree leaves it out.
+   */
   children?: Collection[];
+  /**
+   * Only set by the lazy collection tree. Lets a node show an expand toggle before its children are fetched.
+   */
+  has_children?: boolean;
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
@@ -218,6 +226,8 @@ export type ListCollectionsTreeRequest = {
   namespace?: CollectionNamespace;
   namespaces?: string[];
   shallow?: boolean;
+  lazy?: boolean;
+  "expand-to"?: RegularCollectionId | null;
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;

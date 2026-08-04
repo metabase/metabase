@@ -453,6 +453,15 @@ export function getCollectionType(
 export interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
+  /**
+   * Whether the node can be expanded. Set separately from `children` because the lazy nav sidebar tree knows a node
+   * has children before it has fetched them.
+   */
+  hasChildren?: boolean;
+  /**
+   * `false` while a lazily loaded node still has to fetch its children. `children` is empty until then.
+   */
+  childrenLoaded?: boolean;
   schemaName?: string;
   nonNavigable?: boolean;
 }
@@ -479,14 +488,20 @@ export function buildCollectionTree(
       return [];
     }
 
-    const children = !isRootTrashCollection(collection)
-      ? buildCollectionTree(
-          collection.children?.filter((child) => !child.archived) || [],
-          { modelFilter, isTenantUser },
-        )
-      : [];
+    // Only the lazy tree omits `children` while flagging `has_children`. A missing `children` key on its own still
+    // means "no children", as it always did.
+    const childrenLoaded = !(
+      collection.children == null && collection.has_children === true
+    );
 
-    if (isPersonalRoot && children.length === 0) {
+    const children = isRootTrashCollection(collection)
+      ? []
+      : buildCollectionTree(
+          collection.children?.filter((child) => !child.archived) ?? [],
+          { modelFilter, isTenantUser },
+        );
+
+    if (isPersonalRoot && childrenLoaded && children.length === 0) {
       return [];
     }
 
@@ -495,6 +510,8 @@ export function buildCollectionTree(
       schemaName: collection.originalName || collection.name,
       icon: getCollectionIcon(collection, { isTenantUser }),
       children,
+      childrenLoaded,
+      hasChildren: !childrenLoaded || children.length > 0,
     };
   });
 }

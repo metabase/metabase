@@ -72,6 +72,8 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  /** Renders the collection tree the way it comes back on an instance too large to send in one response. */
+  simulateLargeInstance?: boolean;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -112,6 +114,7 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  simulateLargeInstance = false,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -162,6 +165,7 @@ export async function setup({
     collections,
     rootCollection: OUR_ANALYTICS,
     currentUserId: user?.id,
+    simulateLargeInstance,
   });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],

@@ -13,12 +13,16 @@ interface CollectionsNavTreeProps {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
   onSelect?: (item: ITreeNodeItem) => void;
+  expandedIds?: Set<number | string>;
+  onToggleExpand?: (id: number | string) => void;
 }
 
 export const CollectionsNavTree = ({
   collections,
   selectedId,
   onSelect,
+  expandedIds,
+  onToggleExpand,
 }: CollectionsNavTreeProps) => {
   // Fetch flat list to check for remote-synced collections
   const { data: collectionsList = [] } = useListCollectionsQuery({
@@ -47,6 +51,8 @@ export const CollectionsNavTree = ({
       data={collections}
       selectedId={selectedId}
       onSelect={onSelect}
+      expandedIds={expandedIds}
+      onToggleExpand={onToggleExpand}
       TreeNode={SidebarCollectionLink}
       role="tree"
       aria-label="collection-tree"
