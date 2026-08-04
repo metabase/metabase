@@ -22,6 +22,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -277,7 +278,10 @@
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
+    ;; Without snippet folders there is nothing to enforce: the fallback `can-read?` is just "has native query perms
+    ;; somewhere", which would block every query-builder-only user from running a Card that uses a snippet.
     (when (and api/*current-user-id*
+               (premium-features/enable-snippet-collections?)
                (not (mi/can-read? :model/NativeQuerySnippet snippet-id)))
       (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                       {:snippet-id   snippet-id
