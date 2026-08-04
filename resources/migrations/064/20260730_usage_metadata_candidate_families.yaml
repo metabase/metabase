@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: v64.um-candidate-display-name
-      author: codex
+      author: retro
       comment: Add the cluster-aware deterministic display name
       changes:
         - addColumn:
@@ -11,7 +11,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-family-key
-      author: codex
+      author: retro
       comment: Add the recommendation-family root signature
       changes:
         - addColumn:
@@ -21,7 +21,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-family-order
-      author: codex
+      author: retro
       comment: Add the global recommendation-family order
       changes:
         - addColumn:
@@ -31,7 +31,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-family-position
-      author: codex
+      author: retro
       comment: Add the recommendation position inside its family
       changes:
         - addColumn:
@@ -41,7 +41,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-family-depth
-      author: codex
+      author: retro
       comment: Add the primary subset-parent depth inside the family
       changes:
         - addColumn:
@@ -51,7 +51,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-families-index
-      author: codex
+      author: retro
       comment: Index deterministic recommendation-family ordering
       changes:
         - createIndex:

@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: v64.um-candidate-match-deduplicate
-      author: codex
+      author: retro
       comment: Remove duplicate candidate relationships before enforcing uniqueness
       changes:
         - sql:
@@ -19,7 +19,7 @@ databaseChangeLog:
   # A legacy writer can recreate a duplicate before the constraints land; retrying safely repeats the cleanup above.
   - changeSet:
       id: v64.um-candidate-match-measure-unique
-      author: codex
+      author: retro
       comment: Keep one Measure relationship per usage metadata candidate
       changes:
         - addUniqueConstraint:
@@ -33,7 +33,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-match-segment-unique
-      author: codex
+      author: retro
       comment: Keep one Segment relationship per usage metadata candidate
       changes:
         - addUniqueConstraint:
@@ -47,7 +47,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-match-one-entity
-      author: codex
+      author: retro
       comment: Require each candidate relationship to target exactly one Library entity
       changes:
         - sql:
@@ -69,7 +69,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v64.um-candidate-signature-version-unique
-      author: codex
+      author: retro
       comment: Include the canonical signature version in candidate identity
       changes:
         - sql:
