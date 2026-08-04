@@ -105,6 +105,7 @@
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
+  {:scope "data-app"}
   [_route-params
    {:keys [locale]} :- [:map [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")
