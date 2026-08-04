@@ -14,7 +14,10 @@ import type {
   Timeline,
   TimelineId,
 } from "metabase-types/api";
-import { createMockTimeline } from "metabase-types/api/mocks";
+import {
+  createMockTimeline,
+  createMockTimelineEvent,
+} from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 
@@ -716,6 +719,52 @@ describe("ActionToolbar", () => {
       expect(await screen.findByText(/Added to/)).toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "View" }));
       expect(setSelectedSummary).toHaveBeenCalledWith({ scrollIntoView: true });
+    });
+
+    it("seeds timeline selection into visualization_settings on append", async () => {
+      fetchMock.post(`path:/api/exploration/${EXPLORATION_ID}/summary/append`, {
+        id: 9,
+        name: "Summary",
+        exploration_id: EXPLORATION_ID,
+      });
+
+      const event = createMockTimelineEvent({
+        id: 7,
+        timeline_id: releases.id,
+      });
+      setup({
+        charts: [chart],
+        canAddToSummary: true,
+        withUndos: true,
+        timelines: [
+          createMockTimeline({
+            ...releases,
+            events: [event],
+          }),
+        ],
+        selectedTimelineId: releases.id,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to Summary" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/${EXPLORATION_ID}/summary/append`,
+          { method: "POST" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(String(calls[0].options?.body))).toEqual({
+          exploration_query_ids: [101],
+          display: "line",
+          visualization_settings: {
+            "graph.split_panels": true,
+            "timeline.selected_timeline_ids": [releases.id],
+            "timeline.excluded_timeline_event_ids": [],
+          },
+        });
+      });
     });
 
     it("opens a chart picker menu for multi-chart pages", async () => {

@@ -27,7 +27,7 @@ import {
 } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
-import { replace } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   Card,
@@ -39,15 +39,11 @@ import type {
 
 import {
   clearDraftCards,
-  openVizSettingsSidebar,
   setCurrentDocument,
   setHasUnsavedChanges,
+  setSidebarEmbedIndex,
 } from "../documents.slice";
-import {
-  getDraftCards,
-  getHasUnsavedChanges,
-  getSelectedEmbedIndex,
-} from "../selectors";
+import { getDraftCards, getHasUnsavedChanges } from "../selectors";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
@@ -100,11 +96,11 @@ export function useDocumentEditor({
   onDocumentUpdated,
 }: UseDocumentEditorParams): UseDocumentEditorResult {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
 
   const draftCards = useSelector(getDraftCards);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
-  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -322,7 +318,7 @@ export function useDocumentEditor({
                 const _document = response.data;
                 onDocumentCreated?.(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(Urls.document(_document)));
+                  navigate(Urls.document(_document));
                 });
               }
               return response;
@@ -362,6 +358,7 @@ export function useDocumentEditor({
       createDocument,
       scheduleNavigation,
       dispatch,
+      navigate,
       sendToast,
     ],
   );
@@ -408,18 +405,11 @@ export function useDocumentEditor({
 
   const handleQuestionSelect = useCallback(
     (cardId: number | null, embedIndex?: number | null) => {
-      if (
-        cardId !== null &&
-        embedIndex !== null &&
-        embedIndex !== undefined &&
-        embedIndex >= 0 &&
-        selectedEmbedIndex !== null
-      ) {
-        // Only update the selected embed index if the sidebar is already open
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+      if (cardId !== null && embedIndex != null && embedIndex >= 0) {
+        dispatch(setSidebarEmbedIndex(embedIndex));
       }
     },
-    [dispatch, selectedEmbedIndex],
+    [dispatch],
   );
 
   return {

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 import {
+  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
@@ -52,6 +53,39 @@ describe("EventCard", () => {
 
     await userEvent.click(screen.getByRole("checkbox"));
     expect(props.onHideTimelineEvents).toHaveBeenCalled();
+  });
+
+  it("only shows menu items for handlers that are supplied", async () => {
+    const onArchive = jest.fn();
+    render(
+      <EventCard
+        {...getProps({
+          timeline: createMockTimeline({
+            collection: createMockCollection({ can_write: true }),
+          }),
+          onArchive,
+        })}
+      />,
+    );
+
+    await userEvent.click(screen.getByLabelText("Event menu"));
+    expect(screen.getByText("Archive event")).toBeInTheDocument();
+    expect(screen.queryByText("Edit event")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move event")).not.toBeInTheDocument();
+  });
+
+  it("hides the menu when no handlers are supplied", () => {
+    render(
+      <EventCard
+        {...getProps({
+          timeline: createMockTimeline({
+            collection: createMockCollection({ can_write: true }),
+          }),
+        })}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Event menu")).not.toBeInTheDocument();
   });
 });
 

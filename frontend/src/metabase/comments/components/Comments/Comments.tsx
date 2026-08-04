@@ -40,7 +40,6 @@ type SidesheetTab = "open" | "resolved";
 interface CommentsProps {
   commentTarget: CommentTarget;
   childTargetId: string;
-  onOpenComments?: () => void;
   onCloseComments?: () => void;
   title?: string;
   showCloseButton?: boolean;
@@ -53,7 +52,6 @@ interface CommentsProps {
 export const Comments = ({
   commentTarget,
   childTargetId,
-  onOpenComments,
   onCloseComments,
   title,
   showCloseButton = true,
@@ -90,10 +88,6 @@ export const Comments = ({
   const closeSidebar = useCallback(() => {
     onCloseComments?.();
   }, [onCloseComments]);
-
-  useEffect(() => {
-    onOpenComments?.();
-  }, [onOpenComments]);
 
   const resolvedComments = useMemo(
     () =>

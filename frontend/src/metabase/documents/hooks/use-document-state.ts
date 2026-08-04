@@ -5,7 +5,7 @@ import { useDispatch } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import type { DocumentContent } from "metabase-types/api";
 
-import { setCardEmbeds, setIsCommentSidebarOpen } from "../documents.slice";
+import { setCardEmbeds } from "../documents.slice";
 
 export function useDocumentState(documentData?: {
   name: string;
@@ -49,21 +49,11 @@ export function useDocumentState(documentData?: {
     [dispatch],
   );
 
-  const openCommentSidebar = useCallback(() => {
-    dispatch(setIsCommentSidebarOpen(true));
-  }, [dispatch]);
-
-  const closeCommentSidebar = useCallback(() => {
-    dispatch(setIsCommentSidebarOpen(false));
-  }, [dispatch]);
-
   return {
     documentTitle,
     setDocumentTitle,
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
-    openCommentSidebar,
-    closeCommentSidebar,
   };
 }

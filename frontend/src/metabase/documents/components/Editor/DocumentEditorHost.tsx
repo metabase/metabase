@@ -17,9 +17,12 @@ import {
 } from "../../analytics";
 import {
   createDraftCard,
+  deselectTimelineEvents,
   generateDraftCardId,
   loadMetadataForDocumentCard,
+  openTimelineEventsSidebar,
   openVizSettingsSidebar,
+  selectTimelineEvents,
   updateMentionsCache,
   updateVizSettings,
 } from "../../documents.slice";
@@ -36,6 +39,8 @@ import {
   getCurrentDocument,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
+  getSelectedEmbedIndex,
+  getSelectedTimelineEventIds,
 } from "../../selectors";
 
 /**
@@ -50,12 +55,17 @@ export const documentEditorHost: EditorHost = {
     getChildTargetId,
     getHoveredChildTargetId,
     getHasUnsavedChanges,
+    getSelectedEmbedIndex,
+    getSelectedTimelineEventIds,
   },
   actions: {
     createDraftCard,
     generateDraftCardId,
     loadMetadataForDocumentCard,
     openVizSettingsSidebar,
+    openTimelineEventsSidebar,
+    selectTimelineEvents,
+    deselectTimelineEvents,
     updateVizSettings,
     updateMentionsCache,
   },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
@@ -8,16 +9,19 @@ import { trackDocumentUpdated } from "metabase/documents/analytics";
 import { DocumentRevisionHistorySidebar } from "metabase/documents/components/DocumentRevisionHistorySidebar";
 import { Editor } from "metabase/documents/components/Editor";
 import { EmbedQuestionSettingsSidebar } from "metabase/documents/components/EmbedQuestionSettingsSidebar";
+import { EmbedTimelineSidebar } from "metabase/documents/components/EmbedTimelineSidebar";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "metabase/documents/constants";
 import {
+  closeSidebar,
+  openCommentsSidebar,
+  openHistorySidebar,
   setChildTargetId,
-  setIsHistorySidebarOpen,
 } from "metabase/documents/documents.slice";
 import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor";
 import {
-  getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
+  getSidebarMode,
 } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
@@ -85,10 +89,43 @@ export function ExplorationSummary({
 
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
+  const sidebarMode = useSelector(getSidebarMode);
+
+  const isCommentsSidebarOpen = commentsChildTargetId != null;
+  // ExplorationPage has its own `wasCommentsSidebarOpen`, but we can't use it here
+  // because a Redux state change doesn't trigger ExplorationPage to rerender, making it stale
+  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
+
+  useEffect(() => {
+    // comments opened in URL - sync to Redux sidebar state
+    if (!wasCommentsSidebarOpen && isCommentsSidebarOpen) {
+      dispatch(openCommentsSidebar());
+      return;
+    }
+
+    // comments closed in URL - sync to Redux sidebar state
+    if (
+      wasCommentsSidebarOpen &&
+      !isCommentsSidebarOpen &&
+      sidebarMode === "comments"
+    ) {
+      dispatch(closeSidebar());
+      return;
+    }
+    // a different sidebar opened - sync to URL
+    if (isCommentsSidebarOpen && sidebarMode !== "comments") {
+      onCloseCommentsSidebar();
+    }
+  }, [
+    wasCommentsSidebarOpen,
+    isCommentsSidebarOpen,
+    dispatch,
+    sidebarMode,
+    onCloseCommentsSidebar,
+  ]);
 
   const handleShowHistory = useCallback(() => {
-    dispatch(setIsHistorySidebarOpen(true));
+    dispatch(openHistorySidebar());
   }, [dispatch]);
 
   if (error) {
@@ -103,7 +140,8 @@ export function ExplorationSummary({
     return <ExplorationSummarySkeleton />;
   }
 
-  const showCommentsSidebar = commentsChildTargetId != null;
+  const showCommentsSidebar =
+    sidebarMode === "comments" && commentsChildTargetId != null;
 
   return (
     <>
@@ -114,7 +152,7 @@ export function ExplorationSummary({
               h="100%"
               flex={1}
               p="lg"
-              pr={showCommentsSidebar ? "5rem" : "lg"}
+              pr={sidebarMode != null ? "5rem" : "lg"}
               pt="3rem"
               gap={0}
               style={{ overflowY: "auto" }}
@@ -170,7 +208,6 @@ export function ExplorationSummary({
             </Stack>
             {showCommentsSidebar && (
               <Box
-                w="23rem"
                 h="100%"
                 className={S.commentsSidebar}
                 data-testid="exploration-summary-comments"
@@ -182,7 +219,8 @@ export function ExplorationSummary({
                 />
               </Box>
             )}
-            {selectedQuestionId &&
+            {sidebarMode === "viz-settings" &&
+              selectedQuestionId &&
               selectedEmbedIndex !== null &&
               editorInstance && (
                 <Box className={S.sidebar} data-testid="document-card-sidebar">
@@ -192,17 +230,33 @@ export function ExplorationSummary({
                   />
                 </Box>
               )}
+            {sidebarMode === "timeline-events" &&
+              selectedQuestionId &&
+              selectedEmbedIndex !== null &&
+              editorInstance && (
+                <Box
+                  className={S.sidebar}
+                  data-testid="document-timeline-sidebar"
+                >
+                  <EmbedTimelineSidebar
+                    cardId={selectedQuestionId}
+                    selectedEmbedIndex={selectedEmbedIndex}
+                    editorInstance={editorInstance}
+                    collectionId={documentData?.collection_id ?? null}
+                  />
+                </Box>
+              )}
           </Group>
         </Box>
       </Box>
 
       <LeaveRouteConfirmModal isEnabled={showSaveButton} />
 
-      {isHistorySidebarOpen && documentData && (
+      {sidebarMode === "history" && documentData && (
         <Box data-testid="document-history-sidebar">
           <DocumentRevisionHistorySidebar
             document={documentData}
-            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+            onClose={() => dispatch(closeSidebar())}
           />
         </Box>
       )}

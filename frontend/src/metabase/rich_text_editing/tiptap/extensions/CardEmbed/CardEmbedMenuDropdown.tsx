@@ -25,6 +25,8 @@ export interface CardEmbedMenuActions {
     enablePivot: boolean;
   }) => Promise<void>;
   handleEditVisualizationSettings: () => void;
+  shouldShowTimelineEventsMenu?: boolean;
+  handleEditTimelineEvents?: () => void;
   setIsModifyModalOpen: (open: boolean) => void;
   handleReplaceQuestion: () => void;
   handleRemoveNode: () => void;
@@ -49,9 +51,11 @@ export const CardEmbedMenuDropdown = ({
   commentsPath,
   hasUnsavedChanges,
   isStatic,
+  shouldShowTimelineEventsMenu,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
+  handleEditTimelineEvents,
   setIsModifyModalOpen,
   handleReplaceQuestion,
   handleRemoveNode,
@@ -106,6 +110,15 @@ export const CardEmbedMenuDropdown = ({
       >
         {t`Edit Visualization`}
       </Menu.Item>
+      {shouldShowTimelineEventsMenu && (
+        <Menu.Item
+          leftSection={<Icon name="calendar" size={14} />}
+          onClick={handleEditTimelineEvents}
+          disabled={!canWrite}
+        >
+          {t`Events`}
+        </Menu.Item>
+      )}
       {!isStatic && (
         <Menu.Item
           onClick={() => setIsModifyModalOpen(true)}

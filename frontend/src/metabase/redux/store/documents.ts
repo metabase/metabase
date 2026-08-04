@@ -3,6 +3,7 @@ import type {
   CardId,
   Document,
   StoredResultSort,
+  TimelineEventId,
 } from "metabase-types/api";
 
 export interface CardEmbedRef {
@@ -18,16 +19,25 @@ export interface MentionCacheItem {
   name: string;
 }
 
+export type DocumentsSidebar =
+  | { mode: "viz-settings"; embedIndex: number }
+  | {
+      mode: "timeline-events";
+      embedIndex: number;
+      focusedEventIds: TimelineEventId[] | null;
+      selectedEventIds: TimelineEventId[];
+    }
+  | { mode: "comments" }
+  | { mode: "history" };
+
 export interface DocumentsState {
-  selectedEmbedIndex: number | null;
+  sidebar: DocumentsSidebar | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
   draftCards: Record<number, Card>;
   draftCardOriginalIds: Record<number, CardId>;
   mentionsCache: Record<string, MentionCacheItem>;
-  isCommentSidebarOpen: boolean;
   childTargetId: string | undefined;
   hoveredChildTargetId: string | undefined;
   hasUnsavedChanges: boolean;
-  isHistorySidebarOpen: boolean;
 }

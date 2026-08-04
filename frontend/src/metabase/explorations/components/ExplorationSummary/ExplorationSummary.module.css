@@ -1,6 +1,6 @@
 .sidebar {
   height: 100%;
-  width: 360px;
+  width: 23rem;
   flex-shrink: 0;
   background-color: var(--mb-color-background-secondary);
   border-left: 1px solid var(--mb-color-border);
@@ -8,5 +8,6 @@
 }
 
 .commentsSidebar {
+  width: 23rem;
   border-left: 1px solid var(--mb-color-border);
 }

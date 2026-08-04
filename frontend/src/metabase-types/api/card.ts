@@ -28,6 +28,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
+import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
@@ -402,6 +403,10 @@ export type VisualizationSettings = {
 
   /** Explicit order, labels, colors, and enabled state for breakout series. */
   "graph.series_order"?: SeriesOrderSetting[];
+
+  // Timeline events settings
+  "timeline.selected_timeline_ids"?: TimelineId[];
+  "timeline.excluded_timeline_event_ids"?: TimelineEventId[];
 
   /** Result numeric column name used to size scatter plot bubbles. */
   "scatter.bubble"?: string;

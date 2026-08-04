@@ -37,6 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
+import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
 import type {
   DocumentContent,
   ExplorationId,
@@ -175,11 +176,24 @@ export function ActionToolbar({
 
   const handleAddToSummary = useCallback(
     async (chart: ExplorationChartForDocumentEmbed) => {
+      const timelineSettings =
+        selectedTimelineId != null
+          ? getTimelineEventSettings(
+              availableTimelines,
+              (
+                availableTimelines.find((t) => t.id === selectedTimelineId)
+                  ?.events ?? []
+              ).map((event) => event.id),
+            )
+          : {};
       const { data: document, error } = await appendChartToSummary({
         explorationId,
         exploration_query_ids: chart.queryIds,
         display: chart.display,
-        visualization_settings: chart.visualization_settings,
+        visualization_settings: {
+          ...chart.visualization_settings,
+          ...timelineSettings,
+        },
       });
       if (error || !document) {
         sendToast({
@@ -197,7 +211,14 @@ export function ActionToolbar({
         action: () => setSelectedSummary({ scrollIntoView: true }),
       });
     },
-    [appendChartToSummary, explorationId, sendToast, setSelectedSummary],
+    [
+      appendChartToSummary,
+      availableTimelines,
+      explorationId,
+      selectedTimelineId,
+      sendToast,
+      setSelectedSummary,
+    ],
   );
 
   const copyLink = useCopyLink();
