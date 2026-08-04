@@ -7,6 +7,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import {
@@ -22,15 +23,12 @@ import type {
   State,
   StoreDashboard,
 } from "metabase/redux/store";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsWebApp } from "metabase/selectors/web-app";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { isWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
@@ -547,7 +545,7 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [isWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
@@ -555,7 +553,7 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [isWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );

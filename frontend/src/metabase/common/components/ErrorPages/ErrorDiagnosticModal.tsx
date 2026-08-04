@@ -10,11 +10,11 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { closeDiagnostics } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 import { downloadObjectAsJson } from "metabase/utils/download";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { BugReportModal } from "./BugReportModal";
 import { DownloadDiagnosticModal } from "./DownloadDiagnosticModal";
@@ -176,7 +176,7 @@ export const ErrorDiagnosticModal = ({
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);
 
-  if (getIsEmbeddingIframe()) {
+  if (isWithinIframe()) {
     return null;
   }
 
