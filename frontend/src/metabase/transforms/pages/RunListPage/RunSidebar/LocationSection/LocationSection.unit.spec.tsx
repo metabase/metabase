@@ -33,7 +33,7 @@ describe("LocationSection", () => {
   });
 
   it("should not render when the transform has no collection", () => {
-    const transform = createMockTransform({ collection_id: null });
+    const transform = createMockTransform({ collection: undefined });
     const run = createMockTransformRun({ transform });
     setup({ run });
 

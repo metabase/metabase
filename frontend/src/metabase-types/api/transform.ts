@@ -35,7 +35,7 @@ export type Transform = {
   source: TransformSource;
   source_type: TransformType;
   target: TransformTarget;
-  collection_id: CollectionId | null;
+  collection_id: CollectionId;
   created_at: string;
   updated_at: string;
   source_readable: boolean;

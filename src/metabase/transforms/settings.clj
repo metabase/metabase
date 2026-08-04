@@ -1,5 +1,6 @@
 (ns metabase.transforms.settings
   (:require
+   [metabase.collections.core :as collections]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.transforms.usage :as transforms.usage]
@@ -75,6 +76,16 @@
             ;; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud
             (or (some? (explicit-transforms-enabled))
                 (cloud-enabled-transforms?))))
+
+(setting/defsetting transforms-root-collection-id
+  (deferred-tru "ID of the collection holding transforms that aren''t filed under a collection of their own.")
+  :type       :integer
+  :visibility :authenticated
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :doc        false
+  :getter     collections/transforms-root-collection-id)
 
 (setting/defsetting transforms-meter-locked
   (deferred-tru "True when the customer''s active transforms meter is locked (trial quota exhausted).")

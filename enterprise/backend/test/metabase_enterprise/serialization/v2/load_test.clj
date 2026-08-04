@@ -77,14 +77,14 @@
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             ;; the trash is serialized and loaded, so restrict to nil type
-            (let [colls (t2/select :model/Collection :type nil)]
+            (let [colls (t2/select :model/Collection :type nil :is_root false)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
         (testing "loading again into the same database does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select :model/Collection :type nil)]
+            (let [colls (t2/select :model/Collection :type nil :is_root false)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -169,7 +169,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (t2/count :model/Collection :type nil)))
+              (is (= 4 (t2/count :model/Collection :type nil :is_root false)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))
@@ -1957,7 +1957,7 @@
                       {errors true
                        others false} (group-by #(instance? Exception %) ser)]
                   (is (= 1 (count errors)))
-                  (is (= 3 (count others))))
+                  (is (= 4 (count others))))
                 (is (= [["Card" (str (:id c1))]]
                        (logs-extract #"Skipping (\w+) (\d+)"
                                      (messages))))))))
@@ -1969,7 +1969,7 @@
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
                 (is (= 1 (count (:errors report))))
-                (is (= 3 (count (:seen report)))))
+                (is (= 4 (count (:seen report)))))
               (let [log-msgs (logs-extract #"Skipping deserialization error: (.*)" (messages))]
                 (is (= 1 (count log-msgs)))
                 (is (str/includes? (ffirst log-msgs) "Collection 'does-not-exist' was not found"))))))))))
@@ -2266,7 +2266,10 @@
               (let [transform (t2/select-one :model/Transform :name "Test Transform")
                     db        (t2/select-one :model/Database :name "my-db")]
                 (is (some? transform))
-                (is (= (:id db) (:source_database_id transform)))))))))))
+                (is (= (:id db) (:source_database_id transform)))
+                (testing "a transform serialized without a collection lands in the Transforms root"
+                  (is (= (collection/transforms-root-collection-id)
+                         (:collection_id transform))))))))))))
 
 (deftest transform-checkpoint-field-remap-test
   (testing "checkpoint-filter-field-id survives serdes into an instance with different field IDs (GDGT-2906)"

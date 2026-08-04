@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -42,6 +43,9 @@
   (->> (by-model model-name extraction)
        (map (comp :id last :serdes/meta))
        set))
+
+(defn- transforms-root-eid []
+  (:entity_id (collection/transforms-root-collection)))
 
 (defn- extract-aborts!
   "Realize `(extract/extract opts)`, asserting it aborts with the escape-analysis error (#75176).
@@ -100,13 +104,13 @@
           (is (not (contains? ser :id)))))
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
-          (is (= #{coll-eid child-eid}
+          (is (= #{coll-eid child-eid (transforms-root-eid)}
                  (ids-by-model "Collection" (extract/extract nil)))))
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid}
+          (is (= #{coll-eid child-eid pc-eid (transforms-root-eid)}
                  (ids-by-model "Collection" (extract/extract {:user-id mark-id})))))
         (testing "invalid user specified"
-          (is (= #{coll-eid child-eid}
+          (is (= #{coll-eid child-eid (transforms-root-eid)}
                  (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
@@ -475,11 +479,11 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid mark-coll-eid}
+          (is (= #{coll-eid mark-coll-eid (transforms-root-eid)}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid}
+          (is (= #{coll-eid dave-coll-eid (transforms-root-eid)}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))))
@@ -1704,7 +1708,7 @@
         (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
-        (is (= #{} (ids-by-model "Collection" ser)))))))
+        (is (= #{(transforms-root-eid)} (ids-by-model "Collection" ser)))))))
 
 (deftest skip-h2-databases-test
   (testing "H2 databases must not be extracted because import rejects them (see GHY-3633)"

@@ -109,12 +109,13 @@ export function useGetTransformWarnings(transforms: Transform[] | undefined) {
 export function buildTreeData(
   collections: Collection[] | undefined,
   transforms: Transform[] | undefined,
+  rootCollectionId: CollectionId,
 ): TreeNode[] {
   if (!collections && !transforms) {
     return [];
   }
 
-  const transformsByCollectionId = new Map<CollectionId | null, Transform[]>();
+  const transformsByCollectionId = new Map<CollectionId, Transform[]>();
   for (const transform of transforms ?? []) {
     const collectionId = transform.collection_id;
     if (!transformsByCollectionId.has(collectionId)) {
@@ -157,9 +158,9 @@ export function buildTreeData(
   }
 
   const rootFolders = (collections ?? []).map(buildCollectionNode);
-  const rootTransforms = (transformsByCollectionId.get(null) ?? []).map(
-    buildTransformNode,
-  );
+  const rootTransforms = (
+    transformsByCollectionId.get(rootCollectionId) ?? []
+  ).map(buildTransformNode);
 
   return [...rootFolders, ...rootTransforms];
 }

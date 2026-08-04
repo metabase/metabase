@@ -9,6 +9,7 @@ import type {
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { useSetting } from "metabase/common/hooks";
 import type { Transform } from "metabase-types/api";
 
 const TRANSFORM_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
@@ -34,6 +35,7 @@ export function MoveTransformModal({
   onClose,
 }: MoveTransformModalProps) {
   const [updateTransform] = useUpdateTransformMutation();
+  const rootCollectionId = useSetting("transforms-root-collection-id");
 
   const handleChange = useCallback(
     async ({ id }: OmniPickerItem) => {
@@ -49,11 +51,14 @@ export function MoveTransformModal({
 
   const pickerValue: OmniPickerValue = useMemo(
     () => ({
-      id: transform.collection_id ?? "root",
+      id:
+        transform.collection_id === rootCollectionId
+          ? "root"
+          : transform.collection_id,
       model: "collection",
       namespace: "transforms",
     }),
-    [transform.collection_id],
+    [transform.collection_id, rootCollectionId],
   );
 
   return (

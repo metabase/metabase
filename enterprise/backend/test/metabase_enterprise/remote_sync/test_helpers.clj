@@ -396,23 +396,27 @@ width: fixed
 (defn clean-optional-feature-models
   "Test fixture that cleans Transform, TransformTag, PythonLibrary, and namespace collection
   tables to prevent conflict detection during first-import tests. Preserves built-in TransformTags
-  and recreates the built-in common.py PythonLibrary after cleanup."
+  and recreates the built-in common.py PythonLibrary after cleanup. A namespace's root collection is
+  left alone — it is created by a migration and every transform references it."
   [f]
-  (let [old-transforms (t2/select :model/Transform)
+  (let [ns-colls-clause [:and
+                         [:in :namespace ["transforms" "snippets"]]
+                         [:not :is_root]]
+        old-transforms (t2/select :model/Transform)
         old-tags (t2/select :model/TransformTag :built_in_type nil)
         old-libs (t2/select :model/PythonLibrary)
-        old-ns-colls (t2/select :model/Collection :namespace [:in ["transforms" "snippets"]])]
+        old-ns-colls (t2/select :model/Collection {:where ns-colls-clause})]
     (try
       (t2/delete! :model/TransformTag :built_in_type nil)
       (t2/delete! :model/Transform)
       (t2/delete! :model/PythonLibrary)
-      (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])
+      (t2/delete! :model/Collection {:where ns-colls-clause})
       (f)
       (finally
         (t2/delete! :model/TransformTag :built_in_type nil)
         (t2/delete! :model/Transform)
         (t2/delete! :model/PythonLibrary)
-        (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])
+        (t2/delete! :model/Collection {:where ns-colls-clause})
         (when (seq old-transforms) (t2/insert! :model/Transform old-transforms))
         (when (seq old-tags) (t2/insert! :model/TransformTag old-tags))
         (when (seq old-libs) (t2/insert! :model/PythonLibrary old-libs))

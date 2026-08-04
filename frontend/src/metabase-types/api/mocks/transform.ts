@@ -88,6 +88,8 @@ export function createMockTransformTarget(
   };
 }
 
+export const MOCK_TRANSFORMS_ROOT_COLLECTION_ID = 1000;
+
 export function createMockTransform(opts?: Partial<Transform>): Transform {
   const source = opts?.source ?? createMockTransformSource();
 
@@ -108,7 +110,7 @@ export function createMockTransform(opts?: Partial<Transform>): Transform {
     source: createMockTransformSource(),
     source_type: opts?.source_type ?? getSourceType(),
     target: opts?.target ?? createMockTransformTarget(),
-    collection_id: null,
+    collection_id: MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     source_readable: true,

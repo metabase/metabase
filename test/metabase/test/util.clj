@@ -373,6 +373,7 @@
    :model/Transform
    (fn [_]
      {:entity_id (u/generate-nano-id)
+      :collection_id (collection/transforms-root-collection-id)
       :name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}

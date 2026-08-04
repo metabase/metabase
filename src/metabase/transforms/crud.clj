@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -153,6 +154,13 @@
         (assoc :requestable_indexes (requestable-indexes transform))
         transforms.u/add-source-readable)))
 
+(defn- collection-id-or-root
+  "Where a transform goes when the caller names no collection: the Transforms root. Callers may omit `collection_id`
+  or send it as `nil` — both have always meant \"the top level of the transforms tree\", which is now a real
+  collection rather than an absent one."
+  [collection-id]
+  (or collection-id (collections/transforms-root-collection-id)))
+
 (defn create-transform!
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user."
@@ -173,7 +181,8 @@
                             transform     (t2/insert-returning-instance!
                                            :model/Transform
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
+                                                                     :owner_email])
+                                                  :collection_id (collection-id-or-root (:collection_id body))
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided
@@ -213,7 +222,9 @@
                                            (transforms-base.u/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/update! :model/Transform id (dissoc body :tag_ids))
+                    (t2/update! :model/Transform id (cond-> (dissoc body :tag_ids)
+                                                      (contains? body :collection_id)
+                                                      (update :collection_id collection-id-or-root)))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))

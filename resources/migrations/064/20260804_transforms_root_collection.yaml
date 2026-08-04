@@ -1,0 +1,76 @@
+## Real root collection for transforms: adds `collection.is_root`, creates the row for the transforms
+## namespace, repoints rootless transforms at it, and makes `transform.collection_id` NOT NULL.
+## Root rows sit at `location = "/"` beside the top-level collections they stand for, so no materialized
+## path, effective_location, ancestor query or permission path changes.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-04T10:00:00
+      author: ranquild
+      comment: Add collection.is_root
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_root
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether this is the root collection of its namespace — the real row backing what used to be a synthesized placeholder
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:01
+      author: ranquild
+      comment: Create the Transforms root collection
+      changes:
+        - insert:
+            tableName: collection
+            columns:
+              - column:
+                  name: name
+                  value: Transforms
+              - column:
+                  name: slug
+                  value: transforms
+              - column:
+                  name: entity_id
+                  value: transformsrootcollect
+              - column:
+                  name: namespace
+                  value: transforms
+              - column:
+                  name: is_root
+                  valueBoolean: true
+      rollback:
+        - delete:
+            tableName: collection
+            where: is_root = TRUE AND namespace = 'transforms'
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:02
+      author: ranquild
+      comment: Move rootless transforms into the Transforms root collection
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform
+              SET collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms')
+              WHERE collection_id IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform
+              SET collection_id = NULL
+              WHERE collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms');
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:03
+      author: ranquild
+      comment: Make transform.collection_id NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: collection_id
+            columnDataType: int

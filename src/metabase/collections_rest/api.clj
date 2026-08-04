@@ -108,6 +108,7 @@
                           [:not-in :type [collection/library-collection-type
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
+                       [:not :is_root]
                        [:or
                         (when (contains? namespaces nil)
                           [:= :namespace nil])
@@ -500,12 +501,13 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.u/enabled-source-types-for-user)
+        collection-id (or (:id collection) (collection/transforms-root-collection-id))]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
               (poison-when-pinned-clause pinned-state)
-              [:= :collection_id (:id collection)]
+              [:= :collection_id collection-id]
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=

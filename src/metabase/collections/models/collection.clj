@@ -105,6 +105,25 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
+(def ^:private transforms-root-collection*
+  (mdb/memoize-for-application-db
+   (fn []
+     (u/prog1 (t2/select-one :model/Collection :is_root true :namespace transforms-ns)
+       (when-not <>
+         (throw (ex-info "Fatal error: Transforms root collection is missing" {})))))))
+
+(defn transforms-root-collection
+  "Get the (memoized) root collection of the `transforms` namespace, which holds every transform not filed under a
+  collection of its own. It sits at `location = \"/\"` beside the other top-level transforms collections rather
+  than above them, so listings of the top level filter it out."
+  []
+  (assoc (transforms-root-collection*) :name (deferred-tru "Transforms")))
+
+(defn transforms-root-collection-id
+  "The ID of the Transforms root collection."
+  []
+  (u/the-id (transforms-root-collection)))
+
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
@@ -2035,7 +2054,8 @@
 (defmethod mi/perms-objects-set :model/Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
-                     (t2/select-one [:model/Collection :id :namespace] :id (collection-or-id))
+                     (or (t2/select-one [:model/Collection :id :namespace :is_root] :id collection-or-id)
+                         collection-or-id)
                      collection-or-id)]
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
              (not (premium-features/enable-snippet-collections?)))
@@ -2043,8 +2063,8 @@
       ;; This is not entirely accurate as you need to be a superuser to modify a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
       #{(case read-or-write
-          :read  (perms/collection-read-path collection-or-id)
-          :write (perms/collection-readwrite-path collection-or-id))})))
+          :read  (perms/collection-read-path collection)
+          :write (perms/collection-readwrite-path collection))})))
 
 (def instance-analytics-collection-type
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
@@ -2174,6 +2194,7 @@
           :description
           :entity_id
           :is_remote_synced
+          :is_root
           :is_sample
           :name
           :namespace
@@ -2189,6 +2210,7 @@
                                                :import parent-id->location-path}))
                :personal_owner_id (serdes/fk :model/User)}
    :defaults {:archived         false
+              :is_root          false
               :is_sample        false
               :is_remote_synced false}})
 

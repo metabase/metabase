@@ -81,7 +81,7 @@
    [:created_at :any]
    [:updated_at :any]
    [:creator_id pos-int?]
-   [:collection_id [:maybe pos-int?]]
+   [:collection_id pos-int?]
    [:run_trigger {:optional true} [:maybe :keyword]]
    [:dependency {:optional true} :boolean]
    [:scheduled {:optional true} :boolean]

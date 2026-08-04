@@ -32,6 +32,8 @@
   remote-synced-collection
   remote-synced-collection?
   shared-tenant-collection?
-  transforms-ns]
+  transforms-ns
+  transforms-root-collection
+  transforms-root-collection-id]
  [metabase.collections.util
   annotate-dashboards])

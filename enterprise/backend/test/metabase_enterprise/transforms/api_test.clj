@@ -387,7 +387,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Subfolder" :namespace :transforms}
                      :model/Transform {transform-in-collection-id :id} {:collection_id collection-id}
-                     :model/Transform {transform-in-root-id :id} {:collection_id nil}
+                     :model/Transform {transform-in-root-id :id} {}
                      :model/TransformRun {run-in-collection-id :id} {:transform_id transform-in-collection-id}
                      :model/TransformRun {run-in-root-id :id} {:transform_id transform-in-root-id}]
         (let [response (mt/user-http-request :crowberto :get 200 "transform/run"

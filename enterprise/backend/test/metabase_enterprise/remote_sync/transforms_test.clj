@@ -434,7 +434,6 @@ is_sample: false
                             :entity_id "child-transform-xxxxx"}
                            :model/Transform {root-transform-id :id}
                            {:name "Root Transform"
-                            :collection_id nil
                             :entity_id "root-transform-xxxxxx"}
                            :model/RemoteSyncObject _rso1 {:model_type "Collection"
                                                           :model_id coll-id

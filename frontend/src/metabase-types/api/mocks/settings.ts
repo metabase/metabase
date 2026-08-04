@@ -15,6 +15,9 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api";
+
+import { MOCK_TRANSFORMS_ROOT_COLLECTION_ID } from "./transform";
+
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],
@@ -417,6 +420,7 @@ export const createMockSettings = (
   "token-status": null,
   "tracing-enabled": false,
   "transforms-enabled": false,
+  "transforms-root-collection-id": MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
   "transforms-setup-complete": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),

@@ -460,6 +460,16 @@
     (serdes/*export-field-fk* field-id)
     field-id))
 
+(def ^:private collection-fk
+  "Every transform now names a real collection, the Transforms root included, so `collection_id` exports as an ordinary
+  reference. Only the import side is special: exports taken before the root existed carry no collection at all, and
+  those transforms belong in the destination's root."
+  (merge (serdes/fk :model/Collection)
+         {:import (fn [collection-ref]
+                    (if collection-ref
+                      (serdes/*import-fk* collection-ref :model/Collection)
+                      (collection/transforms-root-collection-id)))}))
+
 (defn- update-checkpoint-field
   "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
   [source f]
@@ -474,7 +484,7 @@
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
-               :collection_id      (serdes/fk :model/Collection)
+               :collection_id      collection-fk
                :source_database_id (serdes/fk :model/Database)
                :source             {:export-with-context
                                     (fn [{:keys [source_database_id]} _k source]

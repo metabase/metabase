@@ -71,7 +71,7 @@
                                      RSO exists with 'delete' status, remove ALL entities of this type
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
-                       :root-only        - Query root instances with collection_id = nil (Transform)
+                       :root-only        - Query instances in their namespace's root collection (Transform)
                        :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
                        nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
@@ -283,7 +283,7 @@
                                       :model_collection_id :collection_id}}
     :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
-    :export-scope   :root-only  ; query for root transforms (collection_id = nil)
+    :export-scope   :root-only  ; query for transforms in the Transforms root collection
     :enabled?       :remote-sync-transforms}
 
    :model/TransformTag
@@ -577,7 +577,8 @@
                                          (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
                                          :else false)]
                 :when (not setting-enabled?)
-                :let [local-ns-colls (t2/select [:model/Collection :id :entity_id] :namespace ns-name)
+                :let [local-ns-colls (t2/select [:model/Collection :id :entity_id]
+                                                :namespace ns-name :is_root false)
                       import-eids (get import-ns-collection-entity-ids ns-name #{})
                       ;; Only consider local collections that are NOT in the import (truly local-only)
                       ;; and NOT tracked in RemoteSyncObject
@@ -667,9 +668,11 @@
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
 (defn transforms-namespace-collection?
-  "Check if this is a transforms-namespace collection."
+  "Check if this is a transforms-namespace collection. The namespace's root collection is excluded: it is created
+   by a migration on every instance, so a remote source neither owns it nor may delete it."
   [object]
-  (= (keyword (:namespace object)) :transforms))
+  (and (= (keyword (:namespace object)) :transforms)
+       (not (:is_root object))))
 
 (defn snippets-namespace-collection?
   "Check if this is a snippets-namespace collection."
@@ -704,7 +707,7 @@
         cat
         [(t2/select-pks-vec :model/Collection :is_remote_synced true)
          (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
+           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns) :is_root false))
          (when (rs-settings/library-is-remote-synced?)
            (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
 
@@ -1176,6 +1179,7 @@
                          {:where [:and
                                   [:= :namespace (name collections/transforms-ns)]
                                   [:= :location "/"]
+                                  [:not :is_root]
                                   [:not :archived]]}))
      (when (rs-settings/library-is-remote-synced?)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
@@ -1194,7 +1198,7 @@
       (case export-scope
         :root-only
         (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
-               :collection_id nil
+               :collection_id (collections/transforms-root-collection-id)
                (into [] cat conditions))
         :all
         (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
