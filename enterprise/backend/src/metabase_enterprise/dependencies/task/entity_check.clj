@@ -49,16 +49,28 @@
 
 (declare schedule-run!)
 
+(defn- reschedule-after-run!
+  "Schedule the next periodic run of the entity check job, unless the `:dependencies` feature is absent.
+
+  Unlike the backfill job this one has no terminal state — it is a periodic checker, so while licensed it always queues
+  another run rather than stopping once the stale set is drained. Without the feature there is nothing the next run
+  could do, since [[check-entities!]] is gated on it, so rescheduling would just wake the instance forever. The job
+  restarts from the event handlers or on the next restart if the feature is enabled later."
+  [scheduler]
+  (if-not (premium-features/has-feature? :dependencies)
+    (log/debug "Not rescheduling job Dependency Entity Check: the dependencies feature is not enabled")
+    (schedule-run! scheduler
+                   (deps.task-util/job-delay
+                    (deps.settings/dependency-entity-check-delay-minutes)
+                    (deps.settings/dependency-entity-check-variance-minutes)))))
+
 (task/defjob
   ^{:doc "Check all entities for validity"
     org.quartz.DisallowConcurrentExecution true}
   DependencyEntityCheck [ctx]
   (log/info "Executing DependencyEntityCheck job...")
   (check-entities!)
-  (let [delay-in-seconds (deps.task-util/job-delay
-                          (deps.settings/dependency-entity-check-delay-minutes)
-                          (deps.settings/dependency-entity-check-variance-minutes))]
-    (schedule-run! (.getScheduler ctx) delay-in-seconds)))
+  (reschedule-after-run! (.getScheduler ctx)))
 
 (def ^:private job-key     "metabase.dependencies.task.entity-check.job")
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")

@@ -3,7 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [environ.core :as env]
    [metabase-enterprise.dependencies.task.entity-check :as dependencies.entity-check]
-   [metabase.task.core :as task]))
+   [metabase.task.core :as task]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,3 +28,20 @@
         (testing "but a positive batch size still schedules normally"
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
             (is (= 1 (scheduled-by dependencies.entity-check/trigger-entity-check-job!)))))))))
+
+(deftest ^:sequential post-run-reschedule-requires-the-feature-test
+  (testing "The entity check job is a periodic checker with no terminal state, so it always queues another run. That
+           is right while licensed, but check-entities! is gated on :dependencies, so without the feature the job
+           rescheduled itself every 30-90 minutes forever to do nothing at all."
+    (let [scheduled (atom [])
+          scheduled-by (fn [thunk]
+                         (reset! scheduled [])
+                         (thunk)
+                         (count @scheduled))]
+      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+        (testing "with the feature, the job keeps itself scheduled"
+          (mt/with-premium-features #{:dependencies}
+            (is (= 1 (scheduled-by #(#'dependencies.entity-check/reschedule-after-run! nil))))))
+        (testing "without it, there is nothing it could do on the next run, so it stops"
+          (mt/with-premium-features #{}
+            (is (zero? (scheduled-by #(#'dependencies.entity-check/reschedule-after-run! nil))))))))))

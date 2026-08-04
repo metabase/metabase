@@ -182,10 +182,7 @@
 (defn- schedule-run!
   "Schedule the next run of the backfill job, unless the batch size disables it.
 
-  A non-positive batch size is the supported off-switch for the job. The setting is `:setter :none`, so there is no
-  supported way to change it at runtime — in practice it comes from an env var or the default — and waking up to
-  re-read it would buy nothing. So the job stays unscheduled until a restart. Every scheduling path goes through here,
-  including the event-driven [[trigger-backfill-job!]], so this is the one place the switch has to be honoured."
+  Disable with MB_DEPENDENCY_BACKFILL_BATCH_SIZE=0"
   [scheduler delay-in-seconds]
   (if-not (pos? (deps.settings/dependency-backfill-batch-size))
     (log/debug "Not scheduling job Dependency Backfill because the batch size is not positive")
