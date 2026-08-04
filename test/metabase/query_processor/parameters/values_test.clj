@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -625,22 +626,24 @@
         expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
         query    (native-query-with-snippet mp :snippet-id 1)
         resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
-    (mt/with-premium-features #{:snippet-collections}
-      (testing "Snippet resolves when the current user can read it"
-        (binding [api/*current-user-id* 1]
-          (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
-            (is (= expected (resolve!))))))
-      (testing "Snippet does not resolve when the current user cannot read it"
-        (binding [api/*current-user-id* 1]
-          (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Snippet [\d,]+ \"expensive_venues\" not found\."
-                 (resolve!))))))
-      (testing "Snippet resolves when there is no current user, e.g. subscriptions"
-        (binding [api/*current-user-id* nil]
-          (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-            (is (= expected (resolve!)))))))
+    ;; snippet folders need EE on the classpath as well as the token feature, so there is nothing to enforce in OSS
+    (when config/ee-available?
+      (mt/with-premium-features #{:snippet-collections}
+        (testing "Snippet resolves when the current user can read it"
+          (binding [api/*current-user-id* 1]
+            (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
+              (is (= expected (resolve!))))))
+        (testing "Snippet does not resolve when the current user cannot read it"
+          (binding [api/*current-user-id* 1]
+            (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Snippet [\d,]+ \"expensive_venues\" not found\."
+                   (resolve!))))))
+        (testing "Snippet resolves when there is no current user, e.g. subscriptions"
+          (binding [api/*current-user-id* nil]
+            (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+              (is (= expected (resolve!))))))))
     (testing "Without snippet folders there is nothing to enforce, so the snippet always resolves"
       (mt/with-premium-features #{}
         (binding [api/*current-user-id* 1]
