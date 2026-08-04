@@ -29,11 +29,13 @@ function setup({
   freeTokens = null,
   hasManagedAi = true,
   hasDeprecatedAi = false,
+  isLocked = false,
 }: {
   tokens?: number | null;
   freeTokens?: number | null;
   hasManagedAi?: boolean;
   hasDeprecatedAi?: boolean;
+  isLocked?: boolean;
 } = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -61,7 +63,7 @@ function setup({
     metabotUsageQuota: {
       tokens,
       free_tokens: freeTokens,
-      is_locked: false,
+      is_locked: isLocked,
       updated_at: null,
     },
   });
@@ -166,5 +168,34 @@ describe("AIProviderList managed provider usage", () => {
     expect(
       within(row).queryByRole("button", { name: "Usage and pricing" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers to add a provider alongside the locked one, leaving the subscription and the connection alone", async () => {
+    setup({ isLocked: true });
+
+    const row = await screen.findByTestId("provider-metabase");
+    await userEvent.click(
+      await within(row).findByRole("button", {
+        name: "Use a different AI provider",
+      }),
+    );
+
+    const modal = await screen.findByRole("dialog", {
+      name: "Add an AI provider",
+    });
+    expect(
+      await within(modal).findByRole("button", { name: /Anthropic/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).queryByRole("button", { name: /Metabase/ }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+        { method: "DELETE" },
+      ),
+    ).toHaveLength(0);
+    expect(screen.getByTestId("provider-metabase")).toBeInTheDocument();
   });
 });

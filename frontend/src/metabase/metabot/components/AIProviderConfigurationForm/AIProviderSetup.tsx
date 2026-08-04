@@ -10,8 +10,17 @@ import { Button, Flex, Stack } from "metabase/ui";
 import { ProviderListSkeleton } from "./AIProviderList";
 import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionForm } from "./ProviderConnectionForm";
+import { getAddableProviderTypes } from "./addable-provider-types";
 
-export function AIProviderSetup({ onDone }: { onDone?: () => void }) {
+export function AIProviderSetup({
+  onDone,
+  startOnConnectionForm = false,
+}: {
+  onDone?: () => void;
+  // Callers that already have a connection but are here to add another one — the out-of-tokens flow, where the
+  // managed connection exists and the point is to bring your own key alongside it.
+  startOnConnectionForm?: boolean;
+}) {
   const { data: connections = [], isLoading: isLoadingConnections } =
     useListLlmProvidersQuery();
   const { data: providerTypes = [], isLoading: isLoadingProviderTypes } =
@@ -26,8 +35,10 @@ export function AIProviderSetup({ onDone }: { onDone?: () => void }) {
   const hasUsableConnection = connections.some(
     (connection) => connection.usable,
   );
+  const isPickingModel =
+    hasJustConnected || (!startOnConnectionForm && hasUsableConnection);
 
-  if (hasUsableConnection || hasJustConnected) {
+  if (isPickingModel) {
     return (
       <Stack gap="lg">
         <LlmModelPicker />
@@ -42,7 +53,7 @@ export function AIProviderSetup({ onDone }: { onDone?: () => void }) {
 
   return (
     <ProviderConnectionForm
-      providerTypes={providerTypes}
+      providerTypes={getAddableProviderTypes(providerTypes, connections)}
       onSaved={(saved) => {
         const providerType = providerTypes.find(
           (type) => type.type === saved?.type,
