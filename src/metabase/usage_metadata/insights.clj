@@ -247,15 +247,35 @@
   "Optional run-scoped cache for instance-wide inputs shared across candidate batches."
   nil)
 
+(def ^:dynamic *candidate-batch-cache*
+  "Optional batch-scoped cache for selected Cards and their saved-Card lineage."
+  nil)
+
 (defn with-candidate-analysis-cache
   "Run `f` with a cache shared by all candidate analyses it invokes."
   [f]
   (binding [*candidate-analysis-cache* (or *candidate-analysis-cache* (atom {}))]
     (f)))
 
+(defn with-candidate-batch-cache
+  "Run `f` with reusable selected-Card and lineage inputs for one candidate batch."
+  [f]
+  (binding [*candidate-batch-cache* (or *candidate-batch-cache* (atom {}))]
+    (f)))
+
 (defn- cached-candidate-analysis
   [cache-key f]
   (if-let [cache *candidate-analysis-cache*]
+    (if (contains? @cache cache-key)
+      (get @cache cache-key)
+      (let [value (f)]
+        (swap! cache assoc cache-key value)
+        value))
+    (f)))
+
+(defn- cached-candidate-batch-analysis
+  [cache-key f]
+  (if-let [cache *candidate-batch-cache*]
     (if (contains? @cache cache-key)
       (get @cache cache-key)
       (let [value (f)]
@@ -316,14 +336,47 @@
 (def ^:private candidate-card-columns
   [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count])
 
+(def ^:private candidate-query-batch-size 200)
+
+(defn- mapcat-id-batches
+  [f ids]
+  (into [] (mapcat f) (partition-all candidate-query-batch-size ids)))
+
+(defn- select-candidate-cards-by-id
+  [card-ids]
+  (mapcat-id-batches
+   #(t2/select candidate-card-columns
+               :id [:in %]
+               :archived false
+               :type [:in [:question :model]])
+   card-ids))
+
+(defn- verified-card-ids
+  [card-ids]
+  (into #{}
+        (mapcat #(t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                   :moderated_item_id [:in %]
+                                   :moderated_item_type "card"
+                                   :most_recent true
+                                   :status "verified"))
+        (partition-all candidate-query-batch-size card-ids)))
+
+(defn- official-collection-ids
+  [collection-ids]
+  (into #{}
+        (mapcat #(t2/select-pks-set :model/Collection
+                                    :id [:in %]
+                                    :authority_level "official"))
+        (partition-all candidate-query-batch-size collection-ids)))
+
 (defn- exclude-personal-collection-cards
   [cards]
   (let [collection-ids          (into #{} (keep :collection_id) cards)
-        collections             (if (seq collection-ids)
-                                  (-> (t2/select [:model/Collection :id :location :personal_owner_id]
-                                                 :id [:in collection-ids])
-                                      (t2/hydrate :is_personal))
-                                  [])
+        collections             (-> (mapcat-id-batches
+                                     #(t2/select [:model/Collection :id :location :personal_owner_id]
+                                                 :id [:in %])
+                                     collection-ids)
+                                    (t2/hydrate :is_personal))
         personal-collection-ids (into #{} (comp (filter :is_personal) (map :id)) collections)]
     (into []
           (remove #(contains? personal-collection-ids (:collection_id %)))
@@ -331,18 +384,18 @@
 
 (defn- recent-card-view-counts
   [card-ids days]
-  (if (and card-ids (empty? card-ids))
-    {}
-    (let [cutoff (t/minus (t/offset-date-time) (t/days days))]
-      (->> (t2/select [:model/ViewLog :model_id [:%count.* :view_count]]
-                      {:where    (cond-> [:and
-                                          [:= :model "card"]
-                                          [:>= :timestamp cutoff]]
-                                   card-ids (conj [:in :model_id card-ids]))
-                       :group-by [:model_id]})
-           (into {}
-                 (map (fn [{:keys [model_id view_count]}]
-                        [model_id (long view_count)])))))))
+  (let [cutoff (t/minus (t/offset-date-time) (t/days days))]
+    (into {}
+          (comp
+           (mapcat #(t2/select [:model/ViewLog :model_id [:%count.* :view_count]]
+                               {:where    [:and
+                                           [:= :model "card"]
+                                           [:>= :timestamp cutoff]
+                                           [:in :model_id %]]
+                                :group-by [:model_id]}))
+           (map (fn [{:keys [model_id view_count]}]
+                  [model_id (long view_count)])))
+          (partition-all candidate-query-batch-size card-ids))))
 
 (defn- select-candidate-source-cards
   [source]
@@ -350,17 +403,12 @@
    (if source
      (let [card-ids (set (query-source/card-ids source))]
        (mu/validate-throw [:set pos-int?] card-ids)
-       (if (seq card-ids)
-         (t2/select candidate-card-columns
-                    :id [:in card-ids]
-                    :archived false
-                    :type [:in [:question :model]])
-         []))
+       (select-candidate-cards-by-id card-ids))
      (t2/select candidate-card-columns
                 :archived false
                 :type [:in [:question :model]]))))
 
-(defn- candidate-source-cards
+(defn- candidate-source-cards*
   [{:keys [min-view-count query-source view-count-window-days]}]
   (let [min-view-count     (or min-view-count candidate-default-min-view-count)
         cards              (select-candidate-source-cards query-source)
@@ -368,18 +416,8 @@
         collection-ids     (into #{} (keep :collection_id) cards)
         recent-view-counts (when view-count-window-days
                              (recent-card-view-counts card-ids view-count-window-days))
-        verified-ids       (if (seq card-ids)
-                             (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                               :moderated_item_id [:in card-ids]
-                                               :moderated_item_type "card"
-                                               :most_recent true
-                                               :status "verified")
-                             #{})
-        official-ids       (if (seq collection-ids)
-                             (t2/select-pks-set :model/Collection
-                                                :id [:in collection-ids]
-                                                :authority_level "official")
-                             #{})]
+        verified-ids       (verified-card-ids card-ids)
+        official-ids       (official-collection-ids collection-ids)]
     (cond->> cards
       true
       (map (fn [{:keys [id collection_id view_count] :as card}]
@@ -403,6 +441,12 @@
       true
       vec)))
 
+(defn- candidate-source-cards
+  [{:keys [min-view-count query-source view-count-window-days] :as opts}]
+  (cached-candidate-batch-analysis
+   [::candidate-source-cards min-view-count query-source view-count-window-days]
+   #(candidate-source-cards* opts)))
+
 (defn qualified-card-ids
   "Return the default persisted-cleanup population without loading query definitions."
   ([] (qualified-card-ids candidate-default-min-view-count nil))
@@ -416,18 +460,8 @@
          collection-ids     (into #{} (keep :collection_id) cards)
          recent-view-counts (when view-count-window-days
                               (recent-card-view-counts card-ids view-count-window-days))
-         verified-ids       (if (seq card-ids)
-                              (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                                :moderated_item_id [:in card-ids]
-                                                :moderated_item_type "card"
-                                                :most_recent true
-                                                :status "verified")
-                              #{})
-         official-ids       (if (seq collection-ids)
-                              (t2/select-pks-set :model/Collection
-                                                 :id [:in collection-ids]
-                                                 :authority_level "official")
-                              #{})]
+         verified-ids       (verified-card-ids card-ids)
+         official-ids       (official-collection-ids collection-ids)]
      (->> cards
           (keep (fn [{:keys [id collection_id view_count]}]
                   (let [view-count (if view-count-window-days
@@ -478,13 +512,17 @@
           (recur (into #{} (mapcat (comp referenced-card-ids :dataset_query)) rows)
                  (into index (map (juxt :id identity)) rows)))))))
 
-(defn- candidate-model-index
-  [cards]
-  (candidate-lineage-index cards #{:model}))
-
 (defn- candidate-lineage-card-index
   [cards]
-  (candidate-lineage-index cards #{:question :model}))
+  (cached-candidate-batch-analysis
+   [::candidate-lineage-card-index (mapv :id cards)]
+   #(candidate-lineage-index cards #{:question :model})))
+
+(defn- candidate-model-index
+  [cards]
+  (into {}
+        (filter (fn [[_id card]] (= :model (:type card))))
+        (candidate-lineage-card-index cards)))
 
 (defn- clauses-of-type
   [clause-type x]

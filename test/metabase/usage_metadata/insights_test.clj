@@ -30,6 +30,12 @@
 (def ^:private existing-composite-atomsets @#'insights/existing-composite-atomsets)
 (def ^:private composite-atomsets-memo     @#'insights/existing-composite-atomsets*-memo)
 (def ^:private candidate-source-cards      @#'insights/candidate-source-cards)
+(def ^:private candidate-lineage-card-index @#'insights/candidate-lineage-card-index)
+(def ^:private candidate-model-index       @#'insights/candidate-model-index)
+(def ^:private mapcat-id-batches           @#'insights/mapcat-id-batches)
+(def ^:private verified-card-ids           @#'insights/verified-card-ids)
+(def ^:private official-collection-ids     @#'insights/official-collection-ids)
+(def ^:private recent-card-view-counts     @#'insights/recent-card-view-counts)
 (def ^:private existing-measure-signatures @#'insights/existing-measure-signatures)
 (def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
 (def ^:private segment-signature           @#'insights/segment-signature)
@@ -1188,6 +1194,68 @@
                        {})}
       #(insights/qualified-card-ids 10 90))
     (is (set? @scanned-card-ids))))
+
+(deftest ^:parallel candidate-id-queries-are-bounded-test
+  (let [batches (atom [])
+        ids     (range 450)]
+    (is (= (vec ids)
+           (mapcat-id-batches (fn [batch]
+                                (swap! batches conj batch)
+                                batch)
+                              ids)))
+    (is (= [200 200 50] (mapv count @batches)))))
+
+(deftest recent-card-view-counts-queries-bounded-id-batches-test
+  (let [batch-sizes (atom [])]
+    (with-redefs-fn {#'t2/select
+                     (fn [_model {:keys [where]}]
+                       (let [batch (-> where last last)]
+                         (swap! batch-sizes conj (count batch))
+                         []))}
+      #(recent-card-view-counts (set (range 450)) 90))
+    (is (= [200 200 50] @batch-sizes))))
+
+(deftest curation-queries-use-bounded-id-batches-test
+  (let [ids                (set (range 450))
+        moderation-batches (atom [])
+        collection-batches (atom [])]
+    (with-redefs-fn {#'t2/select-fn-set
+                     (fn [_field _model & {:keys [moderated_item_id]}]
+                       (let [batch (last moderated_item_id)]
+                         (swap! moderation-batches conj (count batch))
+                         (set batch)))
+                     #'t2/select-pks-set
+                     (fn [_model & {:keys [id]}]
+                       (let [batch (last id)]
+                         (swap! collection-batches conj (count batch))
+                         (set batch)))}
+      #(do
+         (is (= ids (verified-card-ids ids)))
+         (is (= ids (official-collection-ids ids)))))
+    (is (= [200 200 50] @moderation-batches))
+    (is (= [200 200 50] @collection-batches))))
+
+(deftest candidate-batch-inputs-are-shared-test
+  (let [source-calls  (atom 0)
+        lineage-calls (atom 0)
+        cards         [{:id 1, :type :question, :dataset_query {}}]]
+    (with-redefs-fn {#'insights/candidate-source-cards*
+                     (fn [_opts]
+                       (swap! source-calls inc)
+                       cards)
+                     #'insights/candidate-lineage-index
+                     (fn [_cards _allowed-types]
+                       (swap! lineage-calls inc)
+                       {10 {:id 10, :type :model}
+                        20 {:id 20, :type :question}})}
+      #(insights/with-candidate-batch-cache
+         (fn []
+           (is (= cards (candidate-source-cards {:min-view-count 10})))
+           (is (= cards (candidate-source-cards {:min-view-count 10})))
+           (is (= #{10} (set (keys (candidate-model-index cards)))))
+           (is (= #{10 20} (set (keys (candidate-lineage-card-index cards))))))))
+    (is (= 1 @source-calls))
+    (is (= 1 @lineage-calls))))
 
 (deftest candidate-measures-support-remaining-direct-aggregations-test
   (let [query (orders-extended-measures-query)]
