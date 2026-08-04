@@ -58,4 +58,82 @@ describe("Tree", () => {
     fireEvent.click(screen.getAllByRole("menuitem")[0]);
     expect(onSelectMock).toHaveBeenCalledWith(data[0]);
   });
+
+  describe("lazily loaded nodes", () => {
+    const lazyData = [
+      {
+        id: 1,
+        name: "Item 1",
+        icon: "group" as const,
+        children: [],
+        hasChildren: true,
+        childrenLoaded: false,
+      },
+    ];
+
+    it("should offer an expand toggle before the children are loaded", () => {
+      render(<Tree data={lazyData} onSelect={jest.fn()} />);
+      expect(screen.getByRole("button")).toBeInTheDocument();
+    });
+
+    it("should show skeletons in place of children that are still loading", () => {
+      render(<Tree data={lazyData} onSelect={jest.fn()} />);
+
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button"));
+
+      expect(
+        screen.getAllByTestId("tree-node-skeleton").length,
+      ).toBeGreaterThan(0);
+      expect(screen.getAllByRole("menuitem")).toHaveLength(1);
+    });
+
+    it("should replace the skeletons once the children arrive", () => {
+      const { rerender } = render(
+        <Tree data={lazyData} onSelect={jest.fn()} />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+
+      rerender(
+        <Tree
+          data={[
+            {
+              ...lazyData[0],
+              childrenLoaded: true,
+              children: [{ id: 2, name: "Item 2", icon: "group" as const }],
+            },
+          ]}
+          onSelect={jest.fn()}
+        />,
+      );
+
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Item 2")).toBeInTheDocument();
+    });
+
+    it("should report expansion to the owner when controlled", () => {
+      const onToggleExpand = jest.fn();
+      render(
+        <Tree
+          data={lazyData}
+          onSelect={jest.fn()}
+          expandedIds={new Set()}
+          onToggleExpand={onToggleExpand}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button"));
+
+      expect(onToggleExpand).toHaveBeenCalledWith(1);
+      // Expansion is the owner's to grant, so nothing expands until they say so.
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

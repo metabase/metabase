@@ -5,6 +5,16 @@ export interface ITreeNodeItem<TData = unknown> {
   name: string;
   icon: IconName | IconProps;
   children?: ITreeNodeItem<TData>[];
+  /**
+   * Set this when a node can be expanded before its children are loaded. Defaults to whether `children` is a
+   * non-empty array.
+   */
+  hasChildren?: boolean;
+  /**
+   * Set this to `false` while the node's children are still loading. The tree then shows skeleton rows in their
+   * place. Defaults to `true`.
+   */
+  childrenLoaded?: boolean;
   data?: TData;
   nonNavigable?: boolean;
 }

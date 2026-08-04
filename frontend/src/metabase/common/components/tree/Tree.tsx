@@ -14,6 +14,12 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initialExpandedIds?: ITreeNodeItem<TData>["id"][];
+  /**
+   * Pass this with `onToggleExpand` to drive expansion from outside. A lazily loaded tree needs that, because it has
+   * to fetch a node's children when the node expands.
+   */
+  expandedIds?: Set<ITreeNodeItem<TData>["id"]>;
+  onToggleExpand?: (id: ITreeNodeItem<TData>["id"]) => void;
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -26,12 +32,15 @@ function BaseTree<TData = unknown>({
   role = "menu",
   emptyState = null,
   initialExpandedIds,
+  expandedIds: controlledExpandedIds,
+  onToggleExpand: controlledOnToggleExpand,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
   ...boxProps
 }: TreeProps<TData>) {
-  const [expandedIds, setExpandedIds] = useState(() => {
+  const isControlled = controlledExpandedIds != null;
+  const [ownExpandedIds, setExpandedIds] = useState(() => {
     if (initialExpandedIds) {
       return new Set(initialExpandedIds);
     }
@@ -39,11 +48,12 @@ function BaseTree<TData = unknown>({
       selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
     );
   });
+  const expandedIds = controlledExpandedIds ?? ownExpandedIds;
   const previousSelectedId = usePrevious(selectedId);
   const prevData = usePrevious(data);
 
   useEffect(() => {
-    if (!selectedId) {
+    if (!selectedId || isControlled) {
       return;
     }
     const dataHasChanged = !_.isEqual(data, prevData);
@@ -56,10 +66,21 @@ function BaseTree<TData = unknown>({
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
-  }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
+  }, [
+    prevData,
+    data,
+    selectedId,
+    previousSelectedId,
+    expandedIds,
+    isControlled,
+  ]);
 
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
+      if (controlledOnToggleExpand) {
+        controlledOnToggleExpand(itemId);
+        return;
+      }
       if (expandedIds.has(itemId)) {
         setExpandedIds(
           (prev) => new Set([...prev].filter((id) => id !== itemId)),
@@ -68,7 +89,7 @@ function BaseTree<TData = unknown>({
         setExpandedIds((prev) => new Set([...prev, itemId]));
       }
     },
-    [expandedIds],
+    [expandedIds, controlledOnToggleExpand],
   );
 
   if (data.length === 0) {

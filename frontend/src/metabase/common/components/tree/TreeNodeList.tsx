@@ -4,6 +4,7 @@ import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
+import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeNodeListProps<TData = unknown> extends Omit<
@@ -40,8 +41,10 @@ function BaseTreeNodeList<TData = unknown>({
       {items.map((item) => {
         const isSelected = selectedId === item.id;
         const hasChildren =
-          Array.isArray(item.children) && item.children.length > 0;
+          item.hasChildren ??
+          (Array.isArray(item.children) && item.children.length > 0);
         const isExpanded = hasChildren && expandedIds.has(item.id);
+        const areChildrenLoaded = item.childrenLoaded ?? true;
         const onItemSelect =
           typeof onSelect === "function" ? () => onSelect(item) : undefined;
         const onItemToggle = () => onToggleExpand(item.id);
@@ -59,18 +62,21 @@ function BaseTreeNodeList<TData = unknown>({
               depth={depth}
               rightSection={rightSection}
             />
-            {isExpanded && (
-              <BaseTreeNodeList
-                items={item.children!}
-                expandedIds={expandedIds}
-                selectedId={selectedId}
-                depth={depth + 1}
-                onSelect={onSelect}
-                onToggleExpand={onToggleExpand}
-                TreeNode={TreeNode}
-                rightSection={rightSection}
-              />
-            )}
+            {isExpanded &&
+              (areChildrenLoaded ? (
+                <BaseTreeNodeList
+                  items={item.children ?? []}
+                  expandedIds={expandedIds}
+                  selectedId={selectedId}
+                  depth={depth + 1}
+                  onSelect={onSelect}
+                  onToggleExpand={onToggleExpand}
+                  TreeNode={TreeNode}
+                  rightSection={rightSection}
+                />
+              ) : (
+                <TreeNodeSkeleton depth={depth + 1} />
+              ))}
           </Fragment>
         );
       })}
