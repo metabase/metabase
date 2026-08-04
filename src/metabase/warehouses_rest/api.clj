@@ -402,6 +402,7 @@
   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
   `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
   lacks permission to change the database details."
+  {:scope "data-app"}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            router_database_id can-query can-write-metadata]}
@@ -529,6 +530,7 @@
    [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
    in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
+  {:scope "data-app"}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [include include_editable_data_model exclude_uneditable_details]}
@@ -1449,6 +1451,7 @@
   Optional filters:
   - `can-query=true` - filter to only schemas containing tables the user can query
   - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
+  {:scope "data-app"}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model
@@ -1548,6 +1551,7 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  {:scope "data-app"}
   [{:keys [id schema]} :- [:map
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]

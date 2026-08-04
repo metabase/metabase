@@ -69,4 +69,6 @@
       (is (mt/user-http-request :crowberto :get 200 "pulse/form_input" as-data-app))
       ;; 204 (not scope_not_permitted) proves the marked request reached the handler; the key is unset.
       (is (nil? (mt/user-http-request :crowberto :get 204
-                                      "user-key-value/namespace/data-app-test/key/format" as-data-app))))))
+                                      "user-key-value/namespace/data-app-test/key/format" as-data-app))))
+    (testing "the InteractiveQuestion.Editor data-source surface is reachable when marked"
+      (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))))

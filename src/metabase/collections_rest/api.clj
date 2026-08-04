@@ -144,6 +144,7 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  {:scope "data-app"}
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
@@ -243,6 +244,7 @@
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
+  {:scope "data-app"}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
