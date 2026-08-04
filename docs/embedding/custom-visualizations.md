@@ -50,7 +50,7 @@ The name comes from the `name` in the visualization's plugin manifest. You can l
 
 Names are case-sensitive, so `"custom:calendar heatmap"` won't match a visualization named `Calendar Heatmap`.
 
-Any question that uses a custom visualization that isn't on the allowlist will fall back to the default visualization for that query's results.
+Any question that uses a custom visualization that isn't on the allowlist will fall back to the default visualization for that query's results. If an entry on your allowlist doesn't match an uploaded visualization, Metabase logs a warning to the browser console.
 
 ## Custom visualizations don't work in guest embeds
 
