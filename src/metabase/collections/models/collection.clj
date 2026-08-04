@@ -1779,6 +1779,8 @@
 
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
+  (api/check (not (:is_root collection))
+             [400 "You cannot create a root Collection."])
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
@@ -1970,6 +1972,12 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
+    (api/check
+     (not (:is_root collection-before-updates))
+     [400 "You cannot modify a root Collection."])
+    (api/check
+     (not (contains? collection-updates :is_root))
+     [400 "You cannot change whether a Collection is a root Collection."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
@@ -2018,6 +2026,8 @@
   ;; This should never happen, but just to make sure...
   (when (= (u/the-id collection) (trash-collection-id))
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
+  (when (:is_root collection)
+    (throw (ex-info "Fatal error: a namespace's root collection cannot be deleted" {})))
   ;; delete all collection children
   (t2/delete! :model/Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
