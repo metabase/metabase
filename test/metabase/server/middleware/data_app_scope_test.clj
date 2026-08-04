@@ -28,6 +28,11 @@
     (is (= #{"data-app"} (token-scopes-seen marker))))
   (testing "it narrows a full-access (::unrestricted) token down to the data-app scope"
     (is (= #{"data-app"} (token-scopes-seen (assoc marker :token-scopes #{unrestricted})))))
+  (testing "a dev/preview data app is confined too — the X-Metabase-Client header is still \"data-app\"
+            (the \"-preview\" suffix lives only on the analytics *client* var, not the header)"
+    (is (= #{"data-app"}
+           (token-scopes-seen {:headers {"x-metabase-client"          "data-app"
+                                         "x-metabase-embedded-preview" "true"}}))))
   (testing "a non-data-app client leaves token-scopes untouched (normal session = unrestricted by omission)"
     (is (nil? (token-scopes-seen {:headers {"x-metabase-client" "embedding-sdk-react"}})))
     (is (nil? (token-scopes-seen {:headers {}}))))
