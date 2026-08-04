@@ -46,11 +46,12 @@
 
 (def ^:private view-log-entity-types
   "Entity types written to the view_log table by event handlers in
-   src/metabase/view_log/events/view_log.clj. Hardcoded because the
+   src/metabase/view_log/events/view_log.clj and
+   src/metabase/documents/view_log.clj. Hardcoded because the
    v_view_log SQL view exposes them via `model AS entity_type` (no SQL
    literals to extract). Update when new model types start being
    view-logged."
-  ["card" "collection" "dashboard" "table"])
+  ["card" "collection" "dashboard" "document" "table"])
 
 ;; ---------------------------------------------------------------------------
 ;; Shared helpers
@@ -175,15 +176,26 @@
          (non-empty! "query sources"))))
 
 (defn- audit-log-topics
-  "Grep `(derive :event/<topic> ::<parent>)` from the audit-log event file,
+  "Grep `(events/derive! :event/<topic> <parent>)` from the audit-log event file,
    then apply the v_audit_log SQL view's rename and exclusion rules so the
-   list matches what users see in the analytics model."
+   list matches what users see in the analytics model.
+
+   The parent may be either a `::keyword` grouping tag or another `:event/`
+   topic, so it is matched loosely. The namespace alias on `derive!` is
+   optional so an alias rename does not silently drop topics."
   [src]
-  (let [content (slurp src)
-        topics  (->> (re-seq #"\(derive\s+:event/([a-z0-9-]+)\s+::[a-z0-9-]+\)" content)
-                     (map second)
-                     distinct)]
-    (->> topics
+  (let [content   (slurp src)
+        matches   (re-seq #"\((?:[a-zA-Z0-9.-]+/)?derive!\s+:event/([a-z0-9-]+)\s+:" content)
+        all-forms (re-seq #"(?:[a-zA-Z0-9.-]+/)?derive!\s+:event/" content)]
+    ;; Guard against partial drift: `non-empty!` below only catches the case where the shape
+    ;; changed everywhere, not where some call sites moved to a shape we no longer match.
+    (when-not (= (count matches) (count all-forms))
+      (throw (ex-info (str "Matched " (count matches) " of " (count all-forms)
+                           " `derive!` forms with an :event/ topic; some call sites changed shape")
+                      {:source src :matched (count matches) :expected (count all-forms)})))
+    (->> matches
+         (map second)
+         distinct
          (remove audit-topic-exclusions)
          (map #(get audit-topic-renames % %))
          distinct
