@@ -15,12 +15,11 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
-  collections: Collection[];
   selectedId?: string | number;
   onItemSelect: () => void;
 };
@@ -86,12 +85,18 @@ function buildSectionTree(
 }
 
 export function NavbarLibrarySection({
-  collections,
   selectedId,
   onItemSelect,
 }: LibraryCollectionSectionProps) {
   const [expandLibrary = true, setExpandLibrary] = useUserSetting(
     "expand-library-in-nav",
+  );
+
+  // The library is small and bounded, so it gets its own query rather than riding along on the lazily loaded
+  // collection tree, whose nodes may not be fetched yet.
+  const { data: collections = [] } = PLUGIN_LIBRARY.useGetLibraryTreeQuery(
+    undefined,
+    { skip: !PLUGIN_LIBRARY.isEnabled },
   );
 
   const { isVisible: isGitSyncVisible } =
