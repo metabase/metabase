@@ -205,7 +205,6 @@
         (t2/hydrate :based_on_upload
                     :creator
                     :can_write
-                    :can_run_adhoc_query
                     :dashboard_count
                     [:dashboard :moderation_status]
                     :average_query_time

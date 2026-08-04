@@ -620,8 +620,7 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api
-           metabase.collections-rest.init}
+   :api  #{metabase.collections-rest.api}
    :uses #{api
            app-db
            collections
@@ -635,7 +634,6 @@
            queries
            request
            revisions
-           settings
            tracing
            transforms
            upload
@@ -1788,7 +1786,6 @@
            premium-features
            public-sharing
            pulse
-           query-permissions
            query-processor
            request
            search

@@ -3962,17 +3962,6 @@
     (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
-(deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (mt/metadata-provider)
-        venues            (lib.metadata/table metadata-provider (mt/id :venues))
-        query             (lib/query metadata-provider venues)]
-    (mt/with-temp [:model/Card card {:dataset_query query}
-                   :model/Card no-query {}]
-      (is (=? {:can_run_adhoc_query true}
-              (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)))))
-      (is (=? {:can_run_adhoc_query false}
-              (mt/user-http-request :crowberto :get 200 (str "card/" (:id no-query))))))))
-
 (deftest can-manage-db-test
   (mt/with-temp [:model/Card card {:type :model}]
     (mt/with-no-data-perms-for-all-users!
@@ -5101,19 +5090,6 @@
                                                   :display "line" :visualization_settings {}))
                 resp (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))]
             (is (= 3 (count (get-in resp [:data :rows]))))))))))
-
-(deftest can-run-adhoc-query-nested-card-source-test
-  (testing "can_run_adhoc_query for a card sourced from another card matches the collection-perms model (#23857)"
-    (let [mp           (mt/metadata-provider)
-          source-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-      (mt/with-temp [:model/Card source {:dataset_query source-query}]
-        (let [nested-query (lib/query mp (lib.metadata/card mp (:id source)))]
-          (mt/with-temp [:model/Card nested {:dataset_query nested-query}]
-            (mt/with-no-data-perms-for-all-users!
-              (is (=? {:can_run_adhoc_query true}
-                      (mt/user-http-request :rasta :get 200 (str "card/" (:id nested)))))
-              (is (=? {:can_run_adhoc_query false}
-                      (mt/user-http-request :rasta :get 200 (str "card/" (:id source))))))))))))
 
 (deftest ^:parallel reduced-fields-propagate-to-downstream-card-test
   (testing "A card with reduced :fields only exposes those columns to a card sourced from it (#30610)"

@@ -32,9 +32,7 @@
   model?
   sole-dashboard-id
   starting-card-schema-version
-  update-card!
-  ;; TODO -- not convinced whether this belongs here or in `permissions`
-  with-can-run-adhoc-query]
+  update-card!]
  [metabase.queries.models.card.metadata
   infer-metadata
   maybe-async-result-metadata
