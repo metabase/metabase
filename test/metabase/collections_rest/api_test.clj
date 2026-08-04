@@ -949,6 +949,11 @@
                                                                          :object   (revision/serialize-instance
                                                                                     rasta-card rasta-card-id rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
+                                                                         :model_id rasta-card-id
+                                                                         :user_id  (mt/user->id :crowberto)
+                                                                         :object   (revision/serialize-instance
+                                                                                    rasta-card rasta-card-id rasta-card)}
+                   :model/Revision   _                                  {:model    "Card"
                                                                          :model_id lucky-card-id
                                                                          :user_id  (mt/user->id :lucky)
                                                                          :object   (revision/serialize-instance
@@ -960,10 +965,12 @@
                      :data
                      (map :name)
                      set))]
-        (testing "matches the last editor's first and last names"
-          (is (= #{"Quarterly sales"} (item-names "rasta")))
-          (is (= #{"Quarterly sales"} (item-names "toucan")))
-          (is (= #{"Quarterly sales"} (item-names "rasta toucan"))))
+        (testing "matches only the most recent editor's first and last names"
+          (is (= #{"Quarterly sales"} (item-names "crowberto")))
+          (is (= #{"Quarterly sales"} (item-names "corv")))
+          (is (= #{"Quarterly sales"} (item-names "crowberto corv")))
+          (is (= #{} (item-names "rasta")))
+          (is (= #{} (item-names "toucan"))))
         (testing "does not match items edited by someone else"
           (is (= #{"Annual sales"} (item-names "lucky"))))
         (testing "still matches a collection without last-edit information by name"
@@ -1104,6 +1111,27 @@
             (is (= #{["collection" "Official child collection"]}
                    (set (map (juxt :model :name) (:data authority-response)))))))))))
 
+(deftest collection-items-available-models-library-test
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection collection {:type "library-data"}
+                   :model/Table      _          {:collection_id (u/the-id collection)
+                                                 :is_published  true}]
+      (letfn [(fetch []
+                (mt/user-http-request :crowberto :get 200
+                                      (str "collection/" (u/the-id collection) "/items")
+                                      :include_available_models true))]
+        (testing "excludes tables when the library feature is disabled"
+          (mt/with-premium-features #{}
+            (let [response (fetch)]
+              (is (= [] (:available_models response)))
+              (is (= [] (:data response))))))
+        (testing "includes tables when the library feature is enabled"
+          (mt/with-premium-features #{:library}
+            (let [response (fetch)]
+              (is (= ["table"] (:available_models response)))
+              (is (= [] (:available_authority_levels response)))
+              (is (= ["table"] (mapv :model (:data response)))))))))))
+
 (deftest collection-items-available-models-permissions-test
   (testing "GET /api/collection/:id/items"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -1152,6 +1180,30 @@
                (set (map (juxt :model :name) (:data response)))))
         (is (= ["card" "collection"] (:available_models response)))
         (is (= ["official"] (:available_authority_levels response)))))))
+
+(deftest trash-collection-items-search-test
+  (testing "GET /api/collection/:trash-id/items"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       matching-card {:name              "Trashed quarterly revenue"
+                                                    :collection_id     (u/the-id collection)
+                                                    :archived          true
+                                                    :archived_directly true}
+                   :model/Card       _             {:name              "Trashed customer count"
+                                                    :collection_id     (u/the-id collection)
+                                                    :archived          true
+                                                    :archived_directly true}
+                   :model/Card       _             {:name              "Indirect quarterly revenue"
+                                                    :collection_id     (u/the-id collection)
+                                                    :archived          true
+                                                    :archived_directly false}]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           (str "collection/" (collection/trash-collection-id) "/items")
+                                           :q "quarterly revenue"
+                                           :include_available_models true)]
+        (is (= 1 (:total response)))
+        (is (= #{[(:id matching-card) "Trashed quarterly revenue"]}
+               (set (map (juxt :id :name) (:data response)))))
+        (is (= ["card"] (:available_models response)))))))
 
 (deftest root-collection-items-search-and-available-models-test
   (testing "GET /api/collection/root/items"
@@ -1211,8 +1263,7 @@
                                                        :include_available_models true)
                 available-models (set (:available_models response))]
             (is (= [] (:data response)))
-            (is (contains? available-models "collection"))
-            (is (set/subset? available-models #{"collection"}))
+            (is (= #{"collection"} available-models))
             (is (not (contains? (set (:available_authority_levels response)) "official")))))))))
 
 (deftest collection-items-children-test

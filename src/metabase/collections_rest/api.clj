@@ -1272,6 +1272,8 @@
         options    (-> options
                        (dissoc :models :authority-level :search-text)
                        (assoc :collection-namespace (:namespace collection)))]
+    ;; This result is independent of search, model, and authority filters. Requesting it with every filter update
+    ;; repeats the same EXISTS probes; a separately cached request could avoid that work.
     (if (empty? candidates)
       {:available_models [] :available_authority_levels []}
       (let [viz-config {:include-archived-items    :all
