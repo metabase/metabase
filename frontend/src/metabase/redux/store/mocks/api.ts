@@ -27,11 +27,11 @@ export type QueryCacheSeed = {
  * Entries that already exist in the state are skipped, so seeding is idempotent.
  * Mock states routinely pass through seeding twice (spec setup, then render harness).
  *
- * Seeded entries register the tags their endpoint's `providesTags` computes,
- * so tag invalidation refetches or evicts them exactly like a fulfilled fetch.
+ * Under RTK 2.5 an upserted entry registers no provided tags,
+ * so tag invalidation cannot refetch or evict a seeded entry.
  *
  * A seeded entry is `fulfilled`, so `useXQuery` hooks won't refetch on mount.
- * A test that needs to assert a fetch happened should not seed that entry.
+ * A test asserting a fetch or an invalidation must not seed that entry.
  */
 export function seedApiQueryCache(
   currentApiState: ApiState | undefined,

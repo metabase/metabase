@@ -45,10 +45,12 @@ type SetupProps = {
   "landing-page"?: string;
   "dismissed-custom-dashboard-toast"?: boolean;
   withCustomUrlPlugin?: boolean;
+  seedCurrentUser?: boolean;
 };
 
 const setup = ({
   withCustomUrlPlugin = false,
+  seedCurrentUser = true,
   ...settingsProps
 }: SetupProps = {}) => {
   mockGetBoundingClientRect();
@@ -129,7 +131,13 @@ const setup = ({
       <HomepageSetting />
       <UndoListing />
     </div>,
-    { storeInitialState: { settings: createMockSettingsState(settings) } },
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+        // null skips mirroring a user into the getCurrentUser cache entry
+        ...(seedCurrentUser ? {} : { currentUser: null }),
+      },
+    },
   );
 };
 
@@ -318,16 +326,26 @@ describe("HomepageSetting", () => {
   });
 
   it("refreshes the current user after switching modes", async () => {
-    setup();
+    // Unseeded, so the subscriber's mount fetch registers the current-user tag.
+    // Under RTK 2.5 a seeded cache entry registers no tags (see seedApiQueryCache),
+    // and invalidation would have nothing to refetch.
+    setup({ seedCurrentUser: false });
+
+    const currentUserCalls = () =>
+      fetchMock.callHistory
+        .calls()
+        .filter((call) => call.url?.includes("/api/user/current"));
+
+    await waitFor(() => {
+      expect(currentUserCalls()).toHaveLength(1);
+    });
+
     await userEvent.click(
       await screen.findByRole("radio", { name: "Dashboard" }),
     );
 
     await waitFor(() => {
-      const calls = fetchMock.callHistory.calls();
-      expect(
-        calls.find((call) => call.url?.includes("/api/user/current")),
-      ).toBeDefined();
+      expect(currentUserCalls()).toHaveLength(2);
     });
   });
 });
