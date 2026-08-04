@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { listChannelSummaries } from "metabase/monitor/tools/notifications/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
@@ -19,6 +20,7 @@ import {
   Ellipsified,
   Flex,
   Icon,
+  LoadingOverlay,
   Text,
   Tooltip,
   TreeTable,
@@ -245,12 +247,8 @@ export const NotificationsTable = ({
   }
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
-      aria-busy={isLoading}
+    <MonitorTableCard
+      aria-busy={isFetching}
       data-testid="notifications-admin-table"
     >
       {isLoading ? (
@@ -259,18 +257,21 @@ export const NotificationsTable = ({
           columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
         />
       ) : (
-        <TreeTable
-          instance={instance}
-          hierarchical={false}
-          showCheckboxes
-          onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
-          headerCheckboxAriaLabel={t`Select all`}
-          ariaLabel={t`Notifications`}
-          onRowClick={handleRowActivate}
-          getRowProps={getRowProps}
-          emptyState={<MonitorEmptyState label={t`No alerts`} />}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={instance}
+            hierarchical={false}
+            showCheckboxes
+            onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+            headerCheckboxAriaLabel={t`Select all`}
+            ariaLabel={t`Notifications`}
+            onRowClick={handleRowActivate}
+            getRowProps={getRowProps}
+            emptyState={<MonitorEmptyState label={t`No alerts`} />}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };

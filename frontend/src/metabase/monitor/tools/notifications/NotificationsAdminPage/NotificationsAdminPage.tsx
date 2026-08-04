@@ -337,7 +337,6 @@ export const NotificationsAdminPage = () => {
           <Flex gap="md" align="center">
             <NotificationsSearchInput
               value={urlState.query}
-              isLoading={isFetching}
               onChange={handleSearchChange}
             />
             <NotificationsFilters state={urlState} onChange={patchUrlState} />

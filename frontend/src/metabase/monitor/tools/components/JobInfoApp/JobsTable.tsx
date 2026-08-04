@@ -3,11 +3,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
+  LoadingOverlay,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -21,11 +22,12 @@ const COLUMN_WIDTHS = [0.34, 0.33, 0.33];
 type JobRow = Job & { id: string };
 
 type JobsTableProps = {
+  isFetching: boolean;
   isLoading: boolean;
   jobs: Job[];
 };
 
-export const JobsTable = ({ isLoading, jobs }: JobsTableProps) => {
+export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
   const dispatch = useDispatch();
 
   const rows: JobRow[] = useMemo(
@@ -49,20 +51,23 @@ export const JobsTable = ({ isLoading, jobs }: JobsTableProps) => {
   });
 
   return (
-    <Card flex="0 1 auto" mih={0} p={0} withBorder data-testid="jobs-table">
+    <MonitorTableCard aria-busy={isFetching} data-testid="jobs-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          ariaLabel={t`Jobs`}
-          emptyState={<MonitorEmptyState label={t`No results`} />}
-          getRowProps={() => ({ "data-testid": "job" })}
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Jobs`}
+            emptyState={<MonitorEmptyState label={t`No results`} />}
+            getRowProps={() => ({ "data-testid": "job" })}
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 
