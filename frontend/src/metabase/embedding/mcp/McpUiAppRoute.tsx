@@ -33,12 +33,12 @@ interface McpUiAppRouteContentProps {
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
   queryError: McpAppState["queryError"];
-  sessionToken: string;
+  uiCredential: string;
 }
 
 interface McpMetabaseConfig {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   mcpSessionId: string;
 }
 
@@ -52,7 +52,7 @@ const SimpleLoader = () => (
 export function McpUiAppRoute() {
   const { app, display, hostContext, prompt, query, queryError } = useMcpApp();
 
-  const { instanceUrl = "", sessionToken = "" } =
+  const { instanceUrl = "", uiCredential = "" } =
     // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
@@ -89,7 +89,7 @@ export function McpUiAppRoute() {
         prompt={prompt}
         query={query}
         queryError={queryError}
-        sessionToken={sessionToken}
+        uiCredential={uiCredential}
       />
     </ComponentProvider>
   );
@@ -103,7 +103,7 @@ function McpUiAppRouteContent({
   prompt,
   query,
   queryError,
-  sessionToken,
+  uiCredential,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
   const isHosted = useSelector(getIsHosted);
@@ -125,7 +125,7 @@ function McpUiAppRouteContent({
   const { isSettingsReady, userAndSettingsFetchError } =
     useMcpUserAndSettingsFetch({
       instanceUrl,
-      sessionToken,
+      uiCredential,
       store,
     });
 
@@ -176,7 +176,7 @@ function McpUiAppRouteContent({
     mcpSessionId,
     prompt,
     query,
-    sessionToken,
+    uiCredential,
   });
 
   const renderSdkQuestionContent = () => {

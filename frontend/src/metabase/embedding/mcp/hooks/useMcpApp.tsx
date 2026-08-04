@@ -44,7 +44,7 @@ export interface McpAppState {
 
 interface McpGlobalConfig {
   instanceUrl?: string;
-  sessionToken?: string;
+  uiCredential?: string;
   mcpSessionId?: string;
 }
 
@@ -116,11 +116,11 @@ export function useMcpApp(): McpAppState {
       // recover from a failed `ontoolinput` resolution.
       setQueryError(null);
 
-      const { instanceUrl, sessionToken, mcpSessionId } =
+      const { instanceUrl, uiCredential, mcpSessionId } =
         // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
-      if (!instanceUrl || !sessionToken || !mcpSessionId) {
+      if (!instanceUrl || !uiCredential || !mcpSessionId) {
         setQueryError(getMcpQueryFetchErrorMessage("network"));
         return;
       }
@@ -128,7 +128,7 @@ export function useMcpApp(): McpAppState {
       try {
         const resolved = await fetchQueryByHandle({
           instanceUrl,
-          sessionToken,
+          uiCredential,
           mcpSessionId,
           queryHandle,
         });

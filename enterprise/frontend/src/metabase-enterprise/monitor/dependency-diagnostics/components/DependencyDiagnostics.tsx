@@ -173,7 +173,6 @@ export function DependencyDiagnostics({
           mode={mode}
           query={query}
           filterOptions={getFilterOptions(mode, params)}
-          isFetching={isFetching}
           isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}

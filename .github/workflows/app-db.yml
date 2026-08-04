@@ -61,6 +61,9 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
+        # disposable CI database: a RAM-backed datadir makes the ~90k fsyncs of a full
+        # migration chain free (measured: setup-db! 59s -> 16s)
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -130,9 +133,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -187,6 +188,9 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
+        # disposable CI database: a RAM-backed datadir makes the ~90k fsyncs of a full
+        # migration chain free (measured: setup-db! 59s -> 16s)
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -264,9 +268,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -376,9 +378,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   app-db-tests-result:
     needs:

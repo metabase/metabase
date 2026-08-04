@@ -255,7 +255,7 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2026.04.15"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.07.24"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
@@ -290,7 +290,7 @@
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
+    rewrite-clj/rewrite-clj      {:mvn/version "1.2.54"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
@@ -525,7 +525,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2026.04.15"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.07.24"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}

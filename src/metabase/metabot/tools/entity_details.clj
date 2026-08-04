@@ -14,6 +14,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -162,6 +163,7 @@
                                       (filter pos-int?)
                                       (concat (keep :table-id columns)
                                               (keep :table_id referenced-fields)))
+        _                       (perms/prime-table-perms-cache {:table-ids (set table-ids)})
         readable-table-ids      (->> (t2/select :model/Table :id [:in table-ids])
                                      (filter mi/can-read?)
                                      (map :id)

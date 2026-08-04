@@ -140,6 +140,28 @@
                                            (wire {:method "update" :id (:id dash) :name "Hacked"})))))
         (is (= "Sales" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))))
 
+(deftest write-readback-redacts-unreadable-cards-test
+  (testing "GHY-4219: the row a write reads back is redacted like a read. Writing a dashboard needs
+            only its own collection, so a writer can hold a dashcard pointing at a card they cannot
+            read — the readback must still collapse it to an id, never leak the name."
+    (mt/with-temp [:model/Collection    {open-id :id}     {}
+                   :model/Collection    {locked-id :id}   {}
+                   :model/Dashboard     {dash-id :id}     {:name "Sales" :collection_id open-id}
+                   :model/Card          {hidden-card :id} {:name "Hidden" :collection_id locked-id}
+                   :model/DashboardCard {hidden-dc :id}   {:dashboard_id dash-id
+                                                           :card_id      hidden-card
+                                                           :row          0 :col 0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (let [result (tool-result (call-tool! :rasta nil "dashboard_write"
+                                              (wire {:method "update" :id dash-id
+                                                     :name   "Renamed"})))
+              [dc]   (:dashcards result)]
+          (is (= "Renamed" (:name result))
+              "the write itself succeeds — rasta can write the dashboard's own collection")
+          (is (= hidden-dc (:id dc)))
+          (is (= {:id hidden-card} (:card dc))
+              "the unreadable card comes back as an id with no name"))))))
+
 (deftest parameter-ops-accept-json-shapes-test
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]

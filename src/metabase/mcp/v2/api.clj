@@ -80,12 +80,12 @@
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
-      ;; Reading the shell is what mints the embedding session key the iframe authenticates
-      ;; with — it is the only place the browser ever receives one.
-      (let [user-id     api/*current-user-id*
-            session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))
-            result      (v2.resources/read-resource uri token-scopes {:session-key session-key
-                                                                      :session-id  session-id})]
+      ;; Reading the shell is what mints the scoped credential the iframe authenticates with — it
+      ;; is the only place the browser ever receives one.
+      (let [user-id       api/*current-user-id*
+            ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
+            result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
+                                                                        :session-id    session-id})]
         (case (:status result)
           ;; Collapsed so a scope-denied read can't be used to probe which resources exist.
           (:not-found :scope-denied) (transport/jsonrpc-error id -32602 "Resource not found")

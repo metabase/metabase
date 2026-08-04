@@ -5,11 +5,12 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
-  Card,
   Ellipsified,
+  LoadingOverlay,
   Text,
   TreeTable,
   type TreeTableColumnDef,
@@ -84,26 +85,23 @@ export const TaskRunsTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
-      data-testid="task-runs-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="task-runs-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          ariaLabel={t`Task runs`}
-          emptyState={<MonitorEmptyState label={t`No results`} />}
-          getRowProps={() => ({ "data-testid": "task-run" })}
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Task runs`}
+            emptyState={<MonitorEmptyState label={t`No results`} />}
+            getRowProps={() => ({ "data-testid": "task-run" })}
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 

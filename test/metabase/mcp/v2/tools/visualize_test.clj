@@ -327,15 +327,15 @@
 
 (deftest resource-read-renders-iframe-shell-test
   (mcp.ui-resource/with-fallback-template
-    (testing "GHY-4157: the shell carries the embedding session token the iframe authenticates with"
+    (testing "GHY-4157: the shell carries the scoped UI credential the iframe authenticates with"
       (let [result (v2.resources/read-resource v2.resources/visualize-query-uri
                                                viz-scopes
-                                               {:session-key "test-session-key"
-                                                :session-id  "test-session-id"})
+                                               {:ui-credential "test-ui-credential"
+                                                :session-id    "test-session-id"})
             {:keys [text mimeType _meta]} (first (:contents result))]
         (is (= :ok (:status result)))
         (is (= "text/html;profile=mcp-app" mimeType))
-        (is (str/includes? text (json/encode "test-session-key")))
+        (is (str/includes? text (json/encode "test-ui-credential")))
         (testing "and the host gets the sandbox CSP block it needs to render it"
           (is (contains? (:ui _meta) :csp))
           (is (true? (get-in _meta [:ui :prefersBorder]))))))

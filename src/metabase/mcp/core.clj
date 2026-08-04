@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.v2.registry :as v2.registry]
    [metabase.mcp.v2.resources :as v2.resources]))
@@ -31,6 +32,11 @@
   "Whether the MCP server is enabled (composes [[metabase.llm.settings/ai-features-enabled?]])."
   []
   (mcp.settings/mcp-enabled?))
+
+(defn resolve-ui-credential
+  "Resolves a credential issued for an MCP UI resource."
+  [credential]
+  (mcp.session/resolve-ui-credential credential))
 
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
