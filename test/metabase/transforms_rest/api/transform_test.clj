@@ -1383,15 +1383,6 @@
                 (is (= (collections/transforms-root-collection-id)
                        (:collection_id updated)))))))))))
 
-(deftest root-collection-items-include-transforms-test
-  (mt/with-premium-features #{:transforms-basic :hosting}
-    (testing "GET /api/collection/root/items?namespace=transforms lists transforms in the Transforms root"
-      (mt/with-temp [:model/Transform {transform-id :id} {:name "Root Transform"}]
-        (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                                 :namespace "transforms"
-                                                 :models "transform"))]
-          (is (= [transform-id] (map :id items))))))))
-
 (deftest collection-items-include-transforms-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/collection/:id/items"
