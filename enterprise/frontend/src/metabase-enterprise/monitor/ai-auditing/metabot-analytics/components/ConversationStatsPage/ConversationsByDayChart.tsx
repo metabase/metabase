@@ -186,7 +186,7 @@ export function buildTimeseriesBreakoutQuery({
   q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByCreatedAtBucket(q, bucketName);
-  q = breakoutByModel(q);
+  q = breakoutByModel(q, metric);
   return q;
 }
 

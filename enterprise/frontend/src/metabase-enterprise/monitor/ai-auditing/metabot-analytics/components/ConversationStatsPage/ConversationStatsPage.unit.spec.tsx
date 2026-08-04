@@ -263,14 +263,11 @@ async function findChartCard(title: string): Promise<HTMLElement> {
   return parentElement;
 }
 
-// Each dimension value gets one clickable segment per model series, so the
-// label matches more than once.
 async function drillInto(chartTitle: string, dimensionLabel: string) {
   const card = await findChartCard(chartTitle);
-  const [segment] = await within(card).findAllByRole("button", {
-    name: dimensionLabel,
-  });
-  await userEvent.click(segment);
+  await userEvent.click(
+    await within(card).findByRole("button", { name: dimensionLabel }),
+  );
 }
 
 function chartTitles(label: string): string[] {
@@ -344,6 +341,32 @@ describe("ConversationStatsPage", () => {
         }
       });
     });
+
+    it.each([
+      { tab: "Conversations", route: STATS_PATH },
+      { tab: "Messages", route: `${STATS_PATH}?metric=messages` },
+      { tab: "Tokens", route: `${STATS_PATH}?metric=tokens`, breaksOut: true },
+    ])(
+      "only the $tab tab breaks out by model when it should",
+      async ({ tab, route, breaksOut = false }) => {
+        setup({ initialRoute: route });
+
+        await screen.findByText(`${tab} by day`);
+        const modelFieldId = fieldIdByName(
+          breaksOut ? "v_ai_usage_log" : "v_metabot_conversations",
+          "model",
+        );
+
+        await waitFor(() => {
+          const stages = getDatasetStages();
+          expect(stages.length).toBeGreaterThan(0);
+          for (const stage of stages) {
+            const breakoutFieldIds = stage.breakout?.map((ref) => ref[2]) ?? [];
+            expect(breakoutFieldIds.includes(modelFieldId)).toBe(breaksOut);
+          }
+        });
+      },
+    );
 
     it("sums total tokens once rather than splitting input from output", async () => {
       setup({ initialRoute: `${STATS_PATH}?metric=tokens` });
@@ -422,11 +445,11 @@ describe("ConversationStatsPage", () => {
 
       const card = await findChartCard("Tenants with most conversations");
       expect(
-        await within(card).findAllByRole("button", { name: BOBBY_TENANT.name }),
-      ).not.toHaveLength(0);
+        await within(card).findByRole("button", { name: BOBBY_TENANT.name }),
+      ).toBeInTheDocument();
       expect(
-        within(card).getAllByRole("button", { name: ROBERT_TENANT.name }),
-      ).not.toHaveLength(0);
+        within(card).getByRole("button", { name: ROBERT_TENANT.name }),
+      ).toBeInTheDocument();
     });
 
     it("filters the charts by the selected tenant", async () => {

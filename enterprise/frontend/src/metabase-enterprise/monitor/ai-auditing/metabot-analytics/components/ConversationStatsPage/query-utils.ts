@@ -241,7 +241,7 @@ export function buildSourceBreakoutQuery({
   q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, breakoutColumn);
-  q = breakoutByModel(q);
+  q = breakoutByModel(q, metric);
   q = applyMetricOrderBy(q, metric);
   return q;
 }
@@ -253,8 +253,10 @@ export function breakoutByColumn(query: Query, columnName: string): Query {
 
 export const MODEL_COLUMN = "model";
 
-export function breakoutByModel(query: Query): Query {
-  return breakoutByColumn(query, MODEL_COLUMN);
+// Only token spend is worth attributing to a model; conversation and message
+// counts stay single-series.
+export function breakoutByModel(query: Query, metric: UsageStatsMetric): Query {
+  return metric === "tokens" ? breakoutByColumn(query, MODEL_COLUMN) : query;
 }
 
 type BreakoutQueryOpts = StatsFilters & {
@@ -317,7 +319,7 @@ export function buildGroupBreakoutQuery({
   q = excludeAllUsers ? excludeAllUsersGroup(q) : q;
   q = applyIdFilter(q, "group_id", groupId);
   q = breakoutByJoinedGroupName(q);
-  q = breakoutByModel(q);
+  q = breakoutByModel(q, metric);
   q = applyUsageStatsAggregation(q, metric);
   q = applyMetricOrderBy(q, metric);
   return q;
@@ -350,7 +352,7 @@ export function buildTenantBreakoutQuery({
   q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByColumn(q, "tenant_id");
-  q = breakoutByModel(q);
+  q = breakoutByModel(q, metric);
   q = applyMetricOrderBy(q, metric);
   return q;
 }
