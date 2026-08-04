@@ -1361,7 +1361,7 @@
 ;;; ------------------------------------------------------------
 
 (deftest move-transform-to-root-collection-test
-  (testing "PUT /api/transform/:id with a nil collection_id moves the transform to the Transforms root"
+  (testing "PUT /api/transform/:id moves a transform back to the Transforms root, and refuses a nil collection"
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
@@ -1378,10 +1378,14 @@
                                                                    :name   table-name}})
                     updated (mt/user-http-request :crowberto :put 200
                                                   (format "transform/%d" (:id created))
-                                                  {:collection_id nil})]
+                                                  {:collection_id (collections/transforms-root-collection-id)})]
                 (is (= collection-id (:collection_id created)))
                 (is (= (collections/transforms-root-collection-id)
-                       (:collection_id updated)))))))))))
+                       (:collection_id updated)))
+                (testing "a nil collection is rejected rather than silently re-rooted"
+                  (mt/user-http-request :crowberto :put 400
+                                        (format "transform/%d" (:id created))
+                                        {:collection_id nil}))))))))))
 
 (deftest root-collection-is-the-real-transforms-collection-test
   (mt/with-premium-features #{:transforms-basic :hosting}
