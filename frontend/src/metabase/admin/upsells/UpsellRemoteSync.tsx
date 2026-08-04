@@ -8,8 +8,8 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
+import { getApplicationName } from "metabase/whitelabel";
 
 export const UpsellRemoteSync = ({ source }: { source: string }) => {
   const hasRemoteSync = useHasTokenFeature("remote_sync");

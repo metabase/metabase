@@ -8,8 +8,8 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { formatNativeQuery } from "metabase/databases/utils/engine";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon, Loader, Stack } from "metabase/ui";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 import * as Lib from "metabase-lib";
 import type {
   NativeDatasetResponse,

@@ -7,9 +7,9 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";

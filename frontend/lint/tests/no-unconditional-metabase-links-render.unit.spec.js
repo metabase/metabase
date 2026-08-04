@@ -23,7 +23,7 @@ const VALID_CASES = [
     code: `
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 const docsLink = useSelector(state =>
   getDocsUrl(state, { page: "actions/custom" })
@@ -33,7 +33,7 @@ const docsLink = useSelector(state =>
     code: `
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 const docsLink = useSelector(state =>
   getLearnUrl(state, { page: "actions/custom" })
@@ -41,7 +41,7 @@ const docsLink = useSelector(state =>
   },
   {
     code: `
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 function MyComponent() {
   return <a href="https://metabase.com/docs/latest/troubleshooting-guide/bugs.html">Troubleshooting</a>;
@@ -49,7 +49,7 @@ function MyComponent() {
   },
   {
     code: `
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 function MyComponent() {
   return <a href={\`https://metabase.com/docs/latest/troubleshooting-guide/bugs.html\`}>Troubleshooting</a>;
@@ -57,7 +57,7 @@ function MyComponent() {
   },
   {
     code: `
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 function MyComponent() {
   return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;

@@ -18,10 +18,10 @@ import type {
   GuestEmbedResourceType,
 } from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
-import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Paper, Stack, Tabs } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
+import { getCanWhitelabel } from "metabase/whitelabel";
 import type { EmbeddingParameters } from "metabase-types/api";
 
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";

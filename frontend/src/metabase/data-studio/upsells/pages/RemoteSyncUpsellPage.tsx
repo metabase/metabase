@@ -8,8 +8,8 @@ import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/cons
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 const CAMPAIGN = "remote-sync";
 const LOCATION = "data-studio-remote-sync";

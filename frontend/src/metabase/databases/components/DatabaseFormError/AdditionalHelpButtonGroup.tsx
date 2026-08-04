@@ -5,9 +5,9 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Button, Divider, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 import { ContactSupportButtonSection } from "./ContactSupportButtonSection";
 

@@ -3,9 +3,9 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
+import { getApplicationName } from "metabase/whitelabel";
 
 type HelpModalProps = {
   onClose: (confirmed: boolean) => void;

@@ -12,10 +12,10 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 import S from "./NewModelOptions.module.css";
 

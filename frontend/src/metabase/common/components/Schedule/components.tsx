@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
 import { capitalize } from "metabase/utils/formatting/strings";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
+import { getApplicationName } from "metabase/whitelabel";
 import type {
   ScheduleDayType,
   ScheduleFrameType,

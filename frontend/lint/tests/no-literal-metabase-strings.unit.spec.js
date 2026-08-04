@@ -53,7 +53,7 @@ const INVALID_CASES = [
   {
     name: "Detect in literal strings",
     code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
+  import { getApplicationName } from 'metabase/whitelabel';
 
   const label = "Metabase blabla"`,
     error: /Metabase string must not be used directly./,
@@ -61,7 +61,7 @@ const INVALID_CASES = [
   {
     name: "Detect in literal strings",
     code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
+  import { getApplicationName } from 'metabase/whitelabel';
 
   function MyComponent() {
     return <AnotherComponent label="Hello Metabase" />;
@@ -85,7 +85,7 @@ const INVALID_CASES = [
   {
     name: "Detect in template strings",
     code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
+  import { getApplicationName } from 'metabase/whitelabel';
 
   const label = t\`Metabase blabla\``,
     error: /Metabase string must not be used directly./,
@@ -93,7 +93,7 @@ const INVALID_CASES = [
   {
     name: "Detect in template strings",
     code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
+  import { getApplicationName } from 'metabase/whitelabel';
 
   function MyComponent() {
     return <AnotherComponent label={t\`Hello Metabase\`} />;
@@ -111,7 +111,7 @@ const INVALID_CASES = [
   {
     name: "Detect in JSX tags",
     code: `
-  import { getApplicationName } from 'metabase/selectors/whitelabel';
+  import { getApplicationName } from 'metabase/whitelabel';
 
   function MyComponent() {
     return <div>Metabase store {"interpolation"} something else</div>;

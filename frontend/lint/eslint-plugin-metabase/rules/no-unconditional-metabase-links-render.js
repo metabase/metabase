@@ -27,7 +27,7 @@ function getParentDeclarationNode(node) {
 const ADD_COMMENT_MESSAGE =
   'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins."';
 const ERROR_MESSAGE =
-  "Metabase links must be rendered conditionally.\n\nPlease import `getShowMetabaseLinks` selector from `metabase/selectors/whitelabel` and use it to conditionally render Metabase links.\n\nOr " +
+  "Metabase links must be rendered conditionally.\n\nPlease import `getShowMetabaseLinks` selector from `metabase/whitelabel` and use it to conditionally render Metabase links.\n\nOr " +
   ADD_COMMENT_MESSAGE;
 
 const HOOK_ERROR_MESSAGE =
@@ -107,7 +107,7 @@ module.exports = {
         if (
           getImportedModuleNode(node, {
             named: "getShowMetabaseLinks",
-            source: "metabase/selectors/whitelabel",
+            source: "metabase/whitelabel",
           })
         ) {
           isGetShowMetabaseLinksSelectorImported = true;

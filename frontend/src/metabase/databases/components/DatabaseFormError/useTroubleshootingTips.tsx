@@ -6,9 +6,9 @@ import { identity } from "underscore";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Code } from "metabase/ui";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 import type { TipProps as _TipProps } from "./TroubleshootingTip";
 import { getDocsLinkConditionally, useCloudGatewayIPs } from "./utils";

@@ -6,11 +6,8 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
-import {
-  getApplicationName,
-  getShowMetabaseLinks,
-} from "metabase/selectors/whitelabel";
 import { Card, Flex, Icon, Text } from "metabase/ui";
+import { getApplicationName, getShowMetabaseLinks } from "metabase/whitelabel";
 
 export const HomeHelpCard = (): JSX.Element | null => {
   const cardTitleId = useUniqueId();

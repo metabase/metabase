@@ -8,10 +8,10 @@ import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/redux";
-import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/whitelabel";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 

@@ -11,7 +11,6 @@ import type {
 } from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import {
   Divider,
@@ -21,6 +20,7 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
+import { getCanWhitelabel } from "metabase/whitelabel";
 
 import {
   DashboardDownloadSettings,

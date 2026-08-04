@@ -13,10 +13,10 @@ import {
   formatNotificationScheduleDescription,
 } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
+import { getApplicationName } from "metabase/whitelabel";
 import type {
   NotificationCronSubscription,
   ScheduleSettings,

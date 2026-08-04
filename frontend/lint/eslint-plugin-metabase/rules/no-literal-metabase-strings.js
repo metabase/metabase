@@ -7,7 +7,7 @@
 const ADD_COMMENT_MESSAGE =
   'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins."';
 const ERROR_MESSAGE =
-  "Metabase string must not be used directly.\n\nPlease import `getApplicationName` selector from `metabase/selectors/whitelabel` and use it to render the application name.\n\nOr " +
+  "Metabase string must not be used directly.\n\nPlease import `getApplicationName` selector from `metabase/whitelabel` and use it to render the application name.\n\nOr " +
   ADD_COMMENT_MESSAGE;
 const LITERAL_METABASE_STRING_REGEX = /Metabase/;
 
