@@ -1,15 +1,13 @@
 import { jt, t } from "ttag";
 
-import {
-  useGetChannelInfoQuery,
-  useListSecurityAdvisoriesQuery,
-} from "metabase/api";
+import { useGetChannelInfoQuery } from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
 import { getPlan } from "metabase/common/utils/plan";
 import { useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
 
+import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
 
 export function SecurityCenterBanner() {

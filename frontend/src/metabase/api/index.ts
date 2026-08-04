@@ -45,7 +45,6 @@ export * from "./pulse";
 export * from "./query-endpoints";
 export * from "./revision";
 export * from "./search";
-export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./setup";
