@@ -41,6 +41,7 @@ const SHARED_UTILS_LEVELS = [
     "shared/redux-store",
     "shared/search-ui",
     "shared/rich_text_editing",
+    "shared/whitelabel",
   ],
 ];
 
