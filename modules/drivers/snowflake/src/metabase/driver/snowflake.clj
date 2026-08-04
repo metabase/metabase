@@ -51,6 +51,10 @@
 (driver/register! :snowflake, :parent #{:sql-jdbc :sql-mbql5
                                         ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/host-carrying-parameters :snowflake
+  [_driver]
+  ["proxyHost" "host"])
+
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]
   (driver/hosts-from-details

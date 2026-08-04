@@ -129,18 +129,26 @@
 (defn- hosts-metabase-will-connect-to
   "The hosts Metabase itself resolves and connects to for `details`. With an SSH tunnel enabled Metabase connects to
   the tunnel server and the tunnel server resolves the warehouse host on the far side, so `:host` is (legitimately)
-  often `localhost` there and only `:tunnel-host` is ours to check.
+  often `localhost` there and only `:tunnel-host` is ours to check. That only holds for a driver that actually routes
+  its connection through the tunnel -- details are an open map, and for a driver that ignores the `:tunnel-*` keys
+  (BigQuery) believing them would leave the host it really connects to unchecked.
 
   Eager on purpose: [[validate-connection-hosts!]] turns a failure to extract the hosts into a refusal, which it can
   only do if the failure happens at the call and not later, when a lazy sequence is walked."
   [driver details]
-  (into (if (:tunnel-enabled details)
-          (driver/hosts-from-details details [:tunnel-host])
-          ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could
-          ;; turn a bug in a driver's implementation into an unchecked connection.
-          (vec (driver/connection-hosts driver details)))
-        (when (:use-auth-provider details)
-          (driver/hosts-from-details details auth-provider-url-detail-keys))))
+  (into []
+        cat
+        [(if (and (:tunnel-enabled details)
+                  (driver/routes-connection-through-ssh-tunnel? driver))
+           (driver/hosts-from-details details [:tunnel-host])
+           ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could
+           ;; turn a bug in a driver's implementation into an unchecked connection.
+           (vec (driver/connection-hosts driver details)))
+         ;; deliberately outside the tunnel branch: a tunnel rewrites the host detail, but the client still honors a
+         ;; host named in its connection parameters, so those are checked either way
+         (driver/connection-parameter-hosts driver details)
+         (when (:use-auth-provider details)
+           (driver/hosts-from-details details auth-provider-url-detail-keys))]))
 
 (defn- blocked-network-address-exception []
   (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]

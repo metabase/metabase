@@ -310,6 +310,78 @@
   [_driver details]
   (hosts-from-details details default-host-detail-keys))
 
+(defmulti host-carrying-parameters
+  "The names of connection parameters that can name a host this driver's client will connect to -- a proxy, a failover
+  partner, a token or attestation endpoint, an alternate API endpoint. Defaults to none.
+
+  These are the parameters of the *client*, not Metabase's connection-property names: whatever ends up in the
+  connection string or property map, including anything a user writes into `:additional-options`. A client honors a
+  host named here in preference to the one it was handed, so what this returns decides which values
+  [[connection-parameter-hosts]] resolves.
+
+  To find them, ask the driver: `java.sql.Driver/getPropertyInfo` enumerates every parameter a JDBC client accepts, and
+  `metabase.driver.sql-jdbc.connection-parameter-hosts-test` fails on one whose name looks host-ish and appears
+  neither here nor in [[non-host-parameters]]. Prefer declaring a parameter you are unsure about."
+  {:added "0.58.23" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod host-carrying-parameters :default
+  [_driver]
+  [])
+
+(defmulti non-host-parameters
+  "The names of connection parameters that read as though they might carry a host -- they mention a host, a server, an
+  address, an endpoint -- but have been checked and do not name anywhere the client connects: a certificate's expected
+  hostname, a Kerberos principal, a local bind address, a proxy's port, a boolean.
+
+  Declaring one is a record that somebody looked, so the next reader does not have to look again, and so a parameter
+  that shows up later is not mistaken for one already accounted for. Nothing reads this at connection time; it exists
+  so [[host-carrying-parameters]] can be checked for completeness against what the client says it accepts."
+  {:added "0.58.23" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod non-host-parameters :default
+  [_driver]
+  [])
+
+(defmulti connection-parameter-hosts
+  "Hosts named by parameters of the connection string or property map the driver hands to its client, once `details`,
+  `:additional-options`, and any driver-specific rewriting have been folded in. Defaults to none.
+
+  Separate from [[connection-hosts]] because a client typically honors a host named in its parameters *over* the one
+  in the connection string it was given, so these are hosts a connection may open no matter what the details say. An
+  SSH tunnel rewrites the host detail but not these, so they are checked even when a tunnel is in use.
+
+  Drivers rarely implement this: the `:sql-jdbc` method builds the connection spec and reads the parameters a driver
+  names in [[host-carrying-parameters]] out of it, which is the declaration a driver author writes instead. Implement
+  it only when the connection string is somewhere that method cannot see."
+  {:added "0.58.23" :arglists '([driver details])}
+  dispatch-on-initialized-driver-safe-keys
+  :hierarchy #'hierarchy)
+
+(defmethod connection-parameter-hosts :default
+  [_driver _details]
+  [])
+
+(defmulti routes-connection-through-ssh-tunnel?
+  "Whether `driver` opens its warehouse connection through the SSH tunnel described by the `:tunnel-*` details, so that
+  Metabase connects to `:tunnel-host` and the tunnel server resolves the warehouse host on the far side.
+
+  Connection details are an open map, so any driver's details can carry `:tunnel-enabled` whether or not the driver
+  does anything with it. This says whether it does: for a driver that does not, the `:tunnel-*` details are inert and
+  it is [[connection-hosts]] that describes where the connection really goes.
+
+  Defaults to false, and to true for `:sql-jdbc` (whose connection pool opens the tunnel for every driver beneath it).
+  A non-`:sql-jdbc` driver that opens a tunnel itself must say so."
+  {:added "0.58.23" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod routes-connection-through-ssh-tunnel? :default  [_driver] false)
+(defmethod routes-connection-through-ssh-tunnel? :sql-jdbc [_driver] true)
+
 (defmulti dbms-version
   "Return a map containing information that describes the version of the DBMS. This typically includes a
   `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`

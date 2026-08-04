@@ -151,6 +151,13 @@
                 :else s)]
         (not-empty (str/trim s))))))
 
+(defn ip-literal?
+  "Whether `host` is an IP address written out rather than a name that would have to be resolved. Deciding this takes
+  no DNS lookup, which is what makes it safe to ask of a value that may not be a host at all."
+  [host]
+  (boolean (when-let [host (not-empty (str/trim (str host)))]
+             (InetAddresses/isInetAddress (str/replace host #"^\[|\]$" "")))))
+
 (defn- host->inet-addresses
   "Resolve `host` to its `InetAddress`es, returning nil if it is blank or cannot be resolved. Strips the brackets
   around an IPv6 literal (`[::1]`), which `InetAddress` accepts but which we may also see already stripped."

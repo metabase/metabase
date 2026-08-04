@@ -83,6 +83,8 @@
           (.close context))))
     (catch Throwable _ nil)))
 
+(defmethod driver/routes-connection-through-ssh-tunnel? :mongo [_driver] true)
+
 (defmethod driver/connection-hosts :mongo
   [_driver {:keys [use-conn-uri host] :as details}]
   ;; Mongo takes its hosts from `:host` *or*, when `use-conn-uri` is set, from anywhere inside `:conn-uri` -- and

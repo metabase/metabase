@@ -61,6 +61,13 @@
 ;; `standard_conforming_strings = off` (#73721).
 (driver/register! :postgres, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
+(defmethod driver/host-carrying-parameters :postgres [_driver] ["host" "PGHOST"])
+
+(defmethod driver/non-host-parameters :postgres
+  [_driver]
+  ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
+   "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift

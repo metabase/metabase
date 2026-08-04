@@ -685,6 +685,59 @@
                             :postgres
                             {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"})))))))
 
+(deftest validate-connection-hosts!-connection-parameters-test
+  ;; A JDBC client honors a host named in the connection parameters over the one in the URL it was handed -- pgjdbc
+  ;; reads `host=`/`PGHOST=` from the query string -- and `:additional-options` is appended to that string verbatim.
+  (testing "a host smuggled through `:additional-options` is checked, not just the `:host` detail"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (doseq [opts ["host=169.254.169.254"
+                    "PGHOST=127.0.0.1&ssl=false"
+                    "ssl=false&host=[::1]"]]
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts!
+                              :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                                         :additional-options opts})))
+            (str "should be refused: " (pr-str opts))))
+      (testing "an SSH tunnel does not exempt them -- it rewrites the host detail, not the parameters"
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts!
+                              :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                                         :tunnel-enabled true :tunnel-host "bastion.example.com"
+                                         :additional-options "host=169.254.169.254"})))))
+      (testing "ordinary options are not mistaken for hosts"
+        ;; only the parameters a driver declares in `driver/host-carrying-parameters` are resolved, so a value
+        ;; that is not a host is never handed to the resolver -- and a name that happens to resolve inside the
+        ;; cluster cannot refuse a database over its application name
+        (is (nil? (driver.u/validate-connection-hosts!
+                   :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                              :additional-options "loginTimeout=1&ApplicationName=localhost&ssl=false"}))))
+      (testing "an undeclared parameter is still checked when its value is already an address"
+        ;; a declaration that has fallen behind the client it describes is not a free pass; an IP costs no lookup
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts!
+                              :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                                         :additional-options "ApplicationName=169.254.169.254"}))))))))
+
+(driver/register! ::no-tunnel-driver, :abstract? true)
+
+(deftest validate-connection-hosts!-tunnel-details-do-not-disable-the-check-test
+  (testing "a driver that ignores the tunnel details still has its own hosts checked"
+    ;; `:tunnel-enabled` is only meaningful to drivers that route the connection through the tunnel. Details are
+    ;; stored as an open map, so any driver's details can carry the key -- for one that ignores it (BigQuery), taking
+    ;; the caller's word for it would leave the host it really connects to unchecked.
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            ::no-tunnel-driver
+                            {:tunnel-enabled true :tunnel-host "bastion.example.com" :host "169.254.169.254"}))))
+      (testing "and the tunnel host it never contacts is not held against it"
+        (is (nil? (driver.u/validate-connection-hosts!
+                   ::no-tunnel-driver
+                   {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"}))))))
+  (testing "drivers that do route through the tunnel are unaffected"
+    (is (true? (driver/routes-connection-through-ssh-tunnel? :postgres)))
+    (is (false? (driver/routes-connection-through-ssh-tunnel? ::no-tunnel-driver)))))
+
 (driver/register! ::broken-hosts-driver, :abstract? true)
 
 (defmethod driver/connection-hosts ::broken-hosts-driver
