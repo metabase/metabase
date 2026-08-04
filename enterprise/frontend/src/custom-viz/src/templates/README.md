@@ -330,12 +330,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 
 ### RenderingContext
 
-| Property                         | Type                       | Description                                                                   |
-| -------------------------------- | -------------------------- | ----------------------------------------------------------------------------- |
-| `getColor(name)`                 | `(name: string) => string` | Returns a hex color for the given Metabase color name.                        |
-| `measureTextWidth(text, style)`  | `TextWidthMeasurer`        | Measures the rendered width of a text string.                                 |
-| `measureTextHeight(text, style)` | `TextHeightMeasurer`       | Measures the rendered height of a text string.                                |
-| `fontFamily`                     | `string`                   | The font family in use. Apply to root elements for consistent text rendering. |
+Same shape as the interactive [`renderingContext`](#renderingcontext) above.
+
+| Property                   | Type                                 | Description                                                                                          |
+| -------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `getColor(name)`           | `(name: string) => string`           | Returns a hex color for the given Metabase color name.                                               |
+| `measureText(text, style)` | `(text, style) => { width, height }` | Measures the rendered size of a text string in pixels. `style.family` defaults to the instance font. |
+| `fontFamily`               | `string`                             | The font family in use. Apply to root elements for consistent text rendering.                        |
+| `colorScheme`              | `"light" \| "dark"`                  | Always `"light"` for static exports (email, Slack, PDF render on a light background).                |
 
 ### GraalJS limitations
 
