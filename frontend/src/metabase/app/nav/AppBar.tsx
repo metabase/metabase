@@ -29,9 +29,9 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import { push, useLocation, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { SearchResult } from "metabase-types/api";
 
 type SearchResultSelection =
@@ -76,7 +76,7 @@ export function AppBarContainer() {
   const isCommentSidebarOpen = useSelector(getCommentSidebarOpen);
   const isLogoVisible = useSelector(getIsLogoVisible);
   const isSearchVisible = useSelector(getIsSearchVisible);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
   const isNewButtonVisible = useSelector(getIsNewButtonVisible);
   const isAppSwitcherVisible = useSelector(getIsAppSwitcherVisible);
   const isCollectionPathVisible = useSelector((state) =>

@@ -3,38 +3,14 @@ import { checkNotNull } from "metabase/utils/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import { getHasDatabaseWithJsonEngine, getHasOwnDatabase } from "./data";
+import { getHasDatabaseWithJsonEngine } from "./predicates";
 
 const setup = (databases: Database[]) => {
   const metadata = createMockMetadata({ databases });
   return databases.map(({ id }) => checkNotNull(metadata.database(id)));
 };
 
-describe("metabase/selectors/data", () => {
-  describe("getHasOwnDatabase", () => {
-    it("user has at least one database, and the one with sample data does not count", () => {
-      const databases = setup([
-        createMockDatabase({
-          is_sample: false,
-          is_saved_questions: false,
-        }),
-      ]);
-
-      expect(getHasOwnDatabase(databases)).toBe(true);
-    });
-
-    it("user does not have their own database, and the one with sample data does not count", () => {
-      const databases = setup([
-        createMockDatabase({
-          is_sample: true,
-          is_saved_questions: true,
-        }),
-      ]);
-
-      expect(getHasOwnDatabase(databases)).toBe(false);
-    });
-  });
-
+describe("metabase/databases/utils/predicates", () => {
   describe("getHasDatabaseWithJsonEngine", () => {
     it("user has a json database", () => {
       const databases = setup([
