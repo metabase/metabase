@@ -64,7 +64,7 @@ export async function storeDrillQuery({
   return response.json();
 }
 
-export async function resolveMcpQuery({
+export async function resolveMcpQueryHandle({
   instanceUrl,
   uiCredential,
   mcpSessionId,

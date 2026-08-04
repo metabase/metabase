@@ -8,7 +8,7 @@ import {
 } from "@modelcontextprotocol/ext-apps/react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-import { resolveMcpQuery } from "../api";
+import { resolveMcpQueryHandle } from "../api";
 
 import { useMcpApp } from "./useMcpApp";
 
@@ -19,50 +19,69 @@ jest.mock("@modelcontextprotocol/ext-apps/react", () => ({
   useApp: jest.fn(),
 }));
 
-jest.mock("../api", () => ({
-  resolveMcpQuery: jest.fn(),
-}));
+jest.mock("../api", () => ({ resolveMcpQueryHandle: jest.fn() }));
 
 const HOST_CONTEXT: McpUiHostContext = { theme: "dark" };
+
+type McpTestWindow = Window & {
+  metabaseConfig?: {
+    instanceUrl: string;
+    uiCredential: string;
+    mcpSessionId: string;
+  };
+};
+
+// The shared window.metabaseConfig type does not include fields injected by MCP Apps.
+const mcpTestWindow = window as McpTestWindow;
 
 describe("useMcpApp", () => {
   let onToolInput:
     | ((params: McpUiToolInputNotification["params"]) => void)
     | undefined;
+
   let onToolResult:
-    | ((params: McpUiToolResultNotification["params"]) => void)
+    | ((params: McpUiToolResultNotification["params"]) => unknown)
     | undefined;
 
-  beforeEach(() => {
-    let appCreated = false;
-    onToolInput = undefined;
-    onToolResult = undefined;
-    jest.mocked(resolveMcpQuery).mockReset();
-    // Unjustified type cast. FIXME
-    (window as any).metabaseConfig = {
-      instanceUrl: "https://metabase.example",
-      uiCredential: "ui-credential",
-      mcpSessionId: "mcp-session-id",
-    };
-
+  function createMockMcpApp(): App {
     const appLike = {
       getHostContext: () => HOST_CONTEXT,
+
       set onhostcontextchanged(
         _callback: (context: McpUiHostContext) => void,
       ) {},
+
       set ontoolinput(
         callback: (params: McpUiToolInputNotification["params"]) => void,
       ) {
         onToolInput = callback;
       },
+
       set ontoolresult(
-        callback: (params: McpUiToolResultNotification["params"]) => void,
+        callback: (params: McpUiToolResultNotification["params"]) => unknown,
       ) {
         onToolResult = callback;
       },
     };
-    // This mock implements only the App methods and handlers used by the hook.
-    const app = appLike as unknown as App;
+
+    // Mocks the MCP app methods and handlers
+    return appLike as unknown as App;
+  }
+
+  beforeEach(() => {
+    let appCreated = false;
+    onToolInput = undefined;
+    onToolResult = undefined;
+
+    jest.mocked(resolveMcpQueryHandle).mockReset();
+
+    mcpTestWindow.metabaseConfig = {
+      instanceUrl: "https://metabase.example",
+      uiCredential: "ui-credential",
+      mcpSessionId: "mcp-session-id",
+    };
+
+    const app = createMockMcpApp();
 
     jest.mocked(useApp).mockImplementation((options: UseAppOptions) => {
       if (!appCreated) {
@@ -75,17 +94,18 @@ describe("useMcpApp", () => {
   });
 
   afterEach(() => {
-    // Unjustified type cast. FIXME
-    delete (window as any).metabaseConfig;
+    delete mcpTestWindow.metabaseConfig;
+
     jest.restoreAllMocks();
   });
 
-  it("uses structured content from a compliant host", () => {
+  it("uses structured content when MCP host supports it", async () => {
     const { result } = renderHook(() => useMcpApp());
 
-    act(() => {
+    await act(async () => {
       onToolInput?.({ arguments: { query_handle: "query-handle" } });
-      onToolResult?.({
+
+      await onToolResult?.({
         content: [],
         structuredContent: { query: "encoded-query", prompt: "show orders" },
       });
@@ -93,26 +113,30 @@ describe("useMcpApp", () => {
 
     expect(result.current.query).toBe("encoded-query");
     expect(result.current.prompt).toBe("show orders");
-    expect(resolveMcpQuery).not.toHaveBeenCalled();
+    expect(resolveMcpQueryHandle).not.toHaveBeenCalled();
   });
 
-  it("resolves the input handle when a host strips structured content", async () => {
-    jest.mocked(resolveMcpQuery).mockResolvedValue({
+  it("resolves query handle on frontend when MCP host strips structuredContent", async () => {
+    jest.mocked(resolveMcpQueryHandle).mockResolvedValue({
       query: "encoded-query",
       prompt: "show orders",
     });
+
     const { result } = renderHook(() => useMcpApp());
 
-    act(() => {
+    await act(async () => {
       onToolInput?.({ arguments: { query_handle: "query-handle" } });
-      onToolResult?.({ content: [], isError: false });
+
+      await onToolResult?.({ content: [], isError: false });
     });
 
     await waitFor(() => {
       expect(result.current.query).toBe("encoded-query");
     });
+
     expect(result.current.prompt).toBe("show orders");
-    expect(resolveMcpQuery).toHaveBeenCalledWith({
+
+    expect(resolveMcpQueryHandle).toHaveBeenCalledWith({
       instanceUrl: "https://metabase.example",
       uiCredential: "ui-credential",
       mcpSessionId: "mcp-session-id",
@@ -120,31 +144,38 @@ describe("useMcpApp", () => {
     });
   });
 
-  it("uses the original tool error without retrying the handle", () => {
+  it("shows the original tool call error", async () => {
     const { result } = renderHook(() => useMcpApp());
 
-    act(() => {
+    await act(async () => {
       onToolInput?.({ arguments: { query_handle: "missing-handle" } });
-      onToolResult?.({
+
+      await onToolResult?.({
         content: [{ type: "text", text: "Query handle not found." }],
         isError: true,
       });
     });
 
-    expect(result.current.error?.message).toBe("Query handle not found.");
-    expect(resolveMcpQuery).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(result.current.error?.message).toBe("Query handle not found.");
+    });
+
+    expect(resolveMcpQueryHandle).not.toHaveBeenCalled();
   });
 
-  it("exposes an error when the handle fallback fails", async () => {
+  it("shows an error when resolving query handle on the frontend fails", async () => {
     jest.spyOn(console, "error").mockImplementation(() => undefined);
+
     jest
-      .mocked(resolveMcpQuery)
+      .mocked(resolveMcpQueryHandle)
       .mockRejectedValue(new Error("Query handle unavailable"));
+
     const { result } = renderHook(() => useMcpApp());
 
-    act(() => {
+    await act(async () => {
       onToolInput?.({ arguments: { query_handle: "query-handle" } });
-      onToolResult?.({ content: [], isError: false });
+
+      await onToolResult?.({ content: [], isError: false });
     });
 
     await waitFor(() => {

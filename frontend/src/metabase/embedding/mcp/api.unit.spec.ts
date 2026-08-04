@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { resolveMcpQuery } from "./api";
+import { resolveMcpQueryHandle } from "./api";
 
 describe("resolveMcpQuery", () => {
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe("resolveMcpQuery", () => {
 
   it("resolves a handle using the MCP UI credential", async () => {
     await expect(
-      resolveMcpQuery({
+      resolveMcpQueryHandle({
         instanceUrl: "https://metabase.example",
         uiCredential: "ui-credential",
         mcpSessionId: "mcp-session-id",

@@ -53,13 +53,17 @@
         session-id   (mcp.session/create! user-id)
         credential   (mcp.session/issue-ui-credential session-id user-id)
         query-handle (mcp.session/store-handle! session-id user-id "encoded-query" "show orders")]
-    (testing "the iframe credential resolves the encoded query and stored prompt"
-      (is (=? {:status 200
-               :body   {:query  "encoded-query"
-                        :prompt "show orders"}}
-              (post-query-with-ui-credential 200 credential session-id (str query-handle)))))
-    (testing "an unknown handle returns 404"
-      (is (= 404 (:status (post-query-with-ui-credential 404 credential session-id (random-uuid))))))))
+    (is (=? {:status 200
+             :body   {:query  "encoded-query"
+                      :prompt "show orders"}}
+            (post-query-with-ui-credential 200 credential session-id (str query-handle))))))
+
+(deftest query-post-returns-not-found-for-unknown-handle-test
+  (let [user-id    (mt/user->id :crowberto)
+        session-id (mcp.session/create! user-id)
+        credential (mcp.session/issue-ui-credential session-id user-id)]
+    (is (= 404 (:status (post-query-with-ui-credential
+                         404 credential session-id (random-uuid)))))))
 
 (deftest query-post-enforces-ui-credential-session-binding-test
   (let [user-id          (mt/user->id :crowberto)
