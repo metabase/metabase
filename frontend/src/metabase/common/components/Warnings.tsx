@@ -3,7 +3,7 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
 
-interface WarningsProps {
+export interface WarningsProps {
   warnings?: string[];
   className?: string;
   size?: number;

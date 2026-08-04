@@ -25,7 +25,7 @@ export const FieldCaption = styled.div<FormCaptionProps>`
     "0.5rem"};
 `;
 
-interface FieldLabelProps {
+export interface FieldLabelProps {
   hasError: boolean;
 }
 
@@ -44,7 +44,7 @@ export const OptionalTag = styled.span`
   margin-left: 0.25rem;
 `;
 
-interface FieldLabelContainerProps {
+export interface FieldLabelContainerProps {
   orientation: FieldOrientation;
   hasDescription: boolean;
 }
@@ -83,7 +83,7 @@ export const FieldInfoLabel = styled.div`
   cursor: default;
 `;
 
-interface FieldRootProps {
+export interface FieldRootProps {
   alignment: FieldAlignment;
   orientation: FieldOrientation;
 }

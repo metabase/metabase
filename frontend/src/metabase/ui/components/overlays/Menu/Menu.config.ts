@@ -1,8 +1,8 @@
-import { Menu } from "@mantine/core";
+import { type MantineThemeOverride, Menu } from "@mantine/core";
 
 import MenuStyles from "./Menu.module.css";
 
-export const menuOverrides = {
+export const menuOverrides: MantineThemeOverride["components"] = {
   Menu: Menu.extend({
     defaultProps: {
       radius: "sm",

@@ -1,4 +1,9 @@
-import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
+import {
+  type CaseReducer,
+  type PayloadAction,
+  createSlice,
+  nanoid,
+} from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
@@ -37,13 +42,113 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentId,
   MetabotChatMessage,
+  MetabotState,
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId, hasInProgressMessage } from "./utils";
 
-export const metabot = createSlice({
+type ConversationPayload<Value = object> = {
+  agentId: MetabotAgentId;
+} & Value;
+
+type MetabotActionPayloads = {
+  createAgent: ConversationPayload<{ visible?: boolean }>;
+  destroyAgent: ConversationPayload;
+  resetConversation: ConversationPayload;
+  setDebugMode: boolean;
+  markChartSaved: { entityId: string; cardId: number };
+  setConversationTitle: ConversationPayload<{ title: string }>;
+  setIsPollingForTitle: {
+    conversationId: string;
+    isPollingForTitle: boolean;
+  };
+  addDeveloperMessage: ConversationPayload<{ message: string }>;
+  addUserMessage: ConversationPayload<Omit<MetabotUserChatMessage, "role">>;
+  addAgentMessage: ConversationPayload<
+    Omit<MetabotAgentChatMessage, "id" | "role" | "externalId">
+  >;
+  reasoningStart: ConversationPayload<{ nowMs?: number }>;
+  reasoningDelta: ConversationPayload<{ text: string; nowMs?: number }>;
+  addAgentTextDelta: ConversationPayload<{ text: string; nowMs?: number }>;
+  setMessageExternalIds: ConversationPayload<{
+    agentMessageId?: string;
+    userMessageId?: string;
+  }>;
+  toolCallStart: ConversationPayload<{
+    toolCallId: string;
+    toolName: string;
+    title?: string;
+    args?: string;
+    nowMs?: number;
+  }>;
+  toolCallArgs: ConversationPayload<{
+    toolCallId: string;
+    toolName: string;
+    title?: string;
+    args: string;
+    nowMs?: number;
+  }>;
+  toolCallEnd: ConversationPayload<{
+    toolCallId: string;
+    result?: string;
+    isError?: boolean;
+    nowMs?: number;
+  }>;
+  toolCallSearchResults: ConversationPayload<{
+    toolCallId: string;
+    totalCount: number;
+    results: SearchResultItem[];
+  }>;
+  toolCallTitled: ConversationPayload<{
+    toolCallId: string;
+    title: string;
+  }>;
+  rewindStateToMessageId: ConversationPayload<{ messageId: string }>;
+  setIsProcessing: ConversationPayload<{ processing: boolean }>;
+  setVisible: ConversationPayload<{ visible: boolean }>;
+  setMetabotReqIdOverride: ConversationPayload<{ id: string | undefined }>;
+  setProfileOverride: ConversationPayload<{
+    profile: MetabotProfileId | undefined;
+  }>;
+  setNavigateToPath: string | null;
+  addSuggestedTransform: MetabotSuggestedTransform;
+  activateSuggestedTransform: {
+    id?: SuggestedTransform["id"];
+    suggestionId: string;
+  };
+  deactivateSuggestedTransform: SuggestedTransform["id"] | undefined;
+  updateSuggestedTransformId: {
+    suggestionId: string;
+    newId: number | undefined;
+  };
+  addSuggestedCodeEdit: MetabotCodeEdit;
+  removeSuggestedCodeEdit: MetabotCodeEdit["buffer_id"];
+  setConversationSnapshot: ConversationPayload<{
+    messages: MetabotChatMessage[];
+    state?: MetabotStateContext;
+    activeToolCalls?: MetabotToolCall[];
+    conversationId: string;
+    title?: string;
+    forkedFromConversationId?: string;
+  }>;
+};
+
+type MetabotCaseReducers = {
+  [Name in keyof MetabotActionPayloads]: CaseReducer<
+    MetabotState,
+    PayloadAction<MetabotActionPayloads[Name]>
+  >;
+};
+
+export const metabot = createSlice<
+  MetabotState,
+  MetabotCaseReducers,
+  "metabase/metabot",
+  Record<never, never>
+>({
   name: "metabase/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
