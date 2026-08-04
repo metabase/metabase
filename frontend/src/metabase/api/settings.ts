@@ -73,10 +73,15 @@ export const settingsApi = Api.injectEndpoints({
         url: `/api/setting`,
         body: settings,
       }),
-      invalidatesTags: (_, error) =>
+      invalidatesTags: (_, error, settings) =>
         invalidateTags(error, [
           tag("session-properties"),
           listTag("embedding-hub-checklist"),
+          // Saving a custom homepage also changes the current user server-side
+          ...("custom-homepage" in settings ||
+          "custom-homepage-dashboard" in settings
+            ? [tag("current-user")]
+            : []),
         ]),
     }),
     // This mutation is the cheap write path for user preferences, such as

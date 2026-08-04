@@ -296,7 +296,7 @@
                        :is_audit false
                        :router_database_id nil
                        {:order-by [[:%lower.name :asc]]})
-        _   (perms/prime-db-perms-cache {:db-ids (into #{} (map :id) all)})
+        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)
                  (mapv present-database))]

@@ -1,6 +1,6 @@
-(ns metabase.driver.sql-mbql5.pivot
+(ns metabase.driver.sql.pivot
   "HoneySQL formatters and SQL compilation hooks for the MBQL 5 native pivot path. Used by any driver that derives from
-  `:sql-mbql5` and opts into `:native-pivot-tables`."
+  `:sql` and opts into `:native-pivot-tables`."
   (:refer-clojure :exclude [mapv])
   (:require
    [clojure.string :as str]
@@ -45,7 +45,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod pivot-grouping-hsql :sql-mbql5
+(defmethod pivot-grouping-hsql :sql
   [_driver exprs]
   (into [::grouping-fn] exprs))
 
@@ -138,7 +138,7 @@
         (conj pivot-grouping-select)
         (into rest-cols))))
 
-(defmethod sql.qp/apply-top-level-clause [:sql-mbql5 :pivot]
+(defmethod sql.qp/apply-top-level-clause [:sql :pivot]
   [driver _ honeysql-form {:keys [breakout pivot]}]
   (let [breakout-hsql     (mapv #(sql.qp/->honeysql driver %) breakout)
         non-remap-poss    (non-remap-positions breakout)

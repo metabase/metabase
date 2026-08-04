@@ -16,15 +16,16 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useDispatch } from "metabase/redux";
 import { Outlet, push } from "metabase/router";
 import {
   ActionIcon,
-  Card,
   Center,
   Ellipsified,
   Flex,
   Icon,
+  LoadingOverlay,
   Text,
   Tooltip,
   TreeTable,
@@ -92,28 +93,31 @@ export function ModelPersistenceLogJobs() {
 
   return (
     <>
-      <Card
-        flex="0 1 auto"
-        mih={0}
-        p={0}
-        withBorder
+      <MonitorTableCard
+        aria-busy={isFetching}
         data-testid="model-persistence-log-jobs"
       >
         {isLoading ? (
           <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
         ) : (
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Model persistence log`}
-            emptyState={<MonitorEmptyState label={t`No log entries`} />}
-            getRowProps={() => ({
-              "data-testid": "model-persistence-log-job-row",
-            })}
-            onRowClick={handleRowActivate}
-          />
+          <>
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
+            <TreeTable
+              instance={treeTableInstance}
+              hierarchical={false}
+              ariaLabel={t`Model persistence log`}
+              emptyState={<MonitorEmptyState label={t`No log entries`} />}
+              getRowProps={() => ({
+                "data-testid": "model-persistence-log-job-row",
+              })}
+              onRowClick={handleRowActivate}
+            />
+          </>
         )}
-      </Card>
+      </MonitorTableCard>
 
       {!isLoading && hasPagination && (
         <Flex justify="end">

@@ -6,7 +6,7 @@ import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 
-import { Root } from "./ChartSettingsWidget.styled";
+import S from "./ChartSettingsWidget.module.css";
 
 export type ChartSettingsWidgetVariant = "default" | "form-field";
 
@@ -42,12 +42,14 @@ const ChartSettingsWidget = ({
 }: Props) => {
   const isFormField = variant === "form-field";
   return (
-    <Root
+    <Box
       hidden={hidden}
       className={cx({
         [FormS.FormField]: isFormField,
+        [S.inline]: inline && !hidden,
       })}
-      inline={inline}
+      mx="lg"
+      mb="lg"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
       style={style}
@@ -84,7 +86,7 @@ const ChartSettingsWidget = ({
         ) : (
           <Widget {...extraWidgetProps} {...props} />
         ))}
-    </Root>
+    </Box>
   );
 };
 
