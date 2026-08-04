@@ -30,7 +30,8 @@ type VisualizeQueryToolInput = {
   /**
    * Handle returned by `construct_query`.
    *
-   * This lets the frontend resolve the encoded query through `POST /api/embed-mcp/query`
+   * This lets the frontend resolve the encoded query through
+   * `POST /api/embed-mcp/query-handle/resolve`
    * as a fallback when MCP hosts (e.g. Claude Desktop) strips `structuredContent`
    * from the tool result.
    */

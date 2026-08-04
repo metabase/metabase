@@ -64,9 +64,9 @@
     (check-session-header! session-id api/*current-user-id* request)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
 
-(api.macros/defendpoint :post "/query" :- [:map
-                                           [:query ms/NonBlankString]
-                                           [:prompt {:optional true} [:maybe :string]]]
+(api.macros/defendpoint :post "/query-handle/resolve" :- [:map
+                                                          [:query ms/NonBlankString]
+                                                          [:prompt {:optional true} [:maybe :string]]]
   "Resolve a query handle for an MCP Apps iframe."
   [_route-params
    _query-params

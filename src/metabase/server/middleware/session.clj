@@ -316,7 +316,7 @@
     [:post "/api/dataset/parameter/remapping"]
     [:post "/api/embed-mcp/drills"]
     [:post "/api/embed-mcp/feedback"]
-    [:post "/api/embed-mcp/query"]})
+    [:post "/api/embed-mcp/query-handle/resolve"]})
 
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential rendered into an MCP visualization iframe.

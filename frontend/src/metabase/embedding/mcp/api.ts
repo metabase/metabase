@@ -70,20 +70,23 @@ export async function resolveMcpQueryHandle({
   mcpSessionId,
   queryHandle,
 }: ResolveMcpQueryRequest): Promise<ResolveMcpQueryResponse> {
-  const response = await fetch(`${instanceUrl}/api/embed-mcp/query`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      "X-Metabase-Mcp-Ui-Auth": uiCredential,
-      "Mcp-Session-Id": mcpSessionId,
+  const response = await fetch(
+    `${instanceUrl}/api/embed-mcp/query-handle/resolve`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+        "X-Metabase-Mcp-Ui-Auth": uiCredential,
+        "Mcp-Session-Id": mcpSessionId,
+      },
+      body: JSON.stringify({ query_handle: queryHandle }),
     },
-    body: JSON.stringify({ query_handle: queryHandle }),
-  });
+  );
 
   if (!response.ok) {
     throw new Error(
-      `resolveMcpQuery failed: ${response.status} ${response.statusText}`,
+      `resolveMcpQueryHandle failed: ${response.status} ${response.statusText}`,
     );
   }
 
