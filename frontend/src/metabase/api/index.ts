@@ -24,7 +24,6 @@ export * from "./glossary";
 export * from "./group-table-access-policy";
 export * from "./index-manager";
 export * from "./llm";
-export * from "./login-history";
 export * from "./measure";
 export * from "./metabot";
 export * from "./metric";

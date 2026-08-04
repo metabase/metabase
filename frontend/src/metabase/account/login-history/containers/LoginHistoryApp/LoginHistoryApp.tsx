@@ -1,4 +1,4 @@
-import { useGetLoginHistoryQuery } from "metabase/api";
+import { useGetLoginHistoryQuery } from "metabase/account/api/login-history";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 
 import LoginHistoryList from "../../components/LoginHistory";
