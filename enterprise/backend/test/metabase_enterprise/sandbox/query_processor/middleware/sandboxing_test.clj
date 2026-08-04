@@ -306,6 +306,38 @@
             (is (= [[10]]
                    (mt/format-rows-by [int] (mt/rows (qp/process-query user-query)))))))))))
 
+(deftest metric-on-metric-on-natively-sandboxed-table-test
+  (testing "A :metric defined in terms of another :metric on a natively-sandboxed table should run (#76044)"
+    ;; Metric expansion preprocesses each definition as an admin, so sandboxing leaves it alone and only the
+    ;; consuming query gets sandboxed. That elevation has to reach the nested definition too — otherwise sandboxing
+    ;; swaps the inner metric's source table for the sandbox's source card and expansion dies on "Incompatible
+    ;; metric". Nesting is what distinguishes this from the single-level case above.
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [mp          (mt/metadata-provider)
+            inner-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                            (lib/aggregate (lib/count)))]
+        ;; the sandboxing path needs real Cards in the app DB; a mock MP wouldn't trigger the sandboxing middleware
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card {inner-id :id} {:name          "Sandboxed Venues Count"
+                                                   :type          :metric
+                                                   :database_id   (mt/id)
+                                                   :table_id      (mt/id :venues)
+                                                   :dataset_query inner-query}]
+          (let [mp          (mt/metadata-provider)
+                outer-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                (lib/aggregate (lib.metadata/metric mp inner-id)))]
+            #_{:clj-kondo/ignore [:discouraged-var]}
+            (mt/with-temp [:model/Card {outer-id :id} {:name          "Sandboxed Venues Count, Again"
+                                                       :type          :metric
+                                                       :database_id   (mt/id)
+                                                       :table_id      (mt/id :venues)
+                                                       :dataset_query outer-query}]
+              (let [mp         (mt/metadata-provider)
+                    user-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                   (lib/aggregate (lib.metadata/metric mp outer-id)))]
+                (is (= [[10]]
+                       (mt/format-rows-by [int] (mt/rows (qp/process-query user-query)))))))))))))
+
 (deftest e2e-test-2
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is MBQL"
