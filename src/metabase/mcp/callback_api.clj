@@ -64,6 +64,21 @@
     (check-session-header! session-id api/*current-user-id* request)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
 
+(api.macros/defendpoint :post "/query" :- [:map
+                                           [:query ms/NonBlankString]
+                                           [:prompt {:optional true} [:maybe :string]]]
+  "Resolve a query handle for an MCP Apps iframe."
+  [_route-params
+   _query-params
+   {query-handle :query_handle} :- [:map [:query_handle ms/UUIDString]]
+   request]
+  (let [session-id (mcp-session-id-from-headers request)
+        _          (check-session-header! session-id api/*current-user-id* request)
+        resolved   (mcp.session/resolve-query-handle session-id api/*current-user-id* query-handle)]
+    (api/check resolved [404 (tru "Query handle not found")])
+    (cond-> {:query (:encoded_query resolved)}
+      (:prompt resolved) (assoc :prompt (:prompt resolved)))))
+
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]
                                               [:body :nil]]

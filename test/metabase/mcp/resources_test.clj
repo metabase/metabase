@@ -129,16 +129,17 @@
           (with-redefs [config/is-dev? false]
             (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
               (is (=? {:prefersBorder true
-                       :csp           {:baseUriDomains [origin]
-                                       :connectDomains  [origin]
+                       :csp           {:connectDomains  [origin]
                                        :resourceDomains [origin]}}
                       ui-meta))
+              (is (not (contains? (:csp ui-meta) :baseUriDomains)))
               (is (not (contains? ui-meta :domain))))))
         (testing "development metadata allows resources from the frontend dev server"
           (with-redefs [config/is-dev? true]
-            (is (=? {:csp {:baseUriDomains [origin]
-                           :resourceDomains [origin "http://localhost:8080"]}}
-                    (-> (read-ui) :contents first :_meta :ui)))))
+            (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
+              (is (=? {:csp {:resourceDomains [origin "http://localhost:8080"]}}
+                      ui-meta))
+              (is (not (contains? (:csp ui-meta) :baseUriDomains))))))
         (testing "non-ChatGPT User-Agent → :domain suppressed"
           (with-redefs [config/is-dev? false]
             (request/with-current-request {:headers {"user-agent" "claude-ai/0.1.0"}}
@@ -152,13 +153,12 @@
                                    :mimeType "text/html;profile=mcp-app"
                                    :_meta    {:ui {:prefersBorder true
                                                    :domain        origin
-                                                   :csp           {:baseUriDomains [origin]
-                                                                   :connectDomains  [origin]
+                                                   :csp           {:connectDomains  [origin]
                                                                    :resourceDomains [origin]}}}}]}
                       (read-ui))))))))))
 
-(deftest embed-mcp-template-base-url-test
-  (testing "the MCP iframe document resolves relative bundle assets from the Metabase instance"
+(deftest embed-mcp-template-does-not-set-base-url-test
+  (testing "the MCP iframe document does not require hosts to allow a custom base URI"
     (let [site-url "https://metabase.example.com/sub/path"
           html     (stencil/render-file
                     "frontend_client/mcp_apps_template.html"
@@ -166,4 +166,4 @@
                      :instanceUrlRaw site-url
                      :uiCredential   nil
                      :mcpSessionId   nil})]
-      (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\"")))))
+      (is (not (str/includes? html "<base"))))))

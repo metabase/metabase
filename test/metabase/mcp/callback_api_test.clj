@@ -41,6 +41,37 @@
                                                             "mcp-session-id" session-id}}}
                                {:encodedQuery "ZW5jb2RlZA=="}))
 
+(defn- post-query-with-ui-credential
+  [expected-status credential session-id query-handle]
+  (client/client-full-response :post expected-status "embed-mcp/query"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}
+                               {:query_handle query-handle}))
+
+(deftest query-post-resolves-handle-with-ui-credential-test
+  (let [user-id      (mt/user->id :crowberto)
+        session-id   (mcp.session/create! user-id)
+        credential   (mcp.session/issue-ui-credential session-id user-id)
+        query-handle (mcp.session/store-handle! session-id user-id "encoded-query" "show orders")]
+    (testing "the iframe credential resolves the encoded query and stored prompt"
+      (is (=? {:status 200
+               :body   {:query  "encoded-query"
+                        :prompt "show orders"}}
+              (post-query-with-ui-credential 200 credential session-id (str query-handle)))))
+    (testing "an unknown handle returns 404"
+      (is (= 404 (:status (post-query-with-ui-credential 404 credential session-id (random-uuid))))))))
+
+(deftest query-post-enforces-ui-credential-session-binding-test
+  (let [user-id          (mt/user->id :crowberto)
+        session-id       (mcp.session/create! user-id)
+        other-session-id (mcp.session/create! user-id)
+        credential       (mcp.session/issue-ui-credential session-id user-id)
+        query-handle     (str (mcp.session/store-handle! session-id user-id "encoded-query"))]
+    (is (= 404 (:status (post-query-with-ui-credential
+                         404 credential other-session-id query-handle))))
+    (is (= 401 (:status (post-query-with-ui-credential
+                         401 "not-a-credential" session-id query-handle))))))
+
 (deftest drills-post-stores-handle-test
   (testing "POST returns a UUID handle"
     (let [user-id    (mt/user->id :crowberto)

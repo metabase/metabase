@@ -14,6 +14,18 @@ type StoreDrillQueryResponse = {
   handle: string;
 };
 
+type ResolveMcpQueryRequest = {
+  instanceUrl: string;
+  uiCredential: string;
+  mcpSessionId: string;
+  queryHandle: string;
+};
+
+type ResolveMcpQueryResponse = {
+  query: string;
+  prompt?: string;
+};
+
 type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
   instanceUrl: string;
   uiCredential: string;
@@ -46,6 +58,32 @@ export async function storeDrillQuery({
   if (!response.ok) {
     throw new Error(
       `storeDrillQuery failed: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function resolveMcpQuery({
+  instanceUrl,
+  uiCredential,
+  mcpSessionId,
+  queryHandle,
+}: ResolveMcpQueryRequest): Promise<ResolveMcpQueryResponse> {
+  const response = await fetch(`${instanceUrl}/api/embed-mcp/query`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
+      "Mcp-Session-Id": mcpSessionId,
+    },
+    body: JSON.stringify({ query_handle: queryHandle }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `resolveMcpQuery failed: ${response.status} ${response.statusText}`,
     );
   }
 

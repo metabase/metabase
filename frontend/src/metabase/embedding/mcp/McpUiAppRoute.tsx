@@ -27,6 +27,7 @@ const FOOTER_HORIZONTAL_PADDING = 16;
 
 interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
+  appError: McpAppState["error"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
   prompt: McpAppState["prompt"];
@@ -48,7 +49,7 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
+  const { app, error: appError, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", uiCredential = "" } =
     // Unjustified type cast. FIXME
@@ -81,6 +82,7 @@ export function McpUiAppRoute() {
     >
       <McpUiAppRouteContent
         app={app}
+        appError={appError}
         hostContext={hostContext}
         instanceUrl={instanceUrl}
         prompt={prompt}
@@ -93,6 +95,7 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  appError,
   hostContext,
   instanceUrl,
   prompt,
@@ -133,10 +136,10 @@ function McpUiAppRouteContent({
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || appError || userAndSettingsFetchError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [appError, isReady, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -224,6 +227,10 @@ function McpUiAppRouteContent({
     );
 
   const renderContentView = () => {
+    if (appError) {
+      return <SdkError message={appError.message} />;
+    }
+
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
     }

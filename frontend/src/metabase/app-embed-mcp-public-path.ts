@@ -3,11 +3,11 @@
  * chunks (loaded via dynamic `import()` — e.g. the leaflet map renderer and the
  * echarts renderer) are fetched from the Metabase instance.
  *
- * The MCP app runs inside a sandboxed `about:srcdoc` iframe. The initial bundle
+ * The MCP app runs inside a host-owned sandbox. The initial bundle
  * scripts load fine because HtmlWebpackPlugin writes them with an absolute,
  * instance-templated URL. On-demand chunks instead use the runtime `publicPath`,
  * which is the relative `output.publicPath` ("app/dist/"); that does not resolve
- * to the instance inside the srcdoc iframe and 404s.
+ * to the instance inside the sandbox and 404s.
  *
  * Unlike the Embedding SDK (which derives its base from `document.currentScript`),
  * the instance URL is injected synchronously via `window.metabaseConfig`, so we
