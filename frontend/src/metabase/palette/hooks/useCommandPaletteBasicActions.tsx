@@ -9,6 +9,7 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { useDatabaseListQuery } from "metabase/common/hooks";
+import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
@@ -18,7 +19,6 @@ import {
   setOpenModalWithProps,
 } from "metabase/redux/ui";
 import { push } from "metabase/router";
-import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,

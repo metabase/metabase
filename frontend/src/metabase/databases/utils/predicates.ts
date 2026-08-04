@@ -1,10 +1,7 @@
-import { getEngineNativeType } from "metabase/databases/utils/engine";
 import type DatabaseEntity from "metabase-lib/v1/metadata/Database";
 import type { Database } from "metabase-types/api";
 
-export const getHasOwnDatabase = (databases: (Database | DatabaseEntity)[]) => {
-  return databases.some((d) => !d.is_sample && !d.is_saved_questions);
-};
+import { getEngineNativeType } from "./engine";
 
 export const getHasDatabaseWithJsonEngine = (
   databases: (Database | DatabaseEntity)[],
