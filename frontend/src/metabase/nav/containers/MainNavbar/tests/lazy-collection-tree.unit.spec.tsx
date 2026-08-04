@@ -1,15 +1,39 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 
 import { NESTED_COLLECTION, TEST_COLLECTION, setup } from "./setup";
 
+const levelFetches = () =>
+  fetchMock.callHistory
+    .calls()
+    .map((call) => call.url)
+    .filter(
+      (url) =>
+        url.includes("/api/collection/tree") && url.includes("collection-id="),
+    );
+
 /**
  * Covers the branch the adaptive tree takes on an instance too large to return in one response. The default setup
  * covers the other branch, where the whole tree arrives at once and nothing is ever fetched again.
  */
 describe("nav > containers > MainNavbar > lazy collection tree", () => {
+  it("should not fetch children that the first response already delivered", async () => {
+    await setup();
+
+    const collection = await screen.findByRole("treeitem", {
+      name: /Test collection/i,
+    });
+    await userEvent.click(within(collection).getByRole("button"));
+
+    expect(
+      await screen.findByRole("treeitem", { name: /Nested collection/i }),
+    ).toBeInTheDocument();
+    expect(levelFetches()).toEqual([]);
+  });
+
   it("should not render children until their parent is expanded", async () => {
     await setup({ simulateLargeInstance: true });
 

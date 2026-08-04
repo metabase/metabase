@@ -10,7 +10,12 @@ import { restore, snapshot } from "e2e/support/helpers";
 /** Comfortably over the e2e budget of 50, and small enough that seeding stays quick. */
 const ROOT_COLLECTION_COUNT = 90;
 
-/** One branch deep enough to check that expanding and deep linking fetch the levels they need. */
+/**
+ * One branch deep enough to check that expanding and deep linking fetch the levels they need.
+ *
+ * The sidebar sorts by name and scrolls, so these are named to sort above the filler collections. Otherwise they land
+ * below 90 rows, outside the scroll container, and Cypress rightly refuses to call them visible.
+ */
 const NESTED_COLLECTION_NAMES = [
   "Deep root",
   "Deep child",
@@ -26,7 +31,7 @@ describe("snapshots", () => {
 
       for (let index = 1; index <= ROOT_COLLECTION_COUNT; index++) {
         createCollection(
-          `Bulk collection ${String(index).padStart(3, "0")}`,
+          `Filler collection ${String(index).padStart(3, "0")}`,
           null,
         );
       }

@@ -29,6 +29,24 @@ const isFetchableId = (id: NodeId): id is RegularCollectionId =>
   typeof id === "number";
 
 /**
+ * Ids the response already carries children for, at any depth. Expanding one of these needs no request.
+ */
+const collectIdsWithLoadedChildren = (
+  collections: Collection[],
+  into: Set<RegularCollectionId> = new Set(),
+): Set<RegularCollectionId> => {
+  collections.forEach((collection) => {
+    if (Array.isArray(collection.children)) {
+      if (isFetchableId(collection.id)) {
+        into.add(collection.id);
+      }
+      collectIdsWithLoadedChildren(collection.children, into);
+    }
+  });
+  return into;
+};
+
+/**
  * Grafts fetched children onto the nodes the backend returned without them.
  *
  * Only nodes flagged `has_children` with no `children` are grafted onto. Anything else already knows its own
@@ -104,9 +122,19 @@ export function useLazyCollectionTree({
     setExpandedIds((previous) => new Set([...previous, ...ancestorIds]));
   }, [ancestorIds, selectedCollectionId]);
 
+  // Nodes the first response already delivered children for. On a small instance that is every node, so expanding
+  // never goes back to the server.
+  const idsWithLoadedChildren = useMemo(
+    () => collectIdsWithLoadedChildren(collections),
+    [collections],
+  );
+
   const fetchableExpandedIds = useMemo(
-    () => [...expandedIds].filter(isFetchableId),
-    [expandedIds],
+    () =>
+      [...expandedIds].filter(
+        (id) => isFetchableId(id) && !idsWithLoadedChildren.has(id),
+      ),
+    [expandedIds, idsWithLoadedChildren],
   );
 
   // Subscribe rather than fire and forget, so the cache entries stay alive and stay in step with tag invalidation
