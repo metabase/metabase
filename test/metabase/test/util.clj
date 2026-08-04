@@ -1185,12 +1185,20 @@
   [& body]
   `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
 
+(defn root-collection-for-namespace
+  "The collection to strip perms from for `collection-namespace`: the real root row where the namespace has one,
+  otherwise the synthesized placeholder."
+  [collection-namespace]
+  (let [ns-kw (keyword collection-namespace)]
+    (if (contains? collection/namespaces-with-real-roots ns-kw)
+      (t2/select-one :model/Collection :id (collection/root-collection-id ns-kw))
+      (assoc collection/root-collection :namespace (name collection-namespace)))))
+
 (defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
   "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."
   [collection-namespace & body]
   `(do-with-non-admin-groups-no-collection-perms
-    (assoc collection/root-collection
-           :namespace (name ~collection-namespace))
+    (root-collection-for-namespace ~collection-namespace)
     (fn [] ~@body)))
 
 (defmacro with-non-admin-groups-no-collection-perms

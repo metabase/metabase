@@ -738,7 +738,7 @@
         [:or
          [:= :type nil]
          [:not= :type collection/tenant-specific-root-collection-type]]
-        [:not :is_root]
+        [:= :is_root nil]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work

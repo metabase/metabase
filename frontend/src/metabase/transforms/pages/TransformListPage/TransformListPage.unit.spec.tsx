@@ -60,14 +60,15 @@ type SetupOpts = {
 
 async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   setupCollectionTreeEndpoint([]);
-  fetchMock.get(
-    { url: "path:/api/collection/root", query: { namespace: "transforms" } },
-    createMockCollection({
+  fetchMock.get({
+    url: "path:/api/collection/root",
+    query: { namespace: "transforms" },
+    response: createMockCollection({
       id: MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
       name: "Transforms",
       is_root: true,
     }),
-  );
+  });
   setupListTransformsEndpoint([]);
   setupDatabaseListEndpoint([]);
   setupUserMetabotPermissionsEndpoint();

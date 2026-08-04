@@ -2,6 +2,11 @@
 ## `includeAll` runs these in filename order and every namespace's root migration needs the column first.
 ## A boolean rather than another `type` value, which already carries trash / library / library-data /
 ## library-metrics / instance-analytics / tenant-specific-root-collection.
+##
+## It is `true` or NULL rather than true/false so that a plain unique index on (namespace, is_root) enforces one
+## root per namespace: every engine we support treats NULLs in a unique index as distinct, so ordinary collections
+## are exempt while two roots in the same namespace collide. A partial or functional index would be the direct way
+## to say this, but MariaDB supports neither.
 
 databaseChangeLog:
   - changeSet:
@@ -15,7 +20,19 @@ databaseChangeLog:
               - column:
                   name: is_root
                   type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: Whether this is the root collection of its namespace — the real row backing what used to be a synthesized placeholder
-                  constraints:
-                    nullable: false
+                  remarks: True on the root collection of its namespace — the real row backing what used to be a synthesized placeholder — and NULL on every other collection
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:01
+      author: ranquild
+      comment: Allow only one root collection per namespace
+      changes:
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_namespace_is_root
+            unique: true
+            columns:
+              - column:
+                  name: namespace
+              - column:
+                  name: is_root

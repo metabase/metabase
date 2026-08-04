@@ -1797,8 +1797,6 @@
 
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
-  (api/check (not (:is_root collection))
-             [400 "You cannot create a root Collection."])
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
@@ -2103,14 +2101,14 @@
        [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
      [:or [:= (maybe-alias :namespace) nil]
       [:not= (maybe-alias :namespace) [:inline "analytics"]]]
-     [:not (maybe-alias :is_root)]
+     [:= (maybe-alias :is_root) nil]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
                           [:not= :type trash-collection-type]]
-        not-root-clause  [:not :is_root]]
+        not-root-clause  [:= :is_root nil]]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
                            {:where

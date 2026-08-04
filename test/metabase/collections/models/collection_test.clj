@@ -3301,17 +3301,12 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"root collection cannot be deleted"
                             (t2/delete! :model/Collection :id root-id)))
       (is (t2/exists? :model/Collection :id root-id)))
-    (testing "a collection cannot be created as a root"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot create a root Collection"
-                            (t2/insert! :model/Collection {:name      "Sneaky"
-                                                           :namespace :transforms
-                                                           :is_root   true}))))
     (testing "an update cannot promote another collection to a root"
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace :transforms}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot change whether a Collection is a root"
                               (t2/update! :model/Collection collection-id {:is_root true})))))
     (testing "the root itself cannot be updated at all"
-      (doseq [changes [{:is_root false} {:name "Renamed"} {:archived true}]]
+      (doseq [changes [{:is_root nil} {:name "Renamed"} {:archived true}]]
         (testing (pr-str changes)
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot modify a root Collection"
                                 (t2/update! :model/Collection root-id changes)))))

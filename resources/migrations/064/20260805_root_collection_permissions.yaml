@@ -1,0 +1,74 @@
+## Root collections are ordinary collections permission-wise now, so grants that named a namespace's root by its
+## sentinel path move onto the real row's id. `maybe-break-out-permission-data` only fills `collection_id`,
+## `perm_type` and `perm_value` for numeric `/collection/<id>/` paths, which is why the sentinel rows carry NULLs
+## in those columns and why the migration has to fill them here.
+##
+## Runs after the namespace root files (filename order) so the rows it points at exist.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-05T12:00:00
+      author: ranquild
+      comment: Point root collection grants at the real root rows
+      changes:
+        - sql:
+            sql: >-
+              UPDATE permissions
+              SET object = CONCAT('/collection/', (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms'), '/'),
+                  collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms'),
+                  perm_type = 'perms/collection-access',
+                  perm_value = 'read-and-write'
+              WHERE object = '/collection/namespace/transforms/root/';
+
+              UPDATE permissions
+              SET object = CONCAT('/collection/', (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms'), '/read/'),
+                  collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms'),
+                  perm_type = 'perms/collection-access',
+                  perm_value = 'read'
+              WHERE object = '/collection/namespace/transforms/root/read/';
+
+              UPDATE permissions
+              SET object = CONCAT('/collection/', (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets'), '/'),
+                  collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets'),
+                  perm_type = 'perms/collection-access',
+                  perm_value = 'read-and-write'
+              WHERE object = '/collection/namespace/snippets/root/';
+
+              UPDATE permissions
+              SET object = CONCAT('/collection/', (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets'), '/read/'),
+                  collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets'),
+                  perm_type = 'perms/collection-access',
+                  perm_value = 'read'
+              WHERE object = '/collection/namespace/snippets/root/read/';
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE permissions
+              SET object = '/collection/namespace/transforms/root/read/',
+                  collection_id = NULL,
+                  perm_type = NULL,
+                  perm_value = NULL
+              WHERE collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms')
+                AND perm_value = 'read';
+
+              UPDATE permissions
+              SET object = '/collection/namespace/transforms/root/',
+                  collection_id = NULL,
+                  perm_type = NULL,
+                  perm_value = NULL
+              WHERE collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'transforms');
+
+              UPDATE permissions
+              SET object = '/collection/namespace/snippets/root/read/',
+                  collection_id = NULL,
+                  perm_type = NULL,
+                  perm_value = NULL
+              WHERE collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets')
+                AND perm_value = 'read';
+
+              UPDATE permissions
+              SET object = '/collection/namespace/snippets/root/',
+                  collection_id = NULL,
+                  perm_type = NULL,
+                  perm_value = NULL
+              WHERE collection_id = (SELECT id FROM collection WHERE is_root = TRUE AND namespace = 'snippets');

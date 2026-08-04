@@ -93,7 +93,7 @@
                                      (t2/select-fn-set :name :model/Collection {:where [:and
                                                                                         [:= :type nil]
                                                                                         [:= :archived false]
-                                                                                        [:not :is_root]]})))
+                                                                                        [:= :is_root nil]]})))
                        crowbertos))
                 (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
                              (concat (instance-analytics-collection-names) public-collection-names))

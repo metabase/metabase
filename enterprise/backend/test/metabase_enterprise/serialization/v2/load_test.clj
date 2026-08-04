@@ -77,14 +77,14 @@
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             ;; the trash is serialized and loaded, so restrict to nil type
-            (let [colls (t2/select :model/Collection :type nil :is_root false)]
+            (let [colls (t2/select :model/Collection :type nil :is_root nil)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
         (testing "loading again into the same database does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select :model/Collection :type nil :is_root false)]
+            (let [colls (t2/select :model/Collection :type nil :is_root nil)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -169,7 +169,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (t2/count :model/Collection :type nil :is_root false)))
+              (is (= 4 (t2/count :model/Collection :type nil :is_root nil)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))

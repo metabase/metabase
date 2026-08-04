@@ -401,7 +401,7 @@ width: fixed
   [f]
   (let [ns-colls-clause [:and
                          [:in :namespace ["transforms" "snippets"]]
-                         [:not :is_root]]
+                         [:= :is_root nil]]
         old-transforms (t2/select :model/Transform)
         old-tags (t2/select :model/TransformTag :built_in_type nil)
         old-libs (t2/select :model/PythonLibrary)

@@ -578,7 +578,7 @@
                                          :else false)]
                 :when (not setting-enabled?)
                 :let [local-ns-colls (t2/select [:model/Collection :id :entity_id]
-                                                :namespace ns-name :is_root false)
+                                                :namespace ns-name :is_root nil)
                       import-eids (get import-ns-collection-entity-ids ns-name #{})
                       ;; Only consider local collections that are NOT in the import (truly local-only)
                       ;; and NOT tracked in RemoteSyncObject
@@ -712,7 +712,7 @@
         cat
         [(t2/select-pks-vec :model/Collection :is_remote_synced true)
          (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns) :is_root false))
+           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns) :is_root nil))
          (when (rs-settings/library-is-remote-synced?)
            (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
 
@@ -1185,7 +1185,7 @@
                          {:where [:and
                                   [:= :namespace (name collections/transforms-ns)]
                                   [:= :location "/"]
-                                  [:not :is_root]
+                                  [:= :is_root nil]
                                   [:not :archived]]}))
      (when (rs-settings/library-is-remote-synced?)
        (t2/select-fn-set (juxt (constantly "Collection") :id)

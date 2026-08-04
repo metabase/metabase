@@ -10,18 +10,12 @@
   "Schema for a map or an ID (positive integer)."
   [:or :map ms/PositiveInt])
 
-(defn- root-collection?
-  "Whether `collection-or-id` stands for the root of a namespace — either the synthesized placeholder record or the
-  real `is_root` row that backs it. Both answer to the same permission path, so granting a group the root of a
-  namespace keeps working across the switch to real rows."
-  [collection-or-id]
-  (boolean (or (get collection-or-id :metabase.collections.models.collection.root/is-root?)
-               (get collection-or-id :is_root))))
-
 (mu/defn collection-readwrite-path :- perms.u/PathSchema
-  "Return the permissions path for *readwrite* access for a `collection-or-id`."
+  "Return the permissions path for *readwrite* access for a `collection-or-id`. A namespace whose root is a real
+  collection row gets the ordinary `/collection/<id>/` path for it — only the synthesized placeholder, still used by
+  namespaces without a real root, answers to `/collection/namespace/<ns>/root/`."
   [collection-or-id :- MapOrID]
-  (if-not (root-collection? collection-or-id)
+  (if-not (get collection-or-id :metabase.collections.models.collection.root/is-root?)
     (format "/collection/%d/" (u/the-id collection-or-id))
     (if-let [collection-namespace (:namespace collection-or-id)]
       (format "/collection/namespace/%s/root/" (perms.u/escape-path-component (u/qualified-name collection-namespace)))

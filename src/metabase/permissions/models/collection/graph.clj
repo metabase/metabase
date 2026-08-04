@@ -73,10 +73,15 @@
       (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
 
 (defn- reduce-graph-query
-  "Run the graph query for a specific chunk of collection IDs and reduce results into `accum`."
-  [accum collection-namespace include-root? root-object ids-without-root group-ids]
+  "Run the graph query for a specific chunk of collection IDs and reduce results into `accum`. A namespace whose root
+  is a real collection row is reported under `:root` all the same, so the graph's shape does not depend on which
+  namespaces have one yet."
+  [accum collection-namespace include-root? root-object ids-without-root group-ids real-root-id]
   (reduce (fn [acc {group-id :group_id collection-id :collection_id :keys [writable readable]}]
-            (assoc-in acc [group-id (or collection-id :root)]
+            (assoc-in acc [group-id (if (or (nil? collection-id)
+                                            (= collection-id real-root-id))
+                                      :root
+                                      collection-id)]
                       (cond
                         (= writable 1) :write
                         (= readable 1) :read
@@ -91,7 +96,6 @@
                              (perms/namespace-clause
                               :namespace (u/qualified-name collection-namespace))
                              [:not :archived]
-                             [:not :is_root]
                              [:= :personal_owner_id nil]
                              (when (seq ids-without-root)
                                [:in :id ids-without-root])
@@ -204,10 +208,18 @@
                                   (<= (count ids-without-root) max-in-clause-size))
                             [ids-without-root]
                             (map set (partition-all max-in-clause-size ids-without-root)))
+         ;; resolved at call time: metabase.collections.models.collection depends on this module
+         real-root-id     (let [ns-kw (keyword collection-namespace)]
+                            (when (contains? @(requiring-resolve
+                                               'metabase.collections.models.collection/namespaces-with-real-roots)
+                                             ns-kw)
+                              ((requiring-resolve
+                                'metabase.collections.models.collection/root-collection-id)
+                               ns-kw)))
          init             {(u/the-id (perms-group/admin)) {:root :write}}]
      (->> (reduce (fn [accum id-chunk]
                     (reduce-graph-query accum collection-namespace include-root?
-                                        root-object id-chunk group-ids))
+                                        root-object id-chunk group-ids real-root-id))
                   init chunks)
           collection-permission-graph
           modify-instance-analytics-for-admins))))
@@ -221,8 +233,16 @@
    group-id :- ms/PositiveInt
    collection-id :- [:or [:= :root] ms/PositiveInt]
    new-collection-perms :- CollectionPermissions]
-  (let [collection-id (if (= collection-id :root)
-                        (assoc (root-collection) :namespace collection-namespace)
+  (let [ns-kw         (keyword collection-namespace)
+        collection-id (if (= collection-id :root)
+                        ;; a namespace with a real root grants on that row; the rest use the placeholder
+                        (if (contains? @(requiring-resolve
+                                         'metabase.collections.models.collection/namespaces-with-real-roots)
+                                       ns-kw)
+                          ((requiring-resolve
+                            'metabase.collections.models.collection/root-collection-id)
+                           ns-kw)
+                          (assoc (root-collection) :namespace collection-namespace))
                         collection-id)]
     ;; remove whatever entry is already there (if any) and add a new entry if applicable
     (perms/revoke-collection-permissions! group-id collection-id)
