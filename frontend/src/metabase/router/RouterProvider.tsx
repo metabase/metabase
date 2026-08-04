@@ -53,8 +53,8 @@ function useLocationMirror(
 
 /**
  * Hosts the app as a data router. The whole route tree goes in as real data
- * routes, so there is no descendant `<Routes>` left. No route has a loader or
- * middleware.
+ * routes, so there is no descendant `<Routes>` left. Code-split subtrees carry a
+ * `route.lazy`; no route has a loader or middleware.
  *
  * `useTransitions={false}` keeps navigation committing synchronously.
  * react-router otherwise marks its own location update as a transition, which in
