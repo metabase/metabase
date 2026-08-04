@@ -37,6 +37,12 @@ type Props = DroppableProps &
 
 const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
 
+/**
+ * Long enough that sweeping the pointer down the sidebar does not fetch every collection it passes over, short
+ * enough that the children are usually there by the time the click lands.
+ */
+const TIME_BEFORE_PREFETCHING_ON_HOVER = 150;
+
 const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
@@ -49,12 +55,14 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       isSelected,
       hasChildren,
       onToggleExpand,
+      onHover,
       rightSection,
     }: Props,
     ref,
   ) {
     const wasHovered = usePrevious(isHovered);
     const timeoutId = useRef<number>();
+    const prefetchTimeoutId = useRef<number>();
     const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {
@@ -70,6 +78,22 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
 
       return () => clearTimeout(timeoutId.current);
     }, [wasHovered, isHovered, isExpanded, onToggleExpand]);
+
+    const onPointerEnter = useCallback(() => {
+      if (!onHover) {
+        return;
+      }
+      prefetchTimeoutId.current = window.setTimeout(
+        onHover,
+        TIME_BEFORE_PREFETCHING_ON_HOVER,
+      );
+    }, [onHover]);
+
+    const onPointerLeave = useCallback(() => {
+      clearTimeout(prefetchTimeoutId.current);
+    }, []);
+
+    useEffect(() => () => clearTimeout(prefetchTimeoutId.current), []);
 
     const url = Urls.collection(collection);
 
@@ -117,6 +141,8 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         isSelected={isSelected}
         hovered={isHovered}
         onClick={isSelected ? onToggleExpand : undefined}
+        onMouseEnter={onPointerEnter}
+        onMouseLeave={onPointerLeave}
         hasDefaultIconStyle={isRegularCollection}
         ref={ref}
       >

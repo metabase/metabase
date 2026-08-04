@@ -17,6 +17,7 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   depth: number;
   role?: string;
   onToggleExpand: (id: ITreeNodeItem<TData>["id"]) => void;
+  onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -29,6 +30,7 @@ function BaseTreeNodeList<TData = unknown>({
   depth,
   onSelect,
   onToggleExpand,
+  onNodeHover,
   TreeNode,
   rightSection,
   role,
@@ -48,6 +50,9 @@ function BaseTreeNodeList<TData = unknown>({
         const onItemSelect =
           typeof onSelect === "function" ? () => onSelect(item) : undefined;
         const onItemToggle = () => onToggleExpand(item.id);
+        const onItemHover = onNodeHover
+          ? () => onNodeHover(item.id)
+          : undefined;
 
         return (
           <Fragment key={item.id}>
@@ -56,6 +61,7 @@ function BaseTreeNodeList<TData = unknown>({
               item={item}
               onSelect={onItemSelect}
               onToggleExpand={onItemToggle}
+              onHover={onItemHover}
               isSelected={isSelected}
               isExpanded={isExpanded}
               hasChildren={hasChildren}
@@ -71,6 +77,7 @@ function BaseTreeNodeList<TData = unknown>({
                   depth={depth + 1}
                   onSelect={onSelect}
                   onToggleExpand={onToggleExpand}
+                  onNodeHover={onNodeHover}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
                 />

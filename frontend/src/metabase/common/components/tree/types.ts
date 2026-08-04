@@ -28,6 +28,11 @@ export interface TreeNodeProps<TData = unknown> {
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   onSelect?: () => void;
   onToggleExpand: () => void;
+  /**
+   * Called when the pointer settles on the node. A lazily loaded tree uses this to fetch the node's children before
+   * the click arrives.
+   */
+  onHover?: () => void;
   className?: string;
   classNames?: {
     root?: string;

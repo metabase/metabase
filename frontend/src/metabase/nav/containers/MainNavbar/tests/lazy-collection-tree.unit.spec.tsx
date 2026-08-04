@@ -45,6 +45,21 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should prefetch a collection's children when the pointer settles on it", async () => {
+    await setup({ simulateLargeInstance: true });
+
+    const collection = await screen.findByRole("treeitem", {
+      name: /Test collection/i,
+    });
+    expect(levelFetches()).toEqual([]);
+
+    await userEvent.hover(collection);
+
+    // The children are in the cache before any click, so expanding is instant.
+    await waitFor(() => expect(levelFetches()).toHaveLength(1));
+    expect(levelFetches()[0]).toContain(`collection-id=${TEST_COLLECTION.id}`);
+  });
+
   it("should still offer an expand toggle for a collection whose children are unfetched", async () => {
     await setup({ simulateLargeInstance: true });
 

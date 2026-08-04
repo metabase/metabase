@@ -183,6 +183,23 @@ export function useLazyCollectionTree({
     return attachLoadedChildren(collections, childrenById);
   }, [collections, loadedChildren]);
 
+  // Warm the cache before the click arrives. Unsubscribed on purpose: RTK keeps the entry around long enough for the
+  // click that follows, and if the click never comes it is collected rather than kept in sync forever.
+  const prefetchChildren = useCallback(
+    (id: NodeId) => {
+      if (!isFetchableId(id) || idsWithLoadedChildren.has(id)) {
+        return;
+      }
+      dispatch(
+        collectionApi.endpoints.listCollectionsTree.initiate(
+          childrenRequest(baseRequest, id),
+          { subscribe: false },
+        ),
+      );
+    },
+    [dispatch, baseRequest, idsWithLoadedChildren],
+  );
+
   const toggleExpand = useCallback((id: NodeId) => {
     setExpandedIds((previous) => {
       const next = new Set(previous);
@@ -195,5 +212,12 @@ export function useLazyCollectionTree({
     });
   }, []);
 
-  return { collections: tree, expandedIds, toggleExpand, isLoading, error };
+  return {
+    collections: tree,
+    expandedIds,
+    toggleExpand,
+    prefetchChildren,
+    isLoading,
+    error,
+  };
 }

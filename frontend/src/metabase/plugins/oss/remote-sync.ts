@@ -26,6 +26,7 @@ export type CollectionsNavTreeProps = {
   onSelect?: (item: ITreeNodeItem) => void;
   expandedIds?: Set<number | string>;
   onToggleExpand?: (id: number | string) => void;
+  onNodeHover?: (id: number | string) => void;
 };
 
 export interface GitSettingsModalProps {

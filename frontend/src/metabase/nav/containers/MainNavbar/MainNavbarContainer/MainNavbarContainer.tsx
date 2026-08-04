@@ -148,11 +148,12 @@ function MainNavbarContainer({
     ];
   }, [selectedCollection, selectedCollectionId]);
 
-  const { collections, expandedIds, toggleExpand } = useLazyCollectionTree({
-    baseRequest: COLLECTION_TREE_REQUEST,
-    selectedCollectionId,
-    ancestorIds,
-  });
+  const { collections, expandedIds, toggleExpand, prefetchChildren } =
+    useLazyCollectionTree({
+      baseRequest: COLLECTION_TREE_REQUEST,
+      selectedCollectionId,
+      ancestorIds,
+    });
 
   const {
     canAccessTenantSpecificCollections,
@@ -263,6 +264,7 @@ function MainNavbarContainer({
         collections={collectionTree}
         expandedCollectionIds={expandedIds}
         onToggleCollectionExpand={toggleExpand}
+        onCollectionHover={prefetchChildren}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}

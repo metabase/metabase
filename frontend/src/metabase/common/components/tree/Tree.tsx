@@ -20,6 +20,8 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
    */
   expandedIds?: Set<ITreeNodeItem<TData>["id"]>;
   onToggleExpand?: (id: ITreeNodeItem<TData>["id"]) => void;
+  /** Called when the pointer settles on a node, so a lazy tree can fetch its children ahead of the click. */
+  onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -34,6 +36,7 @@ function BaseTree<TData = unknown>({
   initialExpandedIds,
   expandedIds: controlledExpandedIds,
   onToggleExpand: controlledOnToggleExpand,
+  onNodeHover,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
@@ -106,6 +109,7 @@ function BaseTree<TData = unknown>({
       depth={0}
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
+      onNodeHover={onNodeHover}
       rightSection={rightSection}
       {...boxProps}
     />
