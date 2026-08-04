@@ -570,7 +570,7 @@ describe("scenarios > setup > AI config step", () => {
       cy.findByRole("button", { name: /Metabase/ }).should("be.disabled");
 
       cy.findByRole("button", { name: /Anthropic/ }).click();
-      cy.findByLabelText("API key").should("be.visible");
+      cy.findByLabelText(/API key/).should("be.visible");
       cy.button("I'll set this up later").click();
     });
 
@@ -592,7 +592,7 @@ describe("scenarios > setup > AI config step", () => {
 
     cy.findByLabelText("Connect to an AI provider").within(() => {
       cy.findByRole("button", { name: /Anthropic/ }).click();
-      cy.findByLabelText("API key").type("sk-ant-api03-e2e-test-key");
+      cy.findByLabelText(/API key/).type("sk-ant-api03-e2e-test-key");
 
       // The base URL belongs to the connection now rather than to a global setting, so
       // this is what points the credential-verifying /v1/models call at the mock server.
