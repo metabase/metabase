@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,7 +14,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -616,30 +615,34 @@
           (is (= expected
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
-(deftest snippet-read-permissions-test
-  (let [mp       (lib.tu/mock-metadata-provider
-                  meta/metadata-provider
-                  {:native-query-snippets [{:id      1
-                                            :name    "expensive_venues"
-                                            :content "venues WHERE price = 4"}]})
-        expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-        query    (native-query-with-snippet mp :snippet-id 1)
-        resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
-    (testing "Snippet resolves when the current user can read it"
-      (binding [api/*current-user-id* 1]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
-          (is (= expected (resolve!))))))
-    (testing "Snippet does not resolve when the current user cannot read it"
-      (binding [api/*current-user-id* 1]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Snippet [\d,]+ \"expensive_venues\" not found\."
-               (resolve!))))))
-    (testing "Snippet resolves when there is no current user, e.g. subscriptions"
-      (binding [api/*current-user-id* nil]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-          (is (= expected (resolve!))))))))
+(deftest ^:synchronized snippet-query-permissions-test
+  (testing "Collection perms on a Card are enough to run it, even if the user can't read the Snippet it uses (#79364)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          ;; `with-temp` needed here because this tests permissions
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (mt/with-temp [:model/Collection         collection {}
+                         :model/NativeQuerySnippet {snippet-id :id} {:name    "venues_table"
+                                                                     :content "venues"}
+                         :model/Card               card {:collection_id (u/the-id collection)
+                                                         :dataset_query (mt/native-query
+                                                                         {:query         "SELECT id FROM {{venues_table}} ORDER BY id ASC LIMIT 2"
+                                                                          :template-tags {"venues_table" {:name         "venues_table"
+                                                                                                          :display-name "Venues Table"
+                                                                                                          :type         :snippet
+                                                                                                          :snippet-name "venues_table"
+                                                                                                          :snippet-id   snippet-id}}})}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (testing "sanity check: snippet perms require native query perms, which rasta does not have"
+                (is (not (mi/can-read? :model/NativeQuerySnippet snippet-id))))
+              (binding [qp.perms/*card-id* (u/the-id card)]
+                (is (= [[1] [2]]
+                       (mt/rows
+                        (qp/process-query (:dataset_query card)))))))))))))
 
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
