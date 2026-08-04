@@ -385,6 +385,7 @@ jobs:
     timeout-minutes: 40
     env:
       CI: 'true'
+      LOCKED_QUERY_MAP: 'true'
     name: H2
     steps:
     - uses: actions/checkout@v6
