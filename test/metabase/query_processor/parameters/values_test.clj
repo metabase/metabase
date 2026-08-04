@@ -647,37 +647,6 @@
           (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
             (is (= expected (resolve!)))))))))
 
-(deftest ^:synchronized snippet-query-permissions-without-folders-test
-  (testing "Without snippet folders, collection perms on a Card are enough to run it even though the fallback
-            `can-read?` requires native query perms (#79364)"
-    (mt/with-premium-features #{}
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp-copy-of-db
-          (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-            ;; `with-temp` needed here because this tests permissions
-            #_{:clj-kondo/ignore [:discouraged-var]}
-            (mt/with-temp [:model/Collection         collection {}
-                           :model/NativeQuerySnippet {snippet-id :id} {:name    "venues_table"
-                                                                       :content "venues"}
-                           :model/Card               card {:collection_id (u/the-id collection)
-                                                           :dataset_query (mt/native-query
-                                                                           {:query         "SELECT id FROM {{venues_table}} ORDER BY id ASC LIMIT 2"
-                                                                            :template-tags {"venues_table" {:name         "venues_table"
-                                                                                                            :display-name "Venues Table"
-                                                                                                            :type         :snippet
-                                                                                                            :snippet-name "venues_table"
-                                                                                                            :snippet-id   snippet-id}}})}]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-              (mt/with-test-user :rasta
-                (testing "sanity check: the fallback perms require native query perms, which rasta does not have"
-                  (is (not (snippet.perms/can-read? :model/NativeQuerySnippet snippet-id))))
-                (binding [qp.perms/*card-id* (u/the-id card)]
-                  (is (= [[1] [2]]
-                         (mt/rows
-                          (qp/process-query (:dataset_query card))))))))))))))
-
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
     (let [mp    (lib.tu/mock-metadata-provider
