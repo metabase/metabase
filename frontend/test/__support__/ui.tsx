@@ -212,7 +212,10 @@ export function getTestStoreAndWrapper({
   theme,
 }: GetTestStoreAndWrapperOptions) {
   let {
-    settings, // pull settings out because they aren't in the store
+    // Pull settings and currentUser out because they have no reducer;
+    // createMockState mirrors them into the bootstrap / getCurrentUser cache.
+    settings,
+    currentUser,
     ...initialState
   }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
