@@ -1066,19 +1066,19 @@ export const getTimeoutId = createSelector(
 );
 
 export const getIsHeaderVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.header,
 );
 
 export const getIsActionListVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.action_buttons,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.additional_info,
 );

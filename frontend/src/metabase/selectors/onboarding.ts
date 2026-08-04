@@ -13,7 +13,7 @@ export const getIsNewInstance = (state: State) => {
 };
 
 export const getCanAccessOnboardingPage = createSelector(
-  [isWithinIframe, getIsWhiteLabeling],
+  [(_state: State) => isWithinIframe(), getIsWhiteLabeling],
   (isEmbeddingIframe, isWhiteLabelled) => {
     return !isEmbeddingIframe && !isWhiteLabelled;
   },

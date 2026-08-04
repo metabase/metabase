@@ -27,7 +27,7 @@ export const getErrorMessage = (state: State) => {
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
-    isWithinIframe,
+    (_state: State) => isWithinIframe(),
     getEmbedOptions,
     (_state: State) => window.location.hash,
     (state: State) => state.app.isNavbarOpen,

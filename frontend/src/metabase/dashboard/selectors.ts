@@ -545,7 +545,7 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
@@ -553,7 +553,7 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );

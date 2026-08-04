@@ -46,28 +46,28 @@ export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
 });
 
 export const getIsLogoVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [isWithinIframe, getEmbedOptions],
+  [(_state: State) => isWithinIframe(), getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.new_button;
   },
 );
 
 export const getIsAppSwitcherVisible = createSelector(
-  [isWithinIframe],
+  [(_state: State) => isWithinIframe()],
   (isEmbeddingIframe) => !isEmbeddingIframe,
 );
 
@@ -107,7 +107,7 @@ export const getIsCollectionPathVisible = createSelector(
     getDashboard,
     getCurrentDocument,
     getRouterPath,
-    isWithinIframe,
+    (_state: State) => isWithinIframe(),
     getEmbedOptions,
   ],
   (question, dashboard, document, path, isEmbedded, embedOptions) => {
@@ -149,7 +149,7 @@ export const getIsNavBarEnabled = createSelector(
     getUser,
     getRouterPath,
     getIsEditingDashboard,
-    isWithinIframe,
+    (_state: State) => isWithinIframe(),
     getEmbedOptions,
   ],
   (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
@@ -197,7 +197,7 @@ export const getIsAppBarVisible = createSelector(
     getIsDataStudioApp,
     getIsMonitorApp,
     getIsEditingDashboard,
-    isWithinIframe,
+    (_state: State) => isWithinIframe(),
     getIsEmbeddedAppBarVisible,
   ],
   (
