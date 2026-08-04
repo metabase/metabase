@@ -136,10 +136,10 @@ function verifyMetricAboutScalar({ value }) {
   });
 }
 
-function verifyMetricDefinitionScalar({ yAxis, value }) {
+function verifyMetricDefinitionScalar({ aggregation, value }) {
   H.MetricPage.definitionTab().click();
   H.MetricPage.queryEditor().should("be.visible");
-  H.getNotebookStep("summarize").findByText(yAxis).should("be.visible");
+  H.getNotebookStep("summarize").findByText(aggregation).should("be.visible");
   cy.intercept("POST", "/api/dataset").as("dataset");
   H.runButtonInOverlay().click();
   cy.wait("@dataset");
@@ -343,7 +343,7 @@ describe("scenarios > metrics > editing", () => {
       });
       saveNewMetric();
       verifyMetricDefinitionScalar({
-        yAxis: "Sum of Total2",
+        aggregation: "Sum of Total2",
         value: "755,310.84",
       });
 
@@ -362,14 +362,14 @@ describe("scenarios > metrics > editing", () => {
       });
       saveNewMetric();
       verifyMetricDefinitionScalar({
-        yAxis: "Average of Price2",
+        aggregation: "Average of Price2",
         value: "111.38",
       });
     });
   });
 
-  describe("breakouts", () => {
-    it("should create a timeseries metric", () => {
+  describe("summarize", () => {
+    it("should change the aggregation of a new metric", () => {
       startNewMetricWithTable("Sample Database", "Orders");
       H.getNotebookStep("summarize").findByText("Count").click();
       H.popover().within(() => {
