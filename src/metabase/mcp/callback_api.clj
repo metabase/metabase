@@ -101,7 +101,6 @@
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
-  "Iframe-callback routes mounted at `/api/embed-mcp`. Gated on either MCP surface being enabled —
-   the iframe is shared by v1 and v2; auth is handled by the upstream `+auth` middleware in
-   api-routes."
-  (mcp.validation/+any-mcp-surface-enabled (api.macros/ns-handler *ns*)))
+  "Iframe-callback routes mounted at `/api/embed-mcp`. Gated on the MCP surface that renders the
+   iframe; auth is handled by the upstream `+auth` middleware in api-routes."
+  (mcp.validation/+mcp-enabled (api.macros/ns-handler *ns*)))

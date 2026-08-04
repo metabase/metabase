@@ -1,7 +1,8 @@
-(ns metabase.mcp.callback-api-test
+(ns ^:synchronous metabase.mcp.callback-api-test
   (:require
    [clojure.test :refer :all]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -33,6 +34,13 @@
    (client/client-full-response (test.users/username->token user)
                                 :post expected-status "embed-mcp/feedback"
                                 body)))
+
+(deftest callbacks-are-gated-on-the-mcp-surface-test
+  (testing "GHY-4250: with the MCP surface dark there is no iframe to call back from, so the
+            callbacks 403 rather than serving handles to nobody"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
+      (is (=? {:status 403 :body "MCP server is not enabled."}
+              (post-drill :crowberto 403 {:encodedQuery "ZW5jb2RlZA=="} {}))))))
 
 (deftest drills-post-stores-handle-test
   (testing "POST returns a UUID handle"

@@ -22,8 +22,8 @@
       (is (nil? template)))))
 
 (deftest ^:parallel construct-notebook-query-prompt-database-name-examples-test
-  ;; This .md is the canonical construct_query format reference, served verbatim as an MCP resource
-  ;; (see metabase.mcp.resources) and the source the construct-notebook-query-* skills were split from.
+  ;; This .md is the canonical construct_query format reference, and the source the
+  ;; construct-notebook-query-* skills were split from.
   (let [prompt (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))]
     (is (some? prompt))
     (testing "examples use the exact sample database name, not the old abbreviated portable FK"

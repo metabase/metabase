@@ -314,8 +314,8 @@
   (testing "GHY-4157: resources/list only shows shells the token can read"
     (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
            (set (map :uri (:resources (v2.resources/list-resources viz-scopes))))))
-    (testing "the v0.62 per-shell leaves gate v1's resources, not v2's — a token carrying one
-              unlocks nothing here, since a bare grant matches only itself"
+    (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
+              still-live token carrying one unlocks nothing — a bare grant matches only itself"
       (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))
       (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:drill-through"})))))
     (is (empty? (:resources (v2.resources/list-resources #{"agent:content:read"})))))

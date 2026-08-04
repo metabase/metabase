@@ -3,10 +3,9 @@
    `response_format`/`fields` plumbing, `_write` method dispatch, and the MCP response-channel
    helpers. Tool namespaces add domain logic only and never re-derive these shapes.
 
-   Scope-binding rule: a v2 tool that covers a v1 tool reuses the v1 scope string verbatim.
-   Issued OAuth tokens carry those literal strings (a token holding `agent:question:create`
-   satisfies no other name), so renaming a v1 scope strands every existing token. Add new leaf
-   scopes for net-new capability; never rename."
+   Scope-binding rule: scopes are never renamed. Issued OAuth tokens carry literal strings (a
+   token holding `agent:question:create` satisfies no other name), so renaming one strands every
+   existing token. Add new leaf scopes for net-new capability; never rename."
   (:require
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]

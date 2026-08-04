@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
@@ -36,9 +37,10 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
+  (testing "each MCP path advertises *itself* as the OAuth protected resource (RFC 9728), so a strict
+            client connecting via an alias sees a resource value matching the URL it hit"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
         (testing path
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str ".well-known/oauth-protected-resource" path))]
@@ -1126,14 +1128,14 @@
   [field-name body]
   (second (re-find (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([^\"]*)\"")) body)))
 
-(deftest authorize-narrows-scope-to-v2-resource-test
-  (testing "an RFC 8707 `resource` indicator naming the v2 MCP surface narrows the grant to the
+(deftest authorize-narrows-scope-to-mcp-resource-test
+  (testing "an RFC 8707 `resource` indicator naming the MCP surface narrows the grant to the
             scopes that surface accepts, so the consent screen asks for what the token can actually
             be used for rather than everything the client registered"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [wide         "agent:content:read agent:question:create agent:sql:execute"
-              v2-uri       (str "http://localhost:3000" oauth-server/v2-resource-path)
+              mcp-uri      (str "http://localhost:3000" (mcp/mcp-canonical-path))
               client-id    (:client_id (create-test-client!
                                         {:scopes ["agent:content:read" "agent:question:create"
                                                   "agent:sql:execute"]}))
@@ -1143,7 +1145,7 @@
                             :redirect_uri  "https://example.com/callback"
                             :response_type "code"
                             :scope         wide
-                            :resource      v2-uri
+                            :resource      mcp-uri
                             :state         "test-state")
               body         (:body consent-resp)
               shown-scope  (extract-hidden-field "scope" body)]
@@ -1162,7 +1164,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         shown-scope
-                             :resource      v2-uri
+                             :resource      mcp-uri
                              :state         "test-state"}
                             302
                             :csrf-cookie (extract-csrf-cookie consent-resp))]
@@ -1178,7 +1180,7 @@
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         wide
-                             :resource      v2-uri
+                             :resource      mcp-uri
                              :state         "test-state"}
                             403
                             :csrf-cookie (extract-csrf-cookie consent-resp))]
