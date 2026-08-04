@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
@@ -24,6 +24,8 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/common/hooks/use-memoized-callback";
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
@@ -61,6 +63,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { isFK, isID, isPK, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
@@ -758,6 +761,31 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return isDashcardViewTable || isEmbeddingSdk ? width : undefined;
   }, [isDashcardViewTable, isEmbeddingSdk, width]);
 
+  const formatNumber = useNumberFormatter();
+
+  const formatRowsCountMessage = useCallback(
+    (total: number) =>
+      data.rows_truncated != null
+        ? getRowCountMessage(
+            { data: { rows_truncated: data.rows_truncated }, row_count: total },
+            formatNumber,
+          )
+        : ngettext(
+            msgid`${formatNumber(total)} row`,
+            `${formatNumber(total)} rows`,
+            total,
+          ),
+    [data.rows_truncated, formatNumber],
+  );
+
+  const formatPaginationMessage = useCallback(
+    ({ start, end, total }: { start: number; end: number; total: number }) =>
+      total >= HARD_ROW_LIMIT
+        ? t`Rows ${start + 1}-${end + 1} of first ${formatNumber(total)}`
+        : t`Rows ${start + 1}-${end + 1} of ${formatNumber(total)}`,
+    [formatNumber],
+  );
+
   const pinnedLeftColumnsCount = useMemo<number | undefined>(() => {
     if (isPivoted || !settings["table.freeze_columns"]) {
       return undefined;
@@ -870,7 +898,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           {...tableProps}
           styles={dataGridStyles}
           showRowsCount={isDashboard}
-          rowsTruncated={data.rows_truncated}
+          formatRowsCountMessage={formatRowsCountMessage}
+          formatPaginationMessage={formatPaginationMessage}
           isColumnReorderingDisabled={isColumnReorderingDisabled}
           emptyState={emptyState}
           zoomedRowIndex={zoomedRowIndex}
