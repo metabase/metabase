@@ -19,15 +19,14 @@ import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
-import type { DatabaseId } from "metabase-types/api";
-
-import { ExternalMenuTarget } from "../shared/ExternalMenuTarget";
-import type { SuggestionModel } from "../shared/types";
-import type { EntitySearchOptions } from "../shared/useEntitySearch";
+import { ExternalMenuTarget } from "metabase/rich_text_editing/tiptap/extensions/shared/ExternalMenuTarget";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import type { EntitySearchOptions } from "metabase/rich_text_editing/tiptap/extensions/shared/useEntitySearch";
 import type {
   BareSuggestionRendererProps,
   BareSuggestionRendererRef,
-} from "../suggestionRenderer";
+} from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import type { DatabaseId } from "metabase-types/api";
 
 import type { MentionProps } from "./MetabotMentionExtension";
 import styles from "./MetabotSuggestion.module.css";
