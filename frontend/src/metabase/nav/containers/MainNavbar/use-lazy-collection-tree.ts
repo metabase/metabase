@@ -107,18 +107,22 @@ export function useLazyCollectionTree({
     "expand-to": expandTo,
   });
 
-  // Reveal the collection the user is looking at, however deep it sits. Once per collection: re-running this on
-  // every refetch would spring open nodes the user had deliberately collapsed.
-  const revealedFor = useRef<CollectionId>();
+  // Reveal the collection the user is looking at, however deep it sits.
+  //
+  // Keyed on the path rather than on the collection, so that a refetch which returns the same path does not spring
+  // open nodes the user deliberately collapsed, while a genuine change of path (the collection was moved) does
+  // reveal it again in its new home.
+  const revealedPath = useRef<string>();
   useEffect(() => {
+    const path = ancestorIds.join(",");
     if (
       ancestorIds.length === 0 ||
       selectedCollectionId == null ||
-      revealedFor.current === selectedCollectionId
+      revealedPath.current === path
     ) {
       return;
     }
-    revealedFor.current = selectedCollectionId;
+    revealedPath.current = path;
     setExpandedIds((previous) => new Set([...previous, ...ancestorIds]));
   }, [ancestorIds, selectedCollectionId]);
 
