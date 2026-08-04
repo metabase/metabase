@@ -15,45 +15,45 @@ import {
   useRunContentDiagnosticsScanMutation,
 } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
-import type { ContentDiagnosticsSortColumn } from "metabase-types/api";
+import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
 
-import { ContentDiagnosticsSidebar } from "./ContentDiagnosticsSidebar";
-import { ContentDiagnosticsTable } from "./ContentDiagnosticsTable";
-import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import type {
-  ContentDiagnosticsFilterOptions,
-  ContentDiagnosticsParamsOptions,
-} from "./types";
+import { StaleContentFilterBar } from "./StaleContentFilterBar";
+import { StaleContentSidebar } from "./StaleContentSidebar";
+import { StaleContentTable } from "./StaleContentTable";
 import {
-  getEntityTypesParam,
-  getFilterOptions,
-  getFilterParams,
-  getSortOptions,
-} from "./utils";
+  getStaleEntityTypesParam,
+  getStaleFilterOptions,
+  getStaleFilterParams,
+  getStaleSortOptions,
+} from "./stale-utils";
+import type {
+  ContentDiagnosticsParamsOptions,
+  StaleContentFilterOptions,
+} from "./types";
 
-type ContentDiagnosticsProps = {
-  params: Urls.ContentDiagnosticsParams;
+type StaleContentProps = {
+  params: Urls.StaleContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.ContentDiagnosticsParams,
+    params: Urls.StaleContentParams,
     options?: ContentDiagnosticsParamsOptions,
   ) => void;
 };
 
-export function ContentDiagnostics({
+export function StaleContent({
   params,
   isLoadingParams,
   onParamsChange,
-}: ContentDiagnosticsProps) {
+}: StaleContentProps) {
   const dispatch = useDispatch();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
 
   const { page = 0, query } = params;
-  const filterOptions = useMemo(() => getFilterOptions(params), [params]);
-  const sortOptions = useMemo(() => getSortOptions(params), [params]);
+  const filterOptions = useMemo(() => getStaleFilterOptions(params), [params]);
+  const sortOptions = useMemo(() => getStaleSortOptions(params), [params]);
 
   const {
     data,
@@ -63,7 +63,7 @@ export function ContentDiagnostics({
   } = useListStaleFindingsQuery(
     {
       query,
-      "entity-types": getEntityTypesParam(filterOptions.entityTypes),
+      "entity-types": getStaleEntityTypesParam(filterOptions.entityTypes),
       "include-personal-collections": filterOptions.includePersonalCollections,
       "sort-column": params.sortColumn,
       "sort-direction": params.sortDirection,
@@ -105,12 +105,12 @@ export function ContentDiagnostics({
   };
 
   const handleFilterOptionsChange = (
-    newFilterOptions: ContentDiagnosticsFilterOptions,
+    newFilterOptions: StaleContentFilterOptions,
   ) => {
     onParamsChange(
       {
         ...params,
-        ...getFilterParams(newFilterOptions),
+        ...getStaleFilterParams(newFilterOptions),
         page: undefined,
       },
       { withSetLastUsedParams: true },
@@ -122,7 +122,7 @@ export function ContentDiagnostics({
   };
 
   const handleSortOptionsChange = (
-    sortOptions: Sorting<ContentDiagnosticsSortColumn> | undefined,
+    sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined,
   ) => {
     onParamsChange(
       {
@@ -145,10 +145,9 @@ export function ContentDiagnostics({
     <Flex ref={containerRef} h="100%" wrap="nowrap">
       <MonitorMain>
         <DiagnosticsHeader />
-        <DiagnosticsFilterBar
+        <StaleContentFilterBar
           query={query}
           filterOptions={filterOptions}
-          isFetching={isFetching}
           isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
@@ -169,7 +168,7 @@ export function ContentDiagnostics({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <ContentDiagnosticsTable
+          <StaleContentTable
             findings={findings}
             params={params}
             sortOptions={sortOptions}
@@ -190,7 +189,7 @@ export function ContentDiagnostics({
       </MonitorMain>
       {selectedFinding != null && (
         <Sidebar containerWidth={containerWidth}>
-          <ContentDiagnosticsSidebar
+          <StaleContentSidebar
             finding={selectedFinding}
             onClose={() => setSelectedFindingId(undefined)}
           />

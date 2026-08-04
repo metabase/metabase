@@ -6,6 +6,7 @@ import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
+  LoadingOverlay,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
@@ -17,26 +18,26 @@ import {
   getSortingState,
 } from "metabase/utils/sorting";
 import {
-  CONTENT_DIAGNOSTICS_SORT_COLUMNS,
-  type ContentDiagnosticsFinding,
-  type ContentDiagnosticsSortColumn,
+  CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
+  type ContentDiagnosticsStaleFinding,
+  type ContentDiagnosticsStaleSortColumn,
 } from "metabase-types/api";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
-type ContentDiagnosticsTableProps = {
-  findings: ContentDiagnosticsFinding[];
-  params: Urls.ContentDiagnosticsParams;
-  sortOptions: Sorting<ContentDiagnosticsSortColumn> | undefined;
+type StaleContentTableProps = {
+  findings: ContentDiagnosticsStaleFinding[];
+  params: Urls.StaleContentParams;
+  sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
-  onSelect?: (finding: ContentDiagnosticsFinding) => void;
+  onSelect?: (finding: ContentDiagnosticsStaleFinding) => void;
   onSortOptionsChange: (
-    sortOptions: Sorting<ContentDiagnosticsSortColumn> | undefined,
+    sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined,
   ) => void;
 };
 
-export function ContentDiagnosticsTable({
+export function StaleContentTable({
   findings,
   params,
   sortOptions,
@@ -44,7 +45,7 @@ export function ContentDiagnosticsTable({
   isLoading = false,
   onSelect,
   onSortOptionsChange,
-}: ContentDiagnosticsTableProps) {
+}: StaleContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(
     () => getSortingState(sortOptions),
@@ -52,7 +53,7 @@ export function ContentDiagnosticsTable({
   );
 
   const handleRowActivate = useCallback(
-    (row: Row<ContentDiagnosticsFinding>) => onSelect?.(row.original),
+    (row: Row<ContentDiagnosticsStaleFinding>) => onSelect?.(row.original),
     [onSelect],
   );
 
@@ -63,22 +64,23 @@ export function ContentDiagnosticsTable({
       onSortOptionsChange(
         getNextOptionalSorting(
           newSortingState,
-          CONTENT_DIAGNOSTICS_SORT_COLUMNS,
+          CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
         ),
       );
     },
     [sortingState, onSortOptionsChange],
   );
 
-  const treeTableInstance = useTreeTableInstance<ContentDiagnosticsFinding>({
-    data: findings,
-    columns,
-    sorting: sortingState,
-    manualSorting: true,
-    getNodeId: (finding) => String(finding.id),
-    onRowActivate: handleRowActivate,
-    onSortingChange: handleSortingChange,
-  });
+  const treeTableInstance =
+    useTreeTableInstance<ContentDiagnosticsStaleFinding>({
+      data: findings,
+      columns,
+      sorting: sortingState,
+      manualSorting: true,
+      getNodeId: (finding) => String(finding.id),
+      onRowActivate: handleRowActivate,
+      onSortingChange: handleSortingChange,
+    });
 
   useScrollToTop({
     ref: treeTableInstance.containerRef,
@@ -91,17 +93,21 @@ export function ContentDiagnosticsTable({
       flex="0 1 auto"
       mih={0}
       p={0}
+      pos="relative"
       withBorder
       data-testid="stale-content-list"
     >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          emptyState={<MonitorEmptyState label={t`No stale content found`} />}
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            emptyState={<MonitorEmptyState label={t`No stale content found`} />}
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
     </Card>
   );

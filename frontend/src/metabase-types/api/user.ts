@@ -1,5 +1,5 @@
 import type { CollectionId } from "./collection";
-import type { ContentDiagnosticsUserParams } from "./content-diagnostics";
+import type { ContentDiagnosticsStaleUserParams } from "./content-diagnostics";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
@@ -211,8 +211,8 @@ export type UserKeyValue =
     }
   | {
       namespace: "content_diagnostics";
-      key: string;
-      value: ContentDiagnosticsUserParams;
+      key: "stale";
+      value: ContentDiagnosticsStaleUserParams;
     }
   | {
       namespace: "schema_viewer";

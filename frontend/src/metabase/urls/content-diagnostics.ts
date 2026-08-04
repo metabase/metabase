@@ -1,6 +1,6 @@
 import type {
   ContentDiagnosticsFilterType,
-  ContentDiagnosticsSortColumn,
+  ContentDiagnosticsStaleSortColumn,
   SortDirection,
 } from "metabase-types/api";
 
@@ -10,23 +10,23 @@ export function contentDiagnostics() {
   return CONTENT_DIAGNOSTICS_URL;
 }
 
-export type ContentDiagnosticsParams = {
+export type StaleContentParams = {
   page?: number;
   query?: string;
   entityTypes?: ContentDiagnosticsFilterType[];
   includePersonalCollections?: boolean;
-  sortColumn?: ContentDiagnosticsSortColumn;
+  sortColumn?: ContentDiagnosticsStaleSortColumn;
   sortDirection?: SortDirection;
 };
 
-function contentDiagnosticsQueryString({
+function staleContentQueryString({
   page,
   query,
   entityTypes,
   includePersonalCollections,
   sortColumn,
   sortDirection,
-}: ContentDiagnosticsParams = {}) {
+}: StaleContentParams = {}) {
   const searchParams = new URLSearchParams();
 
   if (page != null) {
@@ -57,6 +57,6 @@ function contentDiagnosticsQueryString({
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function staleContent(params?: ContentDiagnosticsParams) {
-  return `${contentDiagnostics()}/stale${contentDiagnosticsQueryString(params)}`;
+export function staleContent(params?: StaleContentParams) {
+  return `${contentDiagnostics()}/stale${staleContentQueryString(params)}`;
 }

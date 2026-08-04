@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,26 +14,30 @@ import {
 } from "metabase/ui";
 import type { ContentDiagnosticsFilterType } from "metabase-types/api";
 
-import type { ContentDiagnosticsFilterOptions } from "../types";
+import type { ContentDiagnosticsBaseFilterOptions } from "../types";
 import { getFilterTypeLabel } from "../utils";
 
-type DiagnosticsFilterPickerProps = {
-  filterOptions: ContentDiagnosticsFilterOptions;
+type DiagnosticsFilterPickerProps<
+  T extends ContentDiagnosticsBaseFilterOptions,
+> = {
+  filterOptions: T;
   availableTypes: ContentDiagnosticsFilterType[];
   isDisabled?: boolean;
   hasDefaultOptions?: boolean;
-  onFilterOptionsChange: (
-    filterOptions: ContentDiagnosticsFilterOptions,
-  ) => void;
+  extraFilters?: ReactNode;
+  onFilterOptionsChange: (filterOptions: T) => void;
 };
 
-export function DiagnosticsFilterPicker({
+export function DiagnosticsFilterPicker<
+  T extends ContentDiagnosticsBaseFilterOptions,
+>({
   filterOptions,
   availableTypes,
   isDisabled = false,
   hasDefaultOptions = false,
+  extraFilters,
   onFilterOptionsChange,
-}: DiagnosticsFilterPickerProps) {
+}: DiagnosticsFilterPickerProps<T>) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   const handleTypesChange = (newValue: string[]) => {
@@ -86,6 +90,7 @@ export function DiagnosticsFilterPicker({
                 </Stack>
               </Checkbox.Group>
             )}
+            {extraFilters}
             <Input.Wrapper label={t`Location`}>
               <Stack gap="sm" mt="sm">
                 <Checkbox

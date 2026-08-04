@@ -1,23 +1,17 @@
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
-import type { Sorting } from "metabase/utils/sorting";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  type ContentDiagnosticsBaseFinding,
   type ContentDiagnosticsCollection,
-  type ContentDiagnosticsEntityType,
   type ContentDiagnosticsFilterType,
-  type ContentDiagnosticsFinding,
-  type ContentDiagnosticsSortColumn,
   type ContentDiagnosticsUser,
   type IconName,
 } from "metabase-types/api";
 
-import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "./constants";
-import type { ContentDiagnosticsFilterOptions } from "./types";
-
-const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+export const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 
@@ -32,7 +26,9 @@ export type ContentDiagnosticsBreadcrumbLink = {
   icon?: IconName;
 };
 
-export function getEntityIcon(finding: ContentDiagnosticsFinding): IconName {
+export function getEntityIcon(
+  finding: ContentDiagnosticsBaseFinding,
+): IconName {
   return match(finding)
     .with({ entity_type: "card", card_type: "model" }, () => "model" as const)
     .with({ entity_type: "card", card_type: "metric" }, () => "metric" as const)
@@ -43,7 +39,9 @@ export function getEntityIcon(finding: ContentDiagnosticsFinding): IconName {
     .exhaustive();
 }
 
-export function getEntityTypeLabel(finding: ContentDiagnosticsFinding): string {
+export function getEntityTypeLabel(
+  finding: ContentDiagnosticsBaseFinding,
+): string {
   return match(finding)
     .with({ entity_type: "card", card_type: "model" }, () => t`Model`)
     .with({ entity_type: "card", card_type: "metric" }, () => t`Metric`)
@@ -54,7 +52,9 @@ export function getEntityTypeLabel(finding: ContentDiagnosticsFinding): string {
     .exhaustive();
 }
 
-export function getEntityViewLabel(finding: ContentDiagnosticsFinding): string {
+export function getEntityViewLabel(
+  finding: ContentDiagnosticsBaseFinding,
+): string {
   return match(finding)
     .with({ entity_type: "card", card_type: "model" }, () => t`View this model`)
     .with(
@@ -68,22 +68,11 @@ export function getEntityViewLabel(finding: ContentDiagnosticsFinding): string {
     .exhaustive();
 }
 
-export function getLastActiveLabel(
-  entityType: ContentDiagnosticsEntityType,
-): string {
-  return match(entityType)
-    .with("card", () => t`Last used`)
-    .with("dashboard", () => t`Last viewed`)
-    .with("document", () => t`Last viewed`)
-    .with("transform", () => t`Last run`)
-    .exhaustive();
-}
-
-export function getEntityName(finding: ContentDiagnosticsFinding): string {
+export function getEntityName(finding: ContentDiagnosticsBaseFinding): string {
   return finding.entity_display_name ?? t`Untitled`;
 }
 
-export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
+export function getEntityUrl(finding: ContentDiagnosticsBaseFinding): string {
   const entity = {
     id: finding.entity_id,
     name: getEntityName(finding),
@@ -118,7 +107,7 @@ function getCollectionBreadcrumbUrl(
 }
 
 export function getBreadcrumbLinks(
-  finding: ContentDiagnosticsFinding,
+  finding: ContentDiagnosticsBaseFinding,
 ): ContentDiagnosticsBreadcrumbLink[] {
   return match(finding.details.collection)
     .with(null, () => [
@@ -158,28 +147,7 @@ export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
     .exhaustive();
 }
 
-export function getAvailableFilterTypes(): ContentDiagnosticsFilterType[] {
-  return ALL_FILTER_TYPES;
-}
-
-export function getDefaultFilterOptions(): ContentDiagnosticsFilterOptions {
-  return {
-    entityTypes: ALL_FILTER_TYPES,
-    includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-  };
-}
-
-export function getFilterOptions(
-  params: Urls.ContentDiagnosticsParams,
-): ContentDiagnosticsFilterOptions {
-  return {
-    entityTypes: params.entityTypes ?? ALL_FILTER_TYPES,
-    includePersonalCollections:
-      params.includePersonalCollections ?? DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-  };
-}
-
-function areEntityTypesEqual(
+export function areEntityTypesEqual(
   a: ContentDiagnosticsFilterType[],
   b: ContentDiagnosticsFilterType[],
 ): boolean {
@@ -188,79 +156,4 @@ function areEntityTypesEqual(
   }
   const setB = new Set(b);
   return a.every((type) => setB.has(type));
-}
-
-export function areFilterOptionsEqual(
-  a: ContentDiagnosticsFilterOptions,
-  b: ContentDiagnosticsFilterOptions,
-): boolean {
-  return (
-    areEntityTypesEqual(a.entityTypes, b.entityTypes) &&
-    a.includePersonalCollections === b.includePersonalCollections
-  );
-}
-
-export function getFilterParams(
-  filterOptions: ContentDiagnosticsFilterOptions,
-): Pick<
-  Urls.ContentDiagnosticsParams,
-  "entityTypes" | "includePersonalCollections"
-> {
-  const isAllTypes =
-    filterOptions.entityTypes.length === ALL_FILTER_TYPES.length;
-  const isDefaultPersonal =
-    filterOptions.includePersonalCollections ===
-    DEFAULT_INCLUDE_PERSONAL_COLLECTIONS;
-  return {
-    entityTypes: isAllTypes ? undefined : filterOptions.entityTypes,
-    includePersonalCollections: isDefaultPersonal
-      ? undefined
-      : filterOptions.includePersonalCollections,
-  };
-}
-
-export function getParamsWithoutDefaults({
-  page,
-  entityTypes,
-  includePersonalCollections,
-  ...params
-}: Urls.ContentDiagnosticsParams): Urls.ContentDiagnosticsParams {
-  return {
-    ...params,
-    page: page === 0 ? undefined : page,
-    entityTypes:
-      entityTypes?.length === ALL_FILTER_TYPES.length ? undefined : entityTypes,
-    includePersonalCollections:
-      includePersonalCollections === DEFAULT_INCLUDE_PERSONAL_COLLECTIONS
-        ? undefined
-        : includePersonalCollections,
-  };
-}
-
-export function getEntityTypesParam(
-  entityTypes: ContentDiagnosticsFilterType[],
-): ContentDiagnosticsFilterType[] | undefined {
-  return match(entityTypes)
-    .when(
-      (entityTypes) => entityTypes.length === ALL_FILTER_TYPES.length,
-      () => undefined,
-    )
-    .otherwise((entityTypes) => entityTypes);
-}
-
-export function getSortOptions({
-  sortColumn,
-  sortDirection,
-}: Urls.ContentDiagnosticsParams):
-  | Sorting<ContentDiagnosticsSortColumn>
-  | undefined {
-  return match({ sortColumn, sortDirection })
-    .with(
-      { sortColumn: P.nonNullable, sortDirection: P.nonNullable },
-      ({ sortColumn, sortDirection }) => ({
-        column: sortColumn,
-        direction: sortDirection,
-      }),
-    )
-    .otherwise(() => undefined);
 }

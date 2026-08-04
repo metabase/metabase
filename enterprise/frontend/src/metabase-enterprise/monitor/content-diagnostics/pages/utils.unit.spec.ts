@@ -1,6 +1,6 @@
 import type { Location } from "metabase/router";
 
-import { isEmptyParams, parseUrlParams } from "./utils";
+import { isEmptyStaleParams, parseStaleUrlParams } from "./utils";
 
 function createLocation(query: Location["query"]): Location {
   return {
@@ -14,9 +14,9 @@ function createLocation(query: Location["query"]): Location {
   };
 }
 
-describe("parseUrlParams", () => {
+describe("parseStaleUrlParams", () => {
   it("returns empty params when query string is empty", () => {
-    expect(parseUrlParams(createLocation({}))).toEqual({
+    expect(parseStaleUrlParams(createLocation({}))).toEqual({
       page: undefined,
       query: undefined,
     });
@@ -24,7 +24,7 @@ describe("parseUrlParams", () => {
 
   it("parses page and query", () => {
     expect(
-      parseUrlParams(createLocation({ page: "2", query: "sales" })),
+      parseStaleUrlParams(createLocation({ page: "2", query: "sales" })),
     ).toEqual({
       page: 2,
       query: "sales",
@@ -33,13 +33,13 @@ describe("parseUrlParams", () => {
 
   it("ignores non-numeric page values", () => {
     expect(
-      parseUrlParams(createLocation({ page: "abc" })).page,
+      parseStaleUrlParams(createLocation({ page: "abc" })).page,
     ).toBeUndefined();
   });
 
   it("parses entity-types and include-personal-collections", () => {
     expect(
-      parseUrlParams(
+      parseStaleUrlParams(
         createLocation({
           "entity-types": ["model", "transform"],
           "include-personal-collections": "false",
@@ -53,13 +53,14 @@ describe("parseUrlParams", () => {
 
   it("drops entity-types values that are not covered types", () => {
     expect(
-      parseUrlParams(createLocation({ "entity-types": ["model", "bogus"] }))
-        .entityTypes,
+      parseStaleUrlParams(
+        createLocation({ "entity-types": ["model", "bogus"] }),
+      ).entityTypes,
     ).toEqual(["model"]);
   });
 
   it("parses sort-column and sort-direction", () => {
-    const params = parseUrlParams(
+    const params = parseStaleUrlParams(
       createLocation({
         "sort-column": "last-active-at",
         "sort-direction": "desc",
@@ -70,7 +71,7 @@ describe("parseUrlParams", () => {
   });
 
   it("drops sort values that are not allowed", () => {
-    const params = parseUrlParams(
+    const params = parseStaleUrlParams(
       createLocation({ "sort-column": "collection", "sort-direction": "up" }),
     );
     expect(params.sortColumn).toBeUndefined();
@@ -78,14 +79,14 @@ describe("parseUrlParams", () => {
   });
 });
 
-describe("isEmptyParams", () => {
+describe("isEmptyStaleParams", () => {
   it("returns true for an empty query string", () => {
-    expect(isEmptyParams(createLocation({}))).toBe(true);
+    expect(isEmptyStaleParams(createLocation({}))).toBe(true);
   });
 
   it("treats default params as empty", () => {
     expect(
-      isEmptyParams(
+      isEmptyStaleParams(
         createLocation({
           page: "0",
           "entity-types": [
@@ -103,7 +104,7 @@ describe("isEmptyParams", () => {
   });
 
   it("returns false for non-default params", () => {
-    expect(isEmptyParams(createLocation({ page: "1" }))).toBe(false);
-    expect(isEmptyParams(createLocation({ query: "sales" }))).toBe(false);
+    expect(isEmptyStaleParams(createLocation({ page: "1" }))).toBe(false);
+    expect(isEmptyStaleParams(createLocation({ query: "sales" }))).toBe(false);
   });
 });

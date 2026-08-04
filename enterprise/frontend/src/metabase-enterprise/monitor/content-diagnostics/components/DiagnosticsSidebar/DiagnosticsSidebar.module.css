@@ -10,10 +10,6 @@
   white-space: normal;
 }
 
-.link {
-  word-break: break-word;
-}
-
 .section:not(:last-child) {
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }

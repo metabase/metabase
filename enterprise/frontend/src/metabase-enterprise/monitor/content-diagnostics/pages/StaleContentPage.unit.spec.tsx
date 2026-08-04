@@ -16,13 +16,13 @@ import { MonitorContent } from "metabase/monitor/components/MonitorLayout/Monito
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
-  ContentDiagnosticsFinding,
-  ContentDiagnosticsUserParams,
+  ContentDiagnosticsStaleFinding,
+  ContentDiagnosticsStaleUserParams,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
 import {
   createMockContentDiagnosticsCollection,
-  createMockContentDiagnosticsFinding,
+  createMockContentDiagnosticsStaleFinding,
   createMockContentDiagnosticsUser,
   createMockListStaleFindingsResponse,
   createMockUser,
@@ -30,13 +30,13 @@ import {
 
 import { StaleContentPage } from "./StaleContentPage";
 
-const FINDINGS: ContentDiagnosticsFinding[] = [
-  createMockContentDiagnosticsFinding({
+const FINDINGS: ContentDiagnosticsStaleFinding[] = [
+  createMockContentDiagnosticsStaleFinding({
     id: 1,
     entity_type: "card",
     entity_display_name: "Sales overview",
   }),
-  createMockContentDiagnosticsFinding({
+  createMockContentDiagnosticsStaleFinding({
     id: 2,
     entity_type: "dashboard",
     entity_display_name: "Marketing funnel",
@@ -44,10 +44,10 @@ const FINDINGS: ContentDiagnosticsFinding[] = [
 ];
 
 type SetupOpts = {
-  findings?: ContentDiagnosticsFinding[];
+  findings?: ContentDiagnosticsStaleFinding[];
   total?: number;
-  urlParams?: Urls.ContentDiagnosticsParams;
-  lastUsedParams?: ContentDiagnosticsUserParams;
+  urlParams?: Urls.StaleContentParams;
+  lastUsedParams?: ContentDiagnosticsStaleUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListStaleFindingsResponse;
 };
@@ -139,7 +139,7 @@ describe("StaleContentPage", () => {
   });
 
   it("renders selected stale finding details in the Monitor sidebar outlet", async () => {
-    const finding = createMockContentDiagnosticsFinding({
+    const finding = createMockContentDiagnosticsStaleFinding({
       entity_id: 42,
       entity_display_name: "Revenue by category",
       details: {
@@ -216,7 +216,7 @@ describe("StaleContentPage", () => {
   });
 
   it("refetches the stale endpoint with the next offset and renders the next page", async () => {
-    const secondPageFinding = createMockContentDiagnosticsFinding({
+    const secondPageFinding = createMockContentDiagnosticsStaleFinding({
       id: 3,
       entity_type: "card",
       entity_display_name: "Second page question",

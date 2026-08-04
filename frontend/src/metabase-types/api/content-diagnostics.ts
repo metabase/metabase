@@ -28,20 +28,20 @@ export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
 export type ContentDiagnosticsFilterType =
   (typeof CONTENT_DIAGNOSTICS_FILTER_TYPES)[number];
 
-export const CONTENT_DIAGNOSTICS_SORT_COLUMNS = [
+export const CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS = [
   "name",
   "entity-type",
   "created-by",
   "created-at",
   "last-active-at",
 ] as const;
-export type ContentDiagnosticsSortColumn =
-  (typeof CONTENT_DIAGNOSTICS_SORT_COLUMNS)[number];
+export type ContentDiagnosticsStaleSortColumn =
+  (typeof CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS)[number];
 
-export type ContentDiagnosticsUserParams = {
+export type ContentDiagnosticsStaleUserParams = {
   entity_types?: ContentDiagnosticsFilterType[];
   include_personal_collections?: boolean;
-  sort_column?: ContentDiagnosticsSortColumn;
+  sort_column?: ContentDiagnosticsStaleSortColumn;
   sort_direction?: SortDirection;
 };
 
@@ -63,16 +63,15 @@ export type ContentDiagnosticsCollection = {
   effective_ancestors: Array<{ id: CollectionId; name: string }>;
 };
 
-export type ContentDiagnosticsFindingDetails = {
+export type ContentDiagnosticsBaseFindingDetails = {
   collection: ContentDiagnosticsCollection | null;
   description: string | null;
   owner: ContentDiagnosticsUser | null;
   creator: ContentDiagnosticsUser | null;
   view_count?: number;
-  threshold_days?: number;
 };
 
-export type ContentDiagnosticsFinding = {
+export type ContentDiagnosticsBaseFinding = {
   id: number;
   finding_type: ContentDiagnosticsFindingType;
   entity_type: ContentDiagnosticsEntityType;
@@ -81,8 +80,18 @@ export type ContentDiagnosticsFinding = {
   detected_at: string;
   entity_display_name: string | null;
   created_at: string | null;
+  details: ContentDiagnosticsBaseFindingDetails;
+};
+
+export type ContentDiagnosticsStaleFindingDetails =
+  ContentDiagnosticsBaseFindingDetails & {
+    threshold_days?: number;
+  };
+
+export type ContentDiagnosticsStaleFinding = ContentDiagnosticsBaseFinding & {
+  finding_type: "stale";
   last_active_at: string | null;
-  details: ContentDiagnosticsFindingDetails;
+  details: ContentDiagnosticsStaleFindingDetails;
 };
 
 export type ContentDiagnosticsScanResult = {
@@ -96,12 +105,12 @@ export type ListStaleFindingsRequest = {
   query?: string;
   "entity-types"?: ContentDiagnosticsFilterType[];
   "include-personal-collections"?: boolean;
-  "sort-column"?: ContentDiagnosticsSortColumn;
+  "sort-column"?: ContentDiagnosticsStaleSortColumn;
   "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListStaleFindingsResponse = {
-  data: ContentDiagnosticsFinding[];
+  data: ContentDiagnosticsStaleFinding[];
   total: number;
   limit: number | null;
   offset: number | null;

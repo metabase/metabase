@@ -2,43 +2,37 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { type ChangeEvent, type ReactNode, memo, useState } from "react";
 import { t } from "ttag";
 
-import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
-import { DiagnosticsFilterPicker } from "../DiagnosticsFilterPicker";
-import type { ContentDiagnosticsFilterOptions } from "../types";
+import { StaleContentFilterPicker } from "../StaleContentFilterPicker";
 import {
-  areFilterOptionsEqual,
-  getAvailableFilterTypes,
-  getDefaultFilterOptions,
-} from "../utils";
+  areStaleFilterOptionsEqual,
+  getStaleDefaultFilterOptions,
+} from "../stale-utils";
+import type { StaleContentFilterOptions } from "../types";
 
-type DiagnosticsFilterBarProps = {
+type StaleContentFilterBarProps = {
   query?: string;
-  filterOptions: ContentDiagnosticsFilterOptions;
-  isFetching: boolean;
+  filterOptions: StaleContentFilterOptions;
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
-  onFilterOptionsChange: (
-    filterOptions: ContentDiagnosticsFilterOptions,
-  ) => void;
+  onFilterOptionsChange: (filterOptions: StaleContentFilterOptions) => void;
   actions?: ReactNode;
 };
 
-export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
+export const StaleContentFilterBar = memo(function StaleContentFilterBar({
   query,
   filterOptions,
-  isFetching,
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
   actions,
-}: DiagnosticsFilterBarProps) {
+}: StaleContentFilterBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
-  const hasLoader = isFetching && !isLoading;
-  const hasDefaultFilterOptions = areFilterOptionsEqual(
+  const hasDefaultFilterOptions = areStaleFilterOptionsEqual(
     filterOptions,
-    getDefaultFilterOptions(),
+    getStaleDefaultFilterOptions(),
   );
 
   const handleSearchDebounce = useDebouncedCallback(
@@ -62,13 +56,11 @@ export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
         placeholder={t`Search…`}
         flex={1}
         leftSection={<FixedSizeIcon name="search" />}
-        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         data-testid="content-diagnostics-search-input"
         onChange={handleSearchChange}
       />
-      <DiagnosticsFilterPicker
+      <StaleContentFilterPicker
         filterOptions={filterOptions}
-        availableTypes={getAvailableFilterTypes()}
         isDisabled={isLoading}
         hasDefaultOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={onFilterOptionsChange}

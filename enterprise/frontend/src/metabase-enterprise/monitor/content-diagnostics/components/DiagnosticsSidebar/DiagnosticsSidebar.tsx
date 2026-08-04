@@ -15,7 +15,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type { ContentDiagnosticsFinding } from "metabase-types/api";
+import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import {
   getBreadcrumbLinks,
@@ -24,23 +24,29 @@ import {
   getEntityTypeLabel,
   getEntityUrl,
   getEntityViewLabel,
-  getLastActiveLabel,
   getUserName,
 } from "../utils";
 
-import S from "./ContentDiagnosticsSidebar.module.css";
+import S from "./DiagnosticsSidebar.module.css";
 
 const TOOLTIP_OPEN_DELAY_MS = 300;
 
-type ContentDiagnosticsSidebarProps = {
-  finding: ContentDiagnosticsFinding;
+export type SidebarExtraInfo = {
+  label: string;
+  children: ReactNode;
+};
+
+type DiagnosticsSidebarProps<T extends ContentDiagnosticsBaseFinding> = {
+  finding: T;
+  extraInfo: SidebarExtraInfo;
   onClose: () => void;
 };
 
-export function ContentDiagnosticsSidebar({
+export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
   finding,
+  extraInfo,
   onClose,
-}: ContentDiagnosticsSidebarProps) {
+}: DiagnosticsSidebarProps<T>) {
   const entityName = getEntityName(finding);
 
   return (
@@ -55,13 +61,13 @@ export function ContentDiagnosticsSidebar({
     >
       <SidebarHeader finding={finding} onClose={onClose} />
       <LocationSection finding={finding} />
-      <InfoSection finding={finding} />
+      <InfoSection finding={finding} extraInfo={extraInfo} />
     </Stack>
   );
 }
 
 type SidebarHeaderProps = {
-  finding: ContentDiagnosticsFinding;
+  finding: ContentDiagnosticsBaseFinding;
   onClose: () => void;
 };
 
@@ -103,7 +109,7 @@ function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
 }
 
 type LocationSectionProps = {
-  finding: ContentDiagnosticsFinding;
+  finding: ContentDiagnosticsBaseFinding;
 };
 
 function LocationSection({ finding }: LocationSectionProps) {
@@ -136,12 +142,13 @@ function LocationSection({ finding }: LocationSectionProps) {
 }
 
 type InfoSectionProps = {
-  finding: ContentDiagnosticsFinding;
+  finding: ContentDiagnosticsBaseFinding;
+  extraInfo: SidebarExtraInfo;
 };
 
-function InfoSection({ finding }: InfoSectionProps) {
+function InfoSection({ finding, extraInfo }: InfoSectionProps) {
   const { description, owner, creator, view_count } = finding.details;
-  const { created_at, last_active_at } = finding;
+  const { created_at } = finding;
 
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
@@ -172,18 +179,14 @@ function InfoSection({ finding }: InfoSectionProps) {
           <Box c="text-secondary">{t`Unknown`}</Box>
         )}
       </InfoSectionItem>
-      <InfoSectionItem label={getLastActiveLabel(finding.entity_type)}>
-        {last_active_at != null ? (
-          <DateTime value={last_active_at} unit="day" />
-        ) : (
-          <Box c="text-secondary">{t`Never`}</Box>
-        )}
-      </InfoSectionItem>
       {view_count != null && (
         <InfoSectionItem label={t`Views`}>
           <Box className={S.wrap}>{view_count}</Box>
         </InfoSectionItem>
       )}
+      <InfoSectionItem label={extraInfo.label}>
+        {extraInfo.children}
+      </InfoSectionItem>
     </Card>
   );
 }

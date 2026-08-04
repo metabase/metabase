@@ -1,6 +1,7 @@
 import type {
   ContentDiagnosticsCollection,
-  ContentDiagnosticsFinding,
+  ContentDiagnosticsStaleFinding,
+  ContentDiagnosticsStaleFindingDetails,
   ContentDiagnosticsUser,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
@@ -28,9 +29,11 @@ export function createMockContentDiagnosticsCollection(
   };
 }
 
-export function createMockContentDiagnosticsFinding(
-  opts?: Partial<ContentDiagnosticsFinding>,
-): ContentDiagnosticsFinding {
+export function createMockContentDiagnosticsStaleFinding(
+  opts?: Partial<Omit<ContentDiagnosticsStaleFinding, "details">> & {
+    details?: Partial<ContentDiagnosticsStaleFindingDetails>;
+  },
+): ContentDiagnosticsStaleFinding {
   return {
     id: 1,
     finding_type: "stale",
@@ -57,7 +60,7 @@ export function createMockListStaleFindingsResponse(
   opts?: Partial<ListStaleFindingsResponse>,
 ): ListStaleFindingsResponse {
   return {
-    data: [createMockContentDiagnosticsFinding()],
+    data: [createMockContentDiagnosticsStaleFinding()],
     total: 1,
     limit: 25,
     offset: 0,

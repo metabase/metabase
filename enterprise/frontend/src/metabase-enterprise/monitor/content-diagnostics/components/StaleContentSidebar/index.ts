@@ -1,2 +1,1 @@
-export * from "./StaleContent";
 export * from "./StaleContentSidebar";
