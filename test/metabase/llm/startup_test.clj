@@ -12,7 +12,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- do-with-entitlements
+(defn- do-with-entitlements!
   [legacy-result managed-result configured? thunk]
   (mt/with-temporary-setting-values [has-user-setup true]
     (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature?
@@ -25,7 +25,7 @@
 
 (defmacro ^:private with-entitlements
   [legacy-result managed-result configured? & body]
-  `(do-with-entitlements ~legacy-result ~managed-result ~configured? (fn [] ~@body)))
+  `(do-with-entitlements! ~legacy-result ~managed-result ~configured? (fn [] ~@body)))
 
 (defn- do-with-llm-proxy!
   [url thunk]
