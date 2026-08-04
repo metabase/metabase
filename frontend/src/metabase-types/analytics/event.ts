@@ -91,5 +91,9 @@ export type MonitorSectionClickedEvent = ValidateEvent<{
     | "tasks"
     | "jobs"
     | "logs"
-    | "model-caching";
+    | "model-caching"
+    | "ai-auditing-usage-stats"
+    | "ai-auditing-conversations"
+    | "ai-auditing-mcp"
+    | "ai-auditing-cli";
 }>;

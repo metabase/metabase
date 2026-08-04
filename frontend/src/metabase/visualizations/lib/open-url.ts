@@ -4,8 +4,8 @@ import {
   type LocationDescriptor,
   type LocationDescriptorObject,
   queryToSearch,
-  searchToQuery,
 } from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
 import {
   clickLink,
   getPathnameWithoutSubPath,
@@ -171,7 +171,7 @@ function getLocation(url: string): LocationDescriptor {
       // custom destination is a hand-written URL whose params land in whatever
       // order the author typed them, and the resulting URL is asserted against
       // with the keys sorted.
-      search: queryToSearch(searchToQuery(search)),
+      search: queryToSearch(parseSearchQuery(search)),
       hash,
     };
   } catch {

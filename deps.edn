@@ -255,7 +255,7 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2026.04.15"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.07.24"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
@@ -267,7 +267,7 @@
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
-    io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
+    io.github.metabase/hawk      {:mvn/version "1.0.18"}                    ; test runner
     io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; matches sdk impl (clj-otel-sdk 0.2.10 → 1.54.1); api is separately pinned to 1.62.0
     io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
     ;; Native postgres binaries for every OS/arch we're likely to run on in
@@ -290,7 +290,7 @@
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
+    rewrite-clj/rewrite-clj      {:mvn/version "1.2.54"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
@@ -474,7 +474,7 @@
     cider/piggieback                   {:mvn/version "0.6.1"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:mvn/version "1.0.13"}
+    io.github.metabase/hawk            {:mvn/version "1.0.18"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     org.clojure/clojurescript          {:mvn/version "1.12.134"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
@@ -525,7 +525,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2026.04.15"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.07.24"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}

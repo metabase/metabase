@@ -30,7 +30,7 @@
 (set! *warn-on-reflection* true)
 
 (System/setProperty "clickhouse.jdbc.v2" "true")
-(driver/register! :clickhouse :parent #{:sql-mbql5 :sql-jdbc})
+(driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
@@ -60,6 +60,7 @@
                               :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true

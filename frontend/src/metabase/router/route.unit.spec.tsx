@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { Outlet, Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Outlet, useRoute } from "./Outlet";
-import { Route } from "./route";
+import { useRoutePathname } from "./use-route-leave-blocker";
 
 const Parent = () => (
   <div>
@@ -90,17 +90,16 @@ describe("router/Route element", () => {
 });
 
 function RoutePathProbe({ label }: { label: string }) {
-  // The matched route is a v3 route config; read its `path` for the assertion.
-  const route = useRoute() as { path?: string } | null;
+  const pathname = useRoutePathname();
   return (
     <div>
-      <span>{`${label}:${route?.path ?? "none"}`}</span>
+      <span>{`${label}:${pathname ?? "none"}`}</span>
       <Outlet />
     </div>
   );
 }
 
-describe("router/useRoute", () => {
+describe("router/useRoutePathname", () => {
   function setupNested(initialRoute: string) {
     return renderWithProviders(
       <Route path="/" element={<RoutePathProbe label="parent" />}>
@@ -110,12 +109,12 @@ describe("router/useRoute", () => {
     );
   }
 
-  it("exposes the matched route to an `element` route", () => {
+  it("exposes the matched pathname to an `element` route", () => {
     setupNested("/child");
-    expect(screen.getByText("child:child")).toBeInTheDocument();
+    expect(screen.getByText("child:/child")).toBeInTheDocument();
   });
 
-  it("gives each route its own route, not the deepest match", () => {
+  it("gives each route its own pathname, not the deepest match", () => {
     setupNested("/child");
     // The parent still sees its own route even though a deeper child matched.
     expect(screen.getByText("parent:/")).toBeInTheDocument();
@@ -123,7 +122,7 @@ describe("router/useRoute", () => {
 });
 
 describe("router/Route element={null}", () => {
-  it("renders nothing for an explicit null, matching v7 (not v3's render-children)", async () => {
+  it("falls back to an <Outlet/>, so a child of a null-element route renders", async () => {
     renderWithProviders(
       <Route path="/" element={<ParentPage />}>
         <Route path="empty" element={null}>
@@ -133,9 +132,23 @@ describe("router/Route element={null}", () => {
       { withRouter: true, initialRoute: "/empty" },
     );
 
-    // The `empty` route matches, so the parent chrome renders. But `element={null}`
-    // renders nothing and provides no <Outlet/>, so its own index child stays
-    // hidden. With v3's render-children default the child would show instead.
+    // v7 reads a nullish `element` as "this route supplies none" and renders an
+    // <Outlet/> in its place, so the index child below it shows. A route that
+    // means to render nothing has to say so with an empty fragment.
+    expect(await screen.findByText("parent chrome")).toBeInTheDocument();
+    expect(await screen.findByText("leaf content")).toBeInTheDocument();
+  });
+
+  it("renders nothing for an empty fragment, and provides no outlet", async () => {
+    renderWithProviders(
+      <Route path="/" element={<ParentPage />}>
+        <Route path="empty" element={<></>}>
+          <Route index element={<LeafPage />} />
+        </Route>
+      </Route>,
+      { withRouter: true, initialRoute: "/empty" },
+    );
+
     expect(await screen.findByText("parent chrome")).toBeInTheDocument();
     expect(screen.queryByText("leaf content")).not.toBeInTheDocument();
   });

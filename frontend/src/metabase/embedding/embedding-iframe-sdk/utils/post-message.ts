@@ -26,7 +26,11 @@ export function listenForEajsMessages<Source extends EajsMessageSource>(
   const messageHandler = (event: MessageEvent<EajsMessageBySource[Source]>) => {
     switch (options.messageSource) {
       case "embed.js":
-        if (!isWithinIframe() || event.source !== window.parent) {
+        if (
+          !isWithinIframe() ||
+          !event.isTrusted ||
+          event.source !== window.parent
+        ) {
           return;
         }
         break;

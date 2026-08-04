@@ -1,6 +1,8 @@
 # @metabase/custom-viz
 
-CLI and type definitions for creating custom visualizations for Metabase.
+API and CLI for creating custom visualizations for Metabase.
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Getting Started
 

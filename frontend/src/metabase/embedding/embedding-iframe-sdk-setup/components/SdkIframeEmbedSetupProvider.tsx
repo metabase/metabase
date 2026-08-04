@@ -27,6 +27,7 @@ import {
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
 import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+import { getResourceCustomVisualizations } from "../utils/get-resource-custom-visualizations";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -113,6 +114,15 @@ export const SdkIframeEmbedSetupProvider = ({
     questionId: settings.questionId,
   });
 
+  const embedSettings = useMemo(() => {
+    const allowedCustomVisualizations =
+      getResourceCustomVisualizations(resource);
+
+    return allowedCustomVisualizations.length > 0
+      ? { ...settings, allowedCustomVisualizations }
+      : settings;
+  }, [resource, settings]);
+
   const { availableParameters, initialAvailableParameters } =
     useAvailableParameters({
       experience,
@@ -196,7 +206,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoading,
     isFetching,
     isRecentsLoading,
-    settings,
+    settings: embedSettings,
     defaultSettings,
     replaceSettings,
     updateSettings,

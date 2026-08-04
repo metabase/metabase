@@ -1,11 +1,11 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { getActionErrorMessage } from "metabase/actions/utils";
 import { subscriptionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
@@ -55,7 +55,9 @@ export const saveEditingPulse = createThunkAction(
           ).unwrap();
         }
       } catch (error) {
-        const errorMessage = getActionErrorMessage(error);
+        const errorMessage =
+          getResponseErrorMessage(error) ??
+          t`Something went wrong while saving your subscription`;
 
         dispatch(
           addUndo({

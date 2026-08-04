@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
-
-import { Route } from "./route";
-import { useSearchParams } from "./use-search-params";
+import { Route, useSearchParams } from "metabase/router";
 
 function SearchParamsProbe() {
   const [searchParams, setSearchParams] = useSearchParams();

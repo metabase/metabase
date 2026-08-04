@@ -37,7 +37,9 @@
            :default        (boolean (:default dim))}
     (:status dim)  (assoc :status (:status dim))
     (:group dim)   (assoc :group (->api-group (:group dim)))
-    (:sources dim) (assoc :sources (mapv ->api-source (:sources dim)))))
+    (:sources dim) (assoc :sources (mapv ->api-source (:sources dim)))
+    (:default-temporal-unit dim) (assoc :default_temporal_unit
+                                        (u/qualified-name (:default-temporal-unit dim)))))
 
 (defn ->api-addable-dimension
   "Convert a computed dimension/mapping pair to the API shape."

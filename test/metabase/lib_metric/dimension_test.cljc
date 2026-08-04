@@ -127,7 +127,8 @@
 (deftest ^:parallel reconcile-matched-dimensions-preserve-modifications-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
         persisted-dims [{:id uuid-1 :name "col1" :display-name "Custom Name"
-                         :semantic-type :type/Category :status :status/active}]
+                         :semantic-type :type/Category :default-temporal-unit :week
+                         :status :status/active}]
         persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
@@ -135,6 +136,7 @@
         dim (first dimensions)]
     (is (= "Custom Name" (:display-name dim)))
     (is (= :type/Category (:semantic-type dim)))
+    (is (= :week (:default-temporal-unit dim)))
     (is (= :status/active (:status dim)))))
 
 (deftest ^:parallel reconcile-matching-ignores-lib-uuid-test
@@ -258,6 +260,11 @@
   (is (lib-metric.dimension/dimensions-changed?
        [{:id uuid-1 :name "col1" :status :status/active}]
        [{:id uuid-1 :name "col1" :status :status/orphaned}])))
+
+(deftest ^:parallel dimensions-changed?-true-when-default-temporal-unit-changes-test
+  (is (lib-metric.dimension/dimensions-changed?
+       [{:id uuid-1 :name "col1" :status :status/active :default-temporal-unit :month}]
+       [{:id uuid-1 :name "col1" :status :status/active :default-temporal-unit :week}])))
 
 (deftest ^:parallel dimensions-changed?-false-when-equal-test
   (is (not (lib-metric.dimension/dimensions-changed?
@@ -484,10 +491,12 @@
                       :name             "category"
                       :status           "status/active"
                       :has-field-values "search"
+                      :default-temporal-unit "week"
                       :sources          [{:type "field" :field-id 42}]}
           normalized (lib-metric.dimension/normalize-persisted-dimension raw)]
       (is (= :status/active (:status normalized)))
       (is (= :search (:has-field-values normalized)))
+      (is (= :week (:default-temporal-unit normalized)))
       (is (= :field (get-in normalized [:sources 0 :type])))))
   (testing "leaves already-keywordized values unchanged"
     (let [dim        {:id "dim-2" :name "col" :status :status/active :has-field-values :list}

@@ -116,7 +116,11 @@ block(getter(Document.prototype, "URL"), "Document.get URL");
 block(getter(Document.prototype, "documentURI"), "Document.get documentURI");
 block(getter(Node.prototype, "baseURI"), "Node.get baseURI");
 
-// Storage exfiltration
+// Storage access. These getters aren't enough on their own — Near-Membrane reads
+// the global window's OWN accessors directly, bypassing the distortion, so gating
+// the getters doesn't stop a Window from yielding a live Storage. The instance is
+// swapped for a throwing decoy instead — see `HOST_STORAGE_CTORS` in
+// `distortions.ts`.
 block(getter(Window.prototype, "localStorage"), "Window.get localStorage");
 block(getter(Window.prototype, "sessionStorage"), "Window.get sessionStorage");
 block(getter(Window.prototype, "indexedDB"), "Window.get indexedDB");

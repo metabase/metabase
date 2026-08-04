@@ -1,8 +1,7 @@
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Outlet, Route } from "metabase/router";
 
-import { Outlet } from "./Outlet";
 import { redirect } from "./redirect";
-import { Route } from "./route";
 
 const Parent = () => (
   <div>
@@ -62,10 +61,10 @@ describe("router/redirect", () => {
     );
   });
 
-  it("resolves a relative target against the parent of the `from` match", async () => {
+  it("resolves a `..` target against the parent route", async () => {
     const history = mountRoutes(
       <Route path="collection" element={<Parent />}>
-        <Route path="archive" element={redirect("trash")} />
+        <Route path="archive" element={redirect("../trash")} />
       </Route>,
       "/collection/archive",
     );
@@ -78,7 +77,10 @@ describe("router/redirect", () => {
   it("interpolates params into a relative target", async () => {
     const history = mountRoutes(
       <Route path="browse" element={<Parent />}>
-        <Route path=":dbId/:slug" element={redirect("databases/:dbId/:slug")} />
+        <Route
+          path=":dbId/:slug"
+          element={redirect("../databases/:dbId/:slug")}
+        />
       </Route>,
       "/browse/5/orders",
     );
@@ -90,9 +92,9 @@ describe("router/redirect", () => {
     );
   });
 
-  it("resolves a relative target under a multi-segment `from`", async () => {
+  it("steps a whole route per `..`, not a single segment", async () => {
     const from = "table/:tableId/field/:fieldId/:section";
-    const to = "table/:tableId/field/:fieldId";
+    const to = "../table/:tableId/field/:fieldId";
     const history = mountRoutes(
       <Route path="model" element={<Parent />}>
         <Route path={from} element={redirect(to)} />
@@ -107,9 +109,9 @@ describe("router/redirect", () => {
     );
   });
 
-  it("resolves against the route tree, re-encoding params like v3", async () => {
+  it("re-encodes an interpolated param", async () => {
     const from = "database/:databaseId/schema/:schemaId/table/:tableId";
-    const to = `${from}/details`;
+    const to = `../${from}/details`;
     const history = mountRoutes(
       <Route path="data-studio/data" element={<Parent />}>
         <Route path={from} element={redirect(to)} />
@@ -118,8 +120,8 @@ describe("router/redirect", () => {
       "/data-studio/data/database/1/schema/1%3APUBLIC/table/2",
     );
 
-    // v3's formatPattern re-encodes the interpolated param, so the target keeps
-    // the encoded schema segment rather than doubling the path.
+    // `useParams` hands back a decoded param, so `generatePath` re-encodes it and
+    // the target keeps the encoded schema segment rather than doubling the path.
     await waitFor(() =>
       expect(history?.getCurrentLocation().pathname).toBe(
         "/data-studio/data/database/1/schema/1%3APUBLIC/table/2/details",
