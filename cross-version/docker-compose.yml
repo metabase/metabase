@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15
+    image: metabase/qa-databases:postgres-sample-15
     environment:
       POSTGRES_USER: metabase
       POSTGRES_PASSWORD: metabase
@@ -12,7 +12,6 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init:/docker-entrypoint-initdb.d:ro
 
   metabase:
     image: ${METABASE_IMAGE:-metabase/metabase:latest}
