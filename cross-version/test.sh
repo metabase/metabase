@@ -258,12 +258,12 @@ migrate_down_step() {
     return 1
   fi
 
-  if echo "$output" | grep -q "ERROR.*liquibase\|RollbackFailedException\|Command failed with exception"; then
+  if grep -q "ERROR.*liquibase\|RollbackFailedException\|Command failed with exception" <<<"$output"; then
     error "migrate down encountered errors (check logs above)"
     return 1
   fi
 
-  if echo "$output" | grep -q "not rolled back"; then
+  if grep -q "not rolled back" <<<"$output"; then
     error "migrate down had changesets that were not rolled back (check logs above)"
     return 1
   fi
@@ -328,7 +328,7 @@ check_downgrade_refused() {
     # Check container logs for downgrade error
     local logs=$(docker compose logs metabase 2>&1 || true)
 
-    if echo "$logs" | grep -qi "migrate.*down\|downgrade\|database.*newer"; then
+    if grep -qi "migrate.*down\|downgrade\|database.*newer" <<<"$logs"; then
       log "Metabase correctly detected downgrade scenario"
       return 0
     fi
