@@ -2080,7 +2080,8 @@
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
-                          [:not= :type trash-collection-type]]]
+                          [:not= :type trash-collection-type]]
+        not-root-clause  [:not :is_root]]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
                            {:where
@@ -2090,6 +2091,7 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
+                             not-root-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order})
@@ -2099,6 +2101,7 @@
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
+                             not-root-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
@@ -2189,13 +2192,12 @@
           :description
           :entity_id
           :is_remote_synced
-          :is_root
           :is_sample
           :name
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:is_root]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2205,7 +2207,6 @@
                                                :import parent-id->location-path}))
                :personal_owner_id (serdes/fk :model/User)}
    :defaults {:archived         false
-              :is_root          false
               :is_sample        false
               :is_remote_synced false}})
 

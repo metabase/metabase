@@ -461,11 +461,14 @@
     field-id))
 
 (def ^:private collection-fk
-  "Every transform now names a real collection, the Transforms root included, so `collection_id` exports as an ordinary
-  reference. Only the import side is special: exports taken before the root existed carry no collection at all, and
-  those transforms belong in the destination's root."
+  "The Transforms root is a per-instance row created by a migration rather than exportable content, so a transform
+  living in it travels with no collection at all and is re-rooted against the destination's own root on import. That
+  is also the shape of every export taken before the root existed, so those keep importing unchanged."
   (merge (serdes/fk :model/Collection)
-         {:import (fn [collection-ref]
+         {:export (fn [collection-id]
+                    (when-not (= collection-id (collection/transforms-root-collection-id))
+                      (serdes/*export-fk* collection-id :model/Collection)))
+          :import (fn [collection-ref]
                     (if collection-ref
                       (serdes/*import-fk* collection-ref :model/Collection)
                       (collection/transforms-root-collection-id)))}))

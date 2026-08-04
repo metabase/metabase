@@ -53,12 +53,18 @@ const mockTemplateTags = Lib.templateTags as jest.MockedFunction<
   typeof Lib.templateTags
 >;
 
-const ROOT_ID = MOCK_TRANSFORMS_ROOT_COLLECTION_ID;
+const rootCollection = () =>
+  createMockCollection({
+    id: MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
+    name: "Transforms",
+    namespace: "transforms",
+    is_root: true,
+  });
 
 describe("buildTreeData", () => {
   it("should return empty array when no collections or transforms", () => {
-    expect(buildTreeData(undefined, undefined, ROOT_ID)).toEqual([]);
-    expect(buildTreeData([], [], ROOT_ID)).toEqual([]);
+    expect(buildTreeData(undefined, undefined)).toEqual([]);
+    expect(buildTreeData([], [])).toEqual([]);
   });
 
   it("should include owner data in transform nodes", () => {
@@ -75,7 +81,7 @@ describe("buildTreeData", () => {
       owner,
     });
 
-    const result = buildTreeData([], [transform], ROOT_ID);
+    const result = buildTreeData([rootCollection()], [transform]);
 
     expect(result).toHaveLength(1);
     expect(result[0].owner).toEqual(owner);
@@ -90,7 +96,7 @@ describe("buildTreeData", () => {
       owner: createMockTransformOwner({ email: "external@example.com" }),
     });
 
-    const result = buildTreeData([], [transform], ROOT_ID);
+    const result = buildTreeData([rootCollection()], [transform]);
 
     expect(result).toHaveLength(1);
     expect(result[0].owner).toMatchObject({ email: "external@example.com" });
@@ -105,7 +111,7 @@ describe("buildTreeData", () => {
       owner_email: undefined,
     });
 
-    const result = buildTreeData([], [transform], ROOT_ID);
+    const result = buildTreeData([rootCollection()], [transform]);
 
     expect(result).toHaveLength(1);
     expect(result[0].owner).toBeUndefined();
@@ -140,7 +146,7 @@ describe("buildTreeData", () => {
       }),
     ];
 
-    const result = buildTreeData([], transforms, ROOT_ID);
+    const result = buildTreeData([rootCollection()], transforms);
 
     expect(result).toHaveLength(3);
     expect(result[0].owner).toEqual(userOwner);
@@ -166,7 +172,7 @@ describe("getDescendantCollectionIds", () => {
       }),
     ];
 
-    const [parentNode] = buildTreeData(collections, [], ROOT_ID);
+    const [parentNode] = buildTreeData(collections, []);
 
     expect(getDescendantCollectionIds(parentNode)).toEqual(new Set([1, 2, 3]));
   });
@@ -179,7 +185,7 @@ describe("getDescendantCollectionIds", () => {
       createMockTransform({ id: 99, name: "T", collection_id: 10 }),
     ];
 
-    const [folderNode] = buildTreeData(collections, transforms, ROOT_ID);
+    const [folderNode] = buildTreeData(collections, transforms);
 
     expect(getDescendantCollectionIds(folderNode)).toEqual(new Set([10]));
   });

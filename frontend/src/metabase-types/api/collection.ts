@@ -74,6 +74,7 @@ export interface Collection {
   personal_owner_id?: UserId;
   is_personal?: boolean;
   is_sample?: boolean; // true if the collection part of the sample content
+  is_root?: boolean; // true for the collection backing a namespace's top level
   is_library_root?: boolean;
 
   location: string | null;

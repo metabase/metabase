@@ -215,8 +215,8 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            ;; +1 for the Trash collection, +1 for the Transforms root collection
-            (is (= 111 (-> @entities (get "Collection") count))))
+            ;; +1 for the Trash collection
+            (is (= 110 (-> @entities (get "Collection") count))))
           (testing "storage"
             (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"

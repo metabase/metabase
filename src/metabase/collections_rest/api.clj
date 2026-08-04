@@ -108,7 +108,6 @@
                           [:not-in :type [collection/library-collection-type
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
-                       [:not :is_root]
                        [:or
                         (when (contains? namespaces nil)
                           [:= :namespace nil])
@@ -738,6 +737,7 @@
         [:or
          [:= :type nil]
          [:not= :type collection/tenant-specific-root-collection-type]]
+        [:not :is_root]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work

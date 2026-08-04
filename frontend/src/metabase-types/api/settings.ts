@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import type { CurrencyStyle } from "metabase/utils/formatting";
 
 import type { InputSettingType } from "./actions";
-import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
@@ -658,7 +657,6 @@ interface PublicSettings {
   "token-features": TokenFeatures;
   "tracing-enabled": boolean;
   "transforms-enabled": boolean;
-  "transforms-root-collection-id": CollectionId;
   "transforms-setup-complete": boolean;
   version: Version;
   "version-info-last-checked": string | null;
