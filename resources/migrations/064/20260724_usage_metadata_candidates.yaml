@@ -57,6 +57,44 @@ databaseChangeLog:
               - column: {name: total_view_count, type: int, remarks: Sum of source card views, constraints: {nullable: false}}
               - column: {name: complexity, type: int, remarks: Predicate or condition atom count, constraints: {nullable: false}}
 
+  # These indexes precede constraints that can replace MySQL's automatically generated foreign-key indexes. They are
+  # intentionally retained during partial rollback and marked as already applied when migrations run forward again.
+  - changeSet:
+      id: v64.um-candidate-run-index
+      author: codex
+      comment: Index candidate refresh ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate
+                indexName: idx_um_candidate_run
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_run
+            columns:
+              - column: {name: run_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-table-index
+      author: codex
+      comment: Index candidate table ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate
+                indexName: idx_um_candidate_table
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_table
+            columns:
+              - column: {name: table_id}
+      rollback: []
+
   - changeSet:
       id: v64.um-candidate-unique
       author: codex
@@ -112,6 +150,42 @@ databaseChangeLog:
               - column: {name: model_lineage, type: "${text.type}", remarks: JSON transparent model lineage}
 
   - changeSet:
+      id: v64.um-candidate-source-candidate-index
+      author: codex
+      comment: Index candidate source ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_source
+                indexName: idx_um_candidate_source_candidate
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_source
+            indexName: idx_um_candidate_source_candidate
+            columns:
+              - column: {name: candidate_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-source-card-index
+      author: codex
+      comment: Index candidate source Card cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_source
+                indexName: idx_um_candidate_source_card
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_source
+            indexName: idx_um_candidate_source_card
+            columns:
+              - column: {name: card_id}
+      rollback: []
+
+  - changeSet:
       id: v64.um-candidate-source-unique
       author: codex
       comment: Count each source Card once per semantic candidate
@@ -151,13 +225,56 @@ databaseChangeLog:
   - changeSet:
       id: v64.um-candidate-match-index
       author: codex
-      comment: Index candidate reconciliation lookup
+      comment: Index candidate reconciliation lookup and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_match
+                indexName: idx_um_candidate_match_candidate
       changes:
         - createIndex:
             tableName: usage_metadata_candidate_match
             indexName: idx_um_candidate_match_candidate
             columns:
               - column: {name: candidate_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-match-measure-index
+      author: codex
+      comment: Index candidate match Measure cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_match
+                indexName: idx_um_candidate_match_measure
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_match
+            indexName: idx_um_candidate_match_measure
+            columns:
+              - column: {name: measure_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-match-segment-index
+      author: codex
+      comment: Index candidate match Segment cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_match
+                indexName: idx_um_candidate_match_segment
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_match
+            indexName: idx_um_candidate_match_segment
+            columns:
+              - column: {name: segment_id}
+      rollback: []
 
   - changeSet:
       id: v64.um-candidate-dismissal
@@ -182,6 +299,24 @@ databaseChangeLog:
               - column: {name: dismissed_by, type: int, remarks: Dismissing user ID retained without a foreign key so the durable dismissal survives user deletion, constraints: {nullable: false}}
               - column: {name: reason, type: "${text.type}", remarks: Optional dismissal reason}
               - column: {name: dismissed_at, type: "${timestamp_type}", remarks: Time the candidate was dismissed, defaultValueComputed: current_timestamp, constraints: {nullable: false}}
+
+  - changeSet:
+      id: v64.um-candidate-dismissal-table-index
+      author: codex
+      comment: Index candidate dismissal table ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_dismissal
+                indexName: idx_um_candidate_dismissal_table
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_dismissal
+            indexName: idx_um_candidate_dismissal_table
+            columns:
+              - column: {name: table_id}
+      rollback: []
 
   - changeSet:
       id: v64.um-candidate-dismissal-unique
