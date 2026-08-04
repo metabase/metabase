@@ -92,9 +92,8 @@
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
       (let [user-id     api/*current-user-id*
-            session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))
-            options     {:session-key session-key
-                         :session-id  session-id}
+            options     {:ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
+                         :session-id    session-id}
             result      (mcp.resources/read-resource uri token-scopes options)]
         (case (:status result)
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")

@@ -14,7 +14,7 @@ import {
 
 interface UseMcpUserAndSettingsFetchOptions {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   store: SdkStore;
 }
 
@@ -25,7 +25,7 @@ interface UseMcpUserAndSettingsFetchResult {
 
 export function useMcpUserAndSettingsFetch({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   store,
 }: UseMcpUserAndSettingsFetchOptions): UseMcpUserAndSettingsFetchResult {
   const [isSettingsReady, setIsSettingsReady] = useState(false);
@@ -46,7 +46,7 @@ export function useMcpUserAndSettingsFetch({
         setIsSettingsReady(false);
         setFetchError(null);
 
-        if (!sessionToken) {
+        if (!uiCredential) {
           setErrorByType("auth");
           return;
         }
@@ -85,7 +85,7 @@ export function useMcpUserAndSettingsFetch({
     return () => {
       isMounted = false;
     };
-  }, [instanceUrl, sessionToken, store]);
+  }, [instanceUrl, uiCredential, store]);
 
   return { isSettingsReady, userAndSettingsFetchError: fetchError };
 }
