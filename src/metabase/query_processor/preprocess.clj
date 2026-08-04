@@ -130,9 +130,9 @@
      (fn
        ([preprocessed]
         (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
-        (if config/is-prod?
-          preprocessed
-          (lib-be/locked-query preprocessed)))
+        (if (or (config/config-bool :locked-query-map) config/is-dev?)
+          (lib-be/locked-query preprocessed)
+          preprocessed))
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
