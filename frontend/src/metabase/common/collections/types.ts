@@ -26,7 +26,7 @@ export type CollectionItemTypeFilterValue =
 export type CollectionItemTypeFilterOption = {
   value: CollectionItemTypeFilterValue;
   model: CollectionItemModel;
-  label: string | null;
+  label: string;
 };
 
 export type CollectionAuthorityLevelConfig = {

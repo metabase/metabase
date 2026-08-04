@@ -170,11 +170,16 @@ function handleCollectionItemsResponse({
 
   // When the models filter is an empty array, return all items.
   // In the API, omitting the `models` param returns all collection items.
-  const matchedItems = models.includes("no_models")
-    ? []
-    : models.length === 0
-      ? collectionItems
-      : collectionItems.filter(({ model }) => models.includes(model));
+  let matchedItems: CollectionItem[];
+  if (models.includes("no_models")) {
+    matchedItems = [];
+  } else if (models.length === 0) {
+    matchedItems = collectionItems;
+  } else {
+    matchedItems = collectionItems.filter(({ model }) =>
+      models.includes(model),
+    );
+  }
 
   const authorityMatchedItems = matchedItems.filter((item) => {
     if (item.model !== "collection" || authorityLevel == null) {
@@ -201,23 +206,25 @@ function handleCollectionItemsResponse({
     offset,
   };
 
-  return url.searchParams.get("include_available_models") === "true"
-    ? {
-        ...response,
-        available_models: Array.from(
-          new Set(collectionItems.map((item) => item.model)),
-        ),
-        available_authority_levels: Array.from(
-          new Set(
-            collectionItems
-              .filter(({ model }) => model === "collection")
-              .map(({ authority_level }) =>
-                authority_level === "official" ? "official" : "regular",
-              ),
+  if (url.searchParams.get("include_available_models") !== "true") {
+    return response;
+  }
+
+  return {
+    ...response,
+    available_models: Array.from(
+      new Set(collectionItems.map((item) => item.model)),
+    ),
+    available_authority_levels: Array.from(
+      new Set(
+        collectionItems
+          .filter(({ model }) => model === "collection")
+          .map(({ authority_level }) =>
+            authority_level === "official" ? "official" : "regular",
           ),
-        ),
-      }
-    : response;
+      ),
+    ),
+  };
 }
 
 export function setupCollectionItemsEndpoint({

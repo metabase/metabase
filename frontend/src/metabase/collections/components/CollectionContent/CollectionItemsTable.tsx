@@ -191,9 +191,14 @@ export const CollectionItemsTable = ({
 }: CollectionItemsTableProps) => {
   const [search, setSearch] = useState({ collectionId, value: "" });
   const searchText = search.collectionId === collectionId ? search.value : "";
-  const [selectedFilters, setSelectedFilters] = useState<
-    CollectionItemTypeFilterValue[] | null
-  >(null);
+  const [filterSelection, setFilterSelection] = useState<{
+    collectionId?: CollectionId;
+    value: CollectionItemTypeFilterValue[] | null;
+  }>({ collectionId, value: null });
+  const selectedFilters =
+    filterSelection.collectionId === collectionId
+      ? filterSelection.value
+      : null;
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
@@ -212,7 +217,7 @@ export const CollectionItemsTable = ({
   useEffect(() => {
     resetPage();
     setSearch({ collectionId, value: "" });
-    setSelectedFilters(null);
+    setFilterSelection({ collectionId, value: null });
   }, [collectionId, resetPage]);
 
   const handleSearchTextChange = useCallback(
@@ -225,10 +230,10 @@ export const CollectionItemsTable = ({
 
   const handleSelectedFiltersChange = useCallback(
     (nextFilters: CollectionItemTypeFilterValue[] | null) => {
-      setSelectedFilters(nextFilters);
+      setFilterSelection({ collectionId, value: nextFilters });
       setPage(0);
     },
-    [setPage],
+    [collectionId, setPage],
   );
 
   const handleUnpinnedItemsSortingChange = useCallback(

@@ -188,6 +188,7 @@ export type ListCollectionItemsRequest = {
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
+  // Metadata can include collection item types the filter UI does not support.
   available_models?: string[];
   available_authority_levels?: CollectionAuthorityLevelFilter[];
 } & PaginationResponse;

@@ -84,21 +84,30 @@ describe("official collections", () => {
           });
 
           cy.intercept(
-            "GET",
-            `/api/collection/${parentCollection.id}/items?*`,
-          ).as("getFilteredCollectionItems");
+            {
+              method: "GET",
+              pathname: `/api/collection/${parentCollection.id}/items`,
+              query: { pinned_state: "is_not_pinned" },
+            },
+            (request) => {
+              const authorityLevel = new URL(request.url).searchParams.get(
+                "authority_level",
+              );
+
+              if (authorityLevel === "official") {
+                request.alias = "getOfficialCollectionItems";
+              } else if (authorityLevel === "regular") {
+                request.alias = "getRegularCollectionItems";
+              }
+            },
+          );
           cy.visit(`/collection/${parentCollection.id}`);
-          cy.wait([
-            "@getFilteredCollectionItems",
-            "@getFilteredCollectionItems",
-          ]);
         },
       );
 
-      cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Regular child collection").should("be.visible");
-        cy.findByText("Official child collection").should("be.visible");
-      });
+      cy.findByTestId("collection-table")
+        .should("contain", "Regular child collection")
+        .and("contain", "Official child collection");
       cy.findByRole("button", { name: "Filter" }).click();
 
       H.popover().within(() => {
@@ -106,31 +115,32 @@ describe("official collections", () => {
         cy.findByLabelText("Official collections").should("be.checked");
         cy.findByLabelText("Collection").click();
       });
-      cy.wait("@getFilteredCollectionItems")
-        .its("request.url")
-        .should("include", "authority_level=official");
-      cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Official child collection").should("be.visible");
-        cy.findByText("Regular child collection").should("not.exist");
+      cy.wait("@getOfficialCollectionItems").then(({ request }) => {
+        expect(new URL(request.url).searchParams.get("authority_level")).to.eq(
+          "official",
+        );
       });
+      cy.findByTestId("collection-table")
+        .should("contain", "Official child collection")
+        .and("not.contain", "Regular child collection");
 
       H.popover().within(() => {
         cy.findByLabelText("Collection").click();
       });
-      cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Regular child collection").should("be.visible");
-        cy.findByText("Official child collection").should("be.visible");
-      });
+      cy.findByTestId("collection-table")
+        .should("contain", "Regular child collection")
+        .and("contain", "Official child collection");
       H.popover().within(() => {
         cy.findByLabelText("Official collections").click();
       });
-      cy.wait("@getFilteredCollectionItems")
-        .its("request.url")
-        .should("include", "authority_level=regular");
-      cy.findByTestId("collection-table").within(() => {
-        cy.findByText("Regular child collection").should("be.visible");
-        cy.findByText("Official child collection").should("not.exist");
+      cy.wait("@getRegularCollectionItems").then(({ request }) => {
+        expect(new URL(request.url).searchParams.get("authority_level")).to.eq(
+          "regular",
+        );
       });
+      cy.findByTestId("collection-table")
+        .should("contain", "Regular child collection")
+        .and("not.contain", "Official child collection");
     });
 
     it("displays official badge throughout the application", () => {

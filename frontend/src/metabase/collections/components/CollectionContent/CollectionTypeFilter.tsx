@@ -43,7 +43,7 @@ export function CollectionTypeFilter({
       (model) => ({
         value: model,
         model,
-        label: getTranslatedEntityName(model),
+        label: getTranslatedEntityName(model) ?? model,
       }),
     );
   const options = PLUGIN_COLLECTIONS.getCollectionItemTypeFilterOptions(
@@ -79,7 +79,6 @@ export function CollectionTypeFilter({
       <Indicator
         disabled={!isFiltering}
         size={8}
-        data-filtering={isFiltering ? "true" : "false"}
         data-testid="type-filter-indicator"
       >
         <Popover.Target>

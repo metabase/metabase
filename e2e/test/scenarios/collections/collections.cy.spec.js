@@ -1229,6 +1229,79 @@ describe("scenarios > collection items listing", () => {
     });
   });
 
+  describe("type filters", () => {
+    beforeEach(() => {
+      archiveAll();
+
+      H.createDashboard({
+        name: "Revenue dashboard",
+        collection_position: null,
+      });
+      H.createQuestion({
+        name: "Customer question",
+        collection_position: null,
+        query: TEST_QUESTION_QUERY,
+      });
+    });
+
+    it("should filter collection items by the available types", () => {
+      cy.intercept(
+        {
+          method: "GET",
+          pathname: "/api/collection/root/items",
+          query: { pinned_state: "is_not_pinned" },
+        },
+        (request) => {
+          const models = new URL(request.url).searchParams
+            .getAll("models")
+            .sort();
+
+          if (models.join(",") === "card,collection") {
+            request.alias = "getTypeFilteredCollectionItems";
+          }
+        },
+      );
+      visitRootCollection();
+
+      cy.findByRole("button", { name: "Filter" }).click();
+      H.popover().within(() => {
+        cy.findAllByRole("checkbox").should("have.length", 3);
+        cy.findByLabelText("Collection").should("be.checked");
+        cy.findByLabelText("Dashboard").should("be.checked");
+        cy.findByLabelText("Question").should("be.checked");
+        cy.findByLabelText("Model").should("not.exist");
+        cy.findByRole("button", { name: "Apply" }).should("not.exist");
+        cy.findByLabelText("Dashboard").click();
+      });
+
+      cy.wait("@getTypeFilteredCollectionItems").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.getAll("models").sort()).to.deep.equal([
+          "card",
+          "collection",
+        ]);
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+      cy.findByTestId("collection-table")
+        .should("contain", "First collection")
+        .and("contain", "Customer question")
+        .and("not.contain", "Revenue dashboard");
+      cy.findByTestId("type-filter-indicator")
+        .find('[class*="Indicator-indicator"]')
+        .should("exist");
+
+      H.popover().findByLabelText("Dashboard").click();
+
+      cy.findByTestId("collection-table")
+        .should("contain", "Revenue dashboard")
+        .and("contain", "Customer question");
+      cy.findByTestId("type-filter-indicator")
+        .find('[class*="Indicator-indicator"]')
+        .should("not.exist");
+    });
+  });
+
   describe("pagination", () => {
     const SUBCOLLECTIONS = 1;
     const ADDED_QUESTIONS = 15;

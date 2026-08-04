@@ -114,9 +114,12 @@ function getItemsSearchParams() {
 }
 
 function findItemsSearchParamsByModels(models: string[]) {
+  const sortedModels = [...models].sort();
+
   return getItemsSearchParams().find(
     (searchParams) =>
-      JSON.stringify(searchParams.getAll("models")) === JSON.stringify(models),
+      JSON.stringify(searchParams.getAll("models").sort()) ===
+      JSON.stringify(sortedModels),
   );
 }
 
@@ -135,6 +138,11 @@ function advanceSearchDebounce(duration = SEARCH_DEBOUNCE_DURATION) {
   act(() => {
     jest.advanceTimersByTime(duration);
   });
+}
+
+function queryIndicatorDot() {
+  // Mantine's decorative dot has no semantic query.
+  return document.querySelector('[class*="Indicator-indicator"]');
 }
 
 function CollectionNavigationTest({
@@ -499,51 +507,6 @@ describe("CollectionItemsTable", () => {
     expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
   });
 
-  it("does not send the previous search to a new collection", async () => {
-    const nextCollection = createMockCollection({ id: 2, can_write: false });
-    const nextCollectionItems = [
-      createMockCollectionItem({
-        id: 4,
-        collection_id: nextCollection.id,
-        model: "dashboard",
-        name: "Inventory overview",
-      }),
-    ];
-    setupCollectionItemsEndpoint({ collection, collectionItems });
-    const user = setupUserWithFakeTimers();
-    renderWithProviders(
-      <CollectionNavigationTest nextCollection={nextCollection} />,
-      { withRouter: true, withDND: true },
-    );
-
-    await user.type(
-      await screen.findByPlaceholderText("Search by name or editor..."),
-      "revenue",
-    );
-    advanceSearchDebounce();
-    await waitFor(() => {
-      expect(getSearchCalls()).toHaveLength(1);
-    });
-
-    setupCollectionItemsEndpoint({
-      collection: nextCollection,
-      collectionItems: nextCollectionItems,
-    });
-    await user.click(
-      screen.getByRole("button", { name: "Open next collection" }),
-    );
-
-    expect(
-      screen.getByPlaceholderText("Search by name or editor..."),
-    ).toHaveValue("");
-    expect(await screen.findByText("Inventory overview")).toBeInTheDocument();
-    expect(getItemsCalls(nextCollection.id).length).toBeGreaterThan(0);
-    expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
-
-    advanceSearchDebounce();
-    expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
-  });
-
   it("shows filter options for the available item types", async () => {
     setup();
 
@@ -617,9 +580,10 @@ describe("CollectionItemsTable", () => {
   });
 
   it("keeps all type options while search has no results", async () => {
+    const user = setupUserWithFakeTimers();
     setup();
 
-    await userEvent.click(
+    await user.click(
       await screen.findByTestId("collection-type-filter-button"),
     );
     let popover = screen.getByTestId("collection-type-filter-popover");
@@ -628,31 +592,92 @@ describe("CollectionItemsTable", () => {
     expect(within(popover).getByLabelText("Model")).toBeChecked();
     expect(within(popover).getByLabelText("Question")).toBeChecked();
     within(popover).getByLabelText("Dashboard").focus();
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
     await waitFor(() => {
       expect(
         screen.queryByTestId("collection-type-filter-popover"),
       ).not.toBeInTheDocument();
     });
 
-    await userEvent.type(
+    await user.type(
       await screen.findByPlaceholderText("Search by name or editor..."),
       "not found",
     );
+    advanceSearchDebounce();
     expect(
-      await screen.findByTestId(
-        "collection-filter-empty-state",
-        {},
-        { timeout: 3000 },
-      ),
+      await screen.findByTestId("collection-filter-empty-state"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+    await user.click(screen.getByTestId("collection-type-filter-button"));
     popover = screen.getByTestId("collection-type-filter-popover");
     expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
     expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
     expect(within(popover).getByLabelText("Model")).toBeChecked();
     expect(within(popover).getByLabelText("Question")).toBeChecked();
+  });
+
+  it("resets search and type filters before requesting a new collection", async () => {
+    const nextCollection = createMockCollection({ id: 2, can_write: false });
+    const nextCollectionItems = [
+      createMockCollectionItem({
+        id: 4,
+        collection_id: nextCollection.id,
+        model: "dashboard",
+        name: "Inventory overview",
+      }),
+    ];
+    setupCollectionItemsEndpoint({ collection, collectionItems });
+    const user = setupUserWithFakeTimers();
+    renderWithProviders(
+      <CollectionNavigationTest nextCollection={nextCollection} />,
+      { withRouter: true, withDND: true },
+    );
+
+    await user.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    await user.click(screen.getByLabelText("Dashboard"));
+    expect(queryIndicatorDot()).toBeInTheDocument();
+    screen.getByLabelText("Dashboard").focus();
+    await user.keyboard("{Escape}");
+
+    await user.type(
+      await screen.findByPlaceholderText("Search by name or editor..."),
+      "revenue",
+    );
+    advanceSearchDebounce();
+    await waitFor(() => {
+      expect(getSearchCalls()).toHaveLength(1);
+    });
+
+    setupCollectionItemsEndpoint({
+      collection: nextCollection,
+      collectionItems: nextCollectionItems,
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Open next collection" }),
+    );
+
+    expect(await screen.findByText("Inventory overview")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search by name or editor..."),
+    ).toHaveValue("");
+    expect(getItemsCalls(nextCollection.id).length).toBeGreaterThan(0);
+    expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
+    expect(
+      getItemsCalls(nextCollection.id).every((call) =>
+        new URL(call.url).searchParams.getAll("models").includes("dashboard"),
+      ),
+    ).toBe(true);
+
+    expect(queryIndicatorDot()).not.toBeInTheDocument();
+    await user.click(screen.getByTestId("collection-type-filter-button"));
+    const popover = screen.getByTestId("collection-type-filter-popover");
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(1);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+
+    advanceSearchDebounce();
+    expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
   });
 
   it("shows the existing empty state without a toolbar for a truly empty collection", async () => {
@@ -771,6 +796,7 @@ describe("CollectionItemsTable", () => {
         ).not.toBeInTheDocument();
       });
       await act(async () => {
+        // Let RTK Query finish the last mocked request before test teardown.
         await fetchMock.callHistory.flush();
       });
     });

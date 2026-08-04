@@ -36,6 +36,11 @@ function setup({
   return { ...view, onSelectedFiltersChange };
 }
 
+function queryIndicatorDot() {
+  // Mantine's decorative dot has no semantic query.
+  return document.querySelector('[class*="Indicator-indicator"]');
+}
+
 describe("CollectionTypeFilter", () => {
   it("renders nothing when no supported models are available", () => {
     setup({ availableModels: ["timeline", "snippet"] });
@@ -99,18 +104,12 @@ describe("CollectionTypeFilter", () => {
   it("shows the indicator only while filtering", () => {
     const { unmount } = setup();
 
-    expect(screen.getByTestId("type-filter-indicator")).toHaveAttribute(
-      "data-filtering",
-      "false",
-    );
+    expect(queryIndicatorDot()).not.toBeInTheDocument();
 
     unmount();
     setup({ selectedFilters: ["dashboard"] });
 
-    expect(screen.getByTestId("type-filter-indicator")).toHaveAttribute(
-      "data-filtering",
-      "true",
-    );
+    expect(queryIndicatorDot()).toBeInTheDocument();
   });
 
   it("keeps official collections inside the generic Collection option without the plugin", async () => {
