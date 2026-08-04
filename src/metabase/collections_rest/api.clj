@@ -346,6 +346,7 @@
 
 (api.macros/defendpoint :get "/root" :- ::Collection
   "Return the 'Root' Collection object with standard details added"
+  {:scope "data-app"}
   [_route-params
    {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
@@ -375,6 +376,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope "data-app"}
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
@@ -577,6 +579,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
+  {:scope "data-app"}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
@@ -631,6 +634,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope "data-app"}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
