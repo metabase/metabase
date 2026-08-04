@@ -39,6 +39,14 @@
   "Topics filtered out of the v_audit_log SQL view's WHERE clause."
   #{"card-read" "card-query" "dashboard-read" "dashboard-query"})
 
+(def ^:private event-derive-re
+  "Matches `(events/derive! :event/<topic> <parent>)` in an event namespace. Group 1 is the
+   topic. Group 2 is present only when the parent is a keyword — either a `::keyword`
+   grouping tag or another `:event/` topic — so its absence means the call shape drifted and
+   we would silently drop that topic. The namespace alias is optional so an alias rename
+   does not silently drop topics either."
+  #"\((?:[a-zA-Z0-9.-]+/)?derive!\s+:event/([a-z0-9-]+)(\s+:)?")
+
 (def ^:private content-card-types
   "Values from report_card.type yielded by the `type AS entity_type` UNION
    arm in the v_content SQL view."
@@ -57,13 +65,16 @@
 ;; Shared helpers
 ;; ---------------------------------------------------------------------------
 
-(defn- non-empty!
-  "Returns `coll`, or throws when empty so a moved/renamed source surfaces loudly."
+(defn- sorted-values
+  "Every extractor's output contract: a sorted, deduped, non-empty vector. Throws when
+   empty so a moved or renamed source surfaces loudly instead of silently emptying a
+   documented list. `coll` comes last so call sites can end in `(->> ... (sorted-values ...))`."
   [label coll]
-  (when (empty? coll)
-    (throw (ex-info (str "Extracted 0 " label "; source likely moved or changed shape")
-                    {:extractor label})))
-  coll)
+  (let [values (vec (sort (distinct coll)))]
+    (when (empty? values)
+      (throw (ex-info (str "Extracted 0 " label "; source likely moved or changed shape")
+                      {:extractor label})))
+    values))
 
 (defn- latest-vN-dir
   "Return the directory under `parent` with the highest numeric vN suffix."
@@ -163,45 +174,36 @@
    keyword names as sorted strings."
   [src]
   (let [content (slurp src)
-        m       (re-find #"(?s)\(mr/def\s+::context.*?\[:enum(.*?)\]\)" content)]
+        ;; Only an optional docstring may sit between `::context` and its `[:enum`, so a
+        ;; `::context` that stops being an enum throws below rather than matching some later
+        ;; definition's `[:enum` and yielding a plausible-looking wrong list.
+        m       (re-find #"(?s)\(mr/def\s+::context\s*(?:\"[^\"]*\"\s*)?\[:enum(.*?)\]\)" content)]
     (when-not m
       (throw (ex-info (str "Could not find (mr/def ::context [:enum ...]) in " src)
                       {:source src})))
     (->> (re-seq #":([a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)?)" (second m))
          (map second)
          (remove #(str/includes? % "/"))
-         distinct
-         sort
-         vec
-         (non-empty! "query sources"))))
+         (sorted-values "query sources"))))
 
 (defn- audit-log-topics
-  "Grep `(events/derive! :event/<topic> <parent>)` from the audit-log event file,
-   then apply the v_audit_log SQL view's rename and exclusion rules so the
-   list matches what users see in the analytics model.
-
-   The parent may be either a `::keyword` grouping tag or another `:event/`
-   topic, so it is matched loosely. The namespace alias on `derive!` is
-   optional so an alias rename does not silently drop topics."
+  "Grep [[event-derive-re]] over the audit-log event file, then apply the v_audit_log SQL
+   view's rename and exclusion rules so the list matches what users see in the analytics
+   model."
   [src]
-  (let [content   (slurp src)
-        matches   (re-seq #"\((?:[a-zA-Z0-9.-]+/)?derive!\s+:event/([a-z0-9-]+)\s+:" content)
-        all-forms (re-seq #"(?:[a-zA-Z0-9.-]+/)?derive!\s+:event/" content)]
-    ;; Guard against partial drift: `non-empty!` below only catches the case where the shape
-    ;; changed everywhere, not where some call sites moved to a shape we no longer match.
-    (when-not (= (count matches) (count all-forms))
-      (throw (ex-info (str "Matched " (count matches) " of " (count all-forms)
-                           " `derive!` forms with an :event/ topic; some call sites changed shape")
-                      {:source src :matched (count matches) :expected (count all-forms)})))
-    (->> matches
+  (let [forms   (re-seq event-derive-re (slurp src))
+        ;; Guard against partial drift: `sorted-values` below only catches the case where the
+        ;; shape changed everywhere, not where some call sites moved to a shape we no longer
+        ;; match and would silently drop.
+        drifted (keep #(when-not (nth % 2) (second %)) forms)]
+    (when (seq drifted)
+      (throw (ex-info (str "`derive!` parent is no longer a keyword for: " (str/join ", " drifted))
+                      {:source src :topics (vec drifted)})))
+    (->> forms
          (map second)
-         distinct
          (remove audit-topic-exclusions)
          (map #(get audit-topic-renames % %))
-         distinct
-         sort
-         vec
-         (non-empty! "audit log topics"))))
+         (sorted-values "audit log topics"))))
 
 (defn- content-entity-types
   "Pull `'X' AS entity_type` literals from the latest mysql-content.sql view,
@@ -215,10 +217,7 @@
         has-card-arm? (and (re-find #"(?i)type\s+as\s+entity_type" content)
                            (re-find #"(?i)report_card" content))]
     (->> (concat literals (when has-card-arm? content-card-types))
-         distinct
-         sort
-         vec
-         (non-empty! "content entity types"))))
+         (sorted-values "content entity types"))))
 
 (defn- assert-view-log-sql-shape!
   "Throws if the v_view_log SQL view stops using `model AS entity_type` —
@@ -229,26 +228,21 @@
       (throw (ex-info "v_view_log SQL no longer uses `model AS entity_type`. Re-derive view-log-entity-types manually."
                       {:source sql-file})))))
 
-(defn- categorical-sections [{:keys [sources]}]
+(defn- categorical-entries
+  "The fixed-value column lists, each read from its canonical source."
+  [sources]
   [{:name        "Activity log topics"
     :description "The Topic column on the [Activity log](#activity-log) model takes one of:"
-    :values-fn   #(audit-log-topics (:audit-log-events sources))}
+    :values      (audit-log-topics (:audit-log-events sources))}
    {:name        "Query log query sources"
     :description "The Query Source column on the [Query log](#query-log) model takes one of:"
-    :values-fn   #(query-sources (:query-sources sources))}
+    :values      (query-sources (:query-sources sources))}
    {:name        "Content entity types"
     :description "The Entity Type column on the [Content](#content) model takes one of:"
-    :values-fn   #(content-entity-types (:content-views sources))}
+    :values      (content-entity-types (:content-views sources))}
    {:name        "View log entity types"
     :description "The Entity Type column on the [View log](#view-log) model takes one of:"
-    :values-fn   (constantly view-log-entity-types)}])
-
-(defn- categorical-entries [sections]
-  (mapv (fn [{:keys [name description values-fn]}]
-          {:name        name
-           :description description
-           :values      (values-fn)})
-        sections))
+    :values      view-log-entity-types}])
 
 ;; ---------------------------------------------------------------------------
 ;; Markdown rendering
@@ -329,7 +323,7 @@
 ;; Entry point
 ;; ---------------------------------------------------------------------------
 
-(defn- generate! [{:keys [yaml-dir template output title sources] :as cfg}]
+(defn- generate! [{:keys [yaml-dir template output title sources]}]
   (when-not (fs/directory? yaml-dir)
     (throw (ex-info (str "YAML directory does not exist: " yaml-dir)
                     {:yaml-dir yaml-dir
@@ -338,7 +332,7 @@
   (let [yamls       (top-level-yamls yaml-dir)
         dashboards  (dashboard-entries yamls)
         models      (model-entries     yamls)
-        categorical (categorical-entries (categorical-sections cfg))
+        categorical (categorical-entries sources)
         intro       (intro-markdown (slurp template) title)
         content     (document-markdown
                      {:intro       intro
