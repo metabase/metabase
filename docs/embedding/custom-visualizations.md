@@ -54,7 +54,7 @@ Any question that uses a custom visualization that isn't on the allowlist will f
 
 ## Custom visualizations don't work in guest embeds
 
-Custom visualizations only work when Metabase knows who's viewing the embed, so you'll need SSO. [Guest embeds](./guest-embedding.md) ignore `allowedCustomVisualizations` (and log a warning to the console), and will fall back to the default visualization.
+Custom visualizations only work when Metabase knows who's viewing the embed, so the embed needs [SSO authentication](./authentication.md). [Guest embeds](./guest-embedding.md) ignore `allowedCustomVisualizations` (and log a warning to the console), and fall back to the default visualization.
 
 Custom visualizations also don't render in [public links](./public-links.md) or [dashboard subscriptions and alerts](../questions/alerts.md).
 

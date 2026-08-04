@@ -59,8 +59,6 @@ Custom visualizations behave like built-in charts in most places:
 
 [Modular embeds](../../embedding/modular-embedding.md) that use SSO can render custom visualizations, whether you embed with web components or with the [React SDK](../../embedding/sdk/introduction.md). You allowlist the custom visualizations you want to load with the `allowedCustomVisualizations` setting. See [Custom visualizations in embeds](../../embedding/custom-visualizations.md).
 
-[Full app embedding](../../embedding/full-app-embedding.md) renders every custom visualization you've enabled, with no allowlist to set up.
-
 Embeds without an authenticated person don't render custom visualizations. In [guest and static embeds](../../embedding/introduction.md) and [public links](../../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
 
 ## Managing custom visualizations

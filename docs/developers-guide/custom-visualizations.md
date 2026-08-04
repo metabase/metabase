@@ -420,14 +420,12 @@ For uploading and managing plugins, see [Custom visualizations](../questions/vis
 
 ## Versioning and compatibility
 
-Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`.
-
 Metabase checks both:
 
 - **Which custom viz SDK you used to build the plugin**: `pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Metabase compares that stamp against the SDK versions it was tested with.
-- **Which Metabase your plugin supports**: declare it with `metabase.version` in `metabase-plugin.json`, for example, `">=1.62 <1.64"`. Keep the range closed on both ends. Write the range against the full version number (`">=1.62 <1.64"`), not a bare major version (`">=62 <64"`), which won't match.
+- **Which Metabase your plugin supports**: declare it with `metabase.version` in `metabase-plugin.json`, using semver range syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends. Metabase versions are [license.major.minor](https://www.metabase.com/version-support), so include the license prefix (`">=1.62 <1.64"`). A bare major version (`">=62 <64"`) won't match.
 
-Neither check blocks anything. The plugin may still work, even if it's out of range.
+Neither check blocks anything: the plugin uploads and runs either way. When a check fails, Metabase shows a [compatibility warning](../questions/visualizations/custom.md#compatibility-warnings-are-heads-ups-not-errors) on the **Manage visualizations** page.
 
 ## Custom visualization limitations
 
@@ -444,9 +442,9 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 
 ### Custom visualizations only work in SSO embeds
 
-[Modular embeds](../embedding/modular-embedding.md) that use SSO can render custom visualizations when you allowlist them with the `allowedCustomVisualizations` setting, both with web components and with the [React SDK](../embedding/sdk/introduction.md). See [Custom visualizations in embeds](../embedding/custom-visualizations.md).
+[Modular embeds](../embedding/modular-embedding.md) can render custom visualizations when you allowlist them with the `allowedCustomVisualizations` setting, both with web components and with the [React SDK](../embedding/sdk/introduction.md). See [Custom visualizations in embeds](../embedding/custom-visualizations.md).
 
-Embeds without an authenticated person don't render custom visualizations. In [guest embeds](../embedding/introduction.md) and [public links](../embedding/public-links.md), any question that uses a custom visualization falls back to the default visualization for the query's results.
+In [guest embeds](../embedding/introduction.md) and [public links](../embedding/public-links.md), any question that uses a custom visualization falls back to the default visualization for the query's results.
 
 ### Custom visualizations don't render in exports and subscriptions
 

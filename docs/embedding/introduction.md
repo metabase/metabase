@@ -107,7 +107,7 @@ For information about the anonymous usage data Metabase collects from embedded c
 ## Embedding limitations
 
 - Currently, you can't embed [documents](../documents/introduction.md) (though you can create [public documents](./public-links.md)).
-- [Modular embeds](./modular-embedding.md) that use SSO can render [custom visualizations](../questions/visualizations/custom.md), but only the custom visualizations you add to your [allowlist](./custom-visualizations.md). Embeds with guest authentication will fall back to a default visualization.
+- [Modular embeds](./modular-embedding.md) that use SSO can render [custom visualizations](../questions/visualizations/custom.md), but only the custom visualizations you add to your [allowlist](./custom-visualizations.md). Guest embeds fall back to the default visualization.
 
 ## Further reading
 
