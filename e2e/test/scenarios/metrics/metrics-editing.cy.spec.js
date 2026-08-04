@@ -126,38 +126,24 @@ function verifyScalarValue(value) {
   cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
-function verifyLineChart({ yAxis }) {
-  H.echartsContainer().within(() => {
-    cy.findByText(yAxis).should("be.visible");
-  });
-  cy.findByTestId("visualization-root").should(
-    "have.attr",
-    "data-viz-ui-name",
-    "Line",
-  );
-}
-
-function verifyMetricAboutTimeseries({ yAxis }) {
+function verifyMetricAboutScalar({ value }) {
   H.MetricPage.aboutPage().within(() => {
-    cy.findByRole("button", { name: "Select dimension: Created At: Month" })
-      .should("be.visible")
-      .and("contain.text", "Created At: Month");
-    cy.findByTestId("metric-value-preview").should("be.visible");
     cy.findByTestId("visualization-root")
       .should("be.visible")
-      .and("have.attr", "data-viz-ui-name", "Line");
-    H.echartsContainer().findByText(yAxis).should("be.visible");
+      .and("have.attr", "data-viz-ui-name", "Number");
+    verifyScalarValue(value);
+    cy.findByRole("button", { name: /^Select dimension/ }).should("not.exist");
   });
 }
 
-function verifyMetricDefinitionChart({ yAxis }) {
+function verifyMetricDefinitionScalar({ yAxis, value }) {
   H.MetricPage.definitionTab().click();
   H.MetricPage.queryEditor().should("be.visible");
   H.getNotebookStep("summarize").findByText(yAxis).should("be.visible");
   cy.intercept("POST", "/api/dataset").as("dataset");
   H.runButtonInOverlay().click();
   cy.wait("@dataset");
-  verifyLineChart({ yAxis });
+  verifyScalarValue(value);
 }
 
 describe("scenarios > metrics > editing", () => {
@@ -197,7 +183,7 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.saveButton().click();
       H.MetricPage.saveButton().should("not.exist");
       H.MetricPage.aboutTab().click();
-      verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
+      verifyMetricAboutScalar({ value: "1,510,621.68" });
     });
 
     it("should pin new metrics automatically", () => {
@@ -235,8 +221,8 @@ describe("scenarios > metrics > editing", () => {
           .within(() => {
             cy.findByTestId("visualization-root")
               .should("be.visible")
-              .and("have.attr", "data-viz-ui-name", "Line");
-            H.echartsContainer().should("be.visible");
+              .and("have.attr", "data-viz-ui-name", "Number");
+            verifyScalarValue("18,760");
           });
       });
     });
@@ -270,7 +256,7 @@ describe("scenarios > metrics > editing", () => {
         values: ["Gadget"],
       });
       saveNewMetric();
-      verifyMetricAboutTimeseries({ yAxis: "Count" });
+      verifyMetricAboutScalar({ value: "4,939" });
     });
 
     it("should not allow to create a multi-stage metric", () => {
@@ -285,7 +271,7 @@ describe("scenarios > metrics > editing", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       H.runButtonInOverlay().click();
       cy.wait("@dataset");
-      verifyLineChart({ yAxis: "Count" });
+      verifyScalarValue("18,760");
     });
   });
 
@@ -305,7 +291,7 @@ describe("scenarios > metrics > editing", () => {
         cy.button("Add filter").click();
       });
       saveNewMetric();
-      verifyMetricAboutTimeseries({ yAxis: "Count" });
+      verifyMetricAboutScalar({ value: "613" });
     });
 
     it("should not be possible to join a metric", () => {
@@ -356,7 +342,10 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Total2").click();
       });
       saveNewMetric();
-      verifyMetricDefinitionChart({ yAxis: "Sum of Total2" });
+      verifyMetricDefinitionScalar({
+        yAxis: "Sum of Total2",
+        value: "755,310.84",
+      });
 
       cy.log("custom column from implicitly joined table");
       startNewMetricWithTable("Sample Database", "Orders");
@@ -372,7 +361,10 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Price2").click();
       });
       saveNewMetric();
-      verifyMetricDefinitionChart({ yAxis: "Average of Price2" });
+      verifyMetricDefinitionScalar({
+        yAxis: "Average of Price2",
+        value: "111.38",
+      });
     });
   });
 
@@ -385,7 +377,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Total").click();
       });
       saveNewMetric();
-      verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
+      verifyMetricAboutScalar({ value: "1,510,621.68" });
     });
   });
 
@@ -411,7 +403,7 @@ describe("scenarios > metrics > editing", () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       saveNewMetric();
-      verifyMetricAboutTimeseries({ yAxis: "Orders metric" });
+      verifyMetricAboutScalar({ value: "9,380" });
     });
 
     it("should have metric-specific summarize step copy", () => {

@@ -132,9 +132,10 @@ describe("scenarios > metrics > dimensions", () => {
       2,
     );
 
+    cy.log("seeding leaves the metric without a default dimension");
+    dimensionList().findByText("Default").should("not.exist");
+
     cy.log("make it the default dimension");
-    dimensionRow("Created At").findByText("Default").should("be.visible");
-    dimensionList().findAllByText("Default").should("have.length", 1);
     settingsPanel().findByRole("button", { name: "Set as default" }).click();
     cy.wait("@setDefaultDimension");
     H.expectUnstructuredSnowplowEvent({
@@ -240,14 +241,6 @@ describe("scenarios > metrics > dimensions", () => {
     cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
     cy.visit(`/metric/${metricId}/dimensions`);
     cy.wait("@listDimensions");
-
-    cy.log("make another dimension the default so Created At can be selected");
-    dimensionRow("Quantity").findByText("Quantity").click();
-    cy.wait("@getMetric");
-    settingsPanel().findByRole("button", { name: "Set as default" }).click();
-    cy.wait("@setDefaultDimension");
-    cy.wait("@listDimensions");
-    cy.wait("@getMetric");
 
     cy.log("configure Created At to use weekly buckets");
     dimensionRow("Created At").findByText("Created At").click();

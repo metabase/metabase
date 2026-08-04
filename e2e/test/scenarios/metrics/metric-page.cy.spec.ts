@@ -220,7 +220,11 @@ describe("scenarios > metrics > metric page", () => {
     });
 
     H.MetricPage.aboutPage().should("be.visible");
-    H.echartsContainer().should("be.visible");
+    cy.log("without a default dimension the About page previews a scalar");
+    H.MetricPage.aboutPage()
+      .findByTestId("visualization-root")
+      .should("be.visible")
+      .and("have.attr", "data-viz-ui-name", "Number");
 
     H.MetricPage.aboutTab().should("be.visible");
     H.MetricPage.overviewTab().should("be.visible");
