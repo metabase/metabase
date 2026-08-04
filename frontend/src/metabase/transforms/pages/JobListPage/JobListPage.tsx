@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListTransformJobsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -11,6 +10,7 @@ import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { useListTransformJobsQuery } from "metabase/transforms/api/transform-job";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";

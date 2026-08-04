@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { useBulkUpdateTransformJobsActiveMutation } from "metabase/transforms/api/transform-job";
 import { Button, Icon, Menu } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
 

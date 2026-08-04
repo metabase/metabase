@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useUpdateTransformTagMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -10,6 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { useUpdateTransformTagMutation } from "metabase/transforms/api/transform-tag";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { TransformTag } from "metabase-types/api";
