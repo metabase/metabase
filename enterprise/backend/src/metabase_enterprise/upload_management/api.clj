@@ -31,7 +31,8 @@
     ;; See https://github.com/metabase/metabase/issues/41023
     (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)
-    (do (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)}) tables)
+    (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                        :table-ids (into #{} (map :id) tables)}) tables)
     (filter mi/can-read? tables)
     (sort-by :name tables) ;; Re-sort because we concat'ed data
     (vec tables)))

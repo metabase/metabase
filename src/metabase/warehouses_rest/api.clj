@@ -134,7 +134,7 @@
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (perms/full-db-permission-for-user
+                  (perms/full-database-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))
@@ -351,7 +351,7 @@
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})
         ;; everything below walks the list one database at a time
-        _   (perms/prime-db-perms-cache {:db-ids (into #{} (map :id) dbs)})]
+        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       include-schemas?             add-schemas
@@ -1443,6 +1443,7 @@
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
                                      (let [tables (t2/select :model/Table :db_id id :active true)
+                                           _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
                                                              can-write-metadata? (filter mi/can-write?))
