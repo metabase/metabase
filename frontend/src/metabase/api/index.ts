@@ -27,7 +27,6 @@ export * from "./llm";
 export * from "./measure";
 export * from "./metabot";
 export * from "./metric";
-export * from "./model-index";
 export * from "./moderation";
 export * from "./notification";
 export * from "./parameters";

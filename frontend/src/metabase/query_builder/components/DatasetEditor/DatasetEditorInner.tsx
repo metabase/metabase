@@ -12,7 +12,6 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListModelIndexesQuery } from "metabase/api";
 import {
   ActionButton,
   type ActionButtonHandle,
@@ -27,6 +26,7 @@ import {
   setTemplateTagConfig,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
+import { useListModelIndexesQuery } from "metabase/query_builder/api/model-index";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
