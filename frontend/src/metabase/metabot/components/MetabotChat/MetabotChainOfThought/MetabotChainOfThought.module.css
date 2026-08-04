@@ -7,7 +7,7 @@
   align-items: center;
   gap: 0.375rem;
   width: 100%;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .headerLabel {
@@ -37,7 +37,7 @@
 @keyframes chevron-pulse {
   0%,
   47% {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   57% {
@@ -45,7 +45,7 @@
   }
 
   100% {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 }
 
@@ -58,7 +58,7 @@
 .shimmer {
   /* both colors stay in the text family (a lighter highlight over the resting
      tone) so the sweep reads as a sheen rather than a spotlight */
-  --base-color: var(--mb-color-text-tertiary);
+  --base-color: var(--mb-color-text-disabled);
   --highlight-color: var(--mb-color-border-neutral);
 
   color: transparent !important;
@@ -118,7 +118,7 @@
   gap: 0.5rem;
   width: 100%;
   line-height: 1.57;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .toolRowStatic {
@@ -127,14 +127,14 @@
 
 .toolRow a,
 .headerLabel a {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-weight: 500;
   text-decoration: none;
 }
 
 .toolRow a span,
 .headerLabel a span {
-  border-bottom-color: var(--mb-color-border-subtle);
+  border-bottom-color: var(--mb-color-border-neutral-subtle);
 }
 
 .toolRow a svg,
@@ -145,13 +145,13 @@
 
 .toolRow a:hover,
 .headerLabel a:hover {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   text-decoration: none;
 }
 
 .toolRow a:hover span,
 .headerLabel a:hover span {
-  border-bottom-color: var(--mb-color-brand);
+  border-bottom-color: var(--mb-color-core-brand);
 }
 
 /* carets stay out of the way until the step is hovered/focused */
@@ -197,7 +197,7 @@
 }
 
 .resultRow:hover {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .resultIcon {
@@ -220,10 +220,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.75rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .contextSeparator {
   margin: 0 0.25rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }

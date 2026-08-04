@@ -28,8 +28,8 @@ export const DataAppRepoSection = ({ isConfigured, url }: Props) => (
         miw={0}
         px="md"
         py="sm"
-        bg="background-secondary"
-        bd="1px solid var(--mb-color-border)"
+        bg="background_page-secondary"
+        bd="1px solid var(--mb-color-border-neutral)"
         bdrs="md"
         visibleFrom="sm"
       >

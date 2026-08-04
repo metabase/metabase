@@ -24,7 +24,11 @@ function getSyncStatus({ sync_error, last_synced_sha }: DataApp): {
   title?: string;
 } {
   if (sync_error) {
-    return { label: t`Sync failed`, color: "error", title: sync_error };
+    return {
+      label: t`Sync failed`,
+      color: "feedback-negative",
+      title: sync_error,
+    };
   }
 
   if (last_synced_sha) {
@@ -34,7 +38,7 @@ function getSyncStatus({ sync_error, last_synced_sha }: DataApp): {
     };
   }
 
-  return { label: t`Not synced yet`, color: "text-tertiary" };
+  return { label: t`Not synced yet`, color: "text-disabled" };
 }
 
 const SyncStatus = ({ app }: Props) => {
@@ -63,7 +67,7 @@ export const DataAppSummary = ({ app }: Props) => {
             rel="noreferrer"
             fw={700}
             lh="1.4"
-            c="brand"
+            c="core-brand"
             truncate
           >
             {app.display_name}

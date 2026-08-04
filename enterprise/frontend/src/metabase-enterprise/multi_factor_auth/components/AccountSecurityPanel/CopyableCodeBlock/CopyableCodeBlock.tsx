@@ -21,7 +21,7 @@ export function CopyableCodeBlock({ codes }: CopyableCodeBlockProps) {
       py="0.75rem"
       justify="space-between"
       align="flex-start"
-      bg="background-secondary"
+      bg="background_page-secondary"
       bdrs="md"
     >
       <Stack gap="sm">

@@ -228,7 +228,7 @@ export function MonitorLayout() {
           align="center"
           justify="center"
         >
-          <FixedSizeIcon name="pulse" size={14} c="brand" />
+          <FixedSizeIcon name="pulse" size={14} c="core-brand" />
         </Flex>
       }
       testId="monitor-nav"

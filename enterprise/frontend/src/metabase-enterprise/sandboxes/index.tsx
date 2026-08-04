@@ -39,7 +39,7 @@ const OPTION_SEGMENTED = {
   label: t`Row and column security`,
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
-  iconColor: "brand",
+  iconColor: "core-brand",
 } satisfies PermissionOption;
 
 const getDatabaseViewSandboxModalUrl = (
@@ -97,7 +97,7 @@ export function initializePlugin() {
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
       label: t`Edit row and column security`,
-      iconColor: "brand",
+      iconColor: "core-brand",
       icon: "pencil",
       actionCreator: (entityId, groupId, view) =>
         push(getEditSegementedAccessUrl(entityId, groupId, view)),

@@ -231,7 +231,7 @@ const FeedbackColumn = ({
     style={{
       ...getThemeVars(colorScheme),
       padding: "48px 96px 96px",
-      backgroundColor: "var(--mb-color-background-primary)",
+      backgroundColor: "var(--mb-color-background_page-primary)",
     }}
   >
     {FEEDBACK_COLORS.flatMap(({ color, variant, title }) =>
@@ -272,7 +272,7 @@ const FeedbackTemplate: StoryFn<StoryArgs> = ({
       style={{
         ...getThemeVars("light"),
         padding: "96px 96px 0",
-        backgroundColor: "var(--mb-color-background-primary)",
+        backgroundColor: "var(--mb-color-background_page-primary)",
       }}
     >
       <Text fz="1.5rem" fw="bold" c="text-primary">
@@ -282,7 +282,7 @@ const FeedbackTemplate: StoryFn<StoryArgs> = ({
     <Box
       style={{
         ...getThemeVars("dark"),
-        backgroundColor: "var(--mb-color-background-primary)",
+        backgroundColor: "var(--mb-color-background_page-primary)",
       }}
     />
     {THEMES.map((colorScheme) => (

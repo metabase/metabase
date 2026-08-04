@@ -174,7 +174,7 @@ export function GroupMappingsWidgetView({
         <Flex
           className={S.header}
           align="center"
-          bg="background-secondary"
+          bg="background_page-secondary"
           mih={rem(56)}
           px="md"
           py="sm"

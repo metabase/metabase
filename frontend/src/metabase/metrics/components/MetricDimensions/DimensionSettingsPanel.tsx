@@ -203,7 +203,7 @@ export function DimensionSettingsPanel({
 
       {dimension.default && (
         <Group gap="xs">
-          <Icon name="star_filled" c="brand" />
+          <Icon name="star_filled" c="core-brand" />
           <Text fw="bold">{t`Default dimension`}</Text>
         </Group>
       )}

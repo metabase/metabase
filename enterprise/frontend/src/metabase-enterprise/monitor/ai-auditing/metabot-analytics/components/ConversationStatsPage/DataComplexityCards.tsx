@@ -51,16 +51,16 @@ const RATING_BADGE_BACKGROUND_COLORS = {
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 
 const RATING_BADGE_TEXT_COLORS = {
-  low: "success-secondary",
+  low: "feedback-positive-strong",
   medium: "text-primary",
-  high: "error",
+  high: "feedback-negative",
   default: "text-secondary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 
 const RATING_TEXT_COLORS = {
-  low: "success",
-  medium: "warning",
-  high: "error",
+  low: "feedback-positive",
+  medium: "feedback-warning",
+  high: "feedback-negative",
   default: "text-secondary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 

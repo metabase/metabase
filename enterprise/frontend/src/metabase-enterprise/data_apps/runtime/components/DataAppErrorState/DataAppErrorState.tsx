@@ -3,7 +3,7 @@ import { Icon, Stack, Text } from "metabase/ui";
 
 export const DataAppErrorState = ({ message }: SdkErrorComponentProps) => (
   <Stack align="center" justify="center" gap="sm" p="lg" ta="center">
-    <Icon name="warning" size={28} c="text-tertiary" />
+    <Icon name="warning" size={28} c="text-disabled" />
     <Text c="text-secondary">{message}</Text>
   </Stack>
 );

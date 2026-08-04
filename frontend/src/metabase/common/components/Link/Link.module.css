@@ -2,7 +2,7 @@
   transition: opacity 0.3s linear;
 
   &:focus {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:focus:not(:focus-visible) {

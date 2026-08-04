@@ -36,7 +36,7 @@ export const RemoveMfaModal = ({ user, onClose }: RemoveMfaModalProps) => {
       title={t`Remove two-factor authentication for ${user.common_name}?`}
       message={t`They'll lose their authenticator setup and all of their recovery codes, and will need to set two-factor authentication up again. We'll email them to let them know.`}
       confirmButtonText={t`Remove`}
-      confirmButtonProps={{ color: "danger" }}
+      confirmButtonProps={{ color: "feedback-negative" }}
       errorMessage={errorMessage}
       onClose={onClose}
       onConfirm={handleConfirm}

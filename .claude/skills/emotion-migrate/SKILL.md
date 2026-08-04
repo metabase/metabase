@@ -281,10 +281,10 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 - `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-disabled`
 - `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
-- `--mb-color-border`, `--mb-color-border-strong`, `--mb-color-border-subtle`
+- `--mb-color-border-neutral`, `--mb-color-border-neutral-strong`, `--mb-color-border-neutral-subtle`
 - `--mb-color-core-brand`, `--mb-color-core-brand-hover`
 - `--mb-color-feedback-negative`, `--mb-color-feedback-positive`, `--mb-color-feedback-warning`
-- `--mb-color-shadow`, `--mb-color-focus`
+- `--mb-color-shadow-default`, `--mb-color-input-focus`
 - `--mb-color-accent0` through `--mb-color-accent7`
 
 **Mantine spacing** — `var(--mantine-spacing-<size>)`:

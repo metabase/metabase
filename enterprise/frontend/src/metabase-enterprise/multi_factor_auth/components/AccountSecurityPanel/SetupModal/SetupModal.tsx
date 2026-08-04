@@ -173,7 +173,7 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
           <Stack gap="sm">
             <Box>{t`Scan this QR code with an authenticator app:`}</Box>
             <Center>
-              <Box bg="white" p="md">
+              <Box bg="core-white" p="md">
                 <QRCode value={enrollment.otpauth_uri} size={QR_CODE_SIZE} />
               </Box>
             </Center>
