@@ -350,13 +350,21 @@
   :setter      :none
   :doc         "The Azure API base URL used by the connection configured from the environment.")
 
-(defsetting llm-azure-model
-  (deferred-tru "The Azure deployment served by the connection configured from the environment, prefixed by its API family (openai/ or anthropic/).")
+(defsetting llm-azure-model-family
+  (deferred-tru "Whether the Azure deployment configured from the environment serves an `openai` or an `anthropic` model. Defaults to `openai`.")
   :encryption :no
   :visibility :settings-manager
   :export?    false
   :setter     :none
-  :doc        "The deployment served by the Azure connection configured from the environment, prefixed by its API family: openai/ or anthropic/. Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named.")
+  :doc        "The wire protocol the Azure deployment speaks, `openai` or `anthropic`. Only read when the Azure connection is configured from the environment.")
+
+(defsetting llm-azure-deployment-name
+  (deferred-tru "The name of the model deployment served by the Azure connection configured from the environment.")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :setter     :none
+  :doc        "The deployment the Azure connection configured from the environment serves. Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named. Optional: an instance that already names its deployment in `MB_LLM_METABOT_PROVIDER` (`azure/<family>/<deployment>`) keeps working without it, but setting it is what lets the deployment be picked from the model dropdown.")
 
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 

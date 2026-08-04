@@ -167,11 +167,12 @@
                                                     :deployment-name "claude-sonnet-4-5"})]
       (with-selected-model "azure/anthropic/claude-sonnet-4-5"
         (is (true? (metabot.settings/llm-metabot-configured?))))))
-  (testing "returns false without a deployment, which leaves the model picker with nothing to offer"
+  (testing (str "returns true without a deployment in the config too: the model reference names it, which is where "
+                "an instance configured before the connection list existed carries it")
     (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
                                                     :base-url "https://my-resource.services.ai.azure.com/anthropic"})]
       (with-selected-model "azure/anthropic/claude-sonnet-4-5"
-        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+        (is (true? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-with-partial-azure-credentials-test
   (testing "returns false when azure has an API key but no base URL"

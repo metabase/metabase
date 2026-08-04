@@ -1330,6 +1330,24 @@ The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.
 
 The API key for the Azure resource hosting your models.
 
+### `MB_LLM_AZURE_DEPLOYMENT_NAME`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-deployment-name`
+
+The name of the model deployment served by the Azure connection configured from the environment.
+
+Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named. Optional: an instance that already names its deployment in `MB_LLM_METABOT_PROVIDER` (`azure/<family>/<deployment>`) keeps working without it, but setting it is what lets the deployment be picked from the model dropdown.
+
+### `MB_LLM_AZURE_MODEL_FAMILY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-model-family`
+
+Whether the Azure deployment configured from the environment serves an `openai` or an `anthropic` model. Defaults to `openai`.
+
 ### `MB_LLM_BEDROCK_ACCESS_KEY_ID`
 
 - Type: string
