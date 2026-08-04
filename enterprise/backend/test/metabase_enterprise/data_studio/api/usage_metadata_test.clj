@@ -11,6 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidates :as candidates]
    [metabase.usage-metadata.insights :as insights]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -18,6 +19,21 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private run-refresh-async! @#'usage-metadata.api/run-refresh-async!)
+
+(def ^:dynamic ^:private *published-candidate-create-events* nil)
+
+(events/derive! :event/measure-create ::candidate-create-events)
+(events/derive! :event/segment-create ::candidate-create-events)
+
+(methodical/defmethod events/publish-event! ::candidate-create-events
+  [topic {:keys [object]}]
+  (when *published-candidate-create-events*
+    (let [model (case topic
+                  :event/measure-create :model/Measure
+                  :event/segment-create :model/Segment)]
+      (swap! *published-candidate-create-events* conj
+             {:topic topic
+              :visible? (t2/exists? model :id (:id object))}))))
 
 (deftest routes-require-library-feature-test
   (mt/with-premium-features #{}
@@ -234,16 +250,16 @@
                    (candidate-row (:id run)
                                   {:suggested_name "Shared concept"
                                    :display_name "Shared concept"
-                                   :signature_hash (apply str (repeat 64 "1"))
-                                   :family_key (apply str (repeat 64 "1"))
+                                   :signature_hash (apply str (repeat 64 "7"))
+                                   :family_key (apply str (repeat 64 "7"))
                                    :family_order 0
                                    :family_position 0})
                    :model/UsageMetadataCandidate child
                    (candidate-row (:id run)
                                   {:suggested_name "Shared concept with detail"
                                    :display_name "Shared concept with detail"
-                                   :signature_hash (apply str (repeat 64 "2"))
-                                   :family_key (apply str (repeat 64 "1"))
+                                   :signature_hash (apply str (repeat 64 "8"))
+                                   :family_key (apply str (repeat 64 "7"))
                                    :family_order 0
                                    :family_position 1
                                    :family_depth 1})
@@ -251,8 +267,8 @@
                    (candidate-row (:id run)
                                   {:suggested_name "Other concept"
                                    :display_name "Other concept"
-                                   :signature_hash (apply str (repeat 64 "3"))
-                                   :family_key (apply str (repeat 64 "3"))
+                                   :signature_hash (apply str (repeat 64 "9"))
+                                   :family_key (apply str (repeat 64 "9"))
                                    :family_order 1
                                    :family_position 0
                                    :verified_source_count 10
@@ -261,7 +277,7 @@
                                            "ee/data-studio/usage-metadata/candidates")]
         (is (= [(:id root) (:id child) (:id other)]
                (mapv :id (:data response))))
-        (is (= {:key (apply str (repeat 64 "1")), :position 1, :depth 1}
+        (is (= {:key (apply str (repeat 64 "7")), :position 1, :depth 1}
                (:family (second (:data response)))))))))
 
 (deftest candidate-queue-filtering-test
@@ -367,33 +383,34 @@
                                        :suggested_name        "Mined large orders"
                                        :suggested_description "A persisted Segment candidate"})]
           (mt/with-temp-vals-in-db :model/Table table-id {:is_published true}
-            (let [published-events (atom [])]
-              (with-redefs [events/publish-event!
-                            (fn [topic {:keys [object]}]
-                              (let [model (case topic
-                                            :event/measure-create :model/Measure
-                                            :event/segment-create :model/Segment)]
-                                (swap! published-events conj
-                                       {:topic topic
-                                        :in-transaction? (mdb/in-transaction?)
-                                        :visible? (t2/exists? model :id (:id object))})))]
-                (doseq [[candidate model expected-name]
-                        [[measure-candidate :model/Measure "Created order subtotal"]
-                         [segment-candidate :model/Segment "Created large orders"]]]
-                  (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
-                    (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
-                          response (mt/user-http-request :crowberto :post 200 path
-                                                         {:name expected-name
-                                                          :description "Admin override"})
-                          entity   (:entity response)]
-                      (is (= expected-name (:name entity)))
-                      (is (= "Admin override" (:description entity)))
-                      (is (= (:definition candidate) (:definition entity)))
-                      (is (= "modeled" (get-in response [:candidate :modeling_status])))
-                      (is (= 1 (count (get-in response [:candidate :matches]))))
-                      (is (= (:id entity)
-                             (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
-                      (is (= 1 (t2/count model :name expected-name)))))))
-              (is (= [{:topic :event/measure-create, :in-transaction? false, :visible? true}
-                      {:topic :event/segment-create, :in-transaction? false, :visible? true}]
-                     @published-events)))))))))
+            (mt/user->id :crowberto)
+            (let [after-commit-callbacks (atom [])
+                  published-events      (atom [])]
+              (binding [*published-candidate-create-events* published-events]
+                (mt/with-dynamic-fn-redefs [mdb/do-after-commit
+                                            (fn [callback]
+                                              (swap! after-commit-callbacks conj callback))]
+                  (doseq [[candidate model expected-name]
+                          [[measure-candidate :model/Measure "Created order subtotal"]
+                           [segment-candidate :model/Segment "Created large orders"]]]
+                    (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
+                      (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
+                            response (mt/user-http-request :crowberto :post 200 path
+                                                           {:name expected-name
+                                                            :description "Admin override"})
+                            entity   (:entity response)]
+                        (is (= expected-name (:name entity)))
+                        (is (= "Admin override" (:description entity)))
+                        (is (= (:definition candidate) (:definition entity)))
+                        (is (= "modeled" (get-in response [:candidate :modeling_status])))
+                        (is (= 1 (count (get-in response [:candidate :matches]))))
+                        (is (= (:id entity)
+                               (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
+                        (is (= 1 (t2/count model :name expected-name)))))))
+                (is (empty? @published-events)
+                    "creation events are deferred until the candidate transaction commits")
+                (is (= 2 (count @after-commit-callbacks)))
+                (run! (fn [callback] (callback)) @after-commit-callbacks)
+                (is (= [{:topic :event/measure-create, :visible? true}
+                        {:topic :event/segment-create, :visible? true}]
+                       @published-events))))))))))

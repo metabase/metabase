@@ -98,8 +98,9 @@ databaseChangeLog:
             indexName: idx_um_candidate_table
             columns:
               - column: {name: table_id}
-      rollback:
-        - dropIndex: {tableName: usage_metadata_candidate, indexName: idx_um_candidate_table}
+      # MySQL and MariaDB use this index to enforce the existing foreign key. Keep it during a
+      # partial rollback; a full rollback removes it when the owning table is dropped.
+      rollback: []
 
   - changeSet:
       id: v64.um-candidate-source-card-index
@@ -111,8 +112,7 @@ databaseChangeLog:
             indexName: idx_um_candidate_source_card
             columns:
               - column: {name: card_id}
-      rollback:
-        - dropIndex: {tableName: usage_metadata_candidate_source, indexName: idx_um_candidate_source_card}
+      rollback: []
 
   - changeSet:
       id: v64.um-candidate-match-measure-index
@@ -124,8 +124,7 @@ databaseChangeLog:
             indexName: idx_um_candidate_match_measure
             columns:
               - column: {name: measure_id}
-      rollback:
-        - dropIndex: {tableName: usage_metadata_candidate_match, indexName: idx_um_candidate_match_measure}
+      rollback: []
 
   - changeSet:
       id: v64.um-candidate-match-segment-index
@@ -137,8 +136,7 @@ databaseChangeLog:
             indexName: idx_um_candidate_match_segment
             columns:
               - column: {name: segment_id}
-      rollback:
-        - dropIndex: {tableName: usage_metadata_candidate_match, indexName: idx_um_candidate_match_segment}
+      rollback: []
 
   - changeSet:
       id: v64.um-candidate-dismissal-table-index
@@ -150,5 +148,4 @@ databaseChangeLog:
             indexName: idx_um_candidate_dismissal_table
             columns:
               - column: {name: table_id}
-      rollback:
-        - dropIndex: {tableName: usage_metadata_candidate_dismissal, indexName: idx_um_candidate_dismissal_table}
+      rollback: []
