@@ -1477,6 +1477,39 @@
                              (filter-display-names (:dataset_query %)))
                       new-queries)))))))
 
+(deftest exploration-explore-further-refuses-a-source-thread-the-caller-cannot-see-test
+  (testing "collection write says a user may *manage* an exploration; it says nothing about whether
+            their lens may see the warehouse values on the chart they are drilling. The new thread
+            inherits the source block's `explore_filters` verbatim and serves them straight back, so
+            drilling a thread the derived-data gate is blocking has to be refused outright — the
+            alternative is laundering those values through a thread stamped with the caller's lens."
+    (mt/with-temp [:model/User u {:email "explore-further-gate@example.com"}
+                   :model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")]
+      (let [created   (create-exploration! u {:name       "gated drill"
+                                              :prompt     "why down?"
+                                              :metrics    [{:card_id (:id metric)
+                                                            :dimension_mappings (venues-dimension-mappings)}]
+                                              :dimensions [{:dimension_id (duid "price")
+                                                            :display_name "Price"}]})
+            expl-id   (:id created)
+            src       (-> created :threads first)
+            page-id   (some :id (filter #(str/includes? (:name %) "Price")
+                                        (-> src :blocks first :pages)))
+            drill     {:page_id         page-id
+                       :explore_filters [{:field_ref ["field" {} (mt/id :venues :price)]
+                                          :value 2 :display_value "2"}]}]
+        (testing "control: drilling a thread the caller can see succeeds"
+          (is (map? (mt/user-http-request u :post 200
+                                          (format "exploration/%d/explore-further" expl-id) drill))))
+        (testing "but once the source thread's results carry a lens this caller has no part in,
+                  the drill is refused rather than copying its values into a fresh thread"
+          (t2/update! :model/ExplorationQuery
+                      {:exploration_thread_id (:id src)}
+                      {:data_access_token {:sandbox {1 "a-lens-this-caller-does-not-share"}}})
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request u :post 403
+                                       (format "exploration/%d/explore-further" expl-id) drill))))))))
+
 (deftest exploration-explore-further-enqueues-planning-test
   (testing "POST /:id/explore-further enqueues a plan message for the new follow-up thread"
     ;; Regression: the endpoint stamped `started_at` but never called `start-thread!`, so under the

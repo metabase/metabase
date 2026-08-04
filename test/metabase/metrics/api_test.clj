@@ -181,15 +181,17 @@
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 (str "metric/" (:id card))))))))
 
-(deftest fetch-metric-saves-dimensions-on-create-test
-  (testing "creating a metric Card computes and persists dimensions and dimension_mappings"
+(deftest fetch-metric-saves-dimensions-on-read-test
+  (testing "a metric Card's dimensions are computed lazily, on first read, not eagerly on insert —
+            matching how measures have always behaved. Creating the Card writes none, and the GET
+            both returns and persists them."
     (mt/with-temp [:model/Card metric {:name          "Metric with Dimensions"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (testing "dimensions computed and saved on insert"
+      (testing "no dimensions saved initially"
         (let [initial-card (t2/select-one :model/Card :id (:id metric))]
-          (is (seq (:dimensions initial-card)))
-          (is (seq (:dimension_mappings initial-card)))))
+          (is (nil? (:dimensions initial-card)))
+          (is (nil? (:dimension_mappings initial-card)))))
       (testing "response contains dimensions with active status"
         (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))]
           (is (seq (:dimensions response)))

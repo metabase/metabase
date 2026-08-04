@@ -176,7 +176,6 @@
   (plan!        [_ ctx] (run-plan! ctx)))
 
 (def planner
-  "Singleton `MechanicalPlanner` instance. The orchestrator references this
-  directly when its setting / availability heuristic picks the mechanical
-  planner. Tests can swap in a stub via `with-redefs`."
+  "Singleton `MechanicalPlanner` instance — what
+  `metabase.explorations.query-plan/pick-planner!` returns."
   (->MechanicalPlanner))

@@ -1,11 +1,11 @@
 (ns metabase.explorations.query-plan.planner
   "The query-planner contract.
 
-  Concrete planners (mechanical, future stubs) live in their own
-  namespaces and implement `QueryPlanner`. The orchestrator
-  (`metabase.explorations.query-plan`) selects one based on settings + LLM
-  availability and dispatches through the protocol — it never knows which
-  concrete planner it's calling.
+  One implementation exists today — `metabase.explorations.query-plan.mechanical` — and
+  `metabase.explorations.query-plan/pick-planner!` returns it unconditionally; nothing
+  selects between planners. Planned (not implemented): further planners, e.g. an LLM-driven
+  one, chosen there. The orchestrator dispatches through this protocol so that adding one
+  touches nothing outside `pick-planner!`.
 
   This namespace exists separately to break what would otherwise be a cycle:
   the orchestrator requires every concrete planner, and every concrete
@@ -16,9 +16,7 @@
 (defprotocol QueryPlanner
   "Pluggable query-planner contract for Explorations.
 
-  Implementations are values (records or reified instances). The orchestrator
-  selects one and dispatches through the protocol — no concrete planner
-  namespace is special-cased."
+  Implementations are values (records or reified instances)."
   (planner-name [this]
     "Keyword identifying the planner — e.g. `:mechanical`. Stamped
     into the persisted transcript and log lines so a thread's transcript can

@@ -160,8 +160,13 @@
                                 (attach-threads-read-data
                                  (filterv #(contains? visible-ids (:id %)) threads)))]
     (mapv (fn [thread]
-            (or (get enriched (:id thread))
-                (assoc thread :queries [] :blocks [] :name nil)))
+            ;; The lens stamp is an internal adjudication input, never client-facing. It is digested,
+            ;; but it still enumerates which tables the creator is sandboxed on and which databases
+            ;; are impersonated or routed — and a response schema validates and encodes without
+            ;; stripping (see [[redact-query-error]]), so it has to come off here.
+            (dissoc (or (get enriched (:id thread))
+                        (assoc thread :queries [] :blocks [] :name nil))
+                    :data_access_token))
           threads)))
 
 (defn- thread-status
@@ -260,11 +265,7 @@
   re-runs iff the reset committed. Returns true when the reset applied; false when the guarded
   UPDATE matched no row.
 
-  The guard refuses while the thread is still in flight: not yet terminal, or a query worker
-  still holds a `running` row (possible on a canceled thread, whose in-flight queries run to
-  natural completion). A restart racing in-flight work could otherwise strand query rows a
-  still-running planner inserts after the reset, or let an in-flight query worker's completion
-  CAS stamp the freshly-reset thread."
+  `completed_at IS NOT NULL` keeps a thread that is still working from being restarted under itself."
   [thread-id]
   (t2/with-transaction [_conn]
     (when (pos? (t2/query-one
@@ -644,6 +645,21 @@
                            {:object persisted :user-id api/*current-user-id*})
     (hydrate-exploration persisted)))
 
+(defn- drill-thread-token
+  "The lens stamp for the thread `explore-further` creates.
+
+  Computed under the *creator's* identity rather than the caller's. The values this thread is named
+  for were read out of results the creator's lens produced, and its queries will execute under that
+  same identity (see [[metabase.explorations.runner]]), which is the lens `finalize-row!` stamps them
+  with."
+  [exploration cards]
+  (request/with-current-user (:creator_id exploration)
+    (perms/data-access-token
+     {:database-id (:database_id (first cards))
+      :table-ids   (into #{}
+                         (mapcat #(query-perms/query->resolved-source-table-ids (:dataset_query %)))
+                         cards)})))
+
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
 
@@ -672,13 +688,16 @@
           ;; and the queries the planner then runs) into an exploration they can write (IDOR).
           _             (api/check-404 (t2/exists? :model/ExplorationThread
                                                    :id src-thread-id :exploration_id id))
-          metric-selection (first (:metrics block))
-          card-id       (:card_id metric-selection)
-          ;; Copying the block re-attaches its metric card into the new thread, and attach time
-          ;; is the permission boundary (see `POST /`) — so the caller must still be able to
-          ;; read the card, even though the source block passed this check when it was created.
-          card          (api/read-check
-                         (api/check-404 (when card-id (t2/select-one :model/Card :id card-id))))
+          _             (api/check-403
+                         (contains? (derived-perms/thread-ids-with-visible-derived-data [src-thread-id])
+                                    src-thread-id))
+          metric-selections (:metrics block)
+          metric-selection  (first metric-selections)
+          cards         (mapv (fn [{:keys [card_id]}]
+                                (api/read-check
+                                 (api/check-404 (when card_id (t2/select-one :model/Card :id card_id)))))
+                              metric-selections)
+          card          (api/check-404 (first cards))
           card-name     (:name card)
           mp            (lib-be/application-database-metadata-provider (:database_id card))
           enriched-filters (qp.context/enrich-explore-filters mp card block metric-selection explore_filters)
@@ -701,10 +720,7 @@
                               :name           (explore-further-thread-name card-name
                                                                            enriched-filters
                                                                            top-level-follow-up?)
-                              :data_access_token (perms/data-access-token
-                                                  {:database-id (:database_id card)
-                                                   :table-ids   (query-perms/query->resolved-source-table-ids
-                                                                 (:dataset_query card))})
+                              :data_access_token (drill-thread-token exploration cards)
                               :position       next-position
                               ;; drill lineage — lets the sidebar nest this thread
                               ;; under the one owning the drilled page

@@ -8,6 +8,7 @@
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
@@ -126,6 +127,28 @@
             "the drilled value outlives the queries, so the verdict protecting it must too")
         (is (true? (visible? thread :crowberto)) "superuser")))))
 
+(deftest drill-named-thread-stays-blocked-when-its-metric-card-is-deleted-test
+  (testing "the thread stamp is adjudicated against its metric Card, but that Card does not outlive a
+            delete: `exploration_query.card_id` and `exploration_page.card_id` both cascade, so
+            deleting the Card destroys exactly the rows the gate reads while leaving the drilled name
+            (and the block's `explore_filters`) behind. Resolving no Card must therefore deny, not
+            drop the thread from adjudication — dropping it reads as \"nothing to hide\", the same
+            absence-means-visible mistake this namespace exists to avoid."
+    (let [thread  (drilled-thread! {:sandbox {1 "creators-sandbox-digest"}})
+          card-id (-> (t2/select-one :model/ExplorationBlock :exploration_thread_id thread)
+                      :metrics first :card_id)]
+      (testing "control — blocked while the Card is intact"
+        (is (false? (visible? thread :rasta))))
+      (testing "and stays blocked once the Card (and with it every query row) is gone"
+        (t2/delete! :model/Card :id card-id)
+        (is (empty? (t2/select :model/ExplorationQuery :exploration_thread_id thread))
+            "sanity: the card FK cascaded the query rows away")
+        (is (some? (t2/select-one-fn :name :model/ExplorationThread :id thread))
+            "sanity: the drilled name survived, so there is still something to protect")
+        (is (false? (visible? thread :rasta))
+            "deleting a Card is not a permission change; it must not unblock the drilled value")
+        (is (true? (visible? thread :crowberto)) "superuser")))))
+
 (deftest nil-token-is-fail-closed-including-for-the-creator-test
   (testing "a snapshot with no captured lens can't be compared against, so it is fail-closed for
             everyone but an admin. Being the snapshot's creator is NOT an exemption: the creator's
@@ -185,6 +208,62 @@
                                                 {:creator-id (mt/user->id :lucky) :query (fk-breakout-query) :token {}}])]
             (is (false? (visible? thread :rasta))
                 "collapsed into one verdict, whichever row was picked would decide for both")))))))
+
+(defn- plain-table-query
+  "A plain, unaggregated query over `table-kw` — a shape that works as a join source."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id table-kw))))))
+
+(defn- card-joined-query
+  "A venues count joined to a saved card that itself reads venues. Both of the key's query
+  projections collapse onto `#{venues}` — the raw one never sees the join's `\"card__N\"` source, and
+  the resolved one keeps only table ids — yet running this *also* requires read permission on the
+  joined card's collection, which is the half of the verdict neither projection carries."
+  [joined-card-id]
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :venues)
+              :aggregation  [[:count]]
+              :joins        [{:source-table (str "card__" joined-card-id)
+                              :alias        "J"
+                              :fields       :none
+                              :condition    [:= [:field (mt/id :venues :id) nil]
+                                             [:field (mt/id :venues :id) {:join-alias "J"}]]}]}})
+
+(deftest batching-does-not-merge-a-plain-query-with-a-card-joined-one-test
+  (testing "the verdict has a third projection the key must carry: `can-run-query?` reads `:card-ids`
+            off the *preprocessed* query and checks read perms on each card's collection. A plain
+            breakout and one joined to a saved card over the same table agree on both projections the
+            key does carry, so keyed on those alone they share a verdict — and a viewer who can query
+            the table but cannot read the joined card is handed the card-joined chart's derived text."
+    (mt/with-temp [:model/Collection {:as coll coll-id :id} {}
+                   :model/Card {joined :id} {:name          "joined"
+                                             :type          :question
+                                             :collection_id coll-id
+                                             :creator_id    (mt/user->id :lucky)
+                                             :database_id   (mt/id)
+                                             :dataset_query (plain-table-query :venues)
+                                             :display       "table"
+                                             :visualization_settings {}}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (mt/with-no-data-perms-for-all-users!
+          (let [group (perms-group/all-users)]
+            (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+            (testing "sanity: rasta can query venues but cannot read the joined card"
+              (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
+                                     (mi/can-read? (t2/select-one :model/Card :id joined)))))))
+            (testing "control: the plain query alone is visible"
+              (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])]
+                (is (true? (visible? thread :rasta)))))
+            (testing "adding the card-joined one blocks the thread"
+              (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}
+                                                    {:creator-id (mt/user->id :lucky)
+                                                     :query      (card-joined-query joined)
+                                                     :token      {}}])]
+                (is (false? (visible? thread :rasta))
+                    "collapsed into one verdict, the plain row decides for the card-joined one")))))))))
 
 (deftest verdict-runs-once-per-group-not-once-per-chart-test
   (testing "this rollup runs on polled read paths and the verdict it batches is worth ~a dozen

@@ -86,7 +86,7 @@
    - :duration-ms - Request duration in milliseconds
 
    Options:
-   - :model    - Model to use (default: configured model or claude-sonnet-4-20250514)
+   - :model    - Model to use; defaults to the `llm-anthropic-model` setting
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]

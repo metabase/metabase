@@ -1,9 +1,9 @@
 (ns metabase.explorations.derived-perms
   "Decides whether the *current user* may see an exploration thread's derived read-data — its
-  queries, the block/page tree built from them, the thread name, and the AI Summary document's
-  content. All of these embed verbatim values from results computed under the exploration
-  creator's data-access lens (sandboxing / connection impersonation / database routing), so a
-  viewer whose lens is incompatible with the creator's must not see them.
+  queries, the block/page tree built from them, and the thread name. All of these embed verbatim
+  values from results computed under the exploration creator's data-access lens (sandboxing /
+  connection impersonation / database routing), so a viewer whose lens is incompatible with the
+  creator's must not see them.
 
   The per-artifact rule is exactly the gate the results themselves are streamed through
   ([[metabase.queries.cached-result]]): superusers pass unconditionally; any other viewer must hold
@@ -19,6 +19,7 @@
   would let its absence read as \"nothing to hide\"."
   (:require
    [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -35,15 +36,18 @@
   Keying on the `dataset_query` itself would never dedupe: an exploration's charts are variants
   over one metric card, so their queries differ textually while requiring identical permissions.
 
-  The verdict's two halves project the query *differently*, so the key has to carry both or it is not
-  a partition. `can-run-query?` derives its perms from the raw query via `query->source-ids`, while
-  the lens comparison resolves the query first (`query->resolved-source-table-ids` preprocesses, which
-  expands implicit joins and card chains). An FK-traversed breakout is the case that separates them:
-  it reads an extra table while leaving the raw projection identical to a plain breakout on the same
-  source, and metric dimensions are built with `:include-implicitly-joinable? true`, so a thread
-  mixing the two is ordinary planner output rather than an exotic shape. Keyed on the raw projection
-  alone, those two share a group, one representative decides for both, and a viewer restricted on the
-  joined table is handed the one they cannot read.
+  The verdict's halves project the query *differently*, so the key has to carry each of them or it is
+  not a partition. The lens comparison resolves the query first (`query->resolved-source-ids`
+  preprocesses, expanding implicit joins and card chains); `can-run-query?` needs both the raw
+  projection and the resolved one — the latter because `:card-ids` only exist after preprocessing and
+  each one costs a read-permission check on that card's collection.
+
+  Two cases separate them, both ordinary planner output rather than exotic shapes. An FK-traversed
+  breakout reads an extra table while leaving the raw projection identical to a plain breakout on the
+  same source (metric dimensions are built with `:include-implicitly-joinable? true`). A join to a
+  saved card over that same table agrees on *both* table projections while requiring read permission
+  on a collection the plain query does not. Miss either and those pairs share a group, one
+  representative decides for both, and a viewer is handed the one they cannot read.
 
   Neither projection accounts for every query — a raw source-card reference (`\"card__1\"`) matches
   none of `query->source-ids`'s patterns and yields nothing, and resolution *throws* on an
@@ -51,25 +55,25 @@
   nothing it shouldn't: the whole query in the first case, and in the second a marker shared only
   with other unresolvable artifacts, which the lens check denies without exception.
 
-  `resolve-tables` is the resolving half, passed in so a batch can share one memo — resolution is a
-  pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
+  `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
+  a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
   to collapse."
-  [resolve-tables {:keys [database_id dataset_query data_access_token]}]
+  [resolve-source-ids {:keys [database_id dataset_query data_access_token]}]
   (let [source-ids (some-> dataset_query query-perms/query->source-ids)]
-    [database_id data_access_token (resolve-tables dataset_query)
+    [database_id data_access_token (resolve-source-ids dataset_query)
      (if (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids)))
        source-ids
        dataset_query)]))
 
-(defn- table-resolver
-  "A memoized [[metabase.query-permissions.core/query->resolved-source-table-ids]] for one batch.
+(defn- source-ids-resolver
+  "A memoized [[metabase.query-permissions.core/query->resolved-source-ids]] for one batch.
   Throws are absorbed into a marker rather than propagated: an unpreprocessable query (a deleted card
   in its source chain) is one the lens check denies anyway, and it must not take the batch down with
   it."
   []
   (memoize (fn [query]
              (try
-               (some-> query query-perms/query->resolved-source-table-ids)
+               (some-> query query-perms/query->resolved-source-ids)
                (catch Throwable _ ::unresolvable)))))
 
 (defn- finalized-queries
@@ -93,7 +97,8 @@
   lens; this only enforces that.
 
   The query adjudicated is the thread's metric Card — what the token was computed over when it was
-  stamped, and, unlike the thread's queries, not deleted by a restart."
+  stamped, and, unlike the thread's queries, not deleted by a restart. A thread whose Card cannot be
+  resolved is still returned, marked [[::indeterminate]] so it denies."
   [thread-ids]
   (when-let [threads (seq (t2/select [:model/ExplorationThread :id :data_access_token]
                                      :id [:in thread-ids]
@@ -111,14 +116,31 @@
                       ;; `:card_schema` is mandatory in any explicit Card column list
                       (u/index-by :id (t2/select [:model/Card :id :card_schema :database_id :dataset_query]
                                                  :id [:in (distinct (vals card-id))])))]
-      (keep (fn [{thread-id :id :as thread}]
-              (when-let [card (get cards (get card-id thread-id))]
-                {:id                    thread-id
-                 :exploration_thread_id thread-id
-                 :database_id           (:database_id card)
-                 :dataset_query         (:dataset_query card)
-                 :data_access_token     (:data_access_token thread)}))
-            threads))))
+      (map (fn [{thread-id :id :as thread}]
+             (let [card (get cards (get card-id thread-id))]
+               (cond-> {:id                    thread-id
+                        :exploration_thread_id thread-id
+                        :database_id           (:database_id card)
+                        :dataset_query         (:dataset_query card)
+                        :data_access_token     (:data_access_token thread)}
+                 ;; The Card is what the stamp was computed over, and it does not outlive a delete:
+                 ;; both `exploration_query.card_id` and `exploration_page.card_id` cascade, so
+                 ;; deleting it strips every other adjudicable row while the thread's name survives.
+                 ;; Dropping the thread here would let that absence read as "nothing to hide".
+                 (nil? card) (assoc ::indeterminate true))))
+           threads))))
+
+(defn- artifact-visible?
+  "The gate's verdict for one artifact.
+
+  An artifact marked [[::indeterminate]] has no query left to adjudicate, so the gate cannot be asked
+  (it throws without a `:dataset_query`). It denies instead, leaving only the superuser exemption the
+  gate itself would have applied — the same fail-closed choice [[source-ids-resolver]] makes for a
+  query it cannot resolve."
+  [artifact]
+  (if (::indeterminate artifact)
+    (boolean api/*is-superuser?*)
+    (queries/viewer-can-view-cached-result? artifact)))
 
 (defn- blocked-thread-ids
   "Thread ids with at least one artifact the current user may not see.
@@ -126,9 +148,9 @@
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
   the expensive check run once per group rather than once per artifact."
   [artifacts]
-  (->> (group-by (partial visibility-key (table-resolver)) artifacts)
+  (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
        (remove (fn [[_key [representative]]]
-                 (queries/viewer-can-view-cached-result? representative)))
+                 (artifact-visible? representative)))
        (mapcat val)
        (map :exploration_thread_id)
        set))
@@ -142,8 +164,8 @@
 
   Held inside one metadata-provider cache: [[visibility-key]] preprocesses each artifact's query, and
   a thread's charts are variants over the same card, so they read the same tables and fields over and
-  over. REST requests already arrive with a cache bound and the macro leaves it alone; this is for the
-  callers that don't, such as the document-content gate below."
+  over. REST requests already arrive with a cache bound and the macro leaves it alone; this is for any
+  caller that doesn't."
   [thread-ids]
   (let [thread-ids (set thread-ids)]
     (if (empty? thread-ids)
@@ -152,13 +174,3 @@
         (set/difference thread-ids
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
-
-(defn doc-content-visible-to-current-user?
-  "Content-visibility gate installed via
-  [[metabase.documents.core/register-doc-content-visibility-fn!]] at init: a document owned by
-  an exploration thread (the AI Summary) embeds verbatim result values, so its content follows
-  the thread's derived-data visibility. Documents outside explorations are unaffected."
-  [document]
-  (if-let [thread-id (:exploration_thread_id document)]
-    (contains? (thread-ids-with-visible-derived-data [thread-id]) thread-id)
-    true))

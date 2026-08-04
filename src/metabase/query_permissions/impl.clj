@@ -206,17 +206,28 @@
   (binding [qp.i/*skip-middleware-because-app-db-access* true]
     (preprocess-query query)))
 
-(mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
-  "Like [[query->source-table-ids]], but resolves card-sourced queries (`:source-table \"card__N\"`,
-  card-sourced joins, nested card-on-card chains) down to the underlying Table IDs by preprocessing
-  the query first. Preprocessing runs as admin with per-user lens resolution skipped
-  ([[preprocess-without-per-user-lens]]), so the resulting table set is identical for every user.
-  THROWS when the query cannot be preprocessed — e.g. a card in the source chain has been
-  deleted — so callers gating cached reads on the resulting table set can fail closed instead of
-  treating the query as touching no tables."
+(mu/defn query->resolved-source-ids :- [:maybe :map]
+  "Like [[query->source-ids]], but resolves card-sourced queries (`:source-table \"card__N\"`,
+  card-sourced joins, nested card-on-card chains) first, by preprocessing the query.
+
+  The whole projection, not just its tables: preprocessing is also what surfaces `:card-ids` (via the
+  `:qp/stage-is-from-source-card` annotation it adds), and those drive a read-permission check on
+  each card's collection in [[required-perms-for-query]] — a requirement no projection of the *raw*
+  query can express. Callers keying a permission verdict on this must keep the whole map, or two
+  queries reading the same tables through different cards will look identical.
+
+  Preprocessing runs as admin with per-user lens resolution skipped
+  ([[preprocess-without-per-user-lens]]), so the result is identical for every user. THROWS when the
+  query cannot be preprocessed — e.g. a card in the source chain has been deleted — so callers
+  gating cached reads on it can fail closed instead of treating the query as touching nothing."
   [query :- :map]
   (when (seq query)
-    (:table-ids (query->source-ids (preprocess-without-per-user-lens query)))))
+    (query->source-ids (preprocess-without-per-user-lens query))))
+
+(mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
+  "The Table IDs of [[query->resolved-source-ids]]. Throws on an unpreprocessable query, as it does."
+  [query :- :map]
+  (:table-ids (query->resolved-source-ids query)))
 
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
