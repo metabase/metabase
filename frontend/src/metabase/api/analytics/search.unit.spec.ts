@@ -1,7 +1,7 @@
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 import { createMockSearchResults } from "metabase-types/api/mocks";
 
-import { registerSearchStarted, trackFulfilledSearch } from "./analytics";
+import { registerSearchStarted, trackFulfilledSearch } from "./search";
 
 // hashSearchTerm/shouldReportSearchTerm are stubbed to avoid crypto.subtle / Settings in the hashing
 // path; we only care about the tracking lifecycle here.

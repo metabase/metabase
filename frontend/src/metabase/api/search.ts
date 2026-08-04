@@ -1,6 +1,9 @@
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
-import { registerSearchStarted, trackFulfilledSearch } from "./analytics";
+import {
+  registerSearchStarted,
+  trackFulfilledSearch,
+} from "./analytics/search";
 import { Api } from "./api";
 import { provideSearchItemListTags } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
