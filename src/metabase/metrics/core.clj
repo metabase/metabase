@@ -359,18 +359,20 @@
             metrics.dimension/->api-dimension)))
 
 (defn set-default-dimension!
-  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default.
-   Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
+  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default. A nil
+   `dimension-id` clears the default without setting a new one, leaving the entity to render as a
+   scalar. Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
    Returns the updated `:added` list."
   [metadata-type id dimension-id]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
-        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
-        current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
-                               (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
-        _                  (when (= :status/orphaned (:status current))
-                             (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
-                                             {:status-code 400})))
-        dimensions         (lib-metric/set-default-dimension persisted-dims dimension-id)]
-    (save-dimensions! entity dimensions persisted-mappings)
-    (added-dimensions dimensions persisted-mappings)))
+        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])]
+    (when dimension-id
+      (let [current (or (u/seek #(= dimension-id (:id %)) persisted-dims)
+                        (throw (ex-info (tru "Dimension not found.") {:status-code 404})))]
+        (when (= :status/orphaned (:status current))
+          (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
+                          {:status-code 400})))))
+    (let [dimensions (lib-metric/set-default-dimension persisted-dims dimension-id)]
+      (save-dimensions! entity dimensions persisted-mappings)
+      (added-dimensions dimensions persisted-mappings))))

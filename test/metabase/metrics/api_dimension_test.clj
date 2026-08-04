@@ -547,6 +547,23 @@
                                                             (str "metric/" (:id metric) "/dimension")))))
             "the default is persisted")))))
 
+(deftest unset-default-dimension-test
+  (testing "set-default with a null dimension_id clears the default (UXW-4988)"
+    (with-seeded-metric [metric]
+      (let [added        (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))
+            dimension-id (:id (first added))
+            path         (str "metric/" (:id metric) "/dimension/set-default")]
+        (is (= [dimension-id]
+               (mapv :id (filter :default (mt/user-http-request :crowberto :post 200 path
+                                                                {:dimension_id dimension-id})))))
+        (let [resp (mt/user-http-request :crowberto :post 200 path {:dimension_id nil})]
+          (is (= (mapv :id added) (mapv :id resp))
+              "the dimensions themselves are untouched")
+          (is (empty? (filter :default resp))))
+        (is (empty? (filter :default (:added (mt/user-http-request :crowberto :get 200
+                                                                   (str "metric/" (:id metric) "/dimension")))))
+            "clearing the default is persisted")))))
+
 (deftest set-default-dimension-not-found-test
   (testing "set-default returns 404 for an unknown dimension"
     (with-seeded-metric [metric]

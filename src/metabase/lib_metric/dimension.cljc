@@ -253,10 +253,11 @@
 
 (defn set-default-dimension
   "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension.
-   Assumes `id` exists in `persisted-dims`. Returns the updated dimensions vector."
+   A nil `id` clears the default without setting a new one. Assumes a non-nil `id` exists in
+   `persisted-dims`. Returns the updated dimensions vector."
   [persisted-dims id]
   (perf/mapv (fn [dim]
-               (if (= id (:id dim))
+               (if (and (some? id) (= id (:id dim)))
                  (assoc dim :default true)
                  (dissoc dim :default)))
              persisted-dims))

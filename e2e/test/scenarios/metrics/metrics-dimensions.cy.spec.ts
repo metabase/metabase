@@ -151,6 +151,24 @@ describe("scenarios > metrics > dimensions", () => {
     settingsPanel().findByText("Default dimension").should("be.visible");
     dimensionList().findAllByText("Default").should("have.length", 1);
 
+    cy.log("removing the default leaves the metric without one (UXW-4988)");
+    settingsPanel().findByRole("button", { name: "Remove default" }).click();
+    cy.wait("@setDefaultDimension").then(({ request }) => {
+      expect(request.body).to.deep.equal({ dimension_id: null });
+    });
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimension_remove_default",
+      target_id: metricId,
+      result: "success",
+    });
+    dimensionList().findByText("Default").should("not.exist");
+    settingsPanel().findByText("Default dimension").should("not.exist");
+
+    cy.log("make it the default again");
+    settingsPanel().findByRole("button", { name: "Set as default" }).click();
+    cy.wait("@setDefaultDimension");
+    dimensionList().findAllByText("Default").should("have.length", 1);
+
     cy.log("the edits are persisted");
     cy.request<ListMetricDimensionsResponse>(
       "GET",

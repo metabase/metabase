@@ -545,7 +545,7 @@ describe("MetricDimensions", () => {
     });
   });
 
-  it("does not offer set-default for the current default dimension", async () => {
+  it("removes the default from the current default dimension (UXW-4988)", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -554,6 +554,18 @@ describe("MetricDimensions", () => {
     expect(
       settings.queryByRole("button", { name: "Set as default" }),
     ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      settings.getByRole("button", { name: "Remove default" }),
+    );
+
+    await waitFor(async () => {
+      expect(
+        await getPostBody(
+          `path:/api/metric/${METRIC_ID}/dimension/set-default`,
+        ),
+      ).toEqual({ dimension_id: null });
+    });
   });
 
   it("does not offer set-default for orphaned dimensions", async () => {
@@ -563,6 +575,9 @@ describe("MetricDimensions", () => {
     const settings = within(await openSettings(/Suspend At/));
     expect(
       settings.queryByRole("button", { name: "Set as default" }),
+    ).not.toBeInTheDocument();
+    expect(
+      settings.queryByRole("button", { name: "Remove default" }),
     ).not.toBeInTheDocument();
   });
 

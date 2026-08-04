@@ -404,12 +404,12 @@
 
 (api.macros/defendpoint :post "/:id/dimension/set-default"
   :- [:sequential :map]
-  "Mark exactly one dimension as the metric's default, clearing any previous default. Returns the
-  updated list of added dimensions. (It is legal for a metric to have no default; this always leaves
-  exactly one.)"
+  "Mark exactly one dimension as the metric's default, clearing any previous default. A null
+  `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.
+  Returns the updated list of added dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [dimension_id]} :- [:map [:dimension_id ms/NonBlankString]]]
+   {:keys [dimension_id]} :- [:map [:dimension_id [:maybe ms/NonBlankString]]]]
   (write-check-metric! id)
   (metrics/set-default-dimension! :metadata/metric id dimension_id))
 
