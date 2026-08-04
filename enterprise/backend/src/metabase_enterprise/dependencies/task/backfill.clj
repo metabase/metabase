@@ -153,8 +153,15 @@
                 entity-types)
         (< 1))))
 
-(defn- has-pending-retries? []
-  (deps.dependency-status/has-pending-retries?))
+(defn- has-pending-retries?
+  "Whether any entity is in retry backoff that this instance can actually act on.
+
+  Gated on the `:dependencies` feature because a retry marker is only cleared by processing the entity — on success
+  via `upsert-status!`, or by going terminal past `max-retries` — and both are gated on the feature. An unqualified
+  check would keep the job rescheduling forever over rows it is not allowed to touch."
+  []
+  (and (premium-features/has-feature? :dependencies)
+       (deps.dependency-status/has-pending-retries?)))
 
 (declare schedule-run!)
 

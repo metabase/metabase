@@ -538,3 +538,24 @@
             (is (= 1 fail_count))
             (is (some? next_retry_at))
             (is (false? terminal))))))))
+
+(deftest ^:sequential pending-retries-do-not-keep-job-awake-without-feature-test
+  (testing "A pending retry keeps the backfill job scheduled, but only when the :dependencies feature is present.
+           A retry marker is cleared by processing the entity -- on success via upsert-status!, or by going terminal
+           past max-retries -- and both are gated on the feature. Without it the job could never resolve the condition
+           keeping it awake, so it rescheduled hourly forever over rows it was not allowed to touch."
+    (backfill-all-existing-entities!)
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+      (mark-stale! :card card-id)
+      (backfill-dependencies-single-trigger!)
+      (deps.dependency-status/record-failure! :card card-id 5 60)
+      (is (t2/exists? :model/DependencyStatus
+                      :entity_type :card :entity_id card-id
+                      :terminal false :next_retry_at [:not= nil])
+          "test setup: the card must be in retry backoff")
+      (testing "with the feature, the pending retry keeps the job scheduled"
+        (mt/with-premium-features #{:dependencies}
+          (is (true? (#'dependencies.backfill/has-pending-retries?)))))
+      (testing "without the feature, it must not"
+        (mt/with-premium-features #{}
+          (is (false? (#'dependencies.backfill/has-pending-retries?))))))))
