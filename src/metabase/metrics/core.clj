@@ -100,22 +100,22 @@
 
 (defn- breakout-refs
   "The breakout refs of a metric's `query`. Empty for a native metric."
-  [query]
-  (lib/breakouts (lib/query (lib-metric/metadata-provider) query)))
+  [mp query]
+  (lib/breakouts (lib/query mp query)))
 
 (defn- breakout-default-match
-  "The first of `breakout-refs` that `dimension-mappings` maps to a dimension, as
+  "The first of `breakouts` that `dimension-mappings` maps to a dimension, as
    `{:dimension-id ... :breakout-ref ...}`, or nil when none is mapped. Matching ignores bucketing,
    since a breakout carries a `:temporal-unit` or `:binning` that its mapping target does not; the ref
    is kept alongside the id so the caller can still recover that bucketing."
-  [breakout-refs dimension-mappings]
+  [dimension-mappings breakouts]
   (let [dimension-id-by-column (into {}
-                                     (map (juxt (comp lib-metric/column-ref->key :target) :dimension-id))
+                                     (map (juxt (comp lib-metric/field-ref->column-key :target) :dimension-id))
                                      dimension-mappings)]
     (some (fn [breakout-ref]
-            (when-let [id (dimension-id-by-column (lib-metric/column-ref->key breakout-ref))]
+            (when-let [id (dimension-id-by-column (lib-metric/field-ref->column-key breakout-ref))]
               {:dimension-id id, :breakout-ref breakout-ref}))
-          breakout-refs)))
+          breakouts)))
 
 (defn- with-default-temporal-unit
   "Carry `unit` onto the dimension `id` as its `:default-temporal-unit`, when it is a bucket a user could
@@ -132,33 +132,33 @@
               (assoc :default-temporal-unit unit)))
           dimensions)))
 
-(defn recover-pre-curation-default
+(defn- recover-pre-curation-default
   "Recover the default a pre-curation metric expressed as a breakout on its own query: mark the dimension
-   that `dimension-mappings` maps to the first of `breakout-refs` as the sole `:default`, and carry that
+   that `dimension-mappings` maps to the first of `breakouts` as the sole `:default`, and carry that
    breakout's temporal bucket over as the dimension's `:default-temporal-unit`. Without the bucket a
    metric authored as \"Orders by year\" would render monthly, since a dashboard swaps the metric's
    breakouts for the default dimension's and an unset unit falls back to `:month`.
 
-   Returns `dimensions` untouched when they already carry a default, or when no breakout maps to one of
-   them — a metric with no breakout had no default, and inventing one would give it a breakout it never
-   had on dashboards."
-  [dimensions dimension-mappings breakout-refs]
-  (if (some :default dimensions)
-    dimensions
-    (if-let [{:keys [dimension-id breakout-ref]} (breakout-default-match breakout-refs dimension-mappings)]
-      (-> (lib-metric/set-default-dimension dimensions dimension-id)
-          (with-default-temporal-unit dimension-id (lib/raw-temporal-bucket breakout-ref)))
-      dimensions)))
+   Returns `dimensions` untouched when no breakout maps to one of them — a metric with no breakout had
+   no default, and inventing one would give it a breakout it never had on dashboards.
+
+   Precondition: none of `dimensions` carries a `:default` yet. [[recover-default-dimension]] owns that
+   guard; [[compute-full-dimension-set]] mints fresh dimensions, which cannot carry one."
+  [dimensions dimension-mappings breakouts]
+  (if-let [{:keys [dimension-id breakout-ref]} (breakout-default-match dimension-mappings breakouts)]
+    (-> (lib-metric/set-default-dimension dimensions dimension-id)
+        (with-default-temporal-unit dimension-id (lib/raw-temporal-bucket breakout-ref)))
+    dimensions))
 
 (defn compute-full-dimension-set
   "Build the FULL dimension set for a pre-curation metric's `query` — its own-table columns PLUS every
    implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
    shape (or `nil` when `query` is blank).
 
-   Serves the `card_schema` 24 upgrade, for a metric with no no persisted `:dimensions` at all.
-   Only valid in that case: it treats the query as
-   the sole source of truth and mints fresh ids, so running it over an existing set would replace it
-   wholesale. See [[recover-default-dimension]] for the metric that does have one.
+   Serves the `card_schema` 24 upgrade, for a metric with no persisted `:dimensions` at all. Only
+   valid in that case: it treats the query as the sole source of truth and mints fresh ids, so running
+   it over an existing set would replace it wholesale. See [[recover-default-dimension]] for the
+   metric that does have one.
 
    Unlike the seeded default a freshly created metric gets (own-table and explicitly-joined columns
    only), this includes every FK-reachable column, because that is what the pre-curation UI offered and
@@ -173,19 +173,20 @@
                              lib-metric/extract-persisted-dimensions)]
       {:dimensions         (recover-pre-curation-default dimensions
                                                          dimension-mappings
-                                                         (breakout-refs query))
+                                                         (breakout-refs mp query))
        :dimension-mappings dimension-mappings})))
 
 (defn recover-default-dimension
   "Modernize an *already-persisted* dimension set from a pre-curation metric by recovering the default
    its query's breakout expressed. Changes nothing else.
 
-   This is the counterpart to [[compute-full-dimension-set]] for the metric someone did open  and
-   which persisted a computed set on read."
+   This is the counterpart to [[compute-full-dimension-set]] for the metric someone did open and which
+   persisted a computed set on read."
   [dimensions dimension-mappings query]
   (if (or (empty? query) (some :default dimensions))
     dimensions
-    (recover-pre-curation-default dimensions dimension-mappings (breakout-refs query))))
+    (recover-pre-curation-default dimensions dimension-mappings
+                                  (breakout-refs (lib-metric/metadata-provider) query))))
 
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit

@@ -331,7 +331,7 @@
   (let [mappings  [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
                    {:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
         dims      [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2"}]
-        recovered #(metrics/recover-pre-curation-default %1 mappings %2)]
+        recovered #(#'metrics/recover-pre-curation-default %1 mappings %2)]
     (testing "marks the dimension mapped to the breakout as the sole default"
       (is (= [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2" :default true}]
              (recovered dims [target-2]))))
@@ -340,40 +340,49 @@
              (->> (recovered dims (bucketed-ref :quarter)) (filter :default) (mapv :id)))))
     (testing "the first mapped breakout wins when the query has several"
       (is (= [uuid-2] (->> (recovered dims [target-2 target-1]) (filter :default) (mapv :id)))))
-    (testing "an existing default always wins -- only a v0.64 curation can have set one"
-      (let [curated [{:id uuid-1 :name "col1" :default true} {:id uuid-2 :name "col2"}]]
-        (is (= curated (recovered curated [target-2])))))
     (testing "no breakout, or no breakout that maps to a dimension, leaves the set untouched"
       (is (= dims (recovered dims [])))
       (is (= dims (recovered dims [target-99])))
-      (is (= dims (metrics/recover-pre-curation-default dims nil [target-2]))))
+      (is (= dims (#'metrics/recover-pre-curation-default dims nil [target-2]))))
     (testing "idempotent -- re-running over an already-repaired set is a no-op"
       (let [once (recovered dims [target-2])]
         (is (= once (recovered once [target-2])))))))
 
+(deftest ^:parallel recover-default-dimension-guard-test
+  (let [mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+        dims     [{:id uuid-1 :name "col1"} {:id uuid-2 :name "col2"}]]
+    (testing "an existing default always wins -- only a v0.64 curation can have set one"
+      ;; The un-analyzable query proves the guard short-circuits before any query analysis: reaching
+      ;; `breakout-refs` with it would throw.
+      (let [curated [{:id uuid-1 :name "col1" :default true} {:id uuid-2 :name "col2"}]]
+        (is (= curated (metrics/recover-default-dimension curated mappings {:not "a real query"})))))
+    (testing "a blank query leaves the set untouched"
+      (is (= dims (metrics/recover-default-dimension dims mappings nil)))
+      (is (= dims (metrics/recover-default-dimension dims mappings {}))))))
+
 (deftest ^:parallel recover-pre-curation-default-preserves-temporal-unit-test
-  (let [mappings  [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
-        datetime  [{:id uuid-1 :name "col1" :effective-type :type/DateTime}]
-        recovered (fn [dims refs]
-                    (-> (metrics/recover-pre-curation-default dims mappings refs)
-                        first
-                        (select-keys [:default :default-temporal-unit])))]
+  (let [mappings         [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+        datetime         [{:id uuid-1 :name "col1" :effective-type :type/DateTime}]
+        default-and-unit (fn [dims refs]
+                           (-> (#'metrics/recover-pre-curation-default dims mappings refs)
+                               first
+                               (select-keys [:default :default-temporal-unit])))]
     (testing "the breakout's bucket is carried over, so the metric keeps the grain it was authored at"
       (is (= {:default true :default-temporal-unit :year}
-             (recovered datetime (bucketed-ref :year)))))
+             (default-and-unit datetime (bucketed-ref :year)))))
     (testing "an unbucketed breakout recovers the dimension but sets no unit"
-      (is (= {:default true} (recovered datetime [target-1]))))
+      (is (= {:default true} (default-and-unit datetime [target-1]))))
     (testing "a unit the dimension's own picker would not offer is dropped rather than persisted"
       (testing "hidden from the picker"
-        (is (= {:default true} (recovered datetime (bucketed-ref :millisecond)))))
+        (is (= {:default true} (default-and-unit datetime (bucketed-ref :millisecond)))))
       (testing "belongs to another temporal type"
         (is (= {:default true}
-               (recovered [{:id uuid-1 :name "col1" :effective-type :type/Date}]
-                          (bucketed-ref :hour)))))
+               (default-and-unit [{:id uuid-1 :name "col1" :effective-type :type/Date}]
+                                 (bucketed-ref :hour)))))
       (testing "column is not temporal at all"
         (is (= {:default true}
-               (recovered [{:id uuid-1 :name "col1" :effective-type :type/Text}]
-                          (bucketed-ref :year))))))
+               (default-and-unit [{:id uuid-1 :name "col1" :effective-type :type/Text}]
+                                 (bucketed-ref :year))))))
     (testing "idempotent -- the recovered unit survives a re-run"
-      (let [once (metrics/recover-pre-curation-default datetime mappings (bucketed-ref :year))]
-        (is (= once (metrics/recover-pre-curation-default once mappings (bucketed-ref :year))))))))
+      (let [once (#'metrics/recover-pre-curation-default datetime mappings (bucketed-ref :year))]
+        (is (= once (#'metrics/recover-pre-curation-default once mappings (bucketed-ref :year))))))))

@@ -102,20 +102,20 @@
     (is (not= (lib-metric.dimension/field-ref->key [:field {:temporal-unit :month} 100])
               (lib-metric.dimension/field-ref->key [:field {:temporal-unit :day} 100])))))
 
-;;; -------------------------------------------------- column-ref->key --------------------------------------------------
+;;; -------------------------------------------------- field-ref->column-key --------------------------------------------------
 
-(deftest ^:parallel column-ref->key-ignores-bucketing-test
-  (testing "bucketing is NOT part of the key, so a bucketed breakout ref and the unbucketed mapping
-            target for the same column produce the same key"
-    (is (= (lib-metric.dimension/column-ref->key [:field {:temporal-unit :year} 100])
-           (lib-metric.dimension/column-ref->key [:field {} 100])))
-    (is (= (lib-metric.dimension/column-ref->key [:field {:binning {:strategy :default}} 100])
-           (lib-metric.dimension/column-ref->key [:field {} 100]))))
+(deftest ^:parallel field-ref->column-key-ignores-bucketing-test
+  (testing (str "bucketing is NOT part of the key, so a bucketed breakout ref and the unbucketed "
+                "mapping target for the same column produce the same key")
+    (is (= (lib-metric.dimension/field-ref->column-key [:field {:temporal-unit :year} 100])
+           (lib-metric.dimension/field-ref->column-key [:field {} 100])))
+    (is (= (lib-metric.dimension/field-ref->column-key [:field {:binning {:strategy :default}} 100])
+           (lib-metric.dimension/field-ref->column-key [:field {} 100]))))
   (testing "everything else stays identity-relevant"
-    (is (not= (lib-metric.dimension/column-ref->key [:field {:source-field 1} 100])
-              (lib-metric.dimension/column-ref->key [:field {:source-field 2} 100])))
-    (is (not= (lib-metric.dimension/column-ref->key [:field {} 100])
-              (lib-metric.dimension/column-ref->key [:field {} 101])))))
+    (is (not= (lib-metric.dimension/field-ref->column-key [:field {:source-field 1} 100])
+              (lib-metric.dimension/field-ref->column-key [:field {:source-field 2} 100])))
+    (is (not= (lib-metric.dimension/field-ref->column-key [:field {} 100])
+              (lib-metric.dimension/field-ref->column-key [:field {} 101])))))
 
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 

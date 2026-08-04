@@ -58,7 +58,6 @@
     [lib-metric.dimension
      add-dimensions
      addable-pairs
-     column-ref->key
      dimension
      dimension-target->field-id
      dimensionable-query
@@ -67,6 +66,7 @@
      dimensions-for-metric
      dimensions-for-table
      extract-persisted-dimensions
+     field-ref->column-key
      field-ref->key
      get-persisted-dimension-mappings
      get-persisted-dimensions

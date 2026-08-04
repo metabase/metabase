@@ -625,25 +625,24 @@
 (defn- pre-curation-metric!
   "Insert a metric on ORDERS and stamp it with the previous release's `card_schema` and no persisted
    `:dimensions`, simulating a metric created before curated dimensions shipped. `f` receives the
-   metric id. `query` defaults to a plain breakout-less count of ORDERS."
+   metric id. The 1-arity uses a plain breakout-less count of ORDERS."
   ([f]
-   (pre-curation-metric! nil f))
+   (let [mp (mt/metadata-provider)]
+     (pre-curation-metric! (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               (lib/aggregate (lib/count)))
+                           f)))
   ([query f]
-   (let [mp       (mt/metadata-provider)
-         orders-q (or query
-                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                          (lib/aggregate (lib/count))))]
-     (mt/with-temp [:model/Card metric {:name          "Orders Count"
-                                        :type          :metric
-                                        :database_id   (mt/id)
-                                        :table_id      (mt/id :orders)
-                                        :dataset_query orders-q}]
-       ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
-       ;; bypassing before-update so nothing bumps it back to the current version.
-       (t2/query-one {:update :report_card
-                      :set    {:card_schema 23}
-                      :where  [:= :id (:id metric)]})
-       (f (:id metric))))))
+   (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                      :type          :metric
+                                      :database_id   (mt/id)
+                                      :table_id      (mt/id :orders)
+                                      :dataset_query query}]
+     ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
+     ;; bypassing before-update so nothing bumps it back to the current version.
+     (t2/query-one {:update :report_card
+                    :set    {:card_schema 23}
+                    :where  [:= :id (:id metric)]})
+     (f (:id metric)))))
 
 (deftest pre-curation-metric-modernized-to-full-dimension-set-on-read-test
   (testing (str "UXW-4808: a metric with the previous release's `card_schema` and no persisted "
@@ -800,10 +799,11 @@
                                      :table_id      (mt/id :orders)
                                      :dataset_query query}]
     (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set query)
-          ;; Strip both things that release could not produce: a `:default`, and the table-prefixed
-          ;; display name for FK-reachable columns (`table-prefixed-dimension` arrived with curation).
+          ;; Strip everything that release could not produce: the `:default`, its
+          ;; `:default-temporal-unit`, and the table-prefixed display name for FK-reachable columns
+          ;; (all three arrived with curation in v0.64).
           old-shaped (mapv (fn [dim]
-                             (cond-> (dissoc dim :default)
+                             (cond-> (dissoc dim :default :default-temporal-unit)
                                (= "connection" (get-in dim [:group :type]))
                                (assoc :display-name (:name dim))))
                            dimensions)]

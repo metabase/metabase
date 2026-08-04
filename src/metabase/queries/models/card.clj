@@ -731,22 +731,25 @@
   card)
 
 ;; Schema upgrade: 23 to 24 ==========================================================================================
-;; Curated metric dimensions. New metrics seed their own-table columns only,
-;; with joined/FK columns available to add on demand. But metrics created before curation implicitly exposed EVERY
-;; breakoutable column (own-table + implicitly-joined), and existing dashboard filters may be mapped to those joined
-;; columns. Modernize such a metric on read by backfilling the full implicitly-joined dimension set, so every existing
-;; mapping still corresponds to a live dimension.
+;; Curated metric dimensions. New metrics seed their own-table columns only, with joined/FK columns available to add
+;; on demand. But metrics created before curation implicitly exposed EVERY breakoutable column (own-table +
+;; implicitly-joined) — with existing dashboard filters possibly mapped to those joined columns — and expressed their
+;; default dimension as a breakout on their own query rather than a `:default` flag.
 (defmethod upgrade-card-schema-to 24
   [card _schema-version]
-  (if (and (= :metric (keyword (:type card)))
-           (seq (:dataset_query card)))
-    (if (nil? (:dimensions card))
-      (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
-        (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
-      (update card :dimensions metrics/recover-default-dimension
-              (:dimension_mappings card)
-              (:dataset_query card)))
-    card))
+  (cond
+    (not (and (= :metric (keyword (:type card)))
+              (seq (:dataset_query card))))
+    card
+
+    (nil? (:dimensions card))
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
+
+    :else
+    (update card :dimensions metrics/recover-default-dimension
+            (:dimension_mappings card)
+            (:dataset_query card))))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]

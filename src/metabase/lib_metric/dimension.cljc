@@ -31,7 +31,7 @@
    (dissoc opts :lib/uuid :effective-type :base-type)
    id-or-name])
 
-(defn column-ref->key
+(defn field-ref->column-key
   "Like [[field-ref->key]], but keyed on the underlying column rather than the bucketed expression —
    `:temporal-unit` and `:binning` are dropped as well. Use it to match a bucketed ref (a breakout,
    say) against the unbucketed mapping target for the same column."
