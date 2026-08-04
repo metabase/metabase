@@ -1,6 +1,6 @@
 (ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
-  (:refer-clojure :exclude [get-in not-empty])
+  (:refer-clojure :exclude [get-in])
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
    [clojure.core.cache :as cache]
@@ -20,7 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf :refer [get-in not-empty]]
+   [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -564,32 +564,6 @@
   (equals [_this another]
     (and (instance? UncachedApplicationDatabaseMetadataProvider another)
          (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
-
-(mu/defn tables-by-name :- [:sequential ::lib.schema.metadata/table]
-  "Active, non-hidden Tables in `database-id` whose name case-insensitively matches one of `table-names`.
-
-  Case-insensitive because the spelling sync recorded need not match the spelling in a query: `normalize-name`
-  lower-cases while some warehouses (Snowflake) report upper-case. Callers needing an exact match should filter the
-  result.
-
-  Deliberately not a `MetadataProvider` operation. This is a name lookup against the application database rather than
-  metadata for a query, so it does not need the provider's caching, overrides, or cross-platform contract — and
-  routing it through the provider would mean fetching a whole Database's catalog to find a handful of rows."
-  [database-id :- ::lib.schema.id/database
-   table-names :- [:sequential :string]]
-  ;; This is a prefilter, not the decision: callers narrow here and then match precisely (see
-  ;; `metabase.sql-tools.common/find-table-or-transform`). That only works while the result is a *superset* of what
-  ;; the precise match would accept, which assumes two things, each with a test. The appdb's `lower()` must agree with
-  ;; `u/lower-case-en` — `tables-by-name-case-folding-test`, which runs on every supported appdb. And a driver's
-  ;; `normalize-unquoted-name` must be a pure case fold — `metabase.driver.sql.normalize-test`.
-  (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
-    (t2/select :metadata/table
-               {:where [:and
-                        [:= :db_id database-id]
-                        ;; `lower()` cannot use an index on the name column, but it still beats fetching every row.
-                        [:in [:lower :name] names]
-                        (active-only-honeysql-filter :metadata/table nil)]})
-    []))
 
 (defn- application-database-metadata-provider-factory
   "Inner function that constructs a new `MetadataProvider`.

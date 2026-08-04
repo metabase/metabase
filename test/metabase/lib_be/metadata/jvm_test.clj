@@ -321,33 +321,3 @@
       (mt/with-dynamic-fn-redefs [t2/select (fn [& _] (throw (ex-info "boom" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error fetching metadata with spec"
                               (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id #{Integer/MAX_VALUE}})))))))
-
-(deftest tables-by-name-case-folding-test
-  (testing "tables-by-name must fold case the same way the application database's lower() does.
-
-           The narrowed fetch is only correct if it returns a superset of what find-table-or-transform would accept:
-           it prefilters with SQL `lower(name)` against names lowered by u/lower-case-en, then Clojure decides using
-           the driver's normalize-name. If the appdb's lower() and Java's disagree about a name, the prefilter drops a
-           row that would have matched and the dependency silently disappears. This test therefore has to run on every
-           supported appdb -- H2 in the backend workflow, Postgres and MariaDB in app-db.yml -- which it does simply by
-           existing.
-
-           Scope: ASCII case variants (the real case, since warehouses like Snowflake report upper-case while
-           normalize-name lower-cases) and accented Latin. Deliberately not covered: locale-dependent folds such as
-           U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE, where lower() legitimately differs between engines and
-           locales. That remains a documented limit of the prefilter rather than an assertion."
-    (mt/with-temp [:model/Database {db-id :id} {:name "case-folding-probe" :engine :h2 :details {}}]
-      (let [names ["orders" "PRODUCTS" "MixedCase" "École"]]
-        (doseq [n names]
-          (t2/insert! :model/Table {:db_id db-id :name n :display_name n
-                                    :schema "public" :active true :visibility_type nil}))
-        (doseq [stored names
-                spelling [stored (u/lower-case-en stored) (u/upper-case-en stored)]]
-          (testing (format "stored %s, queried as %s" (pr-str stored) (pr-str spelling))
-            (let [found (into #{} (map :name) (lib.metadata.jvm/tables-by-name db-id [spelling]))]
-              (is (contains? found stored)
-                  "the appdb's lower() disagrees with u/lower-case-en, so the prefilter drops a matching row"))))
-        (testing "a name that matches nothing returns empty rather than everything"
-          (is (= [] (lib.metadata.jvm/tables-by-name db-id ["no_such_table"]))))
-        (testing "no names requested returns empty rather than the whole catalog"
-          (is (= [] (lib.metadata.jvm/tables-by-name db-id []))))))))

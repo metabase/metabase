@@ -2232,10 +2232,10 @@
            analytics-interface
            driver
            lib
-           lib-be
            settings
            sql-parsing
-           util}}
+           util}
+   :model-imports #{:model/Table}}
 
   sso
   {:team "UX West"

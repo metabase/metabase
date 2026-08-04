@@ -23,7 +23,6 @@
   resolve-database]
  [metabase.lib-be.metadata.jvm
   application-database-metadata-provider
-  tables-by-name
   instance->metadata
   metadata-provider-cache
   with-existing-metadata-provider-cache

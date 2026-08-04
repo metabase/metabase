@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
@@ -105,7 +104,8 @@
                           (->> (map :component))
                           (->> (map split-compound-table-spec))
                           (->> (mapv #(sql-tools.common/normalize-table-spec driver %))))
-        db-tables     (lib-be/tables-by-name (lib/database-id query) (keep :table specs))
+        table-ids     (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
+        db-tables     (lib.metadata/bulk-metadata query :metadata/table table-ids)
         db-transforms (lib.metadata/transforms query)]
     (into #{}
           (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
