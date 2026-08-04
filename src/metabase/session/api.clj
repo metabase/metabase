@@ -395,6 +395,7 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
+  {:scope "data-app"}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 

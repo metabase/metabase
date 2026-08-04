@@ -375,6 +375,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
+  {:scope "data-app"}
   []
   (-> (api/check-404 @api/*current-user*)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)

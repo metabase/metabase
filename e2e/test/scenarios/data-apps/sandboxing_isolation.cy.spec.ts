@@ -216,21 +216,21 @@ describe("scenarios > data apps > sandbox isolation", () => {
 describe("scenarios > data apps > sandbox isolation > backend scope", () => {
   const AS_DATA_APP = { "X-Metabase-Client": "data-app" };
 
-  const PRIVILEGED_ENDPOINTS = ["user/current", "permissions/graph", "setting"];
+  const BLOCKED_ENDPOINTS = ["permissions/graph", "setting"];
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("reaches the privileged endpoints when the request is not marked as a data app", () => {
-    PRIVILEGED_ENDPOINTS.forEach((endpoint) => {
+  it("reaches the blocked endpoints when the request is not marked as a data app", () => {
+    BLOCKED_ENDPOINTS.forEach((endpoint) => {
       cy.request(`/api/${endpoint}`).its("status").should("eq", 200);
     });
   });
 
-  it("refuses those endpoints once the request is marked as a data app", () => {
-    PRIVILEGED_ENDPOINTS.forEach((endpoint) => {
+  it("refuses the write/admin endpoints once the request is marked as a data app", () => {
+    BLOCKED_ENDPOINTS.forEach((endpoint) => {
       cy.request({
         url: `/api/${endpoint}`,
         headers: AS_DATA_APP,
@@ -242,9 +242,13 @@ describe("scenarios > data apps > sandbox isolation > backend scope", () => {
     });
   });
 
-  it("still serves the data-app read/query surface to a marked request", () => {
-    cy.request({ url: "/api/collection/root", headers: AS_DATA_APP })
-      .its("status")
-      .should("eq", 200);
+  it("serves the data-app read/query and SDK-bootstrap surface to a marked request", () => {
+    ["collection/root", "user/current", "session/properties"].forEach(
+      (endpoint) => {
+        cy.request({ url: `/api/${endpoint}`, headers: AS_DATA_APP })
+          .its("status")
+          .should("eq", 200);
+      },
+    );
   });
 });
