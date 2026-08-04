@@ -66,10 +66,10 @@
 (defn- schedule-run!
   "Schedule the next run of the entity check job, unless the batch size disables it.
 
-  A non-positive batch size is the supported off-switch for the job. It is env-var-only
-  (`:setter :none`), so it cannot change while the process runs and there is nothing to be gained by waking up to
-  re-read it: the job stays unscheduled until restart. Every scheduling path goes through here, including the
-  event-driven [[trigger-entity-check-job!]], so this is the one place the switch has to be honoured."
+  A non-positive batch size is the supported off-switch for the job. The setting is `:setter :none`, so there is no
+  supported way to change it at runtime — in practice it comes from an env var or the default — and waking up to
+  re-read it would buy nothing. So the job stays unscheduled until a restart. Every scheduling path goes through here,
+  including the event-driven [[trigger-entity-check-job!]], so this is the one place the switch has to be honoured."
   [scheduler delay-in-seconds]
   (if-not (pos? (deps.settings/dependency-entity-check-batch-size))
     (log/debug "Not scheduling job Dependency Entity Check because the batch size is not positive")

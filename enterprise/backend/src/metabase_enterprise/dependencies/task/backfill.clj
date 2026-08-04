@@ -93,10 +93,6 @@
 
 (defn- backfill-entity-batch!
   [entity-type batch-size]
-  ;; The cache has to span the `t2/select` as well as the processing loop: reading an entity attaches a
-  ;; `MetadataProvider` to its query (see `metabase.lib-be.models.transforms/transform-query`), and without a cache
-  ;; each entity in the batch gets its own. Native-query dep calculation loads the whole table catalog of the query's
-  ;; database, so per-entity providers means the batch retains one full catalog per entity.
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
           instances (processable-instances entity-type batch-size)]
@@ -107,10 +103,7 @@
                    (try
                      (compute-deps-for-entity! entity-type entity)
                      1
-                     ;; `Throwable`, not `Exception`: an `OutOfMemoryError` used to escape without recording
-                     ;; anything, so the next run selected the identical batch and died the same way forever.
-                     ;; Recording first means a poisonous entity backs off and eventually goes terminal.
-                     (catch Throwable e
+                     (catch Throwable e ;; catch OOMs
                        (let [id (:id entity)]
                          (try
                            (deps.dependency-status/record-failure!
@@ -129,9 +122,7 @@
                                          type-name id (ex-message e))
                              (log/errorf "Additionally, failed to record the failure for %s %s: %s"
                                          type-name id (ex-message record-ex)))))
-                       ;; An `Error` leaves the JVM in a state we cannot reason about, so fail the job rather than
-                       ;; carrying on through the rest of the batch. The recording above still happened.
-                       (when-not (instance? Exception e)
+                       (when-not (instance? Exception e) ;; re-throw Errors
                          (throw e))
                        0))))
               0
@@ -154,11 +145,7 @@
         (< 1))))
 
 (defn- has-pending-retries?
-  "Whether any entity is in retry backoff that this instance can actually act on.
-
-  Gated on the `:dependencies` feature because a retry marker is only cleared by processing the entity — on success
-  via `upsert-status!`, or by going terminal past `max-retries` — and both are gated on the feature. An unqualified
-  check would keep the job rescheduling forever over rows it is not allowed to touch."
+  "Whether any entity is in retry backoff that this instance can actually act on."
   []
   (and (premium-features/has-feature? :dependencies)
        (deps.dependency-status/has-pending-retries?)))
@@ -195,10 +182,10 @@
 (defn- schedule-run!
   "Schedule the next run of the backfill job, unless the batch size disables it.
 
-  A non-positive batch size is the supported off-switch for the job. It is env-var-only
-  (`:setter :none`), so it cannot change while the process runs and there is nothing to be gained by waking up to
-  re-read it: the job stays unscheduled until restart. Every scheduling path goes through here, including the
-  event-driven [[trigger-backfill-job!]], so this is the one place the switch has to be honoured."
+  A non-positive batch size is the supported off-switch for the job. The setting is `:setter :none`, so there is no
+  supported way to change it at runtime — in practice it comes from an env var or the default — and waking up to
+  re-read it would buy nothing. So the job stays unscheduled until a restart. Every scheduling path goes through here,
+  including the event-driven [[trigger-backfill-job!]], so this is the one place the switch has to be honoured."
   [scheduler delay-in-seconds]
   (if-not (pos? (deps.settings/dependency-backfill-batch-size))
     (log/debug "Not scheduling job Dependency Backfill because the batch size is not positive")
