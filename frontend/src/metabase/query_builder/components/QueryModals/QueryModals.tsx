@@ -22,11 +22,11 @@ import {
   getQuestionWithoutComposing,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { QueryBuilderMode } from "metabase/redux/store";
+import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
