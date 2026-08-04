@@ -29,6 +29,19 @@ export const getSeriesWithDisplay = (
     card: { ...series.card, display },
   }));
 
+// The split series of a visualizer card get synthetic negative card ids so
+// they can't collide with real card ids; the id encodes the series position.
+export function getVisualizerSeriesCardId(seriesIndex: number) {
+  return -(seriesIndex + 1);
+}
+
+export function getVisualizerSeriesCardIndex(cardId?: number) {
+  if (!cardId) {
+    return 0;
+  }
+  return -cardId - 1;
+}
+
 export const createRawSeries = (options: {
   card: Card;
   queryResult: any;
