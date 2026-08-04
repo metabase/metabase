@@ -106,9 +106,10 @@
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
 (def ^{:arglists '([])} transforms-root-collection-id
-  "The (memoized) ID of the root collection of the `transforms` namespace, which holds every transform not filed
-  under a collection of its own. It sits at `location = \"/\"` beside the other top-level transforms collections
-  rather than above them, so listings of the top level filter it out."
+  "The (memoized) ID of the `transforms` namespace's root collection — the real row holding every transform not
+  filed under a collection of its own. Not to be confused with [[root-collection]], the placeholder record the API
+  still hands the frontend. It sits at `location = \"/\"` beside the other top-level transforms collections rather
+  than above them, so listings of the top level filter it out."
   (mdb/memoize-for-application-db
    (fn []
      (u/prog1 (t2/select-one-pk :model/Collection :is_root true :namespace transforms-ns)
@@ -315,8 +316,8 @@
     (and (is-library-metrics-collection? collection) (library-root-collection? collection))
     (assoc :name (tru "Metrics"))
 
-    (and (:is_root collection) (= (keyword (:namespace collection)) transforms-ns))
-    (assoc :name (tru "Transforms"))))
+    (:is_root collection)
+    (assoc :name (:name (collection.root/root-collection-with-ui-details (:namespace collection))))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
