@@ -1,8 +1,8 @@
-(ns metabase.driver.sql-mbql5.pivot-test
+(ns metabase.driver.sql.pivot-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [honey.sql :as sql]
-   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.store :as qp.store]))
@@ -12,40 +12,40 @@
 (deftest ^:parallel grouping-fn-formatter-test
   (testing "renders GROUPING(expr1, expr2, ...) for plain identifier args"
     (is (= ["GROUPING(col_a, col_b)"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-fn :col-a :col-b]))))
+           (sql/format-expr [::sql.pivot/grouping-fn :col-a :col-b]))))
   (testing "preserves args from nested expressions"
     (is (= ["GROUPING(CAST(foo AS ?), bar)" "int"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-fn [:cast :foo "int"] :bar])))))
+           (sql/format-expr [::sql.pivot/grouping-fn [:cast :foo "int"] :bar])))))
 
 (deftest ^:parallel grouping-id-fn-formatter-test
   (testing "renders GROUPING_ID(expr1, expr2, ...) for plain identifier args"
     (is (= ["GROUPING_ID(col_a, col_b)"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-id-fn :col-a :col-b]))))
+           (sql/format-expr [::sql.pivot/grouping-id-fn :col-a :col-b]))))
   (testing "preserves args from nested expressions"
     (is (= ["GROUPING_ID(CAST(foo AS ?), bar)" "int"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-id-fn [:cast :foo "int"] :bar])))))
+           (sql/format-expr [::sql.pivot/grouping-id-fn [:cast :foo "int"] :bar])))))
 
 (deftest ^:parallel synthesise-grouping-bitmask-test
   (testing "single expr renders as bare GROUPING(expr) with no arithmetic"
     (is (= ["GROUPING(col_a)"]
-           (sql/format-expr (sql-mbql5.pivot/synthesise-grouping-bitmask [:col-a])))))
+           (sql/format-expr (sql.pivot/synthesise-grouping-bitmask [:col-a])))))
   (testing "three exprs render as a sum with descending powers of 2, no `* 1` on the last term"
     (is (= ["(GROUPING(col_a) * 4) + (GROUPING(col_b) * 2) + GROUPING(col_c)"]
-           (sql/format-expr (sql-mbql5.pivot/synthesise-grouping-bitmask [:col-a :col-b :col-c]))))))
+           (sql/format-expr (sql.pivot/synthesise-grouping-bitmask [:col-a :col-b :col-c]))))))
 
 (deftest ^:parallel grouping-sets-formatter-test
   (testing "renders GROUPING SETS ((..), (..), ()) including the empty grand-total set"
     (is (= ["GROUPING SETS ((col_a, col_b), (col_a), ())"]
-           (sql/format-expr [::sql-mbql5.pivot/grouping-sets [:col-a :col-b] [:col-a] []])))))
+           (sql/format-expr [::sql.pivot/grouping-sets [:col-a :col-b] [:col-a] []])))))
 
-;;; ----- apply-top-level-clause [:sql-mbql5 :pivot] -----
+;;; ----- apply-top-level-clause [:sql :pivot] -----
 
 (defn- field-clause [uuid alias field-id]
   [:field {:lib/uuid                                                  uuid
            :metabase.query-processor.util.add-alias-info/source-alias alias} field-id])
 
 (defn- lower-pivot
-  "Run the `[:sql-mbql5 :pivot]` dispatch and return its HoneySQL form result (not formatted SQL)."
+  "Run the `[:sql :pivot]` dispatch and return its HoneySQL form result (not formatted SQL)."
   [breakouts pivot]
   (qp.store/with-metadata-provider meta/metadata-provider
     (let [stage    {:lib/type     :mbql.stage/mbql
@@ -55,7 +55,7 @@
                     :pivot        pivot}
           starting {:select [:b1] :group-by [:b1]}]
       (binding [sql.qp/*inner-query* stage]
-        (sql.qp/apply-top-level-clause :sql-mbql5 :pivot starting stage)))))
+        (sql.qp/apply-top-level-clause :sql :pivot starting stage)))))
 
 (def ^:private b1-uuid "11111111-1111-1111-1111-111111111111")
 (def ^:private b2-uuid "22222222-2222-2222-2222-222222222222")
@@ -67,9 +67,9 @@
   (testing "single breakout, rows-only, both totals: SELECT gets GROUPING(..) AS pivot-grouping; GROUP BY becomes
             GROUPING SETS with detail + grand-total; ORDER BY prefixed with GROUPING(..) ASC."
     (is (=? {:select  [:b1
-                       [[::sql-mbql5.pivot/grouping-fn some?] "pivot-grouping"]]
-             :group-by [[::sql-mbql5.pivot/grouping-sets [some?] []]]
-             :order-by [[[::sql-mbql5.pivot/grouping-fn some?] :asc]]}
+                       [[::sql.pivot/grouping-fn some?] "pivot-grouping"]]
+             :group-by [[::sql.pivot/grouping-sets [some?] []]]
+             :order-by [[[::sql.pivot/grouping-fn some?] :asc]]}
             (lower-pivot [(b1)] {:rows [b1-uuid] :columns []
                                  :show-row-totals true :show-column-totals true})))))
 
@@ -80,14 +80,14 @@
                                     :show-row-totals true :show-column-totals true})
           [tag a1 a2] (-> out :select last first)]
       (testing "tag is ::grouping-fn and we have two args"
-        (is (= ::sql-mbql5.pivot/grouping-fn tag))
+        (is (= ::sql.pivot/grouping-fn tag))
         (is (some? a1))
         (is (some? a2)))
       (testing "the FIRST GROUPING arg matches the LAST breakout's hsql (and vice versa)"
         (let [breakouts-hsql (qp.store/with-metadata-provider meta/metadata-provider
                                (binding [sql.qp/*inner-query* {:lib/type :mbql.stage/mbql}]
-                                 [(sql.qp/->honeysql :sql-mbql5 (b1))
-                                  (sql.qp/->honeysql :sql-mbql5 (b2))]))]
+                                 [(sql.qp/->honeysql :sql (b1))
+                                  (sql.qp/->honeysql :sql (b2))]))]
           (is (= breakouts-hsql [a2 a1])))))))
 
 (deftest ^:parallel grouping-sets-shape-test
@@ -115,7 +115,7 @@
                     :pivot        pivot}
           starting {:select [:b1] :group-by [:b1] :order-by order-by}]
       (binding [sql.qp/*inner-query* stage]
-        (sql.qp/apply-top-level-clause :sql-mbql5 :pivot starting stage)))))
+        (sql.qp/apply-top-level-clause :sql :pivot starting stage)))))
 
 (deftest ^:parallel order-by-prepends-grouping-test
   (testing "GROUPING(...) ASC is prepended as the primary sort; existing :order-by entries pass through untouched
@@ -124,7 +124,7 @@
                [(b1)]
                {:rows [b1-uuid] :columns [] :show-row-totals true :show-column-totals true}
                [[:count :desc]])]
-      (is (=? [[[::sql-mbql5.pivot/grouping-fn some?] :asc]
+      (is (=? [[[::sql.pivot/grouping-fn some?] :asc]
                [:count :desc]]
               (:order-by out))))))
 

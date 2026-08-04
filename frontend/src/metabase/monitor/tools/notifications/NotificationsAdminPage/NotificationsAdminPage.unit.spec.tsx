@@ -139,6 +139,7 @@ type SetupOpts = {
   detailErrorId?: NotificationId;
   failingCountError?: boolean;
   allCountError?: boolean;
+  refetchDelay?: number;
 };
 
 const setup = ({
@@ -154,7 +155,10 @@ const setup = ({
   detailErrorId,
   failingCountError = false,
   allCountError = false,
+  refetchDelay,
 }: SetupOpts = {}) => {
+  let listCallCount = 0;
+
   fetchMock.get("path:/api/notification/admin", (call) => {
     const params = new URL(call.url).searchParams;
     if (
@@ -177,7 +181,13 @@ const setup = ({
         ? { status: 500, body: { message: "All count failed" } }
         : { data: [], total: allCount, limit: 1, offset: 0 };
     }
-    return { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
+    const page = { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
+    listCallCount += 1;
+    // Keep every refetch except the initial load in flight, so tests can
+    // observe the loading state the grid.
+    return refetchDelay !== undefined && listCallCount > 1
+      ? new Promise((resolve) => setTimeout(() => resolve(page), refetchDelay))
+      : page;
   });
 
   setupBulkNotificationActionEndpoint();
@@ -573,6 +583,77 @@ describe("NotificationsAdminPage", () => {
       });
       await waitFor(() => {
         expect(history?.getCurrentLocation().search).toContain("page=1");
+      });
+    });
+
+    it("covers the grid with a loading overlay while a refetch is in flight", async () => {
+      setup({
+        notifications: [notification1, notification2],
+        refetchDelay: 10_000,
+      });
+      await waitForTableToLoad();
+
+      const table = screen.getByTestId("notifications-admin-table");
+      expect(
+        within(table).queryByTestId("loading-overlay"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
+
+      expect(
+        await within(table).findByTestId("loading-overlay"),
+      ).toBeInTheDocument();
+      expect(table).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      await waitFor(() => {
+        expect(
+          within(table).queryByTestId("loading-overlay"),
+        ).not.toBeInTheDocument();
+      });
+      expect(table).toHaveAttribute("aria-busy", "false");
+    });
+
+    it("keeps search loading feedback in the grid instead of the search box", async () => {
+      setup({ refetchDelay: 10_000 });
+      await waitForTableToLoad();
+
+      const searchInput = screen.getByPlaceholderText(
+        /Search by question or owner/,
+      );
+
+      await userEvent.type(searchInput, "sales");
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
+      });
+
+      const table = screen.getByTestId("notifications-admin-table");
+      expect(
+        await within(table).findByTestId("loading-overlay"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          getListCalls().some((call) => call.url.includes("query=sales")),
+        ).toBe(true);
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      await waitFor(() => {
+        expect(
+          within(table).queryByTestId("loading-overlay"),
+        ).not.toBeInTheDocument();
       });
     });
   });
