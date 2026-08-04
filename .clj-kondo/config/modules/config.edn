@@ -1970,6 +1970,7 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
+                    :model/NativeQuerySnippet
                     :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
@@ -1979,6 +1980,7 @@
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
+           events
            models
            premium-features}
    :model-imports #{:model/Collection}}
@@ -2086,6 +2088,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -2870,6 +2873,7 @@
            lib
            lib-be
            models
+           permissions
            queries
            query-permissions
            query-processor
@@ -3321,6 +3325,7 @@
    :api  #{metabase-enterprise.erd.api}
    :uses #{api
            models
+           permissions
            util
            warehouse-schema}
    :model-imports #{:model/Database
@@ -3816,6 +3821,7 @@
    :api  #{metabase-enterprise.upload-management.api}
    :uses #{api
            models
+           permissions
            premium-features
            upload
            util}

@@ -51,7 +51,8 @@
                                      (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
-      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
+      ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
+      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))

@@ -5,8 +5,6 @@ import { useAdminSetting } from "metabase/api/utils";
 import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { Box, Radio, Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -28,8 +26,6 @@ export function getHomepageMode(
 }
 
 export function HomepageSetting() {
-  const dispatch = useDispatch();
-
   const { value: customHomepage, updateSettings } =
     useAdminSetting("custom-homepage");
   const { value: customHomepageDashboardId } = useAdminSetting(
@@ -66,7 +62,6 @@ export function HomepageSetting() {
         "custom-homepage": false,
       });
     }
-    await dispatch(refreshCurrentUser());
   };
 
   const handleDashboardChange = async (newDashboardId?: DashboardId) => {
@@ -78,7 +73,6 @@ export function HomepageSetting() {
     if (newDashboardId && wasUnset) {
       trackCustomHomepageDashboardEnabled("admin");
     }
-    await dispatch(refreshCurrentUser());
   };
 
   return (

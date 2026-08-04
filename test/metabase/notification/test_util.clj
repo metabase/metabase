@@ -9,6 +9,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.slack :as slack]
+   [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
@@ -93,12 +94,12 @@
   `(let [topics# ~topics]
      (try
        (doseq [topic# topics#]
-         (derive topic# :metabase/event))
+         (events/derive! topic# :metabase/event))
        (with-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
          ~@body)
        (finally
          (doseq [topic# topics#]
-           (underive topic# :metabase/event))))))
+           (events/underive! topic# :metabase/event))))))
 
 (defmacro with-notification-cleanup!
   "Macro that clean ups notification related models"

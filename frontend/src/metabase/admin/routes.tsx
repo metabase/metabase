@@ -125,13 +125,13 @@ export const getRoutes = (
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId",
               )}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
               )}
             />
           </Route>

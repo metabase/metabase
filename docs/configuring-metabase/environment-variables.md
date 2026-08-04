@@ -1385,6 +1385,22 @@ Maximum tokens for LLM responses.
 
 The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
 
+### `MB_LLM_MISTRAL_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.mistral.ai/v1`
+- [Configuration file name](./config-file.md): `llm-mistral-api-base-url`
+
+The Mistral API base URL used for Chat Completions.
+
+### `MB_LLM_MISTRAL_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-mistral-api-key`
+
+The Mistral API Key.
+
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
 - Type: string
@@ -1448,6 +1464,22 @@ Maximum SQL generation requests per user per minute.
 - [Configuration file name](./config-file.md): `llm-request-timeout-ms`
 
 Socket timeout in milliseconds for LLM API requests.
+
+### `MB_LLM_ZAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.z.ai/api/paas/v4`
+- [Configuration file name](./config-file.md): `llm-zai-api-base-url`
+
+The Z.AI API base URL used for Chat Completions.
+
+### `MB_LLM_ZAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-zai-api-key`
+
+The Z.AI API Key.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -2610,6 +2642,13 @@ How many days of usage metadata rollups to retain.
 - Default: `0 0 2 * * ? *`
 
 Cron schedule (in UTC) for usage metadata batch processing.
+
+### `MB_USE_NATIVE_PIVOT_TABLES`
+
+- Type: boolean
+- Default: `false`
+
+When enabled, run pivot queries as a single native GROUPING SETS query on drivers that support it, instead of running one query per breakout combination.
 
 ### `MB_USER_VISIBILITY`
 

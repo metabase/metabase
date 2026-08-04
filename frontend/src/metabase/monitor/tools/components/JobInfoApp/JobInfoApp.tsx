@@ -36,7 +36,11 @@ export const JobInfoApp = () => {
                 {data.scheduler.join("\n")}
               </Code>
             )}
-            <JobsTable jobs={data?.jobs ?? []} isLoading={isLoading} />
+            <JobsTable
+              jobs={data?.jobs ?? []}
+              isFetching={isFetching}
+              isLoading={isLoading}
+            />
           </>
         )}
       </MonitorMain>

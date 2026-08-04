@@ -10,7 +10,7 @@ import { storeDrillQuery } from "../api";
 
 interface McpGlobalConfig {
   instanceUrl?: string;
-  sessionToken?: string;
+  uiCredential?: string;
   mcpSessionId?: string;
 }
 
@@ -53,7 +53,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      const { instanceUrl, sessionToken, mcpSessionId } =
+      const { instanceUrl, uiCredential, mcpSessionId } =
         // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
@@ -70,7 +70,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      if (!instanceUrl || !sessionToken || !mcpSessionId) {
+      if (!instanceUrl || !uiCredential || !mcpSessionId) {
         await defaultNavigate();
         return;
       }
@@ -85,7 +85,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         // can fetch the payload without the LLM ever seeing it.
         ({ handle } = await storeDrillQuery({
           instanceUrl,
-          sessionToken,
+          uiCredential,
           mcpSessionId,
           encodedQuery,
         }));

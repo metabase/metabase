@@ -5,7 +5,7 @@ import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   mcpSessionId: string;
   encodedQuery: string;
 };
@@ -16,7 +16,7 @@ type StoreDrillQueryResponse = {
 
 type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
 };
 
 /**
@@ -28,7 +28,7 @@ type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
  */
 export async function storeDrillQuery({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   encodedQuery,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
@@ -37,7 +37,7 @@ export async function storeDrillQuery({
     headers: {
       "Content-Type": "application/json",
       "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      "X-Metabase-Session": sessionToken,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
     body: JSON.stringify({ encodedQuery }),
@@ -54,7 +54,7 @@ export async function storeDrillQuery({
 
 type FetchQueryByHandleRequest = {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   mcpSessionId: string;
   queryHandle: string;
 };
@@ -68,7 +68,7 @@ type FetchQueryByHandleResponse = {
  * Exchanges a query handle for the base64-encoded query it stands for.
  *
  * The v2 MCP tools return only a handle, so the query never enters the model's
- * context; the iframe resolves it here with the embedding session token it was
+ * context; the iframe resolves it here with the scoped UI credential it was
  * rendered with. Access is keyed on that (user, session) pair — a handle on its
  * own is not a bearer credential.
  *
@@ -76,7 +76,7 @@ type FetchQueryByHandleResponse = {
  */
 export async function fetchQueryByHandle({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   queryHandle,
 }: FetchQueryByHandleRequest): Promise<FetchQueryByHandleResponse> {
@@ -85,7 +85,7 @@ export async function fetchQueryByHandle({
     {
       headers: {
         "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-        "X-Metabase-Session": sessionToken,
+        "X-Metabase-Mcp-Ui-Auth": uiCredential,
         "Mcp-Session-Id": mcpSessionId,
       },
     },
@@ -107,7 +107,7 @@ export async function fetchQueryByHandle({
 
 export async function submitMcpFeedback({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   payload,
 }: SubmitMcpFeedbackPayload): Promise<void> {
@@ -116,7 +116,7 @@ export async function submitMcpFeedback({
     headers: {
       "Content-Type": "application/json",
       "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      "X-Metabase-Session": sessionToken,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
     body: JSON.stringify(payload),

@@ -165,6 +165,6 @@
                     "frontend_client/mcp_apps_template.html"
                     {:instanceUrl    "\"https://metabase.example.com/sub/path\""
                      :instanceUrlRaw site-url
-                     :sessionToken   nil
+                     :uiCredential   nil
                      :mcpSessionId   nil})]
       (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\"")))))
