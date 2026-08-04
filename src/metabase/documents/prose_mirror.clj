@@ -90,9 +90,9 @@
   The embed is a `resizeNode`-wrapped `cardEmbed` node, the same shape the document editor
   produces. `index` is a 0-based position among the ast's top-level blocks (0 inserts at the
   very top); a `nil` index appends the embed at the end and out-of-range indexes are clamped.
-  An `_id` uuid is stamped on the node for comment targeting. `extra-attrs` (optional) are
+  An `_id` uuid is stamped on the node for per-node identity. `extra-attrs` (optional) are
   merged onto the embed attrs after `:id` / `:_id` (e.g. `:stored_result_id`, `:chart_href`,
-  `:exploration_page_id` for static exploration embeds).
+  `:child_target_id`, `:host_data` for static exploration embeds).
 
   Args:
   - doc - a :model/Document, this will check that the content-type is valid for prose mirror

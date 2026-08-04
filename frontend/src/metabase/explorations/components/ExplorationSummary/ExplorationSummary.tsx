@@ -34,14 +34,15 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type { ExplorationDocument, ExplorationId } from "metabase-types/api";
+import type {
+  ExplorationDocument,
+  ExplorationId,
+  Timeline,
+} from "metabase-types/api";
 
 import { ExplorationComments } from "../ExplorationVisualization/ExplorationComments";
 
-import {
-  ExplorationIdProvider,
-  explorationEditorHost,
-} from "./ExplorationEditorHost";
+import { explorationEditorHost } from "./ExplorationEditorHost";
 import S from "./ExplorationSummary.module.css";
 import { ExplorationSummarySkeleton } from "./ExplorationSummarySkeleton";
 
@@ -50,6 +51,7 @@ interface ExplorationSummaryProps {
   explorationId: ExplorationId;
   commentsChildTargetId?: string;
   onCloseCommentsSidebar: () => void;
+  timelines?: Timeline[];
 }
 
 export function ExplorationSummary({
@@ -57,6 +59,7 @@ export function ExplorationSummary({
   explorationId,
   commentsChildTargetId,
   onCloseCommentsSidebar,
+  timelines,
 }: ExplorationSummaryProps) {
   const dispatch = useDispatch();
 
@@ -191,19 +194,17 @@ export function ExplorationSummary({
                 )}
               </Group>
               <Box w="100%" maw="42.5rem" mx="auto">
-                <ExplorationIdProvider explorationId={explorationId}>
-                  <Editor
-                    hostOverride={explorationEditorHost}
-                    onEditorReady={setEditorInstance}
-                    onCardEmbedsChange={updateCardEmbeds}
-                    onQuestionSelect={handleQuestionSelect}
-                    initialContent={documentContent}
-                    onChange={handleChange}
-                    editable={canWrite && !isSaving}
-                    isLoading={isDocumentLoading}
-                    editorContainerRef={editorContainerRef}
-                  />
-                </ExplorationIdProvider>
+                <Editor
+                  hostOverride={explorationEditorHost}
+                  onEditorReady={setEditorInstance}
+                  onCardEmbedsChange={updateCardEmbeds}
+                  onQuestionSelect={handleQuestionSelect}
+                  initialContent={documentContent}
+                  onChange={handleChange}
+                  editable={canWrite && !isSaving}
+                  isLoading={isDocumentLoading}
+                  editorContainerRef={editorContainerRef}
+                />
               </Box>
             </Stack>
             {showCommentsSidebar && (
@@ -216,6 +217,7 @@ export function ExplorationSummary({
                   explorationId={explorationId}
                   pageId={commentsChildTargetId}
                   onClose={onCloseCommentsSidebar}
+                  timelines={timelines}
                 />
               </Box>
             )}

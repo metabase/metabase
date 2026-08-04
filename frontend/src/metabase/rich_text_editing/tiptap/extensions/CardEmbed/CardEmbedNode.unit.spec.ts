@@ -83,7 +83,7 @@ describe("CardEmbed node — chart_href attr", () => {
     editor2.destroy();
   });
 
-  it("round-trips `exploration_page_id` through parseHTML ↔ renderHTML", () => {
+  it("round-trips `child_target_id` through parseHTML ↔ renderHTML", () => {
     const editor = makeEditor();
 
     editor.commands.insertContent({
@@ -92,18 +92,45 @@ describe("CardEmbed node — chart_href attr", () => {
         id: 77,
         name: null,
         stored_result_id: 99,
-        exploration_page_id: 12,
+        child_target_id: "12",
       },
     });
 
     const html = editor.getHTML();
-    expect(html).toContain(`data-exploration-page-id="12"`);
+    expect(html).toContain(`data-child-target-id="12"`);
 
     const editor2 = makeEditor();
     editor2.commands.setContent(html);
 
     const node = editor2.state.doc.firstChild;
-    expect(node?.attrs.exploration_page_id).toBe(12);
+    expect(node?.attrs.child_target_id).toBe("12");
+
+    editor.destroy();
+    editor2.destroy();
+  });
+
+  it("round-trips `host_data` through parseHTML ↔ renderHTML", () => {
+    const editor = makeEditor();
+
+    editor.commands.insertContent({
+      type: "cardEmbed",
+      attrs: {
+        id: 77,
+        name: null,
+        stored_result_id: 99,
+        child_target_id: "12",
+        host_data: { query_ids: [101, 102] },
+      },
+    });
+
+    const html = editor.getHTML();
+    expect(html).toContain("data-host-data=");
+
+    const editor2 = makeEditor();
+    editor2.commands.setContent(html);
+
+    const node = editor2.state.doc.firstChild;
+    expect(node?.attrs.host_data).toEqual({ query_ids: [101, 102] });
 
     editor.destroy();
     editor2.destroy();

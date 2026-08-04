@@ -1680,9 +1680,10 @@
               "the card-use row has no exploration_id")
           (is (= sr-id (:stored_result_id attrs)))
           (is (string? (:chart_href attrs)))
-          (is (some? (:exploration_page_id attrs)))
+          (is (string? (:child_target_id attrs)))
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
           (is (uuid? (parse-uuid (str (:_id attrs))))
-              "_id is stamped for comment targeting (string after JSON round-trip)")
+              "_id is stamped for per-node identity (string after JSON round-trip)")
           (is (false? (:is_placeholder doc))
               "first append clears is_placeholder"))))))
 

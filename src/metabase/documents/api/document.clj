@@ -165,7 +165,7 @@
 
   Optional kwargs:
   - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
-    `:chart_href`, `:exploration_page_id`).
+    `:chart_href`, `:child_target_id`, `:host_data`).
   - `:replace?` — when true, discard the existing body and insert the embed into an empty doc
     (used when materialising the first chart into a placeholder Summary).
 

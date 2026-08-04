@@ -1,6 +1,11 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
@@ -26,7 +31,8 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
-import { useSelector } from "metabase/redux";
+import { setHighlightedComment } from "metabase/explorations/explorations.slice";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -38,17 +44,19 @@ import {
   Text,
   Title,
   Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
+import type { HighlightedObject } from "metabase/visualizations/types";
 import type {
   Comment,
   CommentContext,
   DocumentContent,
   ExplorationId,
+  Timeline,
+  TimelineId,
 } from "metabase-types/api";
 
 import S from "./ExplorationComments.module.css";
-
-export type CommentTagsRenderer = (comment: Comment) => ReactNode;
 
 interface ExplorationCommentsProps {
   explorationId: ExplorationId;
@@ -56,7 +64,8 @@ interface ExplorationCommentsProps {
   context?: CommentContext;
   disableAutoFocus?: boolean;
   onClose: () => void;
-  renderCommentTags?: CommentTagsRenderer;
+  timelines?: Timeline[];
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }
 
 const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
@@ -70,8 +79,10 @@ export function ExplorationComments({
   context,
   disableAutoFocus = false,
   onClose,
-  renderCommentTags,
+  timelines = [],
+  onSelectTimelineId,
 }: ExplorationCommentsProps) {
+  const dispatch = useDispatch();
   const {
     data: commentsData,
     isLoading,
@@ -151,6 +162,12 @@ export function ExplorationComments({
     };
   }, [commentsStream.length, hasHashTarget, hash]);
 
+  useEffect(() => {
+    return () => {
+      dispatch(setHighlightedComment(null));
+    };
+  }, [dispatch, pageId]);
+
   useWindowEvent("keydown", (event) => {
     if (event.key === "Escape" && !event.defaultPrevented) {
       onClose();
@@ -203,7 +220,8 @@ export function ExplorationComments({
               key={comment.id}
               comment={comment}
               pageId={pageId}
-              renderCommentTags={renderCommentTags}
+              timelines={timelines}
+              onSelectTimelineId={onSelectTimelineId}
             />
           ))}
         </Stack>
@@ -223,13 +241,15 @@ export function ExplorationComments({
 interface ExplorationCommentProps {
   comment: Comment;
   pageId: string;
-  renderCommentTags?: CommentTagsRenderer;
+  timelines: Timeline[];
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }
 
 function ExplorationComment({
   comment,
   pageId,
-  renderCommentTags,
+  timelines,
+  onSelectTimelineId,
 }: ExplorationCommentProps) {
   const currentUser = useSelector(getUser);
   const [isEditing, editingHandler] = useDisclosure(false);
@@ -359,11 +379,14 @@ function ExplorationComment({
               </Text>
             </Tooltip>
           </Group>
-          {renderCommentTags && (
-            <ErrorBoundary errorComponent={() => null}>
-              <CommentTags renderTags={renderCommentTags} comment={comment} />
-            </ErrorBoundary>
-          )}
+          <ErrorBoundary errorComponent={() => null}>
+            <CommentTags
+              comment={comment}
+              pageId={pageId}
+              timelines={timelines}
+              onSelectTimelineId={onSelectTimelineId}
+            />
+          </ErrorBoundary>
           <Box>
             <CommentEditor
               autoFocus
@@ -387,14 +410,122 @@ function ExplorationComment({
   );
 }
 
-// A component (rather than calling the renderer inline) so a throwing renderer
-// is caught by the surrounding ErrorBoundary instead of crashing the comment.
 function CommentTags({
-  renderTags,
   comment,
+  pageId,
+  timelines,
+  onSelectTimelineId,
 }: {
-  renderTags: CommentTagsRenderer;
   comment: Comment;
+  pageId: string;
+  timelines: Timeline[];
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }) {
-  return <>{renderTags(comment)}</>;
+  const dispatch = useDispatch();
+  const context = comment.context;
+
+  const highlightLabel =
+    typeof context?.highlight_label === "string"
+      ? context.highlight_label
+      : undefined;
+  // comment context is an untyped JSON blob; `highlighted` is written by us
+  // as a HighlightedObject when the comment captures a chart point
+  const highlighted = context?.highlighted as HighlightedObject | undefined;
+  const explorationQueryIds = Array.isArray(context?.exploration_query_ids)
+    ? context.exploration_query_ids.filter(
+        (id): id is number => typeof id === "number",
+      )
+    : [];
+
+  const timelineId =
+    typeof context?.timeline_id === "number" ? context.timeline_id : undefined;
+  const timeline =
+    timelineId != null
+      ? timelines.find((entry) => entry.id === timelineId)
+      : undefined;
+
+  if (!highlightLabel && !timeline) {
+    return null;
+  }
+
+  return (
+    <Group gap="xs" wrap="wrap">
+      <Icon
+        name="corner_up_right"
+        size={12}
+        c="text-secondary"
+        className={S.commentTagArrow}
+        aria-hidden
+      />
+      {highlightLabel && (
+        <CommentBadge
+          label={highlightLabel}
+          buttonProps={{
+            onMouseEnter: () => {
+              if (highlighted && explorationQueryIds.length > 0) {
+                dispatch(
+                  setHighlightedComment({
+                    childTargetId: pageId,
+                    highlighted,
+                    explorationQueryIds,
+                  }),
+                );
+              }
+            },
+            onMouseLeave: () => dispatch(setHighlightedComment(null)),
+          }}
+        />
+      )}
+      {timeline &&
+        (onSelectTimelineId != null ? (
+          <CommentBadge
+            label={timeline.name}
+            buttonProps={{
+              onClick: () => {
+                onSelectTimelineId(timelineId ?? null);
+              },
+            }}
+          />
+        ) : (
+          <CommentBadge label={timeline.name} />
+        ))}
+    </Group>
+  );
+}
+
+interface CommentBadgeProps {
+  label: string;
+  buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
+}
+
+function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
+  if (buttonProps == null) {
+    return (
+      <Text
+        bdrs="md"
+        py="xs"
+        px="sm"
+        fz="sm"
+        c="text-primary"
+        className={S.commentBadgeLabel}
+        component="span"
+      >
+        {label}
+      </Text>
+    );
+  }
+
+  return (
+    <UnstyledButton
+      bdrs="md"
+      py="xs"
+      px="sm"
+      fz="sm"
+      c="text-primary"
+      className={S.commentBadge}
+      {...buttonProps}
+    >
+      {label}
+    </UnstyledButton>
+  );
 }

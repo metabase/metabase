@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
@@ -18,20 +18,17 @@ import {
   type IconProps,
   Stack,
   Text,
-  UnstyledButton,
 } from "metabase/ui";
 import { is403Error } from "metabase/utils/errors";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   ClickActionsMode,
   HighlightedObject,
   OnBrush,
 } from "metabase/visualizations/types";
 import type {
-  Comment,
   ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
@@ -46,6 +43,7 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { useExplorationClickActionsMode } from "../../hooks/useExplorationClickActionsMode";
+import { getHighlightedForChildTarget } from "../../selectors";
 import type { CommentDrafts } from "../../types";
 
 import { ActionToolbar } from "./ActionToolbar";
@@ -58,8 +56,7 @@ import {
   type LegendItem,
   buildSeriesGroup,
   composeChartsForGroup,
-  getCommentLabel,
-  getHighlightedWithShouldShowTooltip,
+  resolveHighlightForSeries,
 } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
@@ -176,6 +173,12 @@ function ExplorationGroupVisualizationChart({
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
 
+  const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
+  const queriesById = useMemo(
+    () => Object.fromEntries(queries.map((query) => [query.id, query])),
+    [queries],
+  );
+
   const clickActionsMode = useExplorationClickActionsMode({
     explorationId,
     pageId: page.id,
@@ -183,9 +186,11 @@ function ExplorationGroupVisualizationChart({
     queryType: queries[0].query_type,
     commentDrafts,
     setCommentDrafts,
+    seriesQueryIds: queryIds,
+    queriesById,
   });
 
-  const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
+  const pageChildTargetId = String(page.id);
 
   useEffect(() => {
     const subscriptions = queryIds.map((id) =>
@@ -249,16 +254,18 @@ function ExplorationGroupVisualizationChart({
     );
   }, [seriesGroup, availableTimelines]);
 
-  const computedSettings = useMemo(
-    () =>
-      seriesGroup
-        ? getComputedSettingsForSeries(seriesGroup.series)
-        : undefined,
-    [seriesGroup],
+  const highlightedCommentState = useSelector((state) =>
+    getHighlightedForChildTarget(state, pageChildTargetId),
   );
-
-  const [highlighted, setHighlighted] = useState<HighlightedObject | null>(
-    null,
+  const highlighted = useMemo(
+    () =>
+      resolveHighlightForSeries(
+        highlightedCommentState,
+        seriesGroup?.series ?? [],
+        seriesGroup?.queryIds ?? [],
+        queriesById,
+      ),
+    [highlightedCommentState, seriesGroup, queriesById],
   );
 
   const [seeAllEvents, setSeeAllEvents] = useState<TimelineEvent[]>([]);
@@ -283,79 +290,6 @@ function ExplorationGroupVisualizationChart({
       onCloseCommentsSidebar();
     },
     [onCloseCommentsSidebar],
-  );
-
-  const renderCommentTags = useCallback(
-    (comment: Comment) => {
-      const context = comment.context;
-
-      const commentHighlight = getHighlightedWithShouldShowTooltip(
-        // comment context is an untyped JSON blob; `highlighted` is written by
-        // us as a HighlightedObject when the comment captures a chart point
-        context?.highlighted as HighlightedObject | undefined,
-        seriesGroup,
-      );
-      const commentLabel = getCommentLabel(
-        commentHighlight,
-        seriesGroup,
-        computedSettings,
-      );
-
-      const timelineId =
-        typeof context?.timeline_id === "number"
-          ? context.timeline_id
-          : undefined;
-      const timeline =
-        timelineId != null
-          ? availableTimelines.find((t) => t.id === timelineId)
-          : undefined;
-
-      if (!commentLabel && !timeline) {
-        return null;
-      }
-
-      return (
-        <Group gap="xs" wrap="wrap">
-          <Icon
-            name="corner_up_right"
-            size={12}
-            c="text-secondary"
-            className={S.commentTagArrow}
-            aria-hidden
-          />
-          {commentLabel && (
-            <CommentBadge
-              label={commentLabel}
-              buttonProps={{
-                onMouseEnter: () => {
-                  if (commentHighlight) {
-                    setHighlighted(commentHighlight);
-                  }
-                },
-                onMouseLeave: () => setHighlighted(null),
-              }}
-            />
-          )}
-          {timeline && (
-            <CommentBadge
-              label={timeline.name}
-              buttonProps={{
-                onClick: () => {
-                  onSelectTimelineId(timelineId ?? null);
-                },
-              }}
-            />
-          )}
-        </Group>
-      );
-    },
-    [
-      availableTimelines,
-      computedSettings,
-      onSelectTimelineId,
-      setHighlighted,
-      seriesGroup,
-    ],
   );
 
   if (!seriesGroup) {
@@ -462,12 +396,13 @@ function ExplorationGroupVisualizationChart({
             // so we only allow autofocus if the sidebar is truly opening, not just remounting
             disableAutoFocus={wasCommentsSidebarOpen}
             explorationId={explorationId}
-            pageId={String(page.id)}
+            pageId={pageChildTargetId}
             onClose={onCloseCommentsSidebar}
             context={{
               timeline_id: selectedTimelineId,
             }}
-            renderCommentTags={renderCommentTags}
+            timelines={availableTimelines}
+            onSelectTimelineId={onSelectTimelineId}
           />
         </Box>
       )}
@@ -667,26 +602,5 @@ function Message({ groupName, message, iconProps }: MessageProps) {
         <Text fw="bold">{message}</Text>
       </Stack>
     </Stack>
-  );
-}
-
-interface CommentBadgeProps {
-  label: string;
-  buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
-}
-
-function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
-  return (
-    <UnstyledButton
-      bdrs="md"
-      py="xs"
-      px="sm"
-      fz="sm"
-      c="text-primary"
-      className={S.commentBadge}
-      {...buttonProps}
-    >
-      {label}
-    </UnstyledButton>
   );
 }

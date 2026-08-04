@@ -1132,8 +1132,9 @@
   ephemeral `stored_result` and materialises one ephemeral `report_card` referencing it.
   The cardEmbed node remains single-card.
 
-  - `chart_href` / `exploration_page_id` are written onto the node so the FE can deep-link
-    the embed title back to the source page and share that page's comment stream.
+  - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE
+    can deep-link the embed title back to the source page, share that page's comment
+    stream (`child_target_id`), and resolve highlight hover via opaque `host_data`.
   - `display` / `visualization_settings` are required FE-computed render settings (from
     `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.
 
@@ -1159,9 +1160,12 @@
               :visualization-settings visualization_settings})
             page-id     (:page_id primary-eq)
             chart-href  (explorations.blocks/page-url id page-id)
-            extra-attrs {:stored_result_id    stored-result-id
-                         :chart_href          chart-href
-                         :exploration_page_id page-id}]
+            extra-attrs {:stored_result_id stored-result-id
+                         :chart_href       chart-href
+                         ;; Comment stream key (page id). Distinct from `_id`,
+                         ;; which must stay unique per node for duplicate embeds.
+                         :child_target_id  (str page-id)
+                         :host_data        {:query_ids exploration_query_ids}}]
         (documents/add-card-to-document!
          (:id doc) card-id nil
          :extra-attrs extra-attrs

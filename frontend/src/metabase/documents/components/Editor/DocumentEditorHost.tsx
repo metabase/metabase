@@ -6,6 +6,7 @@ import {
   type EditorHost,
   EditorHostProvider,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 
 import { navigateToCardFromDocument } from "../../actions";
 import {
@@ -81,6 +82,8 @@ export const documentEditorHost: EditorHost = {
   useExternalCardDataLoader,
   useCommentUrl,
   useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
+  useHighlighted: () => null,
+  useVisualizationMode: () => DocumentMode,
   useNodeInViewport,
   useReportPrefetchLoading,
   useDraftCardOperations,

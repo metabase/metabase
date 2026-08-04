@@ -2,12 +2,18 @@ import type { Editor } from "@tiptap/react";
 import { createContext, useContext } from "react";
 
 import type { State } from "metabase/redux/store";
+import type {
+  ClickActionsMode,
+  HighlightedObject,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Dataset,
   Document,
   RawSeries,
+  Series,
   StoredResultSort,
   TimelineEvent,
   VisualizationSettings,
@@ -147,6 +153,15 @@ export interface EditorCommentsHost {
     nodeId: string,
     opts?: { skip?: boolean },
   ) => number;
+  useHighlighted: (
+    childTargetId: string,
+    series: Series | null,
+    hostData?: Record<string, unknown> | null,
+  ) => HighlightedObject | null;
+  useVisualizationMode: (opts: {
+    childTargetId: string;
+    hostData?: Record<string, unknown> | null;
+  }) => ClickActionsMode | QueryClickActionsMode | undefined;
 }
 
 /** Viewport-aware lazy loading: hosts with a scroll container defer
@@ -235,6 +250,8 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   useExternalCardDataLoader: () => ({ isLoading: false, series: null }),
   useCommentUrl: () => "",
   useUnresolvedCommentsCount: () => 0,
+  useHighlighted: () => null,
+  useVisualizationMode: () => undefined,
   useNodeInViewport: () => ({
     ref: () => undefined,
     isInViewport: true,

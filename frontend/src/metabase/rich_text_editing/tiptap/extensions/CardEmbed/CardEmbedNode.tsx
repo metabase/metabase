@@ -12,6 +12,7 @@ import {
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import { noop } from "underscore";
 
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
@@ -98,7 +99,8 @@ export interface CardEmbedAttributes {
   stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
   sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
   chart_href?: string | null; // Override URL for the embed's title click
-  exploration_page_id?: number | null; // exploration card embeds share the source page's comment stream
+  child_target_id?: string | null; // when set, comments on this embed use this child target instead of `_id`
+  host_data?: Record<string, unknown> | null; // opaque host-specific data
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -145,15 +147,32 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-chart-href"),
       },
-      exploration_page_id: {
+      child_target_id: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-child-target-id") || null,
+      },
+      host_data: {
         default: null,
         parseHTML: (element) => {
-          const raw = element.getAttribute("data-exploration-page-id");
+          const raw = element.getAttribute("data-host-data");
           if (!raw) {
             return null;
           }
-          const parsed = parseInt(raw, 10);
-          return Number.isFinite(parsed) ? parsed : null;
+          try {
+            const parsed: unknown = JSON.parse(raw);
+            if (
+              parsed != null &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+            ) {
+              // JSON.parse of an object literal is a plain Record; TipTap attrs are untyped JSON.
+              return parsed as Record<string, unknown>;
+            }
+          } catch {
+            return null;
+          }
+          return null;
         },
       },
       ...createIdAttribute(),
@@ -183,9 +202,10 @@ export const CardEmbed: Node<{
               : null,
           "data-sort": node.attrs.sort ?? null,
           "data-chart-href": node.attrs.chart_href ?? null,
-          "data-exploration-page-id":
-            node.attrs.exploration_page_id != null
-              ? String(node.attrs.exploration_page_id)
+          "data-child-target-id": node.attrs.child_target_id ?? null,
+          "data-host-data":
+            node.attrs.host_data != null
+              ? JSON.stringify(node.attrs.host_data)
               : null,
         },
         this.options.HTMLAttributes,
@@ -235,16 +255,18 @@ export const CardEmbedComponent = memo(
     );
     const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const commentChildTargetId =
-      node.attrs.exploration_page_id != null
-        ? String(node.attrs.exploration_page_id)
-        : _id;
+    const hostData = node.attrs.host_data ?? null;
+    const commentChildTargetId = node.attrs.child_target_id ?? _id;
     const unresolvedCommentsCount = host.useUnresolvedCommentsCount(
       commentChildTargetId,
       {
         skip: !isInViewport,
       },
     );
+    const visualizationMode = host.useVisualizationMode({
+      childTargetId: commentChildTargetId,
+      hostData,
+    });
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const selectedEmbedIndex = useSelector(
@@ -291,6 +313,12 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    const highlighted = host.useHighlighted(
+      commentChildTargetId,
+      series ?? null,
+      hostData,
+    );
 
     host.useReportPrefetchLoading(_id, isLoading);
 
@@ -789,11 +817,17 @@ export const CardEmbedComponent = memo(
                     <Visualization
                       rawSeries={series}
                       metadata={metadata}
-                      mode={DocumentMode}
+                      mode={visualizationMode}
+                      highlighted={highlighted}
                       onChangeCardAndRun={
-                        isStatic || isExternalDocument
-                          ? undefined
-                          : handleChangeCardAndRun
+                        isStatic
+                          ? // A defined mode needs a truthy handler so the click-actions popover mounts
+                            visualizationMode != null
+                            ? noop
+                            : undefined
+                          : isExternalDocument
+                            ? undefined
+                            : handleChangeCardAndRun
                       }
                       onUpdateQuestion={
                         isStatic || isExternalDocument
@@ -875,8 +909,9 @@ export const CardEmbedComponent = memo(
         nextProps.node.attrs.stored_result_id &&
       prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
       prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
-      prevProps.node.attrs.exploration_page_id ===
-        nextProps.node.attrs.exploration_page_id &&
+      prevProps.node.attrs.child_target_id ===
+        nextProps.node.attrs.child_target_id &&
+      prevProps.node.attrs.host_data === nextProps.node.attrs.host_data &&
       prevProps.selected === nextProps.selected
     );
   },

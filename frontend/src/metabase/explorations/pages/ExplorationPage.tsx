@@ -625,6 +625,7 @@ function ExplorationPageForId({ view }: ExplorationPageProps) {
               explorationId={exploration.id}
               commentsChildTargetId={commentsChildTargetId}
               onCloseCommentsSidebar={closeCommentsSidebar}
+              timelines={allTimelines}
             />
           )}
           {selectedPage && (

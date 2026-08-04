@@ -378,12 +378,14 @@
     (testing "extra-attrs are merged onto the cardEmbed"
       (let [result (prose-mirror/insert-card-embed doc 42 nil {:stored_result_id 9
                                                                :chart_href "/x"
-                                                               :exploration_page_id 3})
+                                                               :child_target_id "3"
+                                                               :host_data {:query_ids [101 102]}})
             attrs  (embed-attrs (get-in result [:document :content 2]))]
         (is (= 42 (:id attrs)))
         (is (= 9 (:stored_result_id attrs)))
         (is (= "/x" (:chart_href attrs)))
-        (is (= 3 (:exploration_page_id attrs)))
+        (is (= "3" (:child_target_id attrs)))
+        (is (= {:query_ids [101 102]} (:host_data attrs)))
         (is (uuid? (:_id attrs)))))))
 
 (deftest ^:parallel insert-card-embed-empty-document-test

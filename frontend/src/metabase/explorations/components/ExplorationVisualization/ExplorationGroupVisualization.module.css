@@ -43,15 +43,3 @@
 .commentsSidebar {
   border-left: 1px solid var(--mb-color-border-neutral);
 }
-
-.commentBadge {
-  background-color: var(--mb-color-background-brand);
-
-  &:hover {
-    background-color: var(--mb-color-background-hover);
-  }
-}
-
-.commentTagArrow {
-  transform: scaleY(-1);
-}
