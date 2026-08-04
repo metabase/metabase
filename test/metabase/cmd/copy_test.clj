@@ -126,6 +126,12 @@
     :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
+    ;; Derived cleanup-analysis snapshots are rebuilt from source Cards after a migration.
+    :model/UsageMetadataCandidate
+    :model/UsageMetadataCandidateDismissal
+    :model/UsageMetadataCandidateMatch
+    :model/UsageMetadataCandidateRun
+    :model/UsageMetadataCandidateSource
     :model/Undo
     :model/UserKeyValue})
 
