@@ -152,15 +152,6 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
-export type ColorGetter = (colorName: string) => string;
-
-export interface RenderingContext {
-  getColor: ColorGetter;
-  measureTextWidth: TextWidthMeasurer;
-  measureTextHeight: TextHeightMeasurer;
-  fontFamily: string;
-}
-
 export type CustomStaticVisualizationProps<
   TSettings extends Record<string, unknown>,
 > = {
