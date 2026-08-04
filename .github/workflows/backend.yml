@@ -260,7 +260,6 @@ jobs:
           name: failed-tests-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}-attempt-${{ github.run_attempt }}
           path: target/failed-tests
           if-no-files-found: ignore
-          overwrite: true
 
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}

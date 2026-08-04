@@ -141,7 +141,6 @@ runs:
         name: ${{ env.RERUN_ARTIFACT }}
         path: target/failed-tests
         if-no-files-found: ignore
-        overwrite: true
 
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
