@@ -1,6 +1,6 @@
+import { getUser } from "metabase/current-user";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 
 import { updateUser } from "../../actions";

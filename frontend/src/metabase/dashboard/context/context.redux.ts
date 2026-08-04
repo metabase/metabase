@@ -1,6 +1,7 @@
 import type { ConnectedProps } from "react-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
+import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
 import {
   addCardToDashboard,
   addHeadingDashCardToDashboard,
@@ -57,10 +58,6 @@ import {
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import type { State } from "metabase/redux/store";
-import {
-  canManageSubscriptions,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import {

@@ -1,6 +1,6 @@
 import { useValidatePassword } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 
 import { UserPasswordForm } from "../../components/UserPasswordForm";
