@@ -334,6 +334,7 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
+  {:scope "data-app"}
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))

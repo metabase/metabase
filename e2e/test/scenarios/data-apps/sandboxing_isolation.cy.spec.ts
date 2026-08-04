@@ -212,3 +212,39 @@ describe("scenarios > data apps > sandbox isolation", () => {
     runProbe("isolation-allowed-host-redirect");
   });
 });
+
+describe("scenarios > data apps > sandbox isolation > backend scope", () => {
+  const AS_DATA_APP = { "X-Metabase-Client": "data-app" };
+
+  const PRIVILEGED_ENDPOINTS = ["user/current", "permissions/graph", "setting"];
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("reaches the privileged endpoints when the request is not marked as a data app", () => {
+    PRIVILEGED_ENDPOINTS.forEach((endpoint) => {
+      cy.request(`/api/${endpoint}`).its("status").should("eq", 200);
+    });
+  });
+
+  it("refuses those endpoints once the request is marked as a data app", () => {
+    PRIVILEGED_ENDPOINTS.forEach((endpoint) => {
+      cy.request({
+        url: `/api/${endpoint}`,
+        headers: AS_DATA_APP,
+        failOnStatusCode: false,
+      }).then(({ status, body }) => {
+        expect(status, `${endpoint} status`).to.eq(403);
+        expect(body.error, `${endpoint} error`).to.eq("scope_not_permitted");
+      });
+    });
+  });
+
+  it("still serves the data-app read/query surface to a marked request", () => {
+    cy.request({ url: "/api/collection/root", headers: AS_DATA_APP })
+      .its("status")
+      .should("eq", 200);
+  });
+});

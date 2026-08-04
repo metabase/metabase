@@ -16,6 +16,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
+  {:scope "data-app"}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]
@@ -46,6 +47,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
+  {:scope "data-app"}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]

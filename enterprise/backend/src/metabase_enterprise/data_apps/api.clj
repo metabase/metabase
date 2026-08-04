@@ -177,6 +177,7 @@
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
    `If-None-Match` against the content-hash ETag with a 304."
+  {:scope "data-app"}
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
    _body

@@ -1421,6 +1421,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/root"
   "Return the 'Root' Collection object with standard details added"
+  {:scope "data-app"}
   [_route-params
    {:keys [namespace]} :- [:map
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
@@ -1479,6 +1480,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope "data-app"}
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_library collection_type
@@ -1696,6 +1698,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
+  {:scope "data-app"}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
@@ -1788,6 +1791,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope "data-app"}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first

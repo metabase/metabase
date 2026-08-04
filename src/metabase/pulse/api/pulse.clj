@@ -329,6 +329,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
+  {:scope "data-app"}
   []
   (perms/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types

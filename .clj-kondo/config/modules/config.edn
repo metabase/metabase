@@ -340,7 +340,8 @@
   api-scope
   {:team "Metabot"
    :api  #{metabase.api-scope.core
-           metabase.api-scope.init}}
+           metabase.api-scope.init}
+   :uses #{util}}
 
   app-db
   {:team "UX West"
