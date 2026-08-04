@@ -83,6 +83,32 @@ describe("CardEmbed node — chart_href attr", () => {
     editor2.destroy();
   });
 
+  it("round-trips `exploration_page_id` through parseHTML ↔ renderHTML", () => {
+    const editor = makeEditor();
+
+    editor.commands.insertContent({
+      type: "cardEmbed",
+      attrs: {
+        id: 77,
+        name: null,
+        stored_result_id: 99,
+        exploration_page_id: 12,
+      },
+    });
+
+    const html = editor.getHTML();
+    expect(html).toContain(`data-exploration-page-id="12"`);
+
+    const editor2 = makeEditor();
+    editor2.commands.setContent(html);
+
+    const node = editor2.state.doc.firstChild;
+    expect(node?.attrs.exploration_page_id).toBe(12);
+
+    editor.destroy();
+    editor2.destroy();
+  });
+
   it("renders no `data-chart-href` attribute when null (non-exploration embeds stay clean)", () => {
     const editor = makeEditor();
 

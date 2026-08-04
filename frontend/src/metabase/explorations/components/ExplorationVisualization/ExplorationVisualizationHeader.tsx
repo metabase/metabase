@@ -30,7 +30,7 @@ export function ExplorationVisualizationHeader({
 }: ExplorationVisualizationHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const nextCommentsUrl = getNextCommentsUrl(location);
+  const nextCommentsUrl = getNextCommentsUrl(location, pageId);
   const { allCommentsCount } = useUnresolvedCommentsCount({
     target:
       explorationId != null
@@ -101,10 +101,15 @@ function getExploreFilterPillLabel(
   return filter.display_value;
 }
 
-function getNextCommentsUrl(location: Pick<Path, "pathname" | "search">) {
+function getNextCommentsUrl(
+  location: Pick<Path, "pathname" | "search">,
+  pageId?: ExplorationPageNodeId,
+) {
   const search = new URLSearchParams(location.search);
-  if (search.get("comments") === "true") {
+  if (search.get("comments") != null) {
     search.delete("comments");
+  } else if (pageId != null) {
+    search.set("comments", String(pageId));
   } else {
     search.set("comments", "true");
   }

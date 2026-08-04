@@ -88,6 +88,7 @@ export interface CardEmbedAttributes {
   stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
   sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
   chart_href?: string | null; // Override URL for the embed's title click
+  exploration_page_id?: number | null; // exploration card embeds share the source page's comment stream
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -134,6 +135,17 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-chart-href"),
       },
+      exploration_page_id: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-exploration-page-id");
+          if (!raw) {
+            return null;
+          }
+          const parsed = parseInt(raw, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        },
+      },
       ...createIdAttribute(),
     };
   },
@@ -161,6 +173,10 @@ export const CardEmbed: Node<{
               : null,
           "data-sort": node.attrs.sort ?? null,
           "data-chart-href": node.attrs.chart_href ?? null,
+          "data-exploration-page-id":
+            node.attrs.exploration_page_id != null
+              ? String(node.attrs.exploration_page_id)
+              : null,
         },
         this.options.HTMLAttributes,
       ),
@@ -189,6 +205,7 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
+    // eslint-disable-next-line complexity
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
     const storedResultId = node.attrs.stored_result_id;
@@ -208,15 +225,22 @@ export const CardEmbedComponent = memo(
     );
     const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
-      skip: !isInViewport,
-    });
+    const commentChildTargetId =
+      node.attrs.exploration_page_id != null
+        ? String(node.attrs.exploration_page_id)
+        : _id;
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(
+      commentChildTargetId,
+      {
+        skip: !isInViewport,
+      },
+    );
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
-    const isOpen = childTargetId === _id;
-    const isHovered = hoveredChildTargetId === _id;
+    const isOpen = childTargetId === commentChildTargetId;
+    const isHovered = hoveredChildTargetId === commentChildTargetId;
     const commentsPath = host.useCommentUrl({
-      childTargetId: _id,
+      childTargetId: commentChildTargetId,
     });
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -781,6 +805,8 @@ export const CardEmbedComponent = memo(
         nextProps.node.attrs.stored_result_id &&
       prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
       prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
+      prevProps.node.attrs.exploration_page_id ===
+        nextProps.node.attrs.exploration_page_id &&
       prevProps.selected === nextProps.selected
     );
   },

@@ -7,7 +7,6 @@ import type {
   Card,
   Dataset,
   Document,
-  EntityId,
   RawSeries,
   StoredResultSort,
   VisualizationSettings,
@@ -132,7 +131,7 @@ export interface EditorCommentsHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
   };
-  useCommentUrl: (opts: { childTargetId: EntityId | null }) => string;
+  useCommentUrl: (opts: { childTargetId: string | null }) => string;
   useUnresolvedCommentsCount: (
     nodeId: string,
     opts?: { skip?: boolean },

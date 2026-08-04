@@ -35,6 +35,7 @@ export const initialState: DocumentsState = {
   cardEmbeds: [],
   currentDocument: null,
   draftCards: {},
+  draftCardOriginalIds: {},
   mentionsCache: {},
   isCommentSidebarOpen: false,
   childTargetId: undefined,
@@ -108,9 +109,15 @@ const documentsSlice = createSlice({
         ...modifiedData,
         id: draftId,
       } as Card;
+
+      const originalCardId = originalCard?.id;
+      if (originalCardId != null && originalCardId > 0) {
+        state.draftCardOriginalIds[draftId] = originalCardId;
+      }
     },
     clearDraftCards: (state) => {
       state.draftCards = {};
+      state.draftCardOriginalIds = {};
     },
     updateMentionsCache: (
       state,

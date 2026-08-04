@@ -1,4 +1,9 @@
-import type { Card, Document, StoredResultSort } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  Document,
+  StoredResultSort,
+} from "metabase-types/api";
 
 export interface CardEmbedRef {
   id: number;
@@ -18,6 +23,7 @@ export interface DocumentsState {
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
   draftCards: Record<number, Card>;
+  draftCardOriginalIds: Record<number, CardId>;
   mentionsCache: Record<string, MentionCacheItem>;
   isCommentSidebarOpen: boolean;
   childTargetId: string | undefined;

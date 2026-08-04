@@ -66,6 +66,17 @@ export const getDraftCardById = createSelector(
   (draftCards, cardId) => draftCards[cardId],
 );
 
+export const getDraftCardOriginalIds = createSelector(
+  getDocumentsState,
+  (documents) => documents?.draftCardOriginalIds ?? {},
+);
+
+/** Positive saved-card id a draft was forked from, if any. */
+export const getDraftCardOriginalId = createSelector(
+  [getDraftCardOriginalIds, (_state, draftId: number) => draftId],
+  (originalIds, draftId): CardId | undefined => originalIds[draftId],
+);
+
 export const getCardWithDraft = createSelector(
   [
     getDraftCards,

@@ -148,6 +148,7 @@ jest.mock("metabase/api/exploration", () => ({
   useSetPageStarredMutation: () => [mockMutationTrigger()],
   useSetPagesHiddenMutation: () => [mockMutationTrigger()],
   useExploreFurtherMutation: () => [mockMutationTrigger()],
+  useAppendChartToSummaryMutation: () => [mockMutationTrigger()],
 }));
 
 jest.mock("metabase/api/comment", () => ({
@@ -292,6 +293,7 @@ function setup({
             isCommentsSidebarOpen={isCommentsSidebarOpen}
             wasCommentsSidebarOpen={wasCommentsSidebarOpen}
             onCloseCommentsSidebar={onCloseCommentsSidebar}
+            setSelectedSummary={jest.fn()}
           />
         }
       />,
@@ -613,6 +615,7 @@ describe("ExplorationGroupVisualization", () => {
             isCommentsSidebarOpen={commentsOpen}
             wasCommentsSidebarOpen={false}
             onCloseCommentsSidebar={jest.fn()}
+            setSelectedSummary={jest.fn()}
           />
         </>
       );

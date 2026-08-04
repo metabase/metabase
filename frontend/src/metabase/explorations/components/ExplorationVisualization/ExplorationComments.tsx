@@ -28,7 +28,17 @@ import { useToast } from "metabase/common/hooks";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { Avatar, Box, Group, Stack, Text, Title, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Avatar,
+  Box,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from "metabase/ui";
 import type {
   Comment,
   CommentContext,
@@ -174,9 +184,18 @@ export function ExplorationComments({
 
   return (
     <Stack gap={0} h="100%" data-testid="exploration-comments">
-      <Box px="lg" pt="1.25rem" pb="sm">
+      <Group
+        px="lg"
+        pt="1.25rem"
+        pb="sm"
+        justify="space-between"
+        align="center"
+      >
         <Title order={3}>{t`Comments`}</Title>
-      </Box>
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <Icon name="close" c="icon-primary" />
+        </ActionIcon>
+      </Group>
       <Box ref={streamRef} flex={1} px="md" py="sm" className={S.stream}>
         <Stack ref={streamContentRef} gap="md">
           {commentsStream.map((comment) => (
@@ -191,7 +210,7 @@ export function ExplorationComments({
       </Box>
       <Box px="lg" pb="lg" pt="xs" className={S.composer}>
         <CommentEditor
-          autoFocus={commentsStream.length === 0 && !disableAutoFocus}
+          autoFocus={!disableAutoFocus}
           data-testid="new-thread-editor"
           placeholder={t`Add a comment…`}
           onSubmit={handleSubmit}

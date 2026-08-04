@@ -1152,6 +1152,126 @@ describe("scenarios > explorations > chart click-through", () => {
   });
 });
 
+describe("scenarios > explorations > Summary document", () => {
+  beforeEach(() => {
+    cy.task("stopMockLlmServer");
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableExplorations();
+    seedMetrics();
+  });
+
+  it("auto-creates Summary at the top of the tree, keeps pages selected initially, supports Add to Summary, and mirrors comments both ways", () => {
+    H.createExplorationViaApi({ name: "Summary fixture" }).then(
+      (explorationId) => {
+        cy.request("GET", `/api/exploration/${explorationId}`).then(
+          ({ body }) => {
+            // api returns an Exploration
+            const exploration = body as Exploration;
+            expect(exploration.document, "BE auto-creates a Summary document")
+              .to.exist;
+            expect(exploration.document?.name).to.eq("Summary");
+            expect(exploration.document?.is_placeholder).to.eq(true);
+          },
+        );
+
+        visitExplorationUntilSettled(explorationId, 1);
+
+        // Summary is pinned at the top of the tree but not initially selected
+        // while it is still a placeholder.
+        cy.findAllByRole("treeitem")
+          .first()
+          .should("contain.text", "Summary")
+          .and("have.attr", "aria-selected", "false");
+
+        // Capture the settled page id from the auto-selected sidebar row
+        // (pages only exist after settlement), then click through
+        cy.findAllByRole("treeitem")
+          .filter('[aria-selected="true"]')
+          .should("have.length", 1)
+          .and("not.contain.text", "Summary")
+          .invoke("attr", "href")
+          .should("match", /\/page\/\d+/)
+          .then((href) => {
+            const pageId = Number(/\/page\/(\d+)/.exec(href!)![1]);
+            cy.wrap(pageId).as("pageId");
+            cy.get(`[role="treeitem"][href="${href}"]`).click();
+          });
+
+        cy.location("pathname").should("match", /\/page\/\d+$/);
+        cy.findByTestId("exploration-chart-grid").should("be.visible");
+
+        cy.intercept(
+          "POST",
+          `/api/exploration/${explorationId}/summary/append`,
+        ).as("appendSummary");
+
+        cy.findByRole("button", { name: "Add to Summary" }).click();
+        cy.wait("@appendSummary").then(({ response }) => {
+          expect(response?.statusCode).to.eq(200);
+          expect(response?.body?.is_placeholder).to.eq(false);
+        });
+
+        H.undoToastListContainer()
+          .findByText(/Added to/)
+          .should("be.visible");
+        H.undoToast().findByRole("button", { name: "View" }).click();
+
+        cy.location("pathname").should(
+          "eq",
+          `/question/research/${explorationId}/summary`,
+        );
+        cy.findByTestId("document-card-embed", { timeout: 15000 }).should(
+          "be.visible",
+        );
+
+        // Seed a page comment via API
+        cy.get<number>("@pageId").then((pageId) => {
+          H.createComment({
+            target_type: "exploration",
+            target_id: explorationId,
+            child_target_id: String(pageId),
+            parent_comment_id: null,
+            content: {
+              type: "doc",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Shared comment" }],
+                },
+              ],
+            },
+          });
+        });
+
+        // Cold-load the Summary with the comments query param — the panel
+        // must open without a prior click (the deep-link regression).
+        cy.get<number>("@pageId").then((pageId) => {
+          cy.visit(
+            `/question/research/${explorationId}/summary?comments=${pageId}`,
+          );
+          cy.findByTestId("exploration-summary-comments", {
+            timeout: 15000,
+          })
+            .should("be.visible")
+            .and("contain.text", "Shared comment");
+        });
+
+        cy.get<number>("@pageId").then((pageId) => {
+          cy.visit(
+            `/question/research/${explorationId}/page/${pageId}?comments=${pageId}`,
+          );
+        });
+
+        cy.findByTestId("exploration-comments", { timeout: 15000 }).should(
+          "contain.text",
+          "Shared comment",
+        );
+      },
+    );
+  });
+});
+
 describe("scenarios > explorations > collection placement + archive", () => {
   beforeEach(() => {
     cy.task("stopMockLlmServer");

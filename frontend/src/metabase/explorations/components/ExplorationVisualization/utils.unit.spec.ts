@@ -24,6 +24,7 @@ import {
   type SeriesGroup,
   buildSeriesGroup,
   canExploreFurther,
+  composeChartsForGroup,
   getCommentLabel,
   getExploreFurtherFilters,
   getHeatMapSeries,
@@ -474,6 +475,7 @@ describe("getCommentLabel", () => {
   ): SeriesGroup {
     return {
       series,
+      queryIds: [],
       legendItems,
       isTimeseries: false,
     };
@@ -732,6 +734,7 @@ describe("buildSeriesGroup", () => {
     });
 
     expect(seriesGroup.series).toHaveLength(1);
+    expect(seriesGroup.queryIds).toEqual([2]);
     expect(seriesGroup.legendItems.map((item) => item.name)).toEqual(["EU"]);
   });
 
@@ -754,5 +757,102 @@ describe("buildSeriesGroup", () => {
       smallTimeFacetDataset,
     );
     expect(group.series[0].card.display).toBe("row");
+  });
+});
+
+describe("composeChartsForGroup", () => {
+  it("expands a multi-series map group into one entry per map", () => {
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 101, name: "US sessions", segment_id: 1 }),
+          dataset: stateDataset,
+        },
+        {
+          ...makeQuery({ id: 102, name: "EU sessions", segment_id: 2 }),
+          dataset: stateDataset,
+        },
+        {
+          ...makeQuery({ id: 103, name: "APAC sessions", segment_id: 3 }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(3);
+    expect(charts.map((c) => c.queryIds)).toEqual([[101], [102], [103]]);
+    expect(charts.map((c) => c.display)).toEqual(["map", "map", "map"]);
+  });
+
+  it("keeps a multi-series cartesian group as one composite entry", () => {
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 1, name: "Q1", segment_id: 1 }),
+          dataset: tsDataset,
+        },
+        {
+          ...makeQuery({ id: 2, name: "Q2", segment_id: 2 }),
+          dataset: tsDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(1);
+    expect(charts[0].queryIds).toEqual([1, 2]);
+    expect(charts[0].display).toBe("line");
+    expect(charts[0].visualization_settings["graph.dimensions"]).toEqual([
+      "ts",
+      "Series",
+    ]);
+  });
+
+  it("keeps a single-series map as one entry", () => {
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 42, name: "World sessions" }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(1);
+    expect(charts[0]).toMatchObject({
+      queryIds: [42],
+      display: "map",
+    });
+  });
+
+  it("skips empty datasets when expanding multi-series maps", () => {
+    const emptyDataset = makeDataset([STATE_COL, COUNT_COL], []);
+    const group = buildSeriesGroup({
+      queriesWithDatasets: [
+        {
+          ...makeQuery({ id: 1, name: "Empty", segment_id: 1 }),
+          dataset: emptyDataset,
+        },
+        {
+          ...makeQuery({ id: 2, name: "US", segment_id: 2 }),
+          dataset: stateDataset,
+        },
+        {
+          ...makeQuery({ id: 3, name: "EU", segment_id: 3 }),
+          dataset: stateDataset,
+        },
+      ],
+    });
+
+    const charts = composeChartsForGroup(group);
+
+    expect(charts).toHaveLength(2);
+    expect(charts.map((c) => c.queryIds)).toEqual([[2], [3]]);
+    expect(charts.map((c) => c.label)).toEqual(["US", "EU"]);
   });
 });

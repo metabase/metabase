@@ -38,6 +38,7 @@ import type {
   ExplorationBlockNodeType,
   ExplorationExploreFilter,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationQueryType,
   RowValue,
   RowValues,
@@ -67,6 +68,7 @@ export interface LegendItem {
 
 export interface SeriesGroup {
   series: SingleSeries[];
+  queryIds: ExplorationQueryId[];
   isTimeseries: boolean;
   stackCount?: number;
   legendItems: LegendItem[];
@@ -94,6 +96,8 @@ export function buildSeriesGroup({
   const numSegmentQueries = nonEmptyQueriesWithDatasets.filter(
     (query) => query.segment_id != null,
   ).length;
+
+  const queryIds = nonEmptyQueriesWithDatasets.map((q) => q.id);
 
   const series = nonEmptyQueriesWithDatasets.map((queryWithDataset, i) => {
     const { dataset, ...query } = queryWithDataset;
@@ -142,6 +146,7 @@ export function buildSeriesGroup({
 
   return {
     series: getFinalSeries({ series, legendItems }),
+    queryIds,
     isTimeseries,
     stackCount,
     legendItems,
@@ -691,4 +696,62 @@ export function getCommentLabel(
   }
 
   return labels.join(", ");
+}
+
+export interface ExplorationChartForDocumentEmbed {
+  queryIds: ExplorationQueryId[];
+  label: string;
+  display: VisualizationDisplay;
+  visualization_settings: VisualizationSettings;
+}
+
+const CARTESIAN_SERIES_COL_NAME = "Series";
+
+/**
+ * Build the chart entries a page offers for "Add to Summary".
+ *
+ * Maps render one `<Visualization>` per series side-by-side (no
+ * `graph.split_panels` analogue), so the user perceives each map as a
+ * standalone chart. Expand a multi-series map group into N picker
+ * entries — each appends a single-snapshot embed (the N=1
+ * pass-through path through `composite/combine` server-side).
+ * Everything else adds the whole page as one composite.
+ */
+export function composeChartsForGroup(
+  group: SeriesGroup,
+): ExplorationChartForDocumentEmbed[] {
+  const firstSeries = group.series[0];
+  if (!firstSeries) {
+    return [];
+  }
+  const display = firstSeries.card.display;
+  const { queryIds } = group;
+
+  if (display === "map" && group.series.length > 1) {
+    return group.series.map((s, i) => ({
+      queryIds: [queryIds[i]],
+      label: s.card.name ?? "Chart",
+      display: s.card.display,
+      visualization_settings: s.card.visualization_settings ?? {},
+    }));
+  }
+
+  const label = firstSeries.card.name ?? "Chart";
+  let visualization_settings: VisualizationSettings =
+    firstSeries.card.visualization_settings ?? {};
+
+  if (group.series.length > 1 && isCartesianChart(display)) {
+    // The BE will append a "Series" column. Pin `graph.dimensions` so
+    // the rendered chart reads the new column as the series breakout.
+    const cols = firstSeries.data.cols;
+    const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
+    if (xCol) {
+      visualization_settings = {
+        ...visualization_settings,
+        "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
+      };
+    }
+  }
+
+  return [{ queryIds, label, display, visualization_settings }];
 }

@@ -65,7 +65,7 @@
       (let [path      (if (page-id-child-target? child)
                         (str base "/page/" (codec/url-encode (str child)))
                         (str base "/summary"))
-            params    (cond-> {:comments "true"}
+            params    (cond-> {:comments (str child)}
                         (:timeline_id context) (assoc :timeline (:timeline_id context)))
             query-str (->> params
                            (map (fn [[k v]] (str (codec/url-encode (name k))

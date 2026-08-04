@@ -30,27 +30,22 @@ describe("useCommentUrl", () => {
     expect(setup("/document/1/comments/4")).toBe("/document/1/comments/9");
   });
 
-  it("uses the ?comments=true search param on exploration routes (no /comments child route exists)", () => {
-    expect(setup("/question/research/1/page/19?timeline=1", "19")).toBe(
-      "/question/research/1/page/19?timeline=1&comments=true",
+  it("uses the ?comments=<childTargetId> search param on exploration routes", () => {
+    expect(setup("/question/research/1/page/19?timeline=1")).toBe(
+      "/question/research/1/page/19?timeline=1&comments=9",
     );
   });
 
-  it("keeps a single comments param when the exploration sidebar is already open", () => {
-    expect(
-      setup("/question/research/1/page/19?comments=true&timeline=1", "19"),
-    ).toBe("/question/research/1/page/19?comments=true&timeline=1");
-  });
-
-  it("pins the comment's page into a bare exploration URL, where the page is otherwise auto-selected", () => {
-    expect(setup("/question/research/1?timeline=1", "19")).toBe(
-      "/question/research/1/page/19?timeline=1&comments=true",
+  it("replaces an existing comments param on exploration routes", () => {
+    expect(setup("/question/research/1/page/19?comments=true&timeline=1")).toBe(
+      "/question/research/1/page/19?comments=9&timeline=1",
     );
   });
 
-  it("repins the path to the comment's own page when a different page is in the URL", () => {
-    expect(setup("/question/research/1/page/4", "19")).toBe(
-      "/question/research/1/page/19?comments=true",
+  it("deep-links Summary block comments with the node id", () => {
+    const nodeId = "550e8400-e29b-41d4-a716-446655440000";
+    expect(setup("/question/research/1/summary", nodeId)).toBe(
+      `/question/research/1/summary?comments=${nodeId}`,
     );
   });
 });

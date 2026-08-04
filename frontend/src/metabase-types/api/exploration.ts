@@ -1,6 +1,7 @@
-import type { CardId } from "./card";
+import type { CardId, VisualizationSettings } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { RowValue } from "./dataset";
+import type { DocumentId } from "./document";
 import type {
   DimensionId,
   DimensionMapping,
@@ -12,6 +13,7 @@ import type { DatasetQuery, DimensionReference } from "./query";
 import type { SegmentId } from "./segment";
 import type { Timeline, TimelineEvent, TimelineId } from "./timeline";
 import type { UserId } from "./user";
+import type { VisualizationDisplay } from "./visualization";
 
 export type GetExplorationDataRequest = {
   q?: string;
@@ -391,6 +393,29 @@ export interface ExplorationCreator {
   last_name?: string | null;
 }
 
+/**
+ * Lightweight Summary document hydrated on an exploration payload.
+ * Full body is fetched separately via GET /api/document/:id.
+ */
+export interface ExplorationDocument {
+  id: DocumentId;
+  name: string;
+  exploration_id: ExplorationId;
+  creator_id: UserId;
+  content_type: string;
+  is_placeholder: boolean;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean;
+}
+
+export interface AppendChartToSummaryRequest {
+  explorationId: ExplorationId;
+  exploration_query_ids: ExplorationQueryId[];
+  display: VisualizationDisplay;
+  visualization_settings: VisualizationSettings;
+}
+
 export interface ExplorationSummary {
   id: ExplorationId;
   name: string;
@@ -426,6 +451,7 @@ export interface Exploration {
   creator?: ExplorationCreator;
   threads?: ExplorationThread[];
   can_write: boolean;
+  document?: ExplorationDocument | null;
 }
 
 export function getExplorationPages(

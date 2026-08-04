@@ -3,7 +3,6 @@ import { type ReactNode, useMemo } from "react";
 import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
   DEFAULT_EDITOR_CAPABILITIES,
-  type EditorCapabilities,
   type EditorHost,
   EditorHostProvider,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -78,15 +77,15 @@ export const documentEditorHost: EditorHost = {
 };
 
 export const DocumentEditorHostProvider = ({
-  capabilities = DEFAULT_EDITOR_CAPABILITIES,
+  hostOverride,
   children,
 }: {
-  capabilities?: EditorCapabilities;
+  hostOverride?: Partial<EditorHost>;
   children: ReactNode;
 }) => {
   const host = useMemo(
-    () => ({ ...documentEditorHost, capabilities }),
-    [capabilities],
+    () => ({ ...documentEditorHost, ...hostOverride }),
+    [hostOverride],
   );
   return <EditorHostProvider value={host}>{children}</EditorHostProvider>;
 };

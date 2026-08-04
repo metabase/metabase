@@ -11,7 +11,7 @@ export const trackDocumentCreated = (document: Document) => {
 };
 
 export const trackDocumentUpdated = (
-  document: Document,
+  document: Pick<Document, "id">,
   triggeredFrom: DocumentTriggerSource,
 ) => {
   trackSimpleEvent({

@@ -57,6 +57,7 @@ import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 import {
   type LegendItem,
   buildSeriesGroup,
+  composeChartsForGroup,
   getCommentLabel,
   getHighlightedWithShouldShowTooltip,
 } from "./utils";
@@ -76,6 +77,8 @@ interface ExplorationGroupVisualizationProps {
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
   onCloseCommentsSidebar: () => void;
+  canAddToSummary?: boolean;
+  setSelectedSummary: (options?: { scrollIntoView?: boolean }) => void;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -90,15 +93,8 @@ export function ExplorationGroupVisualization(
   const groupName = props.page.long_name ?? props.page.name ?? "";
 
   return (
-    <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
-      <Box
-        flex={1}
-        w="100%"
-        bg="background-primary"
-        bd="1px solid border"
-        bdrs="md"
-        h="100%"
-      >
+    <Box flex={1} h="100%" pb="3rem" pr="1rem">
+      <Box bg="background-primary" bd="1px solid border" bdrs="md" h="100%">
         <ErrorBoundary
           errorComponent={() => (
             <Message
@@ -111,7 +107,7 @@ export function ExplorationGroupVisualization(
           <ExplorationGroupVisualizationBody groupName={groupName} {...props} />
         </ErrorBoundary>
       </Box>
-    </Stack>
+    </Box>
   );
 }
 
@@ -173,6 +169,8 @@ function ExplorationGroupVisualizationChart({
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
   onCloseCommentsSidebar,
+  canAddToSummary = false,
+  setSelectedSummary,
   onPreviousPage,
   onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
@@ -234,6 +232,13 @@ function ExplorationGroupVisualizationChart({
     // an unstable dep warning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queries, ...datasets]);
+
+  const chartsForSummary = useMemo(() => {
+    if (!seriesGroup) {
+      return [];
+    }
+    return composeChartsForGroup(seriesGroup);
+  }, [seriesGroup]);
 
   const showTimelineDropdown = useMemo(() => {
     return (
@@ -430,6 +435,9 @@ function ExplorationGroupVisualizationChart({
         <ActionToolbar
           explorationId={explorationId}
           page={page}
+          charts={chartsForSummary}
+          canAddToSummary={canAddToSummary}
+          setSelectedSummary={setSelectedSummary}
           commentDrafts={commentDrafts}
           setCommentDrafts={setCommentDrafts}
           showTimelineDropdown={showTimelineDropdown ?? false}
