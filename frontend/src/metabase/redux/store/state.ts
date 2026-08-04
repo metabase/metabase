@@ -1,4 +1,5 @@
 import type { Api } from "metabase/api/api";
+import type { MetabotState } from "metabase/metabot/state";
 import type { DocumentsState } from "metabase/redux/store/documents";
 import type { ExplorationsState } from "metabase/redux/store/explorations";
 
@@ -11,7 +12,6 @@ import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
-import type { MetabotState } from "./metabot";
 import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
