@@ -49,21 +49,28 @@
   on a collection the plain query does not. Miss either and those pairs share a group, one
   representative decides for both, and a viewer is handed the one they cannot read.
 
-  Neither projection accounts for every query — a raw source-card reference (`\"card__1\"`) matches
-  none of `query->source-ids`'s patterns and yields nothing, and resolution *throws* on an
-  unpreprocessable query (a deleted card in the source chain). Both fall back to a value that merges
-  nothing it shouldn't: the whole query in the first case, and in the second a marker shared only
-  with other unresolvable artifacts, which the lens check denies without exception.
+  Neither projection accounts for every query, and each failure falls back to a value that merges
+  nothing it shouldn't:
+
+  - a raw source-card reference (`\"card__1\"`) matches none of `query->source-ids`'s patterns and
+    yields nothing => key on the whole query, which groups only with an identical one;
+  - resolution *throws* on an unpreprocessable query (a deleted card in the source chain) =>
+    `::unresolvable`, shared only with other unresolvable artifacts, which the lens check denies;
+  - the raw projection throws (`merge-source-ids` does so explicitly) => `::unprojectable`, likewise
+    shared only with other throwers, which the perms check denies for the same reason it threw.
 
   `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
   a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
   to collapse."
   [resolve-source-ids {:keys [database_id dataset_query data_access_token]}]
-  (let [source-ids (some-> dataset_query query-perms/query->source-ids)]
+  (let [source-ids (try
+                     (some-> dataset_query query-perms/query->source-ids)
+                     (catch Throwable _ ::unprojectable))]
     [database_id data_access_token (resolve-source-ids dataset_query)
-     (if (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids)))
-       source-ids
-       dataset_query)]))
+     (cond
+       (= ::unprojectable source-ids)                                  ::unprojectable
+       (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids))) source-ids
+       :else                                                           dataset_query)]))
 
 (defn- source-ids-resolver
   "A memoized [[metabase.query-permissions.core/query->resolved-source-ids]] for one batch.

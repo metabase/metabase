@@ -1037,6 +1037,8 @@
            request
            search
            settings
+           task
+           task-history
            timeline
            types
            util}

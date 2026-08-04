@@ -8,4 +8,5 @@
    [metabase.explorations.models.exploration-thread]
    [metabase.explorations.models.exploration-thread-timeline]
    [metabase.explorations.queues]
-   [metabase.explorations.settings]))
+   [metabase.explorations.settings]
+   [metabase.explorations.task.collect-orphaned-results]))
