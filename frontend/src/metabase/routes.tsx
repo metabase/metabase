@@ -22,7 +22,10 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  lazyModalRoute,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
@@ -34,8 +37,6 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
-import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
-import { DocumentPageOuter } from "metabase/documents/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -132,6 +133,15 @@ const metabotQueryBuilder = () =>
   );
 
 /**
+ * Documents, in their own chunk. It carries the rich text editing stack, which
+ * nothing outside the document page needs on first paint.
+ */
+const documentPage = () =>
+  import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
+    Component: DocumentPageOuter,
+  }));
+
+/**
  * Hovering a link into the query builder starts the fetch, so the chunk is
  * usually in hand by the time the click lands. The router still awaits `lazy`
  * and still commits the location a tick late, so this removes the round trip
@@ -211,12 +221,17 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "document/:entityId",
-                element: <DocumentPageOuter />,
-                children: toRouteObjects(
-                  modalRoute("comments/:childTargetId", CommentsSidesheet, {
-                    noWrap: true,
-                  }),
-                ),
+                lazy: documentPage,
+                children: [
+                  lazyModalRoute(
+                    "comments/:childTargetId",
+                    () =>
+                      import("metabase/documents/components/CommentsSidesheet").then(
+                        ({ CommentsSidesheet }) => CommentsSidesheet,
+                      ),
+                    { noWrap: true },
+                  ),
+                ],
               },
 
               {
