@@ -20,11 +20,10 @@ import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
-import { zoomInRow } from "metabase/query_builder/actions";
 import {
   getOriginalQuestion,
   getQuestion,
-} from "metabase/query_builder/selectors";
+} from "metabase/query_builder/selectors/question";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import { push, useLocation, useParams } from "metabase/router";
@@ -108,9 +107,14 @@ export function AppBarContainer() {
   // Unjustified type cast. FIXME
   const locationState = location.state as { cardId?: number } | undefined;
 
-  const onSearchItemSelect = (result: SearchResult) => {
+  const onSearchItemSelect = async (result: SearchResult) => {
     const selection = getSearchResultSelection(result, locationState?.cardId);
     if (selection.type === "zoom") {
+      // Reached through an import so the app bar, which every page mounts, does
+      // not put the query builder's actions in the initial bundle. Only a search
+      // selection on an object-detail page gets here, and the query builder it
+      // zooms within is already loaded by then.
+      const { zoomInRow } = await import("metabase/query_builder/actions");
       dispatch(zoomInRow({ objectId: selection.objectId }));
     } else {
       dispatch(push(selection.url));

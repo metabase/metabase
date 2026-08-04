@@ -9,7 +9,7 @@ import { getCurrentDocument } from "metabase/documents/selectors";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
-} from "metabase/query_builder/selectors";
+} from "metabase/query_builder/selectors/question";
 import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import {
