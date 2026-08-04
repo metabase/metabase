@@ -208,5 +208,5 @@ export const startAiConfigStep = async () =>
 
 export const skipAiConfigStep = async () =>
   await userEvent.click(
-    screen.getByRole("button", { name: "I'll set this up later" }),
+    await screen.findByRole("button", { name: "I'll set this up later" }),
   );
