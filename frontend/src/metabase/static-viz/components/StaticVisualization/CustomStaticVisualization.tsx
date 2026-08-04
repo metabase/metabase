@@ -1,3 +1,5 @@
+import type { RenderingContext as CustomVizRenderingContext } from "custom-viz";
+
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -31,11 +33,20 @@ export const CustomStaticVisualization = ({
   const settings = getComputedSettingsForSeries(transformedSeries);
   const { StaticVisualizationComponent } = customViz;
 
-  const customVizRenderingContext = {
+  const customVizRenderingContext: CustomVizRenderingContext = {
     getColor: renderingContext.getColor,
-    measureTextWidth: renderingContext.measureText,
-    measureTextHeight: renderingContext.measureTextHeight,
+    measureText: (text, style) => {
+      const fullStyle = {
+        ...style,
+        family: style.family ?? renderingContext.fontFamily,
+      };
+      return {
+        width: renderingContext.measureText(text, fullStyle),
+        height: renderingContext.measureTextHeight(text, fullStyle),
+      };
+    },
     fontFamily: renderingContext.fontFamily,
+    colorScheme: "light",
   };
 
   return (
