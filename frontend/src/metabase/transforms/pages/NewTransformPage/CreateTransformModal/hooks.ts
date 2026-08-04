@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 
-import { useCreateTransformMutation } from "metabase/api";
+import {
+  useCreateTransformMutation,
+  useGetCollectionQuery,
+} from "metabase/api";
 import { trackTransformCreated } from "metabase/transforms/analytics";
-import { useTransformsRootCollectionId } from "metabase/transforms/hooks/use-transforms-root-collection-id";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import {
@@ -17,7 +19,12 @@ export const useCreateTransform = (
   defaultValues: Partial<NewTransformValues>,
 ) => {
   const [createTransformMutation] = useCreateTransformMutation();
-  const rootCollectionId = useTransformsRootCollectionId();
+  const { data: rootCollection } = useGetCollectionQuery({
+    id: "root",
+    namespace: "transforms",
+  });
+  const rootCollectionId =
+    typeof rootCollection?.id === "number" ? rootCollection.id : undefined;
   const initialValues: NewTransformValues = useMemo(
     () => getInitialValues(schemas, defaultValues),
     [schemas, defaultValues],
