@@ -1,6 +1,6 @@
 (ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [get-in not-empty])
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
    [clojure.core.cache :as cache]
@@ -20,7 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf :refer [get-in]]
+   [metabase.util.performance :as perf :refer [get-in not-empty]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -515,10 +515,7 @@
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
   [database-id :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, name-ci-set :name-ci
-    :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  ;; `:name-ci` is deliberately absent from `active-only?`: it narrows by name without widening to
-  ;; inactive/archived/hidden objects. See the `::lib.metadata.protocols/metadata-spec` docstring.
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
@@ -526,10 +523,6 @@
                           database-id-key         (conj [:= database-id-key database-id])
                           id-set                  (conj [:in (id-key metadata-type) id-set])
                           name-set                (conj [:in (name-key metadata-type) name-set])
-                          ;; `lower()` cannot use an index on the name column, but it still beats fetching every row
-                          ;; for the Database and filtering in memory.
-                          name-ci-set             (conj [:in [:lower (name-key metadata-type)]
-                                                         (into #{} (map u/lower-case-en) name-ci-set)])
                           table-ids               (conj [:in (table-id-key metadata-type) table-ids])
                           card-ids                (conj [:in (card-id-key metadata-type) card-ids])
                           active-only?            (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
@@ -571,6 +564,27 @@
   (equals [_this another]
     (and (instance? UncachedApplicationDatabaseMetadataProvider another)
          (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
+
+(mu/defn tables-by-name :- [:sequential ::lib.schema.metadata/table]
+  "Active, non-hidden Tables in `database-id` whose name case-insensitively matches one of `table-names`.
+
+  Case-insensitive because the spelling sync recorded need not match the spelling in a query: `normalize-name`
+  lower-cases while some warehouses (Snowflake) report upper-case. Callers needing an exact match should filter the
+  result.
+
+  Deliberately not a `MetadataProvider` operation. This is a name lookup against the application database rather than
+  metadata for a query, so it does not need the provider's caching, overrides, or cross-platform contract — and
+  routing it through the provider would mean fetching a whole Database's catalog to find a handful of rows."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential :string]]
+  (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
+    (t2/select :metadata/table
+               {:where [:and
+                        [:= :db_id database-id]
+                        ;; `lower()` cannot use an index on the name column, but it still beats fetching every row.
+                        [:in [:lower :name] names]
+                        (active-only-honeysql-filter :metadata/table nil)]})
+    []))
 
 (defn- application-database-metadata-provider-factory
   "Inner function that constructs a new `MetadataProvider`.

@@ -1,6 +1,7 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -59,7 +60,7 @@
                         driver {:table table
                                 :schema (or table-schema default-schema)}))
                      query-tables)
-          db-tables (lib.metadata/tables-by-name query (keep :table specs))
+          db-tables (lib-be/tables-by-name (lib/database-id query) (keep :table specs))
           db-transforms (lib.metadata/transforms query)]
       (into #{}
             (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
