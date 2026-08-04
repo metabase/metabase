@@ -31,6 +31,7 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { refetchSiteSettings } from "metabase/api";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
@@ -108,6 +109,7 @@ function _init(reducers, getRoutes, callback) {
                 <RouterProvider
                   routes={routes}
                   onLocationChange={mirrorLocation}
+                  hydrateFallback={<DelayedLoadingSpinner />}
                 />
               </MetabotProvider>
             </AppThemeProvider>

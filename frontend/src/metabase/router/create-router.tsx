@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   type DataRouter,
   type RouteObject,
@@ -21,27 +22,46 @@ export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
  * The layout route contributes no path, so it changes no matching. It exists so
  * relative redux navigation resolves from the root (see `AppShell`) and as the
  * seat for anything the app shell needs above the route tree.
+ *
+ * `hydrateFallback` is what the router shows before it initializes. That window
+ * is empty unless the first URL matches a `lazy` route, in which case the whole
+ * tree, chrome included, waits on the chunk. Without a fallback the page is
+ * blank for that time. The router cannot build one itself, so the app passes it
+ * in.
  */
-function withAppShell(routes: RouteObject[]): RouteObject[] {
-  return [{ element: <AppShell />, children: routes }];
+function withAppShell(
+  routes: RouteObject[],
+  hydrateFallback?: ReactNode,
+): RouteObject[] {
+  return [
+    {
+      element: <AppShell />,
+      hydrateFallbackElement: hydrateFallback,
+      children: routes,
+    },
+  ];
 }
 
 export function createAppRouter(
   routes: RouteObject[],
   basename?: string,
+  hydrateFallback?: ReactNode,
 ): DataRouter {
-  return createBrowserRouter(withAppShell(routes), { basename });
+  return createBrowserRouter(withAppShell(routes, hydrateFallback), {
+    basename,
+  });
 }
 
 export function createMemoryAppRouter(
   routes: RouteObject[],
   initialRoute: string,
   basename?: string,
+  hydrateFallback?: ReactNode,
 ): DataRouter {
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
-  return createMemoryRouter(withAppShell(routes), {
+  return createMemoryRouter(withAppShell(routes, hydrateFallback), {
     basename,
     initialEntries: [entry],
   });
