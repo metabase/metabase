@@ -19,6 +19,7 @@ import {
   getExplorationSidebarTree,
   getShimmerDelayStyle,
   isHiddenTreeItem,
+  pickInitialSidebarEntity,
   pickInitialSidebarPage,
 } from "./utils";
 
@@ -682,6 +683,72 @@ describe("pickInitialSidebarPage", () => {
     });
 
     expect(pickInitialSidebarPage(tree)).toBe("3");
+  });
+});
+
+describe("pickInitialSidebarEntity", () => {
+  const METRIC_A_BLOCK_ID = 10;
+
+  function treeWithSummary(isPlaceholder: boolean) {
+    const done = createQuery({
+      id: 3,
+      name: "Done page",
+      status: "done",
+      interestingness_score: 0.2,
+    });
+    const exploration = createExploration({
+      queries: [done],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({
+              id: 3,
+              name: "Done page",
+              position: 0,
+              query_ids: [done.id],
+            }),
+          ],
+        }),
+      ],
+    });
+    exploration.document = {
+      id: 99,
+      name: "Summary",
+      exploration_id: exploration.id,
+      creator_id: 1,
+      content_type: "application/json+vnd.prose-mirror",
+      is_placeholder: isPlaceholder,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    return {
+      tree: getExplorationSidebarTree(exploration, () => true),
+      document: exploration.document,
+    };
+  }
+
+  it("prefers Summary when is_placeholder is false", () => {
+    const { tree, document } = treeWithSummary(false);
+    expect(pickInitialSidebarEntity(tree, document)).toEqual({
+      type: "summary",
+    });
+  });
+
+  it("falls back to the first page while Summary is still a placeholder", () => {
+    const { tree, document } = treeWithSummary(true);
+    expect(pickInitialSidebarEntity(tree, document)).toEqual({
+      type: "page",
+      id: "3",
+    });
+  });
+
+  it("prepends Summary as the first tree node", () => {
+    const { tree } = treeWithSummary(true);
+    expect(tree[0]?.data?.type).toBe("document");
+    expect(tree[0]?.name).toBe("Summary");
   });
 });
 

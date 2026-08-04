@@ -56,6 +56,25 @@ type Selector<T> = (state: State) => T;
  */
 type DispatchableAction = any;
 
+/**
+ * What the surrounding surface lets the editor do. Hosts declare these instead
+ * of exposing a surface enum the editor has to branch on: a restricted surface
+ * (e.g. exploration Summary) flips the relevant flag to false. Adding a new
+ * surface is "provide a host with these flags", not "find every surface check".
+ */
+export interface EditorCapabilities {
+  canEmbedCharts: boolean;
+  canUseMetabot: boolean;
+  canOpenCardInQueryBuilder: boolean;
+}
+
+/** Capabilities for an unrestricted surface (standalone documents, comments, …). */
+export const DEFAULT_EDITOR_CAPABILITIES: EditorCapabilities = {
+  canEmbedCharts: true,
+  canUseMetabot: true,
+  canOpenCardInQueryBuilder: true,
+};
+
 /** Document state read by most extensions, regardless of which are enabled. */
 export interface EditorDocumentHost {
   selectors: {
@@ -160,7 +179,9 @@ export type EditorHost = EditorDocumentHost &
   EditorCommentsHost &
   EditorViewportHost &
   EditorMentionsHost &
-  EditorAnalyticsHost;
+  EditorAnalyticsHost & {
+    capabilities: EditorCapabilities;
+  };
 
 const noop = () => undefined;
 
@@ -172,6 +193,7 @@ const noop = () => undefined;
  * provide one.
  */
 export const DEFAULT_EDITOR_HOST: EditorHost = {
+  capabilities: DEFAULT_EDITOR_CAPABILITIES,
   selectors: {
     getCurrentDocument: () => null,
     getChildTargetId: () => undefined,

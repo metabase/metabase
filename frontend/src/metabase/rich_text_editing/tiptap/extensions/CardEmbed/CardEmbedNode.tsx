@@ -402,6 +402,9 @@ export const CardEmbedComponent = memo(
         dispatch(host.navigateToCard(chartHref, document));
         return;
       }
+      if (!host.capabilities.canOpenCardInQueryBuilder) {
+        return;
+      }
       if (card && metadata) {
         try {
           const isDraftCard = card.id < 0;

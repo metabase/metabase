@@ -115,9 +115,11 @@ export const CommandSuggestion = forwardRef<
 
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const { capabilities } = host;
+
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(metabotCommand),
-    [metabotCommand],
+    () => getAllCommandSections(metabotCommand, capabilities),
+    [metabotCommand, capabilities],
   );
 
   const allCommandOptions = useMemo(
@@ -150,7 +152,8 @@ export const CommandSuggestion = forwardRef<
     onSelectItem: setNewQuestionType,
   });
 
-  const areChartsAllowed = !editor.isActive("supportingText");
+  const areChartsAllowed =
+    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =

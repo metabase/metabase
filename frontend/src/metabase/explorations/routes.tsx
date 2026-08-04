@@ -14,6 +14,7 @@ export const getRoutes = () => {
       </Route>
       <Route path=":id" element={<ExplorationPage />} />
       <Route path=":id/page/:pageId" element={<ExplorationPage />} />
+      <Route path=":id/summary" element={<ExplorationPage view="summary" />} />
     </Route>
   );
 };

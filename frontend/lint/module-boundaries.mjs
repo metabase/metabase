@@ -442,6 +442,11 @@ const baseRules = [
     message: "Public module can import from all feature modules",
   },
   {
+    from: ["feature/explorations"],
+    allow: ["feature/documents"],
+    message: "Explorations module can import from documents module",
+  },
+  {
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },

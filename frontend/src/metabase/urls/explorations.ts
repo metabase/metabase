@@ -14,6 +14,10 @@ export function exploration(explorationId: ExplorationId): string {
   return `/${EXPLORATION_BASE_PATH}/${explorationId}`;
 }
 
+export function explorationSummary(explorationId: ExplorationId): string {
+  return `${exploration(explorationId)}/summary`;
+}
+
 export function isExplorationUrl(pathname: string): boolean {
   return pathname.startsWith(`/${EXPLORATION_BASE_PATH}/`);
 }

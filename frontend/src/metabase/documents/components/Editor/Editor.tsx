@@ -20,6 +20,7 @@ import { MetabotMentionSuggestion } from "metabase/metabot/components/editor-ext
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
+import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
@@ -89,11 +90,15 @@ export interface EditorProps {
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;
   onChange?: (content: JSONContent) => void;
-  onQuestionSelect?: (cardId: number | null) => void;
+  onQuestionSelect?: (
+    cardId: number | null,
+    embedIndex?: number | null,
+  ) => void;
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
+  capabilities?: EditorCapabilities;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -106,6 +111,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     onQuestionSelect,
     isLoading = false,
     editorContainerRef,
+    capabilities,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -236,7 +242,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     }
 
     return (
-      <DocumentEditorHostProvider>
+      <DocumentEditorHostProvider capabilities={capabilities}>
         <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
           <Box
             className={S.editorContent}
