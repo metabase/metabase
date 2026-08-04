@@ -71,4 +71,7 @@
       (is (nil? (mt/user-http-request :crowberto :get 204
                                       "user-key-value/namespace/data-app-test/key/format" as-data-app))))
     (testing "the InteractiveQuestion.Editor data-source surface is reachable when marked"
-      (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))))
+      (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))
+    (testing "a pre-built-def route (table-routes, mounted by value not ns-symbol) enforces the tag"
+      (is (mt/user-http-request :crowberto :get 200
+                                (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))
