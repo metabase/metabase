@@ -276,28 +276,45 @@ Keep the icon **simple and monochromatic** — avoid gradients and multiple colo
 Provide a `StaticVisualizationComponent` to enable rendering in non-interactive contexts: email attachments, Slack previews, and PDF attachments.
 
 ```tsx
-const StaticVisualizationComponent = ({
-  series,
-  settings,
-  renderingContext,
-  width,
-  height,
-}: CustomStaticVisualizationProps<Settings>) => {
-  const { getColor, fontFamily } = renderingContext;
+import type {
+  CreateCustomVisualization,
+  CustomStaticVisualizationProps,
+} from "@metabase/custom-viz";
 
-  const finalWidth = width ?? 540;
-  const finalHeight = height ?? 360;
+const createVisualization: CreateCustomVisualization<Settings> = ({
+  defineSetting,
+}) => {
+  // ...
 
-  return (
-    <svg
-      width={finalWidth}
-      height={finalHeight}
-      viewBox={`0 0 ${finalWidth} ${finalHeight}`}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Pure rendering — no event handlers */}
-    </svg>
-  );
+  const StaticVisualizationComponent = ({
+    series,
+    settings,
+    renderingContext,
+    width,
+    height,
+  }: CustomStaticVisualizationProps<Settings>) => {
+    const { getColor, fontFamily } = renderingContext;
+
+    const finalWidth = width ?? 540;
+    const finalHeight = height ?? 360;
+
+    return (
+      <svg
+        width={finalWidth}
+        height={finalHeight}
+        viewBox={`0 0 ${finalWidth} ${finalHeight}`}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Pure rendering — no event handlers */}
+      </svg>
+    );
+  };
+
+  return {
+    // ...
+    VisualizationComponent,
+    StaticVisualizationComponent,
+  };
 };
 ```
 
