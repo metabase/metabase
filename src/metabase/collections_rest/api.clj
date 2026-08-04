@@ -168,7 +168,8 @@
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
-          (mi/can-read? root)
+          (and (mi/can-read? root)
+               (not-any? :is_root collections))
           (cons root))))
     (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
@@ -1290,8 +1291,14 @@
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
-(defn- root-collection [collection-namespace]
-  (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
+(defn- root-collection
+  "The collection standing for `collection-namespace`'s top level. Namespaces whose root is a real row answer with
+  that row, so callers get an id they can file content under; the rest still get the synthesized placeholder."
+  [collection-namespace]
+  (collection-detail
+   (or (when (= (keyword collection-namespace) collection/transforms-ns)
+         (t2/select-one :model/Collection :id (collection/transforms-root-collection-id)))
+       (collection/root-collection-with-ui-details collection-namespace))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

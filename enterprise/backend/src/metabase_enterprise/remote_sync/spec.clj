@@ -667,12 +667,16 @@
 
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
-(defn transforms-namespace-collection?
-  "Check if this is a transforms-namespace collection. The namespace's root collection is excluded: it is created
-   by a migration on every instance, so a remote source neither owns it nor may delete it."
+(defn root-collection?
+  "Check if this is a namespace's root collection. Those are created by a migration on every instance, so a remote
+   source neither owns one nor may delete it, and they never take part in sync."
   [object]
-  (and (= (keyword (:namespace object)) :transforms)
-       (not (:is_root object))))
+  (boolean (:is_root object)))
+
+(defn transforms-namespace-collection?
+  "Check if this is a transforms-namespace collection."
+  [object]
+  (= (keyword (:namespace object)) :transforms))
 
 (defn snippets-namespace-collection?
   "Check if this is a snippets-namespace collection."
@@ -688,11 +692,12 @@
   "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
    or snippets-namespace with Library synced."
   [collection]
-  (or (collections/remote-synced-collection? collection)
-      (and (rs-settings/remote-sync-transforms)
-           (transforms-namespace-collection? collection))
-      (and (rs-settings/library-is-remote-synced?)
-           (snippets-namespace-collection? collection))))
+  (and (not (root-collection? collection))
+       (or (collections/remote-synced-collection? collection)
+           (and (rs-settings/remote-sync-transforms)
+                (transforms-namespace-collection? collection))
+           (and (rs-settings/library-is-remote-synced?)
+                (snippets-namespace-collection? collection)))))
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
@@ -764,26 +769,27 @@
   [{:keys [eligibility]} object]
   (let [collection-type (:collection eligibility)
         collection-id   (:collection_id object)]
-    (case collection-type
-      :remote-synced
-      (boolean (collections/remote-synced-collection? collection-id))
+    (and (not (root-collection? object))
+         (case collection-type
+           :remote-synced
+           (boolean (collections/remote-synced-collection? collection-id))
 
-      :transforms-namespace
-      (and (rs-settings/remote-sync-transforms)
-           (transforms-namespace-collection? object))
+           :transforms-namespace
+           (and (rs-settings/remote-sync-transforms)
+                (transforms-namespace-collection? object))
 
-      :snippets-namespace
-      (and (rs-settings/library-is-remote-synced?)
-           (snippets-namespace-collection? object))
+           :snippets-namespace
+           (and (rs-settings/library-is-remote-synced?)
+                (snippets-namespace-collection? object))
 
-      :any
-      (or (collections/remote-synced-collection? (or collection-id object))
-          (and (rs-settings/remote-sync-transforms)
-               (transforms-namespace-collection? object))
-          (and (rs-settings/library-is-remote-synced?)
-               (snippets-namespace-collection? object)))
+           :any
+           (or (collections/remote-synced-collection? (or collection-id object))
+               (and (rs-settings/remote-sync-transforms)
+                    (transforms-namespace-collection? object))
+               (and (rs-settings/library-is-remote-synced?)
+                    (snippets-namespace-collection? object)))
 
-      false)))
+           false))))
 
 (defmethod check-eligibility :published-table
   [_ {:keys [is_published collection_id]}]

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useCreateTransformMutation } from "metabase/api";
 import { trackTransformCreated } from "metabase/transforms/analytics";
+import { useTransformsRootCollectionId } from "metabase/transforms/hooks/use-transforms-root-collection-id";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import {
@@ -16,6 +17,7 @@ export const useCreateTransform = (
   defaultValues: Partial<NewTransformValues>,
 ) => {
   const [createTransformMutation] = useCreateTransformMutation();
+  const rootCollectionId = useTransformsRootCollectionId();
   const initialValues: NewTransformValues = useMemo(
     () => getInitialValues(schemas, defaultValues),
     [schemas, defaultValues],
@@ -31,7 +33,10 @@ export const useCreateTransform = (
       values,
       databaseId,
     );
-    const transform = await createTransformMutation(request).unwrap();
+    const transform = await createTransformMutation({
+      ...request,
+      collection_id: request.collection_id ?? rootCollectionId,
+    }).unwrap();
     trackTransformCreated({
       transformId: transform.id,
       isIncremental: transform.target.type === "table-incremental",

@@ -1,10 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { c } from "ttag";
 
-import {
-  useGetCollectionQuery,
-  useUpdateTransformMutation,
-} from "metabase/api";
+import { useUpdateTransformMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   EntityPickerOptions,
@@ -37,17 +34,12 @@ export function MoveTransformModal({
   onClose,
 }: MoveTransformModalProps) {
   const [updateTransform] = useUpdateTransformMutation();
-  const { data: collection, isLoading } = useGetCollectionQuery({
-    id: transform.collection_id,
-    namespace: "transforms",
-  });
 
   const handleChange = useCallback(
     async ({ id }: OmniPickerItem) => {
-      const collectionId = canonicalCollectionId(id);
       await updateTransform({
         id: transform.id,
-        collection_id: collectionId,
+        collection_id: canonicalCollectionId(id),
       }).unwrap();
       onMove();
     },
@@ -56,16 +48,12 @@ export function MoveTransformModal({
 
   const pickerValue: OmniPickerValue = useMemo(
     () => ({
-      id: collection?.is_root ? "root" : transform.collection_id,
+      id: transform.collection_id,
       model: "collection",
       namespace: "transforms",
     }),
-    [collection?.is_root, transform.collection_id],
+    [transform.collection_id],
   );
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <CollectionPickerModal
