@@ -294,7 +294,7 @@ export type CreateTransformRequest = {
   source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
-  collection_id?: number | null;
+  collection_id?: CollectionId | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
 };
@@ -306,7 +306,7 @@ export type UpdateTransformRequest = {
   source?: TransformSource;
   target?: TransformTarget;
   tag_ids?: TransformTagId[];
-  collection_id?: number | null;
+  collection_id?: CollectionId | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
 };

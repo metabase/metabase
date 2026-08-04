@@ -6,6 +6,7 @@ import type * as Yup from "yup";
 
 import {
   skipToken,
+  useGetCollectionQuery,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
@@ -22,6 +23,8 @@ import {
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
+  Collection,
+  Database,
   SchemaName,
   Transform,
   TransformSource,
@@ -64,6 +67,47 @@ export function CreateTransformModal({
   showIncrementalSettings,
   closeOnEscape,
 }: CreateTransformModalProps) {
+  return (
+    <Modal
+      title={t`Save your transform`}
+      opened
+      padding="xl"
+      closeOnEscape={closeOnEscape}
+      onClose={onClose}
+    >
+      <CreateTransformModalLoader
+        source={source}
+        defaultValues={defaultValues}
+        onCreate={onCreate}
+        onClose={onClose}
+        schemasFilter={schemasFilter}
+        validationSchemaExtension={validationSchemaExtension}
+        handleSubmit={handleSubmit}
+        targetDescription={targetDescription}
+        validateOnMount={validateOnMount}
+        showIncrementalSettings={showIncrementalSettings}
+      />
+    </Modal>
+  );
+}
+
+type CreateTransformModalLoaderProps = Omit<
+  CreateTransformModalProps,
+  "closeOnEscape"
+>;
+
+function CreateTransformModalLoader({
+  source,
+  defaultValues,
+  onCreate,
+  onClose,
+  schemasFilter,
+  validationSchemaExtension,
+  handleSubmit,
+  targetDescription,
+  validateOnMount,
+  showIncrementalSettings,
+}: CreateTransformModalLoaderProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
@@ -79,19 +123,73 @@ export function CreateTransformModal({
     error: schemasError,
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
+  const {
+    data: rootCollection,
+    isLoading: isRootCollectionLoading,
+    error: rootCollectionError,
+  } = useGetCollectionQuery({ id: "root", namespace: "transforms" });
+
   const schemas = useMemo(() => {
     return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);
   }, [schemasFilter, fetchedSchemas]);
-  const isLoading = isDatabaseLoading || isSchemasLoading;
-  const error = databaseError ?? schemasError;
+  const isLoading =
+    isDatabaseLoading || isSchemasLoading || isRootCollectionLoading;
+  const error = databaseError ?? schemasError ?? rootCollectionError;
 
+  if (isLoading || error != null || rootCollection == null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <CreateTransformModalForm
+      source={source}
+      defaultValues={defaultValues}
+      onCreate={onCreate}
+      onClose={onClose}
+      validationSchemaExtension={validationSchemaExtension}
+      handleSubmit={handleSubmit}
+      targetDescription={targetDescription}
+      validateOnMount={validateOnMount}
+      showIncrementalSettings={showIncrementalSettings}
+      database={database}
+      schemas={schemas}
+      rootCollection={rootCollection}
+    />
+  );
+}
+
+type CreateTransformModalFormProps = Omit<
+  CreateTransformModalLoaderProps,
+  "schemasFilter"
+> & {
+  database: Database | undefined;
+  schemas: string[];
+  rootCollection: Collection;
+};
+
+function CreateTransformModalForm({
+  source,
+  defaultValues,
+  onCreate,
+  onClose,
+  validationSchemaExtension,
+  handleSubmit,
+  targetDescription,
+  validateOnMount,
+  showIncrementalSettings,
+  database,
+  schemas,
+  rootCollection,
+}: CreateTransformModalFormProps) {
+  const databaseId =
+    source.type === "query" ? source.query.database : source["source-database"];
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const {
     initialValues,
     validationSchema: defaultSchema,
     createTransform,
-  } = useCreateTransform(schemas, defaultValues);
+  } = useCreateTransform(schemas, defaultValues, rootCollection.id);
 
   const validationSchema = useMemo(
     () =>
@@ -106,10 +204,6 @@ export function CreateTransformModal({
     [supportsSchemas],
   );
 
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   const defaultHandleSubmit = async (values: NewTransformValues) => {
     if (!databaseId) {
       throw new Error("Database ID is required");
@@ -119,30 +213,22 @@ export function CreateTransformModal({
   };
 
   return (
-    <Modal
-      title={t`Save your transform`}
-      opened
-      padding="xl"
-      closeOnEscape={closeOnEscape}
-      onClose={onClose}
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={validationSchema}
+      validationContext={validationContext}
+      onSubmit={handleSubmit || defaultHandleSubmit}
+      validateOnMount={validateOnMount}
     >
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={validationSchema}
-        validationContext={validationContext}
-        onSubmit={handleSubmit || defaultHandleSubmit}
-        validateOnMount={validateOnMount}
-      >
-        <CreateTransformForm
-          source={source}
-          supportsSchemas={supportsSchemas}
-          schemas={schemas}
-          onClose={onClose}
-          targetDescription={targetDescription}
-          showIncrementalSettings={showIncrementalSettings}
-        />
-      </FormProvider>
-    </Modal>
+      <CreateTransformForm
+        source={source}
+        supportsSchemas={supportsSchemas}
+        schemas={schemas}
+        onClose={onClose}
+        targetDescription={targetDescription}
+        showIncrementalSettings={showIncrementalSettings}
+      />
+    </FormProvider>
   );
 }
 

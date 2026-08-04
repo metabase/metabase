@@ -3,6 +3,7 @@ import * as Yup from "yup";
 import * as Errors from "metabase/utils/errors";
 import { slugify } from "metabase/visualizations/lib/formatting/url";
 import type {
+  CollectionId,
   CreateTransformRequest,
   TransformSource,
 } from "metabase-types/api";
@@ -25,7 +26,7 @@ export const VALIDATION_SCHEMA = Yup.object({
       is: true,
       then: (schema) => schema.required(Errors.required),
     }),
-  collection_id: Yup.number().nullable().defined(),
+  collection_id: Yup.mixed<CollectionId>().defined(),
 }).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA);
 
 export type NewTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
@@ -33,6 +34,7 @@ export type NewTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 export const getInitialValues = (
   schemas: string[],
   defaultValues: Partial<NewTransformValues>,
+  rootCollectionId: CollectionId,
 ): NewTransformValues => ({
   ...defaultValues,
   name: "",
@@ -42,7 +44,7 @@ export const getInitialValues = (
     : defaultValues.name
       ? slugify(defaultValues.name)
       : "",
-  collection_id: null,
+  collection_id: defaultValues.collection_id ?? rootCollectionId,
   ...incrementalTransformGetInitialValues(defaultValues),
 });
 

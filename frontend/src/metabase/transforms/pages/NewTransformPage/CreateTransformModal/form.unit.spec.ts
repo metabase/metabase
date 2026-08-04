@@ -5,7 +5,7 @@ const baseValues = {
   name: "My Transform",
   targetName: "my_target_table",
   targetSchema: "public",
-  collection_id: null,
+  collection_id: 1,
   incremental: false,
   sourceStrategy: "checkpoint" as const,
   checkpointFilterFieldId: null,
