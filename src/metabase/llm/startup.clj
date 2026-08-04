@@ -20,25 +20,36 @@
 
 (defn- ensure-managed-connection!
   "Materialize the connection for the Metabase-managed provider. It holds no credentials of its own, so it exists
-  purely so that a `metabase/...` model reference resolves."
+  purely so that a `metabase/...` model reference resolves. Returns whether the connection exists afterwards.
+
+  Nothing is written when `llm-providers` is set by an env var: the write would land in the app DB and then lose to
+  the env var on every read, leaving the model reference naming a connection that never resolves."
   []
-  (when-not (llm.provider/connection llm.provider/managed-connection-key)
-    (llm.provider/set-connections!
-     (conj (vec (remove #(= :env (keyword (:source %))) (llm.provider/connections)))
-           (managed-connection)))))
+  (cond
+    (llm.provider/connection llm.provider/managed-connection-key)
+    true
+
+    (some? (setting/env-var-value :llm-providers))
+    false
+
+    :else
+    (do (llm.provider/set-connections! (conj (llm.provider/stored-connections) (managed-connection)))
+        true)))
 
 (defn- sync-managed-metabot-provider!
   []
   (let [raw-provider (setting/db-stored-value :llm-metabot-provider)
         configured?  (metabot.settings/llm-metabot-configured?)]
-    (if (and (str/blank? raw-provider)
-             (not configured?))
-      (do
-        (log/infof "Configuring llm-metabot-provider to %s for legacy Metabot entitlement"
-                   metabot.settings/default-metabase-llm-metabot-provider)
-        (ensure-managed-connection!)
-        (setting/set! :llm-metabot-provider metabot.settings/default-metabase-llm-metabot-provider))
-      nil)))
+    (when (and (str/blank? raw-provider)
+               (not configured?))
+      (if (ensure-managed-connection!)
+        (do
+          (log/infof "Configuring llm-metabot-provider to %s for legacy Metabot entitlement"
+                     metabot.settings/default-metabase-llm-metabot-provider)
+          (setting/set! :llm-metabot-provider metabot.settings/default-metabase-llm-metabot-provider))
+        (log/warnf "Leaving llm-metabot-provider unset for legacy Metabot entitlement: %s is set by the environment and lists no %s connection"
+                   (setting/env-var-name :llm-providers)
+                   llm.provider/managed-connection-key)))))
 
 (defn- maybe-sync-managed-metabot-provider!
   []
@@ -47,6 +58,25 @@
     (cond
       (or (nil? legacy-result) (nil? managed-result))   nil
       (and legacy-result (not managed-result))          (sync-managed-metabot-provider!))))
+
+(defn- with-model-from-metabot-provider
+  "Fill in the `:config` keys that compose a connection's model from the model reference already pointed at it.
+
+  Azure is the one provider type whose model cannot be listed, and before the connection list existed its
+  `{family}/{deployment}` pair lived only in `llm-metabot-provider`. Recovering it here is what lets an adopted
+  connection offer its deployment in the model picker instead of coming up empty."
+  [conns]
+  (let [model-ref (setting/db-stored-value :llm-metabot-provider)
+        conn-key  (llm.provider/model-ref->connection-key model-ref)]
+    (mapv (fn [{:keys [type] :as conn}]
+            (let [field-keys (llm.provider/model-fields type)
+                  parts      (when (and field-keys (= conn-key (:key conn)))
+                               (str/split (str (llm.provider/model-ref->model model-ref)) #"/"
+                                          (count field-keys)))]
+              (cond-> conn
+                (= (count field-keys) (count parts))
+                (update :config merge (zipmap field-keys parts)))))
+          conns)))
 
 (defn- adopt-db-stored-single-provider-settings!
   "Fold per-provider credentials that were saved into the app DB onto `llm-providers`.
@@ -64,7 +94,8 @@
   []
   (when (nil? (setting/db-stored-value :llm-providers))
     (when-let [conns (not-empty
-                      (cond-> (llm.provider/db-stored-single-provider-connections)
+                      (cond-> (with-model-from-metabot-provider
+                                (llm.provider/db-stored-single-provider-connections))
                         (llm.provider/managed-model-ref? (setting/db-stored-value :llm-metabot-provider))
                         (conj (managed-connection))))]
       (log/infof "Adopting %d app-DB LLM provider credential setting(s) into llm-providers: %s"

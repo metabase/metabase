@@ -183,6 +183,42 @@
           (is (= [["anthropic" :env]]
                  (map (juxt :key :source) (llm.provider/connections)))))))))
 
+(deftest adopts-azure-with-the-deployment-from-the-model-reference-test
+  (testing (str "Azure's deployment has always lived in llm-metabot-provider rather than in a setting of its own, so "
+                "adoption has to take it from there — otherwise the upgraded instance points at a connection that "
+                "does not exist, and Metabot stops working entirely.")
+    (mt/with-temp-env-var-value! [mb-llm-azure-api-key      nil
+                                  mb-llm-azure-api-base-url nil
+                                  mb-llm-anthropic-api-key  nil]
+      (mt/with-temporary-setting-values [llm-azure-api-key      "azure-stored"
+                                         llm-azure-api-base-url "https://r.services.ai.azure.com/openai"]
+        (mt/with-temporary-raw-setting-values [llm-providers        nil
+                                               llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+          (with-entitlements nil nil false
+            (llm.startup/check-and-sync-settings-on-startup!)
+            (is (= {:api-key         "azure-stored"
+                    :base-url        "https://r.services.ai.azure.com/openai"
+                    :model-family    "openai"
+                    :deployment-name "gpt-4.1-mini"}
+                   (llm.provider/credentials "azure")))
+            (testing "so the model reference the instance already had keeps resolving"
+              (is (=? {:connection-key "azure" :type "azure" :model "openai/gpt-4.1-mini"}
+                      (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider)))))
+            (testing "and the connection can name the deployment it serves in the model picker"
+              (is (= "openai/gpt-4.1-mini"
+                     (llm.provider/connection-model "azure" (llm.provider/credentials "azure")))))))))))
+
+(deftest managed-connection-is-not-written-when-the-list-is-env-managed-test
+  (testing (str "A write would land in the app DB and lose to the env var on every read, so pointing Metabot at the "
+                "managed provider would name a connection that never resolves. Leave the selection alone instead.")
+    (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]
+      (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+        (with-entitlements true false false
+          (let [stored-before (setting/db-stored-value :llm-providers)]
+            (llm.startup/check-and-sync-settings-on-startup!)
+            (is (= stored-before (setting/db-stored-value :llm-providers)))
+            (is (nil? (setting/db-stored-value :llm-metabot-provider)))))))))
+
 (deftest adoption-is-a-one-shot-test
   (testing "an instance that already has a connection list is not adopted over again"
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
