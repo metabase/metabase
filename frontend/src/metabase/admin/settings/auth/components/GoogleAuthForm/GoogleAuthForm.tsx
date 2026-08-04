@@ -5,7 +5,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useUpdateGoogleAuthMutation } from "metabase/api";
+import { useUpdateGoogleAuthMutation } from "metabase/admin/settings/api/google";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {

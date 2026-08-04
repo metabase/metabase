@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDeleteApiKeyMutation } from "metabase/api";
+import { useDeleteApiKeyMutation } from "metabase/admin/settings/api/api-key";
 import {
   Form,
   FormErrorMessage,

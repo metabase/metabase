@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import { useListApiKeysQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";

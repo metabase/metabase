@@ -5,12 +5,12 @@ import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase/api/metabot";
 import {
   useGetSlackAppInfoQuery,
   useGetSlackManifestQuery,
-} from "metabase/api/slack";
+} from "metabase/admin/settings/api/slack";
+import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/api/metabot";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";

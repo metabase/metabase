@@ -1,7 +1,7 @@
-import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
-import { Api } from "./api";
-import { listTag, tag } from "./tags";
+import { Api } from "metabase/api";
+import { listTag, tag } from "metabase/api/tags";
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 export const clouldMigrationApi = Api.injectEndpoints({
   endpoints: (builder) => ({

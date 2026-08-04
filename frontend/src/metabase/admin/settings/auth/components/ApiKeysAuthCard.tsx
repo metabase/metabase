@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useCountApiKeysQuery } from "metabase/api";
+import { useCountApiKeysQuery } from "metabase/admin/settings/api/api-key";
 
 import { AuthCardBody } from "./AuthCard/AuthCard";
 

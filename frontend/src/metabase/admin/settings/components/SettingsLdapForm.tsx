@@ -8,9 +8,9 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { useUpdateLdapMutation } from "metabase/admin/settings/api/ldap";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import { useUpdateLdapMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,

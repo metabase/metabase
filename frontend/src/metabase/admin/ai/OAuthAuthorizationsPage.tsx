@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useListOAuthAuthorizationsQuery } from "metabase/api";
+import { useListOAuthAuthorizationsQuery } from "metabase/admin/settings/api/oauth";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSendTestEmailMutation } from "metabase/api/email";
+import { useSendTestEmailMutation } from "metabase/admin/settings/api/email";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";

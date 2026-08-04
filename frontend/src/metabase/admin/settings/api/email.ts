@@ -1,13 +1,13 @@
-import type { EmailSMTPSettings } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api } from "metabase/api";
 import {
   invalidateTags,
   provideSubscriptionChannelListTags,
   tag,
-} from "./tags";
+} from "metabase/api/tags";
+import type { EmailSMTPSettings } from "metabase-types/api";
 
-export const settingsApi = Api.injectEndpoints({
+export const emailApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     sendTestEmail: builder.mutation<void, void>({
       query: () => ({
@@ -45,4 +45,4 @@ export const {
   useDeleteEmailSMTPSettingsMutation,
   useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
-} = settingsApi;
+} = emailApi;
