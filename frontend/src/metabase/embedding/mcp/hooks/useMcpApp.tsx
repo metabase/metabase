@@ -97,29 +97,33 @@ export function useMcpApp(): McpAppState {
 
       // Workaround: Claude strips structuredContent from the tool result.
       // Resolve the query handle manually on the frontend.
-      if (queryHandleRef.current) {
-        const { instanceUrl, uiCredential, mcpSessionId } =
-          // The base type didn't have uiCredential and mcpSessionId in global config
-          (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+      const queryHandle = queryHandleRef.current;
 
-        if (!instanceUrl || !uiCredential || !mcpSessionId) {
-          throw new Error("Credential or MCP session is invalid.");
-        }
-
-        const resolvedHandle = await resolveMcpQueryHandle({
-          instanceUrl,
-          uiCredential,
-          mcpSessionId,
-          queryHandle: queryHandleRef.current,
-        });
-
-        if (resolvedHandle.query) {
-          setQuery(resolvedHandle.query);
-          setPrompt(resolvedHandle.prompt ?? null);
-        } else {
-          throw new Error("Query cannot be resolved.");
-        }
+      if (!queryHandle) {
+        throw new Error("Query cannot be resolved.");
       }
+
+      const { instanceUrl, uiCredential, mcpSessionId } =
+        // The base type didn't have uiCredential and mcpSessionId in global config
+        (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+
+      if (!instanceUrl || !uiCredential || !mcpSessionId) {
+        throw new Error("Credential or MCP session is invalid.");
+      }
+
+      const resolvedHandle = await resolveMcpQueryHandle({
+        instanceUrl,
+        uiCredential,
+        mcpSessionId,
+        queryHandle,
+      });
+
+      if (!resolvedHandle.query) {
+        throw new Error("Query cannot be resolved.");
+      }
+
+      setQuery(resolvedHandle.query);
+      setPrompt(resolvedHandle.prompt ?? null);
     },
     [],
   );

@@ -144,6 +144,20 @@ describe("useMcpApp", () => {
     });
   });
 
+  it("shows an error when tool input is missed and structuredContent is absent", async () => {
+    const { result } = renderHook(() => useMcpApp());
+
+    await act(async () => {
+      await onToolResult?.({ content: [], isError: false });
+    });
+
+    await waitFor(() => {
+      expect(result.current.error?.message).toBe("Query cannot be resolved.");
+    });
+
+    expect(resolveMcpQueryHandle).not.toHaveBeenCalled();
+  });
+
   it("shows the original tool call error", async () => {
     const { result } = renderHook(() => useMcpApp());
 

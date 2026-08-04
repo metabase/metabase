@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -228,7 +229,7 @@ function McpUiAppRouteContent({
 
   const renderContentView = () => {
     if (appError) {
-      return <SdkError message={appError.message} />;
+      return <SdkError message={t`Visualization cannot be loaded`} />;
     }
 
     if (userAndSettingsFetchError) {
