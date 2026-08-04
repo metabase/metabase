@@ -74,6 +74,12 @@
     :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
+    ;; Derived cleanup-analysis snapshots are rebuilt from source Cards after a migration.
+    :model/UsageMetadataCandidate
+    :model/UsageMetadataCandidateDismissal
+    :model/UsageMetadataCandidateMatch
+    :model/UsageMetadataCandidateRun
+    :model/UsageMetadataCandidateSource
     ;; TODO we should remove these models from here once serialization is supported
     :model/Transform
     :model/TransformRun

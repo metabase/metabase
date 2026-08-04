@@ -12,7 +12,7 @@ databaseChangeLog:
               - column: {name: status, type: varchar(32), remarks: Queued running succeeded or failed, constraints: {nullable: false}}
               - column: {name: trigger, type: varchar(32), remarks: Manual or scheduled trigger, constraints: {nullable: false}}
               # Intentionally no User FK so refresh diagnostics survive deletion of the requesting user.
-              - column: {name: requested_by, type: int, remarks: User that requested a manual run}
+              - column: {name: requested_by, type: int, remarks: Requesting user ID retained without a foreign key so run diagnostics survive user deletion}
               - column: {name: algorithm_version, type: int, remarks: Materialization algorithm version, constraints: {nullable: false}}
               - column: {name: source_config, type: "${text.type}", remarks: JSON query population configuration, constraints: {nullable: false}}
               - column: {name: summary, type: "${text.type}", remarks: JSON result counts}
@@ -28,7 +28,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: usage_metadata_candidate
-            remarks: Measure and Segment candidates in an isolated successful snapshot
+            remarks: Table Metric Measure or Segment recommendations in an isolated successful snapshot
             columns:
               - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
               - column:
@@ -36,7 +36,7 @@ databaseChangeLog:
                   type: int
                   remarks: Candidate refresh run
                   constraints: {nullable: false, referencedTableName: usage_metadata_candidate_run, referencedColumnNames: id, foreignKeyName: fk_um_candidate_run, deleteCascade: true}
-              - column: {name: candidate_type, type: varchar(32), remarks: Measure or Segment, constraints: {nullable: false}}
+              - column: {name: candidate_type, type: varchar(32), remarks: Table Metric Measure or Segment, constraints: {nullable: false}}
               - column:
                   name: table_id
                   type: int
@@ -46,7 +46,7 @@ databaseChangeLog:
               - column: {name: signature_hash, type: char(64), remarks: SHA-256 semantic identity, constraints: {nullable: false}}
               - column: {name: signature, type: "${text.type}", remarks: Canonical semantic identity, constraints: {nullable: false}}
               - column: {name: definition, type: "${text.type}", remarks: JSON creation-ready MBQL definition, constraints: {nullable: false}}
-              - column: {name: semantic_details, type: "${text.type}", remarks: JSON Measure or Segment shape, constraints: {nullable: false}}
+              - column: {name: semantic_details, type: "${text.type}", remarks: JSON type-specific recommendation details, constraints: {nullable: false}}
               - column: {name: suggested_name, type: varchar(254), remarks: Deterministically suggested name, constraints: {nullable: false}}
               - column: {name: suggested_description, type: "${text.type}", remarks: Deterministically suggested description, constraints: {nullable: false}}
               - column: {name: modeling_status, type: varchar(32), remarks: Missing partially modeled or modeled, constraints: {nullable: false}}
@@ -169,7 +169,7 @@ databaseChangeLog:
             remarks: Semantic candidate identities hidden from the admin workflow
             columns:
               - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
-              - column: {name: candidate_type, type: varchar(32), remarks: Measure or Segment, constraints: {nullable: false}}
+              - column: {name: candidate_type, type: varchar(32), remarks: Table Metric Measure or Segment, constraints: {nullable: false}}
               - column:
                   name: table_id
                   type: int
@@ -179,7 +179,7 @@ databaseChangeLog:
               - column: {name: signature_hash, type: char(64), remarks: SHA-256 semantic identity, constraints: {nullable: false}}
               - column: {name: signature, type: "${text.type}", remarks: Canonical semantic identity, constraints: {nullable: false}}
               # Intentionally no User FK so the dismissal remains durable after the administrator is deleted.
-              - column: {name: dismissed_by, type: int, remarks: User that dismissed the candidate, constraints: {nullable: false}}
+              - column: {name: dismissed_by, type: int, remarks: Dismissing user ID retained without a foreign key so the durable dismissal survives user deletion, constraints: {nullable: false}}
               - column: {name: reason, type: "${text.type}", remarks: Optional dismissal reason}
               - column: {name: dismissed_at, type: "${timestamp_type}", remarks: Time the candidate was dismissed, defaultValueComputed: current_timestamp, constraints: {nullable: false}}
 
