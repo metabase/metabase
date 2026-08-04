@@ -19,6 +19,8 @@
   what resolves those token scopes. The scope itself is declared in
   [[metabase.api-scope.data-app]].")
 
+(set! *warn-on-reflection* true)
+
 (def ^:private client-header
   "The client-identification header the FE sets on every request (see
   `metabase/embedding/lib/auth/set-request-client-headers`)."
