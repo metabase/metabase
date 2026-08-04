@@ -30,6 +30,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
+  {:scope "data-app"}
   [_route-params
    {:keys [archived]} :- [:map {:closed true}
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]
