@@ -107,7 +107,10 @@
                    (try
                      (compute-deps-for-entity! entity-type entity)
                      1
-                     (catch Exception e
+                     ;; `Throwable`, not `Exception`: an `OutOfMemoryError` used to escape without recording
+                     ;; anything, so the next run selected the identical batch and died the same way forever.
+                     ;; Recording first means a poisonous entity backs off and eventually goes terminal.
+                     (catch Throwable e
                        (let [id (:id entity)]
                          (try
                            (deps.dependency-status/record-failure!
@@ -126,6 +129,10 @@
                                          type-name id (ex-message e))
                              (log/errorf "Additionally, failed to record the failure for %s %s: %s"
                                          type-name id (ex-message record-ex)))))
+                       ;; An `Error` leaves the JVM in a state we cannot reason about, so fail the job rather than
+                       ;; carrying on through the rest of the batch. The recording above still happened.
+                       (when-not (instance? Exception e)
+                         (throw e))
                        0))))
               0
               instances))))

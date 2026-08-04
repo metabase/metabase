@@ -518,3 +518,23 @@
             ;; Identity, not equality: providers compare equal when they wrap the same database id, so `=` would be
             ;; satisfied by two separate caches and would not detect the regression.
             (is (= 1 (count (into #{} (map #(System/identityHashCode %)) @providers))))))))))
+
+(deftest ^:sequential backfill-records-failure-for-fatal-error-test
+  (testing "GHY-4251: a fatal Error must record the entity's failure before propagating. Only Exception was caught,
+           so an OutOfMemoryError escaped without recording anything and the next run selected the identical batch --
+           a crash loop that never made progress. Recording first means the entity backs off and eventually goes
+           terminal, so the batch drains even if one entity always kills the process."
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (mark-stale! :card card-id)
+        (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (Error. "simulated fatal error")))]
+          (testing "the Error propagates instead of being swallowed, failing the job"
+            (is (thrown-with-msg? Error #"simulated fatal error"
+                                  (backfill-dependencies-single-trigger!)))))
+        (testing "and the failure was recorded first, so the next run backs off instead of replaying the batch"
+          (let [{:keys [fail_count next_retry_at terminal]}
+                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
+            (is (= 1 fail_count))
+            (is (some? next_retry_at))
+            (is (false? terminal))))))))
