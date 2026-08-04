@@ -13,7 +13,11 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
+(defn- root-collection
+  "The snippets root is a real collection row now, so its id has to be resolved against the app db."
+  []
+  (assoc (t2/select-one :model/Collection :id (collection/snippets-root-collection-id))
+         :name "Root Collection"))
 
 (defn- test-perms! [& {:keys [has-perms-for-obj? has-perms-for-id? grant-collection-perms! revoke-collection-perms!]}]
   (letfn [(test-perms* [expected]
@@ -54,7 +58,7 @@
 (defn- test-with-root-collection-and-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
     (mt/with-temp [:model/Collection collection {:name "Parent Collection", :namespace "snippets"}]
-      (doseq [coll [root-collection collection]]
+      (doseq [coll [(root-collection) collection]]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id coll)}]
           (testing (format "in %s\n" (:name coll))
             (f coll snippet)))))))

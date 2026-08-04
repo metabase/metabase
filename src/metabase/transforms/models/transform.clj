@@ -461,17 +461,14 @@
     field-id))
 
 (def ^:private collection-fk
-  "The Transforms root is a per-instance row created by a migration rather than exportable content, so a transform
-  living in it travels with no collection at all and is re-rooted against the destination's own root on import. That
-  is also the shape of every export taken before the root existed, so those keep importing unchanged."
+  "`collection_id` travels as an ordinary reference, root included: the root's `entity_id` is fixed by the migration
+  that creates it, so it resolves against the destination's own root without the row ever being serialized. The
+  import side also accepts a missing collection, which is the shape of exports taken before the root existed."
   (merge (serdes/fk :model/Collection)
-         {:export (fn [collection-id]
-                    (when-not (= collection-id (collection/root-collection-id collection/transforms-ns))
-                      (serdes/*export-fk* collection-id :model/Collection)))
-          :import (fn [collection-ref]
+         {:import (fn [collection-ref]
                     (if collection-ref
                       (serdes/*import-fk* collection-ref :model/Collection)
-                      (collection/root-collection-id collection/transforms-ns)))}))
+                      (collection/transforms-root-collection-id)))}))
 
 (defn- update-checkpoint-field
   "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
@@ -554,7 +551,7 @@
   [_model id]
   (when-let [collection-id (t2/select-one-fn :collection_id :model/Transform :id id)]
     ;; the root is never extracted, so naming it as required would demand a file that cannot exist
-    (when-not (= collection-id (collection/root-collection-id collection/transforms-ns))
+    (when-not (= collection-id (collection/transforms-root-collection-id))
       {["Collection" collection-id] {"Transform" id}})))
 
 (defn- maybe-extract-transform-query-text

@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -23,19 +24,19 @@
                    :model/NativeQuerySnippet {snippet-id :id} {:collection_id collection-id}]
       (is (= collection-id
              (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))
-  (doseq [[source dest] [[nil "snippets"]
-                         ["snippets" "snippets"]
-                         ["snippets" nil]]]
-    (testing (format "Should be allowed to move snippets from %s to %s"
-                     (if source "a :snippets Collection" "no Collection")
-                     (if dest "a :snippets Collection" "no Collection"))
-      (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace source}
-                     :model/Collection         {dest-collection-id :id}   {:namespace dest}
-                     :model/NativeQuerySnippet {snippet-id :id} (when source
-                                                                  {:collection_id source-collection-id})]
-        (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
-        (is (= (when dest dest-collection-id)
-               (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))
+  (doseq [[source dest] [[:root :collection]
+                         [:collection :collection]
+                         [:collection :root]]]
+    (testing (format "Should be allowed to move snippets from %s to %s" (name source) (name dest))
+      (mt/with-temp [:model/Collection {source-collection-id :id} {:namespace "snippets"}
+                     :model/Collection {dest-collection-id :id}   {:namespace "snippets"}]
+        (let [root-id     (collection/snippets-root-collection-id)
+              collection# {:root root-id :collection source-collection-id}
+              dest-id     (if (= dest :root) root-id dest-collection-id)]
+          (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:collection_id (collection# source)}]
+            (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id dest-id})
+            (is (= dest-id
+                   (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))))
   (doseq [collection-namespace [nil "x"]]
     (testing (format "Should *not* be allowed to create snippets in a Collection in the %s namespace"
                      (pr-str collection-namespace))
@@ -107,6 +108,7 @@
                                                      {:name "nil-tags"
                                                       :content "SELECT 1"
                                                       :creator_id user-id
+                                                      :collection_id (collection/snippets-root-collection-id)
                                                       :template_tags nil})
               extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
           ;; toucan hooks populate it:
@@ -117,6 +119,7 @@
                        {:name "empty-tags"
                         :content "SELECT 1"
                         :creator_id user-id
+                        :collection_id (collection/snippets-root-collection-id)
                         :template_tags {}}]
           (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
             (is (= {} (:template_tags extracted))))))
@@ -124,7 +127,8 @@
         (mt/with-temp [:model/NativeQuerySnippet snippet
                        {:name "with-tags"
                         :content "WHERE id = {{id}}"
-                        :creator_id user-id}]
+                        :creator_id user-id
+                        :collection_id (collection/snippets-root-collection-id)}]
           (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
             (is (=? {"id" {:type :text
                            :name "id"

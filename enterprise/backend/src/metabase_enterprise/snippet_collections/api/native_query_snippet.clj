@@ -18,5 +18,5 @@
    :from   [[:native_query_snippet :nqs]]
    :where  [:and
             [:= :collection_id (or (:id collection)
-                                   (collections/root-collection-id collections/snippets-ns))]
+                                   (collections/snippets-root-collection-id))]
             [:= :archived (boolean archived?)]]})

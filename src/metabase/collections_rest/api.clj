@@ -502,7 +502,7 @@
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)
-        collection-id (or (:id collection) (collection/root-collection-id collection/transforms-ns))]
+        collection-id (or (:id collection) (collection/transforms-root-collection-id))]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and

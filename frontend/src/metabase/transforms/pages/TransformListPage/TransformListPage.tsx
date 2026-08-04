@@ -128,6 +128,11 @@ export const TransformListPage = () => {
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
+  const { data: rootCollection } = useGetCollectionQuery({
+    id: "root",
+    namespace: "transforms",
+  });
+
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
       ? { id: targetCollectionId, namespace: "transforms" }
@@ -160,7 +165,7 @@ export const TransformListPage = () => {
   const getNodeSyncColor = useGetNodeSyncColor();
 
   const treeData = useMemo(() => {
-    const data = buildTreeData(collections, transforms);
+    const data = buildTreeData(collections, transforms, rootCollection?.id);
 
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
@@ -182,6 +187,7 @@ export const TransformListPage = () => {
   }, [
     collections,
     hasPythonTransformsFeature,
+    rootCollection?.id,
     shouldShowPythonTransformsUpsell,
     transforms,
     transformsDatabases.length,

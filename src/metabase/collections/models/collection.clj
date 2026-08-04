@@ -124,6 +124,16 @@
   "Namespaces whose top level is a real `is_root` collection row rather than the synthesized placeholder."
   #{transforms-ns snippets-ns})
 
+(defn transforms-root-collection-id
+  "The ID of the `transforms` namespace's root collection."
+  []
+  (root-collection-id transforms-ns))
+
+(defn snippets-root-collection-id
+  "The ID of the `snippets` namespace's root collection."
+  []
+  (root-collection-id snippets-ns))
+
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
   :shared-tenant-collection)

@@ -16,9 +16,10 @@ import {
 import { SnippetFormModal } from "./SnippetFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
-  id: "root",
+  id: 100,
   name: "SQL snippets",
   can_write: true,
+  is_root: true,
 };
 
 type SetupOpts = {
@@ -42,6 +43,18 @@ async function setup({
     "path:/api/collection/root",
     createMockCollection({ id: "root", name: "Our analytics" }),
   );
+
+  fetchMock.get(
+    `path:/api/collection/${TOP_SNIPPETS_FOLDER.id}`,
+    TOP_SNIPPETS_FOLDER,
+  );
+  fetchMock.get(`path:/api/collection/${TOP_SNIPPETS_FOLDER.id}/items`, {
+    data: [],
+    total: 0,
+    models: ["collection"],
+    limit: null,
+    offset: null,
+  });
 
   if (withDefaultFoldersList) {
     fetchMock.get({

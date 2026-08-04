@@ -102,7 +102,7 @@
                   (is (map? (:owner response)))
                   (is (= lucky-id (get-in response [:owner :id]))))
                 (testing "A transform created without a collection lands in the Transforms root"
-                  (is (= (collections/root-collection-id collections/transforms-ns) (:collection_id response))))))))))))
+                  (is (= (collections/transforms-root-collection-id) (:collection_id response))))))))))))
 
 (deftest update-transform-without-schema-test
   (testing "Updating a transform to clear its schema is rejected on schemas-supporting databases"
@@ -1378,9 +1378,9 @@
                                                                    :name   table-name}})
                     updated (mt/user-http-request :crowberto :put 200
                                                   (format "transform/%d" (:id created))
-                                                  {:collection_id (collections/root-collection-id collections/transforms-ns)})]
+                                                  {:collection_id (collections/transforms-root-collection-id)})]
                 (is (= collection-id (:collection_id created)))
-                (is (= (collections/root-collection-id collections/transforms-ns)
+                (is (= (collections/transforms-root-collection-id)
                        (:collection_id updated)))
                 (testing "a nil collection is rejected rather than silently re-rooted"
                   (mt/user-http-request :crowberto :put 400

@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.schema :as ms]
@@ -44,9 +45,10 @@
       (letfn [(insert-snippets! [n]
                 (dotimes [_ n]
                   (t2/insert! :model/NativeQuerySnippet
-                              {:name       (mt/random-name)
-                               :content    "1 = 1"
-                               :creator_id (mt/user->id :crowberto)})))
+                              {:name          (mt/random-name)
+                               :content       "1 = 1"
+                               :collection_id (collection/snippets-root-collection-id)
+                               :creator_id    (mt/user->id :crowberto)})))
               (warm-call-count! []
                 ;; first request pays one-time priming; measure the second. Use a non-admin so the
                 ;; per-snippet permission check does not short-circuit on superuser status.
@@ -191,10 +193,11 @@
       (testing "\nChange collection_id"
         (mt/with-temp [:model/Collection collection-1 {:name "a Collection" :namespace "snippets"}
                        :model/Collection collection-2 {:name "another Collection" :namespace "snippets"}]
-          (let [no-collection {:name "no Collection"}]
-            (doseq [[source dest] [[no-collection collection-1]
+          ;; "no collection" is the snippets root now, so this is a move between two real collections
+          (let [root-collection (t2/select-one :model/Collection :id (collection/snippets-root-collection-id))]
+            (doseq [[source dest] [[root-collection collection-1]
                                    [collection-1 collection-2]
-                                   [collection-1 no-collection]]]
+                                   [collection-1 root-collection]]]
               (testing (format "\nShould be able to move a Snippet from %s to %s" (:name source) (:name dest))
                 (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:collection_id (:id source)}]
                   (testing "\nresponse"

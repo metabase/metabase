@@ -75,7 +75,7 @@
                  :creator_id    api/*current-user-id*
                  :description   description
                  :name          name
-                 :collection_id (or collection_id (collections/root-collection-id collections/snippets-ns))}]
+                 :collection_id (or collection_id (collections/snippets-root-collection-id))}]
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 

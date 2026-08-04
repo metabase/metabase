@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 
 import {
@@ -15,7 +16,11 @@ import {
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { TransformListPage } from "./TransformListPage";
 
@@ -55,6 +60,14 @@ type SetupOpts = {
 
 async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   setupCollectionTreeEndpoint([]);
+  fetchMock.get(
+    { url: "path:/api/collection/root", query: { namespace: "transforms" } },
+    createMockCollection({
+      id: MOCK_TRANSFORMS_ROOT_COLLECTION_ID,
+      name: "Transforms",
+      is_root: true,
+    }),
+  );
   setupListTransformsEndpoint([]);
   setupDatabaseListEndpoint([]);
   setupUserMetabotPermissionsEndpoint();

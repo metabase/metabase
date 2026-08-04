@@ -179,7 +179,7 @@
             [:collection_id {:optional true} ms/PositiveInt]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (let [body (update body :collection_id #(or % (collections/root-collection-id collections/transforms-ns)))]
+  (let [body (update body :collection_id #(or % (collections/transforms-root-collection-id)))]
     (transforms.core/check-feature-enabled! body)
     (api/create-check :model/Transform body)
     (transforms.core/check-database-feature body)

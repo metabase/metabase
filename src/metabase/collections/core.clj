@@ -34,6 +34,8 @@
   root-collection-id
   shared-tenant-collection?
   snippets-ns
-  transforms-ns]
+  snippets-root-collection-id
+  transforms-ns
+  transforms-root-collection-id]
  [metabase.collections.util
   annotate-dashboards])

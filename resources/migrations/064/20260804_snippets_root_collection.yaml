@@ -21,7 +21,7 @@ databaseChangeLog:
                   value: snippets
               - column:
                   name: entity_id
-                  value: snippetsrootcollectio
+                  value: G1P58pUslVDwWRYeOAdAy
               - column:
                   name: namespace
                   value: snippets

@@ -3296,7 +3296,7 @@
           (is (contains? descendants ["Table" (:id archived-table)])))))))
 
 (deftest root-collection-is-immutable-test
-  (let [root-id (collection/root-collection-id collection/transforms-ns)]
+  (let [root-id (collection/transforms-root-collection-id)]
     (testing "the root collection cannot be deleted"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"root collection cannot be deleted"
                             (t2/delete! :model/Collection :id root-id)))

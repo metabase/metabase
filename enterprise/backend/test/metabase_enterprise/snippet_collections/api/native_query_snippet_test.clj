@@ -14,7 +14,7 @@
 (defn- root-collection
   "The snippets root is a real collection row now, so its id has to be resolved against the app db."
   []
-  (assoc (t2/select-one :model/Collection :id (collection/root-collection-id collection/snippets-ns))
+  (assoc (t2/select-one :model/Collection :id (collection/snippets-root-collection-id))
          :name "Root Collection"))
 
 (defn- test-perms!

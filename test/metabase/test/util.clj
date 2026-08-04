@@ -248,7 +248,7 @@
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
-             :collection_id (collection/root-collection-id collection/snippets-ns)
+             :collection_id (collection/snippets-root-collection-id)
              :entity_id (u/generate-nano-id)
              :name (u.random/random-name)
              :content "1 = 1"}))
@@ -374,7 +374,7 @@
    :model/Transform
    (fn [_]
      {:entity_id (u/generate-nano-id)
-      :collection_id (collection/root-collection-id collection/transforms-ns)
+      :collection_id (collection/transforms-root-collection-id)
       :name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}

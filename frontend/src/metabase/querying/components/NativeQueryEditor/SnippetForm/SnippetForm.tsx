@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useListCollectionsQuery } from "metabase/api";
+import { useGetCollectionQuery, useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -48,24 +48,25 @@ export interface SnippetFormOwnProps {
 
 interface SnippetLoaderProps {
   snippetCollections: Collection[];
+  rootCollection: Collection;
 }
 type SnippetFormProps = SnippetFormOwnProps & SnippetLoaderProps;
 
 function SnippetFormInner({
   snippet,
   snippetCollections,
+  rootCollection,
   isEditing,
   isDirty: isInitiallyDirty = false,
   onSubmit,
   onArchive,
   onCancel,
 }: SnippetFormProps) {
-  const hasManyCollections = snippetCollections.length > 1;
-  const rootCollection = snippetCollections.find(
-    (collection) => collection.is_root,
+  const hasManyCollections = snippetCollections.some(
+    (collection) => !collection.is_root,
   );
   const rootCollectionId =
-    typeof rootCollection?.id === "number" ? rootCollection.id : null;
+    typeof rootCollection.id === "number" ? rootCollection.id : null;
 
   const initialValues = useMemo(
     () =>
@@ -165,15 +166,28 @@ function SnippetFormInner({
 export function SnippetForm(props: SnippetFormOwnProps) {
   const {
     data: snippetCollections,
-    isLoading,
-    error,
+    isLoading: isCollectionsLoading,
+    error: collectionsError,
   } = useListCollectionsQuery({ namespace: "snippets" });
+  const {
+    data: rootCollection,
+    isLoading: isRootLoading,
+    error: rootError,
+  } = useGetCollectionQuery({ id: "root", namespace: "snippets" });
+  const isLoading = isCollectionsLoading || isRootLoading;
+  const error = collectionsError ?? rootError;
+
+  if (isLoading || error != null || rootCollection == null) {
+    return (
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+    );
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <SnippetFormInner
-        {...props}
-        snippetCollections={snippetCollections ?? []}
-      />
-    </LoadingAndErrorWrapper>
+    <SnippetFormInner
+      {...props}
+      snippetCollections={snippetCollections ?? []}
+      rootCollection={rootCollection}
+    />
   );
 }
