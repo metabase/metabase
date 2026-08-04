@@ -38,7 +38,7 @@ Once you've [built the custom visualization](../../developers-guide/custom-visua
 3. Click **Add visualization**.
 
 - Bundles must be smaller than 5 MiB.
-- Each custom visualization lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). If your Metabase version isn't in that range, Metabase rejects the upload and tells you which version the visualization needs.
+- Each custom visualization lists the Metabase versions it supports (for example, "Requires Metabase >=1.62 <1.64"). If your Metabase isn't in that range, the visualization still uploads and works, but Metabase adds a [compatibility warning](#compatibility-warnings-are-heads-ups-not-errors).
 - The **Manage visualizations** page shows each custom visualization's icon, name, the first eight characters of the bundle's hash, and its required Metabase version range, so you can tell which version is installed.
 
 ## Using a custom visualization
@@ -70,6 +70,13 @@ _Admin > Settings > Custom visualizations > Manage visualizations_
 - **Disable a visualization.** Any question, dashboard card, or document card that used the visualization falls back to the default visualization for that query's results. If you re-enable the visualization, those cards will go back to using the custom visualization.
 - **Replace a bundle.** Upload a new `.tgz` to ship an updated version of a custom visualization. The new bundle's manifest `name` _must_ match the existing visualization's identifier, so questions that already use the visualization keep working.
 - **Remove a visualization.** Cards that used the custom viz fall back to the default visualization.
+
+### Compatibility warnings are heads-ups, not errors
+
+Metabase flags a custom visualization on the **Manage visualizations** page when:
+
+- **The SDK version doesn't match.** The visualization was built with a version of the Custom Visualizations SDK that your Metabase wasn't tested against.
+- **The Metabase version doesn't match.** A visualization that was in range when you uploaded it can fall out of range when you upgrade Metabase, so this warning can show up on a visualization that's been working for months.
 
 ## Exports
 
