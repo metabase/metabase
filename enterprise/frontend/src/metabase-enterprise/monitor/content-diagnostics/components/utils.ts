@@ -3,16 +3,23 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
 import {
+  CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   type ContentDiagnosticsBaseFinding,
   type ContentDiagnosticsCollection,
+  type ContentDiagnosticsCoveredFilterType,
+  type ContentDiagnosticsDuplicateEntity,
   type ContentDiagnosticsFilterType,
   type ContentDiagnosticsUser,
   type IconName,
 } from "metabase-types/api";
 
-export const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+export const ALL_FILTER_TYPES: ContentDiagnosticsCoveredFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
+];
+
+export const ALL_DUPLICATED_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+  ...CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES,
 ];
 
 type ContentDiagnosticsCollectionBreadcrumbEntry =
@@ -26,36 +33,46 @@ export type ContentDiagnosticsBreadcrumbLink = {
   icon?: IconName;
 };
 
-export function getEntityIcon(
-  finding: ContentDiagnosticsBaseFinding,
-): IconName {
-  return match(finding)
+type ContentDiagnosticsEntityKind = Pick<
+  ContentDiagnosticsBaseFinding,
+  "entity_type" | "card_type"
+>;
+
+type ContentDiagnosticsEntityTarget = ContentDiagnosticsEntityKind & {
+  id: number;
+  name: string;
+};
+
+export function getEntityIcon(entity: ContentDiagnosticsEntityKind): IconName {
+  return match(entity)
     .with({ entity_type: "card", card_type: "model" }, () => "model" as const)
     .with({ entity_type: "card", card_type: "metric" }, () => "metric" as const)
     .with({ entity_type: "card" }, () => "table2" as const)
     .with({ entity_type: "dashboard" }, () => "dashboard" as const)
     .with({ entity_type: "document" }, () => "document" as const)
     .with({ entity_type: "transform" }, () => "transform" as const)
+    .with({ entity_type: "collection" }, () => "folder" as const)
     .exhaustive();
 }
 
 export function getEntityTypeLabel(
-  finding: ContentDiagnosticsBaseFinding,
+  entity: ContentDiagnosticsEntityKind,
 ): string {
-  return match(finding)
+  return match(entity)
     .with({ entity_type: "card", card_type: "model" }, () => t`Model`)
     .with({ entity_type: "card", card_type: "metric" }, () => t`Metric`)
     .with({ entity_type: "card" }, () => t`Question`)
     .with({ entity_type: "dashboard" }, () => t`Dashboard`)
     .with({ entity_type: "document" }, () => t`Document`)
     .with({ entity_type: "transform" }, () => t`Transform`)
+    .with({ entity_type: "collection" }, () => t`Collection`)
     .exhaustive();
 }
 
 export function getEntityViewLabel(
-  finding: ContentDiagnosticsBaseFinding,
+  entity: ContentDiagnosticsEntityKind,
 ): string {
-  return match(finding)
+  return match(entity)
     .with({ entity_type: "card", card_type: "model" }, () => t`View this model`)
     .with(
       { entity_type: "card", card_type: "metric" },
@@ -65,31 +82,64 @@ export function getEntityViewLabel(
     .with({ entity_type: "dashboard" }, () => t`View this dashboard`)
     .with({ entity_type: "document" }, () => t`View this document`)
     .with({ entity_type: "transform" }, () => t`View this transform`)
+    .with({ entity_type: "collection" }, () => t`View this collection`)
     .exhaustive();
+}
+
+function getDisplayName(name: string | null): string {
+  return name ?? t`Untitled`;
 }
 
 export function getEntityName(finding: ContentDiagnosticsBaseFinding): string {
-  return finding.entity_display_name ?? t`Untitled`;
+  return getDisplayName(finding.entity_display_name);
+}
+
+export function getDuplicateEntityName(
+  entity: ContentDiagnosticsDuplicateEntity,
+): string {
+  return getDisplayName(entity.name);
+}
+
+function getTargetUrl(entity: ContentDiagnosticsEntityTarget): string {
+  return match(entity)
+    .with({ entity_type: "card" }, (entity) =>
+      Urls.card({
+        id: entity.id,
+        name: entity.name,
+        type: entity.card_type ?? undefined,
+      }),
+    )
+    .with({ entity_type: "dashboard" }, (entity) =>
+      Urls.dashboard({ id: entity.id, name: entity.name }),
+    )
+    .with({ entity_type: "document" }, (entity) =>
+      Urls.document({ id: entity.id }),
+    )
+    .with({ entity_type: "transform" }, (entity) => Urls.transform(entity.id))
+    .with({ entity_type: "collection" }, (entity) =>
+      Urls.collection({ id: entity.id, name: entity.name }),
+    )
+    .exhaustive();
 }
 
 export function getEntityUrl(finding: ContentDiagnosticsBaseFinding): string {
-  const entity = {
+  return getTargetUrl({
+    entity_type: finding.entity_type,
+    card_type: finding.card_type,
     id: finding.entity_id,
     name: getEntityName(finding),
-  };
+  });
+}
 
-  return match(finding)
-    .with({ entity_type: "card" }, (finding) =>
-      Urls.card({ ...entity, type: finding.card_type ?? undefined }),
-    )
-    .with({ entity_type: "dashboard" }, () => Urls.dashboard(entity))
-    .with({ entity_type: "document" }, (finding) =>
-      Urls.document({ id: finding.entity_id }),
-    )
-    .with({ entity_type: "transform" }, (finding) =>
-      Urls.transform(finding.entity_id),
-    )
-    .exhaustive();
+export function getDuplicateEntityUrl(
+  entity: ContentDiagnosticsDuplicateEntity,
+): string {
+  return getTargetUrl({
+    entity_type: entity.entity_type,
+    card_type: entity.card_type,
+    id: entity.id,
+    name: getDuplicateEntityName(entity),
+  });
 }
 
 export function getCollectionName(
@@ -144,6 +194,7 @@ export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
     .with("dashboard", () => t`Dashboards`)
     .with("document", () => t`Documents`)
     .with("transform", () => t`Transforms`)
+    .with("collection", () => t`Collections`)
     .exhaustive();
 }
 

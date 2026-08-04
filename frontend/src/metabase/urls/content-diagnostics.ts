@@ -1,4 +1,6 @@
 import type {
+  ContentDiagnosticsCoveredFilterType,
+  ContentDiagnosticsDuplicatedSortColumn,
   ContentDiagnosticsFilterType,
   ContentDiagnosticsSlowSortColumn,
   ContentDiagnosticsStaleSortColumn,
@@ -14,7 +16,7 @@ export function contentDiagnostics() {
 export type StaleContentParams = {
   page?: number;
   query?: string;
-  entityTypes?: ContentDiagnosticsFilterType[];
+  entityTypes?: ContentDiagnosticsCoveredFilterType[];
   includePersonalCollections?: boolean;
   sortColumn?: ContentDiagnosticsStaleSortColumn;
   sortDirection?: SortDirection;
@@ -65,7 +67,7 @@ export function staleContent(params?: StaleContentParams) {
 export type SlowContentParams = {
   page?: number;
   query?: string;
-  entityTypes?: ContentDiagnosticsFilterType[];
+  entityTypes?: ContentDiagnosticsCoveredFilterType[];
   includePersonalCollections?: boolean;
   minDurationMs?: number;
   sortColumn?: ContentDiagnosticsSlowSortColumn;
@@ -116,4 +118,60 @@ function slowContentQueryString({
 
 export function slowContent(params?: SlowContentParams) {
   return `${contentDiagnostics()}/slow${slowContentQueryString(params)}`;
+}
+
+export type DuplicatedContentParams = {
+  page?: number;
+  query?: string;
+  entityTypes?: ContentDiagnosticsFilterType[];
+  includePersonalCollections?: boolean;
+  minDuplicateCount?: number;
+  sortColumn?: ContentDiagnosticsDuplicatedSortColumn;
+  sortDirection?: SortDirection;
+};
+
+function duplicatedContentQueryString({
+  page,
+  query,
+  entityTypes,
+  includePersonalCollections,
+  minDuplicateCount,
+  sortColumn,
+  sortDirection,
+}: DuplicatedContentParams = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  if (query != null) {
+    searchParams.set("query", query);
+  }
+  if (entityTypes != null) {
+    entityTypes.forEach((entityType) => {
+      searchParams.append("entity-types", entityType);
+    });
+  }
+  if (includePersonalCollections != null) {
+    searchParams.set(
+      "include-personal-collections",
+      String(includePersonalCollections),
+    );
+  }
+  if (minDuplicateCount != null) {
+    searchParams.set("min-duplicate-count", String(minDuplicateCount));
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `?${queryString}` : "";
+}
+
+export function duplicatedContent(params?: DuplicatedContentParams) {
+  return `${contentDiagnostics()}/duplicated${duplicatedContentQueryString(params)}`;
 }

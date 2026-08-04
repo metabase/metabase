@@ -1,5 +1,7 @@
 import type {
   ContentDiagnosticsScanResult,
+  ListDuplicatedFindingsRequest,
+  ListDuplicatedFindingsResponse,
   ListSlowFindingsRequest,
   ListSlowFindingsResponse,
   ListStaleFindingsRequest,
@@ -33,6 +35,17 @@ export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [listTag("content-diagnostics-finding")],
     }),
+    listDuplicatedFindings: builder.query<
+      ListDuplicatedFindingsResponse,
+      ListDuplicatedFindingsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/content-diagnostics/duplicated",
+        params,
+      }),
+      providesTags: () => [listTag("content-diagnostics-finding")],
+    }),
     runContentDiagnosticsScan: builder.mutation<
       ContentDiagnosticsScanResult,
       void
@@ -50,5 +63,6 @@ export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
 export const {
   useListStaleFindingsQuery,
   useListSlowFindingsQuery,
+  useListDuplicatedFindingsQuery,
   useRunContentDiagnosticsScanMutation,
 } = contentDiagnosticsApi;

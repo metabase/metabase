@@ -17,6 +17,11 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
       icon: "clock",
     },
     {
+      label: t`Duplicated`,
+      to: Urls.duplicatedContent(),
+      icon: "copy",
+    },
+    {
       label: t`Slow`,
       to: Urls.slowContent(),
       icon: "gauge",

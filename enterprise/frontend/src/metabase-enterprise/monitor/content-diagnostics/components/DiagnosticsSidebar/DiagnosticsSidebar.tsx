@@ -38,13 +38,15 @@ export type SidebarExtraInfo = {
 
 type DiagnosticsSidebarProps<T extends ContentDiagnosticsBaseFinding> = {
   finding: T;
-  extraInfo: SidebarExtraInfo;
+  extraInfo?: SidebarExtraInfo;
+  extraSections?: ReactNode;
   onClose: () => void;
 };
 
 export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
   finding,
   extraInfo,
+  extraSections,
   onClose,
 }: DiagnosticsSidebarProps<T>) {
   const entityName = getEntityName(finding);
@@ -62,6 +64,7 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
       <SidebarHeader finding={finding} onClose={onClose} />
       <LocationSection finding={finding} />
       <InfoSection finding={finding} extraInfo={extraInfo} />
+      {extraSections}
     </Stack>
   );
 }
@@ -143,7 +146,7 @@ function LocationSection({ finding }: LocationSectionProps) {
 
 type InfoSectionProps = {
   finding: ContentDiagnosticsBaseFinding;
-  extraInfo: SidebarExtraInfo;
+  extraInfo?: SidebarExtraInfo;
 };
 
 function InfoSection({ finding, extraInfo }: InfoSectionProps) {
@@ -184,9 +187,11 @@ function InfoSection({ finding, extraInfo }: InfoSectionProps) {
           <Box className={S.wrap}>{view_count}</Box>
         </InfoSectionItem>
       )}
-      <InfoSectionItem label={extraInfo.label}>
-        {extraInfo.children}
-      </InfoSectionItem>
+      {extraInfo != null && (
+        <InfoSectionItem label={extraInfo.label}>
+          {extraInfo.children}
+        </InfoSectionItem>
+      )}
     </Card>
   );
 }

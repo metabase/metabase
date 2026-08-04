@@ -5,8 +5,8 @@ import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
-  type ContentDiagnosticsEntityType,
-  type ContentDiagnosticsFilterType,
+  type ContentDiagnosticsCoveredEntityType,
+  type ContentDiagnosticsCoveredFilterType,
   type ContentDiagnosticsStaleSortColumn,
 } from "metabase-types/api";
 
@@ -14,12 +14,12 @@ import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "./constants";
 import type { StaleContentFilterOptions } from "./types";
 import { areEntityTypesEqual } from "./utils";
 
-const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+const ALL_FILTER_TYPES: ContentDiagnosticsCoveredFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 
 export function getLastActiveLabel(
-  entityType: ContentDiagnosticsEntityType,
+  entityType: ContentDiagnosticsCoveredEntityType,
 ): string {
   return match(entityType)
     .with("card", () => t`Last used`)
@@ -91,8 +91,8 @@ export function getStaleParamsWithoutDefaults({
 }
 
 export function getStaleEntityTypesParam(
-  entityTypes: ContentDiagnosticsFilterType[],
-): ContentDiagnosticsFilterType[] | undefined {
+  entityTypes: ContentDiagnosticsCoveredFilterType[],
+): ContentDiagnosticsCoveredFilterType[] | undefined {
   return match(entityTypes)
     .when(
       (entityTypes) => entityTypes.length === ALL_FILTER_TYPES.length,
