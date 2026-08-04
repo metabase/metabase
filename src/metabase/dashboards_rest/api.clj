@@ -1449,6 +1449,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
+  {:scope "data-app"}
   [{:keys [dashboard-id dashcard-id]} :- [:map
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1472,6 +1473,7 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
+  {:scope "data-app"}
   [{:keys [dashboard-id dashcard-id]} :- [:map
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]

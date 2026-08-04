@@ -2,11 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   ;; loaded for its side effect — registering the "data-app" scope — so the registry assertion
+   ;; below holds even when this namespace is loaded in isolation
    [metabase.api-scope.data-app]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.test :as mt]))
 
-;; Required for its registration side effect, so the scope exists when this test runs in isolation.
+;; Keeps the side-effecting require above from being flagged as an unused namespace.
 (comment metabase.api-scope.data-app/data-app)
 
 (def ^:private unrestricted :metabase.api.macros.scope/unrestricted)
@@ -20,6 +22,7 @@
   (let [seen    (promise)
         handler (mw.data-app-scope/wrap-data-app-scope
                  (fn [req respond _raise] (respond (:token-scopes req))))]
+    ;; A Clojure promise implements IFn via `deliver`, so it works directly as the `respond` callback.
     (handler request seen identity)
     (deref seen 1000 ::timeout)))
 
