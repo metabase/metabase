@@ -61,6 +61,25 @@
                   {:table (mt/id :products)}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
+(deftest referenced-tables-fetches-only-named-tables-test
+  (testing "GHY-4251: referenced-tables looks up only the Tables the SQL names, never the Database's whole catalog.
+           Fetching the catalog per entity made dependency analysis scale with warehouse size instead of query size,
+           OOM-killing instances with ~20k synced tables."
+    (sql-tools.tu/test-parser-backends
+     (mt/test-driver :h2
+       (let [catalog-fetches (atom 0)
+             all-tables      lib.metadata/tables]
+         (with-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
+           (testing "the referenced table still resolves"
+             ;; H2 stores table names upper-cased while the query spells them lower-case, so this also covers the
+             ;; case-folding that makes an exact name match unusable (the same mismatch Snowflake has).
+             (is (= #{{:table (mt/id :orders)}}
+                    (sql-tools/referenced-tables driver/*driver*
+                                                 (lib/native-query (mt/metadata-provider)
+                                                                   "select id from orders")))))
+           (testing "and it did so without fetching the catalog"
+             (is (zero? @catalog-fetches)))))))))
+
 ;;; ------------------------------------------------ replace-names -------------------------------------------------
 
 (deftest ^:parallel replace-names-table-test
