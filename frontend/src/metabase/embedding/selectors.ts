@@ -3,13 +3,10 @@ import { createSelector } from "reselect";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import { isWithinIframe } from "metabase/utils/iframe";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export const getIsWebApp = createSelector(
-  [
-    (state: State) => getSetting(state, "site-url"),
-    (_state: State) => isWithinIframe(),
-  ],
+  [(state: State) => getSetting(state, "site-url"), selectIsWithinIframe],
   (siteUrl, isEmbeddingIframe) => {
     const pathname = window.location.pathname.replace(siteUrl, "");
     return (

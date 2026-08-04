@@ -17,7 +17,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
-import { isWithinIframe } from "metabase/utils/iframe";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -1066,19 +1066,19 @@ export const getTimeoutId = createSelector(
 );
 
 export const getIsHeaderVisible = createSelector(
-  [(_state: State) => isWithinIframe(), getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.header,
 );
 
 export const getIsActionListVisible = createSelector(
-  [(_state: State) => isWithinIframe(), getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.action_buttons,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [(_state: State) => isWithinIframe(), getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.additional_info,
 );

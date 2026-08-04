@@ -15,7 +15,7 @@ import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
-import { isWithinIframe } from "metabase/utils/iframe";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
@@ -46,28 +46,28 @@ export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
 });
 
 export const getIsLogoVisible = createSelector(
-  [(_state: State) => isWithinIframe(), getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [(_state: State) => isWithinIframe(), getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [(_state: State) => isWithinIframe(), getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.new_button;
   },
 );
 
 export const getIsAppSwitcherVisible = createSelector(
-  [(_state: State) => isWithinIframe()],
+  [selectIsWithinIframe],
   (isEmbeddingIframe) => !isEmbeddingIframe,
 );
 
@@ -107,7 +107,7 @@ export const getIsCollectionPathVisible = createSelector(
     getDashboard,
     getCurrentDocument,
     getRouterPath,
-    (_state: State) => isWithinIframe(),
+    selectIsWithinIframe,
     getEmbedOptions,
   ],
   (question, dashboard, document, path, isEmbedded, embedOptions) => {
@@ -149,7 +149,7 @@ export const getIsNavBarEnabled = createSelector(
     getUser,
     getRouterPath,
     getIsEditingDashboard,
-    (_state: State) => isWithinIframe(),
+    selectIsWithinIframe,
     getEmbedOptions,
   ],
   (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
@@ -197,7 +197,7 @@ export const getIsAppBarVisible = createSelector(
     getIsDataStudioApp,
     getIsMonitorApp,
     getIsEditingDashboard,
-    (_state: State) => isWithinIframe(),
+    selectIsWithinIframe,
     getIsEmbeddedAppBarVisible,
   ],
   (
