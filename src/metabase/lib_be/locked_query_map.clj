@@ -1,4 +1,8 @@
 (ns metabase.lib-be.locked-query-map
+  "Enforce limited query map access.
+  The query map is an internal implementation detail of the query processor and
+  should only have its fields accessed by functions in query processor and
+  adjacent namespaces."
   (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
@@ -58,6 +62,8 @@
 (p/def-map-type LockedQuery [m]
   (get [_this k default-value]
     (assert-allowed-to-touch)
+    ;; we may decide further to wrap maps and vectors that are nested inside the
+    ;; query map, but for now it's just the outermost layer.
     (get m k default-value))
   (assoc [this k v]
     (assert-allowed-to-touch)
