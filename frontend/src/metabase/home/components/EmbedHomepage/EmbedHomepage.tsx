@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
+import { useSendProductFeedbackMutation } from "metabase/home/api/product-feedback";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";

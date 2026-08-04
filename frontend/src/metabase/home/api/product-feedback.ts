@@ -1,4 +1,4 @@
-import { Api } from "./api";
+import { Api } from "metabase/api";
 
 const productFeedbackApi = Api.injectEndpoints({
   endpoints: (builder) => ({
