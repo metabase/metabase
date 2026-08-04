@@ -1850,9 +1850,13 @@
   [{:keys [location id], collection-namespace :namespace, :as collection}]
   (when-not (or (is-personal-collection-or-descendant-of-one? collection)
                 (is-trash-or-descendant? collection))
-    (let [parent-collection-id (location-path->parent-id location)]
-      (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
-                                    [id]))))
+    (let [parent-collection-id (location-path->parent-id location)
+          ns-kw                 (keyword collection-namespace)
+          ;; a namespace whose root is a real row holds its grants on that row, not on the placeholder's path
+          root                  (if (contains? namespaces-with-real-roots ns-kw)
+                                  (root-collection-id ns-kw)
+                                  (assoc root-collection :namespace collection-namespace))]
+      (copy-collection-permissions! (or parent-collection-id root) [id]))))
 
 (t2/define-after-insert :model/Collection
   [collection]
