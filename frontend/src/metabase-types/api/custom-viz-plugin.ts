@@ -53,6 +53,31 @@ export type CustomVizPluginWarning =
       current_version: string;
     };
 
+/**
+ * Handle returned by a custom widget's mount call.
+ *
+ * Mirrors `WidgetMountHandle` from the custom-viz plugin sdk
+ * (enterprise/frontend/src/custom-viz/src/types/viz-settings.ts) so app code
+ * doesn't import the sdk package; the two must stay structurally identical.
+ */
+export type WidgetMountHandle<TProps> = {
+  update(props: TProps): void;
+  unmount(): void;
+};
+
+/**
+ * Mount adapter for a custom-component setting widget: the host gives the
+ * plugin a container element, the plugin renders into it with its own React
+ * instance and returns a handle the host can `update` / `unmount`.
+ *
+ * Mirrors `WidgetMount` from the custom-viz plugin sdk; see
+ * {@link WidgetMountHandle}.
+ */
+export type WidgetMount<TProps = Record<string, unknown>> = (
+  container: Element,
+  initialProps: TProps,
+) => WidgetMountHandle<TProps>;
+
 export interface CreateCustomVizPluginRequest {
   file: File;
 }
