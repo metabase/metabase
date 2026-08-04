@@ -25,8 +25,16 @@ export interface McpAppState {
 }
 
 type VisualizeQueryToolInput = {
-  query?: string;
+  /**
+   * Handle returned by `construct_query`.
+   *
+   * This lets the frontend resolve the encoded query through `POST /api/embed-mcp/query`
+   * as a fallback when MCP hosts (e.g. Claude Desktop) omits `structuredContent`
+   * from the tool result.
+   */
   query_handle?: string;
+
+  query?: string;
 };
 
 type VisualizeQueryToolResult = {
