@@ -280,7 +280,7 @@
   still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
   [{conn-key :key :keys [type config]} requested-model]
   (when-let [model (or (not-empty requested-model)
-                       (llm.provider/connection-model type config)
+                       (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
                        (llm.provider/default-model type))]
     (setting/set! :llm-metabot-provider (str conn-key "/" model))))
 
@@ -337,9 +337,7 @@
       (llm.provider/validate-config! type config)
       (verify-credentials! conn config model)
       (let [had-usable-model? (metabot-has-a-usable-model?)]
-        (llm.provider/set-connections! (conj (vec (remove #(= :env (keyword (:source %)))
-                                                          (llm.provider/connections)))
-                                             conn))
+        (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
           (select-model-for-new-connection! conn model)))
       (connection-response (assoc conn :source :db)))))
@@ -355,7 +353,7 @@
                                    [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (check-connections-not-env-managed!)
-  (let [stored   (vec (remove #(= :env (keyword (:source %))) (llm.provider/connections)))
+  (let [stored   (llm.provider/stored-connections)
         idx      (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
         _        (api/check-404 idx)
         existing (nth stored idx)
@@ -380,9 +378,7 @@
     (check-not-env-connection! conn)
     (when (llm.provider/managed-type? (:type conn))
       (cancel-managed-ai-subscription!))
-    (let [remaining (vec (remove #(or (= :env (keyword (:source %)))
-                                      (= (:key %) conn-key))
-                                 (llm.provider/connections)))]
+    (let [remaining (vec (remove #(= (:key %) conn-key) (llm.provider/stored-connections)))]
       (llm.provider/set-connections! remaining)
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
         (setting/set! :llm-metabot-provider (fallback-model-ref)))))

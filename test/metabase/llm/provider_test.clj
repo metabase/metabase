@@ -155,7 +155,7 @@
         (is (false? (llm.provider/config-complete? type {:api-key ""})))
         (is (false? (llm.provider/config-complete? type {:api-key nil})))
         (is (false? (llm.provider/config-complete? type nil))))))
-  (testing "azure needs an API key, a base URL, and the deployment it serves"
+  (testing "azure needs an API key and a base URL"
     (is (true? (llm.provider/config-complete? "azure" {:api-key         "azure-key"
                                                        :base-url        "https://r.services.ai.azure.com/openai"
                                                        :model-family    "openai"
@@ -163,9 +163,11 @@
     (is (false? (llm.provider/config-complete? "azure" {:api-key "azure-key"})))
     (is (false? (llm.provider/config-complete? "azure" {:api-key "azure-key" :base-url "  "})))
     (is (false? (llm.provider/config-complete? "azure" {:base-url "https://r.services.ai.azure.com/openai"})))
-    (testing "a connection with no deployment cannot serve a request, so it is not complete"
-      (is (false? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
-                                                          :base-url "https://r.services.ai.azure.com/openai"})))))
+    (testing (str "the deployment names what to call rather than what authenticates the call, and an instance "
+                  "configured before the connection list existed carries it in the model reference instead, so a "
+                  "connection without one still counts as complete")
+      (is (true? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
+                                                         :base-url "https://r.services.ai.azure.com/openai"})))))
   (testing "bedrock needs both AWS keys, and neither the region nor the session token"
     (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                          :secret-access-key "test-secret"})))
@@ -234,6 +236,16 @@
     (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]
       (is (= [["anthropic" :env]]
              (map (juxt :key :source) (llm.provider/connections)))))))
+
+(deftest stored-connections-keeps-a-connection-the-environment-shadows-test
+  (testing (str "A stored connection an env var shadows is missing from [[connections]], so writes rebuild the list "
+                "from here instead — otherwise saving any other connection would delete its credentials, and "
+                "removing the env var would not bring them back.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (is (= [{:key "anthropic" :type "anthropic" :name "anthropic" :config {:api-key "sk-ant-db"}}]
+               (llm.provider/stored-connections)))
+        (is (= [:env] (map :source (llm.provider/connections))))))))
 
 (deftest connection-lookup-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})

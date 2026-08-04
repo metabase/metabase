@@ -184,6 +184,38 @@
                                 {:type "openai" :config {:api-key "sk-valid"}})
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-metabot-provider))))))))
 
+(deftest create-selects-a-model-composed-from-the-config-test
+  (testing (str "Azure names its deployment in `:config` rather than listing models, and the form leaves a field it "
+                "pre-filled with the registry default out of the payload, so the default has to be filled in before "
+                "the model is composed — otherwise connecting Azure first leaves Metabot on nothing.")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type   "azure"
+                                 :config {:api-key         "azure-key"
+                                          :base-url        "https://r.services.ai.azure.com/openai"
+                                          :deployment-name "gpt-4.1-mini"}})
+          (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest writes-keep-a-stored-connection-the-environment-shadows-test
+  (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "
+                "the instance falls back to once the variable comes back off.")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                    {:api-key "sk-ant-stored"})]]
+        (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "openai" :config {:api-key "sk-valid"}})
+          (is (= [{:key "anthropic" :type "anthropic" :name "anthropic" :config {:api-key "sk-ant-stored"}}
+                  {:key "openai" :type "openai" :name "OpenAI" :config {:api-key "sk-valid"}}]
+                 (llm.provider/stored-connections))))
+        (testing "and editing the shadowed key says so rather than 404ing"
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+            (is (=? {:message "The \"anthropic\" connection is configured by environment variables and cannot be changed here."}
+                    (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
+                                          {:name "Renamed"})))))))))
+
 (deftest create-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]

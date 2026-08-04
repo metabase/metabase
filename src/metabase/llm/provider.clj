@@ -272,8 +272,15 @@
     (validate-field! type-name field config)))
 
 (defn credentials-complete?
-  "Whether `config` carries the credentials a request needs. Unlike [[config-complete?]] this ignores the model
-  field: it names what to call, not what authenticates the call, and adapters receive it separately."
+  "Whether `config` carries the credentials a request needs.
+
+  A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
+  connection is resolved, so leaving it untouched is the admin accepting the value its form showed.
+
+  [[model-fields]] are exempt: they name what to call, not what authenticates the call, and a connection can
+  legitimately take its model from the `connection-key/model` reference instead — which is where an Azure
+  deployment configured before the connection list existed still lives. [[validate-config!]] still requires them
+  of anything saved through the API, so only the environment and a hand-written `llm-providers` can omit them."
   [type-name config]
   (let [model-keys (set (model-fields type-name))]
     (every? (fn [{:keys [key required? default]}]
@@ -284,15 +291,13 @@
             (:fields (provider-type type-name)))))
 
 (defn config-complete?
-  "Whether `config` carries every required field for `type-name`, i.e. whether the connection can make requests.
-  A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
-  connection is resolved, so leaving it untouched is the admin accepting the value its form showed."
+  "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed
+  provider — which authenticates with the instance token rather than with credentials of its own — whether the LLM
+  proxy is configured."
   [type-name config]
   (if (managed-type? type-name)
     (some? (llm.settings/llm-proxy-base-url))
-    (every? (fn [{:keys [key required? default]}]
-              (or (not required?) default (non-blank (get config key))))
-            (:fields (provider-type type-name)))))
+    (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
 
@@ -319,9 +324,10 @@
                  :settings {:api-key  {:setting :llm-zai-api-key :credential? true}
                             :base-url {:setting :llm-zai-api-base-url}}}
    "azure"      {:type     "azure"
-                 :settings {:api-key  {:setting :llm-azure-api-key :credential? true}
-                            :base-url {:setting :llm-azure-api-base-url :credential? true}
-                            :model    {:setting :llm-azure-model}}}
+                 :settings {:api-key         {:setting :llm-azure-api-key :credential? true}
+                            :base-url        {:setting :llm-azure-api-base-url :credential? true}
+                            :model-family    {:setting :llm-azure-model-family}
+                            :deployment-name {:setting :llm-azure-deployment-name}}}
    "bedrock"    {:type     "bedrock"
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
@@ -381,13 +387,22 @@
 
 ;;; --------------------------------------------------- Connections -------------------------------------------------
 
-(defn- stored-connections
+(defn stored-connections
+  "The connection list exactly as persisted in [[llm-providers]], without the environment layered over it.
+
+  Writes edit *this* list rather than [[connections]]. A stored connection whose key an env var shadows is absent
+  from [[connections]], so rebuilding the list from there would drop it from the setting the next time an admin
+  saved anything — the credentials would be gone for good once the env var came back off."
+  []
+  (vec (llm.settings/llm-providers)))
+
+(defn- annotated-stored-connections
   []
   (let [env-managed? (some? (setting/env-var-value :llm-providers))
         annotate     (fn [conn]
                        (cond-> (assoc conn :source (if env-managed? :env :db))
                          env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
-    (into [] (map annotate) (llm.settings/llm-providers))))
+    (into [] (map annotate) (stored-connections))))
 
 (defn connections
   "Every connection this instance can use, in admin-facing order.
@@ -402,7 +417,7 @@
   []
   (let [from-env (env-connections)
         by-key   (into {} (map (juxt :key identity)) from-env)
-        stored   (map (fn [conn] (get by-key (:key conn) conn)) (stored-connections))
+        stored   (map (fn [conn] (get by-key (:key conn) conn)) (annotated-stored-connections))
         taken    (into #{} (map :key) stored)]
     (into (vec stored) (remove #(contains? taken (:key %)) from-env))))
 
