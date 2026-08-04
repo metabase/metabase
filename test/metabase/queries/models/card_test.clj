@@ -13,7 +13,6 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
