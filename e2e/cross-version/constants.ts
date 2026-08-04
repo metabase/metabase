@@ -1,4 +1,4 @@
-// Postgres DB with sample data
+// Postgres DB with the QA sample data (metabase/qa-databases:postgres-sample-15)
 export const XV_DATABASE_NAME = "XV Data";
 
 export const Q1_NAME = "cv1-pivot";
@@ -8,12 +8,12 @@ export const Q4_SQL_NAME = "cv4-sql";
 
 export const SNIPPET_NAME = "Body Not Null";
 
-// XV Data's tables are created with quoted upper-case identifiers, so queries
-// against them have to quote too — Postgres folds unquoted identifiers to lower case.
-export const SNIPPET_CONTENT = '"REVIEWS"."BODY" IS NOT NULL';
+// XV Data's tables use unquoted lower-case identifiers, which is what Postgres
+// folds unquoted identifiers to — so these queries don't need to quote anything.
+export const SNIPPET_CONTENT = "reviews.body IS NOT NULL";
 
 export const SQL_QUERY = `
-SELECT "PRODUCT_ID", "REVIEWER", "RATING"
-FROM "REVIEWS"
+SELECT product_id, reviewer, rating
+FROM reviews
 WHERE {{snippet: ${SNIPPET_NAME}}}
 AND {{rating}}`;

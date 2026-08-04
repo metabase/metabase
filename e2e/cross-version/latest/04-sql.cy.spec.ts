@@ -59,18 +59,19 @@ describe("Cross-version questions - sql", () => {
       X.assertRowCount("1,112");
 
       cy.log("-- Hide the PK column --");
+      // Native results keep the raw column names, and the QA sample data's are lower-case
       cy.findByTestId("visualization-root")
         .findByTestId("table-header")
-        .contains("PRODUCT_ID")
+        .contains("product_id")
         .click();
       H.popover().icon("eye_crossed_out").click();
 
       cy.log("-- Assert on the preview values in a table --");
       cy.findByTestId("visualization-root").within(() => {
         cy.findByTestId("table-header")
-          .should("contain", "REVIEWER")
-          .and("contain", "RATING")
-          .and("not.contain", "PRODUCT_ID");
+          .should("contain", "reviewer")
+          .and("contain", "rating")
+          .and("not.contain", "product_id");
 
         cy.findByTestId("table-body")
           .should("contain", "xavier")
@@ -99,9 +100,9 @@ describe("Cross-version questions - sql", () => {
     X.assertRowCount("1,112");
     cy.findByTestId("visualization-root").within(() => {
       cy.findByTestId("table-header")
-        .should("contain", "REVIEWER")
-        .and("contain", "RATING")
-        .and("not.contain", "PRODUCT_ID");
+        .should("contain", "reviewer")
+        .and("contain", "rating")
+        .and("not.contain", "product_id");
 
       cy.findByTestId("table-body")
         .should("contain", "xavier")

@@ -21,12 +21,25 @@ For **downgrades**, the script expects the target to refuse startup, then runs c
 
 ### `dev.sh` — local development
 
-Starts a single Metabase version in Docker with H2 and opens Cypress interactively. Snapshot/restore works via `/api/testing/*` endpoints, controlled by the `CROSS_VERSION_DEV_MODE` env var.
+Starts a single Metabase version in Docker (same Compose stack as `test.sh`) and opens Cypress interactively.
 
 ```bash
 ./dev.sh --version v1.57.6
 ./dev.sh --version v1.58.3 --port 3001
 ```
+
+## Test data
+
+The Postgres container runs [`metabase/qa-databases:postgres-sample-15`](https://github.com/metabase/metabase-qa) — the same image the regular e2e suite uses. It serves two databases:
+
+| Database | Contents |
+|----------|----------|
+| `metabase` | Metabase's application db (created by `init/00-create-app-db.sql`) |
+| `sample` | The QA sample data, loaded by the image's own `sample_data.sql.gz` |
+
+The specs connect `sample` as a data source named **XV Data** (`XV_DATABASE_NAME`). It holds `orders`, `people`, `products` and `reviews` — the same rows as the Sample Database, though the timestamps sit a few years earlier — plus `accounts`, `invoices`, `analytic_events` and `feedback`. Identifiers are unquoted lower-case, so native queries don't need to quote them.
+
+Both databases are created on first boot only, so `docker compose down -v` (what `test.sh` does before and after every run) is what resets them.
 
 ## E2E test specs
 

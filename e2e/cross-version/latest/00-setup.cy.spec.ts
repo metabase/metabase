@@ -56,7 +56,7 @@ describe("Cross-version: Instance setup", () => {
         details: {
           host: "postgres",
           port: 5432,
-          dbname: "xv_sample_data",
+          dbname: "sample",
           user: "metabase",
           password: "metabase",
         },
@@ -67,9 +67,11 @@ describe("Cross-version: Instance setup", () => {
         expect(dbId).to.be.a("number");
 
         cy.log("Wait for the initial sync so field ids are available");
+        // Table names are matched verbatim and the QA sample data uses
+        // lower-case identifiers. `withDatabase` upper-cases them again.
         H.resyncDatabase({
           dbId,
-          tables: ["PEOPLE", "ORDERS", "PRODUCTS", "REVIEWS"],
+          tables: ["people", "orders", "products", "reviews"],
         });
 
         H.withDatabase(dbId, ({ ORDERS, PRODUCTS, REVIEWS }) => {
