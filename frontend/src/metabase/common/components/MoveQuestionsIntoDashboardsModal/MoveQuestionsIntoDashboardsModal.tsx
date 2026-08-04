@@ -7,7 +7,7 @@ import {
   useListCollectionDashboardQuestionCandidatesQuery,
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
-import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { useUserAcknowledgement } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";

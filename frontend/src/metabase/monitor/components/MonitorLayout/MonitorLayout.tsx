@@ -2,7 +2,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   type MonitorSection,
   trackMonitorSectionClicked,

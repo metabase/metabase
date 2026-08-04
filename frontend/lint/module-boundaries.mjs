@@ -101,6 +101,11 @@ const elements = [
   createElement({ type: "shared", name: "common" }),
   createElement({
     type: "shared",
+    name: "current-user",
+    enforcePublicApi: true,
+  }),
+  createElement({
+    type: "shared",
     name: "custom-viz",
     pattern: "enterprise/frontend/src/custom-viz/**",
   }),

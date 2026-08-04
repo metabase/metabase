@@ -25,6 +25,7 @@ const SHARED_UTILS_LEVELS = [
   ["shared/plugins", "shared/settings"],
   // U4 — app services over the store and registry.
   [
+    "shared/current-user",
     "shared/selectors",
     "shared/content-translation",
     "shared/error-boundary",
