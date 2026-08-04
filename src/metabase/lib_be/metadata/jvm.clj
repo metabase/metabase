@@ -577,6 +577,12 @@
   routing it through the provider would mean fetching a whole Database's catalog to find a handful of rows."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
+  ;; This is a prefilter, not the decision: callers narrow here and then match precisely (see
+  ;; `metabase.sql-tools.common/find-table-or-transform`). That only works while the result is a *superset* of what
+  ;; the precise match would accept, which assumes two things. The appdb's `lower()` must agree with
+  ;; `u/lower-case-en` — covered by `tables-by-name-case-folding-test`, which runs on each supported appdb. And a
+  ;; driver's `normalize-unquoted-name` must be a pure case fold; one that transformed a name some other way would
+  ;; make this prefilter start dropping matches, silently.
   (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
     (t2/select :metadata/table
                {:where [:and
