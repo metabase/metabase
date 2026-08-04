@@ -15,6 +15,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 import type {
   ColumnSettings,
+  CustomVizDisplayType,
   CustomVizPluginId,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -30,7 +31,7 @@ type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
 };
 
 export const customVizRegistry: Map<
-  string,
+  CustomVizDisplayType,
   CustomVisualization<Record<string, unknown>>
 > = new Map();
 
@@ -79,7 +80,7 @@ export function registerCustomVizPlugin(
     },
     locale,
   });
-  const display: VisualizationDisplay = `custom:${identifier}`;
+  const display: CustomVizDisplayType = `custom:${identifier}`;
   customVizRegistry.set(display, vizDef);
 
   const Component = applyStaticVisualizationProps(vizDef, {
