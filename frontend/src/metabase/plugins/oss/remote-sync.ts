@@ -56,6 +56,10 @@ export interface RemoteSyncDirtyState {
   >["refetch"];
 }
 
+export type DataStudioWorktreesSectionProps = {
+  isNavbarOpened: boolean;
+};
+
 const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
@@ -70,6 +74,10 @@ const getDefaultPluginRemoteSync = () => ({
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   // Unjustified type cast. FIXME
   CollectionSyncStatusBadge: null as ComponentType | null,
+  DataStudioWorktreesSection:
+    // the cast keeps the nullable component type instead of narrowing the field to `null`
+    null as ComponentType<DataStudioWorktreesSectionProps> | null,
+  getDataStudioWorktreeRoutes: (): ReactNode => null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -99,6 +107,8 @@ export const PLUGIN_REMOTE_SYNC: {
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
+  DataStudioWorktreesSection: ComponentType<DataStudioWorktreesSectionProps> | null;
+  getDataStudioWorktreeRoutes: () => ReactNode;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

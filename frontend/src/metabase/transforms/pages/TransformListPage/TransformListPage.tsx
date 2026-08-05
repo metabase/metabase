@@ -17,6 +17,7 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -75,24 +76,6 @@ const isRowDisabled = (row: Row<TreeNode>) => {
   return row.original.can_read === false;
 };
 
-const getRowHref = (row: Row<TreeNode>) => {
-  if (isRowDisabled(row)) {
-    return null;
-  }
-  if (row.original.nodeType === "transform" && row.original.transformId) {
-    return Urls.transform(row.original.transformId);
-  }
-  if (row.original.nodeType === "library" && row.original.url) {
-    return row.original.url;
-  }
-  return null;
-};
-
-const renderRowLink: RenderRowLink<TreeNode> = (row, props) => {
-  const href = getRowHref(row);
-  return href ? <Link to={href} {...props} /> : props.children;
-};
-
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
   transform: "core-brand",
@@ -117,6 +100,7 @@ const globalFilterFn = (
 
 export const TransformListPage = () => {
   const location = useLocation();
+  const worktreeId = useWorktreeId();
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const targetCollectionId =
@@ -141,13 +125,14 @@ export const TransformListPage = () => {
   } = useListCollectionsTreeQuery({
     namespace: "transforms",
     "exclude-archived": true,
+    "worktree-id": worktreeId,
   });
 
   const {
     data: transforms,
     error: transformsError,
     isLoading: isLoadingTransforms,
-  } = useListTransformsQuery({});
+  } = useListTransformsQuery({ "worktree-id": worktreeId });
 
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
@@ -164,7 +149,8 @@ export const TransformListPage = () => {
 
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
-      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
+      worktreeId == null &&
+      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
 
     if (shouldShowPythonLibraryRow) {
       data.push({
@@ -185,7 +171,32 @@ export const TransformListPage = () => {
     shouldShowPythonTransformsUpsell,
     transforms,
     transformsDatabases.length,
+    worktreeId,
   ]);
+
+  const getRowHref = useCallback(
+    (row: Row<TreeNode>) => {
+      if (isRowDisabled(row)) {
+        return null;
+      }
+      if (row.original.nodeType === "transform" && row.original.transformId) {
+        return Urls.transform(row.original.transformId, { worktreeId });
+      }
+      if (row.original.nodeType === "library" && row.original.url) {
+        return row.original.url;
+      }
+      return null;
+    },
+    [worktreeId],
+  );
+
+  const renderRowLink = useCallback<RenderRowLink<TreeNode>>(
+    (row, props) => {
+      const href = getRowHref(row);
+      return href ? <Link to={href} {...props} /> : props.children;
+    },
+    [getRowHref],
+  );
 
   const defaultExpanded = useMemo(
     () => getDefaultExpandedIds(targetCollectionId, targetCollection),

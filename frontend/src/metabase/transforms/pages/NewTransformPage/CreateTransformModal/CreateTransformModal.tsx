@@ -12,6 +12,7 @@ import {
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { hasFeature } from "metabase/common/utils/database";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   Form,
   FormErrorMessage,
@@ -29,6 +30,7 @@ import type {
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 import { TargetNameInput } from "../../../components/TargetNameInput";
+import { FormWorktreeCollectionPicker } from "../../../components/WorktreeCollectionPicker";
 
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
@@ -164,6 +166,7 @@ function CreateTransformForm({
   showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
+  const worktreeId = useWorktreeId();
 
   const handleIncrementalChange = (value: boolean) => {
     setFieldValue("incremental", value);
@@ -186,12 +189,21 @@ function CreateTransformForm({
           />
         )}
         <TargetNameInput description={targetDescription} />
-        <FormCollectionPicker
-          name="collection_id"
-          title={t`Collection`}
-          collectionPickerModalProps={{ namespaces: ["transforms"] }}
-          style={{ marginBottom: 0 }}
-        />
+        {worktreeId != null ? (
+          <FormWorktreeCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            worktreeId={worktreeId}
+            style={{ marginBottom: 0 }}
+          />
+        ) : (
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            collectionPickerModalProps={{ namespaces: ["transforms"] }}
+            style={{ marginBottom: 0 }}
+          />
+        )}
         {showIncrementalSettings && (
           <IncrementalTransformSettings
             source={source}

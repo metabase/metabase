@@ -117,6 +117,11 @@ export function DataStudioLayout() {
         isSelected={currentTab === "glossary"}
         showLabel={isNavbarOpened}
       />
+      {PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection && (
+        <PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection
+          isNavbarOpened={isNavbarOpened}
+        />
+      )}
     </>
   );
 

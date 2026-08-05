@@ -9,6 +9,7 @@ import {
   type CollectionFormValues,
 } from "metabase/common/collections/schemas";
 import { useToast } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   Form,
   FormErrorMessage,
@@ -19,6 +20,8 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+
+import { FormWorktreeCollectionPicker } from "../WorktreeCollectionPicker";
 
 type CreateTransformCollectionModalProps = {
   onClose: () => void;
@@ -31,6 +34,7 @@ export function CreateTransformCollectionModal({
 }: CreateTransformCollectionModalProps) {
   const [sendToast] = useToast();
   const [createCollection] = useCreateCollectionMutation();
+  const worktreeId = useWorktreeId();
 
   const initialValues = useMemo<CollectionFormValues>(
     () => COLLECTION_FORM_SCHEMA.getDefault(),
@@ -40,11 +44,14 @@ export function CreateTransformCollectionModal({
   const handleSubmit = useCallback(
     async (values: CollectionFormValues) => {
       try {
+        // A worktree collection inherits its parent's worktree; worktree_id is
+        // only needed when creating at the worktree root.
         const collection = await createCollection({
           name: values.name,
           description: values.description ?? undefined,
           parent_id: values.parent_id,
           namespace: "transforms",
+          worktree_id: values.parent_id == null ? worktreeId : undefined,
         }).unwrap();
         onCreate?.(collection);
         onClose();
@@ -55,7 +62,7 @@ export function CreateTransformCollectionModal({
         });
       }
     },
-    [createCollection, onCreate, onClose, sendToast],
+    [createCollection, onCreate, onClose, sendToast, worktreeId],
   );
 
   const stopPropagation = useCallback(
@@ -90,11 +97,19 @@ export function CreateTransformCollectionModal({
               placeholder={t`Add a description`}
               nullable
             />
-            <FormCollectionPicker
-              name="parent_id"
-              title={t`Parent collection`}
-              collectionPickerModalProps={{ namespaces: ["transforms"] }}
-            />
+            {worktreeId != null ? (
+              <FormWorktreeCollectionPicker
+                name="parent_id"
+                title={t`Parent collection`}
+                worktreeId={worktreeId}
+              />
+            ) : (
+              <FormCollectionPicker
+                name="parent_id"
+                title={t`Parent collection`}
+                collectionPickerModalProps={{ namespaces: ["transforms"] }}
+              />
+            )}
             <Group justify="flex-end">
               <FormErrorMessage />
               <Button variant="subtle" onClick={onClose}>

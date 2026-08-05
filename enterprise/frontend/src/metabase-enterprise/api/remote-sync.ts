@@ -37,7 +37,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ExportChangesResponse,
       ExportChangesRequest
     >({
-      query: ({ message, force, branch, merge }) => ({
+      query: ({ message, force, branch, merge, worktree_id }) => ({
         url: `/api/ee/remote-sync/export`,
         method: "POST",
         body: {
@@ -45,6 +45,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           branch,
           force,
           merge,
+          worktree_id,
         },
       }),
       invalidatesTags: () => [
@@ -67,7 +68,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ImportFromBranchResponse,
       ImportFromBranchRequest
     >({
-      query: ({ branch, force, merge, expected_branch }) => ({
+      query: ({ branch, force, merge, expected_branch, worktree_id }) => ({
         url: `/api/ee/remote-sync/import`,
         method: "POST",
         body: {
@@ -75,6 +76,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
           force,
           merge,
           expected_branch,
+          worktree_id,
         },
       }),
       /**
@@ -101,10 +103,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         };
       },
     }),
-    getRemoteSyncHasChanges: builder.query<RemoteSyncHasChangesResponse, void>({
-      query: () => ({
+    getRemoteSyncHasChanges: builder.query<
+      RemoteSyncHasChangesResponse,
+      { "worktree-id": WorktreeId } | void
+    >({
+      query: (params) => ({
         url: `/api/ee/remote-sync/is-dirty`,
         method: "GET",
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),

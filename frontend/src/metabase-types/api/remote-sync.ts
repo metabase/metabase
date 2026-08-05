@@ -60,6 +60,8 @@ export type ExportChangesRequest = {
   force?: boolean;
   /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
   merge?: boolean;
+  /** Export a remote-sync worktree instead of the main app. */
+  worktree_id?: WorktreeId | null;
 };
 
 export type ExportChangesResponse = {
@@ -108,6 +110,8 @@ export type ImportFromBranchRequest = {
    * on a branch switch, where `branch` is the target and this is the branch being switched away from.
    */
   expected_branch: string;
+  /** Import into a remote-sync worktree instead of the main app. */
+  worktree_id?: WorktreeId | null;
 };
 
 export type ImportFromBranchResponse = {

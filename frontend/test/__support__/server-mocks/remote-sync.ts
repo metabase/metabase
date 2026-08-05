@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -20,6 +20,18 @@ export const setupRemoteSyncDirtyEndpoint = ({
     { dirty, changedCollections },
     { name: "remote-sync-dirty" },
   );
+};
+
+/**
+ * Setup the remote-sync worktree list endpoint
+ */
+export const setupRemoteSyncWorktreesEndpoint = (
+  worktrees: Worktree[] = [],
+) => {
+  fetchMock.removeRoute("remote-sync-worktrees");
+  fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
+    name: "remote-sync-worktrees",
+  });
 };
 
 /**
@@ -188,6 +200,7 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
  */
 export const setupRemoteSyncEndpoints = ({
   branches = ["main", "develop"],
+  worktrees = [],
   dirty = [],
   changedCollections = {},
   hasRemoteChanges = false,
@@ -198,6 +211,7 @@ export const setupRemoteSyncEndpoints = ({
   testConnectionError,
 }: {
   branches?: string[];
+  worktrees?: Worktree[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
   hasRemoteChanges?: boolean;
@@ -210,6 +224,7 @@ export const setupRemoteSyncEndpoints = ({
   testConnectionError?: { status: number; message: string };
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
+  setupRemoteSyncWorktreesEndpoint(worktrees);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();

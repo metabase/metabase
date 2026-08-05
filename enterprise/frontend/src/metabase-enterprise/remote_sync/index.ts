@@ -24,6 +24,7 @@ import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
 import { getIsRemoteSyncReadOnly } from "./selectors";
 import { remoteSyncReducer } from "./sync-task-slice";
+import { WorktreesNavSection, getDataStudioWorktreeRoutes } from "./worktrees";
 
 /**
  * Initialize remote sync plugin features that depend on hasPremiumFeature.
@@ -49,6 +50,9 @@ export function initializePlugin() {
       useHasTransformDirtyChanges;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
     PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState = useRemoteSyncDirtyState;
+    PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection = WorktreesNavSection;
+    PLUGIN_REMOTE_SYNC.getDataStudioWorktreeRoutes =
+      getDataStudioWorktreeRoutes;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

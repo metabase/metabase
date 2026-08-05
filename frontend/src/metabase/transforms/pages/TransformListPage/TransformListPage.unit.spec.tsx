@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 
 import {
@@ -12,9 +13,10 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { WorktreeProvider } from "metabase/common/worktrees";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { TokenFeatures } from "metabase-types/api";
+import type { TokenFeatures, WorktreeId } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { TransformListPage } from "./TransformListPage";
@@ -51,9 +53,10 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => ({
 
 type SetupOpts = {
   tokenFeatures?: Partial<TokenFeatures>;
+  worktreeId?: WorktreeId;
 };
 
-async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
+async function setup({ tokenFeatures = {}, worktreeId }: SetupOpts = {}) {
   setupCollectionTreeEndpoint([]);
   setupListTransformsEndpoint([]);
   setupDatabaseListEndpoint([]);
@@ -65,8 +68,17 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
     }),
   });
 
+  const page =
+    worktreeId != null ? (
+      <WorktreeProvider worktreeId={worktreeId}>
+        <TransformListPage />
+      </WorktreeProvider>
+    ) : (
+      <TransformListPage />
+    );
+
   const path = "/transforms";
-  renderWithProviders(<Route path={path} element={<TransformListPage />} />, {
+  renderWithProviders(<Route path={path} element={page} />, {
     storeInitialState: state,
     withRouter: true,
     initialRoute: path,
@@ -93,6 +105,40 @@ describe("TransformListPage", () => {
       await setup({ tokenFeatures: { advanced_permissions: true } });
 
       expect(screen.getByText("Python library")).toBeInTheDocument();
+    });
+
+    it("does not show the Python library row inside a worktree", async () => {
+      await setup({
+        tokenFeatures: { "transforms-python": true },
+        worktreeId: 7,
+      });
+
+      expect(screen.queryByText("Python library")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("worktree scoping", () => {
+    it("requests transforms and collections scoped to the worktree", async () => {
+      await setup({ worktreeId: 7 });
+
+      const transformsCall = fetchMock.callHistory.lastCall(
+        "path:/api/transform",
+      );
+      expect(transformsCall?.url).toContain("worktree-id=7");
+
+      const collectionsCall = fetchMock.callHistory.lastCall(
+        "path:/api/collection/tree",
+      );
+      expect(collectionsCall?.url).toContain("worktree-id=7");
+    });
+
+    it("requests unscoped transforms outside a worktree", async () => {
+      await setup();
+
+      const transformsCall = fetchMock.callHistory.lastCall(
+        "path:/api/transform",
+      );
+      expect(transformsCall?.url).not.toContain("worktree-id");
     });
   });
 });

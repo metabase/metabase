@@ -5,6 +5,7 @@ import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { StackProps } from "metabase/ui";
@@ -34,6 +35,7 @@ export function TransformHeader({
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const worktreeId = useWorktreeId();
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: transform.collection_id,
     namespace: "transforms",
@@ -56,11 +58,11 @@ export function TransformHeader({
       data-testid="transforms-header"
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          <Link to={Urls.transformList({ worktreeId })}>{t`Transforms`}</Link>
           {path?.map((folder) => (
             <Link
               key={folder.id}
-              to={`${Urls.transformList()}?collectionId=${folder.id}`}
+              to={Urls.transformList({ worktreeId, collectionId: folder.id })}
             >
               {folder.name}
             </Link>

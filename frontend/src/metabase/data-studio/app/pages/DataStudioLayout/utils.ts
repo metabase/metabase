@@ -10,12 +10,15 @@ type TabName =
   | "schema-viewer"
   | "glossary"
   | "git-sync"
+  | "worktrees"
   | "settings";
 
 export const getCurrentTab = (pathname: string): TabName => {
   switch (true) {
     case pathname.startsWith(Urls.dataStudioGlossary()):
       return "glossary";
+    case pathname.startsWith(Urls.dataStudioWorktrees()):
+      return "worktrees";
     case pathname.startsWith(Urls.dataStudioGitSync()):
       return "git-sync";
     case pathname.startsWith(Urls.transformJobList()):
