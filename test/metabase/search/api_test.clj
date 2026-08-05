@@ -2284,7 +2284,12 @@
                        :model/Card {main-card-id :id} {:name (str term " main card")}
                        :model/Card {wt-card-id :id} {:name          (str term " worktree card")
                                                      :collection_id wt-coll-id
-                                                     :worktree_id   wt-id}]
+                                                     :worktree_id   wt-id}
+                       :model/Segment {main-seg-id :id} {:name (str term " main segment")
+                                                         :table_id (mt/id :venues)}
+                       :model/Segment {wt-seg-id :id} {:name        (str term " worktree segment")
+                                                       :table_id    (mt/id :venues)
+                                                       :worktree_id wt-id}]
           (search/reindex! {:async? false :in-place? true})
           (letfn [(card-ids [& params]
                     (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term :models "card"
@@ -2310,6 +2315,14 @@
             (testing "cards are scoped the same way"
               (is (= #{main-card-id} (card-ids)))
               (is (= #{wt-card-id} (card-ids :worktree-id wt-id))))
+            (testing "so is data-model content hanging off a shared table"
+              (let [segment-ids (fn [& params]
+                                  (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term
+                                              :models "segment" :search_engine "appdb" params)
+                                       :data
+                                       (into #{} (map :id))))]
+                (is (= #{main-seg-id} (segment-ids)))
+                (is (= #{wt-seg-id} (segment-ids :worktree-id wt-id)))))
             (testing "the in-place engine scopes the same way"
               (let [ids (fn [& params]
                           (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term

@@ -5351,6 +5351,43 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "card" :worktree-id wt-id)))))))
 
+(deftest worktree-query-metadata-scopes-table-content-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}
+                   :model/Segment {main-seg :id} {:name "main segment" :table_id (mt/id :venues)}
+                   :model/Segment {wt-seg :id} {:name        "worktree segment"
+                                                :table_id    (mt/id :venues)
+                                                :worktree_id wt-id}
+                   :model/Measure {main-measure :id} {:name "main measure" :table_id (mt/id :venues)}
+                   :model/Measure {wt-measure :id} {:name        "worktree measure"
+                                                    :table_id    (mt/id :venues)
+                                                    :worktree_id wt-id}]
+      (letfn [(table-content [card-id k]
+                (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id))
+                     :tables
+                     (mapcat k)
+                     (into #{} (map :id))))]
+        (testing "a main-app card sees the main app's segments and measures, not the worktree's"
+          (mt/with-temp [:model/Card {card-id :id} {:name "main" :dataset_query (mt/mbql-query venues)}]
+            (let [segments (table-content card-id :segments)
+                  measures (table-content card-id :measures)]
+              (is (contains? segments main-seg))
+              (is (not (contains? segments wt-seg)))
+              (is (contains? measures main-measure))
+              (is (not (contains? measures wt-measure))))))
+        (testing "a worktree card sees only its own, though the table itself is shared"
+          (mt/with-temp [:model/Card {card-id :id} {:name          "worktree"
+                                                    :collection_id (:id wt-coll)
+                                                    :worktree_id   wt-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+            (let [segments (table-content card-id :segments)
+                  measures (table-content card-id :measures)]
+              (is (contains? segments wt-seg))
+              (is (not (contains? segments main-seg)))
+              (is (contains? measures wt-measure))
+              (is (not (contains? measures main-measure))))))))))
+
 (deftest worktree-card-query-metadata-stays-in-its-worktree-test
   (when config/ee-available?
     (mt/with-temp [:model/Worktree {wt-id :id} {}

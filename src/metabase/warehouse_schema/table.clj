@@ -68,7 +68,7 @@
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
-  ([ids {:keys [include-sensitive-fields?]}]
+  ([ids {:keys [include-sensitive-fields? worktree-id]}]
    (when (seq ids)
      (let [tables (t2/select :model/Table :id [:in ids])
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
@@ -80,12 +80,17 @@
                               :measures
                               :metrics)
            excluded-visibility-types (cond-> #{:hidden}
-                                       (not include-sensitive-fields?) (conj :sensitive))]
+                                       (not include-sensitive-fields?) (conj :sensitive))
+           ;; a table is shared between the main app and every worktree that refers to it, so what hangs off it
+           ;; is not: only the worktree being described gets to see its own segments and measures
+           in-worktree?              (fn [x] (= (:worktree_id x) worktree-id))]
        (for [table tables]
          (-> table
              (m/dissoc-in [:db :details])
              format-fields-for-response
              present-table
+             (update :segments #(filterv in-worktree? %))
+             (update :measures #(filterv in-worktree? %))
              (update :fields #(remove (comp excluded-visibility-types :visibility_type) %))))))))
 
 (defenterprise fetch-table-query-metadata

@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -96,6 +97,7 @@
               :created_at              true
               :updated_at              true
               :archived                false
+              :worktree_id             nil
               :definition true}
              (-> (mt/user-http-request :crowberto :post 200 "segment"
                                        {:name                    "A Segment"
@@ -178,6 +180,7 @@
                   :created_at              true
                   :updated_at              true
                   :archived                false
+                  :worktree_id             nil
                   :definition              true}
                  (-> (mt/user-http-request
                       :crowberto :put 200 (format "segment/%d" id)
@@ -275,6 +278,7 @@
                  :updated_at              true
                  :entity_id               true
                  :archived                true
+                 :worktree_id             nil
                  :definition true}
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
                     segment-response)))))))
@@ -310,6 +314,7 @@
                     :updated_at              true
                     :entity_id               true
                     :archived                false
+                    :worktree_id             nil
                     :definition              true}
                    (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                        segment-response
@@ -379,3 +384,23 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys
                    set)))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest worktree-content-is-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Segment {main-id :id} {:name "main segment" :table_id (mt/id :venues) :definition {}}
+                   :model/Segment {wt-content-id :id} {:name "worktree segment" :table_id (mt/id :venues) :definition {} :worktree_id wt-id}]
+      (testing "the main-app list leaves worktree content out"
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "segment"))]
+          (is (contains? ids main-id))
+          (is (not (contains? ids wt-content-id)))))
+      (testing "worktree-id returns only that worktree's content"
+        (is (= [wt-content-id]
+               (mapv :id (mt/user-http-request :crowberto :get 200 "segment" :worktree-id wt-id)))))
+      (testing "worktree-id is admin-only"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "segment" :worktree-id wt-id)))))))

@@ -51,12 +51,21 @@
     (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
     #{}))
 
+(defn- readable-snippets
+  "The snippets among `ids` that live in `worktree-id` (nil is the main app) and the current user can read."
+  [ids worktree-id]
+  (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet
+                                            :id          [:in ids]
+                                            :worktree_id worktree-id)))
+
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
+   (collect-recursive-snippets initial-snippet-ids nil))
+  ([initial-snippet-ids worktree-id]
    (when (seq initial-snippet-ids)
-     (let [snippets (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids]))]
-       (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
-  ([all-snippets snippets-to-recurse seen-ids]
+     (let [snippets (readable-snippets initial-snippet-ids worktree-id)]
+       (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids) worktree-id))))
+  ([all-snippets snippets-to-recurse seen-ids worktree-id]
    (let [->nested-snippet-ids (fn [snippet]
                                 (when snippet
                                   (for [tag   (vals (:template_tags snippet))
@@ -67,12 +76,13 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids])))]
+                                (readable-snippets nested-snippet-ids worktree-id))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
               nested-snippets
-              (set/union seen-ids nested-snippet-ids))))))
+              (set/union seen-ids nested-snippet-ids)
+              worktree-id)))))
 
 (defn- collect-snippet-field-ids
   [snippets]
@@ -121,7 +131,7 @@
         tables                 (concat source-tables fk-target-tables)
         template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
         direct-snippet-ids     (into #{} (mapcat lib/all-template-tag-snippet-ids) queries)
-        snippets               (collect-recursive-snippets direct-snippet-ids)
+        snippets               (collect-recursive-snippets direct-snippet-ids (:worktree-id opts))
         snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
         all-field-ids          (set/union template-tag-field-ids snippet-field-ids)
@@ -142,9 +152,9 @@
                              [id ""]
                              [Integer/MAX_VALUE (str id)]))
                          tables)
-     :fields    (sort-by :id (schema.field/get-fields all-field-ids))
-     ;; Add snippets to the response
-     :snippets  (sort-by :id snippets)}))
+     ;; Snippets themselves are not returned -- no client reads them off this endpoint -- but the fields their
+     ;; template tags reference are, since a native query built on a snippet still needs them.
+     :fields    (sort-by :id (schema.field/get-fields all-field-ids))}))
 
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries.

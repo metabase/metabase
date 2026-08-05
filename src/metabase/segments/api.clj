@@ -74,10 +74,15 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Fetch *all* `Segments`."
-  []
+  "Fetch *all* `Segments`. `worktree-id` lists the segments checked out into a remote-sync worktree instead of
+  the main app (admin only)."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   (let [segments  (t2/select :model/Segment
                              :archived false
+                             :worktree_id worktree-id
                              {:order-by [[:%lower.name :asc]]})
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)

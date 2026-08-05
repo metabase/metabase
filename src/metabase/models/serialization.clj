@@ -104,10 +104,12 @@
   `worktree_remapping` -- so a worktree holds its own copy of an entity the main app already has,
   under an id of its own.
 
-  A worktree checks out collections and the content that lives in them. Everything else -- dashboards, snippets,
-  Python libraries -- has no `worktree_id` column, and inside a worktree is skipped outright by extraction and
-  load rather than being read from, or written to, the main app's rows."
-  #{"Card" "Collection" "Transform" "TransformTag" "TransformTransformTag"})
+  A worktree checks out collections, the content that lives in them, and the data-model content hanging off
+  shared tables. What is left -- tables and fields, which are shared warehouse metadata, plus dashboards,
+  documents and timelines -- has no `worktree_id` column, and inside a worktree is skipped outright by
+  extraction and load rather than being read from, or written to, the main app's rows."
+  #{"Card" "Collection" "Measure" "NativeQuerySnippet" "PythonLibrary" "Segment"
+    "Transform" "TransformTag" "TransformTransformTag"})
 
 (defn worktree-scoped?
   "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."

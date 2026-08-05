@@ -23,7 +23,8 @@
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
@@ -83,7 +84,10 @@
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
-    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))
+    (when-let [collection-id (:collection_id snippet)]
+      (remote-sync/check-same-worktree
+       snippet (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
@@ -93,6 +97,11 @@
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
+  (when (contains? (t2/changes snippet) :collection_id)
+    (remote-sync/check-same-worktree
+     snippet
+     (when-let [collection-id (:collection_id (t2/changes snippet))]
+       (t2/select-one-fn :worktree_id :model/Collection :id collection-id))))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
@@ -111,20 +120,28 @@
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (snippet.perms/can-read? instance)))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-write? args))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (snippet.perms/can-write? instance)))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-create? args))
+  [model instance]
+  (and (remote-sync/worktree-accessible? instance)
+       (snippet.perms/can-create? model instance)))
 
 (defmethod mi/can-update? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-update? args))
+  [snippet changes]
+  (and (remote-sync/worktree-accessible? snippet)
+       (snippet.perms/can-update? snippet changes)))
 
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]

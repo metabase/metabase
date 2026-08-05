@@ -29,7 +29,7 @@
 
 (def ^:private worktree-scoped-models
   "Search models whose table carries a `worktree_id`."
-  #{"collection" "transform"})
+  #{"card" "collection" "dataset" "measure" "metric" "segment" "transform"})
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])

@@ -16,12 +16,17 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn list-native-query-snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
-  "List all native query snippets the current user has read access to."
+  "List all native query snippets the current user has read access to, within `worktree-id` (nil is the main
+  app)."
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
+   (list-native-query-snippets archived nil))
+  ([archived    :- ms/BooleanValue
+    worktree-id :- [:maybe ms/PositiveInt]]
    (let [snippets (t2/select :model/NativeQuerySnippet
                              :archived archived
+                             :worktree_id worktree-id
                              {:order-by [[:%lower.name :asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
@@ -30,11 +35,15 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Fetch all snippets"
+  "Fetch all snippets. `worktree-id` lists the snippets checked out into a remote-sync worktree instead of the
+  main app (admin only)."
   [_route-params
-   {:keys [archived]} :- [:map
-                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
-  (list-native-query-snippets (boolean archived)))
+   {:keys [archived worktree-id]} :- [:map
+                                      [:archived    {:default false} [:maybe ms/BooleanValue]]
+                                      [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  (list-native-query-snippets (boolean archived) worktree-id))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."

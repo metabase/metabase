@@ -102,9 +102,16 @@
     (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
-  "Fetch *all* `Measures`."
-  []
-  (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
+  "Fetch *all* `Measures`. `worktree-id` lists the measures checked out into a remote-sync worktree instead of
+  the main app (admin only)."
+  [_route-params
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  (let [measures  (t2/select :model/Measure
+                             :archived false
+                             :worktree_id worktree-id
+                             {:order-by [[:%lower.name :asc]]})
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))

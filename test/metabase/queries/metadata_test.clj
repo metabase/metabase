@@ -12,7 +12,7 @@
 (deftest ^:parallel batch-fetch-card-metadata-empty-queries-test
   ;; disable Malli because we want to make sure this works in prod
   (mu/disable-enforcement
-    (is (= {:databases [], :fields [], :snippets [], :tables []}
+    (is (= {:databases [], :fields [], :tables []}
            (queries.metadata/batch-fetch-card-metadata [{}])))))
 
 (deftest ^:parallel batch-fetch-query-metadata-skips-unnormalizable-queries-test
@@ -21,7 +21,7 @@
                           :native {:query "SELECT 1"}}]
       (testing "sanity check: this query is degraded to {} by normalize-query"
         (is (= {} (lib-be/normalize-query unnormalizable))))
-      (is (= {:databases [], :fields [], :snippets [], :tables []}
+      (is (= {:databases [], :fields [], :tables []}
              (queries.metadata/batch-fetch-query-metadata [unnormalizable]))))))
 
 (deftest only-models-trust-fk-semantic-types-test

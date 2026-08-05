@@ -431,3 +431,163 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_report_card_worktree_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:28
+      author: ranquild
+      comment: Add native_query_snippet.worktree_id
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this snippet was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:29
+      author: ranquild
+      comment: Index on native_query_snippet.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:30
+      author: ranquild
+      comment: FK native_query_snippet.worktree_id -> worktree; CASCADE so deleting a worktree drops what it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_native_query_snippet_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:31
+      author: ranquild
+      comment: Add measure.worktree_id
+      changes:
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this measure was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:32
+      author: ranquild
+      comment: Index on measure.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:33
+      author: ranquild
+      comment: FK measure.worktree_id -> worktree; CASCADE so deleting a worktree drops what it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_measure_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:34
+      author: ranquild
+      comment: Add segment.worktree_id
+      changes:
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this segment was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:35
+      author: ranquild
+      comment: Index on segment.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:36
+      author: ranquild
+      comment: FK segment.worktree_id -> worktree; CASCADE so deleting a worktree drops what it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: segment
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_segment_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:37
+      author: ranquild
+      comment: Add python_library.worktree_id
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this library was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:38
+      author: ranquild
+      comment: Index on python_library.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: python_library
+            indexName: idx_python_library_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:39
+      author: ranquild
+      comment: FK python_library.worktree_id -> worktree; CASCADE so deleting a worktree drops what it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: python_library
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_python_library_worktree_id
+            onDelete: CASCADE

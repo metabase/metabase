@@ -50,13 +50,15 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (mi/can-read? table)))
+     (and (remote-sync/worktree-accessible? instance)
+          (mi/can-read? table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
@@ -66,7 +68,8 @@
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (or api/*is-superuser?*
+     (and (remote-sync/worktree-accessible? instance)
+          (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
@@ -84,7 +87,8 @@
   [_model instance]
   (let [table (or (:table instance)
                   (t2/select-one :model/Table :id (:table_id instance)))]
-    (and (or api/*is-superuser?*
+    (and (remote-sync/worktree-accessible? instance)
+         (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
                    api/*current-user-id*
@@ -222,6 +226,7 @@
            :collection-id false
            :creator-id true
            :database-id :table.db_id
+           :worktree-id true
            :created-at true
            :updated-at true}
    :search-terms [:name :description]
