@@ -53,7 +53,6 @@
   - :name - Keyword identifier for the profile (e.g. :internal)
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
   - :max-iterations - Maximum agent loop iterations
-  - :temperature - LLM temperature setting
   - :tools - Vector of tool vars (e.g. #'tools/search-tool)
   - :always-on-skills - Optional vector of skill ids (keywords) whose bodies are inlined into this
     profile's system prompt instead of being loaded on demand via `load_skill`. Always-on is a
@@ -70,7 +69,6 @@
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
-               [:temperature :float]
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:terminal-tools {:optional true} [:set :string]]]]
@@ -95,7 +93,6 @@
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
   :max-iterations  10
-  :temperature     0.3
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -107,7 +104,6 @@
  {:name            :internal
   :prompt-template "internal.selmer"
   :max-iterations  10
-  :temperature     0.3
   :tools           [#'tools/search-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/read-resource-tool
@@ -125,7 +121,6 @@
  {:name            :transforms_codegen
   :prompt-template "transform-codegen.selmer"
   :max-iterations  30
-  :temperature     0.3
   :tools           [#'tools/transform-search-tool
                     #'tools/get-transform-details-tool
                     #'tools/get-transform-python-library-details-tool
@@ -144,7 +139,6 @@
  {:name                :sql
   :prompt-template     "sql-querying-only.selmer"
   :max-iterations      20
-  :temperature         0.3
   :required-tool-call? true
   ;; The SQL editor is a focused, tool-heavy flow: this guidance is relevant on essentially every
   ;; turn, so inline it rather than make the model spend iterations loading it. Other profiles that
@@ -175,7 +169,6 @@
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
-  :temperature     0.3
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -187,7 +180,6 @@
  {:name            :nlq-fallback
   :prompt-template "natural-language-querying-fallback.selmer"
   :max-iterations  10
-  :temperature     0.3
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -199,7 +191,6 @@
  {:name            :document-generate-content
   :prompt-template "document-generate-content.selmer"
   :max-iterations  10
-  :temperature     0.3
   :required-tool-call? true
   ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
   ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
@@ -215,7 +206,6 @@
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
   :max-iterations  10
-  :temperature     0.3
   :tools           [#'tools/search-tool
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
