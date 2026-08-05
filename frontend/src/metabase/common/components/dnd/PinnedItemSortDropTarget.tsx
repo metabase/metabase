@@ -2,11 +2,11 @@ import type { DropTargetMonitor } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
 import { isItemPinned } from "metabase/common/collections/utils";
-import type { CollectionItem } from "metabase-types/api";
+import { isPinnable } from "metabase/common/hooks";
 
 import { DropArea } from "./DropArea";
 
-import { PinnableDragTypes } from ".";
+import { PinnableDragTypes, isItemDragPayload } from ".";
 
 interface PinnedItemSortDropTargetOwnProps {
   isFrontTarget: boolean;
@@ -28,32 +28,39 @@ export const PinnedItemSortDropTarget = DropTarget(
       props: PinnedItemSortDropTargetOwnProps,
       monitor: DropTargetMonitor,
     ) {
-      // Unjustified type cast. FIXME
-      const { item } = monitor.getItem() as { item: CollectionItem };
+      const payload = monitor.getItem();
+      if (!isItemDragPayload(payload)) {
+        return false;
+      }
+      const { items } = payload;
       const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
 
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
-      if (!isItemPinned(item)) {
+      if (!items.every((item) => isPinnable(item) && isItemPinned(item))) {
         return false;
       }
 
-      if (itemModel != null && item.model !== itemModel) {
+      if (itemModel != null && items.some((item) => item.model !== itemModel)) {
+        return false;
+      }
+
+      if (pinIndex == null) {
         return false;
       }
 
       if (isFrontTarget) {
-        const isInFrontOfItem =
-          pinIndex != null &&
-          item.collection_position != null &&
-          pinIndex < item.collection_position;
-        return isInFrontOfItem;
+        return items.every(
+          (item) =>
+            item.collection_position != null &&
+            pinIndex < item.collection_position,
+        );
       } else if (isBackTarget) {
-        const isBehindItem =
-          pinIndex != null &&
-          item.collection_position != null &&
-          pinIndex > item.collection_position;
-        return isBehindItem;
+        return items.every(
+          (item) =>
+            item.collection_position != null &&
+            pinIndex > item.collection_position,
+        );
       }
 
       return false;
@@ -64,5 +71,5 @@ export const PinnedItemSortDropTarget = DropTarget(
     hovered: monitor.isOver() && monitor.canDrop(),
     connectDropTarget: connect.dropTarget(),
   }),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  // react-dnd v4 HOC types can't express the own/collected props split
 )(DropArea as any);
