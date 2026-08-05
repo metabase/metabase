@@ -106,7 +106,10 @@
   ;; True if user has:
   ;; - Query builder access (create-queries permission), OR
   ;; - Metadata management permissions (manage-table-metadata or manage-database), OR
-  ;; - Access to a published table in this database (EE feature)
+  ;; - Access to a published table in this database (EE feature), OR
+  ;; - Collection read access to a model or metric in this database (card-sourced ad-hoc queries
+  ;;   are authorized by the card's collection read perms alone, so the database must be readable
+  ;;   for the query builder to work with them)
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model database-id]
@@ -132,13 +135,17 @@
                      :perms/manage-table-metadata
                      database-id))
             ;; Has published table access
-            (perms/user-has-published-table-permission-for-database? database-id)))))
+            (perms/user-has-published-table-permission-for-database? database-id)
+            ;; Has collection read access to a model or metric in this database
+            (perms/user-has-card-source-permission-for-database? database-id)))))
 
 (defmethod mi/can-query? :model/Database
   ;; Check if user can execute queries against this database.
   ;; True if user has:
   ;; - Query builder access (create-queries permission), OR
-  ;; - Access to a published table in this database (EE feature)
+  ;; - Access to a published table in this database (EE feature), OR
+  ;; - Collection read access to a model or metric in this database (the query processor already
+  ;;   authorizes ad-hoc queries sourced from such cards via collection read perms alone)
   ([instance]
    (mi/can-query? :model/Database (u/the-id instance)))
   ([_model database-id]
@@ -153,7 +160,9 @@
                         :perms/create-queries
                         database-id))
             ;; Has published table access
-            (perms/user-has-published-table-permission-for-database? database-id)))))
+            (perms/user-has-published-table-permission-for-database? database-id)
+            ;; Has collection read access to a model or metric in this database
+            (perms/user-has-card-source-permission-for-database? database-id)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."

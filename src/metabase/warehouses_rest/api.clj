@@ -346,7 +346,12 @@
         where-clause (if filter-by-data-access?
                        [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))
+                                         ;; databases whose models/metrics the user can read via collection perms:
+                                         ;; ad-hoc queries sourced from those cards are authorized by collection
+                                         ;; read perms alone, so the database has to be visible for the query
+                                         ;; builder to work with them
+                                         (perms/card-source-databases-clause :id)]]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})

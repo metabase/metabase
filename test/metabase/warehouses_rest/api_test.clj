@@ -1191,6 +1191,55 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
+(deftest databases-list-card-source-visibility-test
+  (testing "GET /api/database"
+    (testing "a DB is listed when the user's only access to it is a readable model or metric (#79438)"
+      (doseq [card-type [:model :metric]]
+        (testing (format "card type = %s" card-type)
+          (mt/with-temp [:model/Database   {db-id :id}         {}
+                         :model/Table      {table-id :id}      {:db_id db-id}
+                         :model/Collection {collection-id :id} {}
+                         :model/Card       {card-id :id}       {:type          card-type
+                                                                :collection_id collection-id
+                                                                :dataset_query {:database db-id
+                                                                                :type     :query
+                                                                                :query    (cond-> {:source-table table-id}
+                                                                                            (= card-type :metric)
+                                                                                            (assoc :aggregation [[:count]]))}}]
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+              ;; new collections inherit perms from their parent (the root collection), so revoke those first
+              (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+              (let [db-ids #(into #{} (map :id) (:data (mt/user-http-request :rasta :get 200 "database")))]
+                (testing "not listed without collection read access"
+                  (is (not (contains? (db-ids) db-id))))
+                (testing "listed once the card's collection is readable"
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+                  (is (contains? (db-ids) db-id)))
+                (testing "the DB comes back without any tables — card access confers no table-level access"
+                  (let [db (m/find-first #(= (:id %) db-id)
+                                         (:data (mt/user-http-request :rasta :get 200 "database?include=tables")))]
+                    (is (some? db))
+                    (is (= [] (:tables db)))))
+                (testing "not listed when the card is archived"
+                  (t2/update! :model/Card card-id {:archived true})
+                  (is (not (contains? (db-ids) db-id))))))))))
+    (testing "a readable plain saved question does not make its DB listed"
+      (mt/with-temp [:model/Database   {db-id :id}         {}
+                     :model/Table      {table-id :id}      {:db_id db-id}
+                     :model/Collection {collection-id :id} {}
+                     :model/Card       _                   {:type          :question
+                                                            :collection_id collection-id
+                                                            :dataset_query {:database db-id
+                                                                            :type     :query
+                                                                            :query    {:source-table table-id}}}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+          (is (not (contains? (into #{} (map :id) (:data (mt/user-http-request :rasta :get 200 "database")))
+                              db-id))))))))
+
 (deftest databases-list-can-upload-test
   (mt/with-empty-h2-app-db!
     (testing "GET /api/database"

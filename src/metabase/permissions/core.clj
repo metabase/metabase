@@ -2,6 +2,7 @@
   "`permissions` module API namespace."
   {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
+   [metabase.permissions.card-sources]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
@@ -20,6 +21,7 @@
    [potemkin :as p]))
 
 (comment
+  metabase.permissions.card-sources/keep-me
   metabase.permissions.models.application-permissions-revision/keep-me
   metabase.permissions.models.collection-permission-graph-revision/keep-me
   metabase.permissions.models.collection.graph/keep-me
@@ -151,7 +153,11 @@
   user-published-table-permission
   user-has-any-published-table-permission?
   user-has-published-table-permission-for-database?
-  published-table-visible-clause])
+  published-table-visible-clause]
+ [metabase.permissions.card-sources
+  card-source-databases-clause
+  user-has-any-card-source-permission?
+  user-has-card-source-permission-for-database?])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 

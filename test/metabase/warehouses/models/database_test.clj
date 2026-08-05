@@ -272,6 +272,41 @@
                 "id"          3}
                (encode-decode pg-db)))))))
 
+(deftest can-read-can-query-with-card-source-test
+  (testing "can-read?/can-query? for Database consider collection read access to models and metrics (#79438)"
+    (mt/with-temp [:model/Database   {db-id :id}         {}
+                   :model/Table      {table-id :id}      {:db_id db-id}
+                   :model/Collection {collection-id :id} {}
+                   :model/Card       {card-id :id}       {:type          :model
+                                                          :collection_id collection-id
+                                                          :dataset_query {:database db-id
+                                                                          :type     :query
+                                                                          :query    {:source-table table-id}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) db-id :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries :no)
+        ;; new collections inherit perms from their parent (the root collection), so revoke those first
+        (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
+        (testing "not readable without collection read access to the model"
+          (request/with-current-user (mt/user->id :rasta)
+            (perms/disable-perms-cache
+              (is (not (mi/can-read? :model/Database db-id)))
+              (is (not (mi/can-query? :model/Database db-id))))))
+        (testing "readable and queryable once the model's collection is readable"
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
+          (request/with-current-user (mt/user->id :rasta)
+            (perms/disable-perms-cache
+              (is (mi/can-read? :model/Database db-id))
+              (is (mi/can-query? :model/Database db-id))
+              (testing "\nwhile the underlying table stays unreadable"
+                (is (not (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
+        (testing "an archived model no longer confers access"
+          (t2/update! :model/Card card-id {:archived true})
+          (request/with-current-user (mt/user->id :rasta)
+            (perms/disable-perms-cache
+              (is (not (mi/can-read? :model/Database db-id)))
+              (is (not (mi/can-query? :model/Database db-id))))))))))
+
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"

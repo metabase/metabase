@@ -1,6 +1,7 @@
 (ns metabase.permissions.user
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.permissions.card-sources :as card-sources]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.published-tables :as published-tables]
@@ -47,5 +48,8 @@
   (let [best (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)]
     {:can-create-queries        (boolean
                                  (or (data-perms/at-least-as-permissive? :perms/create-queries best :query-builder)
-                                     (published-tables/user-has-any-published-table-permission?)))
+                                     (published-tables/user-has-any-published-table-permission?)
+                                     ;; collection read access to a model or metric also allows
+                                     ;; building (card-sourced) queries
+                                     (card-sources/user-has-any-card-source-permission?)))
      :can-create-native-queries (= best :query-builder-and-native)}))
