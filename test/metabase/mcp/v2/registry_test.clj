@@ -220,3 +220,56 @@
                                                     :description "x"
                                                     :args        [:map [:x {:optional true} :string]]
                                                     :handler     (fn [_ _] nil)})))))
+
+;;; ------------------------------------- Write-tool scope invariants ----------------------------------------
+
+(def ^:private write-scopes
+  "The scopes a mutating tool may gate on. GHY-4225 collapsed the per-entity write scopes into
+   these two, so a mutating tool gating on anything else is a mistake until someone argues
+   otherwise here."
+  #{"agent:content:write" "agent:delivery:write"})
+
+(defn- mutating-tools
+  "Registered tools that declare they mutate, as `{name tool}`. Enumerated from the registry rather
+   than a hand-kept list, so a write tool landing tomorrow is covered the day it registers."
+  []
+  (into {}
+        (filter (fn [[_ tool]] (false? (get-in tool [:annotations :readOnlyHint]))))
+        @@#'registry/tools*))
+
+(deftest write-tools-are-annotated-as-mutating-test
+  (testing "a tool named `*_write` declares `:readOnlyHint false`. This guards the enumeration the
+            two tests below depend on: a write tool that omitted the annotation would drop out of
+            [[mutating-tools]] and silently lose its scope coverage rather than failing."
+    (let [tools     @@#'registry/tools*
+          mutating  (set (keys (mutating-tools)))
+          by-name   (filter #(str/ends-with? % "_write") (keys tools))]
+      (is (seq by-name) "no `*_write` tools registered — the check below would be vacuous")
+      (doseq [tool-name (sort by-name)]
+        (testing tool-name
+          (is (contains? mutating tool-name)))))))
+
+(deftest mutating-tools-gate-on-a-write-scope-test
+  (testing "every mutating tool gates on one of the write scopes, so a token can be granted read
+            access without also being able to change anything"
+    (let [tools (mutating-tools)]
+      (is (seq tools) "no mutating tools found — the assertions below would be vacuous")
+      (doseq [[tool-name tool] (sort-by key tools)]
+        (testing tool-name
+          (is (contains? write-scopes (:scope tool))))))))
+
+(deftest mutating-tools-refuse-a-read-only-token-test
+  (testing "the declared scope is actually enforced: a token holding only `agent:content:read`
+            cannot call any mutating tool. Asserted per tool rather than once on a placeholder,
+            because the gate is only as good as each tool's own `:scope`, and checked at call time
+            because being hidden from `tools/list` is a separate gate from being refused."
+    (let [tools (mutating-tools)]
+      (is (seq tools) "no mutating tools found — the assertions below would be vacuous")
+      (doseq [[tool-name _] (sort-by key tools)]
+        (testing tool-name
+          ;; `{}` suffices: the registry checks scope before it validates arguments, so a refusal
+          ;; here can't be an argument error wearing a scope error's clothes.
+          (let [result (registry/call-tool #{"agent:content:read"} nil tool-name {})]
+            (is (:isError result))
+            (is (= (str "Insufficient scope to call tool: " tool-name)
+                   (-> result :content first :text)))))))))
