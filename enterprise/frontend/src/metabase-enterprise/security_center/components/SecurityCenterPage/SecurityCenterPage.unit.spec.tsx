@@ -173,6 +173,28 @@ describe("SecurityCenterPage", () => {
     expect(advisoryLink).toHaveAttribute("target", "_blank");
   });
 
+  it("shows the first patched version for each affected version range", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "active",
+        affected_versions: [
+          { min: "0.58.0", fixed: "0.58.11" },
+          { min: "0.59.0", fixed: "0.59.11" },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(
+      screen.getByText(">= 0.58.0, < 0.58.11 (first patched version: 0.58.11)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(">= 0.59.0, < 0.59.11 (first patched version: 0.59.11)"),
+    ).toBeInTheDocument();
+  });
+
   it("renders a single download button for the fix matching the instance's major version", async () => {
     const advisories = [
       createAdvisory({

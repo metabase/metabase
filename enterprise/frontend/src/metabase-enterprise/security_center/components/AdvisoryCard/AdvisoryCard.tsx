@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useSetting } from "metabase/settings";
 import {
@@ -79,10 +79,13 @@ export function AdvisoryCard({
           <Box>
             <Text fw={700} mb="xs">{t`Affected versions`}</Text>
             <List size="sm">
-              {advisory.affected_versions.map((v) => (
-                <List.Item
-                  key={`${v.min}-${v.fixed}`}
-                >{`>= ${v.min}, < ${v.fixed}`}</List.Item>
+              {advisory.affected_versions.map((range) => (
+                <List.Item key={`${range.min}-${range.fixed}`}>
+                  {c(
+                    "{0} and {1} are version numbers; {1} is also the first version containing the fix",
+                  )
+                    .t`>= ${range.min}, < ${range.fixed} (first patched version: ${range.fixed})`}
+                </List.Item>
               ))}
             </List>
           </Box>
