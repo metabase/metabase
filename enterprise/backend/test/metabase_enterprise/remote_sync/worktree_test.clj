@@ -5,6 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -116,3 +118,60 @@
       (testing "other worktrees and the main app are untouched"
         (is (t2/exists? :model/Transform :id other-tf))
         (is (t2/exists? :model/Transform :id main-tf))))))
+
+;;; ------------------------------------------- Pulling into a worktree -------------------------------------------
+
+(def ^:private pull-coll-eid "wt-pull-collectionxxx")
+(def ^:private pull-card-eid "wt-pull-cardxxxxxxxxx")
+
+(defn- pull-files
+  "A branch holding one remote-synced collection with one card in it."
+  []
+  {"main" {"collections/wt_pull_collection/wt_pull_collection.yaml"
+           (rs.test/generate-collection-yaml pull-coll-eid "WT Pull Collection")
+
+           "collections/wt_pull_collection/cards/wt_pull_card.yaml"
+           (rs.test/generate-card-yaml pull-card-eid "WT Pull Card" pull-coll-eid)}})
+
+(defn- pull!
+  "Runs a pull of [[pull-files]] into `worktree-id` (nil is the main app)."
+  [worktree-id]
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                         {:sync_task_type "import"
+                                          :initiated_by   (mt/user->id :crowberto)
+                                          :worktree_id    worktree-id})]
+    (binding [serdes/*worktree-id* worktree-id]
+      (let [result (impl/import! (source.p/snapshot (rs.test/create-mock-source :initial-files (pull-files)))
+                                 task-id)]
+        (impl/handle-task-result! result task-id)
+        result))))
+
+(deftest pull-checks-out-cards-into-the-worktree-test
+  (testing "a worktree pull checks out the branch's cards as its own copies"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}]
+          ;; the branch's card names the test-data database; materialize it before the pull looks it up
+          (mt/id)
+          (is (= :success (:status (pull! nil))) "the main app pulls the branch first")
+          (let [main-card (t2/select-one :model/Card :entity_id pull-card-eid)]
+            (is (some? main-card) "the main app has the branch's card")
+            (is (nil? (:worktree_id main-card)))
+            (is (= :success (:status (pull! wt-id))) "then the same branch is checked out into a worktree")
+            (let [wt-cards (t2/select :model/Card :worktree_id wt-id)]
+              (testing "the worktree gets a copy of its own"
+                (is (= 1 (count wt-cards)))
+                (is (= "WT Pull Card" (:name (first wt-cards))))
+                (is (not= (:id main-card) (:id (first wt-cards)))))
+              (testing "under an entity_id of its own, remapped back to what the branch calls it"
+                (is (not= pull-card-eid (:entity_id (first wt-cards))))
+                (is (= pull-card-eid
+                       (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
+                                         :worktree_id     wt-id
+                                         :type            "Card"
+                                         :local_entity_id (:entity_id (first wt-cards))))))
+              (testing "and it lands in the worktree's copy of the collection, not the main app's"
+                (is (= wt-id (t2/select-one-fn :worktree_id :model/Collection
+                                               :id (:collection_id (first wt-cards)))))))
+            (testing "the main app's card is left alone"
+              (is (= main-card (t2/select-one :model/Card :id (:id main-card)))))))))))
