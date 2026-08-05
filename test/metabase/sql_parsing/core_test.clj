@@ -805,3 +805,17 @@
               (sql-parsing/referenced-tables "postgres" "SELECT !!!")
               (catch Exception e e))]
       (is (sql-parsing/parse-error? e)))))
+
+;;; ---------------------------------------- Non-scopable statements (#79025) ---------------------------------------
+;;; SQLGlot's optimizer.build_scope returns None for statements outside Query/DDL/DML -- these parse
+;;; fine but aren't "queries" in the sense that has a scope to traverse, so referenced-tables/fields
+;;; should just report no references instead of blowing up trying to call .traverse() on None.
+
+(deftest ^:parallel non-scopable-statement-test
+  (doseq [sql ["SHOW TIMEZONE"
+               "SET search_path TO x"
+               "EXPLAIN SELECT 1"
+               "TRUNCATE TABLE foo"]]
+    (testing sql
+      (is (= [] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (= [] (sql-parsing/referenced-fields "postgres" sql))))))
