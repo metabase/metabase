@@ -1,14 +1,19 @@
-import { t } from "ttag";
+import { PermissionsBasePath } from "metabase/admin/permissions/components/PermissionsBasePath";
+import { Outlet } from "metabase/router";
+import * as Urls from "metabase/urls";
 
-import { EmbeddingHubPlaceholderPage } from "./EmbeddingHubPlaceholderPage";
-
-// TODO (Kelvin 2026-07-31) item 15 of 01-questions-for-roman.md: waiting on Alessio to confirm the tab shows Data and Collections only, scoped to tenant and guest groups, with Application excluded. The reuse pattern is settled — compose PermissionsEditor with scoped selectors, the way TenantCollectionPermissionsPage already does.
+/**
+ * The admin permissions editor, mounted a second time under the hub. Admin
+ * permissions does not change.
+ *
+ * The tab set is whatever the admin editor already has — five when tenants are
+ * on — rather than a narrowed copy, so there is no forked component to keep in
+ * sync.
+ */
 export function EmbeddingHubPermissionsPage() {
   return (
-    <EmbeddingHubPlaceholderPage
-      title={t`Permissions`}
-      currentLocationLabel={t`Permissions`}
-      currentLocationUrl="/admin/permissions"
-    />
+    <PermissionsBasePath basePath={Urls.embeddingHubPermissions()}>
+      <Outlet />
+    </PermissionsBasePath>
   );
 }

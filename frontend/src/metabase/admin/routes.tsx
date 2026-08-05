@@ -23,6 +23,7 @@ import { UserActivationModal } from "metabase/admin/people/containers/UserActiva
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
+import { PermissionsBasePath } from "metabase/admin/permissions/components/PermissionsBasePath";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
 import {
   EmbeddingSecuritySettings,
@@ -259,7 +260,9 @@ export const getRoutes = (
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
-          {getAdminPermissionsRoutes()}
+          <Route element={<PermissionsBasePath />}>
+            {getAdminPermissionsRoutes()}
+          </Route>
         </Route>
 
         {/* PERFORMANCE */}
