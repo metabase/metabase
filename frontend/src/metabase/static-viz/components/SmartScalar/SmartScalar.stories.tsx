@@ -3,8 +3,8 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
-import { colors } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
+import { colors } from "metabase/ui/colors";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
