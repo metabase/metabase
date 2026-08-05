@@ -166,7 +166,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "telescope",
         perform: () => {
           dispatch(closeModal());
-          dispatch(push(Urls.newExploration()));
+          navigate(Urls.newExploration());
         },
       });
     }

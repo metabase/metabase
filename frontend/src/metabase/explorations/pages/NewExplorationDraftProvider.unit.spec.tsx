@@ -46,7 +46,7 @@ function setup() {
     return selection;
   });
 
-  const { history, store } = renderWithProviders(
+  const { router, store } = renderWithProviders(
     // mirrors the prod route structure: the provider wraps only the
     // entry + plan routes, not the `:id` detail routes
     <Route path="/question/research">
@@ -78,7 +78,7 @@ function setup() {
   const getDraftMessages = () => getMessages(store.getState(), "explorations");
 
   return {
-    history,
+    router,
     submitDraftMessage,
     getDraftMessages,
     useExplorationSelection: jest.mocked(useExplorationSelection),
@@ -93,11 +93,11 @@ describe("NewExplorationDraftProvider", () => {
   });
 
   it("keeps one draft and conversation across the plan step and browser back/forward (UXW-4832)", () => {
-    const { history, submitDraftMessage, getDraftMessages } = setup();
+    const { router, submitDraftMessage, getDraftMessages } = setup();
 
     submitDraftMessage();
     act(() => {
-      history?.push("/question/research/plan");
+      router?.navigate("/question/research/plan");
     });
 
     // shared draft, and no conversation reset that would cancel the agent run
@@ -107,10 +107,10 @@ describe("NewExplorationDraftProvider", () => {
     expect(getDraftMessages()).toHaveLength(1);
 
     act(() => {
-      history?.goBack();
+      router?.back();
     });
     act(() => {
-      history?.goForward();
+      router?.forward();
     });
 
     expect(mockRendered.entry).toBe(shared);
@@ -120,7 +120,7 @@ describe("NewExplorationDraftProvider", () => {
 
   it("does not mount the draft on the exploration detail routes", () => {
     const {
-      history,
+      router,
       submitDraftMessage,
       getDraftMessages,
       useExplorationSelection,
@@ -130,7 +130,7 @@ describe("NewExplorationDraftProvider", () => {
     useExplorationSelection.mockClear();
 
     act(() => {
-      history?.push("/question/research/123");
+      router?.navigate("/question/research/123");
     });
 
     expect(screen.getByTestId("detail-page")).toBeInTheDocument();
@@ -139,17 +139,17 @@ describe("NewExplorationDraftProvider", () => {
   });
 
   it("starts a fresh draft and conversation on an explicit new visit to the entry page", () => {
-    const { history, submitDraftMessage, getDraftMessages } = setup();
+    const { router, submitDraftMessage, getDraftMessages } = setup();
 
     submitDraftMessage();
     act(() => {
-      history?.push("/question/research/plan");
+      router?.navigate("/question/research/plan");
     });
     const shared = mockRendered.plan;
 
     // what the "All projects" link does
     act(() => {
-      history?.push("/question/research");
+      router?.navigate("/question/research");
     });
 
     expect(mockRendered.entry).not.toBe(shared);

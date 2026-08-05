@@ -14,8 +14,7 @@ import {
   type ExplorationSidebarTab,
   isExplorationSidebarTab,
 } from "metabase/explorations/types";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
   Box,
@@ -81,7 +80,7 @@ export function ExplorationSidebar({
   sortOrder,
   onChangeSortOrder,
 }: ExplorationSidebarProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const treeController = useTree({
     data: tree,
     selectedId: selectedPageId ?? undefined,
@@ -231,7 +230,7 @@ export function ExplorationSidebar({
                 value !== selectedSidebarTab
               ) {
                 trackExplorationSidebarTabChanged(exploration.id, value);
-                dispatch(push(getSelectedSidebarTabUrl(value)));
+                navigate(getSelectedSidebarTabUrl(value));
               }
             }}
             data={Object.values(explorationSidebarTabsInfo).map(

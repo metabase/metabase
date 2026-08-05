@@ -3,8 +3,7 @@ import { t } from "ttag";
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
-import { useDispatch } from "metabase/redux";
-import { type Path, push, useLocation } from "metabase/router";
+import { type Path, useLocation, useNavigate } from "metabase/router";
 import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type {
@@ -30,7 +29,7 @@ export function ExplorationVisualizationHeader({
   isCommentsSidebarOpen,
   showCommentsButton,
 }: ExplorationVisualizationHeaderProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
   const nextCommentsUrl = getNextCommentsUrl(location);
   const { allCommentsCount } = useUnresolvedCommentsCount({
@@ -57,7 +56,7 @@ export function ExplorationVisualizationHeader({
         isCommentsSidebarOpen ? "1px solid border-strong" : "1px solid border"
       }
       onClick={() => {
-        dispatch(push(nextCommentsUrl));
+        navigate(nextCommentsUrl);
       }}
     />
   ) : null;

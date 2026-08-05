@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { push, useLocation, useParams } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -106,6 +106,7 @@ export function ExplorationPage() {
 
 function ExplorationPageForId() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { id = "", pageId } = useParams<ExplorationPageParams>();
   const params = { id, pageId };
   const location = useLocation();
@@ -141,8 +142,8 @@ function ExplorationPageForId() {
     const search = new URLSearchParams(location.search);
     search.delete("comments");
     const query = search.toString();
-    dispatch(push(`${location.pathname}${query ? `?${query}` : ""}`));
-  }, [isCommentsSidebarOpen, location.search, location.pathname, dispatch]);
+    navigate(`${location.pathname}${query ? `?${query}` : ""}`);
+  }, [isCommentsSidebarOpen, location.search, location.pathname, navigate]);
 
   const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
@@ -169,9 +170,9 @@ function ExplorationPageForId() {
       if (options?.scrollIntoView) {
         shouldScrollSelectionRef.current = true;
       }
-      dispatch(push(getSelectedPageUrl(pageId, options)));
+      navigate(getSelectedPageUrl(pageId, options));
     },
-    [dispatch, getSelectedPageUrl],
+    [navigate, getSelectedPageUrl],
   );
 
   // Poll the exploration while any query is still in a non-terminal state.
@@ -290,7 +291,7 @@ function ExplorationPageForId() {
   // (e.g. user landed on `/explorations/:id` directly), fall back to
   // the first query so the sidebar highlight, the scroll anchor, and
   // the right-pane chart all agree on the very first paint — without
-  // waiting for the URL-sync effect below to dispatch a `push()`.
+  // waiting for the URL-sync effect below to navigate().
   //
   // Once the URL update lands the fallback drops out (params take
   // precedence) and the URL becomes authoritative again.
@@ -479,11 +480,9 @@ function ExplorationPageForId() {
         search.set(TIMELINE_QUERY_PARAM, String(timelineId));
       }
       const searchString = search.toString();
-      dispatch(
-        push(`${location.pathname}${searchString ? `?${searchString}` : ""}`),
-      );
+      navigate(`${location.pathname}${searchString ? `?${searchString}` : ""}`);
     },
-    [dispatch, location.pathname, location.search],
+    [navigate, location.pathname, location.search],
   );
 
   if (isLoading || error) {

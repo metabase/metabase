@@ -63,7 +63,7 @@ describe("route-guards", () => {
         settings: createMockSettingsState({ "has-user-setup": true }),
       });
 
-      const { history } = renderWithProviders(
+      const { router } = renderWithProviders(
         <>
           <Route element={<IsAuthenticated />}>
             <Route path="/dashboard/:slug" element={<Protected />} />
@@ -80,14 +80,12 @@ describe("route-guards", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+        expect(router?.location.pathname).toBe("/auth/login");
       });
 
-      expect(
-        new URLSearchParams(history!.getCurrentLocation().search).get(
-          "redirect",
-        ),
-      ).toBe("/dashboard/123?comments=true#comment-5");
+      expect(new URLSearchParams(router!.location.search).get("redirect")).toBe(
+        "/dashboard/123?comments=true#comment-5",
+      );
     });
   });
 

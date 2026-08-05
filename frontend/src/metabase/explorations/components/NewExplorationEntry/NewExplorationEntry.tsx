@@ -6,7 +6,6 @@ import { useGetMyExplorationsQuery } from "metabase/api";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
-import { useUserSetting } from "metabase/common/hooks/use-setting/use-setting";
 import {
   trackExplorationAgentMessageSent,
   trackExplorationManualSetupClicked,
@@ -19,8 +18,8 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
+import { useUserSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -62,11 +61,11 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
     },
   ] = useDisclosure(false);
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const goToPlanPage = useCallback(() => {
-    dispatch(push(Urls.newExplorationPlan()));
-  }, [dispatch]);
+    navigate(Urls.newExplorationPlan());
+  }, [navigate]);
 
   const handleManualSetup = useCallback(() => {
     trackExplorationManualSetupClicked();

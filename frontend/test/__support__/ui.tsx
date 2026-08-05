@@ -386,6 +386,7 @@ export function TestWrapper({
 export type TestRouter = {
   navigate(to: string, options?: { replace?: boolean }): void;
   back(): void;
+  forward(): void;
   readonly location: Location;
   /**
    * Observe every location the router passes through, for specs asserting on
@@ -412,6 +413,9 @@ function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
     },
     back: () => {
       requireRouter().navigate(-1);
+    },
+    forward: () => {
+      requireRouter().navigate(1);
     },
     get location() {
       // `toFacadeLocation` normalizes `state` from v7's `null` to `undefined`,

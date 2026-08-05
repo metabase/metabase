@@ -15,8 +15,8 @@ import type {
 } from "metabase/explorations/hooks";
 import { isMetricBlock } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -121,7 +121,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     toggleMetricSelected,
     removeTimelinesById,
   } = selection;
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const applicationName = useSelector(getApplicationName);
 
@@ -183,7 +183,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     try {
       const exploration = await createExploration(request).unwrap();
       trackExplorationCreated(exploration.id);
-      dispatch(push(Urls.exploration(exploration.id)));
+      navigate(Urls.exploration(exploration.id));
     } catch (error) {
       console.error(error);
       sendToast({
@@ -194,7 +194,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     }
   }, [
     createExploration,
-    dispatch,
+    navigate,
     messages,
     blocks,
     timelines,

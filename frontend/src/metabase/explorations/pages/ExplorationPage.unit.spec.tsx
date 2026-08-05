@@ -217,9 +217,9 @@ describe("ExplorationPage thread-ready toasts", () => {
   });
 
   it("navigates to the new page with tab=all and preserves unrelated query params when View is clicked", async () => {
-    const { history } = renderExplorationPage();
-    if (!history) {
-      throw new Error("expected router history");
+    const { router } = renderExplorationPage();
+    if (!router) {
+      throw new Error("expected router");
     }
 
     explorationData = makeExploration([
@@ -249,11 +249,9 @@ describe("ExplorationPage thread-ready toasts", () => {
     });
 
     await waitFor(() => {
-      expect(history.getCurrentLocation().pathname).toContain("/page/200");
+      expect(router.location.pathname).toContain("/page/200");
       expect(
-        Object.fromEntries(
-          new URLSearchParams(history.getCurrentLocation().search),
-        ),
+        Object.fromEntries(new URLSearchParams(router.location.search)),
       ).toMatchObject({
         tab: "all",
         timeline: "1",
@@ -263,9 +261,9 @@ describe("ExplorationPage thread-ready toasts", () => {
   });
 
   it("does not toast about existing threads when navigating to a different exploration", async () => {
-    const { history } = renderExplorationPage();
-    if (!history) {
-      throw new Error("expected router history");
+    const { router } = renderExplorationPage();
+    if (!router) {
+      throw new Error("expected router");
     }
     expect(sendToastMock).not.toHaveBeenCalled();
 
@@ -290,7 +288,7 @@ describe("ExplorationPage thread-ready toasts", () => {
       id: 2,
     };
     act(() => {
-      history.push("/question/research/2/page/700");
+      router.navigate("/question/research/2/page/700");
     });
 
     expect(screen.getByTestId("group-viz")).toBeInTheDocument();
