@@ -9,19 +9,20 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { Stack } from "metabase/ui";
 
 /**
- * Content translation is the embedding hub's Localization tab in its entirety,
- * and it is paid, so below the paywall the tab would otherwise be blank.
+ * The embedding hub's Authentication tab below the paywall.
  *
- * Showing an upsell keeps the hub's tab set the same seven on every edition.
+ * Not `UpsellSSO`: that one is the narrow sidebar card from admin
+ * authentication and hardcodes `maxWidth: 242`, so it renders squished as a
+ * page-level upsell. This follows the same shape as `UpsellTenants` and
+ * `UpsellEmbeddingTheme`, which is what the design shows.
  *
- * No Figma frame exists for this one yet, so the copy is a placeholder and
- * there is deliberately no illustration: borrowing another upsell's artwork
- * (it was using the themes one) makes a pending design look finished.
- * `UpsellCardContent` renders a narrower text-only card without an image.
+ * No illustration yet — the design has one (a key and lock) that has not been
+ * exported. `UpsellCardContent` renders a narrower text-only card without it,
+ * which reads as deliberate rather than broken.
  */
-export const UpsellContentTranslation = ({ source }: { source: string }) => {
-  const hasContentTranslation = useHasTokenFeature("content_translation");
-  const campaign = "content-translation";
+export const UpsellEmbeddingSso = ({ source }: { source: string }) => {
+  const hasSsoJwt = useHasTokenFeature("sso_jwt");
+  const campaign = "embedding-sso";
 
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: UPGRADE_URL,
@@ -29,7 +30,7 @@ export const UpsellContentTranslation = ({ source }: { source: string }) => {
     location: source,
   });
 
-  if (hasContentTranslation) {
+  if (hasSsoJwt) {
     return null;
   }
 
@@ -40,8 +41,8 @@ export const UpsellContentTranslation = ({ source }: { source: string }) => {
           <UpsellCardContent
             campaign={campaign}
             location={source}
-            title={t`Translate your embedded content`}
-            description={t`Upload a dictionary so dashboard, question and column names appear in each viewer's own language.`}
+            title={t`Secure your embeds with single sign-on`}
+            description={t`Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
           />

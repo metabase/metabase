@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellSSO } from "metabase/admin/upsells";
+import { UpsellEmbeddingSso } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
@@ -21,7 +21,7 @@ export function EmbeddingHubAuthenticationPage() {
   if (!hasSsoJwt) {
     return (
       <SettingsPageWrapper title={t`Authentication`}>
-        <UpsellSSO location="embedding-hub-authentication" />
+        <UpsellEmbeddingSso source="embedding-hub-authentication" />
       </SettingsPageWrapper>
     );
   }
