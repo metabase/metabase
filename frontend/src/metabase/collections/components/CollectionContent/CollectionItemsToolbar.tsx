@@ -12,7 +12,7 @@ export function CollectionItemsToolbar({
   onSearchTextChange,
 }: CollectionItemsToolbarProps) {
   return (
-    <Flex gap="md" mt="lg" mb="lg" data-testid="collection-items-toolbar">
+    <Flex gap="md" mt="3rem" mb="md" data-testid="collection-items-toolbar">
       <TextInput
         flex="1"
         bdrs="md"

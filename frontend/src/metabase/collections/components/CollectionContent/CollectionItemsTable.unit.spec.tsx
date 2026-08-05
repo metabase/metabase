@@ -214,10 +214,8 @@ describe("CollectionItemsTable", () => {
     expect(
       await screen.findByRole("button", { name: "Clear search" }),
     ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Customer 360")).toBeInTheDocument();
+    expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+    expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clear search" }));
 
@@ -251,6 +249,47 @@ describe("CollectionItemsTable", () => {
     expect(searchParams.get("q")).toBe("orders");
     expect(searchParams.get("offset")).toBe("0");
     expect(await screen.findByText("Orders model")).toBeInTheDocument();
+  });
+
+  it("shows a loading state while a search request is in flight", async () => {
+    const user = setupUserWithFakeTimers();
+    setup();
+    const searchInput = await screen.findByPlaceholderText(
+      "Search by name or editor...",
+    );
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+
+    await user.type(searchInput, "customer");
+    advanceSearchDebounce();
+
+    expect(screen.getByTestId("collection-items-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("collection-table")).not.toBeInTheDocument();
+    expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    expect(screen.getByTestId("collection-items-toolbar")).toBeInTheDocument();
+    expect(searchInput).toHaveValue("customer");
+
+    expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("collection-items-loading"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the filtered empty state while a search request is in flight", async () => {
+    const user = setupUserWithFakeTimers();
+    setup();
+
+    await user.type(
+      await screen.findByPlaceholderText("Search by name or editor..."),
+      "not found",
+    );
+    advanceSearchDebounce();
+
+    expect(screen.getByTestId("collection-items-loading")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("collection-filter-empty-state"),
+    ).not.toBeInTheDocument();
+
+    expect(await screen.findByText("Didn't find anything")).toBeInTheDocument();
   });
 
   it("shows a filtered empty state when search has no matches", async () => {
