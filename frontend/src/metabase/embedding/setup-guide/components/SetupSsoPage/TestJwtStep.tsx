@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import { useHelpUrl } from "metabase/embedding/embedding-hub/hooks";
+import { useHelpUrl } from "metabase/embedding/setup-guide/hooks";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 

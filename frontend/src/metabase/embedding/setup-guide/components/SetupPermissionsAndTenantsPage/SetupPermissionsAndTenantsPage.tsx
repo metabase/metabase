@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { Link } from "metabase/common/components/Link";
-import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
-import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
+import { OnboardingStepper } from "metabase/embedding/setup-guide/components/OnboardingStepper";
+import type { OnboardingStepperHandle } from "metabase/embedding/setup-guide/components/OnboardingStepper/types";
 import {
   type CreatedTenantData,
   PLUGIN_TENANTS,

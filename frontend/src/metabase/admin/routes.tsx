@@ -11,7 +11,7 @@ import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListA
 import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
-import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
+import { SetupGuideAdminSettingsPage } from "metabase/admin/embedding/setup-guide";
 import { Help } from "metabase/admin/help";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -33,7 +33,7 @@ import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
-} from "metabase/embedding/embedding-hub";
+} from "metabase/embedding/setup-guide";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -192,7 +192,7 @@ export const getRoutes = (
             <Route index element={<EmbeddingSettings />} />
 
             <Route path="setup-guide">
-              <Route index element={<EmbeddingHubAdminSettingsPage />} />
+              <Route index element={<SetupGuideAdminSettingsPage />} />
 
               <Route
                 path="permissions"

@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { EmbeddingHub } from "metabase/embedding/embedding-hub";
+import { SetupGuide } from "metabase/embedding/setup-guide";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 
@@ -58,7 +58,7 @@ export const EmbeddingHubHomePage = (): ReactNode => {
         </Menu>
       </Group>
 
-      <EmbeddingHub />
+      <SetupGuide />
 
       <CustomHomePageModal
         isOpen={isCustomHomePageModalOpened}

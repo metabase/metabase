@@ -5,11 +5,11 @@ import {
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { EmbeddingHub } from "metabase/embedding/embedding-hub";
+import { SetupGuide } from "metabase/embedding/setup-guide";
 import { useSetting } from "metabase/settings";
 import { Stack, Text, Title } from "metabase/ui";
 
-export const EmbeddingHubAdminSettingsPage = () => {
+export const SetupGuideAdminSettingsPage = () => {
   const isUsingTenants = useSetting("use-tenants");
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
@@ -21,7 +21,7 @@ export const EmbeddingHubAdminSettingsPage = () => {
         <Text c="text-secondary">{t`Follow the guide to get started with modular embedding`}</Text>
       </Stack>
 
-      <EmbeddingHub />
+      <SetupGuide />
 
       <Stack ml="2.7rem">
         <RelatedSettingsSection

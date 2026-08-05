@@ -15,14 +15,14 @@ import type {
   EmbeddingHubStepId,
 } from "../types/embedding-checklist";
 
-import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
+import { SetupGuideXrayPickerModal } from "./SetupGuideXrayPickerModal";
 import {
   type StepperCardClickAction,
   type StepperStep,
   StepperWithCards,
 } from "./StepperWithCards/StepperWithCards";
 
-export const EmbeddingHub = () => {
+export const SetupGuide = () => {
   const embeddingSteps = useGetEmbeddingHubSteps();
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
 
@@ -116,7 +116,7 @@ export const EmbeddingHub = () => {
         opened={openedModal?.type === "new-dashboard"}
         onClose={closeModal}
       />
-      <EmbeddingHubXrayPickerModal
+      <SetupGuideXrayPickerModal
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
       />

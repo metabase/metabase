@@ -12,15 +12,15 @@ import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { TableId } from "metabase-types/api";
 
-interface EmbeddingHubXrayPickerModalProps {
+interface SetupGuideXrayPickerModalProps {
   opened: boolean;
   onClose: () => void;
 }
 
-export const EmbeddingHubXrayPickerModal = ({
+export const SetupGuideXrayPickerModal = ({
   opened,
   onClose,
-}: EmbeddingHubXrayPickerModalProps) => {
+}: SetupGuideXrayPickerModalProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [fetchXrayDashboard] = useLazyGetXrayDashboardQuery();

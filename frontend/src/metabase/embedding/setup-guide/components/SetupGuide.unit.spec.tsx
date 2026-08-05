@@ -25,7 +25,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { EmbeddingHub } from "./EmbeddingHub";
+import { SetupGuide } from "./SetupGuide";
 
 const setup = ({ isAdmin = true, checklist = {} } = {}) => {
   mockGetBoundingClientRect();
@@ -78,13 +78,13 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
     "data-isolation-strategy": null,
   });
 
-  return renderWithProviders(<EmbeddingHub />, {
+  return renderWithProviders(<SetupGuide />, {
     storeInitialState: state,
     withUndos: true,
   });
 };
 
-describe("EmbeddingHub", () => {
+describe("SetupGuide", () => {
   it("opens AddDataModal when 'Connect a database' is clicked", async () => {
     setup();
 
