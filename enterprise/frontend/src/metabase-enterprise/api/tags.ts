@@ -25,6 +25,7 @@ import {
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
+  type Worktree,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -50,6 +51,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
+  "worktree",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -82,6 +84,21 @@ export function invalidateTags(
 
 export function provideMfaStatusTags(): TagDescription<EnterpriseTagType>[] {
   return [tag("mfa-status")];
+}
+
+export function provideWorktreeListTags(
+  worktrees: Worktree[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("worktree"), ...worktrees.flatMap(provideWorktreeTags)];
+}
+
+export function provideWorktreeTags(
+  worktree: Worktree,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("worktree", worktree.id),
+    ...(worktree.creator != null ? provideUserTags(worktree.creator) : []),
+  ];
 }
 
 export function providePythonLibraryTags(

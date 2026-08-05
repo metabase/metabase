@@ -522,6 +522,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
+              [:= :worktree_id (:worktree_id collection)]
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=

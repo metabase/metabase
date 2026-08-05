@@ -532,6 +532,7 @@
                      (->> (t2/select [:model/Transform :id :name :description
                                       :source_database_id :source]
                                      :source_database_id db-id
+                                     :worktree_id nil
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)

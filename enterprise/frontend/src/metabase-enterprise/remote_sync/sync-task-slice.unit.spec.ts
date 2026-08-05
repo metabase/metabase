@@ -1,4 +1,4 @@
-import type { RemoteSyncTask } from "metabase-types/api";
+import { createMockRemoteSyncTask } from "metabase-types/api/mocks";
 
 import {
   initialState,
@@ -26,7 +26,7 @@ describe("sync-task-slice", () => {
       expect(state.showModal).toBe(true);
 
       // Try to update with export task data
-      const exportTaskUpdate: RemoteSyncTask = {
+      const exportTaskUpdate = createMockRemoteSyncTask({
         id: 1,
         sync_task_type: "export",
         status: "successful",
@@ -34,9 +34,8 @@ describe("sync-task-slice", () => {
         started_at: new Date().toISOString(),
         ended_at: new Date().toISOString(),
         last_progress_report_at: new Date().toISOString(),
-        error_message: null,
         initiated_by: 1,
-      };
+      });
 
       state = remoteSyncReducer(state, taskUpdated(exportTaskUpdate));
 
@@ -56,7 +55,7 @@ describe("sync-task-slice", () => {
       expect(state.currentTask?.sync_task_type).toBe("import");
 
       // Update import task with new data
-      const importTaskUpdate: RemoteSyncTask = {
+      const importTaskUpdate = createMockRemoteSyncTask({
         id: 1,
         sync_task_type: "import",
         status: "successful",
@@ -64,9 +63,8 @@ describe("sync-task-slice", () => {
         started_at: new Date().toISOString(),
         ended_at: new Date().toISOString(),
         last_progress_report_at: new Date().toISOString(),
-        error_message: null,
         initiated_by: 1,
-      };
+      });
 
       state = remoteSyncReducer(state, taskUpdated(importTaskUpdate));
 
@@ -84,7 +82,7 @@ describe("sync-task-slice", () => {
       expect(state.currentTask).toBeNull();
 
       // Update with export task data
-      const exportTaskUpdate: RemoteSyncTask = {
+      const exportTaskUpdate = createMockRemoteSyncTask({
         id: 1,
         sync_task_type: "export",
         status: "successful",
@@ -92,9 +90,8 @@ describe("sync-task-slice", () => {
         started_at: new Date().toISOString(),
         ended_at: new Date().toISOString(),
         last_progress_report_at: new Date().toISOString(),
-        error_message: null,
         initiated_by: 1,
-      };
+      });
 
       state = remoteSyncReducer(state, taskUpdated(exportTaskUpdate));
 

@@ -48,7 +48,7 @@
   Returns the id, so it can be threaded straight into the sync functions."
   [worktree-id]
   (when worktree-id
-    (api/check-404 (t2/exists? :model/RemoteSyncWorktree :id worktree-id)))
+    (api/check-404 (t2/exists? :model/Worktree :id worktree-id)))
   worktree-id)
 
 (defn- effective-branch
@@ -56,7 +56,7 @@
   else the `remote-sync-branch` setting (the main app)."
   [worktree-id]
   (or (when worktree-id
-        (t2/select-one-fn :branch :model/RemoteSyncWorktree :id worktree-id))
+        (t2/select-one-fn :branch :model/Worktree :id worktree-id))
       (settings/remote-sync-branch)))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -412,14 +412,14 @@
 (api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
   "List the remote-sync worktrees the current user can read; worktrees are superuser-only."
   []
-  (-> (t2/select :model/RemoteSyncWorktree {:order-by [[:id :asc]]})
+  (-> (t2/select :model/Worktree {:order-by [[:id :asc]]})
       (->> (filterv mi/can-read?))
       (t2/hydrate :creator)))
 
 (api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
   "Get a single remote-sync worktree by id. Requires superuser permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (-> (api/read-check :model/RemoteSyncWorktree id)
+  (-> (api/read-check :model/Worktree id)
       (t2/hydrate :creator)))
 
 (api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
@@ -429,15 +429,15 @@
   [_route
    _query
    {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
-  (api/create-check :model/RemoteSyncWorktree {:branch branch})
+  (api/create-check :model/Worktree {:branch branch})
   (let [taken (format "A worktree for branch '%s' already exists." branch)]
-    (api/check-400 (not (t2/exists? :model/RemoteSyncWorktree :branch branch)) taken)
+    (api/check-400 (not (t2/exists? :model/Worktree :branch branch)) taken)
     ;; the unique index is the real arbiter: two requests can both pass the check above
     (-> (try
-          (t2/insert-returning-instance! :model/RemoteSyncWorktree
+          (t2/insert-returning-instance! :model/Worktree
                                          {:branch branch :creator_id api/*current-user-id*})
           (catch Exception e
-            (if (t2/exists? :model/RemoteSyncWorktree :branch branch)
+            (if (t2/exists? :model/Worktree :branch branch)
               (throw (ex-info taken {:status-code 400} e))
               (throw e))))
         (t2/hydrate :creator))))
@@ -446,7 +446,7 @@
   "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser
   permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (impl/delete-worktree! (:id (api/write-check :model/RemoteSyncWorktree id)))
+  (impl/delete-worktree! (:id (api/write-check :model/Worktree id)))
   nil)
 
 (def ^{:arglists '([request respond raise])} routes

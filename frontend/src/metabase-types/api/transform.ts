@@ -4,6 +4,7 @@ import type { RowValue } from "./dataset";
 import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
+import type { WorktreeId } from "./remote-sync";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
@@ -36,6 +37,7 @@ export type Transform = {
   source_type: TransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
+  worktree_id: WorktreeId | null;
   created_at: string;
   updated_at: string;
   source_readable: boolean;
@@ -267,6 +269,7 @@ export type TransformRunForJobRun = TransformRun & {
 export type TransformTag = {
   id: TransformTagId;
   name: string;
+  worktree_id: WorktreeId | null;
   created_at: string;
   updated_at: string;
   can_run: boolean;

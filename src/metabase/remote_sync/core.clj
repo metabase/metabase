@@ -17,12 +17,12 @@
   "Returns `worktree-id`, 404ing when it names no remote-sync worktree. The FK would reject a bogus id anyway,
   but as a 500 rather than the 404 the remote-sync endpoints give for the same input.
 
-  Queries the table rather than `:model/RemoteSyncWorktree`: the model is enterprise-only, while the table and
+  Queries the table rather than `:model/Worktree`: the model is enterprise-only, while the table and
   its foreign keys exist on both editions."
   [worktree-id]
   (when worktree-id
     (api/check-404 (seq (t2/query {:select [[[:inline 1] :one]]
-                                   :from   [:remote_sync_worktree]
+                                   :from   [:worktree]
                                    :where  [:= :id worktree-id]}))))
   worktree-id)
 

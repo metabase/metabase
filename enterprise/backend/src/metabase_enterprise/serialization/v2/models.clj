@@ -138,8 +138,6 @@
    "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
-   "RemoteSyncWorktree"
-   "RemoteSyncWorktreeRemapping"
    "Revision"
    "Sandbox"
    "SearchIndexMetadata"
@@ -165,4 +163,6 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Worktree"
+   "WorktreeRemapping"])

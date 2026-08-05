@@ -22,7 +22,7 @@
                                              (disj broken-transform-ids edited-transform-id)))
                                (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq transforms-to-report)
-                               (->> (t2/select :model/Transform :id [:in transforms-to-report])
+                               (->> (t2/select :model/Transform :id [:in transforms-to-report] :worktree_id nil)
                                     (filter mi/can-read?)
                                     (map #(select-keys % [:id :name]))))
         broken-card-ids      (set (keys card-errors))

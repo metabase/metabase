@@ -2,7 +2,7 @@
   "Tests for transform tag CRUD API endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.remote-sync.test-util :as rs.tu]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.transform-tag]
@@ -111,11 +111,14 @@
         (is (string? (mt/user-http-request :rasta :delete 403 "transform-tag/1")))))))
 
 ;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The
+;;; endpoints they cover are OSS.
 
 (deftest worktree-tags-are-excluded-from-the-list-test
-  (mt/with-premium-features #{:transforms-basic}
-    (rs.tu/with-worktree [wt-id]
-      (mt/with-temp [:model/TransformTag {main-tag :id} {:name (str "main-" (u/generate-nano-id))}
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/TransformTag {main-tag :id} {:name (str "main-" (u/generate-nano-id))}
                      :model/TransformTag {wt-tag :id} {:name        (str "wt-" (u/generate-nano-id))
                                                        :worktree_id wt-id}]
         (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "transform-tag"))]
@@ -129,24 +132,63 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :get 403 "transform-tag" :worktree-id wt-id)))))))))
 
-(deftest worktree-tag-names-are-scoped-to-their-worktree-test
-  (mt/with-premium-features #{:transforms-basic}
-    (rs.tu/with-worktree [wt-id]
-      (let [tag-name (str "shared-" (u/generate-nano-id))]
-        (mt/with-temp [:model/TransformTag _ {:name tag-name}]
-          (mt/with-model-cleanup [:model/TransformTag]
-            (testing "the same name is free inside a worktree"
-              (is (=? {:name tag-name :worktree_id wt-id}
-                      (mt/user-http-request :crowberto :post 200 "transform-tag"
-                                            {:name tag-name :worktree_id wt-id}))))
-            (testing "but still taken in the main app"
-              (is (= (format "A tag with the name '%s' already exists." tag-name)
-                     (mt/user-http-request :crowberto :post 400 "transform-tag" {:name tag-name}))))))))))
+(deftest worktree-tag-endpoints-are-admin-only-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/TransformTag {tag-id :id} {:name        (str "wt-" (u/generate-nano-id))
+                                                       :worktree_id wt-id}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (testing "a data analyst cannot see or touch it"
+            (is (not (contains? (into #{} (map :id) (mt/user-http-request :lucky :get 200 "transform-tag"))
+                                tag-id)))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :put 403 (format "transform-tag/%d" tag-id) {:name "nope"})))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :delete 403 (format "transform-tag/%d" tag-id))))))
+        (testing "an admin can rename it"
+          (is (=? {:id tag-id :worktree_id wt-id :name "renamed in worktree"}
+                  (mt/user-http-request :crowberto :put 200 (format "transform-tag/%d" tag-id)
+                                        {:name "renamed in worktree"}))))))))
 
-(deftest creating-a-worktree-tag-is-admin-only-over-the-api-test
-  (mt/with-premium-features #{:transforms-basic}
-    (rs.tu/with-worktree [wt-id]
-      (mt/with-data-analyst-role! (mt/user->id :lucky)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :lucky :post 403 "transform-tag"
-                                     {:name "sneaky" :worktree_id wt-id})))))))
+(deftest worktree-tag-names-are-scoped-to-their-worktree-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}]
+        (let [tag-name (str "shared-" (u/generate-nano-id))]
+          (mt/with-temp [:model/TransformTag _ {:name tag-name}]
+            (mt/with-model-cleanup [:model/TransformTag]
+              (testing "the same name is free inside a worktree"
+                (is (=? {:name tag-name :worktree_id wt-id}
+                        (mt/user-http-request :crowberto :post 200 "transform-tag"
+                                              {:name tag-name :worktree_id wt-id}))))
+              (testing "but still taken in the main app"
+                (is (= (format "A tag with the name '%s' already exists." tag-name)
+                       (mt/user-http-request :crowberto :post 400 "transform-tag" {:name tag-name})))))))))))
+
+(deftest creating-a-worktree-tag-over-the-api-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}]
+        (testing "a data analyst cannot"
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :post 403 "transform-tag"
+                                         {:name "sneaky" :worktree_id wt-id})))))
+        (testing "an unknown worktree 404s rather than failing on the foreign key"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 "transform-tag"
+                                       {:name "nope" :worktree_id 99999999}))))))))
+
+(deftest worktree-tag-cannot-be-attached-to-a-job-over-the-api-test
+  (when config/ee-available?
+    (testing "jobs are main-app only, so a worktree tag is refused"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/TransformTag {wt-tag :id} {:name        (str "wt-" (u/generate-nano-id))
+                                                         :worktree_id wt-id}]
+          (is (=? {:cause "A tag in a remote sync worktree cannot be added to a job."}
+                  (mt/user-http-request :crowberto :post 400 "transform-job"
+                                        {:name     (str "job-" (u/generate-nano-id))
+                                         :schedule "0 0 0 * * ?"
+                                         :tag_ids  [wt-tag]}))))))))

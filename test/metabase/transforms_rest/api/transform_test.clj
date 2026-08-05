@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -13,7 +14,6 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
-   [metabase.remote-sync.test-util :as rs.tu]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -2241,12 +2241,15 @@
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
 
 ;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The
+;;; endpoints they cover are OSS.
 
 (deftest worktree-transforms-are-excluded-from-the-list-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-      (rs.tu/with-worktree [wt-id]
-        (mt/with-temp [:model/Transform {main-id :id} {:name "main transform"}
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/Transform {main-id :id} {:name "main transform"}
                        :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
           (testing "the main-app list leaves worktree transforms out"
             (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "transform"))]
@@ -2259,26 +2262,57 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "transform" :worktree-id wt-id)))))))))
 
-(deftest worktree-transform-cannot-be-run-test
-  (testing "running a transform checked out into a worktree is refused"
+(deftest worktree-transform-endpoints-are-admin-only-test
+  (when config/ee-available?
+    (testing "every verb on a worktree transform is superuser-only, via read-check/write-check"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+          (mt/with-temp [:model/Worktree {wt-id :id} {}
+                         :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+            (let [denied "You don't have permissions to do that."]
+              (testing "a non-admin is refused everywhere"
+                (is (= denied (mt/user-http-request :rasta :get 403 (format "transform/%d" tf-id))))
+                (is (= denied (mt/user-http-request :rasta :get 403 (format "transform/%d/dependencies" tf-id))))
+                (is (= denied (mt/user-http-request :rasta :put 403 (format "transform/%d" tf-id)
+                                                    {:name "renamed"})))
+                (is (= denied (mt/user-http-request :rasta :post 403 (format "transform/%d/run" tf-id))))
+                (is (= denied (mt/user-http-request :rasta :delete 403 (format "transform/%d" tf-id)))))
+              (testing "an admin can read it, but still cannot run it"
+                (is (=? {:id tf-id :worktree_id wt-id :can_execute false}
+                        (mt/user-http-request :crowberto :get 200 (format "transform/%d" tf-id))))
+                (is (= [] (mt/user-http-request :crowberto :get 200 (format "transform/%d/dependencies" tf-id))))
+                (is (= "Transforms in a remote sync worktree cannot be run."
+                       (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" tf-id))))))))))))
+
+(deftest creating-a-worktree-transform-over-the-api-test
+  (when config/ee-available?
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-        (rs.tu/with-worktree [wt-id]
-          (mt/with-temp [:model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
-            (is (= "Transforms in a remote sync worktree cannot be run."
-                   (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" tf-id))))))))))
+        (mt/with-temp [:model/Worktree {wt-id :id} {}]
+          (testing "a non-admin cannot"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "transform"
+                                         (merge (mt/with-temp-defaults :model/Transform)
+                                                {:name "sneaky" :worktree_id wt-id})))))
+          (testing "an unknown worktree 404s rather than failing on the foreign key"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :post 404 "transform"
+                                         (merge (mt/with-temp-defaults :model/Transform)
+                                                {:name "nope" :worktree_id 99999999}))))))))))
 
-(deftest worktree-transform-is-admin-only-over-the-api-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-      (rs.tu/with-worktree [wt-id]
-        (mt/with-temp [:model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
-          (testing "a non-admin cannot read a worktree transform"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "transform/%d" tf-id)))))
-          (testing "a non-admin cannot write one"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (format "transform/%d" tf-id) {:name "renamed"}))))
-          (testing "an admin can read it"
-            (is (=? {:id tf-id :worktree_id wt-id}
-                    (mt/user-http-request :crowberto :get 200 (format "transform/%d" tf-id))))))))))
+(deftest root-collection-items-exclude-worktree-transforms-test
+  (when config/ee-available?
+    (testing "GET /api/collection/root/items leaves out a worktree's root transforms"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+          (mt/with-temp [:model/Worktree {wt-id :id} {}
+                         :model/Transform {main-id :id} {:name "main root transform"}
+                         :model/Transform {wt-tf-id :id} {:name        "worktree root transform"
+                                                          :worktree_id wt-id}]
+            (let [ids (into #{}
+                            (comp (filter #(= "transform" (:model %))) (map :id))
+                            (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                                         :namespace "transforms"
+                                                         :models "transform")))]
+              (is (contains? ids main-id))
+              (is (not (contains? ids wt-tf-id))))))))))

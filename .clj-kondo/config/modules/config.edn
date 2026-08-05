@@ -1445,10 +1445,10 @@
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
-                    :model/RemoteSyncWorktreeRemapping
                     :model/Segment
                     :model/Table
-                    :model/User}}
+                    :model/User
+                    :model/WorktreeRemapping}}
 
   mq
   {:team "UX West"
@@ -3466,7 +3466,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask :model/RemoteSyncWorktreeRemapping}
+   :model-exports #{:model/RemoteSyncTask :model/WorktreeRemapping}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

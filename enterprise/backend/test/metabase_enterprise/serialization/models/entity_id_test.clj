@@ -110,8 +110,6 @@
     :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
-    :model/RemoteSyncWorktree
-    :model/RemoteSyncWorktreeRemapping
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
@@ -141,6 +139,8 @@
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
+    :model/Worktree
+    :model/WorktreeRemapping
     :model/Sandbox
     :model/ConnectionImpersonation
     :model/SecurityAdvisory

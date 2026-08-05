@@ -29,6 +29,7 @@ export const remoteSyncSlice = createSlice({
       state.currentTask = {
         id: 0,
         sync_task_type: action.payload.taskType,
+        worktree_id: null,
         status: "running",
         progress: 0,
         started_at: new Date().toISOString(),

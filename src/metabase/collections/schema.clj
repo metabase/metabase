@@ -51,7 +51,7 @@
    [:effective_ancestors {:optional true} :map]
    [:here {:optional true} [:set ::CollectionItemModel]]
    [:below {:optional true} [:sequential ::CollectionItemModel]]
-   [:git_sync_enabled {:optional true} :boolean]])
+   [:worktree_id {:optional true} [:maybe :int]]])
 
 (mr/def ::LastEditInfo
   [:map

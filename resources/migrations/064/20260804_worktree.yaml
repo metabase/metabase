@@ -2,10 +2,10 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:00
       author: ranquild
-      comment: Create remote_sync_worktree table
+      comment: Create worktree table
       changes:
         - createTable:
-            tableName: remote_sync_worktree
+            tableName: worktree
             remarks: One row per checked-out remote-sync branch (a git-worktree-style checkout of the synced content tree)
             columns:
               - column:
@@ -46,11 +46,11 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:01
       author: ranquild
-      comment: Unique index on remote_sync_worktree.branch - a branch can be checked out at most once
+      comment: Unique index on worktree.branch - a branch can be checked out at most once
       changes:
         - createIndex:
-            tableName: remote_sync_worktree
-            indexName: idx_remote_sync_worktree_branch
+            tableName: worktree
+            indexName: idx_worktree_branch
             unique: true
             columns:
               - column:
@@ -59,14 +59,14 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:02
       author: ranquild
-      comment: FK remote_sync_worktree.creator_id -> core_user; SET NULL so the worktree survives its creator's deletion
+      comment: FK worktree.creator_id -> core_user; SET NULL so the worktree survives its creator's deletion
       changes:
         - addForeignKeyConstraint:
-            baseTableName: remote_sync_worktree
+            baseTableName: worktree
             baseColumnNames: creator_id
             referencedTableName: core_user
             referencedColumnNames: id
-            constraintName: fk_remote_sync_worktree_creator_id
+            constraintName: fk_worktree_creator_id
             onDelete: SET NULL
 
   - changeSet:
@@ -99,12 +99,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:05
       author: ranquild
-      comment: FK remote_sync_object.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK remote_sync_object.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_object
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_remote_sync_object_worktree_id
             onDelete: CASCADE
@@ -139,12 +139,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:08
       author: ranquild
-      comment: FK remote_sync_task.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK remote_sync_task.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_task
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_remote_sync_task_worktree_id
             onDelete: CASCADE
@@ -179,12 +179,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:11
       author: ranquild
-      comment: FK collection.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK collection.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_collection_worktree_id
             onDelete: CASCADE
@@ -219,12 +219,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:14
       author: ranquild
-      comment: FK transform.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_worktree_id
             onDelete: CASCADE
@@ -259,12 +259,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:17
       author: ranquild
-      comment: FK transform_tag.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform_tag.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_tag
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_tag_worktree_id
             onDelete: CASCADE
@@ -299,12 +299,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:20
       author: ranquild
-      comment: FK transform_transform_tag.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform_transform_tag.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_transform_tag
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_transform_tag_worktree_id
             onDelete: CASCADE
@@ -312,10 +312,10 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:21
       author: ranquild
-      comment: Create remote_sync_worktree_remapping table
+      comment: Create worktree_remapping table
       changes:
         - createTable:
-            tableName: remote_sync_worktree_remapping
+            tableName: worktree_remapping
             remarks: Maps the entity_id an entity has on the branch to the entity_id of the copy a worktree checked out for it, so a worktree can hold its own copy of an entity the main app already has
             columns:
               - column:
@@ -357,8 +357,8 @@ databaseChangeLog:
       comment: Unique index on (worktree_id, source_entity_id) - a branch entity is checked out at most once per worktree
       changes:
         - createIndex:
-            tableName: remote_sync_worktree_remapping
-            indexName: idx_remote_sync_worktree_remapping_source
+            tableName: worktree_remapping
+            indexName: idx_worktree_remapping_source
             unique: true
             columns:
               - column:
@@ -372,8 +372,8 @@ databaseChangeLog:
       comment: Unique index on local_entity_id - entity_id is globally unique, so a checked-out row backs exactly one remapping
       changes:
         - createIndex:
-            tableName: remote_sync_worktree_remapping
-            indexName: idx_remote_sync_worktree_remapping_target
+            tableName: worktree_remapping
+            indexName: idx_worktree_remapping_target
             unique: true
             columns:
               - column:
@@ -382,12 +382,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-08-04T10:00:24
       author: ranquild
-      comment: FK remote_sync_worktree_remapping.worktree_id -> remote_sync_worktree; CASCADE so deleting a worktree drops its remappings
+      comment: FK worktree_remapping.worktree_id -> worktree; CASCADE so deleting a worktree drops its remappings
       changes:
         - addForeignKeyConstraint:
-            baseTableName: remote_sync_worktree_remapping
+            baseTableName: worktree_remapping
             baseColumnNames: worktree_id
-            referencedTableName: remote_sync_worktree
+            referencedTableName: worktree
             referencedColumnNames: id
-            constraintName: fk_remote_sync_worktree_remapping_worktree_id
+            constraintName: fk_worktree_remapping_worktree_id
             onDelete: CASCADE

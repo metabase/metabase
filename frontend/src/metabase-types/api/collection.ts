@@ -9,6 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { WorktreeId } from "./remote-sync";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -83,7 +84,7 @@ export interface Collection {
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
 
-  git_sync_enabled?: boolean;
+  worktree_id?: WorktreeId | null;
 
   // Assigned on FE
   originalName?: string;

@@ -586,9 +586,11 @@
   [_ db-id]
   {:select [[:%count.* :transform]]
    :from   [:transform]
-   :where  [:or
-            [:= :source_database_id db-id]
-            [:= :target_db_id db-id]]})
+   :where  [:and
+            [:= :worktree_id nil]
+            [:or
+             [:= :source_database_id db-id]
+             [:= :target_db_id db-id]]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

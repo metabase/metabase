@@ -57,8 +57,6 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
-    :model/RemoteSyncWorktree
-    :model/RemoteSyncWorktreeRemapping
     :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
@@ -84,7 +82,9 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue})
+    :model/UserKeyValue
+    :model/Worktree
+    :model/WorktreeRemapping})
 
 (defn- all-model-names []
   (into (sorted-set)

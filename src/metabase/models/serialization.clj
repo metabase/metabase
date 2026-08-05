@@ -101,7 +101,7 @@
 (def worktree-scoped-models
   "Serdes model names whose table carries a `worktree_id` column. Extraction for these is scoped by
   [[*worktree-id*]], loads stamp it, and their `entity_id`s are translated through
-  `remote_sync_worktree_remapping` -- so a worktree holds its own copy of an entity the main app already has,
+  `worktree_remapping` -- so a worktree holds its own copy of an entity the main app already has,
   under an id of its own.
 
   Only transform content is checked out into a worktree. Everything else -- cards, dashboards, snippets, Python
@@ -128,7 +128,7 @@
   keeps its own id."
   [model-name entity-id]
   (or (when (and *worktree-id* entity-id)
-        (t2/select-one-fn :source_entity_id :model/RemoteSyncWorktreeRemapping
+        (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
                           :worktree_id     *worktree-id*
                           :type            (name model-name)
                           :local_entity_id entity-id))
@@ -141,7 +141,7 @@
   [model-name entity-id]
   (if *worktree-id*
     (when entity-id
-      (t2/select-one-fn :local_entity_id :model/RemoteSyncWorktreeRemapping
+      (t2/select-one-fn :local_entity_id :model/WorktreeRemapping
                         :worktree_id      *worktree-id*
                         :type             (name model-name)
                         :source_entity_id entity-id))
@@ -156,7 +156,7 @@
     (let [source->local (into {}
                               (mapcat (fn [chunk]
                                         (t2/select-fn->fn :source_entity_id :local_entity_id
-                                                          :model/RemoteSyncWorktreeRemapping
+                                                          :model/WorktreeRemapping
                                                           :worktree_id *worktree-id*
                                                           :type (name model-name)
                                                           :source_entity_id [:in chunk])))
@@ -175,17 +175,17 @@
   ([model-name local-entity-id source]
    (if-not (and *worktree-id* local-entity-id)
      (or source local-entity-id)
-     (or (t2/select-one-fn :source_entity_id :model/RemoteSyncWorktreeRemapping
+     (or (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
                            :worktree_id     *worktree-id*
                            :type            (name model-name)
                            :local_entity_id local-entity-id)
-         (when (t2/exists? :model/RemoteSyncWorktreeRemapping
+         (when (t2/exists? :model/WorktreeRemapping
                            :worktree_id      *worktree-id*
                            :type             (name model-name)
                            :source_entity_id local-entity-id)
            local-entity-id)
          (let [source (or source (u/generate-nano-id))]
-           (t2/insert! :model/RemoteSyncWorktreeRemapping
+           (t2/insert! :model/WorktreeRemapping
                        {:worktree_id      *worktree-id*
                         :type             (name model-name)
                         :source_entity_id source

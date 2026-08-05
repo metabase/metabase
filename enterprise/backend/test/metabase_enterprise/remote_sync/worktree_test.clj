@@ -19,7 +19,7 @@
 (deftest worktree-crud-is-admin-only-test
   (testing "worktrees are superuser-only"
     (mt/with-premium-features #{:remote-sync}
-      (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "feature-x"}]
+      (mt/with-temp [:model/Worktree {wt-id :id} {}]
         (testing "a non-admin sees no worktrees at all"
           (is (= [] (mt/user-http-request :rasta :get 200 "ee/remote-sync/worktree"))))
         (testing "and cannot read, create or delete one"
@@ -33,16 +33,17 @@
 (deftest worktree-create-and-list-test
   (testing "an admin can create a worktree and read it back"
     (mt/with-premium-features #{:remote-sync}
-      (mt/with-model-cleanup [:model/RemoteSyncWorktree]
-        (let [created (mt/user-http-request :crowberto :post 200 "ee/remote-sync/worktree" {:branch "feature-y"})]
-          (is (=? {:branch "feature-y" :creator_id (mt/user->id :crowberto)} created))
-          (is (=? {:branch "feature-y"}
+      (mt/with-model-cleanup [:model/Worktree]
+        (let [branch  (:branch (mt/with-temp-defaults :model/Worktree))
+              created (mt/user-http-request :crowberto :post 200 "ee/remote-sync/worktree" {:branch branch})]
+          (is (=? {:branch branch :creator_id (mt/user->id :crowberto)} created))
+          (is (=? {:branch branch}
                   (mt/user-http-request :crowberto :get 200 (str "ee/remote-sync/worktree/" (:id created)))))
           (is (contains? (into #{} (map :branch) (mt/user-http-request :crowberto :get 200 "ee/remote-sync/worktree"))
-                         "feature-y"))
+                         branch))
           (testing "a branch can only be checked out once"
-            (is (= "A worktree for branch 'feature-y' already exists."
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/worktree" {:branch "feature-y"})))))))))
+            (is (= (format "A worktree for branch '%s' already exists." branch)
+                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/worktree" {:branch branch})))))))))
 
 (deftest worktree-404s-test
   (testing "an unknown worktree 404s rather than silently falling back to the main app"
@@ -61,7 +62,7 @@
 (def ^:private fresh-eid "created-in-a-worktree")
 
 (deftest entity-id-remapping-test
-  (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "feature-remap"}]
+  (mt/with-temp [:model/Worktree {wt-id :id} {}]
     (testing "outside a worktree ids pass through untouched"
       (is (= branch-eid (serdes/local-entity-id "Transform" branch-eid)))
       (is (= branch-eid (serdes/source-entity-id "Transform" branch-eid))))
@@ -75,7 +76,7 @@
         (is (nil? (serdes/local-entity-id "TransformTag" branch-eid))))
       (testing "ensure-remapping! is idempotent"
         (is (= branch-eid (serdes/ensure-remapping! "Transform" local-eid)))
-        (is (= 1 (t2/count :model/RemoteSyncWorktreeRemapping :worktree_id wt-id))))
+        (is (= 1 (t2/count :model/WorktreeRemapping :worktree_id wt-id))))
       (testing "content created inside the worktree gets a branch id of its own"
         (let [source (serdes/ensure-remapping! "Transform" fresh-eid)]
           (is (some? source))
@@ -94,24 +95,24 @@
 
 (deftest delete-worktree-drops-its-content-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "feature-delete"}
-                   :model/RemoteSyncWorktree {other-id :id} {:branch "feature-keep"}
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Worktree {other-id :id} {}
                    :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}
                    :model/Transform {other-tf :id} {:name "other transform" :worktree_id other-id}
                    :model/Transform {main-tf :id} {:name "main transform"}
                    :model/TransformTag {tag-id :id} {:name "worktree tag" :worktree_id wt-id}
                    :model/Collection {coll-id :id} {:name "worktree collection" :worktree_id wt-id}]
-      (t2/insert! :model/RemoteSyncWorktreeRemapping {:worktree_id      wt-id
-                                                      :type             "Transform"
-                                                      :source_entity_id branch-eid
-                                                      :local_entity_id  local-eid})
+      (t2/insert! :model/WorktreeRemapping {:worktree_id      wt-id
+                                            :type             "Transform"
+                                            :source_entity_id branch-eid
+                                            :local_entity_id  local-eid})
       (impl/delete-worktree! wt-id)
       (testing "the worktree, its content and its remappings are gone"
-        (is (not (t2/exists? :model/RemoteSyncWorktree :id wt-id)))
+        (is (not (t2/exists? :model/Worktree :id wt-id)))
         (is (not (t2/exists? :model/Transform :id tf-id)))
         (is (not (t2/exists? :model/TransformTag :id tag-id)))
         (is (not (t2/exists? :model/Collection :id coll-id)))
-        (is (not (t2/exists? :model/RemoteSyncWorktreeRemapping :worktree_id wt-id))))
+        (is (not (t2/exists? :model/WorktreeRemapping :worktree_id wt-id))))
       (testing "other worktrees and the main app are untouched"
         (is (t2/exists? :model/Transform :id other-tf))
         (is (t2/exists? :model/Transform :id main-tf))))))

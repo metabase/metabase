@@ -1,5 +1,5 @@
 import type { EnterpriseSettings } from "./settings";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
 export type RemoteSyncEntityModel =
@@ -158,6 +158,7 @@ export type RemoteSyncOutcome =
 
 export type RemoteSyncTask = {
   id: number;
+  worktree_id: WorktreeId | null;
   sync_task_type: RemoteSyncTaskType;
   status: RemoteSyncTaskStatus;
   progress: number | null;
@@ -183,6 +184,7 @@ export type GetBranchesResponse = {
 export type CreateBranchRequest = {
   name: string;
   baseBranch?: string;
+  checkout?: boolean;
 };
 
 export type CreateBranchResponse = {
@@ -197,4 +199,23 @@ export type TestRemoteSyncConnectionRequest = {
 
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
+};
+
+export type WorktreeId = number;
+
+export type Worktree = {
+  id: WorktreeId;
+  branch: string;
+  creator_id: UserId | null;
+  created_at: string;
+  updated_at: string;
+  creator?: UserInfo | null;
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+};
+
+export type WorktreeScope = {
+  worktree_id?: WorktreeId | null;
 };

@@ -1,6 +1,7 @@
 (ns metabase.transforms-rest.api.transform-job-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.transform-job]
@@ -9,6 +10,7 @@
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-util :refer [parse-instant
                                           utc-timestamp]]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -618,3 +620,21 @@
         (is (seq (:schedule job)) (str job-name " should carry a schedule"))
         (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
             (str job-name " should be linked to the " tag-name " tag"))))))
+
+(deftest job-transforms-exclude-worktree-transforms-test
+  (when config/ee-available?
+    (testing "GET /api/transform-job/:id/transforms never lists a worktree's transforms"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+          (mt/with-temp [:model/Worktree {wt-id :id} {}
+                         :model/TransformTag {tag-id :id} {:name (str "job-tag-" (u/generate-nano-id))}
+                         :model/Transform {main-id :id} {:name "main transform"}
+                         :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}
+                         :model/TransformJob {job-id :id} {:name "job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}
+                         :model/TransformTransformTag _ {:transform_id main-id :tag_id tag-id :position 0}]
+            (let [ids (into #{} (map :id)
+                            (mt/user-http-request :crowberto :get 200
+                                                  (format "transform-job/%d/transforms" job-id)))]
+              (is (contains? ids main-id))
+              (is (not (contains? ids wt-tf-id))))))))))

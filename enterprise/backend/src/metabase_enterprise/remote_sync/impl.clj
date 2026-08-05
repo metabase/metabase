@@ -1708,7 +1708,7 @@
     (doseq [model worktree-content-models]
       (t2/delete! model :worktree_id worktree-id))
     (t2/delete! :model/Collection :worktree_id worktree-id)
-    (t2/delete! :model/RemoteSyncWorktreeRemapping :worktree_id worktree-id)
+    (t2/delete! :model/WorktreeRemapping :worktree_id worktree-id)
     (t2/delete! :model/RemoteSyncObject :worktree_id worktree-id)
     (t2/delete! :model/RemoteSyncTask :worktree_id worktree-id)
-    (t2/delete! :model/RemoteSyncWorktree :id worktree-id)))
+    (t2/delete! :model/Worktree :id worktree-id)))

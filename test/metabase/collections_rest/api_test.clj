@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
+   [metabase.config.core :as config]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -18,7 +19,6 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
-   [metabase.remote-sync.test-util :as rs.tu]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -3593,21 +3593,29 @@
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
 
 ;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The
+;;; endpoints they cover are OSS.
 
 (deftest collection-worktree-id-is-admin-only-test
-  (rs.tu/with-worktree [wt-id]
-    (testing "a non-admin cannot create a collection in a worktree"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "collection" {:name "nope" :worktree_id wt-id}))))
-    (mt/with-model-cleanup [:model/Collection]
-      (testing "an admin can, and a worktree collection is remote-synced by definition"
-        (is (=? {:worktree_id wt-id :is_remote_synced true}
-                (mt/user-http-request :crowberto :post 200 "collection"
-                                      {:name "in worktree" :worktree_id wt-id})))))))
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}]
+      (testing "a non-admin cannot create a collection in a worktree"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "collection" {:name "nope" :worktree_id wt-id}))))
+      (testing "an unknown worktree 404s rather than failing on the foreign key"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 "collection"
+                                     {:name "nope" :worktree_id 99999999}))))
+      (mt/with-model-cleanup [:model/Collection]
+        (testing "an admin can, and a worktree collection is remote-synced by definition"
+          (is (=? {:worktree_id wt-id :is_remote_synced true}
+                  (mt/user-http-request :crowberto :post 200 "collection"
+                                        {:name "in worktree" :worktree_id wt-id}))))))))
 
 (deftest worktree-collections-are-excluded-from-listings-test
-  (rs.tu/with-worktree [wt-id]
-    (mt/with-temp [:model/Collection {wt-coll :id} {:name "worktree collection" :worktree_id wt-id}
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection {wt-coll :id} {:name "worktree collection" :worktree_id wt-id}
                    :model/Collection {main-coll :id} {:name "main collection"}]
       (testing "worktree collections are absent from the main-app listing and tree"
         (doseq [route ["collection" "collection/tree"]]
@@ -3619,10 +3627,9 @@
           (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route :worktree-id wt-id))]
             (is (contains? ids wt-coll) (str route " should include the worktree's collections"))
             (is (not (contains? ids main-coll)) (str route " should not mix in main-app collections")))))
-      (testing "worktree-id is admin-only"
+      (testing "worktree-id is admin-only, and the collection itself is unreadable to a non-admin"
         (doseq [route ["collection" "collection/tree"]]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 route :worktree-id wt-id)))))
-      (testing "a non-admin cannot read a worktree collection directly"
+                 (mt/user-http-request :rasta :get 403 route :worktree-id wt-id))))
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "collection/" wt-coll))))))))
