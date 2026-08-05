@@ -1,8 +1,5 @@
-import type {
-  RemoteSyncEntity,
-  RemoteSyncTask,
-  Worktree,
-} from "../remote-sync";
+import type { RemoteSyncEntity, RemoteSyncTask } from "../remote-sync";
+import type { Worktree } from "../worktree";
 
 export const createMockRemoteSyncEntity = (
   opts?: Partial<RemoteSyncEntity>,

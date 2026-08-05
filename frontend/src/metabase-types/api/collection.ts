@@ -9,10 +9,10 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
-import type { WorktreeId } from "./remote-sync";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
+import type { WorktreeId } from "./worktree";
 export type CollectionNamespace =
   | null
   | "snippets"

@@ -1,6 +1,7 @@
 import type { EnterpriseSettings } from "./settings";
-import type { UserId, UserInfo } from "./user";
+import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
+import type { WorktreeId } from "./worktree";
 
 export type RemoteSyncEntityModel =
   | "card"
@@ -199,23 +200,4 @@ export type TestRemoteSyncConnectionRequest = {
 
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
-};
-
-export type WorktreeId = number;
-
-export type Worktree = {
-  id: WorktreeId;
-  branch: string;
-  creator_id: UserId | null;
-  created_at: string;
-  updated_at: string;
-  creator?: UserInfo | null;
-};
-
-export type CreateWorktreeRequest = {
-  branch: string;
-};
-
-export type WorktreeScope = {
-  worktree_id?: WorktreeId | null;
 };

@@ -4,12 +4,12 @@ import type { RowValue } from "./dataset";
 import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
-import type { WorktreeId } from "./remote-sync";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
+import type { WorktreeId } from "./worktree";
 
 export type TransformId = number;
 export type TransformTagId = number;

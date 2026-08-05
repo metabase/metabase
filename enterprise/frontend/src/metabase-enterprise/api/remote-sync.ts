@@ -19,7 +19,7 @@ import type {
 import type {
   CreateWorktreeRequest,
   WorktreeId,
-} from "metabase-types/api/remote-sync";
+} from "metabase-types/api/worktree";
 
 import { EnterpriseApi } from "./api";
 import {
