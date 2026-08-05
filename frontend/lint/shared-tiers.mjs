@@ -44,12 +44,14 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: chart rendering and database metadata/forms.
+  // P0 — the action execution surface; imports only shared-utils and below.
+  ["shared/actions-execution"],
+  // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P1 — query editing and subscription editing compose visualizations;
+  // P2 — query editing and subscription editing compose visualizations;
   // querying and pulse have no edges between them.
   ["shared/querying", "shared/pulse"],
-  // P2 — building blocks over querying; mutually independent.
+  // P3 — building blocks over querying; mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],
 ];
 
