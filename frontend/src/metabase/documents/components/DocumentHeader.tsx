@@ -94,7 +94,7 @@ export const DocumentHeader = ({
   const hasPublicLink = !!document?.public_uuid;
   const containsCustomViz = Boolean(document?.contains_custom_viz);
   const publicLinkDisabledReason =
-    !hasPublicLink && containsCustomViz
+    isPublicSharingEnabled && !hasPublicLink && containsCustomViz
       ? t`This document contains custom visualizations, which aren't supported in public links. Remove them to create a public link.`
       : undefined;
 
