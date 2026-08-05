@@ -112,7 +112,7 @@ describe("embedding hub tabs", () => {
       setupDatabasesEndpoints([DATABASE]);
       setupGroupsEndpoint(GROUPS);
       setupPermissionsGraphEndpoints(GROUPS, [DATABASE]);
-      setupTokenStatusEndpoint(true);
+      setupTokenStatusEndpoint({ valid: true });
       fetchMock.get(`path:/api/database/${DATABASE.id}/metadata`, DATABASE);
 
       // The editor fires one group-graph request with an undefined id before
