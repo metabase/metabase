@@ -1,12 +1,17 @@
+import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
+
 import {
+  findRequests,
   setupMfaAdminOverviewEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { MfaAdminOverview } from "metabase-types/api";
+import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 import {
   createMockMfaAdminOverview,
   createMockSettingDefinition,
@@ -17,22 +22,26 @@ import {
 
 import { AdminAuthCard } from "./AdminAuthCard";
 
+const DEADLINE_LABEL = "Enrollment deadline";
+
 type SetupOpts = {
-  mfaEnabled?: boolean;
+  enforcement?: MfaEnforcement;
+  deadline?: string | null;
   hasFeature?: boolean;
   overview?: MfaAdminOverview;
   isAdmin?: boolean;
 };
 
 function setup({
-  mfaEnabled = true,
+  enforcement = "optional",
+  deadline = null,
   hasFeature = true,
   overview = createMockMfaAdminOverview(),
   isAdmin = false,
 }: SetupOpts = {}) {
-  const enforcement = mfaEnabled ? ("optional" as const) : ("off" as const);
   const settings = createMockSettings({
     "mfa-enforcement": enforcement,
+    "mfa-requirement-deadline": deadline,
     "token-features": createMockTokenFeatures({
       "multi-factor-auth": hasFeature,
     }),
@@ -41,7 +50,12 @@ function setup({
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([
     createMockSettingDefinition({ key: "mfa-enforcement", value: enforcement }),
+    createMockSettingDefinition({
+      key: "mfa-requirement-deadline",
+      value: deadline,
+    }),
   ]);
+  setupUpdateSettingEndpoint();
   setupMfaAdminOverviewEndpoint(overview);
 
   renderWithProviders(<AdminAuthCard />, {
@@ -51,6 +65,16 @@ function setup({
       currentUser: createMockUser({ is_superuser: isAdmin }),
     }),
   });
+}
+
+async function findSettingUpdate(key: string) {
+  const puts = await findRequests("PUT");
+  const put = puts.find(({ url }: { url: string }) =>
+    url.includes(`/api/setting/${key}`),
+  );
+
+  expect(put).toBeDefined();
+  return put;
 }
 
 describe("AdminAuthCard", () => {
@@ -101,5 +125,69 @@ describe("AdminAuthCard", () => {
     expect(
       await screen.findByText(/MB_ENCRYPTION_SECRET_KEY/),
     ).toBeInTheDocument();
+  });
+
+  it("should save the selected enforcement level", async () => {
+    setup({ enforcement: "optional" });
+
+    await userEvent.click(screen.getByLabelText("Enforcement"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Required" }),
+    );
+
+    await waitFor(async () => {
+      const put = await findSettingUpdate("mfa-enforcement");
+      expect(put?.body).toEqual({ value: "required" });
+    });
+  });
+
+  describe("enrollment deadline", () => {
+    it("should be hidden unless enforcement is required", () => {
+      setup({ enforcement: "optional" });
+
+      expect(screen.queryByLabelText(DEADLINE_LABEL)).not.toBeInTheDocument();
+    });
+
+    it("should show the stored deadline as a local date", () => {
+      const stored = dayjs("2099-01-01").startOf("day").toISOString();
+
+      setup({ enforcement: "required", deadline: stored });
+
+      expect(screen.getByLabelText(DEADLINE_LABEL)).toHaveValue(
+        "January 1, 2099",
+      );
+    });
+
+    // The backend coerces this value with `u.date/parse` and compares it to `now` on every
+    // authenticated request — a bare "YYYY-MM-DD" parses to a LocalDate there and throws.
+    it("should save a full instant, not a bare date", async () => {
+      setup({ enforcement: "required" });
+
+      await userEvent.type(
+        screen.getByLabelText(DEADLINE_LABEL),
+        "January 1, 2099",
+      );
+      await userEvent.tab();
+
+      await waitFor(async () => {
+        const put = await findSettingUpdate("mfa-requirement-deadline");
+        expect(put?.body.value).toContain("T");
+        expect(dayjs(put?.body.value).format("YYYY-MM-DD")).toBe("2099-01-01");
+      });
+    });
+
+    it("should clear the deadline back to null", async () => {
+      const stored = dayjs("2099-01-01").startOf("day").toISOString();
+
+      setup({ enforcement: "required", deadline: stored });
+
+      await userEvent.clear(screen.getByLabelText(DEADLINE_LABEL));
+      await userEvent.tab();
+
+      await waitFor(async () => {
+        const put = await findSettingUpdate("mfa-requirement-deadline");
+        expect(put?.body).toEqual({ value: null });
+      });
+    });
   });
 });

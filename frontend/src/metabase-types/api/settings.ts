@@ -400,6 +400,8 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
+export type MfaEnforcement = "off" | "optional" | "required";
+
 export interface SettingDefinition<
   Key extends EnterpriseSettingKey = EnterpriseSettingKey,
 > {
@@ -587,7 +589,9 @@ interface PublicSettings {
   "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
-  "mfa-enforcement"?: "off" | "optional";
+  "mfa-enforcement"?: MfaEnforcement;
+  /** ISO instant after which `mfa-enforcement: "required"` takes effect. Null enforces it immediately. */
+  "mfa-requirement-deadline"?: string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
