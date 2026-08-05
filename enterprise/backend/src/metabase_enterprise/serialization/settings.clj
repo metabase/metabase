@@ -11,6 +11,6 @@
   :audit      :never
   :export?    false
   :doc        (str "On import Metabase validates every question against the query format it understands, and refuses "
-                   "one it cannot read — this catches content a newer Metabase can express but this version cannot. "
+                   "one it cannot read to catche content this version cannot understand. "
                    "Set this to true to skip that validation. Doing so will not necessarily make the import succeed: "
-                   "content Metabase cannot read may still fail later in the import, or import in a broken state."))
+                   "import may still fail on a later step."))
