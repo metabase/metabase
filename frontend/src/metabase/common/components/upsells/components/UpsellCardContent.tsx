@@ -37,8 +37,6 @@ export type UpsellCardContentProps = UpsellCardLeftColumnContentProps & {
    * inner framing or none at all.
    */
   variant?: "image-full-height" | "image-card" | "image-panel";
-  /** Overrides the card width. Defaults to 700 with an image, 450 without. */
-  cardWidth?: number;
 };
 
 export const UpsellCardContent = ({
@@ -51,7 +49,6 @@ export const UpsellCardContent = ({
   upgradeOnClick,
   upgradeUrl,
   variant = "image-card",
-  cardWidth,
 }: UpsellCardContentProps) => {
   const isHosted = useSelector(getIsHosted);
   const { data: trialData } = useCheckTrialAvailableQuery(undefined, {
@@ -60,7 +57,7 @@ export const UpsellCardContent = ({
   const isTrialAvailable = trialData?.available ?? false;
 
   const leftSideSize = rem(280);
-  const maxWidth = cardWidth ?? (image ? 700 : 450);
+  const maxWidth = image ? 700 : 450;
   const contentPadding = rem(48);
 
   useEffect(() => {

@@ -44,8 +44,6 @@ export const UpsellEmbeddingSso = ({ source }: { source: string }) => {
             description={t`Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            // 800 per the design; the shared default is 700.
-            cardWidth={800}
             variant="image-panel"
             image="app/assets/img/upsell-embedding-sso.svg"
           />
