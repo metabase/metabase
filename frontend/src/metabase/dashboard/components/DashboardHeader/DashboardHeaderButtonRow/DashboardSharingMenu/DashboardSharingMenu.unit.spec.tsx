@@ -107,6 +107,9 @@ describe("DashboardSharingMenu", () => {
       });
       await openMenu();
       expect(screen.getByTestId("dashboard-export-pdf-button")).toBeDisabled();
+
+      await userEvent.hover(screen.getByTestId("dashboard-export-pdf-button"));
+      expect(await screen.findByText("Dashboard is empty")).toBeInTheDocument();
     });
 
     it("should be enabled if the selected tab has cards", async () => {

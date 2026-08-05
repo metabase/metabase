@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 import { useDispatch } from "metabase/redux";
 import { downloadDashboardToPdf } from "metabase/redux/downloads";
-import { Icon, Menu } from "metabase/ui";
+import { Box, Icon, Menu, Tooltip } from "metabase/ui";
 import { getExportTabAsPdfButtonText } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
@@ -24,7 +26,7 @@ export const ExportPdfMenuItem = ({
     );
   };
 
-  return (
+  const menuItem = (
     <Menu.Item
       data-testid="dashboard-export-pdf-button"
       leftSection={<Icon name="document" />}
@@ -34,5 +36,17 @@ export const ExportPdfMenuItem = ({
     >
       {getExportTabAsPdfButtonText(dashboard.tabs)}
     </Menu.Item>
+  );
+
+  if (!disabled) {
+    return menuItem;
+  }
+
+  // The natively disabled button swallows hover events, so the tooltip must
+  // anchor to a wrapper that still receives them (same trick as ToolbarButton).
+  return (
+    <Tooltip label={t`Dashboard is empty`}>
+      <Box>{menuItem}</Box>
+    </Tooltip>
   );
 };
