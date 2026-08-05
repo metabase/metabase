@@ -402,7 +402,7 @@
 
 ;;; ---------------------------------------- GET /collection/tree?lazy=true ------------------------------------------
 
-(defn- lazy-tree-view
+(defn- lazy-tree-nodes
   "Keeps just `:name`, `:has_children` and `:children` of the collections we care about, so the assertions below read
   as the shape of the tree."
   [ids-to-keep collections]
@@ -410,7 +410,12 @@
              :when      (contains? (set ids-to-keep) (:id collection))]
          (cond-> (select-keys collection [:name :has_children])
            (some? (:children collection))
-           (assoc :children (lazy-tree-view ids-to-keep (:children collection)))))))
+           (assoc :children (lazy-tree-nodes ids-to-keep (:children collection)))))))
+
+(defn- lazy-tree-view
+  "Same, but starting from the `{:data ... :has_more ...}` envelope a lazy response comes back in."
+  [ids-to-keep response]
+  (lazy-tree-nodes ids-to-keep (:data response)))
 
 (deftest collection-tree-lazy-under-budget-test
   (testing "GET /api/collection/tree?lazy=true returns the whole tree when the instance fits in the budget"
@@ -441,7 +446,7 @@
             (is (= [{:name "A", :has_children true}]
                    (lazy-tree-view ids response))))
           (testing "children is null rather than empty, so the FE can tell unread from childless"
-            (is (nil? (:children (first (filter #(= (:id %) (:id a)) response)))))))))))
+            (is (nil? (:children (first (filter #(= (:id %) (:id a)) (:data response))))))))))))
 
 (deftest collection-tree-lazy-expand-to-test
   (testing "GET /api/collection/tree?lazy=true&expand-to= reveals the whole ancestor path in one request"
@@ -492,7 +497,7 @@
                                   {:name "F", :has_children true}]}]
                  (lazy-tree-view ids response))))
         (testing "the lookahead stops after one level, so D's children are still unread"
-          (let [c-node (first (filter #(= (:id %) (:id c)) response))
+          (let [c-node (first (filter #(= (:id %) (:id c)) (:data response)))
                 d-node (first (filter #(= (:id %) (:id d)) (:children c-node)))]
             (is (not (contains? d-node :children)))))))))
 
@@ -507,6 +512,47 @@
             (is (= [{:name "B", :has_children false}
                     {:name "C", :has_children true}]
                    (lazy-tree-view ids response)))))))))
+
+(deftest collection-tree-lazy-paging-test
+  (testing "GET /api/collection/tree?lazy=true pages a level that is wider than the page size"
+    (with-redefs [api.collection/lazy-tree-collection-budget 1
+                  api.collection/lazy-tree-page-size 2]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection c1 {:name "Sibling 1"}
+                       :model/Collection c2 {:name "Sibling 2"}
+                       :model/Collection c3 {:name "Sibling 3"}
+                       :model/Collection c4 {:name "Sibling 4"}
+                       :model/Collection c5 {:name "Sibling 5"}]
+          (doseq [collection [c1 c2 c3 c4 c5]]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection))
+          ;; Walking the pages rather than asserting fixed boundaries: the root level also holds the caller's own
+          ;; personal collection, and its name decides where the page edges fall.
+          (let [ids   (map :id [c1 c2 c3 c4 c5])
+                pages (loop [offset 0, seen [], guard 0]
+                        (let [response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                                             :lazy true :level-offset offset)
+                              page     (map :name (lazy-tree-view ids response))]
+                          (if (and (:has_more response) (< guard 10))
+                            (recur (+ offset 2) (conj seen page) (inc guard))
+                            (conj seen page))))]
+            (testing "more than one request was needed, so the level really was paged"
+              (is (< 1 (count pages))))
+            (testing "no page exceeds the page size"
+              (is (every? #(<= (count %) 2) pages)))
+            (testing "the pages together are every sibling, in order, with no repeats"
+              (is (= ["Sibling 1" "Sibling 2" "Sibling 3" "Sibling 4" "Sibling 5"]
+                     (apply concat pages))))))))))
+
+(deftest collection-tree-lazy-children-has-more-test
+  (testing "GET /api/collection/tree?lazy=true flags a nested level that was cut short"
+    (with-redefs [api.collection/lazy-tree-page-size 2]
+      (with-collection-hierarchy! [a b c d e f g]
+        (mt/with-temp [:model/Collection _ {:name "H", :location (collection/children-location a)}]
+          (let [response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                               :lazy true :collection-id (:id a))]
+            (testing "the page itself reports more, since A now has three children"
+              (is (true? (:has_more response)))
+              (is (= 2 (count (:data response)))))))))))
 
 (deftest collection-tree-lazy-permissions-test
   (testing "GET /api/collection/tree?lazy=true never reveals a collection the user cannot read"

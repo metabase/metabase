@@ -116,7 +116,7 @@
 (defn- select-collections*
   "Like [[select-collections]], but skips the post-query filtering. Callers that pass a `:limit` need this so they can
   tell whether the limit was actually hit, which the filtered count cannot tell them."
-  [{:keys [limit] :as options}]
+  [{:keys [limit offset] :as options}]
   (t2/select :model/Collection
              (cond-> {:where (collection-filter-clause options)
                       ;; Order NULL collection types first so that audit collections are last
@@ -126,7 +126,8 @@
                                     [:= :type collection/trash-collection-type] 1
                                     :else 2]] :asc]
                                  [:%lower.name :asc]]}
-               limit (assoc :limit limit))))
+               limit  (assoc :limit limit)
+               offset (assoc :offset offset))))
 
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
@@ -259,6 +260,16 @@
   subtrees exceed it and simply do not get the lookahead, falling back to fetching on expand."
   200)
 
+(def ^:private lazy-tree-page-size
+  "How many collections of a single level a lazy response carries.
+
+  Depth-based laziness does nothing for an instance whose collections are mostly siblings: without this, a root level
+  of 28,000 is still read and sent in full. Paging every level is what bounds the response, and it bounds the
+  `IN` clause behind `:has_children` along with it.
+
+  E2E uses a smaller page so the `large-collection-tree` snapshot exercises paging without seeding thousands."
+  (if config/is-e2e? 25 100))
+
 (defn- select-collections-up-to
   "Reads at most `limit` collections. Returns `[collections complete?]`, where `complete?` is false when there may be
   more collections than we read.
@@ -318,17 +329,36 @@
 
 (defn- partial-tree-nodes
   "Marks up a tree where only the levels in `loaded` were read. A node whose children live outside `loaded` has no
-  `:children` key at all, which together with `:has_children` is how the FE knows it still has to fetch them."
-  [nodes loaded occupied]
+  `:children` key at all, which together with `:has_children` is how the FE knows it still has to fetch them.
+
+  `truncated` holds the locations whose page did not reach the end, surfaced as `:children_has_more` so the FE can
+  offer to load the rest of that level."
+  [nodes loaded truncated occupied]
   (mapv (fn [node]
           (let [child-location (collection/children-location node)]
             (cond-> (assoc node :has_children (contains? occupied child-location))
+              (contains? truncated child-location)
+              (assoc :children_has_more true)
+
               (contains? loaded child-location)
-              (assoc :children (partial-tree-nodes (:children node) loaded occupied))
+              (assoc :children (partial-tree-nodes (:children node) loaded truncated occupied))
 
               (not (contains? loaded child-location))
               (dissoc :children))))
         nodes))
+
+(defn- read-level
+  "One level of the tree, capped at [[lazy-tree-page-size]]. Returns `[collections more?]`, reading one row past the
+  page so that `more?` costs no extra query.
+
+  Reading level by level rather than all wanted locations at once means one small indexed query each instead of a
+  single unbounded one. On a wide instance that is the difference between reading a page and reading everything."
+  [location options offset]
+  (let [rows (select-collections (assoc options
+                                        :locations #{location}
+                                        :offset   (or offset 0)
+                                        :limit    (inc lazy-tree-page-size)))]
+    [(take lazy-tree-page-size rows) (> (count rows) lazy-tree-page-size)]))
 
 (defn- read-one-level-deeper
   "The level below `collections`, when it is small enough to be worth sending unasked. Returns `nil` otherwise.
@@ -344,25 +374,35 @@
           {:collections deeper, :locations child-locations})))))
 
 (defn- partial-collection-tree
-  "Reads exactly the given `locations` and nests them into a tree, flagging what was not read.
+  "Reads a page of each of the given `locations` and nests them into a tree, flagging what was not read.
 
-  With `look-ahead?`, also reads the level below when it fits [[lazy-tree-lookahead-budget]], so that drilling into
-  one of the returned nodes needs no further request."
-  ([locations options]
-   (partial-collection-tree locations options false))
-  ([locations options look-ahead?]
-   (let [level       (select-collections (assoc options :locations locations))
-         look-ahead  (when look-ahead? (read-one-level-deeper level options))
-         collections (-> (concat level (:collections look-ahead))
-                         (t2/hydrate :can_write))
-         loaded      (into locations (:locations look-ahead))
-         nodes       (->> collections
-                          prep-collections-for-export
-                          (collection/collections->tree nil))]
-     (partial-tree-nodes nodes
-                         loaded
-                         (occupied-locations (into #{} (map collection/children-location) collections)
-                                             options)))))
+  `primary` is the location the request actually asked about, whose `more?` becomes the response's own `:has_more`.
+  With `look-ahead?`, also reads the level below when it fits [[lazy-tree-lookahead-budget]].
+
+  Returns `{:data nodes, :has_more bool}`."
+  [{:keys [locations primary offset options look-ahead?]}]
+  (let [pages       (into {} (map (fn [location]
+                                    [location (read-level location options
+                                                          (when (= location primary) offset))]))
+                          locations)
+        level       (mapcat (comp first val) pages)
+        truncated   (into #{} (keep (fn [[location [_ more?]]] (when more? location))) pages)
+        look-ahead  (when look-ahead? (read-one-level-deeper level options))
+        collections (-> (concat level (:collections look-ahead))
+                        (t2/hydrate :can_write))
+        loaded      (into (set locations) (:locations look-ahead))
+        nodes       (->> collections
+                         prep-collections-for-export
+                         (collection/collections->tree nil))]
+    {:data     (partial-tree-nodes nodes
+                                   loaded
+                                   truncated
+                                   (occupied-locations (into #{} (map collection/children-location) collections)
+                                                       options))
+     :has_more    (boolean (second (get pages primary)))
+     ;; The FE cannot work this out from what it received: the page is filtered after the limit is applied, so the
+     ;; number of rows it holds is not where the next page starts.
+     :next_offset (+ (or offset 0) lazy-tree-page-size)}))
 
 (defn- lazy-collection-tree
   "Adaptive collection tree for the nav sidebar.
@@ -374,19 +414,33 @@
   response. If it does not, we return only what the sidebar needs right now, which is the root level plus every level
   between the root and `expand-to`.
 
+  Every level is paged, so a level wider than [[lazy-tree-page-size]] comes back in parts. The response carries
+  `:has_more` for the level that was asked about, and a node carries `:children_has_more` when its own level was cut
+  short.
+
   Either way every node carries `:has_children`, and nodes whose children were not read have no `:children` key. The
   FE has one rule: fetch when `has_children` is true and `children` is absent."
-  [{:keys [collection-id expand-to] :as options}]
+  [{:keys [collection-id expand-to offset] :as options}]
   (if collection-id
-    (let [parent (api/read-check :model/Collection collection-id)]
-      (partial-collection-tree #{(collection/children-location parent)} options true))
+    (let [parent   (api/read-check :model/Collection collection-id)
+          location (collection/children-location parent)]
+      (partial-collection-tree {:locations #{location}
+                                :primary   location
+                                :offset    offset
+                                :options   options
+                                :look-ahead? true}))
     (let [[collections complete?] (select-collections-up-to options lazy-tree-collection-budget)]
-      (if complete?
-        (->> (t2/hydrate collections :can_write)
-             prep-collections-for-export
-             (collection/collections->tree nil)
-             complete-tree-nodes)
-        (partial-collection-tree (lazy-tree-locations expand-to) options)))))
+      (if (and complete? (nil? offset))
+        {:data     (->> (t2/hydrate collections :can_write)
+                        prep-collections-for-export
+                        (collection/collections->tree nil)
+                        complete-tree-nodes)
+         :has_more    false
+         :next_offset 0}
+        (partial-collection-tree {:locations (lazy-tree-locations expand-to)
+                                  :primary   "/"
+                                  :offset    offset
+                                  :options   options})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -431,7 +485,7 @@
   `here` and `below` are not computed in this mode."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace namespaces shallow lazy collection-id expand-to]}
+           namespace namespaces shallow lazy collection-id expand-to level-offset]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -441,7 +495,8 @@
        [:shallow                        {:default false} [:maybe :boolean]]
        [:lazy                           {:default false} [:maybe :boolean]]
        [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
-       [:expand-to                      {:optional true} [:maybe ms/PositiveInt]]]]
+       [:expand-to                      {:optional true} [:maybe ms/PositiveInt]]
+       [:level-offset                   {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
   (api/check-400
@@ -458,6 +513,7 @@
                     :shallow                        shallow
                     :collection-id                  collection-id
                     :expand-to                      expand-to
+                    :offset                         level-offset
                     :include-library?               include-library}]
     (if lazy
       (lazy-collection-tree options)

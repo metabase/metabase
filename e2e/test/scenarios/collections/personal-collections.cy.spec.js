@@ -39,9 +39,14 @@ describe("personal collections", () => {
         cy.visit("/");
 
         cy.wait("@getCollections").then(({ response: { body } }) => {
-          const personalCollections = body.filter(({ personal_owner_id }) => {
-            return personal_owner_id !== null;
-          });
+          // The lazy tree the sidebar uses answers with `{ data, has_more }`; the plain endpoint answers with an array.
+          const collections = Array.isArray(body) ? body : body.data;
+
+          const personalCollections = collections.filter(
+            ({ personal_owner_id }) => {
+              return personal_owner_id !== null;
+            },
+          );
 
           // Admin can only see their own personal collection, so this list should return only that
           // Loading all other users' personal collections can lead to performance issues!

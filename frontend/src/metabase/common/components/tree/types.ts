@@ -15,6 +15,10 @@ export interface ITreeNodeItem<TData = unknown> {
    * place. Defaults to `true`.
    */
   childrenLoaded?: boolean;
+  /**
+   * Set this when the node's level of children was cut short. The tree renders a "Show more" row after them.
+   */
+  childrenHaveMore?: boolean;
   data?: TData;
   nonNavigable?: boolean;
 }

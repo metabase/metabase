@@ -5,6 +5,7 @@ import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
 import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
+import { TreeShowMore } from "./TreeShowMore";
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeNodeListProps<TData = unknown> extends Omit<
@@ -18,6 +19,12 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   role?: string;
   onToggleExpand: (id: ITreeNodeItem<TData>["id"]) => void;
   onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
+  /** Whether this list itself was cut short, so a "Show more" row belongs at its end. */
+  hasMore?: boolean;
+  /** The parent whose level this is, or `null` for the top level. Passed back by `onShowMore`. */
+  showMoreFor?: ITreeNodeItem<TData>["id"] | null;
+  onShowMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
+  loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -31,6 +38,10 @@ function BaseTreeNodeList<TData = unknown>({
   onSelect,
   onToggleExpand,
   onNodeHover,
+  hasMore,
+  showMoreFor = null,
+  onShowMore,
+  loadingMoreIds,
   TreeNode,
   rightSection,
   role,
@@ -78,6 +89,10 @@ function BaseTreeNodeList<TData = unknown>({
                   onSelect={onSelect}
                   onToggleExpand={onToggleExpand}
                   onNodeHover={onNodeHover}
+                  hasMore={item.childrenHaveMore}
+                  showMoreFor={item.id}
+                  onShowMore={onShowMore}
+                  loadingMoreIds={loadingMoreIds}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
                 />
@@ -87,6 +102,13 @@ function BaseTreeNodeList<TData = unknown>({
           </Fragment>
         );
       })}
+      {hasMore && onShowMore && (
+        <TreeShowMore
+          depth={depth}
+          isLoading={loadingMoreIds?.has(showMoreFor) ?? false}
+          onClick={() => onShowMore(showMoreFor)}
+        />
+      )}
     </Box>
   );
 }

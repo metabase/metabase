@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import { NESTED_COLLECTION, TEST_COLLECTION, setup } from "./setup";
 
@@ -32,6 +33,65 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       await screen.findByRole("treeitem", { name: /Nested collection/i }),
     ).toBeInTheDocument();
     expect(levelFetches()).toEqual([]);
+  });
+
+  describe("paged levels", () => {
+    const MANY_COLLECTIONS = Array.from({ length: 5 }, (_, index) =>
+      createMockCollection({
+        id: 100 + index,
+        name: `Wide collection ${index + 1}`,
+      }),
+    );
+
+    it("should show only the first page, then the rest on Show more", async () => {
+      await setup({
+        simulateLargeInstance: true,
+        collections: MANY_COLLECTIONS,
+        lazyPageSize: 2,
+      });
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("treeitem", { name: /Wide collection 3/ }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("tree-show-more")).getByRole("button"),
+      );
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Wide collection 3/ }),
+      ).toBeInTheDocument();
+      // The first page is kept rather than replaced.
+      expect(
+        screen.getByRole("treeitem", { name: /Wide collection 1/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("should stop offering Show more once the level is exhausted", async () => {
+      await setup({
+        simulateLargeInstance: true,
+        collections: MANY_COLLECTIONS,
+        lazyPageSize: 4,
+      });
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("tree-show-more")).getByRole("button"),
+      );
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Wide collection 5/ }),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByTestId("tree-show-more")).not.toBeInTheDocument(),
+      );
+    });
   });
 
   it("should not render children until their parent is expanded", async () => {

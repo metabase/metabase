@@ -34,6 +34,8 @@ export interface CollectionEndpoints {
    * fixture models a small instance, where the real endpoint returns the whole tree.
    */
   simulateLargeInstance?: boolean;
+  /** Page size the lazy tree mock applies to each level. Small by default so tests can reach a second page. */
+  lazyPageSize?: number;
 }
 
 /** Mirrors what the tree endpoint does to a node whose children it has not read. */
@@ -70,6 +72,7 @@ export function setupCollectionsEndpoints({
   trashCollection = mockTrashCollection,
   currentUserId,
   simulateLargeInstance = false,
+  lazyPageSize = 50,
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -113,13 +116,20 @@ export function setupCollectionsEndpoints({
 
     const isLazy = url.searchParams.get("lazy") === "true";
 
+    const levelOffset = Number(url.searchParams.get("level-offset") ?? 0);
+    const asLevel = simulateLargeInstance ? withoutChildren : withChildFlags;
+
+    /** Mirrors the endpoint: a page of the level, plus where the next page starts. */
+    const asPage = (level: Collection[]) => ({
+      data: level.slice(levelOffset, levelOffset + lazyPageSize).map(asLevel),
+      has_more: level.length > levelOffset + lazyPageSize,
+      next_offset: levelOffset + lazyPageSize,
+    });
+
     // A lazy request for one node's children returns just that node's direct children.
     const parentId = url.searchParams.get("collection-id");
     if (parentId != null) {
-      const children = findCollection(collections, parentId)?.children ?? [];
-      return children.map(
-        simulateLargeInstance ? withoutChildren : withChildFlags,
-      );
+      return asPage(findCollection(collections, parentId)?.children ?? []);
     }
 
     const excludeOtherUserCollections =
@@ -168,9 +178,7 @@ export function setupCollectionsEndpoints({
     if (!isLazy) {
       return visible;
     }
-    return visible.map(
-      simulateLargeInstance ? withoutChildren : withChildFlags,
-    );
+    return asPage(visible);
   });
 }
 

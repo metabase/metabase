@@ -30,6 +30,7 @@ import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
+  Collection,
   Dashboard,
   DashboardId,
   ModelResult,
@@ -74,6 +75,9 @@ export type SetupOpts = {
   activeUsersCount?: number;
   /** Renders the collection tree the way it comes back on an instance too large to send in one response. */
   simulateLargeInstance?: boolean;
+  /** Extra root-level collections, on top of the default fixture. */
+  collections?: Collection[];
+  lazyPageSize?: number;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -115,6 +119,8 @@ export async function setup({
   hasEmbeddingFeature,
   applicationName = "Metabase",
   simulateLargeInstance = false,
+  collections: extraCollections = [],
+  lazyPageSize,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -147,7 +153,7 @@ export async function setup({
     can_write: user?.is_superuser || canCurateRootCollection,
   });
 
-  const collections = [TEST_COLLECTION];
+  const collections = [TEST_COLLECTION, ...extraCollections];
 
   const personalCollection = user
     ? createMockCollection({
@@ -166,6 +172,7 @@ export async function setup({
     rootCollection: OUR_ANALYTICS,
     currentUserId: user?.id,
     simulateLargeInstance,
+    lazyPageSize,
   });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],

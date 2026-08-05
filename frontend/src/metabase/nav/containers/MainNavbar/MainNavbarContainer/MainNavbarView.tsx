@@ -64,6 +64,9 @@ type Props = {
   expandedCollectionIds: Set<string | number>;
   onToggleCollectionExpand: (id: string | number) => void;
   onCollectionHover: (id: string | number) => void;
+  onCollectionShowMore: (parentId: string | number | null) => void;
+  loadingMoreCollectionIds: Set<string | number | null>;
+  collectionsHaveMore: boolean;
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
   canAccessTenantSpecificCollections: boolean;
@@ -88,6 +91,9 @@ export function MainNavbarView({
   expandedCollectionIds,
   onToggleCollectionExpand,
   onCollectionHover,
+  onCollectionShowMore,
+  loadingMoreCollectionIds,
+  collectionsHaveMore,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -292,6 +298,9 @@ export function MainNavbarView({
                     expandedIds={expandedCollectionIds}
                     onToggleExpand={onToggleCollectionExpand}
                     onNodeHover={onCollectionHover}
+                    hasMore={collectionsHaveMore}
+                    onShowMore={onCollectionShowMore}
+                    loadingMoreIds={loadingMoreCollectionIds}
                   />
                 ) : (
                   <Tree
@@ -301,6 +310,9 @@ export function MainNavbarView({
                     expandedIds={expandedCollectionIds}
                     onToggleExpand={onToggleCollectionExpand}
                     onNodeHover={onCollectionHover}
+                    hasMore={collectionsHaveMore}
+                    onShowMore={onCollectionShowMore}
+                    loadingMoreIds={loadingMoreCollectionIds}
                     TreeNode={SidebarCollectionLink}
                     role="tree"
                     aria-label="collection-tree"
