@@ -3633,3 +3633,58 @@
                  (mt/user-http-request :rasta :get 403 route :worktree-id wt-id))))
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "collection/" wt-coll))))))))
+
+(deftest root-items-worktree-id-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Worktree   {wt-id :id}     {}
+                       :model/Collection {wt-coll :id}   {:name        "worktree root collection"
+                                                          :namespace   "transforms"
+                                                          :worktree_id wt-id}
+                       :model/Collection {main-coll :id} {:name      "main root collection"
+                                                          :namespace "transforms"}
+                       :model/Transform  {wt-tf :id}     {:name        "worktree transform"
+                                                          :worktree_id wt-id}
+                       :model/Transform  {main-tf :id}   {:name "main transform"}]
+          (letfn [(item-ids [& params]
+                    (->> (apply mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                :namespace "transforms" params)
+                         :data
+                         (into #{} (map (juxt :model :id)))))]
+            (testing "by default the root listing shows only main-app content"
+              (let [ids (item-ids)]
+                (is (contains? ids ["collection" main-coll]))
+                (is (contains? ids ["transform" main-tf]))
+                (is (not (contains? ids ["collection" wt-coll])))
+                (is (not (contains? ids ["transform" wt-tf])))))
+            (testing "worktree-id selects only that worktree's root-level content"
+              (let [ids (item-ids :worktree-id wt-id)]
+                (is (contains? ids ["collection" wt-coll]))
+                (is (contains? ids ["transform" wt-tf]))
+                (is (not (contains? ids ["collection" main-coll])))
+                (is (not (contains? ids ["transform" main-tf]))))))
+          (testing "worktree-id is admin-only"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id)))))))))
+
+(deftest worktree-collection-items-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Worktree   {wt-id :id}     {}
+                       :model/Collection {parent-id :id} {:name        "worktree parent"
+                                                          :namespace   "transforms"
+                                                          :worktree_id wt-id}
+                       :model/Collection {child-id :id}  {:name        "worktree child"
+                                                          :namespace   "transforms"
+                                                          :worktree_id wt-id
+                                                          :location    (format "/%d/" parent-id)}
+                       :model/Transform  {tf-id :id}     {:name          "transform in worktree collection"
+                                                          :collection_id parent-id
+                                                          :worktree_id   wt-id}]
+          (testing "a worktree collection's items include its child collections and transforms"
+            (is (= #{["collection" child-id] ["transform" tf-id]}
+                   (->> (mt/user-http-request :crowberto :get 200 (str "collection/" parent-id "/items"))
+                        :data
+                        (into #{} (map (juxt :model :id))))))))))))

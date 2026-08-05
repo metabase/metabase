@@ -1,6 +1,6 @@
 .nav {
   border-right: 1px solid var(--mb-color-border-neutral);
-  overflow: auto;
+  overflow: hidden;
 }
 
 .opened {
@@ -96,4 +96,9 @@
   /* keep the 4px focus ring (2px outline + 2px offset) inside the scrollport */
   padding: 4px;
   margin: -4px;
+}
+
+.lowerGroup,
+.header {
+  flex-shrink: 0;
 }

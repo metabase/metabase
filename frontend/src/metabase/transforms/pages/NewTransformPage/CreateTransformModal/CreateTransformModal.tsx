@@ -30,7 +30,6 @@ import type {
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 import { TargetNameInput } from "../../../components/TargetNameInput";
-import { FormWorktreeCollectionPicker } from "../../../components/WorktreeCollectionPicker";
 
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
@@ -189,21 +188,15 @@ function CreateTransformForm({
           />
         )}
         <TargetNameInput description={targetDescription} />
-        {worktreeId != null ? (
-          <FormWorktreeCollectionPicker
-            name="collection_id"
-            title={t`Collection`}
-            worktreeId={worktreeId}
-            style={{ marginBottom: 0 }}
-          />
-        ) : (
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Collection`}
-            collectionPickerModalProps={{ namespaces: ["transforms"] }}
-            style={{ marginBottom: 0 }}
-          />
-        )}
+        <FormCollectionPicker
+          name="collection_id"
+          title={t`Collection`}
+          collectionPickerModalProps={{
+            namespaces: ["transforms"],
+            worktreeId,
+          }}
+          style={{ marginBottom: 0 }}
+        />
         {showIncrementalSettings && (
           <IncrementalTransformSettings
             source={source}

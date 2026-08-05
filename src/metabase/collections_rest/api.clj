@@ -1117,7 +1117,9 @@
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
-                     :include-trash-collection? archived?}
+                     :include-trash-collection? archived?
+                     ;; children always live in the same worktree as their parent (nil = the main app)
+                     :worktree-id (:worktree_id collection)}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
@@ -1367,26 +1369,32 @@
 
   By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
 
+  `worktree-id` selects the root-level content of a remote-sync worktree instead of the main app's; nil (the
+  default) is the main app.
+
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe Models]]
-                                          [:collection_type             {:optional true} CollectionType]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                          [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+           show_dashboard_questions worktree-id]} :- [:map
+                                                      [:models                      {:optional true} [:maybe Models]]
+                                                      [:collection_type             {:optional true} CollectionType]
+                                                      [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                                      [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                      [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                      [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                                      [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                      [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                                      [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                                      [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                      [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                      [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection :namespace namespace)
+  (let [root-collection (assoc collection/root-collection :namespace namespace :worktree_id worktree-id)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children

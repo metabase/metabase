@@ -90,7 +90,11 @@ export const AppBarLarge = ({
           isNavBarEnabled={isNavBarEnabled}
           isGitSyncVisible={isGitSyncVisible}
         />
-        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+        {isGitSyncVisible && (
+          <Box mr="lg">
+            <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+          </Box>
+        )}
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >

@@ -37,6 +37,7 @@ export const NewCollectionDialog = () => {
     options,
     path,
     setPath,
+    worktreeId,
     isNewCollectionDialogOpen: isOpen,
     openNewCollectionDialog: open,
     closeNewCollectionDialog: close,
@@ -84,6 +85,8 @@ export const NewCollectionDialog = () => {
       name,
       parent_id: isVirtualRoot ? null : lastCollection.id,
       namespace: lastCollection.namespace,
+      // with a parent the backend inherits the parent's worktree, so only the root needs it
+      worktree_id: isVirtualRoot ? worktreeId : undefined,
     }).unwrap();
 
     const parentCollection: OmniPickerCollectionItem = {

@@ -20,7 +20,7 @@ export function AreaTabGroup({
   mb,
 }: AreaTabGroupProps) {
   return (
-    <Stack component="section" gap="0.75rem" mb={mb} aria-label={label}>
+    <Stack component="section" gap="xs" mb={mb} aria-label={label}>
       {showLabel && (
         <Group justify="space-between" wrap="nowrap" px="sm">
           <Text component="h4" className={S.groupHeading}>

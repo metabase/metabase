@@ -254,7 +254,7 @@ export const GitSyncControls = () => {
             p="sm"
             size="compact-sm"
             bd="none"
-            mr="lg"
+            classNames={{ inner: S.shrinkable, label: S.shrinkable }}
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={

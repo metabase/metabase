@@ -177,6 +177,8 @@ export type ListCollectionItemsRequest = {
   collection_type?: CollectionType;
   include_can_run_adhoc_query?: boolean;
   show_dashboard_questions?: boolean;
+  /** Only meaningful for the root listing; non-root listings scope to the collection's own worktree */
+  "worktree-id"?: WorktreeId;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 

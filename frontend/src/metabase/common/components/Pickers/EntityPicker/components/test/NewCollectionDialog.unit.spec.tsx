@@ -126,4 +126,43 @@ describe("NewCollectionDialog", () => {
     expect(body.name).toBe("My New Collection");
     expect(body.parent_id).toBe(null);
   });
+
+  it("should send worktree_id when creating at the root of a worktree", async () => {
+    await setup({
+      value: { id: "root", model: "collection" },
+      worktreeId: 7,
+    });
+    await userEvent.type(
+      await screen.findByPlaceholderText("My new collection"),
+      "Worktree Collection",
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
+
+    const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
+    expect(apiCalls).toHaveLength(1);
+    // fetch-mock exposes the request body as an opaque string
+    const body = JSON.parse(apiCalls[0].options?.body as string);
+    expect(body.parent_id).toBe(null);
+    expect(body.worktree_id).toBe(7);
+  });
+
+  it("should let the parent's worktree win when creating inside a collection", async () => {
+    await setup({ worktreeId: 7 });
+    await userEvent.type(
+      await screen.findByPlaceholderText("My new collection"),
+      "Nested Worktree Collection",
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
+
+    const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
+    expect(apiCalls).toHaveLength(1);
+    // fetch-mock exposes the request body as an opaque string
+    const body = JSON.parse(apiCalls[0].options?.body as string);
+    expect(body.parent_id).toBe(33);
+    expect(body.worktree_id).toBeUndefined();
+  });
 });

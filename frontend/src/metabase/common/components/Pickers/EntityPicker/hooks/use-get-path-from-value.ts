@@ -20,6 +20,7 @@ import type {
   CollectionNamespace,
   LibraryCollection,
   SchemaName,
+  WorktreeId,
 } from "metabase-types/api";
 
 import type {
@@ -31,7 +32,11 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import { getCollectionItemsOptions, validCollectionModels } from "../utils";
+import {
+  getCollectionItemsOptions,
+  getWorktreeIdParam,
+  validCollectionModels,
+} from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
 const allCollectionModels = Array.from(validCollectionModels);
@@ -87,11 +92,13 @@ export function useGetPathFromValue({
   options,
   namespaces,
   models,
+  worktreeId,
 }: {
   value?: OmniPickerValue;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
+  worktreeId?: WorktreeId;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
@@ -127,6 +134,7 @@ export function useGetPathFromValue({
       libraryCollection,
       personalCollection,
       models,
+      worktreeId,
     }).then((newPath) => {
       setPath(newPath);
       setIsLoadingPath(false);
@@ -137,6 +145,7 @@ export function useGetPathFromValue({
     libraryCollection,
     isLoadingLibraryCollection,
     isLoadingPersonalCollection,
+    worktreeId,
   ]);
 
   return [path, setPath, { isLoadingPath }] as const;
@@ -154,12 +163,14 @@ async function getPathFromValue({
   libraryCollection,
   personalCollection,
   models,
+  worktreeId,
 }: {
   value: OmniPickerValue;
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
   models: OmniPickerCollectionItem["model"][];
+  worktreeId?: WorktreeId;
 }): Promise<OmniPickerItem[]> {
   if (value.id === "databases") {
     return [getFakeDbCollection()];
@@ -176,6 +187,7 @@ async function getPathFromValue({
       libraryCollection,
       personalCollection,
       models,
+      worktreeId,
     });
   }
 
@@ -196,6 +208,7 @@ async function getPathFromValue({
         libraryCollection,
         personalCollection,
         models,
+        worktreeId,
       });
 }
 
@@ -343,12 +356,14 @@ async function getCollectionPathFromValue({
   libraryCollection,
   personalCollection,
   models,
+  worktreeId,
 }: {
   value: OmniPickerCollectionItemValue;
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
   models: OmniPickerCollectionItem["model"][];
+  worktreeId?: WorktreeId;
 }): Promise<OmniPickerItem[]> {
   if (value.id === null || value.id === "root") {
     // if a root was passed, just return the root collection item
@@ -479,6 +494,7 @@ async function getCollectionPathFromValue({
         id: collectionId,
         namespace: itemNamespace ?? undefined,
         ...getCollectionItemsOptions({ models }),
+        ...getWorktreeIdParam(collectionId, worktreeId),
       }),
     )
       .unwrap()

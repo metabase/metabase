@@ -1069,4 +1069,82 @@ describe("EntityPickerModal", () => {
       expect(within(searchList).getAllByRole("link")).toHaveLength(2);
     });
   });
+
+  describe("Worktree scoping", () => {
+    const setupWorktreePicker = async (
+      props: Partial<Parameters<typeof setup>[0]> = {},
+    ) =>
+      setup({
+        models: ["collection"],
+        namespaces: ["transforms"],
+        worktreeId: 7,
+        tokenFeatures: { "transforms-basic": true },
+        options: {
+          hasSearch: false,
+          hasRecents: false,
+          hasDatabases: false,
+          hasLibrary: false,
+          hasPersonalCollections: false,
+          hasRootCollection: true,
+        },
+        ...props,
+      });
+
+    it("should request root items scoped to the worktree", async () => {
+      await setupWorktreePicker();
+
+      await expectActiveItem("Transforms");
+      await waitFor(async () => {
+        const gets = await findRequests("GET");
+        const rootItemsRequest = gets.find((req) =>
+          req.url.includes("/api/collection/root/items"),
+        );
+        expect(rootItemsRequest?.url).toContain("worktree-id=7");
+      });
+    });
+
+    it("should not scope non-root listings, which follow their collection's worktree", async () => {
+      await setupWorktreePicker();
+
+      await userEvent.click(await screen.findByText("First Collection"));
+      await waitFor(async () => {
+        const gets = await findRequests("GET");
+        const childItemsRequest = gets.find((req) =>
+          req.url.includes("/api/collection/11/items"),
+        );
+        expect(childItemsRequest).toBeDefined();
+        expect(childItemsRequest?.url).not.toContain("worktree-id");
+      });
+    });
+
+    it("should expand the path to an existing value through the scoped root listing", async () => {
+      await setupWorktreePicker({
+        value: { id: 33, model: "collection", namespace: "transforms" },
+      });
+
+      await expectActiveItem("Nested Collection");
+      const gets = await findRequests("GET");
+      const rootItemsRequests = gets.filter((req) =>
+        req.url.includes("/api/collection/root/items"),
+      );
+      expect(rootItemsRequests.length).toBeGreaterThan(0);
+      rootItemsRequests.forEach((req) => {
+        expect(req.url).toContain("worktree-id=7");
+      });
+    });
+
+    it("should not send worktree-id without a worktreeId", async () => {
+      await setupWorktreePicker({ worktreeId: undefined });
+
+      await expectActiveItem("Transforms");
+      await waitFor(async () => {
+        const gets = await findRequests("GET");
+        const rootItemsRequest = gets.find((req) =>
+          req.url.includes("/api/collection/root/items"),
+        );
+        expect(rootItemsRequest).toBeDefined();
+        expect(rootItemsRequest?.url).not.toContain("worktree-id");
+      });
+    });
+  });
 });

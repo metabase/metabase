@@ -15,6 +15,8 @@ import {
 } from "metabase-enterprise/api";
 import type { Worktree } from "metabase-types/api";
 
+import S from "./WorktreeLayout.module.css";
+
 export function WorktreeLayout() {
   const params = useParams<{ worktreeId: string }>();
   const worktreeId = Urls.extractEntityId(params.worktreeId);
@@ -60,7 +62,7 @@ function WorktreeBanner({ worktree }: WorktreeBannerProps) {
       justify="space-between"
       px="xl"
       py="sm"
-      bd="1px solid var(--mb-color-border)"
+      className={S.banner}
       bg="background_surface-secondary"
     >
       <Group gap="sm">

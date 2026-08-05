@@ -1,3 +1,7 @@
+.shrinkable {
+  min-width: 0;
+}
+
 .chevronIcon {
   transition: transform 200ms ease;
 

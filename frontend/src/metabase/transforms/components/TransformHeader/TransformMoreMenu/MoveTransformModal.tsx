@@ -10,9 +10,7 @@ import type {
 } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useWorktreeId } from "metabase/common/worktrees";
-import type { CollectionId, Transform } from "metabase-types/api";
-
-import { WorktreeCollectionPickerModal } from "../../WorktreeCollectionPicker";
+import type { Transform } from "metabase-types/api";
 
 const TRANSFORM_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
   hasSearch: false,
@@ -39,22 +37,15 @@ export function MoveTransformModal({
   const [updateTransform] = useUpdateTransformMutation();
   const worktreeId = useWorktreeId();
 
-  const handleMove = useCallback(
-    async (collectionId: CollectionId | null) => {
+  const handleChange = useCallback(
+    async ({ id }: OmniPickerItem) => {
       await updateTransform({
         id: transform.id,
-        collection_id: canonicalCollectionId(collectionId),
+        collection_id: canonicalCollectionId(id),
       }).unwrap();
       onMove();
     },
     [transform.id, updateTransform, onMove],
-  );
-
-  const handleChange = useCallback(
-    async ({ id }: OmniPickerItem) => {
-      await handleMove(canonicalCollectionId(id));
-    },
-    [handleMove],
   );
 
   const pickerValue: OmniPickerValue = useMemo(
@@ -69,23 +60,12 @@ export function MoveTransformModal({
   const title = c("dialog title for moving a transform to another collection")
     .t`Move "${transform.name}"`;
 
-  if (worktreeId != null) {
-    return (
-      <WorktreeCollectionPickerModal
-        title={title}
-        worktreeId={worktreeId}
-        value={transform.collection_id}
-        onChange={handleMove}
-        onClose={onClose}
-      />
-    );
-  }
-
   return (
     <CollectionPickerModal
       title={title}
       value={pickerValue}
       namespaces={["transforms"]}
+      worktreeId={worktreeId}
       onChange={handleChange}
       onClose={onClose}
       options={TRANSFORM_COLLECTION_PICKER_OPTIONS}
