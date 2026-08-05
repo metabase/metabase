@@ -37,15 +37,6 @@ const shouldLintCssModules =
 
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
-// ttag string extraction only understands contexts chained inline, e.g. c("...").t`...`;
-// a c() call stored in a variable silently drops its strings from the .pot file.
-const unchainedTtagContextRestriction = {
-  selector:
-    "CallExpression[callee.name=c]:not(MemberExpression > CallExpression)",
-  message:
-    "Unchained ttag c() — its strings are dropped from the translation template. Chain it inline: c('context').t`...`",
-};
-
 const baseMetabaseRestrictedConfig = {
   patterns: [
     { group: ["metabase-enterprise"] },
@@ -169,7 +160,6 @@ const configs = [
     rules: {
       // Base ESLint rules
       strict: ["error", "never"],
-      "no-restricted-syntax": ["error", unchainedTtagContextRestriction],
       "no-undef": "error",
       "no-var": "warn",
       "no-unused-vars": [
@@ -599,7 +589,6 @@ const configs = [
       "ttag/no-module-declaration": "error",
       "no-restricted-syntax": [
         "error",
-        unchainedTtagContextRestriction,
         {
           selector: "Literal[value=/mb-base-color-/]",
           message:

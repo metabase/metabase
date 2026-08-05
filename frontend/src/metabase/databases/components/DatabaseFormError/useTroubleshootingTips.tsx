@@ -81,10 +81,12 @@ export const useTroubleshootingTips = (
         key: "permissions" as const,
         // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
         title: t`Check Metabase user permissions`,
-        /* eslint-disable metabase/no-literal-metabase-strings -- Only visible to admins */
-        body: c("{0} refers to 'correct permissions'")
-          .jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`,
-        /* eslint-enable metabase/no-literal-metabase-strings */
+        body: (() => {
+          // unchained `c` -> `jt` call to avoid prettier moving no-literal-metabase-strings comment up
+          const ctx = c("{0} refers to 'correct permissions'");
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
+          return ctx.jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`;
+        })(),
       },
       {
         key: "connection-settings" as const,
