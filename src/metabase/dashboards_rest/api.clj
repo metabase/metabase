@@ -625,6 +625,7 @@
                            :join            [[:report_card :c] [:= :c.id :dc.card_id]]
                            :where           [:and
                                              [:in :dc.dashboard_id (map :id dashboards)]
+                                             [:= :c.archived false]
                                              [:like :c.display "custom:%"]]})))]
     (for [dashboard dashboards]
       (assoc dashboard :contains_custom_viz (contains? custom-viz-dashboard-ids (:id dashboard))))))

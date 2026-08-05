@@ -416,8 +416,8 @@
   "List all Documents that have public links.
 
   Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,
-  and `:public_uuid`. Documents are only actually accessible via the public endpoint if public sharing is
-  currently enabled. Archived Documents are excluded from the results.
+  `:public_uuid`, and `:contains_custom_viz`. Documents are only actually accessible via the public endpoint if
+  public sharing is currently enabled. Archived Documents are excluded from the results.
 
   This endpoint is used to populate the public links listing in the Admin settings UI.
 

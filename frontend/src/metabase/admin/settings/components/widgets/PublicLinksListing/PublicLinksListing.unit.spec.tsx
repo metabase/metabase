@@ -126,27 +126,29 @@ describe("PublicSharingSettingsPage", () => {
     expect(screen.queryByText("Disable this link?")).not.toBeInTheDocument();
   });
 
-  it("shows a warning icon with tooltip for flagged items", () => {
-    setup({
-      publicCardData: [
-        {
-          id: 1,
-          name: "Plain card",
-          public_uuid: "abc",
-          contains_custom_viz: false,
-        },
-        {
-          id: 2,
-          name: "Sankey card",
-          public_uuid: "def",
-          contains_custom_viz: true,
-        },
-      ],
-      getWarning: (item) =>
-        item.contains_custom_viz
-          ? "Contains custom visualizations, which appear as tables in the public link."
-          : undefined,
-    });
+  it("shows a warning icon with tooltip for flagged items", async () => {
+    await act(() =>
+      setup({
+        publicCardData: [
+          {
+            id: 1,
+            name: "Plain card",
+            public_uuid: "abc",
+            contains_custom_viz: false,
+          },
+          {
+            id: 2,
+            name: "Sankey card",
+            public_uuid: "def",
+            contains_custom_viz: true,
+          },
+        ],
+        getWarning: (item) =>
+          item.contains_custom_viz
+            ? "Contains custom visualizations, which appear as tables in the public link."
+            : undefined,
+      }),
+    );
     const rows = screen.getAllByRole("row");
     expect(
       within(rows[2]).getByLabelText(
