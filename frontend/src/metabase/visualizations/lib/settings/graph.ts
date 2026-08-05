@@ -2,12 +2,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
+import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
+import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
-} from "metabase/visualizations";
-import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
-import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
+} from "metabase/visualizations/lib/registry";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";

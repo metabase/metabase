@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import visualizations, {
   type RegisteredVisualization,
-} from "metabase/visualizations";
+} from "metabase/visualizations/lib/registry";
 import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
