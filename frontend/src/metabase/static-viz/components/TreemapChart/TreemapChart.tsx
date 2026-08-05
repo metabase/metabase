@@ -3,7 +3,6 @@ import { type EChartsType, init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { extractRemappings } from "metabase/visualizations/lib/remapping";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
 import {
@@ -19,6 +18,7 @@ import {
   type TreemapChartOptionConfig,
   getStaticTreemapOption,
 } from "metabase/visualizations/echarts/graph/treemap/option/option";
+import { extractRemappings } from "metabase/visualizations/lib/remapping";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,

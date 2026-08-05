@@ -4,13 +4,13 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { DataKey } from "metabase/visualizations/echarts/cartesian/model/types";
+import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
