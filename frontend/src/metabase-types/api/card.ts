@@ -404,6 +404,9 @@ export type VisualizationSettings = {
   /** Explicit order, labels, colors, and enabled state for breakout series. */
   "graph.series_order"?: SeriesOrderSetting[];
 
+  /** Whether the dashboard collection's timeline events are drawn on the chart. */
+  "timeline.events_enabled"?: boolean;
+
   /** Result numeric column name used to size scatter plot bubbles. */
   "scatter.bubble"?: string;
 

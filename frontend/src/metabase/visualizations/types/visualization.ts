@@ -596,6 +596,7 @@ export type VisualizationSettingsDefinitions = {
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  "timeline.events_enabled"?: SeriesSettingDefinition<Value, Props>;
   "treemap._groups_widget"?: SeriesSettingDefinition<
     Value,
     TreemapGroupsPickerProps

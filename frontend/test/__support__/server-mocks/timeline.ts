@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { Timeline } from "metabase-types/api";
+import type { CollectionId, Timeline } from "metabase-types/api";
 
 export function setupTimelinesEndpoints(timelines: Timeline[], delay?: number) {
   fetchMock.get(
@@ -8,4 +8,11 @@ export function setupTimelinesEndpoints(timelines: Timeline[], delay?: number) {
     timelines,
     delay != null ? { delay } : undefined,
   );
+}
+
+export function setupCollectionTimelinesEndpoints(
+  collectionId: CollectionId,
+  timelines: Timeline[],
+) {
+  fetchMock.get(`path:/api/timeline/collection/${collectionId}`, timelines);
 }

@@ -21,6 +21,7 @@ import {
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/visualizations/echarts/tooltip";
+import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -70,9 +71,6 @@ function CartesianChartInner(props: VisualizationProps) {
     canToggleSeriesVisibility,
     titleMenuItems,
     onOpenTimelines,
-    onSelectTimelineEvents,
-    onDeselectTimelineEvents,
-    selectedTimelineEventIds,
   } = props;
 
   const settings = useMemo(
@@ -86,6 +84,22 @@ function CartesianChartInner(props: VisualizationProps) {
         : originalSettings,
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
+
+  // Pass the dashboard-adjusted settings so that timeline events suppressed
+  // on small dashcards are neither fetched nor rendered.
+  const {
+    timelineEvents,
+    selectedTimelineEventIds,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  } = useTimelineEvents({
+    timelineEvents: props.timelineEvents,
+    settings,
+    dashboard: props.dashboard,
+    selectedTimelineEventIds: props.selectedTimelineEventIds,
+    onSelectTimelineEvents: props.onSelectTimelineEvents,
+    onDeselectTimelineEvents: props.onDeselectTimelineEvents,
+  });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
@@ -108,6 +122,8 @@ function CartesianChartInner(props: VisualizationProps) {
       height: chartSize.height,
       hiddenSeries,
       settings,
+      timelineEvents,
+      selectedTimelineEventIds,
     },
     containerRef,
     hoveredTimelineEventIds,

@@ -13,6 +13,7 @@ import {
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
+import { TIMELINE_EVENTS_SETTINGS } from "metabase/visualizations/lib/settings/timelineEvents";
 import {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
@@ -125,6 +126,7 @@ export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
     ...LEGEND_SETTINGS,
