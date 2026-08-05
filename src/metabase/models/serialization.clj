@@ -61,7 +61,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.config.core :as config]
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
@@ -1383,6 +1382,11 @@
     (m :guard map?)
     (import-mbql-map m)))
 
+(def ^:dynamic *skip-schema-validation?*
+  "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema.
+  Bound from the `serialization-skip-schema-validation` setting by the serdes load entry point."
+  false)
+
 (defn- validate-imported-query!
   "Throws when `query` is a full MBQL query that this instance's own query schema rejects.
 
@@ -1393,14 +1397,19 @@
   Only full queries are checked. Bare refs and the MBQL fragments embedded in visualization settings have no
   standalone schema to check them against."
   [query]
+  ;; `validate` before `explain` - explain is much slower, and this runs on every imported query
   (when (and (= (:lib/type query) :mbql/query)
-             (not (config/config-bool :mb-serialization-skip-schema-validation)))
-    (when-let [error (mr/explain ::lib.schema/query query)]
+             (not *skip-schema-validation?*)
+             (not (mr/validate ::lib.schema/query query)))
+    (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
       (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
                            "most likely exported by a newer Metabase whose query shape this version cannot "
-                           "represent. Set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to import it anyway.")
-                      {:schema-errors (mu.humanize/humanize error)
-                       :status        400})))))
+                           "represent. Set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to import it anyway. "
+                           ;; a summary in the message itself: the full errors are only in ex-data, which
+                           ;; error reporting does not always surface
+                           "Schema errors: " (u/truncate (pr-str errors) 500))
+                      {:schema-errors errors
+                       :status-code   400})))))
 
 (defn- normalize-imported
   "Normalizes ingested MBQL into this instance's representation, and refuses a result its schema rejects.
@@ -1411,6 +1420,8 @@
   the schema rejects is a different matter, and throws."
   [x]
   (when x
+    ;; the sentinel keeps `validate-imported-query!` outside the `catch`, so its refusal propagates instead of
+    ;; being swallowed as a normalization failure. Returning `x` from the catch would put it inside.
     (let [normalized (try
                        (if (mbql-ref? x)
                          (normalize-mbql-ref x)

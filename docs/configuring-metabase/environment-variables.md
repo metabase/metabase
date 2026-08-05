@@ -1547,6 +1547,14 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
+### `MB_QUERY_CACHING_EARLY_REFRESH_RATIO`
+
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `query-caching-early-refresh-ratio`
+
+Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.
+
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1946,6 +1954,24 @@ This variable also controls the geocoding service that Metabase uses to know the
 - [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
 
 Should new email notifications be sent to admins, for all new SSO users?
+
+### `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH`
+
+- Type: boolean
+- Default: `false`
+
+Whether to import a serialization export that this Metabase cannot confirm is compatible. Defaults to false.
+
+Metabase refuses to import an export produced by a different major version, and one whose cards declare a representation newer than it can read, because importing across major versions can silently corrupt existing content. Set this to true to import anyway. Test such an import on a non-production instance first — skipping this check is what allowed content to be corrupted in the first place.
+
+### `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION`
+
+- Type: boolean
+- Default: `false`
+
+Whether to import questions whose queries this Metabase's query schema rejects. Defaults to false.
+
+On import Metabase validates every question against the query format it understands, and refuses one it cannot read — this catches content a newer Metabase can express but this version cannot. Set this to true to skip that validation. Doing so will not necessarily make the import succeed: content Metabase cannot read may still fail later in the import, or import in a broken state.
 
 ### `MB_SESSION_COOKIE_SAMESITE`
 

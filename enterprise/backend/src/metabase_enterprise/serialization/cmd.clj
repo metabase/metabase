@@ -43,9 +43,10 @@
              check-version?]
       :or   {token-check?            true
              require-initialized-db? true
-             ;; Off by default: internal callers load content bundled with this jar (eg. instance analytics),
-             ;; which carries no version stamp but is matched to the running version by construction.
-             check-version?          false}}]
+             ;; On by default so a new import path is protected unless it opts out. Callers loading content bundled
+             ;; with this jar (eg. instance analytics) pass false: it carries no version stamp but is matched to the
+             ;; running version by construction.
+             check-version?          true}}]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
   (when (and require-initialized-db? (not (setup/has-user-setup)))
@@ -72,7 +73,7 @@
   (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
-                   (v2-load-internal! path opts :token-check? true :check-version? true)
+                   (v2-load-internal! path opts :token-check? true)
                    (catch ExceptionInfo e
                      (reset! err e))
                    (catch Exception e

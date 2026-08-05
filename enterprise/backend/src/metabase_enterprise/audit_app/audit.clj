@@ -282,7 +282,10 @@
                          (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
                                                               {:backfill? false}
                                                               :token-check? false
-                                                              :require-initialized-db? false))
+                                                              :require-initialized-db? false
+                                                              ;; bundled with this jar, so matched to the running
+                                                              ;; version by construction and carries no stamp
+                                                              :check-version? false))
                loaded? (empty? (:errors report))]
            (if loaded?
              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))

@@ -67,83 +67,130 @@
 
 (deftest check-import-compatibility-major-version-test
   (testing "GHY-4241: importing across major versions silently corrupted content, so it is now refused"
-    (let [ingestion (fn [version]
-                      (ingestion-in-memory
-                       [(cond-> {:serdes/meta [{:model "Collection" :id "0123456789abcdef_0123"}]
-                                 :name        "Some collection"}
-                          version (assoc :metabase_version version))]))]
-      (testing "an export from this instance's major version is allowed"
-        (with-redefs [config/current-major-version (constantly 62)]
-          (is (nil? (serdes.load/check-import-compatibility! (ingestion "v1.62.3 (abc1234)"))))))
-
-      (testing "patch releases within the same major are allowed - only the major is compared"
-        (with-redefs [config/current-major-version (constantly 62)]
-          (is (nil? (serdes.load/check-import-compatibility! (ingestion "v1.62.9 (deadbee)"))))))
-
-      (testing "an export from a different major version is refused, naming both versions"
-        (with-redefs [config/current-major-version (constantly 62)]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"produced by Metabase v1\.61\.0.*major version 61.*this instance is major version 62"
-               (serdes.load/check-import-compatibility! (ingestion "v1.61.0 (abc1234)"))))))
-
-      (testing "an export with no version stamp is refused, since only v63+ omits the stamp"
-        (with-redefs [config/current-major-version (constantly 62)]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"does not record which Metabase version produced it"
-               (serdes.load/check-import-compatibility! (ingestion nil))))))
-
-      (testing "the check is skipped when this instance cannot determine its own major version (dev builds)"
-        (with-redefs [config/current-major-version (constantly nil)]
-          (is (nil? (serdes.load/check-import-compatibility! (ingestion nil))))))
-
-      (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of the check entirely"
-        (with-redefs [config/current-major-version (constantly 62)]
-          (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
-            (is (nil? (serdes.load/check-import-compatibility! (ingestion nil))))))))))
+    ;; needs an app db because the opt-out is a Setting; both callers run after `mdb/setup-db!`
+    (mt/with-empty-h2-app-db!
+      (let [ingestion (fn [version]
+                        (ingestion-in-memory
+                         [(cond-> {:serdes/meta [{:model "Collection" :id "0123456789abcdef_0123"}]
+                                   :name        "Some collection"}
+                            version (assoc :metabase_version version))]))]
+        (testing "an export from this instance's major version is allowed"
+          (with-redefs [config/current-major-version (constantly 62)]
+            (is (nil? (serdes.load/check-import-compatibility! (ingestion "v1.62.3 (abc1234)"))))))
+        (testing "patch releases within the same major are allowed - only the major is compared"
+          (with-redefs [config/current-major-version (constantly 62)]
+            (is (nil? (serdes.load/check-import-compatibility! (ingestion "v1.62.9 (deadbee)"))))))
+        (testing "an export from a different major version is refused, naming both versions"
+          (with-redefs [config/current-major-version (constantly 62)]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"produced by Metabase v1\.61\.0.*major version 61.*this instance is major version 62"
+                 (serdes.load/check-import-compatibility! (ingestion "v1.61.0 (abc1234)"))))))
+        (testing "an unstamped export is refused - it can't be confirmed compatible, whatever produced it"
+          (with-redefs [config/current-major-version (constantly 62)]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"does not record which Metabase version produced it"
+                 (serdes.load/check-import-compatibility! (ingestion nil))))))
+        (testing "the check is skipped when this instance cannot determine its own major version (dev builds)"
+          (with-redefs [config/current-major-version (constantly nil)]
+            (is (nil? (serdes.load/check-import-compatibility! (ingestion nil))))))
+        (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of the check entirely"
+          (with-redefs [config/current-major-version (constantly 62)]
+            (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
+              (is (nil? (serdes.load/check-import-compatibility! (ingestion nil)))))))))))
 
 (deftest check-import-compatibility-card-schema-test
   (testing "GHY-4241: a Card whose representation is newer than we can read is refused rather than stored verbatim"
     ;; The version stamp rides on the Collection so that the major-version check passes and these assertions
     ;; isolate the card_schema check. Cards carry only their schema version, as they do in a real export.
-    (let [ingestion (fn [& card-schemas]
-                      (ingestion-in-memory
-                       (cons {:serdes/meta      [{:model "Collection" :id "0123456789abcdef_0123"}]
-                              :name             "A collection"
-                              :metabase_version "v1.62.3 (abc1234)"}
-                             (for [[i card-schema] (map-indexed vector card-schemas)]
-                               {:serdes/meta [{:model "Card" :id (format "0123456789abcdef_%04d" i)}]
-                                :name        (format "Card %s" i)
-                                :card_schema card-schema}))))]
-      (with-redefs [config/current-major-version (constantly 62)]
-        (testing "the schema version this instance writes is accepted"
-          (is (nil? (serdes.load/check-import-compatibility!
-                     (ingestion queries/current-schema-version)))))
+    ;; needs an app db because the opt-out is a Setting; both callers run after `mdb/setup-db!`
+    (mt/with-empty-h2-app-db!
+      (let [ingestion (fn [& card-schemas]
+                        (ingestion-in-memory
+                         (cons {:serdes/meta      [{:model "Collection" :id "0123456789abcdef_0123"}]
+                                :name             "A collection"
+                                :metabase_version "v1.62.3 (abc1234)"}
+                               (for [[i card-schema] (map-indexed vector card-schemas)]
+                                 {:serdes/meta [{:model "Card" :id (format "0123456789abcdef_%04d" i)}]
+                                  :name        (format "Card %s" i)
+                                  :card_schema card-schema}))))]
+        (with-redefs [config/current-major-version (constantly 62)]
+          (testing "the schema version this instance writes is accepted"
+            (is (nil? (serdes.load/check-import-compatibility!
+                       (ingestion queries/current-schema-version)))))
+          (testing "older schema versions are accepted - they have upgrade paths"
+            (is (nil? (serdes.load/check-import-compatibility!
+                       (ingestion queries/starting-card-schema-version)))))
+          (testing "a newer schema version is refused, naming both versions"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"schema version is 99, but this instance understands at most"
+                 (serdes.load/check-import-compatibility! (ingestion 99)))))
+          (testing "every Card is checked, not just the first"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"schema version is 99"
+                 (serdes.load/check-import-compatibility!
+                  (ingestion queries/current-schema-version queries/current-schema-version 99)))))
+          (testing "an export with no Cards at all is accepted"
+            (is (nil? (serdes.load/check-import-compatibility! (ingestion)))))
+          (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of this check too"
+            (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
+              (is (nil? (serdes.load/check-import-compatibility! (ingestion 99)))))))))))
 
-        (testing "older schema versions are accepted - they have upgrade paths"
-          (is (nil? (serdes.load/check-import-compatibility!
-                     (ingestion queries/starting-card-schema-version)))))
+(defn- cause-chain-messages
+  "Messages of `e` and every exception beneath it."
+  [e]
+  (mapv ex-message (take-while some? (iterate ex-cause e))))
 
-        (testing "a newer schema version is refused, naming both versions"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"schema version is 99, but this instance understands at most"
-               (serdes.load/check-import-compatibility! (ingestion 99)))))
+(defn- load-failure-messages!
+  "Loads `ingestion`, expecting it to throw, and returns the thrown exception's cause-chain messages."
+  [ingestion]
+  (try
+    (serdes.load/load-metabase! ingestion)
+    ["load-metabase! unexpectedly succeeded"]
+    (catch Exception e
+      (cause-chain-messages e))))
 
-        (testing "every Card is checked, not just the first"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"schema version is 99"
-               (serdes.load/check-import-compatibility!
-                (ingestion queries/current-schema-version queries/current-schema-version 99)))))
-
-        (testing "an export with no Cards at all is accepted"
-          (is (nil? (serdes.load/check-import-compatibility! (ingestion)))))
-
-        (testing "MB_SERIALIZATION_ALLOW_VERSION_MISMATCH opts out of this check too"
-          (mt/with-temp-env-var-value! [mb-serialization-allow-version-mismatch "true"]
-            (is (nil? (serdes.load/check-import-compatibility! (ingestion 99))))))))))
+(deftest schema-validation-opt-out-reaches-import-test
+  (testing (str "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION has to travel env var -> Setting -> the binding "
+                "in load-metabase! -> import-mbql. Nothing else covers that chain, so dropping the binding would "
+                "silently disable the opt-out.")
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native with a variable"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db)
+                                               :type     :native
+                                               :native   {:template-tags {"id" {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "id"
+                                                                                :display-name "ID"
+                                                                                :type         :number}}
+                                                          :query         "SELECT 1 WHERE x = {{id}}"}})]
+          (reset! extracted {:db   (serdes/extract-one "Database" {} db)
+                             :coll (serdes/extract-one "Collection" {} coll)
+                             :card (serdes/extract-one "Card" {} card)})))
+      ;; v63 exports `template-tags` as a list where this version expects a map
+      (let [{:keys [db coll card]} @extracted
+            bad-card  (update-in card [:dataset_query :stages 0 :template-tags] (comp vec vals))
+            ingestion #(ingestion-in-memory [db coll bad-card])
+            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+        (testing "by default the schema check is what refuses the import"
+          (mt/with-empty-h2-app-db!
+            (is (ours? (load-failure-messages! (ingestion))))))
+        (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
+          ;; Skipping does not make the import succeed - normalizing list-valued `template-tags` drops the variables,
+          ;; and `repair-card-template-tag-names` rejects that on its own. Asserting on that downstream failure is
+          ;; what proves our check, specifically, was the thing skipped.
+          (mt/with-empty-h2-app-db!
+            (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+              (let [messages (load-failure-messages! (ingestion))]
+                (is (some (partial re-find #"Invalid input.*:template-tags") messages))
+                (is (not (ours? messages)))))))))))
 
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"

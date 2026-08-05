@@ -529,7 +529,17 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
 
-Metabase will log a warning if the versions doesn't match, but it won't block the import.
+Metabase refuses to import an export that came from a different major version. Importing across major versions can quietly break the content you already have — questions can lose their variables, or stop loading at all — so Metabase blocks the import instead of warning you and continuing.
+
+Some exports don't record which version created them at all — Metabase 63 and later omit it, as do Remote Sync snapshots and hand-edited files that have had the field removed. Metabase can't confirm those are compatible, so it refuses them too.
+
+If you need to import across major versions anyway, set `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true`. Try that import on a non-production instance first — skipping the version check is what let broken content into people's instances in the first place.
+
+### Metabase checks that imported questions match its query format
+
+Whatever the versions say, Metabase validates every imported question against the query format it understands, and refuses to import a question it can't read. This catches content that a newer Metabase can express but an older one can't, including content from an export that doesn't record its version.
+
+To skip this check, set `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true`. Skipping validation won't necessarily make the import succeed — content that Metabase can't read may still fail later in the import, or import in a broken state.
 
 ### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
 
@@ -578,7 +588,6 @@ For example, to duplicate a collection that contains _only_ questions that are b
    The YAML files for template questions in the export will have their own Entity IDs and reference the Entity ID of the template collection.
 4. Get the Entity ID of the target collection from its export.
 5. In the YAML files for questions in the template collection export:
-
    - Clear the values for the fields `entity_id` and `serdes/meta → id` for questions. This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions.
    - Replace `collection_id` references to the template collection with the ID of the new collection
 

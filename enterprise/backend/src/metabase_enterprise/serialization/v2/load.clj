@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [medley.core :as m]
+   [metabase-enterprise.serialization.settings :as serialization.settings]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
@@ -198,8 +199,8 @@
                                        "to import anyway.")
                                   source source-major current-major current-major)
                           (format (str "Refusing to import: this export does not record which Metabase version "
-                                       "produced it, which means it came from Metabase 63 or newer. This instance "
-                                       "is major version %s. Importing content between major versions is not "
+                                       "produced it, so it cannot be confirmed compatible with this instance "
+                                       "(major version %s). Importing content from an incompatible version is not "
                                        "supported and can corrupt existing content. Export from a Metabase %s "
                                        "instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true to import "
                                        "anyway.")
@@ -237,7 +238,7 @@
 
   Reads every entity in the export. Set `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH` to skip the check entirely."
   [ingestion]
-  (when-not (config/config-bool :mb-serialization-allow-version-mismatch)
+  (when-not (serialization.settings/serialization-allow-version-mismatch)
     (let [{:keys [metabase-version max-card-schema]} (preflight-facts ingestion)]
       (check-major-version! metabase-version)
       (check-card-schema! max-card-schema))))
@@ -365,7 +366,8 @@
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
-  (binding [*warned-version-mismatch* (atom false)]
+  (binding [*warned-version-mismatch*        (atom false)
+            serdes/*skip-schema-validation?* (serialization.settings/serialization-skip-schema-validation)]
     (u/prog1
       ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
       ;; failure on one entity doesn't abort the entire import. See #74412.

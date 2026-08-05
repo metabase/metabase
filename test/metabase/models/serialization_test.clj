@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.serialization :as serdes]
-   [metabase.test :as mt]))
+   [metabase.models.serialization :as serdes]))
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -300,7 +299,6 @@
     (testing "a query matching this instance's schema imports"
       (is (=? {:lib/type :mbql/query}
               (serdes/import-mbql native-query-with-template-tag))))
-
     (testing "v63 exports `template-tags` as a list where this version expects a map. It normalizes without
               complaint, so only validating the result catches it."
       (let [v63-shaped (update-in native-query-with-template-tag [:stages 0 :template-tags] (comp vec vals))]
@@ -309,15 +307,14 @@
              #"does not match this Metabase's query schema"
              (serdes/import-mbql v63-shaped)))))))
 
-(deftest import-mbql-schema-validation-opt-out-test
-  (testing "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION disables the schema check"
-    ;; It does not make the import succeed. Normalizing list-valued `template-tags` yields `:template-tags nil` -
-    ;; the variables are simply dropped - and `repair-card-template-tag-names` rejects that on its own. All this
-    ;; asserts is that our check is the thing being skipped.
-    (let [v63-shaped (update-in native-query-with-template-tag [:stages 0 :template-tags] (comp vec vals))
-          message    (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
-                       (try
-                         (serdes/import-mbql v63-shaped)
-                         nil
-                         (catch Exception e (ex-message e))))]
-      (is (not (re-find #"does not match this Metabase's query schema" (str message)))))))
+(deftest ^:parallel import-mbql-schema-validation-opt-out-test
+  (testing "GHY-4241: binding *skip-schema-validation?* disables the schema check"
+    ;; Skipping does not make the import succeed. Normalizing list-valued `template-tags` yields `:template-tags nil`
+    ;; - the variables are simply dropped - and `repair-card-template-tag-names` rejects that on its own. Asserting
+    ;; on that downstream failure keeps this from passing for the wrong reason.
+    (let [v63-shaped (update-in native-query-with-template-tag [:stages 0 :template-tags] (comp vec vals))]
+      (binding [serdes/*skip-schema-validation?* true]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid input.*:template-tags"
+             (serdes/import-mbql v63-shaped)))))))

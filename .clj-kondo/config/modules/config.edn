@@ -1358,7 +1358,6 @@
    :uses #{api
            app-db
            classloader
-           config
            legacy-mbql
            lib
            settings
@@ -3389,6 +3388,7 @@
            queries
            search
            server
+           settings
            setup
            sync
            util
