@@ -920,10 +920,12 @@
    (some-> new-value json/encode)))
 
 (defmethod set-value-of-type! :timestamp
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type!
-   :string setting-definition-or-name
-   (some-> new-value u.date/format)))
+  [setting-type setting-definition-or-name new-value]
+  (if (string? new-value)
+    (set-value-of-type! setting-type setting-definition-or-name (u.date/parse new-value))
+    (set-value-of-type!
+     :string setting-definition-or-name
+     (some-> new-value u.date/format))))
 
 (defn- serialize-csv [value]
   (cond

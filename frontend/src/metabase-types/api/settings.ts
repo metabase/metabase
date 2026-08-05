@@ -590,6 +590,8 @@ interface PublicSettings {
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "mfa-enforcement"?: MfaEnforcement;
+  /** ISO instant after which `mfa-enforcement: "required"` takes effect. Null enforces it immediately. */
+  "mfa-requirement-deadline"?: string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;

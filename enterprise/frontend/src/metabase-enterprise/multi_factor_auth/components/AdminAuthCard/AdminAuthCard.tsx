@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -6,7 +7,7 @@ import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Alert, Anchor, Group, Select, Text } from "metabase/ui";
+import { Alert, Anchor, DateInput, Group, Select, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 
@@ -23,12 +24,24 @@ const getEnforcementOptions = (): EnforcementOption[] => [
   { value: "required", label: t`Required` },
 ];
 
+const DEADLINE_INPUT_FORMAT = "YYYY-MM-DD";
+
+// The backend compares the deadline against `now` on every authenticated request, so it has to be
+// stored as a full instant — a bare date parses to a LocalDate there and breaks that comparison.
+const toDeadlineSetting = (date: string | null) =>
+  date ? dayjs(date).startOf("day").toISOString() : null;
+
+const toDeadlineInput = (deadline: string | null | undefined) =>
+  deadline ? dayjs(deadline).format(DEADLINE_INPUT_FORMAT) : null;
+
 export function AdminAuthCard() {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
   const { value: enforcement, updateSetting } =
     useAdminSetting("mfa-enforcement");
+  const { value: deadline } = useAdminSetting("mfa-requirement-deadline");
 
   const enabled = enforcement != null && enforcement !== "off";
+  const isRequired = enforcement === "required";
 
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
@@ -53,6 +66,13 @@ export function AdminAuthCard() {
     }
   };
 
+  const handleDeadlineChange = (date: string | null) => {
+    updateSetting({
+      key: "mfa-requirement-deadline",
+      value: toDeadlineSetting(date),
+    });
+  };
+
   return (
     <SettingsSection
       data-testid="mfa-setting"
@@ -67,6 +87,20 @@ export function AdminAuthCard() {
         onChange={handleChange}
         maw="20rem"
       />
+      {isRequired && (
+        <DateInput
+          id="mfa-requirement-deadline"
+          label={t`Enrollment deadline`}
+          placeholder={t`Enrollment deadline`}
+          description={t`Users must enroll before this date. Leave it empty to require two-factor authentication right away.`}
+          value={toDeadlineInput(deadline)}
+          onChange={handleDeadlineChange}
+          minDate={dayjs().format(DEADLINE_INPUT_FORMAT)}
+          disabled={!hasFeature}
+          clearable
+          maw="20rem"
+        />
+      )}
       {enabled && overview && !overview.encryption_key_set && (
         <Alert size="compact" color="warning">
           {t`Make sure to set the MB_ENCRYPTION_SECRET_KEY environment variable to encrypt authenticator secrets.`}
