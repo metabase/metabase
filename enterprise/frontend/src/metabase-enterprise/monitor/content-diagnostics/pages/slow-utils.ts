@@ -1,4 +1,3 @@
-import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
@@ -9,32 +8,28 @@ import {
 
 import { getSlowParamsWithoutDefaults } from "../components/slow-utils";
 
-export function parseSlowUrlParams(location: Location): Urls.SlowContentParams {
-  const {
-    page,
-    query,
-    "entity-types": entityTypes,
-    "include-personal-collections": includePersonalCollections,
-    "min-duration-ms": minDurationMs,
-    "sort-column": sortColumn,
-    "sort-direction": sortDirection,
-  } = location.query;
-
+export function parseSlowUrlParams(
+  searchParams: URLSearchParams,
+): Urls.SlowContentParams {
   return {
-    page: Urls.parseNumberParam(page),
-    query: Urls.parseStringParam(query),
-    entityTypes: Urls.parseListParam(entityTypes, (item) =>
-      Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    query: Urls.parseStringParam(searchParams.get("query")),
+    entityTypes: Urls.parseListParam(
+      searchParams.getAll("entity-types"),
+      (item) => Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
     ),
     includePersonalCollections: Urls.parseBooleanParam(
-      includePersonalCollections,
+      searchParams.get("include-personal-collections"),
     ),
-    minDurationMs: Urls.parseNumberParam(minDurationMs),
+    minDurationMs: Urls.parseNumberParam(searchParams.get("min-duration-ms")),
     sortColumn: Urls.parseEnumParam(
-      sortColumn,
+      searchParams.get("sort-column"),
       CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS,
     ),
-    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
+    sortDirection: Urls.parseEnumParam(
+      searchParams.get("sort-direction"),
+      SORT_DIRECTIONS,
+    ),
   };
 }
 
@@ -66,8 +61,8 @@ export function parseSlowUserParams(
   };
 }
 
-export function isEmptySlowParams(location: Location): boolean {
+export function isEmptySlowParams(searchParams: URLSearchParams): boolean {
   return Object.values(
-    getSlowParamsWithoutDefaults(parseSlowUrlParams(location)),
+    getSlowParamsWithoutDefaults(parseSlowUrlParams(searchParams)),
   ).every((value) => value == null);
 }

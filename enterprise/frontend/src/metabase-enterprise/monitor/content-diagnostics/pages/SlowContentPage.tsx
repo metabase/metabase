@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch } from "metabase/redux";
-import { replace, useRouter } from "metabase/router";
+import { useNavigate, useSearchParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { SlowContent } from "../components";
@@ -17,9 +16,9 @@ import {
 } from "./slow-utils";
 
 export function SlowContentPage() {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isInitializingRef = useRef(false);
-  const dispatch = useDispatch();
 
   const {
     value: rawLastUsedParams,
@@ -31,10 +30,10 @@ export function SlowContentPage() {
   });
 
   const params = useMemo(() => {
-    return isEmptySlowParams(location)
+    return isEmptySlowParams(searchParams)
       ? parseSlowUserParams(rawLastUsedParams)
-      : parseSlowUrlParams(location);
-  }, [location, rawLastUsedParams]);
+      : parseSlowUrlParams(searchParams);
+  }, [searchParams, rawLastUsedParams]);
 
   const handleParamsChange = (
     params: Urls.SlowContentParams,
@@ -45,15 +44,17 @@ export function SlowContentPage() {
     if (withSetLastUsedParams) {
       setLastUsedParams(getSlowUserParams(paramsWithoutDefaults));
     }
-    dispatch(replace(Urls.slowContent(paramsWithoutDefaults)));
+    navigate(Urls.slowContent(paramsWithoutDefaults), { replace: true });
   };
 
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
-      dispatch(replace(Urls.slowContent(getSlowParamsWithoutDefaults(params))));
+      navigate(Urls.slowContent(getSlowParamsWithoutDefaults(params)), {
+        replace: true,
+      });
     }
-  }, [params, isLoadingParams, dispatch]);
+  }, [params, isLoadingParams, navigate]);
 
   return (
     <SlowContent

@@ -6,6 +6,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
+  type TestRouter,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -15,6 +16,7 @@ import {
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import type {
   ContentDiagnosticsSlowFinding,
   ContentDiagnosticsSlowUserParams,
@@ -88,7 +90,7 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={Urls.slowContent()}
       element={
@@ -106,7 +108,11 @@ function setup({
     },
   );
 
-  return { history };
+  return { router };
+}
+
+function getUrlQuery(router: TestRouter | undefined) {
+  return parseSearchQuery(router?.location.search ?? "");
 }
 
 function getLastRequestUrl() {
@@ -176,7 +182,7 @@ describe("SlowContentPage", () => {
   });
 
   it("sends table sort changes to the server and URL", async () => {
-    const { history } = setup({ findings: FINDINGS });
+    const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
     await userEvent.click(
@@ -189,7 +195,7 @@ describe("SlowContentPage", () => {
       );
     });
     expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "sort-column": "duration-ms",
       "sort-direction": "asc",
     });
@@ -233,7 +239,7 @@ describe("SlowContentPage", () => {
   });
 
   it("sends the selected entity types to the server via the Filter popover", async () => {
-    const { history } = setup({ findings: FINDINGS });
+    const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
     await userEvent.click(
@@ -245,7 +251,7 @@ describe("SlowContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(getUrlQuery(router)).toEqual({
         "entity-types": [
           "question",
           "model",
@@ -265,7 +271,7 @@ describe("SlowContentPage", () => {
   });
 
   it("resets to all entity types when the last selected type is deselected", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: { entityTypes: ["model"] },
     });
@@ -280,7 +286,7 @@ describe("SlowContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(getUrlQuery(router)).toEqual({});
     });
     expect(
       within(popover).getByRole("checkbox", { name: "Dashboards" }),
@@ -295,7 +301,7 @@ describe("SlowContentPage", () => {
   });
 
   it("restores the last-used filter when the URL has no params", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: {},
       lastUsedParams: { min_duration_ms: 3000 },
@@ -303,7 +309,7 @@ describe("SlowContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "min-duration-ms": "3000",
     });
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
