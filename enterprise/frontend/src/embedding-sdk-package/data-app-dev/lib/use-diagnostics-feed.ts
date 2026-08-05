@@ -24,6 +24,7 @@ export interface DiagnosticsFeed {
   clients: number;
   lastReportAt: number | null;
   lastRebuildAt: number | null;
+  staleEntries: number;
   problem: DiagnosticsFeedProblem | null;
   loaded: boolean;
   clear: () => void;
@@ -110,7 +111,9 @@ export const useDiagnosticsFeed = (
     // the DELETE empties every reader's buffer, this one included. Reads issued
     // while it is in flight wait for it (see `readFeed`).
     latestRead.current += 1;
-    setReport((current) => (current ? { ...current, entries: [] } : current));
+    setReport((current) =>
+      current ? { ...current, entries: [], staleEntries: 0 } : current,
+    );
 
     const request: Promise<void> = fetch(url, { method: "DELETE" })
       .then(() => undefined)
@@ -137,6 +140,7 @@ export const useDiagnosticsFeed = (
     clients: report?.clients ?? 0,
     lastReportAt: report?.lastReportAt ?? null,
     lastRebuildAt: report?.lastRebuildAt ?? null,
+    staleEntries: report?.staleEntries ?? 0,
     problem,
     loaded: isLoaded,
     clear,

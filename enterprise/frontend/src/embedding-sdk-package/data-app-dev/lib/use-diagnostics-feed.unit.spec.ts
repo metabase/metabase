@@ -15,6 +15,7 @@ const entry = (
   eventId,
   sessionId,
   time: 0,
+  buildId: 1,
   kind: "error",
   summary: `event ${eventId}`,
   detail: null,
@@ -24,6 +25,7 @@ const entry = (
 
 const report = (
   entries: DataAppDiagnosticPayload[],
+  overrides: Partial<DataAppDiagnosticsReport> = {},
 ): DataAppDiagnosticsReport => ({
   entries,
   connection: null,
@@ -31,8 +33,11 @@ const report = (
   clients: 1,
   lastReportAt: 1,
   lastRebuildAt: 1,
+  buildId: 1,
+  staleEntries: 0,
   nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
   sessionId: "page-1",
+  ...overrides,
 });
 
 const ok = (body: DataAppDiagnosticsReport) =>
@@ -155,6 +160,33 @@ describe("useDiagnosticsFeed", () => {
     });
 
     expect(result.current.entries.map((e) => e.eventId)).toEqual([9]);
+  });
+
+  it("surfaces how many entries the server withheld as an earlier build's", async () => {
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(ok(report([entry(9)], { staleEntries: 164 })));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed"));
+
+    // Otherwise entries the reader watched pile up would vanish on the next
+    // save with nothing saying where they went.
+    await waitFor(() => expect(result.current.staleEntries).toBe(164));
+  });
+
+  it("drops the withheld count with the entries it clears", async () => {
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(ok(report([entry(1)], { staleEntries: 3 })));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed"));
+    await waitFor(() => expect(result.current.staleEntries).toBe(3));
+
+    act(() => result.current.clear());
+
+    // A DELETE empties the buffer, so a note about what it held would linger
+    // over an empty panel until the next read landed.
+    expect(result.current.staleEntries).toBe(0);
   });
 
   it("discards a response that was in flight when the feed was cleared", async () => {

@@ -333,5 +333,51 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
           );
         });
     });
+
+    it("withholds what a build reported once a rebuild has replaced it", () => {
+      visitDataAppDevApp(CLIENT_HOST);
+
+      cy.findByTestId("dev-app-error-probe").click();
+      readDiagnosticsUntil(
+        DIAGNOSTICS_URL,
+        "the probe error under the build that is running",
+        (report) =>
+          report.entries.some(
+            (entry) => entry.summary === "dev-app probe error",
+          ),
+      );
+
+      cy.writeFile(
+        DATA_APP_DEV_APP_SRC_PATH,
+        originalAppSrc.replace("Vite 6 data app", "Vite 6 data app — rebuilt"),
+      );
+      cy.findByTestId("dev-app-content")
+        .findByText("Vite 6 data app — rebuilt", { timeout: TIMEOUT_MS })
+        .should("be.visible");
+
+      // A mid-edit save is how the buffer fills with failures of code the
+      // preview has already dropped. The rebuild re-ran the app from scratch
+      // and nothing re-reported the probe error, so the default read is about
+      // the bundle that is actually running.
+      readDiagnosticsUntil(
+        DIAGNOSTICS_URL,
+        "the previous build's entries withheld",
+        (report) =>
+          report.staleEntries > 0 &&
+          report.entries.every(
+            (entry) => entry.summary !== "dev-app probe error",
+          ),
+      );
+
+      // Withheld, not dropped: a reader comparing what a change fixed asks for
+      // them and gets them back.
+      cy.request(`${DIAGNOSTICS_URL}?includeStale=true`)
+        .its("body.entries")
+        .then((entries: { summary: string }[]) => {
+          expect(entries.map((entry) => entry.summary)).to.include(
+            "dev-app probe error",
+          );
+        });
+    });
   });
 });

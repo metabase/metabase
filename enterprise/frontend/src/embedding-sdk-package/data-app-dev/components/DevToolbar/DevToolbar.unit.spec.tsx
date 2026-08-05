@@ -23,6 +23,7 @@ const entry = (
   eventId: 1,
   sessionId: DEV_SESSION_ID,
   time: Date.parse("2026-01-01T10:00:00Z"),
+  buildId: 1,
   kind: "error",
   summary: "boom",
   detail: null,
@@ -42,6 +43,8 @@ const serve = (
     clients: 1,
     lastReportAt: 1,
     lastRebuildAt: 1,
+    buildId: 1,
+    staleEntries: 0,
     nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
     sessionId: "page-1",
     ...overrides,
@@ -310,6 +313,20 @@ describe("DevToolbar open", () => {
     await open();
 
     expect(screen.getByText(/No preview tab is connected/)).toBeInTheDocument();
+  });
+
+  it("accounts for entries the server withheld as an earlier build's", async () => {
+    serve([entry({ eventId: 5, summary: "still broken" })], {
+      staleEntries: 164,
+    });
+    await setup();
+    await open();
+
+    // The panel silently losing what a mid-edit rebuild made irrelevant reads
+    // as a lost report; saying how many were dropped reads as a filter.
+    expect(
+      screen.getByText(/164 entries from earlier builds are hidden/),
+    ).toBeInTheDocument();
   });
 
   it("clears through the endpoint so every reader is cleared", async () => {
