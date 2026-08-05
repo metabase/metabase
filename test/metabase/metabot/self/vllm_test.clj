@@ -9,7 +9,8 @@
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.test :as mt])
   (:import
-   (java.net SocketTimeoutException)))
+   (java.net SocketTimeoutException)
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -309,12 +310,12 @@
 
 (defn- probing-server
   "Stub `http/request` for the preflight path: `GET /models` returns `models`, and every
-  `POST /chat/completions` returns `chat-message` as the first choice's message."
-  [models chat-message]
+  `POST /chat/completions` returns `chat-choice` as the first choice."
+  [models chat-choice]
   (fn [{:keys [url]}]
     (if (re-find #"/models$" (str url))
       {:status 200 :body {:data models}}
-      {:status 200 :body {:choices [{:message chat-message}]}})))
+      {:status 200 :body {:choices [chat-choice]}})))
 
 (def ^:private tool-calling-message
   {:content    ""
@@ -322,11 +323,16 @@
                  :type     "function"
                  :function {:name "record_table_name" :arguments "{\"table_name\": \"orders\"}"}}]})
 
-(defn- probe!
-  [models chat-message]
+(defn- probe-choice!
+  [models chat-choice]
   (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-    (mt/with-dynamic-fn-redefs [http/request (probing-server models chat-message)]
+    (mt/with-dynamic-fn-redefs [http/request (probing-server models chat-choice)]
       (vllm/list-models {:probe? true}))))
+
+(defn- probe!
+  "[[probe-choice!]] for a server that runs to a natural stop, where only the message shape matters."
+  [models chat-message]
+  (probe-choice! models {:message chat-message :finish_reason "tool_calls"}))
 
 (deftest preflight-passes-on-a-correctly-configured-server-test
   (testing "a server that returns a well-formed tool call passes and still lists its models"
@@ -396,6 +402,88 @@
                                                          {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
           (vllm/list-models {:probe? true :model "second"})
           (is (= "second" @probed)))))))
+
+(deftest preflight-rejects-a-model-the-server-does-not-serve-test
+  (testing "a requested model absent from the catalog fails and names what is served, rather than probing something else"
+    ;; Falling back to another served model passes every check and then persists a provider string
+    ;; pointing at a model the server does not have.
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (let [generated? (atom false)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                   (if (re-find #"/models$" (str url))
+                                                     {:status 200 :body {:data [{:id "served-a" :max_model_len 32768}
+                                                                                {:id "served-b" :max_model_len 32768}]}}
+                                                     (do (reset! generated? true)
+                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not serving missing-model. It is serving: served-a, served-b"
+               (vllm/list-models {:probe? true :model "missing-model"})))
+          (is (false? @generated?)
+              "no generation request is issued for a model the server cannot run"))))))
+
+(deftest preflight-reports-a-thinking-budget-overrun-test
+  (testing "a reasoning model that never stops thinking is named as such, not as a server missing tool-calling flags"
+    (let [e (try (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                                {:message       {:content           nil
+                                                 :reasoning_content "Okay, the user wants me to record a table name, so"
+                                                 :tool_calls        []}
+                                 :finish_reason "length"})
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (re-find #"reasoning without calling a tool" (ex-message e)))
+      (is (not (re-find #"--enable-auto-tool-choice" (ex-message e)))
+          "the flags this server needs are already set, so naming them would send the admin the wrong way"))))
+
+(deftest preflight-reports-truncated-prose-as-a-tool-choice-failure-test
+  (testing "a truncated answer carrying prose rather than reasoning still points at the tool-calling flags"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"--enable-auto-tool-choice"
+         (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                        {:message       {:content "Sure! To record the table name I would first need to"
+                                         :tool_calls []}
+                         :finish_reason "length"})))))
+
+(deftest preflight-probe-timeout-is-capped-test
+  (testing "a probe runs on its own budget, capped below the inference timeout"
+    ;; The admin is blocked on this behind a non-cancellable spinner, so the generous self-hosted
+    ;; prefill budget cannot apply.
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url        base-url
+                                       llm.settings/llm-vllm-request-timeout-ms 600000]
+      (let [socket-timeouts (atom [])]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url socket-timeout]}]
+                                                   (if (re-find #"/models$" (str url))
+                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                     (do (swap! socket-timeouts conj socket-timeout)
+                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+          (vllm/list-models {:probe? true})
+          (is (= #{120000} (set @socket-timeouts))))))))
+
+(deftest preflight-surfaces-a-probe-timeout-test
+  (testing "a probe that times out says the server is too slow, not that the request failed"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                   (throw (SocketTimeoutException. "Read timed out"))))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"did not answer the connection test"
+             (vllm/list-models {:probe? true})))))))
+
+(deftest preflight-probes-run-concurrently-test
+  (testing "both probes are in flight at once, so a slow server costs one probe budget rather than two"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (let [arrived (CountDownLatch. 2)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                   (if (re-find #"/models$" (str url))
+                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                     (do (.countDown arrived)
+                                                         ;; Only satisfiable if the other probe is
+                                                         ;; already in flight.
+                                                         (is (.await arrived 10 TimeUnit/SECONDS))
+                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+          (vllm/list-models {:probe? true}))))))
 
 (deftest preflight-failures-are-surfaced-as-client-errors-test
   (testing "a preflight failure is tagged 400 so the admin sees the message instead of a 500"
