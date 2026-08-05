@@ -42,10 +42,7 @@ export const UpsellEmbeddingSso = ({ source }: { source: string }) => {
             description={t`Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            // image-full-height puts the illustration on a flat tinted panel.
-            // The default variant nests two bordered cards around it, which is
-            // the double frame only the themes illustration is drawn for.
-            variant="image-full-height"
+            variant="image-panel"
             image="app/assets/img/upsell-embedding-sso.svg"
           />
         </LineDecorator>

@@ -33,11 +33,8 @@ export const UpsellTenants = () => {
             description={t`Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            // image-full-height puts the illustration on a flat tinted panel.
-            // The default variant nests two bordered cards around it, which is
-            // the double frame only the themes illustration is drawn for.
-            variant="image-full-height"
-            image="app/assets/img/upsell-tenants.png"
+            variant="image-panel"
+            image="app/assets/img/upsell-embedding-tenants.svg"
           />
         </LineDecorator>
       </Stack>

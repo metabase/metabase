@@ -33,7 +33,7 @@ export const UpsellEmbeddingTheme = ({ source }: { source: string }) => {
             description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            image="app/assets/img/upsell-embedding-themes.png"
+            image="app/assets/img/upsell-themes.png"
           />
         </LineDecorator>
       </Stack>

@@ -42,11 +42,12 @@ export const UpsellContentTranslation = ({ source }: { source: string }) => {
             description={t`Upload a dictionary so dashboard, question and column names appear in each viewer's own language.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            variant="image-full-height"
-            // Placeholder: no illustration has been exported for this upsell.
-            // Borrowed from whitelabel, which is the nearest subject matter.
-            // Replace once the design lands -- see 09-clarifications.md item 1.
-            image="app/assets/img/upsell-whitelabel.png"
+            variant="image-panel"
+            // A generated placeholder, sized to match the real upsell
+            // illustrations, rather than another upsell's artwork -- borrowing
+            // one makes a pending design look finished. Replace when the real
+            // illustration is exported; see 09-clarifications.md item 1.
+            image="app/assets/img/upsell-embedding-localization-placeholder.svg"
           />
         </LineDecorator>
       </Stack>
