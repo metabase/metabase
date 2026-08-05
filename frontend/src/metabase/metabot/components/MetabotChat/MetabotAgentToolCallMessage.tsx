@@ -37,13 +37,13 @@ export const ToolCallTitle = ({
 const ToolCallSection = ({
   title,
   value,
-  isJson,
+  isJson = true,
   copyLabel,
   badge,
 }: {
   title: string;
   value: string;
-  isJson: boolean;
+  isJson?: boolean;
   copyLabel: string;
   badge?: ReactNode;
 }) => {
@@ -106,7 +106,6 @@ export const ToolCallDetailsContent = ({
         <ToolCallSection
           title={t`Request`}
           value={parsedArgs}
-          isJson
           copyLabel={t`Copy request JSON`}
         />
       )}
@@ -114,8 +113,8 @@ export const ToolCallDetailsContent = ({
       {output && (
         <ToolCallSection
           title={t`Response`}
-          value={output.value}
-          isJson={output.isJson}
+          value={output}
+          isJson={false}
           copyLabel={t`Copy response`}
           badge={
             message.is_error && (
@@ -131,7 +130,6 @@ export const ToolCallDetailsContent = ({
         <ToolCallSection
           title={t`Structured output`}
           value={structuredOutput}
-          isJson
           copyLabel={t`Copy structured output`}
         />
       )}
@@ -140,7 +138,6 @@ export const ToolCallDetailsContent = ({
         <ToolCallSection
           title={t`Other fields`}
           value={extra}
-          isJson
           copyLabel={t`Copy other fields`}
         />
       )}

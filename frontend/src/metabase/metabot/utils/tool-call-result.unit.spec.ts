@@ -7,26 +7,12 @@ describe("parseToolCallResult", () => {
     expect(parseToolCallResult("")).toEqual({});
   });
 
-  it("treats a non-JSON result as plain text output", () => {
+  it("keeps a result that is not a JSON object as text", () => {
     expect(parseToolCallResult("Table: Orders\nRows: 100")).toEqual({
-      output: { value: "Table: Orders\nRows: 100", isJson: false },
+      output: "Table: Orders\nRows: 100",
     });
-  });
-
-  it("treats a JSON scalar as plain text output", () => {
-    expect(parseToolCallResult("42")).toEqual({
-      output: { value: "42", isJson: false },
-    });
-  });
-
-  it("pretty prints a result map's output when it is itself JSON", () => {
-    const result = parseToolCallResult(
-      JSON.stringify({ output: '{"rows":[1,2]}' }),
-    );
-
-    expect(result).toEqual({
-      output: { value: '{\n  "rows": [\n    1,\n    2\n  ]\n}', isJson: true },
-    });
+    expect(parseToolCallResult("42")).toEqual({ output: "42" });
+    expect(parseToolCallResult("[1,2]")).toEqual({ output: "[1,2]" });
   });
 
   it("keeps a result map's text output unescaped", () => {
@@ -34,9 +20,7 @@ describe("parseToolCallResult", () => {
       JSON.stringify({ output: "<result>\nid: 1\n</result>" }),
     );
 
-    expect(result).toEqual({
-      output: { value: "<result>\nid: 1\n</result>", isJson: false },
-    });
+    expect(result).toEqual({ output: "<result>\nid: 1\n</result>" });
   });
 
   it("splits structured output from the output", () => {
@@ -48,7 +32,7 @@ describe("parseToolCallResult", () => {
     );
 
     expect(result).toEqual({
-      output: { value: "Query created", isJson: false },
+      output: "Query created",
       structuredOutput: '{\n  "query-id": "q1"\n}',
     });
   });
@@ -62,7 +46,7 @@ describe("parseToolCallResult", () => {
     );
 
     expect(result).toEqual({
-      output: { value: "Query created", isJson: false },
+      output: "Query created",
       structuredOutput: '{\n  "query-id": "q1"\n}',
     });
   });
@@ -78,7 +62,7 @@ describe("parseToolCallResult", () => {
     );
 
     expect(result).toEqual({
-      output: { value: "Read 1 resource", isJson: false },
+      output: "Read 1 resource",
       structuredOutput: '{\n  "query-id": "q1"\n}',
       extra: JSON.stringify(
         { resources: [{ uri: "metabase://card/1" }], "status-code": 404 },
@@ -93,25 +77,14 @@ describe("parseToolCallResult", () => {
       JSON.stringify({ structured_output: { success: true } }),
     );
 
-    expect(result).toEqual({
-      structuredOutput: '{\n  "success": true\n}',
-    });
+    expect(result).toEqual({ structuredOutput: '{\n  "success": true\n}' });
   });
 
-  it("treats an object without an output key as the whole output", () => {
+  it("pretty prints an object without an output key as the whole output", () => {
     const result = parseToolCallResult(JSON.stringify({ cards: [1, 2] }));
 
     expect(result).toEqual({
-      output: {
-        value: '{\n  "cards": [\n    1,\n    2\n  ]\n}',
-        isJson: true,
-      },
-    });
-  });
-
-  it("treats an array result as the whole output", () => {
-    expect(parseToolCallResult("[1,2]")).toEqual({
-      output: { value: "[\n  1,\n  2\n]", isJson: true },
+      output: '{\n  "cards": [\n    1,\n    2\n  ]\n}',
     });
   });
 
