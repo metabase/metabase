@@ -1,5 +1,6 @@
 (ns metabase.sync.events.sync-database
   (:require
+   [metabase.config.jekyll :as jekyll]
    [metabase.events.core :as events]
    [metabase.sync.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -17,7 +18,11 @@
   [topic {database :object :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when (and database (not (warehouses/disable-auto-sync)))
+    ;; Jekyll mode never syncs the warehouse — metadata is supplied externally
+    ;; (serdes import / parent instance), and the box holds nothing precious.
+    (when (and database
+               (not (warehouses/disable-auto-sync))
+               (not (jekyll/jekyll?)))
       ;; just kick off a sync on another thread
       (quick-task/submit-task!
        (fn []

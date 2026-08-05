@@ -4,6 +4,7 @@
   (:require
    [metabase.sync.analyze]
    [metabase.sync.field-values]
+   [metabase.sync.jekyll-metadata]
    [metabase.sync.sync]
    [metabase.sync.sync-metadata]
    [metabase.sync.sync-metadata.fields]
@@ -13,6 +14,7 @@
 (comment
   metabase.sync.analyze/keep-me
   metabase.sync.field-values/keep-me
+  metabase.sync.jekyll-metadata/keep-me
   metabase.sync.sync/keep-me
   metabase.sync.sync-metadata/keep-me
   metabase.sync.sync-metadata.fields/keep-me
@@ -25,6 +27,8 @@
  [metabase.sync.field-values
   update-field-values!
   update-field-values-for-table!]
+ [metabase.sync.jekyll-metadata
+  ingest-parent-metadata!]
  [metabase.sync.sync
   refingerprint-field!
   sync-database!

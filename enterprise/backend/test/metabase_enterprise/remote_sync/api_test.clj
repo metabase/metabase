@@ -13,6 +13,7 @@
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.config.jekyll :as jekyll]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -527,6 +528,49 @@
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
+
+(deftest jekyll-export-creates-work-branch-lazily-test
+  (testing "Jekyll: export to a missing work branch creates it from the default branch — but only
+            when there are changes to push (an idle box leaves no remote footprint)"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "bcm-work"
+                                       remote-sync-type :read-write]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (mt/with-dynamic-fn-redefs [jekyll/jekyll? (constantly true)
+                                    source/source-from-settings (constantly mock-source)
+                                    impl/async-export! (fn [& _] {:id 123})]
+          (testing "clean box: 400, no branch created"
+            (is (= "No changes to push; not creating branch 'bcm-work'"
+                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "bcm-work"})))
+            (is (not (contains? @(:branches-atom mock-source) ["bcm-work" "bcm-work-ref"]))))
+          (testing "dirty box: branch created, export proceeds"
+            (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Card"
+                                                      :model_id 1
+                                                      :model_name "Test Card"
+                                                      :status "updated"
+                                                      :status_changed_at (t/offset-date-time)}]
+              (is (=? {:task_id 123}
+                      (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "bcm-work"})))
+              (is (contains? @(:branches-atom mock-source) ["bcm-work" "bcm-work-ref"])))))))))
+
+(deftest jekyll-branch-pinning-test
+  (testing "Jekyll boxes cannot touch other branches: create-branch, stash, and settings branch
+            changes are all rejected"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "bcm-work"
+                                       remote-sync-type :read-write]
+      (let [mock-source (test-helpers/create-mock-source)
+            pinned-msg "Jekyll boxes are pinned to their configured work branch; switch branches in the config file."]
+        (mt/with-dynamic-fn-redefs [jekyll/jekyll? (constantly true)
+                                    source/source-from-settings (constantly mock-source)]
+          (is (= pinned-msg
+                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/create-branch" {:name "other"})))
+          (is (= pinned-msg
+                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/stash" {:new_branch "other" :message "m"})))
+          (is (= pinned-msg
+                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings" {:remote-sync-branch "other"}))))))))
 
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"

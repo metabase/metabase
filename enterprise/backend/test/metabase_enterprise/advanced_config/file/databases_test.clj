@@ -4,6 +4,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.app-db.core :as mdb]
+   [metabase.config.jekyll :as jekyll]
    [metabase.driver.settings :as driver.settings]
    [metabase.sample-data.core :as sample-data]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -97,6 +98,28 @@
               (is (true? (t2/select-one-fn :is_stub :model/Database :name test-db-name))))
             (testing "no sync task is submitted for stubs"
               (is (zero? @submit-calls)))))
+        (finally
+          (t2/delete! :model/Database :name test-db-name))))))
+
+(deftest init-from-config-file-jekyll-test
+  (testing "Jekyll mode: no sync task, and initial_sync_status lands complete — nothing will ever
+            sync it, and 'incomplete' renders as a perpetual Syncing… in the admin UI"
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (try
+        (let [submit-calls (atom 0)]
+          (with-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))
+                        jekyll/jekyll? (constantly true)]
+            (is (= :ok
+                   (advanced-config.file/initialize!
+                    {:version 1
+                     :config  {:databases [{:name    test-db-name
+                                            :engine  "h2"
+                                            :details (:details (mt/db))}]}})))
+            (testing "no sync task submitted"
+              (is (zero? @submit-calls)))
+            (testing "initial sync status complete"
+              (is (= "complete"
+                     (t2/select-one-fn :initial_sync_status :model/Database :name test-db-name))))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 

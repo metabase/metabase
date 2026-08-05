@@ -519,14 +519,16 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes entities filtered by export-conditions (e.g., built-in TransformTags) from the count since
-   they are system-created and not user data. Namespace collections are not checked here because they are
-   organizational containers, not user data that would be lost on import."
+   Excludes system-created entities protected by removal-conditions (built-in TransformTags, the
+   built-in common.py PythonLibrary) from the count: they exist on every instance, an import cannot
+   delete them, and counting them flagged a spurious first-import conflict on every fresh instance.
+   Namespace collections are not checked here because they are organizational containers, not user
+   data that would be lost on import."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
-                conditions (export-conditions spec)
+                conditions (removal-conditions spec)
                 local-count (if conditions
                               (apply t2/count model-key (into [] cat conditions))
                               (t2/count model-key))
