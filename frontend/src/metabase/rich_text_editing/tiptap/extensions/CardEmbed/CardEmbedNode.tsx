@@ -56,7 +56,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
-import { DocumentMode } from "./DocumentMode";
+import { documentClickActionMode } from "./DocumentMode";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
@@ -644,7 +644,7 @@ export const CardEmbedComponent = memo(
                     <Visualization
                       rawSeries={series}
                       metadata={metadata}
-                      mode={DocumentMode}
+                      mode={documentClickActionMode}
                       onChangeCardAndRun={
                         isExternalDocument ? undefined : handleChangeCardAndRun
                       }

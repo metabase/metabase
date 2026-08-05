@@ -1,3 +1,4 @@
+import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 
 export const PublicMode: QueryClickActionsMode = {
@@ -5,3 +6,5 @@ export const PublicMode: QueryClickActionsMode = {
   hasDrills: false,
   clickActions: [],
 };
+
+export const publicClickActionMode = queryModeToClickActionMode(PublicMode);
