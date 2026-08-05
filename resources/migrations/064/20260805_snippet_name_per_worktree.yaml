@@ -59,16 +59,24 @@ databaseChangeLog:
               EXECUTE IMMEDIATE (
                 SELECT 'ALTER TABLE NATIVE_QUERY_SNIPPET DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
                 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
                 WHERE tc.TABLE_NAME = 'NATIVE_QUERY_SNIPPET'
                   AND tc.CONSTRAINT_TYPE = 'UNIQUE'
                   AND kcu.COLUMN_NAME = 'NAME'
               );
+      # The constraint has to come back under the name the database gave it originally, or a down-migration
+      # followed by an up-migration would leave nothing for the statements above to drop.
       rollback:
-        - addUniqueConstraint:
-            tableName: native_query_snippet
-            columnNames: name
-            constraintName: uq_native_query_snippet_name
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_name_key UNIQUE (name);
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE native_query_snippet ADD UNIQUE KEY `name` (`name`);
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE NATIVE_QUERY_SNIPPET ADD CONSTRAINT UQ_NATIVE_QUERY_SNIPPET_NAME UNIQUE(NAME);
 
   - changeSet:
       id: v64.2026-08-05T13:00:02
@@ -83,3 +91,4 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: native_query_snippet
             constraintName: uq_native_query_snippet_name_worktree
+            uniqueColumns: name, worktree_id_helper

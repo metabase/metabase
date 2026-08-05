@@ -123,14 +123,16 @@
    (and (remote-sync/worktree-accessible? instance)
         (snippet.perms/can-read? instance)))
   ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+   (when-let [snippet (t2/select-one model pk)]
+     (mi/can-read? snippet))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
   ([instance]
    (and (remote-sync/worktree-accessible? instance)
         (snippet.perms/can-write? instance)))
   ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+   (when-let [snippet (t2/select-one model pk)]
+     (mi/can-write? snippet))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
   [model instance]

@@ -41,14 +41,16 @@
    (and (remote-sync/worktree-accessible? instance)
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
   ([_model pk]
-   (mi/can-read? (t2/select-one :model/Document :id pk))))
+   (when-let [document (t2/select-one :model/Document :id pk)]
+     (mi/can-read? document))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
    (and (remote-sync/worktree-accessible? instance)
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_model pk]
-   (mi/can-write? (t2/select-one :model/Document :id pk))))
+   (when-let [document (t2/select-one :model/Document :id pk)]
+     (mi/can-write? document))))
 
 (def DocumentName
   "Validations for the name of a document"

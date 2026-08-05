@@ -328,7 +328,8 @@
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
-   (mi/can-write? (t2/select-one :model/Collection pk))))
+   (when-let [collection (t2/select-one :model/Collection pk)]
+     (mi/can-write? collection))))
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
@@ -337,7 +338,8 @@
             (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
-       (mi/can-read? (t2/select-one :model/Collection :id pk)))))
+       (when-let [collection (t2/select-one :model/Collection :id pk)]
+         (mi/can-read? collection)))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."

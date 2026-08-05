@@ -40,14 +40,16 @@
    (and (remote-sync/worktree-accessible? instance)
         (perms/has-any-transforms-permission? api/*current-user-id*)))
   ([model pk]
-   (mi/can-read? (t2/select-one model :id pk))))
+   (when-let [library (t2/select-one model :id pk)]
+     (mi/can-read? library))))
 
 (defmethod mi/can-write? :model/PythonLibrary
   ([instance]
    (and (remote-sync/worktree-accessible? instance)
         (perms/has-any-transforms-permission? api/*current-user-id*)))
   ([model pk]
-   (mi/can-write? (t2/select-one model :id pk))))
+   (when-let [library (t2/select-one model :id pk)]
+     (mi/can-write? library))))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."

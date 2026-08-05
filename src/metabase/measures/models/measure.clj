@@ -60,7 +60,8 @@
      (and (remote-sync/worktree-accessible? instance)
           (mi/can-read? table))))
   ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+   (when-let [measure (t2/select-one model pk)]
+     (mi/can-read? measure))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
@@ -79,7 +80,8 @@
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+   (when-let [measure (t2/select-one model pk)]
+     (mi/can-write? measure))))
 
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).

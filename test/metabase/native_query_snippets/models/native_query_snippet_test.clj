@@ -165,6 +165,14 @@
           (is (contains? (first hydrated) :can_write)
               "non-nil snippet should be hydrated"))))))
 
+(defn- insert-snippet!
+  "Inserts a snippet in its own transaction so an expected unique-constraint violation rolls back to a savepoint
+  instead of poisoning the surrounding one -- Postgres refuses every later statement in an aborted transaction."
+  [attrs]
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/NativeQuerySnippet
+                (merge (mt/with-temp-defaults :model/NativeQuerySnippet) attrs))))
+
 (deftest snippet-names-are-unique-per-worktree-test
   (when config/ee-available?
     (mt/with-temp [:model/Worktree {wt-id :id} {}
@@ -173,10 +181,7 @@
                    :model/Collection {other-coll :id} {:namespace "snippets" :worktree_id other-wt-id}
                    :model/NativeQuerySnippet _ {:name "shared" :content "SELECT 1"}]
       (testing "the main app still rejects a second snippet of the same name"
-        (is (thrown? Exception
-                     (t2/insert! :model/NativeQuerySnippet
-                                 (merge (mt/with-temp-defaults :model/NativeQuerySnippet)
-                                        {:name "shared" :content "SELECT 2"})))))
+        (is (thrown? Exception (insert-snippet! {:name "shared" :content "SELECT 2"}))))
       (testing "but a worktree may check out its own snippet under that name"
         (mt/with-temp [:model/NativeQuerySnippet wt-snippet {:name          "shared"
                                                              :content       "SELECT 2"
@@ -189,12 +194,9 @@
               (is (= other-wt-id (:worktree_id other)))
               (is (= 3 (t2/count :model/NativeQuerySnippet :name "shared")))))
           (testing "while a name collision within one worktree is still rejected"
-            (is (thrown? Exception
-                         (t2/insert! :model/NativeQuerySnippet
-                                     (merge (mt/with-temp-defaults :model/NativeQuerySnippet)
-                                            {:name          "shared"
-                                             :content       "SELECT 4"
-                                             :collection_id wt-coll})))))))
+            (is (thrown? Exception (insert-snippet! {:name          "shared"
+                                                     :content       "SELECT 4"
+                                                     :collection_id wt-coll}))))))
       (testing "the helper column backing the index never reaches a caller"
         (is (not (contains? (t2/select-one :model/NativeQuerySnippet :name "shared")
                             :worktree_id_helper)))))))

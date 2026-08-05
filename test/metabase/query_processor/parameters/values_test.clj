@@ -617,29 +617,34 @@
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
 (deftest snippet-read-permissions-test
-  (let [mp       (lib.tu/mock-metadata-provider
-                  meta/metadata-provider
-                  {:native-query-snippets [{:id      1
-                                            :name    "expensive_venues"
-                                            :content "venues WHERE price = 4"}]})
-        expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-        query    (native-query-with-snippet mp :snippet-id 1)
-        resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
-    (testing "Snippet resolves when the current user can read it"
-      (binding [api/*current-user-id* 1]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
-          (is (= expected (resolve!))))))
-    (testing "Snippet does not resolve when the current user cannot read it"
-      (binding [api/*current-user-id* 1]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Snippet [\d,]+ \"expensive_venues\" not found\."
-               (resolve!))))))
-    (testing "Snippet resolves when there is no current user, e.g. subscriptions"
-      (binding [api/*current-user-id* nil]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-          (is (= expected (resolve!))))))))
+  (mt/with-model-cleanup [:model/NativeQuerySnippet]
+    (let [snippet-id (t2/insert-returning-pk! :model/NativeQuerySnippet
+                                              {:name       "expensive_venues"
+                                               :content    "venues WHERE price = 4"
+                                               :creator_id (mt/user->id :crowberto)})
+          mp       (lib.tu/mock-metadata-provider
+                    meta/metadata-provider
+                    {:native-query-snippets [{:id      snippet-id
+                                              :name    "expensive_venues"
+                                              :content "venues WHERE price = 4"}]})
+          expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param snippet-id "venues WHERE price = 4")}
+          query    (native-query-with-snippet mp :snippet-id snippet-id)
+          resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
+      (testing "Snippet resolves when the current user can read it"
+        (binding [api/*current-user-id* 1]
+          (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
+            (is (= expected (resolve!))))))
+      (testing "Snippet does not resolve when the current user cannot read it"
+        (binding [api/*current-user-id* 1]
+          (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Snippet [\d,]+ \"expensive_venues\" not found\."
+                 (resolve!))))))
+      (testing "Snippet resolves when there is no current user, e.g. subscriptions"
+        (binding [api/*current-user-id* nil]
+          (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+            (is (= expected (resolve!)))))))))
 
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"

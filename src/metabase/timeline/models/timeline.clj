@@ -23,14 +23,16 @@
    (and (remote-sync/worktree-accessible? instance)
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
   ([_model pk]
-   (mi/can-read? (t2/select-one :model/Timeline :id pk))))
+   (when-let [timeline (t2/select-one :model/Timeline :id pk)]
+     (mi/can-read? timeline))))
 
 (defmethod mi/can-write? :model/Timeline
   ([instance]
    (and (remote-sync/worktree-accessible? instance)
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_model pk]
-   (mi/can-write? (t2/select-one :model/Timeline :id pk))))
+   (when-let [timeline (t2/select-one :model/Timeline :id pk)]
+     (mi/can-write? timeline))))
 
 ;;;; transforms
 

@@ -79,7 +79,8 @@
      (and (remote-sync/worktree-accessible? instance)
           (mi/can-read? table))))
   ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+   (when-let [segment (t2/select-one model pk)]
+     (mi/can-read? segment))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -100,7 +101,8 @@
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+   (when-let [segment (t2/select-one model pk)]
+     (mi/can-write? segment))))
 
 ;; Segments can be created by
 ;; a) superusers

@@ -711,3 +711,15 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_timeline_worktree_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:58
+      author: alxnddr
+      comment: Index on worktree.creator_id - every foreign key is expected to be indexed
+      changes:
+        - createIndex:
+            tableName: worktree
+            indexName: idx_worktree_creator_id
+            columns:
+              - column:
+                  name: creator_id
