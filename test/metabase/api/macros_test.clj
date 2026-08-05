@@ -171,11 +171,9 @@
        [1 [:map [:t :int] [:a :int]]]
        [2 [:map [:t :int] [:b :int]]]]                    #{:t :a :b}
       ;; a `[:fn ...]` names nothing and is skipped, so the `:map` alongside it is taken to name every param the
-      ;; schema accepts
+      ;; schema accepts -- which is why such a `:map` has to name a param even where it can't constrain it
       [:and [:map [:a :int]] [:fn map?]]                  #{:a}
-      ;; ...which is wrong for a schema whose `[:fn ...]` allows more than the `:map` spells out, so those name the
-      ;; params directly instead
-      [:and {:api/allowed-keys #{:a :b}} [:map [:a :int]] [:fn map?]] #{:a :b}
+      [:and [:map [:a :int] [:b {:optional true} :any]] [:fn map?]] #{:a :b}
       ;; nothing names a key here
       [:map-of :keyword :any]                             nil
       [:fn map?]                                          nil))
@@ -210,12 +208,14 @@
                      body)]
       (is (= {:b 3}
              (call-with-params endpoint nil nil {:b 3, :sneaky 1})))))
-  (testing "a schema whose `[:fn ...]` accepts more than its `:map` spells out names the params directly"
-    (let [endpoint (api.macros/defendpoint :post "/allowed-keys-params-test"
+  (testing "a param a schema names but does not constrain is still passed through"
+    (let [endpoint (api.macros/defendpoint :post "/unconstrained-param-test"
                      "Echoes back its body."
                      [_route-params
                       _query-params
-                      body :- [:and {:api/allowed-keys #{:b :extra}} ::body [:fn map?]]]
+                      body :- [:and
+                               [:map [:b :int] [:extra {:optional true} :any]]
+                               [:fn map?]]]
                      body)]
       (is (= {:b 3, :extra 4}
              (call-with-params endpoint nil nil {:b 3, :extra 4, :sneaky 1})))))

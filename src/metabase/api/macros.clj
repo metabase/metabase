@@ -530,9 +530,9 @@
 
   Parts that name nothing -- a `[:fn ...]` constraint, say -- are skipped, so the map parts of a schema are taken to
   be the whole story about which params it accepts. **That means a schema combining a `:map` with a `[:fn ...]` has to
-  enumerate every param it accepts**, since anything it leaves out is now dropped from the request rather than passed
-  through. Where the params can't be enumerated in the schema itself, name them with `:api/allowed-keys` (see
-  `::qp.schema/any-query` for an example).
+  name every param it accepts**, since anything it leaves out is now dropped from the request rather than passed
+  through. A schema too loose to constrain a param can still name it with an `{:optional true} :any` entry -- see
+  `::qp.schema/any-query`, which does that for the query keys it can't pin down before normalization.
 
   A `:closed` written anywhere in the schema means the author is deciding what happens to undeclared params, so we
   keep out of it entirely -- `::hand-closed` propagates up through the branches so that a hand-closed part of an
@@ -541,7 +541,6 @@
   (let [schema     (mc/schema schema)
         properties (mc/properties schema)]
     (cond
-      (:api/allowed-keys properties) (:api/allowed-keys properties)
       (contains? properties :closed) ::hand-closed
       :else
       (letfn [(union [schemas]
