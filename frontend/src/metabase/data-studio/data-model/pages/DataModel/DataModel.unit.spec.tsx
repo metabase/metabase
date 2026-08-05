@@ -253,7 +253,7 @@ async function setup({
     );
   }
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="notData" element={<OtherComponent />} />
       <Route path="data-studio/data">
@@ -303,7 +303,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { router };
 }
 
 describe("DataModel", () => {
@@ -705,7 +705,7 @@ describe("DataModel", () => {
 
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           initialRoute: "notData",
           waitForDatabase: false,
           waitForTable: false,
@@ -719,7 +719,7 @@ describe("DataModel", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        router?.back();
 
         await waitFor(() => {
           expect(
@@ -1052,7 +1052,7 @@ describe("DataModel", () => {
     });
 
     it("should navigate to new segment page when clicking New segment", async () => {
-      const { history } = await setup();
+      const { router } = await setup();
 
       await userEvent.click(
         await findTablePickerTable(ORDERS_TABLE.display_name),
@@ -1062,7 +1062,7 @@ describe("DataModel", () => {
       await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
       await userEvent.click(screen.getByRole("link", { name: /New segment/i }));
 
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         `/data-studio/data/database/${ORDERS_TABLE.db_id}/schema/${ORDERS_TABLE.db_id}:${ORDERS_TABLE.schema}/table/${ORDERS_TABLE.id}/segments/new`,
       );
     });

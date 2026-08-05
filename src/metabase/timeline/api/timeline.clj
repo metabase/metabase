@@ -10,6 +10,7 @@
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -43,6 +44,29 @@
     (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
+(mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
+  "List timelines visible to the current user with no hydration. `worktree-id` lists the timelines checked out
+  into that remote-sync worktree; `nil` (the default) lists the main app's."
+  ([]
+   (list-timelines false nil))
+  ([archived :- ms/BooleanValue]
+   (list-timelines archived nil))
+  ([archived    :- ms/BooleanValue
+    worktree-id :- [:maybe ms/PositiveInt]]
+   (t2/select :model/Timeline
+              {:where    [:and
+                          [:= :archived archived]
+                          [:= :worktree_id worktree-id]
+                          (collection/visible-collection-filter-clause
+                           :collection_id
+                           {:worktree-id worktree-id})]
+               :order-by [[:%lower.name :asc]]})))
+
+(mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
+  "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
+  [id :- ms/PositiveInt]
+  (api/read-check (t2/select-one :model/Timeline :id id)))
+
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines. `worktree-id` lists
   the timelines checked out into a remote-sync worktree instead of the main app (admin only)."
@@ -53,14 +77,7 @@
                                                           [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
     (api/check-superuser))
-  (let [timelines (->> (t2/select :model/Timeline
-                                  {:where    [:and
-                                              [:= :archived archived?]
-                                              [:= :worktree_id worktree-id]
-                                              (collection/visible-collection-filter-clause
-                                               :collection_id
-                                               {:worktree-id worktree-id})]
-                                   :order-by [[:%lower.name :asc]]})
+  (let [timelines (->> (list-timelines archived? worktree-id)
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
@@ -77,7 +94,7 @@
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
-        timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
+        timeline (get-timeline id)]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.

@@ -46,7 +46,7 @@
 
 (defn- archived-directly-models
   []
-  #{:model/Card :model/Dashboard :model/Document})
+  #{:model/Card :model/Dashboard :model/Document :model/Exploration})
 
 (defn- collectable-models
   []
@@ -1154,6 +1154,28 @@
                         [:= :personal_owner_id api/*current-user-id*]]
                        additional-honeysql-where-clauses)})
    []))
+
+(mu/defn descendants-flat-for :- [:sequential CollectionWithLocationAndIDOrRoot]
+  "Like [[descendants-flat]], but returns the descendants of *any* of
+  `collections` in a single query. Also selects `:type`, so callers can
+  classify descendants without another lookup."
+  [collections :- [:sequential CollectionWithLocationAndIDOrRoot]
+   & additional-honeysql-where-clauses]
+  (if (empty? collections)
+    []
+    (t2/select [:model/Collection :name :id :location :description :type]
+               {:where (apply
+                        vector
+                        :and
+                        (into [:or]
+                              (map (fn [collection]
+                                     [:like :location (str (children-location collection) "%")]))
+                              collections)
+                        ;; same personal-collection rule as descendants-flat
+                        [:or
+                         [:= :personal_owner_id nil]
+                         [:= :personal_owner_id api/*current-user-id*]]
+                        additional-honeysql-where-clauses)})))
 
 (mu/defn descendants :- [:set Children]
   "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done

@@ -11,7 +11,7 @@ import { setRouterExpected } from "./navigator";
 export type MemoryTestRouter = DataRouter;
 
 /**
- * Lets the test harness hand out a `history` handle before the route tree, and
+ * Lets the test harness hand out its router handle before the route tree, and
  * so the router, exists.
  */
 export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };

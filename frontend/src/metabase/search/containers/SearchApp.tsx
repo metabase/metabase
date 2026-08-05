@@ -18,7 +18,7 @@ import {
 } from "metabase/common/search/constants";
 import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import type { Location, LocationDescriptorObject } from "metabase/router";
+import type { Location, To } from "metabase/router";
 import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
@@ -71,7 +71,7 @@ export function SearchApp() {
   } as SearchRequest;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject) => navigate(nextLocation),
+    (nextLocation: To) => navigate(nextLocation),
     [navigate],
   );
 

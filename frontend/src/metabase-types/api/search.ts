@@ -9,6 +9,7 @@ import type {
 } from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { ExplorationId } from "./exploration";
 import type { Field } from "./field";
 import type { MeasureId } from "./measure";
 import type { ModerationReviewStatus } from "./moderation";
@@ -30,6 +31,7 @@ const ENABLED_SEARCH_MODELS = [
   "action",
   "indexed-entity",
   "document",
+  "exploration",
   "transform",
 ] as const;
 
@@ -72,7 +74,8 @@ export type SearchResultId =
   | DatabaseId
   | TableId
   | DashboardId
-  | MeasureId;
+  | MeasureId
+  | ExplorationId;
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,

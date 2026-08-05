@@ -26,12 +26,12 @@ function TestModal({ params, onClose }: ModalComponentProps) {
 const modalProps = { transitionProps: { duration: 0 } };
 
 function setup(routes: React.ReactNode, initialRoute: string) {
-  const { history } = renderWithProviders(<>{routes}</>, {
+  const { router } = renderWithProviders(<>{routes}</>, {
     withRouter: true,
     initialRoute,
   });
 
-  const pathname = () => history?.getCurrentLocation().pathname;
+  const pathname = () => router?.location.pathname;
   return { pathname };
 }
 

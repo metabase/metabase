@@ -24,6 +24,7 @@
    "database"
    "action"
    "document"
+   "exploration"
    "transform"
    ;; The following come last as they can be slow to index due to:
    ;; - cardinality (table, indexed-entity),

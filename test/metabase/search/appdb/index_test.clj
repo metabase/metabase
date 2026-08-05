@@ -537,17 +537,17 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
-   "model_index"       #{"model_index_value"}
-   "metabase_database" #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
-   "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
-   "document"          #{"action" "model_index_value" "report_card"}
-   "report_card"       #{"action" "model_index_value"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}
+  {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
+   "model_index"        #{"model_index_value"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
+   "document"           #{"action" "model_index_value" "report_card"}
+   "report_card"        #{"action" "model_index_value"}
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}
    ;; deleting a remote-sync worktree cascades to everything it checked out, and on to whatever hangs off
    ;; those cards in turn
-   "worktree" #{"action" "collection" "document" "measure" "model_index_value" "report_card"
-                "report_dashboard" "segment" "transform"}})
+   "worktree"           #{"action" "collection" "document" "measure" "model_index_value" "report_card"
+                          "report_dashboard" "segment" "transform"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants

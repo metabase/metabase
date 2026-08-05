@@ -27,7 +27,7 @@ import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
 import { CreateMetricModal } from "./CreateMetricModal";
-import { ensureDefaultDimension, getInitialQuery, getQuery } from "./utils";
+import { getInitialQuery, getQuery } from "./utils";
 
 interface NewMetricPageProps {
   urls?: MetricUrls;
@@ -86,10 +86,7 @@ export function NewMetricPage({
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
-    const nextQuery = getValidationResult(query).isValid
-      ? ensureDefaultDimension(query)
-      : query;
-    setDatasetQuery(Lib.toJsQuery(nextQuery));
+    setDatasetQuery(Lib.toJsQuery(query));
   };
 
   const handleCancel = () => {

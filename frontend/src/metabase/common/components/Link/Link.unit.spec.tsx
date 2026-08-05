@@ -100,7 +100,7 @@ describe("Link", () => {
   // still observable: the location gets a fresh key, which is what the documents
   // page keys its unsaved-changes prompt off.
   it("replaces the entry when linking to the current url, with a new location key", async () => {
-    const { history } = renderWithProviders(tree, {
+    const { router } = renderWithProviders(tree, {
       withRouter: true,
       initialRoute: "/",
     });
@@ -117,7 +117,7 @@ describe("Link", () => {
 
     // The second click reused the entry instead of stacking one, so a single
     // step back lands on the page we came from.
-    await act(() => history?.goBack());
+    await act(() => router?.back());
     expect(await screen.findByTestId("location")).toHaveTextContent("/");
   });
 
