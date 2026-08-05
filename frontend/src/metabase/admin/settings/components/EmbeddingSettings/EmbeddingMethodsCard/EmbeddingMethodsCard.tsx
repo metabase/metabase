@@ -27,20 +27,26 @@ export function EmbeddingMethodsCard() {
       <Stack gap="lg">
         <Title order={4}>{t`Availability of embedding methods`}</Title>
 
-        {/* Modular and guest embeds are free; the OSS design shows both and
-            paywalls only the SDK and full-app. */}
-        <EmbeddingMethodRow
-          title={t`Modular embedding`}
-          description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components.`}
-          settingKey="enable-embedding-simple"
-        />
-
+        {/* Guest embeds are the only free method. Modular embedding, the SDK
+            and full-app all need `embedding_simple`: the client only registers
+            the modular runtime when the token has it, so showing its toggle
+            below the paywall offers a switch that turns nothing on. The
+            settings themselves carry no `:feature`, so nothing server-side
+            stops an OSS admin writing them -- see the note in the tech doc. */}
         {hasSimpleEmbedding && (
-          <EmbeddingMethodRow
-            title={t`Modular embedding SDK`}
-            description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
-            settingKey="enable-embedding-sdk"
-          />
+          <>
+            <EmbeddingMethodRow
+              title={t`Modular embedding`}
+              description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components.`}
+              settingKey="enable-embedding-simple"
+            />
+
+            <EmbeddingMethodRow
+              title={t`Modular embedding SDK`}
+              description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+              settingKey="enable-embedding-sdk"
+            />
+          </>
         )}
 
         <EmbeddingMethodRow
