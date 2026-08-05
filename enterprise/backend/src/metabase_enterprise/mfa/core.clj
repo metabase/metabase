@@ -8,7 +8,6 @@
    [metabase-enterprise.mfa.gate :as gate]
    [metabase-enterprise.mfa.settings]
    [metabase-enterprise.mfa.verification :as verification]
-   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
@@ -38,9 +37,11 @@
 
 (defenterprise verify-second-factor!
   "Verify a second-factor code (TOTP, recovery, or emailed one-time code) for user-id, atomically
-  consuming it plus the challenge jti. Returns boolean.
+  consuming it plus the challenge jti.
 
-  OSS fallback returns false — OSS can never have issued a challenge token (the MFA gate lives in
+  Returns the AuthIdentity of the 2nd factor method verified, else nil.
+
+  OSS fallback returns nil — OSS can never have issued a challenge token (the MFA gate lives in
   EE), so this is unreachable in practice."
   :feature :none
   [user-id code jti]

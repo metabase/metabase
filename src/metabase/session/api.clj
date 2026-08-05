@@ -147,13 +147,15 @@
 
 (defenterprise verify-second-factor!
   "Verify a second-factor code (TOTP, recovery, or emailed one-time code) for user-id, atomically
-  consuming it plus the challenge jti. Returns boolean.
+  consuming it plus the challenge jti.
 
-  OSS fallback returns false — OSS can never have issued a challenge token (the MFA gate lives in
+  Returns the AuthIdentity of the 2nd factor method verified, else nil.
+
+  OSS fallback returns nil — OSS can never have issued a challenge token (the MFA gate lives in
   EE), so this is unreachable in practice."
   metabase-enterprise.mfa.core
   [_user-id _code _jti]
-  false)
+  nil)
 
 (defenterprise start-enrollment!
   "Begin enrollment of a new authenticator for a user who is not currently enrolled, and attempting to log in.
@@ -539,24 +541,26 @@
             (throw (ex-info (tru "Authentication session expired. Please log in again.")
                             {:status-code 401})))
         user-id      (:user-id claims)
-        first-factor (auth-identity/provider-string->keyword (:provider claims))]
-    ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
-    ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
-    (call-with-failure-throttling
-     [[(verify-throttlers :ip-address) (request/ip-address request)]
-      [(verify-throttlers :user-id) user-id]]
-     (fn []
-       (when-not (verify-second-factor! user-id code jti)
-         (events/publish-event! :event/mfa-verification-failed
-                                {:object (t2/select-one :model/User :id user-id)})
-         (throw (ex-info (tru "Invalid authentication code.") {:status-code 401})))))
+        first-factor (auth-identity/provider-string->keyword (:provider claims))
+        ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
+        ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
+        mfa-auth-identity (call-with-failure-throttling
+                           [[(verify-throttlers :ip-address) (request/ip-address request)]
+                            [(verify-throttlers :user-id) user-id]]
+                           (fn []
+                             (or
+                              (verify-second-factor! user-id code jti)
+                              (do
+                                (events/publish-event! :event/mfa-verification-failed
+                                                       {:object (t2/select-one :model/User :id user-id)})
+                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))]
     (let [user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
       ;; the account can be deactivated (or deleted) between the password step and here; a
       ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
       (when-not (:is_active user)
         (throw (ex-info (tru "Authentication session expired. Please log in again.")
                         {:status-code 401})))
-      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
+      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor mfa-auth-identity)
                         request))))
 
 ;; No response schema: the success path returns a full ring response (session cookies must be set),

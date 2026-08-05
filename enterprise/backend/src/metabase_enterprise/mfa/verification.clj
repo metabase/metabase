@@ -123,21 +123,23 @@
   recovery code, or the emailed code, plus the challenge `jti` when one is given (pass nil for
   session re-auth, where no challenge token exists).
 
-  True only for a confirmed enrollment with an unused jti and an unconsumed code. Runs in a
+  Verification succeeds only for a confirmed enrollment with an unused jti and an unconsumed code. Runs in a
   transaction with the enrollment row locked so a concurrently replayed code, recovery code, or
-  token cannot pass twice."
+  token cannot pass twice.
+
+  On successful verification the AuthIdentity associated with the second factor is returned, else nil"
   [user-id code jti]
   (t2/with-transaction [_conn]
-    (boolean
-     (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                             :user_id user-id
-                                             :provider provider-name
-                                             {:for :update})]
-       (when (and (confirmed? auth-identity)
-                  (not (jti-used? (:credentials auth-identity) jti)))
-         (or (totp-attempt! auth-identity code jti)
-             (recovery-attempt! auth-identity code jti)
-             (email-otp-attempt! auth-identity code jti)))))))
+    (when-let [auth-identity (t2/select-one :model/AuthIdentity
+                                            :user_id user-id
+                                            :provider provider-name
+                                            {:for :update})]
+      (when (and (confirmed? auth-identity)
+                 (not (jti-used? (:credentials auth-identity) jti)))
+        (when (or (totp-attempt! auth-identity code jti)
+                  (recovery-attempt! auth-identity code jti)
+                  (email-otp-attempt! auth-identity code jti))
+          auth-identity)))))
 
 (defn set-email-otp!
   "Generate a 6-digit emailed one-time code for `user-id`'s confirmed enrollment, replacing any

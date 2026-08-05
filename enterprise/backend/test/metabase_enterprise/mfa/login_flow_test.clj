@@ -211,7 +211,7 @@
       (testing "an unused recovery code re-auths; the whole old set is then invalid"
         (let [resp (mt/client session-key :post 200 "ee/mfa/recovery-codes" {:code c1})]
           (is (= 10 (count (:recovery_codes resp))))
-          (is (false? (verification/verify-attempt! user-id c1 nil))
+          (is (false? (boolean (verification/verify-attempt! user-id c1 nil)))
               "the re-auth code was consumed with the rest of the old set"))))))
 
 (deftest password-reset-issues-no-session-test
