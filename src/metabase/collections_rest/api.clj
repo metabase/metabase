@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -1428,6 +1429,7 @@
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
             [:worktree_id     {:optional true} [:maybe ms/PositiveInt]]]]
+  (remote-sync/check-worktree-exists! (:worktree_id body))
   (collections/create-collection! body))
 
 (defn- maybe-send-archived-notifications!

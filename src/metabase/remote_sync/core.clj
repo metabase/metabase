@@ -13,6 +13,19 @@
   (or (nil? (:worktree_id instance))
       api/*is-superuser?*))
 
+(defn check-worktree-exists!
+  "Returns `worktree-id`, 404ing when it names no remote-sync worktree. The FK would reject a bogus id anyway,
+  but as a 500 rather than the 404 the remote-sync endpoints give for the same input.
+
+  Queries the table rather than `:model/RemoteSyncWorktree`: the model is enterprise-only, while the table and
+  its foreign keys exist on both editions."
+  [worktree-id]
+  (when worktree-id
+    (api/check-404 (seq (t2/query {:select [[[:inline 1] :one]]
+                                   :from   [:remote_sync_worktree]
+                                   :where  [:= :id worktree-id]}))))
+  worktree-id)
+
 (defn check-same-worktree
   "Guard throwing a 400 when a row's `worktree_id` and its container's disagree -- content never moves into, out
   of, or between worktrees. `container-worktree-id` is the worktree of whatever contains the row (its collection,

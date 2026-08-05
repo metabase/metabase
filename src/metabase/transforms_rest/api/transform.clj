@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -182,6 +183,7 @@
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (transforms.core/check-feature-enabled! body)
+  (remote-sync/check-worktree-exists! (:worktree_id body))
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
   (transforms.core/validate-incremental-column-type! body)

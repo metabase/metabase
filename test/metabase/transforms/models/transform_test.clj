@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.remote-sync.test-util :as rs.tu]
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms.query-test-util :as query-test-util]
@@ -221,37 +222,37 @@
 
 (deftest worktree-id-cannot-change-test
   (testing "which worktree a transform belongs to is fixed when it is created"
-    (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-model-pin"}
-                   :model/Transform {tf-id :id} {:name "main transform"}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"worktree_id cannot be changed"
-                            (t2/update! :model/Transform tf-id {:worktree_id wt-id}))))))
+    (rs.tu/with-worktree [wt-id]
+      (mt/with-temp [:model/Transform {tf-id :id} {:name "main transform"}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"worktree_id cannot be changed"
+                              (t2/update! :model/Transform tf-id {:worktree_id wt-id})))))))
 
 (deftest transform-must-match-its-collection-worktree-test
-  (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-model-container"}
-                 :model/Collection main-coll {:name "main transforms" :namespace "transforms"}
-                 :model/Collection wt-coll {:name        "worktree transforms"
-                                            :namespace   "transforms"
-                                            :worktree_id wt-id}]
-    (testing "a transform cannot be created in a collection from another worktree"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
-                            (t2/insert! :model/Transform
-                                        (merge (mt/with-temp-defaults :model/Transform)
-                                               {:name "mismatched" :collection_id (:id wt-coll)})))))
-    (testing "a transform cannot be moved into another worktree's collection"
-      (mt/with-temp [:model/Transform {tf-id :id} {:name "main transform" :collection_id (:id main-coll)}]
+  (rs.tu/with-worktree [wt-id]
+    (mt/with-temp [:model/Collection main-coll {:name "main transforms" :namespace "transforms"}
+                   :model/Collection wt-coll {:name        "worktree transforms"
+                                              :namespace   "transforms"
+                                              :worktree_id wt-id}]
+      (testing "a transform cannot be created in a collection from another worktree"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
-                              (t2/update! :model/Transform tf-id {:collection_id (:id wt-coll)})))
-        (testing "but moving to the root is always allowed"
-          (is (= 1 (t2/update! :model/Transform tf-id {:collection_id nil}))))))
-    (testing "a transform in the same worktree as its collection is fine"
-      (mt/with-temp [:model/Transform tf {:name          "matched"
-                                          :collection_id (:id wt-coll)
-                                          :worktree_id   wt-id}]
-        (is (= wt-id (:worktree_id tf)))))))
+                              (t2/insert! :model/Transform
+                                          (merge (mt/with-temp-defaults :model/Transform)
+                                                 {:name "mismatched" :collection_id (:id wt-coll)})))))
+      (testing "a transform cannot be moved into another worktree's collection"
+        (mt/with-temp [:model/Transform {tf-id :id} {:name "main transform" :collection_id (:id main-coll)}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
+                                (t2/update! :model/Transform tf-id {:collection_id (:id wt-coll)})))
+          (testing "but moving to the root is always allowed"
+            (is (= 1 (t2/update! :model/Transform tf-id {:collection_id nil}))))))
+      (testing "a transform in the same worktree as its collection is fine"
+        (mt/with-temp [:model/Transform tf {:name          "matched"
+                                            :collection_id (:id wt-coll)
+                                            :worktree_id   wt-id}]
+          (is (= wt-id (:worktree_id tf))))))))
 
 (deftest creating-a-worktree-transform-is-admin-only-test
   (testing "a non-admin cannot put a transform into a worktree"
-    (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-model-perms"}]
+    (rs.tu/with-worktree [wt-id]
       (mt/with-current-user (mt/user->id :rasta)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
                               (t2/insert! :model/Transform

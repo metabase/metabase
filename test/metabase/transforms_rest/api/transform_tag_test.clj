@@ -2,6 +2,7 @@
   "Tests for transform tag CRUD API endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.remote-sync.test-util :as rs.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.transform-tag]
@@ -113,24 +114,24 @@
 
 (deftest worktree-tags-are-excluded-from-the-list-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "tag-api-list"}
-                   :model/TransformTag {main-tag :id} {:name (str "main-" (u/generate-nano-id))}
-                   :model/TransformTag {wt-tag :id} {:name        (str "wt-" (u/generate-nano-id))
-                                                     :worktree_id wt-id}]
-      (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "transform-tag"))]
-        (is (contains? ids main-tag))
-        (is (not (contains? ids wt-tag))))
-      (testing "worktree-id returns only that worktree's tags"
-        (is (= [wt-tag]
-               (mapv :id (mt/user-http-request :crowberto :get 200 "transform-tag" :worktree-id wt-id)))))
-      (testing "worktree-id is admin-only"
-        (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :lucky :get 403 "transform-tag" :worktree-id wt-id))))))))
+    (rs.tu/with-worktree [wt-id]
+      (mt/with-temp [:model/TransformTag {main-tag :id} {:name (str "main-" (u/generate-nano-id))}
+                     :model/TransformTag {wt-tag :id} {:name        (str "wt-" (u/generate-nano-id))
+                                                       :worktree_id wt-id}]
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "transform-tag"))]
+          (is (contains? ids main-tag))
+          (is (not (contains? ids wt-tag))))
+        (testing "worktree-id returns only that worktree's tags"
+          (is (= [wt-tag]
+                 (mapv :id (mt/user-http-request :crowberto :get 200 "transform-tag" :worktree-id wt-id)))))
+        (testing "worktree-id is admin-only"
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :get 403 "transform-tag" :worktree-id wt-id)))))))))
 
 (deftest worktree-tag-names-are-scoped-to-their-worktree-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "tag-api-names"}]
+    (rs.tu/with-worktree [wt-id]
       (let [tag-name (str "shared-" (u/generate-nano-id))]
         (mt/with-temp [:model/TransformTag _ {:name tag-name}]
           (mt/with-model-cleanup [:model/TransformTag]
@@ -144,7 +145,7 @@
 
 (deftest creating-a-worktree-tag-is-admin-only-over-the-api-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "tag-api-perms"}]
+    (rs.tu/with-worktree [wt-id]
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :post 403 "transform-tag"

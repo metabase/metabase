@@ -163,6 +163,11 @@
                                            (update :circular conj path))
                                        path))
     (seen path)           ctx           ; Already been done, can skip it.
+    ;; A worktree only checks out transform content. Anything else -- reached as a top-level file or as a
+    ;; declared dependency, e.g. the Database a Transform names -- would be loaded into the main app's rows.
+    (and serdes/*worktree-id*
+         (not (serdes/worktree-scoped? (:model (last path)))))
+    ctx
     :else
     (let [ingested (serdes.ingest/ingest-one ingestion path)]
       (if-not ingested

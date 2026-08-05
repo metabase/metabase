@@ -633,6 +633,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            settings
@@ -2506,6 +2507,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            models
+           remote-sync
            request
            transforms
            transforms-base

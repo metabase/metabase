@@ -1733,7 +1733,7 @@ serdes/meta:
                       :cancelled      true
                       :error_message  "Cancelled by admin"
                       :progress       0.5})]
-        (impl/handle-task-result! {:status :success :version "abc"} task-id "feature-x")
+        (impl/handle-task-result! {:status :success :version "abc"} task-id :branch "feature-x")
         (is (= "dev" (remote-sync.settings/remote-sync-branch))
             "setting must remain unchanged — already-terminated task must not write it")
         (let [task-after (t2/select-one :model/RemoteSyncTask :id task-id)]

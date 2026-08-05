@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.log :as log]
@@ -32,6 +33,7 @@
                                   [:name ms/NonBlankString]
                                   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   (log/info "Creating transform tag")
+  (remote-sync/check-worktree-exists! worktree_id)
   (api/check-403 (mi/can-create? :model/TransformTag {:name name :worktree_id worktree_id}))
   (api/check-400 (not (transforms.core/tag-name-exists? name worktree_id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
