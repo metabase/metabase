@@ -5,6 +5,7 @@
   contract: resolving a requested model to an immutable embedding space, reporting readiness, and producing vectors."
   (:require
    [clojure.string :as str]
+   ^{:clj-kondo/ignore [:metabase/modules]} [metabase.plugins.core :as plugins]
    [metabase.util.malli :as mu])
   (:import
    (java.nio.charset StandardCharsets)
@@ -81,6 +82,18 @@
   "Names of all registered embedding providers."
   []
   (set (keys @providers)))
+
+(def ^:private lazy-provider-plugins
+  {"in-process" "Metabase In-Process Embedder"})
+
+(defn activate-provider!
+  "Activate the lazy plugin that implements `requested-model`'s provider, if it has one.
+
+  Plugin discovery registers its manifest but deliberately does not execute its initialization steps. The embedding
+  contract owns this activation boundary, so consumers can use provider plugins without depending on plugin internals."
+  [{:keys [provider]}]
+  (when-let [plugin-name (get lazy-provider-plugins provider)]
+    (plugins/load-plugin! plugin-name)))
 
 (defn- provider-request
   [{:keys [provider] :as requested-model}]
