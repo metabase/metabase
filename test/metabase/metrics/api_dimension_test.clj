@@ -637,7 +637,8 @@
       ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
       ;; bypassing before-update so nothing bumps it back to the current version.
       (t2/query-one {:update :report_card
-                     :set    {:card_schema 23}
+                     :set    {:card_schema 23
+                              :dimensions  nil}
                      :where  [:= :id (:id metric)]})
       (f (:id metric)))))
 
@@ -649,6 +650,7 @@
                 "correspond to a live dimension.")
     (pre-curation-metric!
      (fn [metric-id]
+       (prn (t2/query-one ["SELECT dimensions FROM report_card WHERE id = ?" metric-id]))
        (let [cat-field (mt/id :products :category)   ; reachable from ORDERS only via the implicit FK join
              dims      (:dimensions (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id)))
              groups    (into #{} (comp (map :group)

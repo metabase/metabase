@@ -198,7 +198,9 @@
   (start!))
 
 (comment
-  (t2/query-one ["SELECT * FROM report_card WHERE id = 133;"])
+  (-> (t2/query-one ["SELECT * FROM report_card WHERE id = 133;"])
+      :dimensions
+      (cheshire.core/parse-string keyword))
 
   ;; Original form, before the big PR
   ;;{:cache_invalidated_at nil,

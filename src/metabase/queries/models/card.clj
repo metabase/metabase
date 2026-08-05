@@ -107,7 +107,14 @@
   [metric dimensions dimension-mappings]
   (when-let [metric-id (:id metric)]
     (t2/update! :model/Card metric-id
-                {:dimensions         dimensions
+                {;; The change from card schema 23 to 24 is exactly the format of the `:display-name` on the metrics.
+                 ;; So if we're saving the up-to-date dimensions, make sure the `card_schema` version is never 23,
+                 ;; or the modernization logic will run twice, prefixing implicitly joined dimensions with their
+                 ;; table name a second time to produce e.g. `User - User - ID`.
+                 ;:card_schema        (case (:card-schema metric)
+                 ;                      23 24
+                 ;                      (:card-schema metric))
+                 :dimensions         dimensions
                  :dimension_mappings dimension-mappings})))
 
 (defmethod metrics/dimensions-initialized? :metadata/metric
@@ -744,12 +751,19 @@
 ;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
 (defmethod upgrade-card-schema-to 24
   [card _schema-version]
-  (if (and (= :metric (keyword (:type card)))
-           (nil? (:dimensions card))
-           (seq (:dataset_query card)))
+  #_(prn (ex-info "dimensions" {:dimensions (:dimensions card)}))
+  (cond
+    (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
+    (empty? (:dataset_query card))        card   ; And those without real queries
+
+    ;; If the `:dimensions` are populated, modernize the representation to the current form.
+    (:dimensions card)                    (update card :dimensions metrics/modernize-early-dimensions)
+
+    ;; If the `:dimensions` are unset, populate them with the present representation but with legacy semantics:
+    ;; all implicitly joinable columns become dimensions, not just "available" dimensions.
+    :else
     (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
-      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
-    card))
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
