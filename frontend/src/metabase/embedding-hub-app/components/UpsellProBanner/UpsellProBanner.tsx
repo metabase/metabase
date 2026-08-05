@@ -59,10 +59,12 @@ export function UpsellProBanner({ title, location }: UpsellProBannerProps) {
           variant="filled"
           // The button pins itself to 14px; the design's label is 12px.
           fz="sm"
-          onClick={() => {
-            trackUpsellClicked({ location, campaign });
-            triggerUpsellFlow?.();
-          }}
+          // Tracking goes on the capture phase because ExternalLink stops
+          // propagation there, which would otherwise swallow a bubble-phase
+          // onClick and lose every click on the link form. Passing our own
+          // handler overrides ExternalLink's, as UpsellCta does.
+          onClickCapture={() => trackUpsellClicked({ location, campaign })}
+          onClick={() => triggerUpsellFlow?.()}
         >
           {t`Try Metabase Pro`}
         </Button>
