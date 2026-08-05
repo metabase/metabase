@@ -17,17 +17,18 @@
 ;;; ------------------------------------------------- API -------------------------------------------------
 
 (deftest worktree-crud-is-admin-only-test
-  (testing "every /worktree endpoint requires a superuser"
+  (testing "worktrees are superuser-only"
     (mt/with-premium-features #{:remote-sync}
       (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "feature-x"}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "ee/remote-sync/worktree")))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "ee/remote-sync/worktree/" wt-id))))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/remote-sync/worktree" {:branch "nope"})))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :delete 403 (str "ee/remote-sync/worktree/" wt-id))))))))
+        (testing "a non-admin sees no worktrees at all"
+          (is (= [] (mt/user-http-request :rasta :get 200 "ee/remote-sync/worktree"))))
+        (testing "and cannot read, create or delete one"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "ee/remote-sync/worktree/" wt-id))))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/remote-sync/worktree" {:branch "nope"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 (str "ee/remote-sync/worktree/" wt-id)))))))))
 
 (deftest worktree-create-and-list-test
   (testing "an admin can create a worktree and read it back"

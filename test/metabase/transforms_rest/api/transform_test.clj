@@ -2243,7 +2243,7 @@
 
 (deftest worktree-transforms-are-excluded-from-the-list-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temporary-setting-values [transforms-enabled true]
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-api-list"}
                      :model/Transform {main-id :id} {:name "main transform"}
                      :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
@@ -2261,7 +2261,7 @@
 (deftest worktree-transform-cannot-be-run-test
   (testing "running a transform checked out into a worktree is refused"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
         (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-api-run"}
                        :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
           (is (= "Transforms in a remote sync worktree cannot be run."
@@ -2269,7 +2269,7 @@
 
 (deftest worktree-transform-is-admin-only-over-the-api-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temporary-setting-values [transforms-enabled true]
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-api-perms"}
                      :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
         (testing "a non-admin cannot read a worktree transform"

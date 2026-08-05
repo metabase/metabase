@@ -153,12 +153,13 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]} :- [:map
-                                                                                             [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                             [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                             [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                             [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
-                                                                                             [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]}
+   :- [:map
+       [:archived                       {:default false} [:maybe ms/BooleanValue]]
+       [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+       [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+       [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
+       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
     (api/check-superuser))
   (as->

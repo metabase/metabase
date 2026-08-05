@@ -15,6 +15,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -361,17 +362,20 @@
                           e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
-  "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
-  Requires superuser permissions."
+  "Create a new branch from the current remote-sync branch. By default the instance switches onto the new
+  branch; pass `switch` false to create it and stay where you are, which is what checking a branch out into a
+  worktree wants. Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
+   {:keys [name switch]} :- [:map
+                             [:name ms/NonBlankString]
+                             [:switch {:default true} [:maybe ms/BooleanValue]]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try
-      (impl/create-branch! name base-branch)
+      (impl/create-branch! name base-branch :switch? (boolean switch))
       (events/publish-event! :event/remote-sync-create-branch
                              {:details {:branch_name name
                                         :base_branch base-branch}
@@ -406,16 +410,16 @@
                       {:status-code 400})))))
 
 (api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
-  "List all remote-sync worktrees. Requires superuser permissions."
+  "List the remote-sync worktrees the current user can read; worktrees are superuser-only."
   []
-  (api/check-superuser)
-  (t2/hydrate (t2/select :model/RemoteSyncWorktree {:order-by [[:id :asc]]}) :creator))
+  (-> (t2/select :model/RemoteSyncWorktree {:order-by [[:id :asc]]})
+      (->> (filterv mi/can-read?))
+      (t2/hydrate :creator)))
 
 (api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
   "Get a single remote-sync worktree by id. Requires superuser permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (-> (api/check-404 (t2/select-one :model/RemoteSyncWorktree :id id))
+  (-> (api/read-check :model/RemoteSyncWorktree id)
       (t2/hydrate :creator)))
 
 (api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
@@ -425,7 +429,7 @@
   [_route
    _query
    {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
-  (api/check-superuser)
+  (api/create-check :model/RemoteSyncWorktree {:branch branch})
   (api/check-400 (not (t2/exists? :model/RemoteSyncWorktree :branch branch))
                  (format "A worktree for branch '%s' already exists." branch))
   (-> (t2/insert-returning-instance! :model/RemoteSyncWorktree
@@ -436,9 +440,7 @@
   "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser
   permissions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (t2/exists? :model/RemoteSyncWorktree :id id))
-  (impl/delete-worktree! id)
+  (impl/delete-worktree! (:id (api/write-check :model/RemoteSyncWorktree id)))
   nil)
 
 (def ^{:arglists '([request respond raise])} routes
