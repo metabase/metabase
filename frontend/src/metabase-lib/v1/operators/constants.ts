@@ -19,20 +19,53 @@ import {
   isLongitude,
   isNumeric,
 } from "metabase-lib/v1/types/utils/isa";
+import type { Field, ParameterOptions, Table } from "metabase-types/api";
 
-function freeformArgument(field, table) {
+type FilterArgument =
+  | { type: "text" }
+  | { type: "number" }
+  | { type: "date" }
+  | { type: "hidden"; default: Field["id"] }
+  | {
+      type: "select";
+      values: { key: boolean | Field["id"]; name: string }[];
+      default?: boolean;
+    };
+
+export type FilterArgumentFormatOptions = {
+  hide?: boolean;
+  compact?: boolean;
+  column?: { semantic_type: string };
+};
+
+export type FieldFilterOperator = {
+  validArgumentsFilters: ((field: Field, table: Table) => FilterArgument)[];
+  multi?: boolean;
+  placeholders?: string[];
+  formatOptions?: FilterArgumentFormatOptions[];
+  options?: Record<string, { defaultValue: boolean }>;
+  optionsDefaults?: ParameterOptions;
+};
+
+export type NamedFilterOperator = {
+  name: string;
+  readonly verboseName: string;
+  multi?: boolean;
+};
+
+function freeformArgument(_field: Field, _table: Table): FilterArgument {
   return {
     type: "text",
   };
 }
 
-function numberArgument(field, table) {
+function numberArgument(_field: Field, _table: Table): FilterArgument {
   return {
     type: "number",
   };
 }
 
-function comparableArgument(field, table) {
+function comparableArgument(field: Field, _table: Table): FilterArgument {
   if (isDate(field)) {
     return {
       type: "date",
@@ -50,7 +83,7 @@ function comparableArgument(field, table) {
   };
 }
 
-function equivalentArgument(field, table) {
+function equivalentArgument(field: Field, _table: Table): FilterArgument {
   if (isBoolean(field)) {
     return {
       type: "select",
@@ -79,24 +112,28 @@ function equivalentArgument(field, table) {
   };
 }
 
-function longitudeFieldSelectArgument(field, table) {
-  const values = table.fields
+function longitudeFieldSelectArgument(
+  _field: Field,
+  table: Table,
+): FilterArgument {
+  const values = (table.fields ?? [])
     .filter((field) => isLongitude(field))
     .map((field) => ({
       key: field.id,
       name: field.display_name,
     }));
+
   if (values.length === 1) {
     return {
       type: "hidden",
       default: values[0].key,
     };
-  } else {
-    return {
-      type: "select",
-      values: values,
-    };
   }
+
+  return {
+    type: "select",
+    values,
+  };
 }
 
 const CASE_SENSITIVE_OPTION = {
@@ -194,9 +231,11 @@ export const FIELD_FILTER_OPERATORS = {
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
-};
+} satisfies Record<string, FieldFilterOperator>;
 
-const DEFAULT_FILTER_OPERATORS = [
+export type FilterOperatorName = keyof typeof FIELD_FILTER_OPERATORS;
+
+const DEFAULT_FILTER_OPERATORS: NamedFilterOperator[] = [
   {
     name: "=",
     get verboseName() {
@@ -223,7 +262,7 @@ const DEFAULT_FILTER_OPERATORS = [
   },
 ];
 
-const KEY_FILTER_OPERATORS = [
+const KEY_FILTER_OPERATORS: NamedFilterOperator[] = [
   {
     name: "=",
     get verboseName() {
@@ -606,4 +645,6 @@ export const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [FOREIGN_KEY]: KEY_FILTER_OPERATORS,
   [PRIMARY_KEY]: KEY_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
-};
+} satisfies Record<string, NamedFilterOperator[]>;
+
+export type FilterOperatorType = keyof typeof FILTER_OPERATORS_BY_TYPE_ORDERED;
