@@ -17,6 +17,7 @@ const TestComponent = ({
   onClose: mockIsClosed,
   url,
   canRemoveLink,
+  warningText,
 }: Omit<PublicLinkPopoverProps, "target">) => {
   const target = (
     <button data-testid="target" onClick={() => setIsOpen(true)}>
@@ -46,6 +47,7 @@ const TestComponent = ({
       selectedExtension={extension}
       setSelectedExtension={setExtension}
       canRemoveLink={canRemoveLink}
+      warningText={warningText}
     />
   );
 };
@@ -56,12 +58,14 @@ const setup = ({
   extensions = [],
   isAdmin = false,
   canRemoveLink = true,
+  warningText,
 }: {
   hasUUID?: boolean;
   isOpen?: boolean;
   extensions?: ExportFormat[];
   isAdmin?: boolean;
   canRemoveLink?: boolean;
+  warningText?: string;
 } = {}) => {
   const createPublicLink = jest.fn();
   const deletePublicLink = jest.fn();
@@ -76,6 +80,7 @@ const setup = ({
       extensions={extensions}
       url={hasUUID ? "sample-public-link" : null}
       canRemoveLink={canRemoveLink}
+      warningText={warningText}
     />,
     {
       storeInitialState: createMockState({
@@ -270,6 +275,25 @@ describe("PublicLinkPopover", () => {
       expect(
         await screen.findByDisplayValue("sample-public-link"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("when warningText is provided", () => {
+    it("renders a warning when warningText is provided", () => {
+      setup({
+        warningText:
+          "This dashboard contains custom visualizations, which aren't supported in public links. They appear as tables instead.",
+      });
+      expect(
+        screen.getByTestId("public-link-custom-viz-warning"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders no warning by default", () => {
+      setup({});
+      expect(
+        screen.queryByTestId("public-link-custom-viz-warning"),
+      ).not.toBeInTheDocument();
     });
   });
 });

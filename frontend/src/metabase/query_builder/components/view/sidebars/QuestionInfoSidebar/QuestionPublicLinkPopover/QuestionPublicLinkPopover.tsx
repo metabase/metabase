@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "ttag";
 
 import {
   useCreateCardPublicLinkMutation,
@@ -12,6 +13,7 @@ import {
 } from "metabase/embedding/lib/analytics";
 import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 export const QuestionPublicLinkPopover = ({
   question,
@@ -69,6 +71,11 @@ export const QuestionPublicLinkPopover = ({
       setSelectedExtension={setExtension}
       onCopyLink={onCopyLink}
       canRemoveLink={question.canWrite()}
+      warningText={
+        isCustomVizDisplay(question.display())
+          ? t`This chart uses a custom visualization, which isn't supported in public links. It appears as a table instead.`
+          : undefined
+      }
     />
   );
 };

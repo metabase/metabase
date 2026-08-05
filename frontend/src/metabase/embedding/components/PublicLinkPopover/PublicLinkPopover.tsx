@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Popover, Text, Title } from "metabase/ui";
+import { Alert, Box, Popover, Text, Title } from "metabase/ui";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
 
@@ -23,6 +23,7 @@ export type PublicLinkPopoverProps = {
   // resource's write access so the remove action is hidden when it can't be
   // performed (e.g. a remote-synced entity on a read-only instance).
   canRemoveLink?: boolean;
+  warningText?: string;
 };
 
 export const PublicLinkPopover = ({
@@ -37,6 +38,7 @@ export const PublicLinkPopover = ({
   setSelectedExtension,
   onCopyLink,
   canRemoveLink = true,
+  warningText,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -75,6 +77,17 @@ export const PublicLinkPopover = ({
             size="sm"
             mb="sm"
           >{t`Anyone can view this if you give them the link.`}</Text>
+          {warningText && (
+            <Alert
+              variant="light"
+              color="warning"
+              p="sm"
+              mb="sm"
+              data-testid="public-link-custom-viz-warning"
+            >
+              {warningText}
+            </Alert>
+          )}
           <PublicLinkCopyPanel
             loading={loading}
             url={url}
