@@ -33,7 +33,7 @@ export const UpsellTenants = () => {
             description={t`Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            image="app/assets/img/upsell-tenants.png"
+            image="app/assets/img/upsell-embedding-tenants.svg"
           />
         </LineDecorator>
       </Stack>

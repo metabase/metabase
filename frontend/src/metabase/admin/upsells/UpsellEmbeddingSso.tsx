@@ -16,9 +16,6 @@ import { Stack } from "metabase/ui";
  * page-level upsell. This follows the same shape as `UpsellTenants` and
  * `UpsellEmbeddingTheme`, which is what the design shows.
  *
- * No illustration yet — the design has one (a key and lock) that has not been
- * exported. `UpsellCardContent` renders a narrower text-only card without it,
- * which reads as deliberate rather than broken.
  */
 export const UpsellEmbeddingSso = ({ source }: { source: string }) => {
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
@@ -45,6 +42,7 @@ export const UpsellEmbeddingSso = ({ source }: { source: string }) => {
             description={t`Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
+            image="app/assets/img/upsell-embedding-sso.svg"
           />
         </LineDecorator>
       </Stack>
