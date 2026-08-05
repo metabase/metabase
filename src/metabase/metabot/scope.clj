@@ -41,8 +41,10 @@
 ;;; ──────────────────────────────────────────────────────────────────
 ;;
 ;; Five scopes a human can actually read on a consent screen, replacing the per-entity leaves below
-;; for the v2 surface. The per-entity scopes stay declared: MCP v1 and the agent API still gate on
-;; them, and a token carrying one satisfies no other name, so they can never be renamed away.
+;; across the MCP surface. Those leaves stay declared: the agent API and Metabot's own tools still
+;; gate on them, and a token carrying one satisfies no other name, so they can never be renamed
+;; away. (They gated MCP v1 too, until GHY-4250 removed that surface; those two callers are what
+;; keep them alive now.)
 ;;
 ;; The `agent:` prefix is deliberate — these gate the agent API and Metabot too, not only MCP, so an
 ;; `mcp:` prefix would both misdescribe them and strand two prefixes side by side forever.
