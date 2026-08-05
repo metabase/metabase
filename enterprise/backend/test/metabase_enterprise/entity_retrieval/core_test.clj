@@ -67,6 +67,7 @@
                     jdbc/execute!                                           (fn [conn & _args]
                                                                               (swap! calls conj [:query conn])
                                                                               [])]
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10)))
         (is (= [[:lock ::datasource]
                 [:compatible :locked-connection-1]
@@ -87,6 +88,7 @@
                                                                            (throw (ex-info "must not embed" {})))
                   reconcile/with-index-read-lock                         (fn [_ds f]
                                                                            (f ::locked-connection))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest search-degrades-when-reconcile-holds-the-lock-test
@@ -101,6 +103,7 @@
                   reconcile/with-index-read-lock                         (constantly nil)
                   jdbc/execute!                                          (fn [& _]
                                                                            (throw (ex-info "must not query" {})))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest search-degrades-when-configured-model-cannot-be-resolved-test
@@ -119,6 +122,7 @@
                                                                            (throw (ex-info "must not lock" {})))
                   jdbc/execute!                                          (fn [& _]
                                                                            (throw (ex-info "must not query" {})))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest dispatch-without-pgvector-test

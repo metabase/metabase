@@ -160,6 +160,22 @@
                (last @analytics-calls)))
         (is (= ["local-model" :query 2] (last @tracking-calls)))))))
 
+(deftest in-process-provider-activation-test
+  (let [model        {:provider "in-process"
+                      :model-name "sentence-transformers/all-MiniLM-L6-v2"
+                      :vector-dimensions 384}
+        activations  (atom [])]
+    (with-redefs [embeddings.provider/activate-provider! #(swap! activations conj %)
+                  embeddings.provider/resolve-model     identity
+                  embeddings.provider/embed-texts       (fn [_ texts _] (mapv vector texts))
+                  embeddings.provider/prepare!          (constantly :prepared)]
+      (is (= model (embedding/resolve-model model)))
+      (is (= [["data complexity"]]
+             (embedding/get-embeddings-batch model ["data complexity"])))
+      (is (= :prepared (embedding/pull-model model)))
+      (is (= [model model model]
+             @activations)))))
+
 (deftest test-batching-logic
   (testing "create-batches handles empty input"
     (is (empty? (#'embedding/create-batches 10 count [])))
