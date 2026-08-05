@@ -132,7 +132,16 @@
            "slack" {:details (if slack_channel
                                (slack-details slack_channel)
                                (or (not-empty (:details existing))
-                                   (slack-details nil)))})))
+                                   (slack-details nil)))}
+           ;; `:http` (webhook) is a real PulseChannel type this tool doesn't build, and
+           ;; `target-channel-type` reaches it by reading an existing subscription's only channel.
+           ;; Without this the `case` throws an IllegalArgumentException that surfaces as a bare
+           ;; "Internal error", which tells the agent nothing about what to do instead.
+           (common/throw-teaching-error
+            (format (str "This subscription delivers over \"%s\", which this tool cannot edit — it handles "
+                         "\"email\" and \"slack\". Edit it in Metabase, or create a separate email or Slack "
+                         "subscription for the dashboard.")
+                    channel-type)))))
 
 (defn- target-channel-type
   "Which of the subscription's channels this call edits. Explicit `channel` wins; otherwise a

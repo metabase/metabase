@@ -704,3 +704,25 @@
       (is (re-find #"Nothing to update"
                    (tool-error (call-tool! :crowberto nil
                                            (wire {:method "update" :id pulse-id}))))))))
+
+(deftest webhook-channel-is-a-teaching-error-test
+  (testing "a subscription whose only channel is a webhook (`:http`, a real PulseChannel type this
+            tool cannot edit) must be refused with a teaching error. `target-channel-type` derives
+            the channel from the existing one when there is exactly one, so \"http\" reaches
+            `build-channel` — whose `case` covers only email and slack and would otherwise throw a
+            bare IllegalArgumentException the agent can do nothing with."
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel _ {:pulse_id pulse-id :channel_type :http
+                                          :schedule_type :daily :schedule_hour 15}]
+      (let [err (tool-error (call-tool! :crowberto nil
+                                        (wire {:method "update" :id pulse-id
+                                               :schedule {:schedule_type "hourly"}})))]
+        (testing "the message names the channel and what the tool does support"
+          (is (re-find #"(?i)webhook|http" err))
+          (is (re-find #"(?i)email" err)))
+        (testing "it is a teaching error, not a leaked class name"
+          (is (not (re-find #"IllegalArgumentException|No matching clause" err))))))))
