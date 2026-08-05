@@ -371,9 +371,9 @@ export type BinningOptions =
   | { strategy: "bin-width"; "bin-width": number };
 
 /**
- * The clauses one query stage accepts, scoped to the dimensions it can see: a
- * table stage its fields, Segments, Measures, and Metrics; a question stage only
- * the question's result columns.
+ * The clauses one query stage accepts. A table stage scopes them to its fields,
+ * Segments, Measures, and Metrics; a question stage scopes them to the
+ * question's result columns.
  */
 type StageClauses<TDimension, TAggregation, TFilter> = {
   filters?: readonly (

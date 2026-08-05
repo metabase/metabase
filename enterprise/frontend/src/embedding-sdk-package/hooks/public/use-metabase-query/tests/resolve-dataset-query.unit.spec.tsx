@@ -362,6 +362,37 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  // A card stage resolves dimensions by name, so a breakout and an orderBy may
+  // name the same column through different references.
+  it.each([
+    ["question column", "table field"],
+    ["table field", "question column"],
+  ])(
+    "orders a grouped saved question query by a breakout given as a %s and an orderBy given as a %s",
+    async (breakoutKind) => {
+      const questionColumn = TEST_SCHEMA.questions.ordersQuestion.columns[0];
+      const tableField = TEST_SCHEMA.tables.orders.fields.status;
+      const usesQuestionColumn = breakoutKind === "question column";
+
+      const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+        {
+          source: TEST_SCHEMA.questions.ordersQuestion,
+          aggregations: [count()],
+          breakouts: [usesQuestionColumn ? questionColumn : tableField],
+          orderBys: [
+            orderBy(usesQuestionColumn ? tableField : questionColumn, "asc"),
+          ],
+        },
+      );
+
+      expect(stagesOf(datasetQuery)[0]).toMatchObject({
+        "source-card": 41,
+        breakout: [["field", expect.anything(), "STATUS"]],
+        "order-by": [["asc", expect.anything(), expect.anything()]],
+      });
+    },
+  );
+
   it("resolves saved question filters that reuse a generated table field", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.questions.ordersQuestion,

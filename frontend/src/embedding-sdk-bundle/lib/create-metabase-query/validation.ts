@@ -102,12 +102,16 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
     );
   });
 
-  validateOrderBys(input, "Saved question query orderBys", (orderBy) =>
-    validateQuestionResultColumn(
-      orderBy,
-      input.source,
-      "Saved question query orderBys",
-    ),
+  validateOrderBys(
+    input,
+    "Saved question query orderBys",
+    (orderBy) =>
+      validateQuestionResultColumn(
+        orderBy,
+        input.source,
+        "Saved question query orderBys",
+      ),
+    true,
   );
 }
 
@@ -192,6 +196,7 @@ function validateOrderBys(
   input: GroupedQueryClauses,
   context: string,
   validateDimension: (orderBy: unknown) => void,
+  resolvesDimensionsByName = false,
 ) {
   input.orderBys?.forEach((orderBy) => {
     if (isAggregationResultReference(input.aggregations, orderBy)) {
@@ -200,7 +205,7 @@ function validateOrderBys(
 
     if (
       isGroupedQuery(input) &&
-      !isBreakoutReference(input.breakouts, orderBy)
+      !isBreakoutReference(input.breakouts, orderBy, resolvesDimensionsByName)
     ) {
       throw new Error(
         `${context} for grouped queries must use query breakouts or aggregations included in the query.`,
@@ -313,6 +318,7 @@ function getColumns(value: unknown) {
 function isBreakoutReference(
   breakouts: readonly unknown[] | undefined,
   value: unknown,
+  matchByNameOnly: boolean,
 ) {
   if (!isObject(value)) {
     return false;
@@ -320,7 +326,8 @@ function isBreakoutReference(
 
   return (breakouts ?? []).some(
     (breakout) =>
-      fieldsMatch(breakout, value) && bucketOptionsMatch(breakout, value),
+      fieldsMatch(breakout, value, matchByNameOnly) &&
+      bucketOptionsMatch(breakout, value),
   );
 }
 
@@ -381,9 +388,21 @@ function getMetricAllowedTableIds(metric: MetricSchema) {
   return null;
 }
 
-function fieldsMatch(left: unknown, right: Record<string, unknown>) {
+function fieldsMatch(
+  left: unknown,
+  right: Record<string, unknown>,
+  matchByNameOnly: boolean,
+) {
   if (!isObject(left)) {
     return false;
+  }
+
+  // A card stage resolves its dimensions by name, so one clause can name a
+  // column through the question's result column and another through the
+  // generated table field it came from. Comparing table-scoped ids would then
+  // reject an order-by that does match the breakout.
+  if (matchByNameOnly) {
+    return left.name === right.name;
   }
 
   const leftTableId = getTableId(left);
