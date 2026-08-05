@@ -29,19 +29,21 @@ const isFetchableId = (id: NodeId): id is RegularCollectionId =>
   typeof id === "number";
 
 /**
- * Ids the response already carries children for, at any depth. Expanding one of these needs no request.
+ * Ids that have children the tree does not hold yet, at any depth. Everything else is already renderable, whether it
+ * arrived in the first response, in its own fetch, or inside a parent's lookahead.
  */
-const collectIdsWithLoadedChildren = (
+const collectIdsAwaitingChildren = (
   collections: Collection[],
   into: Set<RegularCollectionId> = new Set(),
 ): Set<RegularCollectionId> => {
   collections.forEach((collection) => {
-    if (Array.isArray(collection.children)) {
-      if (isFetchableId(collection.id)) {
+    if (collection.children == null) {
+      if (collection.has_children === true && isFetchableId(collection.id)) {
         into.add(collection.id);
       }
-      collectIdsWithLoadedChildren(collection.children, into);
+      return;
     }
+    collectIdsAwaitingChildren(collection.children, into);
   });
   return into;
 };
@@ -126,39 +128,16 @@ export function useLazyCollectionTree({
     setExpandedIds((previous) => new Set([...previous, ...ancestorIds]));
   }, [ancestorIds, selectedCollectionId]);
 
-  // Nodes the first response already delivered children for. On a small instance that is every node, so expanding
-  // never goes back to the server.
-  const idsWithLoadedChildren = useMemo(
-    () => collectIdsWithLoadedChildren(collections),
-    [collections],
+  const expandableIds = useMemo(
+    () => [...expandedIds].filter(isFetchableId),
+    [expandedIds],
   );
 
-  const fetchableExpandedIds = useMemo(
-    () =>
-      [...expandedIds].filter(
-        (id) => isFetchableId(id) && !idsWithLoadedChildren.has(id),
-      ),
-    [expandedIds, idsWithLoadedChildren],
-  );
-
-  // Subscribe rather than fire and forget, so the cache entries stay alive and stay in step with tag invalidation
-  // when a collection is created, renamed, moved or archived.
-  useEffect(() => {
-    const subscriptions = fetchableExpandedIds.map((id) =>
-      dispatch(
-        collectionApi.endpoints.listCollectionsTree.initiate(
-          childrenRequest(baseRequest, id),
-        ),
-      ),
-    );
-    return () => {
-      subscriptions.forEach((subscription) => subscription.unsubscribe());
-    };
-  }, [dispatch, fetchableExpandedIds, baseRequest]);
-
+  // Read the cache for every expanded node, not just the ones we fetch. Deciding what to fetch depends on the merged
+  // tree below, so narrowing this first would make the two circular.
   const loadedChildren = useSelector(
     (state: State) =>
-      fetchableExpandedIds.map((id) => ({
+      expandableIds.map((id) => ({
         id,
         children: collectionApi.endpoints.listCollectionsTree.select(
           childrenRequest(baseRequest, id),
@@ -183,11 +162,47 @@ export function useLazyCollectionTree({
     return attachLoadedChildren(collections, childrenById);
   }, [collections, loadedChildren]);
 
+  // Taken from the merged tree, so a node whose children arrived inside a parent's lookahead counts as loaded. Taking
+  // it from the first response instead would re-fetch what the server already sent.
+  const idsAwaitingChildren = useMemo(
+    () => collectIdsAwaitingChildren(tree),
+    [tree],
+  );
+
+  // Nodes we hold a subscription for: those still waiting on children, plus those whose children came from a fetch of
+  // their own. Dropping the second group the moment their data arrived would let RTK collect it and start the fetch
+  // over again.
+  const subscribedIds = useMemo(() => {
+    const fetchedForItself = new Set(
+      loadedChildren
+        .filter(({ children }) => children != null)
+        .map(({ id }) => id),
+    );
+    return expandableIds.filter(
+      (id) => idsAwaitingChildren.has(id) || fetchedForItself.has(id),
+    );
+  }, [expandableIds, idsAwaitingChildren, loadedChildren]);
+
+  // Subscribe rather than fire and forget, so the cache entries stay alive and stay in step with tag invalidation
+  // when a collection is created, renamed, moved or archived.
+  useEffect(() => {
+    const subscriptions = subscribedIds.map((id) =>
+      dispatch(
+        collectionApi.endpoints.listCollectionsTree.initiate(
+          childrenRequest(baseRequest, id),
+        ),
+      ),
+    );
+    return () => {
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
+    };
+  }, [dispatch, subscribedIds, baseRequest]);
+
   // Warm the cache before the click arrives. Unsubscribed on purpose: RTK keeps the entry around long enough for the
   // click that follows, and if the click never comes it is collected rather than kept in sync forever.
   const prefetchChildren = useCallback(
     (id: NodeId) => {
-      if (!isFetchableId(id) || idsWithLoadedChildren.has(id)) {
+      if (!isFetchableId(id) || !idsAwaitingChildren.has(id)) {
         return;
       }
       dispatch(
@@ -197,7 +212,7 @@ export function useLazyCollectionTree({
         ),
       );
     },
-    [dispatch, baseRequest, idsWithLoadedChildren],
+    [dispatch, baseRequest, idsAwaitingChildren],
   );
 
   const toggleExpand = useCallback((id: NodeId) => {

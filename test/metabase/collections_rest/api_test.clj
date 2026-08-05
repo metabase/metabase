@@ -463,14 +463,50 @@
                    (lazy-tree-view ids response)))))))))
 
 (deftest collection-tree-lazy-collection-id-test
-  (testing "GET /api/collection/tree?lazy=true&collection-id= returns one node's direct children"
+  (testing "GET /api/collection/tree?lazy=true&collection-id= returns one node's children, and theirs"
     (with-collection-hierarchy! [a b c d e f g]
       (let [ids      (map :id [a b c d e f g])
             response (mt/user-http-request :rasta :get 200 "collection/tree"
                                            :lazy true :collection-id (:id c))]
-        (is (= [{:name "D", :has_children true}
-                {:name "F", :has_children true}]
+        (is (= [{:name         "D"
+                 :has_children true
+                 :children     [{:name "E", :has_children false}]}
+                {:name         "F"
+                 :has_children true
+                 :children     [{:name "G", :has_children false}]}]
                (lazy-tree-view ids response)))))))
+
+(deftest collection-tree-lazy-lookahead-test
+  (testing "GET /api/collection/tree?lazy=true&collection-id= also returns the level below"
+    (with-collection-hierarchy! [a b c d e f g]
+      (let [ids      (map :id [a b c d e f g])
+            response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                           :lazy true :collection-id (:id a))]
+        (testing "expanding A returns B and C, and C already carries D and F
+
+  Drilling from C into D then costs no request at all."
+          (is (= [{:name "B", :has_children false, :children []}
+                  {:name         "C"
+                   :has_children true
+                   :children     [{:name "D", :has_children true}
+                                  {:name "F", :has_children true}]}]
+                 (lazy-tree-view ids response))))
+        (testing "the lookahead stops after one level, so D's children are still unread"
+          (let [c-node (first (filter #(= (:id %) (:id c)) response))
+                d-node (first (filter #(= (:id %) (:id d)) (:children c-node)))]
+            (is (not (contains? d-node :children)))))))))
+
+(deftest collection-tree-lazy-lookahead-budget-test
+  (testing "GET /api/collection/tree?lazy=true&collection-id= drops the lookahead when the level below is too wide"
+    (with-collection-hierarchy! [a b c d e f g]
+      (with-redefs [api.collection/lazy-tree-lookahead-budget 1]
+        (let [ids      (map :id [a b c d e f g])
+              response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                             :lazy true :collection-id (:id a))]
+          (testing "B and C come back without their children, exactly as before the lookahead existed"
+            (is (= [{:name "B", :has_children false}
+                    {:name "C", :has_children true}]
+                   (lazy-tree-view ids response)))))))))
 
 (deftest collection-tree-lazy-permissions-test
   (testing "GET /api/collection/tree?lazy=true never reveals a collection the user cannot read"

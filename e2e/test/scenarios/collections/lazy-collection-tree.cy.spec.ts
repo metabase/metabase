@@ -63,6 +63,32 @@ describe("scenarios > collections > lazy collection tree", () => {
         .should("not.exist");
     });
 
+    it("should drill deeper without another request, since the level below came along", () => {
+      cy.visit("/");
+      cy.wait("@collectionTree");
+
+      expandSidebarCollection("Deep root");
+      cy.wait("@collectionTree");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Deep child/ })
+        .should("be.visible");
+
+      cy.log("expanding one level further needs nothing from the server");
+      cy.get("@collectionTree.all")
+        .its("length")
+        .then((requestsSoFar) => {
+          expandSidebarCollection("Deep child");
+
+          // Asserting the render first, so the request count is checked after the expansion actually happened.
+          H.navigationSidebar()
+            .findByRole("treeitem", { name: /Deep grandchild/ })
+            .should("be.visible");
+
+          cy.get("@collectionTree.all").should("have.length", requestsSoFar);
+        });
+    });
+
     it("should reveal the whole ancestor path when landing on a nested collection", () => {
       visitCollectionByName("Deep grandchild");
       cy.wait("@collectionTree");

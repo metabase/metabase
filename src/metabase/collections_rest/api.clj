@@ -252,6 +252,13 @@
   snapshot sits well over it and exercises the lazy branch."
   (if config/is-e2e? 50 500))
 
+(def ^:private lazy-tree-lookahead-budget
+  "How many collections a response will carry speculatively, one level below what was actually asked for.
+
+  Smaller than [[lazy-tree-collection-budget]] because this level is a guess: the user may never drill into it. Wide
+  subtrees exceed it and simply do not get the lookahead, falling back to fetching on expand."
+  200)
+
 (defn- select-collections-up-to
   "Reads at most `limit` collections. Returns `[collections complete?]`, where `complete?` is false when there may be
   more collections than we read.
@@ -323,23 +330,45 @@
               (dissoc :children))))
         nodes))
 
+(defn- read-one-level-deeper
+  "The level below `collections`, when it is small enough to be worth sending unasked. Returns `nil` otherwise.
+
+  A whole level costs one indexed query no matter how many nodes ask for it, which is why the server can look ahead
+  cheaply where the FE cannot. The budget keeps a very wide subtree from undoing the point of lazy loading."
+  [collections options]
+  (let [child-locations (into #{} (map collection/children-location) collections)]
+    (when (seq child-locations)
+      (let [[deeper complete?] (select-collections-up-to (assoc options :locations child-locations)
+                                                         lazy-tree-lookahead-budget)]
+        (when complete?
+          {:collections deeper, :locations child-locations})))))
+
 (defn- partial-collection-tree
-  "Reads exactly the given `locations` and nests them into a tree, flagging what was not read."
-  [locations options]
-  (let [collections (-> (select-collections (assoc options :locations locations))
-                        (t2/hydrate :can_write))
-        nodes       (->> collections
-                         prep-collections-for-export
-                         (collection/collections->tree nil))]
-    (partial-tree-nodes nodes
-                        locations
-                        (occupied-locations (into #{} (map collection/children-location) collections)
-                                            options))))
+  "Reads exactly the given `locations` and nests them into a tree, flagging what was not read.
+
+  With `look-ahead?`, also reads the level below when it fits [[lazy-tree-lookahead-budget]], so that drilling into
+  one of the returned nodes needs no further request."
+  ([locations options]
+   (partial-collection-tree locations options false))
+  ([locations options look-ahead?]
+   (let [level       (select-collections (assoc options :locations locations))
+         look-ahead  (when look-ahead? (read-one-level-deeper level options))
+         collections (-> (concat level (:collections look-ahead))
+                         (t2/hydrate :can_write))
+         loaded      (into locations (:locations look-ahead))
+         nodes       (->> collections
+                          prep-collections-for-export
+                          (collection/collections->tree nil))]
+     (partial-tree-nodes nodes
+                         loaded
+                         (occupied-locations (into #{} (map collection/children-location) collections)
+                                             options)))))
 
 (defn- lazy-collection-tree
   "Adaptive collection tree for the nav sidebar.
 
-  With a `collection-id`, returns just that collection's direct children, which is what expanding a node asks for.
+  With a `collection-id`, returns that collection's direct children, which is what expanding a node asks for, plus
+  their children when those fit the lookahead budget. Drilling further down then costs no request at all.
 
   Otherwise it probes: if the whole instance fits in [[lazy-tree-collection-budget]] we return the full tree in one
   response. If it does not, we return only what the sidebar needs right now, which is the root level plus every level
@@ -350,7 +379,7 @@
   [{:keys [collection-id expand-to] :as options}]
   (if collection-id
     (let [parent (api/read-check :model/Collection collection-id)]
-      (partial-collection-tree #{(collection/children-location parent)} options))
+      (partial-collection-tree #{(collection/children-location parent)} options true))
     (let [[collections complete?] (select-collections-up-to options lazy-tree-collection-budget)]
       (if complete?
         (->> (t2/hydrate collections :can_write)
