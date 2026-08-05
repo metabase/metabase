@@ -600,7 +600,10 @@
   of the credentials map varies by provider (see [[metabot.settings/configured-provider-credentials]]). `:model` in
   `opts` is the candidate model for providers whose validation depends on it (Azure's wire family, vLLM's preflight
   target). `:probe?` additionally runs the provider's connect-time contract checks; it is set on the `PUT` path only,
-  since `GET` backs the admin model dropdown and must stay cheap."
+  since `GET` backs the admin model dropdown and must stay cheap.
+
+  A probe that identifies which model it exercised rides back as `:probed-model`, which the `PUT` handler adopts and
+  then strips — it is an internal hand-off between the two, not part of the endpoint's response."
   ([provider]
    (provider-models-response provider nil))
   ([provider {credentials-override :credentials model :model probe? :probe?}]
@@ -612,11 +615,11 @@
                            (metabot.settings/configured-provider-credentials provider))]
        (if (and provider (metabot.settings/provider-credentials-complete? provider credentials))
          (try
-           {:models (decorate-provider-models
-                     provider
-                     (:models (metabot.self/list-models provider (cond-> {:credentials credentials}
-                                                                   model  (assoc :model model)
-                                                                   probe? (assoc :probe? true)))))}
+           (let [listing (metabot.self/list-models provider (cond-> {:credentials credentials}
+                                                              model  (assoc :model model)
+                                                              probe? (assoc :probe? true)))]
+             (cond-> {:models (decorate-provider-models provider (:models listing))}
+               (:probed-model listing) (assoc :probed-model (:probed-model listing))))
            (catch clojure.lang.ExceptionInfo e
              (if (provider-client-error? e)
                {:models []
@@ -876,6 +879,19 @@
                                                :provider    provider})))
                             (when model
                               (metabot.settings/validate-azure-model! (str provider "/" model) model)))
+        ;; vLLM's catalog is the only source of a model name, so connecting without a reachable base
+        ;; URL cannot resolve to anything. Without this guard the round-trip below short-circuits to
+        ;; an empty catalog, which downstream reads as "the server is serving no models" — a verdict
+        ;; on a server that was never contacted. Scoped to a connect, so a disconnect (which resolves
+        ;; to deliberately empty credentials) still goes through.
+        _                 (when (and (= provider "vllm") provider-changed?)
+                            (let [creds (or credentials
+                                            (metabot.settings/configured-provider-credentials provider))]
+                              (when-not (metabot.settings/provider-credentials-complete? provider creds)
+                                (throw (ex-info (tru "A base URL is required to connect a vLLM server.")
+                                                {:status-code  400
+                                                 :api-error    true
+                                                 :missing-keys [:base-url]})))))
         ;; Reject writes to env-shadowed settings before verifying or persisting anything: guard every
         ;; credential setting a save would touch (see [[credential-setting-keys]]), plus the
         ;; provider/model setting whenever a provider/model write would happen. A provider switch
@@ -901,20 +917,21 @@
                                                            :probe?      probe?})
                               throw-credentials-error!)
         ;; vLLM has no default model — the served name is knowable only from the catalog — so a
-        ;; connect without an explicit model adopts what the server is serving.
+        ;; connect without an explicit model adopts the model the preflight actually probed. Taking
+        ;; it from the probe rather than re-deriving it from `:models` is what keeps the verified
+        ;; model and the persisted one the same one: they agree today only because
+        ;; `decorate-provider-models` happens not to reorder vLLM's catalog. An empty catalog needs
+        ;; no branch here — the preflight raises for it, and it runs on every connect.
         resolved-model    (or model
                               (when (and (= provider "vllm") provider-changed?)
-                                (some-> response :models first :id)))
-        _                 (when (and (= provider "vllm") provider-changed? (nil? resolved-model))
-                            (throw (ex-info (tru "The vLLM server is reachable but is not serving any models.")
-                                            {:status-code 400
-                                             :api-error   true
-                                             :provider    provider})))]
+                                (:probed-model response)))]
     (when credentials
       (save-credentials! provider credentials))
     (when resolved-model
       (setting/set! :llm-metabot-provider (str provider "/" resolved-model)))
-    (assoc response :value (metabot.settings/llm-metabot-provider))))
+    (-> response
+        (dissoc :probed-model)
+        (assoc :value (metabot.settings/llm-metabot-provider)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

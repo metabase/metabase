@@ -8,9 +8,10 @@
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.test-util :as metabot.tu]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
   (:import
-   (java.net SocketTimeoutException)
+   (java.net ConnectException SocketTimeoutException)
    (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
@@ -66,6 +67,36 @@
                                                  :tools       [(metabot.tu/get-time-tool)]
                                                  :tool_choice "auto"
                                                  :max-tokens  128}))))))
+
+(deftest request-body-raises-max-tokens-for-a-reasoning-model-test
+  (testing "the agent path forces nothing and supplies no ceiling, so a reasoning model would otherwise get
+           the shared 4096 default for thinking, answer, and tool call combined"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
+      (is (= 16384
+             (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
+                                                   :input [{:role :user :content "hi"}]})))))
+    (testing "and a model the probe found does not reason keeps the default"
+      (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? false]
+        (is (= (llm.settings/llm-max-tokens)
+               (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
+                                                     :input [{:role :user :content "hi"}]}))))))))
+
+(deftest request-body-reasoning-floor-outranks-the-forced-tool-call-floor-test
+  (testing "a reasoning model has to clear its thinking before the forced call, so the higher floor wins"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
+      (is (= 16384
+             (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
+                                                   :input      [{:role :user :content "hi"}]
+                                                   :schema     {:type "object"}
+                                                   :max-tokens 128})))))))
+
+(deftest request-body-reasoning-floor-never-lowers-a-ceiling-test
+  (testing "a caller asking for more than the floor is left alone"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
+      (is (= 32000
+             (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
+                                                   :input      [{:role :user :content "hi"}]
+                                                   :max-tokens 32000})))))))
 
 (deftest ^:parallel request-body-no-default-model-test
   (testing "the model is never defaulted — a vLLM server's model name is whatever the operator loaded"
@@ -315,6 +346,52 @@
           (is (= :vllm-timeout (:error-code (ex-data e))))
           (is (re-find #"stopped responding" (ex-message e))))))))
 
+(deftest vllm-stream-connection-failure-is-not-retryable-test
+  (testing "a stream severed mid-body raises a plain IOException, which `retryable-error?` matches on class —
+           left raw it replays a full cold prefill three times over"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (with-redefs [self.core/sse-reducible (fn [_]
+                                              (reify clojure.lang.IReduceInit
+                                                (reduce [_ _rf _init]
+                                                  (throw (java.io.IOException. "Connection reset")))))
+                    debug/capture-stream    (fn [r _] r)
+                    http/request            (fn [_] {:body nil})]
+        (let [e (try (into [] (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]}))
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (= :vllm-stream-interrupted (:error-code (ex-data e))))
+          (is (re-find #"interrupted before the response finished" (ex-message e))))))))
+
+(deftest vllm-request-timeout-names-vllm-and-its-setting-test
+  (testing "a timeout while establishing the request gets the same treatment the preflight already gives it,
+           rather than `rethrow-api-error!`'s \"vllm API request failed: Read timed out\""
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url        base-url
+                                       llm.settings/llm-vllm-request-timeout-ms 300000]
+      (with-redefs [http/request (fn [_] (throw (SocketTimeoutException. "Read timed out")))]
+        (let [e (try (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (= :vllm-timeout (:error-code (ex-data e))))
+          (is (re-find #"did not respond within 300000ms" (ex-message e)))
+          (is (re-find #"raise the vLLM request timeout" (ex-message e))))))))
+
+(deftest vllm-unreachable-server-names-the-base-url-test
+  (testing "a refused connection is the base URL being wrong or the server being down — say which URL failed"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (with-redefs [http/request (fn [_] (throw (ConnectException. "Connection refused")))]
+        (let [e (try (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (= :vllm-unreachable (:error-code (ex-data e))))
+          (is (re-find #"Could not reach the vLLM server at http://vllm\.internal:8000/v1" (ex-message e))))))))
+
+(deftest vllm-http-errors-still-reach-the-status-specific-message-test
+  (testing "the IOException catch runs first, so a non-2xx must still be translated by `vllm-error-msg`"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (with-redefs [http/request (fn [_] (throw (ex-info "clj-http: status 401"
+                                                         {:status 401 :body "{\"message\":\"Unauthorized\"}"})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"vLLM API key expired or invalid"
+             (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models
 ;;; ──────────────────────────────────────────────────────────────────
@@ -376,13 +453,19 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- probing-server
-  "Stub `http/request` for the preflight path: `GET /models` returns `models`, and every
-  `POST /chat/completions` returns `chat-choice` as the first choice."
-  [models chat-choice]
-  (fn [{:keys [url]}]
+  "Stub `http/request` for the preflight path: `GET /models` returns `models`, and each
+  `POST /chat/completions` returns whatever `choice-by-tool-choice` holds for the `tool_choice` it
+  was sent.
+
+  Dispatching on `tool_choice` is what lets the two probes disagree. They exercise different server
+  capabilities — the tool-call parser under `auto`, guided decoding under `required` — so a stub that
+  answers both identically can only ever reach `check-structured-output!` on the happy path."
+  [models choice-by-tool-choice]
+  (fn [{:keys [url body]}]
     (if (re-find #"/models$" (str url))
       {:status 200 :body {:data models}}
-      {:status 200 :body {:choices [chat-choice]}})))
+      (let [tool-choice (:tool_choice (json/decode+kw (str body)))]
+        {:status 200 :body {:choices [(get choice-by-tool-choice tool-choice)]}}))))
 
 (def ^:private tool-calling-message
   {:content    ""
@@ -391,10 +474,14 @@
                  :function {:name "record_table_name" :arguments "{\"table_name\": \"orders\"}"}}]})
 
 (defn- probe-choice!
-  [models chat-choice]
-  (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-    (mt/with-dynamic-fn-redefs [http/request (probing-server models chat-choice)]
-      (vllm/list-models {:probe? true}))))
+  "Run a preflight against a stub. The 2-arity answers both probes alike; the 3-arity lets them differ."
+  ([models chat-choice]
+   (probe-choice! models chat-choice chat-choice))
+  ([models auto-choice required-choice]
+   (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+     (mt/with-dynamic-fn-redefs [http/request (probing-server models {"auto"     auto-choice
+                                                                      "required" required-choice})]
+       (vllm/list-models {:probe? true})))))
 
 (defn- probe!
   "[[probe-choice!]] for a server that runs to a natural stop, where only the message shape matters."
@@ -403,8 +490,49 @@
 
 (deftest preflight-passes-on-a-correctly-configured-server-test
   (testing "a server that returns a well-formed tool call passes and still lists its models"
-    (is (= {:models [{:id "vllm-test" :display_name "vllm-test"}]}
+    (is (= {:models       [{:id "vllm-test" :display_name "vllm-test"}]
+            :probed-model "vllm-test"}
            (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)))))
+
+(deftest preflight-reports-the-model-it-probed-test
+  (testing "the probed model is named in the result rather than left to be re-derived from the listing —
+           the connect path must adopt the model the contract checks actually ran against"
+    (is (= "first"
+           (:probed-model (probe! [{:id "first" :max_model_len 32768}
+                                   {:id "second" :max_model_len 32768}]
+                                  tool-calling-message)))))
+  (testing "and a listing that did not probe reports nothing"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data [{:id "vllm-test"}]}})]
+        (is (not (contains? (vllm/list-models) :probed-model)))))))
+
+(deftest preflight-skips-lora-adapters-when-picking-a-default-test
+  (testing "an adapter registered with --lora-modules carries `parent`; adopting one would point Metabot
+           at an adapter the admin never chose"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (let [probed (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                   (if (re-find #"/models$" (str url))
+                                                     {:status 200
+                                                      :body   {:data [{:id     "sql-lora"
+                                                                       :parent "vllm-test"
+                                                                       :max_model_len 32768}
+                                                                      {:id     "vllm-test"
+                                                                       :parent nil
+                                                                       :max_model_len 32768}]}}
+                                                     (do (reset! probed (:model (json/decode+kw (str body))))
+                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+          (is (= "vllm-test" (:probed-model (vllm/list-models {:probe? true}))))
+          (is (= "vllm-test" @probed))))))
+  (testing "an explicitly requested adapter is still honoured — the filter only picks the default"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200
+                                                    :body   {:data [{:id "sql-lora" :parent "vllm-test" :max_model_len 32768}
+                                                                    {:id "vllm-test" :max_model_len 32768}]}}
+                                                   {:status 200 :body {:choices [{:message tool-calling-message}]}}))]
+        (is (= "sql-lora" (:probed-model (vllm/list-models {:probe? true :model "sql-lora"}))))))))
 
 (deftest preflight-skipped-without-probe-flag-test
   (testing "without :probe? no generation request is made at all — GET /settings must stay cheap"
@@ -585,3 +713,106 @@
                     (catch clojure.lang.ExceptionInfo e (ex-data e)))]
       (is (= {:api-error true :status-code 400 :error-code :vllm-preflight-failed}
              (select-keys data [:api-error :status-code :error-code]))))))
+
+(deftest preflight-rejects-a-server-that-cannot-force-a-tool-call-test
+  (testing "a server whose --tool-call-parser is right but whose model cannot compile a grammar answers
+           `auto` correctly and `required` with prose — ordinary chat looks fine while conversation
+           titling and the whole sql profile break"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"did not honor a forced tool call"
+         (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                        {:message tool-calling-message :finish_reason "tool_calls"}
+                        {:message       {:content "I can record the table name for you." :tool_calls []}
+                         :finish_reason "stop"})))))
+
+(deftest preflight-reports-a-forced-tool-call-that-ran-out-of-budget-test
+  (testing "a forced call truncated at the ceiling is named as such, not as a server refusing to honor it"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"reached the 2048 token connection-test ceiling"
+         (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                        {:message tool-calling-message :finish_reason "tool_calls"}
+                        {:message       {:content "" :tool_calls []}
+                         :finish_reason "length"})))))
+
+(deftest preflight-cancels-the-sibling-probe-on-failure-test
+  (testing "the first verdict returns immediately and its sibling is cancelled — an abandoned future would
+           keep generating against the operator's server after the admin already has a 400"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (let [interrupted (promise)
+            never       (CountDownLatch. 1)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                   (if (re-find #"/models$" (str url))
+                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                     (case (:tool_choice (json/decode+kw (str body)))
+                                                       "auto"     {:status 200
+                                                                   :body   {:choices [{:message {:content    "I'll record orders."
+                                                                                                 :tool_calls []}}]}}
+                                                       "required" (try
+                                                                    (.await never 10 TimeUnit/SECONDS)
+                                                                    (deliver interrupted false)
+                                                                    {:status 200 :body {:choices [{:message tool-calling-message}]}}
+                                                                    (catch InterruptedException _
+                                                                      (deliver interrupted true)
+                                                                      (throw (SocketTimeoutException. "interrupted")))))))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"--enable-auto-tool-choice"
+               (vllm/list-models {:probe? true})))
+          (is (true? (deref interrupted 10000 :never-cancelled))))))))
+
+(deftest preflight-probe-request-shape-test
+  (testing "both probes ask for the same trivial completion, non-streaming and deterministic — the ceiling
+           is the one a forced tool call is guaranteed to be given at request time"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (let [requests (atom [])]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body] :as req}]
+                                                   (if (re-find #"/models$" (str url))
+                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                     (do (swap! requests conj (assoc req :decoded (json/decode+kw (str body))))
+                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+          (vllm/list-models {:probe? true})
+          (is (= 2 (count @requests)))
+          (is (= #{"auto" "required"} (set (map #(-> % :decoded :tool_choice) @requests))))
+          (doseq [{:keys [decoded] :as req} @requests]
+            (is (= :post (:method req)))
+            (is (= "http://vllm.internal:8000/v1/chat/completions" (:url req)))
+            (is (= :json (:as req))
+                "a probe reads a whole response; :stream would leave the verdict unreadable")
+            (is (nil? (:stream decoded)))
+            (is (= 0 (:temperature decoded)))
+            (is (= 2048 (:max_tokens decoded))
+                "must not drift from the floor a forced tool call is raised to — the preflight's promise is
+                 that a model which connected can already clear the budget it will be run at")
+            (is (= 1 (count (:tools decoded))))
+            (is (= "record_table_name" (-> decoded :tools first :function :name)))))))))
+
+(deftest preflight-surfaces-an-http-error-as-a-provider-error-test
+  (testing "a 400 from /chat/completions is the server rejecting the request, not a contract failure —
+           it must keep vLLM's own status text rather than being reworded as a preflight verdict"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                   (throw (ex-info "clj-http: status 400"
+                                                                   {:status 400
+                                                                    :body   "{\"message\":\"cannot compile grammar\"}"}))))]
+        (let [e (try (vllm/list-models {:probe? true})
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (re-find #"vLLM rejected the request" (ex-message e)))
+          (is (= :provider-api-error (:error-code (ex-data e)))))))))
+
+(deftest preflight-accepts-a-catalog-without-a-context-window-test
+  (testing "`max_model_len` is vLLM's own field: Ollama, LM Studio, and TGI omit it. The floor is
+           best-effort, so a catalog without it connects rather than being rejected on a missing field"
+    (is (= {:models       [{:id "vllm-test" :display_name "vllm-test"}]
+            :probed-model "vllm-test"}
+           (probe! [{:id "vllm-test"}] tool-calling-message)))))
+
+(deftest preflight-does-not-leak-the-context-window-to-the-client-test
+  (testing "`max_model_len` feeds the context check and stops there — the model list the admin sees carries
+           only what the dropdown renders"
+    (let [models (:models (probe! [{:id "vllm-test" :max_model_len 32768 :parent nil :root "org/Model"}]
+                                  tool-calling-message))]
+      (is (= [{:id "vllm-test" :display_name "vllm-test"}] models)))))

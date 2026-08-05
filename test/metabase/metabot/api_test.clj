@@ -2349,13 +2349,17 @@
                                                                  "a connect exercises the agent-loop contract")
                                                              (is (nil? (llm.settings/llm-vllm-api-base-url))
                                                                  "validation should happen before saving the credentials")
-                                                             {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
-        (testing "connecting vLLM with a base URL alone adopts the served model"
-          (is (=? {:value  "vllm/vllm-test"
-                   :models [{:id "vllm-test" :display_name "vllm-test"}]}
-                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
-                                        {:provider    "vllm"
-                                         :credentials {:base-url "http://vllm.internal:8000/v1/"}}))))
+                                                             {:models       [{:id "vllm-test" :display_name "vllm-test"}]
+                                                              :probed-model "vllm-test"})]
+        (testing "connecting vLLM with a base URL alone adopts the model the preflight probed"
+          (let [response (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                               {:provider    "vllm"
+                                                :credentials {:base-url "http://vllm.internal:8000/v1/"}})]
+            (is (=? {:value  "vllm/vllm-test"
+                     :models [{:id "vllm-test" :display_name "vllm-test"}]}
+                    response))
+            (is (not (contains? response :probed-model))
+                "the probe hand-off is internal to the handler and never reaches the client")))
         (testing "the trailing slash is trimmed before persisting"
           (is (= "http://vllm.internal:8000/v1" (llm.settings/llm-vllm-api-base-url))))
         (testing "no API key is written for a keyless server"
@@ -2378,6 +2382,22 @@
                                         {:provider    "vllm"
                                          :credentials {:api-key "local-dev-key"}})))
           (is (nil? (llm.settings/llm-vllm-api-key)))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest settings-put-vllm-connect-with-nothing-configured-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    nil
+                                       llm.settings/llm-vllm-api-key         nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             (is false "no server can be contacted without a base URL"))]
+        (testing "selecting vLLM with no credentials at all asks for the base URL, rather than reporting on
+                 a server that was never contacted"
+          (is (=? {:message      "A base URL is required to connect a vLLM server."
+                   :missing-keys ["base-url"]}
+                  (mt/user-http-request :crowberto :put 400 "metabot/settings" {:provider "vllm"})))
           (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider))))))))
 
 (deftest settings-put-vllm-surfaces-a-preflight-failure-test

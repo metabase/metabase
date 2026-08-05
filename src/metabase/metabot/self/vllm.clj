@@ -20,6 +20,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]])
   (:import
+   (java.io IOException)
    (java.net SocketTimeoutException)
    (java.util.concurrent ExecutionException)))
 
@@ -143,6 +144,15 @@
   Equal to [[probe-max-tokens]], which [[preflight!]] already proves the served model can clear."
   probe-max-tokens)
 
+(def ^:private reasoning-model-token-floor
+  "Smallest `max_tokens` any request gets once [[preflight!]] has observed the served model reasoning.
+
+  On the Chat Completions path there is no separate thinking budget: thinking, answer, and tool call
+  are all billed against `max_tokens`, so the agent path's `llm-max-tokens` default of 4096 has to
+  cover all three. Mirrors `claude-request-body`, which raises to 16384 whenever thinking is on.
+  Above [[forced-tool-call-token-floor]], which only has to cover thinking plus one tool call."
+  16384)
+
 (defn- preflight-ex
   "A preflight failure, tagged so `metabase.metabot.api`'s `provider-client-error?` surfaces the
   message to the admin verbatim rather than as a 500."
@@ -237,6 +247,20 @@
 (defn- no-models-ex []
   (preflight-ex (tru "The vLLM server is reachable but is not serving any models.")))
 
+(defn- connect-candidates
+  "Catalog entries eligible to be adopted when the connect path picks a model for the admin.
+
+  A LoRA adapter registered with `--lora-modules` is served as its own catalog entry whose `parent`
+  names the base model it adapts; adopting one would point Metabot at an adapter the admin never
+  chose. Nothing in the catalog distinguishes an embedding or reranker deployment from a chat model,
+  so a multi-model server can still be adopted from wrongly — the admin re-picks from the dropdown.
+
+  Falls back to the whole catalog rather than erroring if a server somehow reports only adapters:
+  vLLM always serves the base model alongside them, so an empty result means the assumption is wrong
+  and a bad default beats refusing to connect."
+  [entries]
+  (or (seq (remove :parent entries)) entries))
+
 (defn- probe-target
   "The catalog entry [[preflight!]] will probe.
 
@@ -251,7 +275,7 @@
                  (preflight-ex (tru "The vLLM server is not serving {0}. It is serving: {1}."
                                     (str requested-model) (str/join ", " (map :id entries))))
                  (no-models-ex))))
-    (or (first entries)
+    (or (first (connect-candidates entries))
         (throw (no-models-ex)))))
 
 (defn- await-probe!
@@ -275,44 +299,57 @@
   | No structured-output support      | Titles and the `sql` profile fail   |
 
   The probes run concurrently; deref order fixes the verdict, tool calling being the more actionable
-  diagnosis when a server fails both.
+  diagnosis when a server fails both. The loser is cancelled rather than abandoned — the first
+  failure returns the admin's 400 immediately, and without the cancel its sibling would keep
+  generating against the operator's server long after anyone is listening.
 
   On success, records whether the probed model reasons in `llm-vllm-model-reasoning?`. Only the
   probe can answer that — the catalog has no such field — and the answer drives which chain-of-thought
-  renderer the frontend picks, via `metabot.settings/llm-metabot-supports-reasoning?`."
+  renderer the frontend picks, via `metabot.settings/llm-metabot-supports-reasoning?`.
+
+  Returns the id of the model it probed. The connect path must adopt exactly this value: re-deriving
+  it from the listing agrees only while `metabase.metabot.api`'s `decorate-provider-models` leaves
+  vLLM's catalog order alone."
   [{:keys [credentials ai-proxy?]} entries requested-model]
-  (let [entry (probe-target entries requested-model)]
+  (let [entry (probe-target entries requested-model)
+        model (:id entry)]
     (check-context-budget! entry)
     (try
       (let [auth         (vllm-auth credentials ai-proxy?)
-            model        (:id entry)
             tool-calling (future (check-tool-calling! auth model))
-            structured   (future (check-structured-output! auth model))
-            reasoning?   (await-probe! tool-calling)]
-        (await-probe! structured)
-        (setting/set! :llm-vllm-model-reasoning? (boolean reasoning?)))
+            structured   (future (check-structured-output! auth model))]
+        (try
+          (let [reasoning? (await-probe! tool-calling)]
+            (await-probe! structured)
+            (setting/set! :llm-vllm-model-reasoning? (boolean reasoning?)))
+          (finally
+            (future-cancel tool-calling)
+            (future-cancel structured))))
       (catch SocketTimeoutException _
         (throw (preflight-ex
                 (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
                      (str (:socket-timeout (probe-timeouts)))))))
       (catch Exception e
-        (core/rethrow-api-error! "vllm" vllm-error-msg e)))))
+        (core/rethrow-api-error! "vllm" vllm-error-msg e)))
+    model))
 
 (defn list-models
   "List the models the configured vLLM server is serving.
 
   Pass-through: there is nothing to whitelist, and `display_name` falls back to the served id. When
   `:probe?` is true, additionally runs [[preflight!]] — reserved for the `PUT` settings path, since
-  a tool-call probe on every `GET` would stall the admin model dropdown behind a full prefill.
+  a tool-call probe on every `GET` would stall the admin model dropdown behind a full prefill — and
+  returns the probed model id as `:probed-model` for the connect path to adopt.
   `:ai-proxy?` is not supported for vLLM and throws when true."
   ([] (list-models {}))
   ([{:keys [model probe?] :as opts}]
-   (let [entries (list-all-models opts)]
-     (when probe?
-       (preflight! opts entries model))
-     {:models (mapv (fn [{:keys [id] :as entry}]
-                      {:id id :display_name (or (:name entry) id)})
-                    entries)})))
+   (let [entries      (list-all-models opts)
+         probed-model (when probe?
+                        (preflight! opts entries model))]
+     (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
+                              {:id id :display_name (or (:name entry) id)})
+                            entries)}
+       probed-model (assoc :probed-model probed-model)))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
@@ -320,34 +357,76 @@
   "Build the Chat Completions request body for an LLM request.
 
   Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent and
-  is raised to [[forced-tool-call-token-floor]] when the request forces a tool call. Without a
-  ceiling vLLM falls back to whatever remains of the context window, so one looping small model can
-  consume the entire budget in a single call; with too small a ceiling a reasoning model spends it
-  all thinking and never emits the forced call. Both are kept adapter-local rather than pushed into
-  the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
-  [{:keys [max-tokens schema tool_choice] :as opts} :- core/LLMRequestOpts]
-  (let [ceiling (or max-tokens (llm/llm-max-tokens))
-        forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
-    (assoc (chat-completions/request-body opts)
-           :max_tokens (cond-> ceiling
-                         forced? (max forced-tool-call-token-floor)))))
+  is raised to a floor the request cannot function below. Without a ceiling vLLM falls back to
+  whatever remains of the context window, so one looping small model can consume the entire budget in
+  a single call; with too small a ceiling a reasoning model spends it all thinking and never reaches
+  the answer. Two floors, because they answer different questions:
 
-(defn- timeout-guarded
-  "Wrap a stream reducible so a socket timeout while *consuming* it surfaces as a non-retryable vLLM
-  error. The adapter's `try` covers only establishing the request; a raw `SocketTimeoutException`
-  escaping the stream satisfies `metabase.metabot.self/retryable-error?` with the retry gate still
-  open, so a merely slow server would be asked to replay three full cold prefills."
+  - [[forced-tool-call-token-floor]] whenever the request forces a tool call, which yields nothing
+    usable rather than a short answer if it truncates.
+  - [[reasoning-model-token-floor]] whenever [[preflight!]] observed the served model reasoning,
+    which the agent path needs because it forces nothing and supplies no ceiling of its own.
+
+  Both stay adapter-local rather than moving into the shared builder, which would also change Z.AI,
+  Mistral, and OpenRouter."
+  [{:keys [max-tokens schema tool_choice] :as opts} :- core/LLMRequestOpts]
+  (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
+    (assoc (chat-completions/request-body opts)
+           :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
+                         forced?                         (max forced-tool-call-token-floor)
+                         (llm/llm-vllm-model-reasoning?) (max reasoning-model-token-floor)))))
+
+(defn- stream-io-ex
+  "The vLLM error for a transport failure while *consuming* a response stream.
+
+  `metabase.metabot.self/retryable-error?` matches on exception *class* — every `IOException`, which
+  covers `SocketTimeoutException` and `ConnectException` both — so anything escaping the stream raw
+  is replayed as three full cold prefills with the retry gate still open. Wrapping in an `ex-info`
+  carrying no `:status` is what makes these non-retryable, which is correct: on a self-hosted server
+  a stalled or severed response means \"too slow\" or \"it died\", not \"transient\"."
+  [^IOException e timeout-ms]
+  (if (instance? SocketTimeoutException e)
+    (ex-info (tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model."
+                  (str timeout-ms))
+             {:api-error  true
+              :error-code :vllm-timeout}
+             e)
+    (ex-info (tru "The connection to the vLLM server was interrupted before the response finished.")
+             {:api-error  true
+              :error-code :vllm-stream-interrupted}
+             e)))
+
+(defn- request-io-ex
+  "The vLLM error for a transport failure while *establishing* a request.
+
+  `core/rethrow-api-error!`'s no-response fallback would render these as \"vllm API request failed:
+  Read timed out\" — the lowercase provider slug, no mention of the server being slow, and no mention
+  of the setting that governs it. The preflight got a bespoke message for exactly this; this is the
+  same message on the path an admin actually meets it."
+  [^IOException e base-url timeout-ms]
+  (if (instance? SocketTimeoutException e)
+    (ex-info (tru "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
+                  (str timeout-ms))
+             {:api-error  true
+              :error-code :vllm-timeout}
+             e)
+    (ex-info (tru "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
+                  (str base-url))
+             {:api-error  true
+              :error-code :vllm-unreachable}
+             e)))
+
+(defn- io-guarded
+  "Wrap a stream reducible so a transport failure while consuming it surfaces as a non-retryable vLLM
+  error rather than a raw `IOException` (see [[stream-io-ex]]). The adapter's own `try` covers only
+  establishing the request."
   [reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (try
         (.reduce ^clojure.lang.IReduceInit reducible rf init)
-        (catch SocketTimeoutException e
-          (throw (ex-info (tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model."
-                               (str timeout-ms))
-                          {:api-error  true
-                           :error-code :vllm-timeout}
-                          e)))))))
+        (catch IOException e
+          (throw (stream-io-ex e timeout-ms)))))))
 
 (mu/defn vllm-raw
   "Perform a streaming request to a vLLM server's Chat Completions API.
@@ -357,8 +436,8 @@
     (throw (ai-proxy-unsupported-ex)))
   (when (str/blank? model)
     (throw (missing-model-ex)))
-  (let [req         (vllm-request-body opts)
-        timeout-ms  (llm/llm-vllm-request-timeout-ms)]
+  (let [req        (vllm-request-body opts)
+        timeout-ms (llm/llm-vllm-request-timeout-ms)]
     (log/debug "vLLM request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
     (with-span :info {:name       :metabot.vllm/request
                       :model      model
@@ -378,7 +457,12 @@
                                      :model    model
                                      :url      "/chat/completions"
                                      :request  req})
-              (timeout-guarded timeout-ms)))
+              (io-guarded timeout-ms)))
+        ;; Ordered: clj-http raises an `IOException` when there is no response at all and an
+        ;; `ex-info` carrying `:status`/`:body` for a non-2xx, so this catch cannot swallow a
+        ;; response `vllm-error-msg` would have translated.
+        (catch IOException e
+          (throw (request-io-ex e (llm/llm-vllm-api-base-url) timeout-ms)))
         (catch Exception e
           (core/rethrow-api-error! "vllm" vllm-error-msg e))))))
 
