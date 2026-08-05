@@ -443,7 +443,7 @@
                              (first entities))))))))))))))
 
 (deftest slow-api-transform-root-breadcrumb-test
-  (testing "GET /slow: a root-resident transform's breadcrumb is the Transforms-namespaced root sentinel"
+  (testing "GET /slow: a transform's breadcrumb carries the transforms namespace, at root and nested"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -453,6 +453,11 @@
               [:model/Transform    {xform :id} {}
                :model/TransformRun _ {:transform_id xform :status :succeeded
                                       :start_time (t/minus now (t/minutes 2))
+                                      :end_time   (t/minus now (t/minutes 1))}
+               :model/Collection   {tcoll :id} {:name "T Folder" :namespace "transforms"}
+               :model/Transform    {nested-xform :id} {:collection_id tcoll}
+               :model/TransformRun _ {:transform_id nested-xform :status :succeeded
+                                      :start_time (t/minus now (t/minutes 2))
                                       :end_time   (t/minus now (t/minutes 1))}]
               (scan/scan!)
               (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/slow")
@@ -460,8 +465,14 @@
                     f     (by-id ["transform" xform])]
                 (is (some? f))
                 (testing "root sentinel is namespaced to Transforms, not the default \"Our analytics\""
-                  (is (= {:id "root" :name "Transforms" :effective_ancestors []}
-                         (get-in f [:details :collection]))))))))))))
+                  (is (= {:id "root" :name "Transforms" :namespace "transforms" :effective_ancestors []}
+                         (get-in f [:details :collection]))))
+                (testing "a transform nested in a transforms-namespace collection carries that namespace"
+                  (is (= {:id                  tcoll
+                          :name                "T Folder"
+                          :namespace           "transforms"
+                          :effective_ancestors [{:id "root" :name "Transforms"}]}
+                         (get-in (by-id ["transform" nested-xform]) [:details :collection]))))))))))))
 
 (deftest slow-api-subject-view-count-test
   (testing "GET /slow hydrates each finding's own live view_count into details; a transform omits it"

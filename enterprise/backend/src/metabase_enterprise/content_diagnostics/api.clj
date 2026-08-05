@@ -61,12 +61,34 @@
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
    [:created_at          [:maybe ms/TemporalInstant]]])
 
+(def ^:private BreadcrumbId
+  "A breadcrumb collection id: a real collection id, or the literal \"root\" of the root sentinel."
+  [:or :int [:= "root"]])
+
+(def ^:private BreadcrumbName
+  "A breadcrumb collection name. Admits a localized string because validation runs on the raw response,
+  where a root sentinel's label is still a `tru` instance."
+  [:or :string ms/LocalizedString])
+
+(def ^:private CollectionBreadcrumb
+  "A finding's `collection`: the entity's parent-collection breadcrumb, or nil (unreadable parent /
+  entity deleted post-scan). `namespace` is the collection tree's namespace - nil for the default tree;
+  `transforms` and `shared-tenant-collections` are the namespaced trees findings can live in."
+  [:maybe [:map {:closed true}
+           [:id                  BreadcrumbId]
+           [:name                BreadcrumbName]
+           [:namespace           [:maybe :keyword]]
+           [:effective_ancestors [:sequential
+                                  [:map {:closed true}
+                                   [:id   BreadcrumbId]
+                                   [:name BreadcrumbName]]]]]])
+
 (def ^:private FindingDetailsBase
   "The display fields every finding's `details` carries: the collection breadcrumb, live `description`, the
   hydrated `owner`/`creator`, and the entity's `view_count` (present for every type but transform). Each
   finding type `:merge`s its own detail extras onto this."
   [:map
-   [:collection  [:maybe :map]]
+   [:collection  CollectionBreadcrumb]
    [:description [:maybe :string]]
    [:owner       NormalizedUser]
    [:creator     Creator]
