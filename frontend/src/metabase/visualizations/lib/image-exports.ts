@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isStorybookActive } from "metabase/env";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
@@ -18,7 +17,7 @@ export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
   "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
-export const saveDomImageStyles = css`
+export const getSaveDomImageStyles = (isEmbeddingSdk: boolean) => css`
   .${SAVING_DOM_IMAGE_CLASS} {
     .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
       visibility: hidden;
@@ -40,7 +39,7 @@ export const saveDomImageStyles = css`
     /* the renderer for saving to image/pdf does not support text overflow
      with line height in custom themes in the embedding sdk.
      this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk() &&
+    ${isEmbeddingSdk &&
     css`
       [data-dashcard-key].${GlobalDashboardS.Card} * {
         overflow: visible !important;

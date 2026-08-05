@@ -1,5 +1,5 @@
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
 import { formatPercent } from "metabase/utils/formatting";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import type { TreemapTree } from "../model/types";

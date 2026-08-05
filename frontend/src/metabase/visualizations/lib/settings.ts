@@ -1,10 +1,5 @@
 import _ from "underscore";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import {
-  convertLinkColumnToClickBehavior,
-  removeInternalClickBehaviors,
-} from "metabase/embedding-sdk/lib/links";
 import type {
   ComputedVisualizationSettings,
   SettingsExtra,
@@ -18,6 +13,22 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import { isObjectWithRaw } from "metabase-types/guards";
+
+type ComputedSettingsTransform = (
+  computedSettings: ComputedVisualizationSettings,
+  extra: SettingsExtra,
+) => ComputedVisualizationSettings;
+
+// The embedding SDK rewrites computed click behaviours; the transform is
+// injected at registration time (see register.ts) so this compute file stays
+// free of app-config imports.
+let computedSettingsTransform: ComputedSettingsTransform | null = null;
+
+export function setComputedSettingsTransform(
+  transform: ComputedSettingsTransform | null,
+) {
+  computedSettingsTransform = transform;
+}
 
 export function getComputedSettings<T>(
   settingsDefs: VisualizationSettingsDefinitions,
@@ -38,18 +49,8 @@ export function getComputedSettings<T>(
     );
   }
 
-  if (isEmbeddingSdk()) {
-    const shouldKeepInternalClickBehavior = extra.enableEntityNavigation;
-
-    const result: ComputedVisualizationSettings = _.compose(
-      // remove internal click behaviors unless internal navigation is enabled
-      shouldKeepInternalClickBehavior
-        ? _.identity
-        : removeInternalClickBehaviors,
-      convertLinkColumnToClickBehavior,
-    )(computedSettings);
-
-    return result;
+  if (computedSettingsTransform) {
+    return computedSettingsTransform(computedSettings, extra);
   }
 
   return computedSettings;

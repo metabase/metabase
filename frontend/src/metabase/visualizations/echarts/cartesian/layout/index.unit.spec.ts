@@ -1,4 +1,4 @@
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 import {
   createMockColumn,
