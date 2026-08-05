@@ -302,5 +302,46 @@ describe("DocumentHeader", () => {
       await userEvent.click(screen.getByText("Duplicate"));
       expect(onDuplicate).toHaveBeenCalled();
     });
+
+    it("should disable the create-public-link item when the document contains a custom viz", async () => {
+      setup({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        document: createMockDocument({
+          public_uuid: null,
+          contains_custom_viz: true,
+        }),
+      });
+
+      await userEvent.click(screen.getByLabelText("More options"));
+
+      const item = screen.getByRole("menuitem", {
+        name: /Create a public link/,
+      });
+      expect(item).toHaveAttribute("aria-disabled", "true");
+
+      await userEvent.hover(item);
+      expect(
+        await screen.findByText(
+          "This document contains custom visualizations, which aren't supported in public links. Remove them to create a public link.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should keep the create-public-link item enabled when a public link already exists", async () => {
+      setup({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        document: createMockDocument({
+          public_uuid: "1337bad801",
+          contains_custom_viz: true,
+        }),
+      });
+
+      await userEvent.click(screen.getByLabelText("More options"));
+
+      const item = screen.getByRole("menuitem", { name: /Public link/ });
+      expect(item).not.toHaveAttribute("aria-disabled", "true");
+    });
   });
 });
