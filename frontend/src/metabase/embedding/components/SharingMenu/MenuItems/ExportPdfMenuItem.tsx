@@ -7,9 +7,11 @@ import type { Dashboard } from "metabase-types/api";
 export const ExportPdfMenuItem = ({
   dashboard,
   loading,
+  disabled,
 }: {
   dashboard: Dashboard;
   loading?: boolean;
+  disabled?: boolean;
 }) => {
   const dispatch = useDispatch();
 
@@ -27,7 +29,7 @@ export const ExportPdfMenuItem = ({
       data-testid="dashboard-export-pdf-button"
       leftSection={<Icon name="document" />}
       onClick={handleClick}
-      disabled={loading}
+      disabled={loading || disabled}
       style={loading ? { cursor: "wait" } : undefined}
     >
       {getExportTabAsPdfButtonText(dashboard.tabs)}

@@ -6,6 +6,7 @@ import {
   getIsDashCardsRunning,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { isDashboardOrTabEmpty } from "metabase/dashboard/utils";
 import { CopyLinkButton } from "metabase/embedding/components/SharingMenu/ActionButtons/CopyLinkButton";
 import { EmbedButton } from "metabase/embedding/components/SharingMenu/ActionButtons/EmbedButton";
 import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
@@ -68,6 +69,8 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const [isInviteOpen, { open: openInvite, close: closeInvite }] =
     useDisclosure();
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
+  const selectedTabId = useSelector(getSelectedTabId);
+  const isEmpty = isDashboardOrTabEmpty(dashboard, selectedTabId);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const siteUrl = useSetting("site-url");
   const isAnalytics =
@@ -100,7 +103,11 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         }
       >
         <InviteToViewMenuItem onClick={openInvite} />
-        <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
+        <ExportPdfMenuItem
+          dashboard={dashboard}
+          loading={isDashCardsRunning}
+          disabled={isEmpty}
+        />
         {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
@@ -133,11 +140,17 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
 // the PDF export, and a public link copy when one already exists.
 function NonAdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
+  const selectedTabId = useSelector(getSelectedTabId);
+  const isEmpty = isDashboardOrTabEmpty(dashboard, selectedTabId);
   const publicUuid = dashboard.public_uuid;
 
   return (
     <SharingMenu actions={<CopyDashboardLinkButton dashboard={dashboard} />}>
-      <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
+      <ExportPdfMenuItem
+        dashboard={dashboard}
+        loading={isDashCardsRunning}
+        disabled={isEmpty}
+      />
       {publicUuid && (
         <CopyPublicLinkMenuItem
           url={getPublicDashboardUrl(publicUuid)}
