@@ -48,6 +48,7 @@ const setup = async (enablePublicSharing = false) => {
       name: "Test Question",
       id: 2,
       public_uuid: "11bf0e18-34d2-4630-865a-c0bebb75c8b3",
+      contains_custom_viz: false,
     },
   ]);
   setupListPublicDashboardsEndpoint([
@@ -55,6 +56,7 @@ const setup = async (enablePublicSharing = false) => {
       name: "Test Dashboard",
       id: 3,
       public_uuid: "16a4568d-c328-4306-9c4b-ec8fbd6e4c8e",
+      contains_custom_viz: false,
     },
   ]);
   setupListPublicDocumentsEndpoint([
@@ -62,6 +64,7 @@ const setup = async (enablePublicSharing = false) => {
       name: "Test Document",
       id: 4,
       public_uuid: "3a9a7c46-ff19-4935-bfbe-4932d315732a",
+      contains_custom_viz: false,
     },
   ]);
 

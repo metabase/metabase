@@ -686,7 +686,9 @@ export type CardQueryRequest = {
   parameters?: unknown[];
 };
 
-export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
+export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid"> & {
+  contains_custom_viz: boolean;
+};
 
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 

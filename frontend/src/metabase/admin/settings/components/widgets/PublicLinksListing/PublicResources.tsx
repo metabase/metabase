@@ -31,6 +31,11 @@ export const PublicLinksDashboardListing = () => {
         }
         return null;
       }}
+      getWarning={(item) =>
+        item.contains_custom_viz
+          ? t`Contains custom visualizations, which appear as tables in the public link.`
+          : undefined
+      }
       noLinksMessage={t`No dashboards have been publicly shared yet.`}
       {...query}
     />
@@ -51,6 +56,11 @@ export const PublicLinksQuestionListing = () => {
         }
         return null;
       }}
+      getWarning={(item) =>
+        item.contains_custom_viz
+          ? t`Contains custom visualizations, which appear as tables in the public link.`
+          : undefined
+      }
       noLinksMessage={t`No questions have been publicly shared yet.`}
       {...query}
     />
