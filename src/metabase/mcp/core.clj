@@ -4,13 +4,24 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
-   [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.v2.registry :as v2.registry]
    [metabase.mcp.v2.resources :as v2.resources]))
 
 (set! *warn-on-reflection* true)
+
+(defn mcp-canonical-path
+  "The advertised MCP URL path, relative to site-url (see [[metabase.mcp.paths/canonical-path]])."
+  []
+  mcp.paths/canonical-path)
+
+(defn mcp-endpoint-paths
+  "Every path serving MCP, canonical plus back-compat aliases
+   (see [[metabase.mcp.paths/endpoint-paths]])."
+  []
+  mcp.paths/endpoint-paths)
 
 (defn cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
@@ -43,14 +54,12 @@
 
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata,
-   scopes from both surfaces' MCP UI resources (e.g. visualize_query), and the v2 tool-registry
-   scopes (v2 tools reuse v1 scope strings where they cover a v1 tool, so this mostly adds the
-   net-new leaves).
+   plus the v2 tool-registry and v2 UI-resource scopes.
 
-   A resource registry contributes on its own rather than through its tools: a resource whose
+   The v2 resource registry contributes on its own rather than through its tools: a resource whose
    scope no tool happens to carry still has to be requestable, or it could never be read."
   []
-  (-> (into (mcp.resources/resource-scopes)
+  (-> (into (sorted-set)
             (comp (keep #(get-in % [:form :metadata :scope]))
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
@@ -60,8 +69,8 @@
 (defn v2-scopes
   "The scopes the v2 MCP surface itself gates on: its tool registry's scopes plus its resource
    registry's. Excludes the agent-API endpoint scopes [[all-scopes]] also gathers — those belong
-   to a different resource, and advertising them for v2 is what puts per-entity v1 scopes on a v2
-   client's consent screen."
+   to a different resource, and advertising them for v2 is what puts per-entity scopes the v2 tools
+   don't use on a v2 client's consent screen."
   []
   (into (v2.registry/registered-scopes) (v2.resources/resource-scopes)))
 

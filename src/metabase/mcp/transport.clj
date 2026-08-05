@@ -1,13 +1,13 @@
 (ns metabase.mcp.transport
-  "MCP (Model Context Protocol) Streamable HTTP transport, shared by every MCP tool surface.
+  "MCP (Model Context Protocol) Streamable HTTP transport.
 
    Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the
    `initialize` handshake and session issuance, origin validation (DNS-rebinding protection),
    cookie/bearer auth resolution, per-user throttling, SSE responses and the GET keepalive
    stream, and OAuth discovery hints on 401s.
 
-   A surface (v1 at `/api/metabase-mcp`, v2 at `/api/metabase-mcp/v2`) supplies only what
-   differs — its method dispatch and its endpoint paths — via [[make-handler]]."
+   A surface supplies only what differs — its method dispatch and its endpoint paths — via
+   [[make-handler]]."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]

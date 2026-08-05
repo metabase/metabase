@@ -119,16 +119,11 @@
 ;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
 ;; viz-only grant would run a query the user thought they had declined. Client capability is gated
 ;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a
-;; separate scope was not a data boundary. The two leaves below shipped in v0.62 and still gate
-;; v1's resources, so they stay declared — tokens carry the literal string.
-(api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
-  (deferred-tru "Render query visualizations in the MCP UI"))
-(api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
-  (deferred-tru "Render drill-through visualizations in the MCP UI"))
+;; separate scope was not a data boundary. The `agent:viz:mcp-ui:*` leaves that shipped in v0.62
+;; went out with the MCP v1 resources they gated.
 
 ;; Alert
-;; Still gates the v1 create-alert tool; scopes are never renamed, so it stays. v2's alert_write
-;; gates on `agent:delivery:write`.
+;; Gates the agent-API create-alert endpoint; v2's alert_write gates on `agent:delivery:write`.
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
 

@@ -213,14 +213,14 @@
     :map]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
-   ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
+   ;; layer stores it with the handle (see `metabase.mcp.v2.common/mint-query-handle!`).
    ;; Bounded at 10000 chars to match the constraint master enforced on the legacy program path.
    [:prompt {:optional true} [:maybe [:string {:min 1 :max 10000}]]]])
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query for use with /v1/execute. The optional
   `:prompt` echoes the request's prompt back so the MCP layer can store it with the
-  handle (see `metabase.mcp.tools/make-store-construct-query-result`)."
+  handle (see `metabase.mcp.v2.common/mint-query-handle!`)."
   [:map
    [:query  ms/NonBlankString]
    [:prompt {:optional true} [:maybe ms/NonBlankString]]])

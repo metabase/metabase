@@ -47,7 +47,7 @@
    is taken verbatim; failing that, a digit-preserving snake->kebab candidate (a plain `_`->`-`
    swap) is tried before the generic kebab conversion, because `->kebab-case-en` splits letter-digit
    boundaries (\"v2\" -> \"v-2\") and would otherwise fail to resolve digit-bearing names whether
-   they arrive kebab-cased (`mcp-v2-enabled`) or snake_cased (`mcp_v2_enabled`)."
+   they arrive kebab-cased (`mcp-v2-disabled-tools`) or snake_cased (`mcp_v2_disabled_tools`)."
   [:keyword {:decode/json (fn [s]
                             (let [nm        (name (keyword s))
                                   raw       (keyword nm)

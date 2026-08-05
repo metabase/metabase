@@ -1,16 +1,14 @@
 (ns metabase.mcp.v2.api
-  "The v2 MCP tool surface, served at `/api/metabase-mcp/v2`. Shares the v1 transport
-   ([[metabase.mcp.transport]]) — same JSON-RPC framing, origin checks, cookie/bearer auth,
-   session handling, and throttling — but `tools/list` and `tools/call` are driven by the
-   [[metabase.mcp.v2.registry]] instead of the agent-api defendpoint manifest. Gated by
-   `mcp-v2-enabled`, independent of the v1 `mcp-enabled?` setting."
+  "The MCP tool surface — the only one Metabase serves — mounted on every path in
+   [[metabase.mcp.paths/endpoint-paths]]. [[metabase.mcp.transport]] supplies the JSON-RPC framing,
+   origin checks, cookie/bearer auth, session handling, and throttling; `tools/list` and
+   `tools/call` are driven by the [[metabase.mcp.v2.registry]]. Gated by
+   [[metabase.mcp.validation/+mcp-enabled]]."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.api.routes.common :as routes.common]
-   [metabase.llm.settings :as llm.settings]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
@@ -33,8 +31,8 @@
    [metabase.mcp.v2.tools.subscription]
    [metabase.mcp.v2.tools.transform]
    [metabase.mcp.v2.tools.visualize]
-   [metabase.metabot.scope :as metabot.scope]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.mcp.validation :as mcp.validation]
+   [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,7 +41,7 @@
 ;; Exercises the whole surface (tools/list, tools/call, scope filtering, kill switches) until
 ;; real tools land in tasks 05+.
 (registry/deftool ping-v2
-  "Health-check tool for the v2 MCP surface. Returns a fixed acknowledgement."
+  "Health-check tool for the MCP surface. Returns a fixed acknowledgement."
   {:name        "ping_v2"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
@@ -98,7 +96,7 @@
   (transport/jsonrpc-response id {}))
 
 (defn- dispatch-method
-  "Route a single JSON-RPC `method` to its v2 handler, returning a response map or nil
+  "Route a single JSON-RPC `method` to its handler, returning a response map or nil
   (notifications). `resources/*` serves the MCP Apps iframe shells only; documentation and skill
   resources land with the skills work. `prompts/*` is still unimplemented and falls through to
   method-not-found. A handler that throws is turned into a JSON-RPC internal error by the
@@ -117,22 +115,9 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-(defn- enforce-mcp-v2-enabled
-  [handler-fn]
-  (fn [request respond raise]
-    (cond
-      (not (llm.settings/ai-features-enabled?))
-      (raise (ex-info (tru "AI features are not enabled.") {:status-code 403}))
-
-      (mcp.settings/mcp-v2-enabled)
-      (handler-fn request respond raise)
-
-      :else
-      (raise (ex-info (tru "MCP v2 server is not enabled.") {:status-code 403})))))
-
-(def +mcp-v2-enabled
-  "Wrap routes so they may only be accessed when the v2 MCP surface is enabled."
-  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-mcp-v2-enabled))
+(def +mcp-enabled
+  "Wrap routes so they may only be accessed when the MCP server is enabled."
+  mcp.validation/+mcp-enabled)
 
 (def ^:private server-instructions
   "The `initialize` result's `instructions` — the only channel that reaches the model before any
@@ -153,13 +138,13 @@
    metabot.scope/agent-query-run])
 
 (def ^{:arglists '([request respond raise])} handler
-  "Ring async handler for the v2 MCP endpoint."
+  "Ring async handler for the MCP endpoint."
   (transport/make-handler
    {:dispatch-method-fn dispatch-method
     ;; No :prompts — a surface must not advertise methods it answers with method-not-found.
     :capabilities       {:tools {:listChanged true} :resources {}}
     :instructions       server-instructions
     :tools-hash-fn      registry/tools-hash
-    :endpoint-paths     #{"/api/metabase-mcp/v2"}
-    :default-path       "/api/metabase-mcp/v2"
+    :endpoint-paths     mcp.paths/endpoint-paths
+    :default-path       mcp.paths/canonical-path
     :default-ask-scopes default-ask-scopes}))

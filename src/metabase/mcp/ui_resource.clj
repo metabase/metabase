@@ -1,10 +1,7 @@
 (ns metabase.mcp.ui-resource
-  "Shared primitives for MCP Apps UI resources — the sandboxed iframe surface both the v1
-   ([[metabase.mcp.resources]]) and v2 ([[metabase.mcp.v2.resources]]) registries expose.
-
-   The registries themselves stay version-local (different scope models, different manifests);
-   what lives here is the part that must not drift between them: rendering the embed template
-   and computing the `_meta.ui` block hosts use to configure the iframe sandbox."
+  "Primitives for MCP Apps UI resources — the sandboxed iframe surface
+   [[metabase.mcp.v2.resources]] exposes: rendering the embed template and computing the
+   `_meta.ui` block hosts use to configure the iframe sandbox."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]

@@ -55,19 +55,14 @@
   []
   (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
 
-(def v2-resource-path
-  "Path of the v2 MCP surface. Its RFC 9728 metadata advertises `<site-url><this>` as the resource
-   identifier, and that is the string an RFC 8707 `resource` indicator must match."
-  "/api/metabase-mcp/v2")
-
-(defn v2-resource-scopes
-  "The scopes advertised for the v2 MCP resource specifically. RFC 9728 metadata answers \"what
-   does *this* resource accept\", and the v2 surface accepts exactly the scopes its tool registry
-   gates on — the rationalized five — plus the resource scopes its UI tools render through.
+(defn mcp-resource-scopes
+  "The scopes advertised for the MCP resource specifically. RFC 9728 metadata answers \"what does
+   *this* resource accept\", and the MCP surface accepts exactly the scopes its tool registry gates
+   on — the rationalized five — plus the resource scopes its UI tools render through.
 
    [[protected-resource-scopes]] is deliberately wider: it also carries every scope declared by an
-   agent-API endpoint, because those resources do accept them. Advertising that union for v2 is
-   what makes a client's consent screen list per-entity v1 scopes the v2 tools no longer use."
+   agent-API endpoint, because those resources do accept them. Advertising that union for MCP is
+   what makes a client's consent screen list per-entity scopes the MCP tools never use."
   []
   (into (vec (mcp/v2-scopes)) (mcp/opt-in-scopes)))
 
@@ -90,7 +85,7 @@
   (-> (sorted-set)
       (into (supported-scopes))
       (into (protected-resource-scopes))
-      (into (v2-resource-scopes))))
+      (into (mcp-resource-scopes))))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -126,29 +121,34 @@
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
    `resources` are RFC 8707 resource indicators from the authorization request. When one names the
-   v2 MCP resource — compared as [[canonical-resource-uri]], since clients disagree on trailing
+   MCP resource — compared as [[canonical-resource-uri]], since clients disagree on trailing
    slashes, case, and default ports — scopes that surface does not accept are dropped, so the
    consent screen asks for what the token can actually be used for rather than everything the
    client registered. Returns the scope unchanged when no indicator names a resource we narrow for,
    and nil when nothing survives (callers should drop the parameter entirely rather than send an
    empty one).
 
+   Every alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one: a
+   client that connected through an alias was handed that path as its resource identifier, and
+   narrowing has to recognize what it was told to send back.
+
    Only ever removes scopes, and runs after the provider has validated the request, so it can never
    turn a valid authorization into a rejected one.
 
-   `mb:full` does not survive. The v2 resource metadata never advertised it, and a client naming v2
-   as its resource is asking for a token to use against the MCP surface — which accepts none of the
+   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming
+   the MCP resource is asking for a token to use against that surface — which accepts none of the
    REST API that scope unlocks. A first-party client that genuinely wants full access should not be
-   naming the v2 MCP resource. Note this only reaches clients that send a resource indicator: one
+   naming the MCP resource. Note this only reaches clients that send a resource indicator: one
    that omits it is not narrowed at all, so a register-time rule is still the only way to keep
    `mb:full` off a dynamically-registered client entirely."
   [resources scope]
   (let [scope (some-> scope str str/trim not-empty)]
     (if-not (and scope
-                 (contains? (into #{} (keep canonical-resource-uri) resources)
-                            (canonical-resource-uri (str (system/site-url) v2-resource-path))))
+                 (some (into #{} (keep canonical-resource-uri) resources)
+                       (keep #(canonical-resource-uri (str (system/site-url) %))
+                             (mcp/mcp-endpoint-paths))))
       scope
-      (let [accepted (set (v2-resource-scopes))]
+      (let [accepted (set (mcp-resource-scopes))]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
 (defn- build-provider-config

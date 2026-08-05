@@ -23,7 +23,7 @@
             can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full")))
-    (is (not (contains? (set (oauth-server/v2-resource-scopes)) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/default-grant-scopes)) "mb:full")))))
 
 (deftest default-grant-covers-everything-advertised-test
@@ -35,7 +35,7 @@
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
                                  "protected-resource"   (oauth-server/protected-resource-scopes)
-                                 "v2-resource"          (oauth-server/v2-resource-scopes)}]
+                                 "mcp-resource"          (oauth-server/mcp-resource-scopes)}]
         (testing metadata
           (is (empty? (remove ceiling scopes))))))))
 
@@ -49,7 +49,7 @@
         (testing scope
           (is (contains? ceiling scope)))))
     (testing "and the write scopes stay advertised, so a client that wants them can still ask"
-      (let [advertised (set (oauth-server/v2-resource-scopes))]
+      (let [advertised (set (oauth-server/mcp-resource-scopes))]
         (doseq [scope ["agent:content:write" "agent:sql:run" "agent:delivery:write"]]
           (testing scope
             (is (contains? advertised scope))
@@ -77,29 +77,29 @@
         (testing scope
           (is (contains? granted scope)))))))
 
-(deftest v2-resource-advertises-only-the-v2-surface-test
-  (testing "RFC 9728 metadata answers \"what does *this* resource accept\", and the surfaces differ:
-            the v2 MCP resource accepts the rationalized scopes its tool registry gates on, while the
-            wider set also carries every agent-API endpoint scope. Advertising the union for v2 is
-            what makes a client's consent screen list per-entity v1 scopes the v2 tools never use."
-    (let [v2   (set (oauth-server/v2-resource-scopes))
+(deftest mcp-resource-advertises-only-the-mcp-surface-test
+  (testing "RFC 9728 metadata answers \"what does *this* resource accept\", and the resources differ:
+            the MCP resource accepts the rationalized scopes its tool registry gates on, while the
+            wider set also carries every agent-API endpoint scope. Advertising the union for MCP is
+            what makes a client's consent screen list per-entity scopes the MCP tools never use."
+    (let [mcp  (set (oauth-server/mcp-resource-scopes))
           wide (set (oauth-server/protected-resource-scopes))]
-      (testing "the five rationalized scopes are advertised for v2"
+      (testing "the five rationalized scopes are advertised for MCP"
         (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
                        "agent:sql:run" "agent:delivery:write"]]
           (testing scope
-            (is (contains? v2 scope)))))
-      (testing "v1 agent-API per-entity scopes are not"
+            (is (contains? mcp scope)))))
+      (testing "agent-API per-entity scopes are not"
         (doseq [scope ["agent:collection:create" "agent:dashboard:create" "agent:dashboard:update"
                        "agent:metric:create" "agent:metric:update" "agent:question:create"
                        "agent:query:construct" "agent:query:execute" "agent:sql:construct"]]
           (testing scope
-            (is (not (contains? v2 scope))))))
+            (is (not (contains? mcp scope))))))
       (testing "but they remain advertised on the wider set, since those resources do accept them"
         (is (contains? wide "agent:collection:create"))
         (is (contains? wide "agent:query:execute")))
-      (testing "so the v2 surface is strictly narrower"
-        (is (< (count v2) (count wide)))))))
+      (testing "so the MCP surface is strictly narrower"
+        (is (< (count mcp) (count wide)))))))
 
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
@@ -121,45 +121,54 @@
 
 (deftest narrow-scope-to-resource-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (let [v2-uri "http://localhost:3000/api/metabase-mcp/v2"
+    (let [mcp-uri "http://localhost:3000/api/metabase-mcp"
           scopes #(set (some-> % (str/split #"\s+")))]
-      (testing "an indicator naming the v2 resource drops scopes that surface does not accept"
+      (testing "an indicator naming the MCP resource drops scopes that surface does not accept"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
-                                [v2-uri]
+                                [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
-      (testing "every scope v2 advertises survives narrowing — otherwise the resource doc would
+      (testing "every scope the surface advertises survives narrowing — otherwise the resource doc would
                 advertise a scope its own consent flow strips"
-        (let [advertised (oauth-server/v2-resource-scopes)]
+        (let [advertised (oauth-server/mcp-resource-scopes)]
           (is (= (set advertised)
                  (scopes (oauth-server/narrow-scope-to-resource
-                          [v2-uri] (str/join " " advertised)))))))
-      (testing "GHY-4226: `mb:full` is dropped like any other scope v2 does not accept. A client
-                naming v2 as its resource wants a token for the MCP surface, which accepts none of
+                          [mcp-uri] (str/join " " advertised)))))))
+      (testing "GHY-4226: `mb:full` is dropped like any other scope the surface does not accept. A
+                client naming the MCP resource wants a token for that surface, which accepts none of
                 the REST API that scope unlocks."
         (is (= #{"agent:content:read"}
                (scopes (oauth-server/narrow-scope-to-resource
-                        [v2-uri] "mb:full agent:content:read agent:question:create"))))
+                        [mcp-uri] "mb:full agent:content:read agent:question:create"))))
         (testing "and it is the only thing requested, nothing survives"
-          (is (nil? (oauth-server/narrow-scope-to-resource [v2-uri] "mb:full")))))
+          (is (nil? (oauth-server/narrow-scope-to-resource [mcp-uri] "mb:full")))))
+      (testing "GHY-4250: every alias narrows, not just the canonical path — a client that connected
+                through an alias was handed that path as its resource identifier, so recognizing
+                only the canonical one would silently hand it the wide consent screen"
+        (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
+          (testing path
+            (is (= "agent:content:read"
+                   (oauth-server/narrow-scope-to-resource
+                    [(str "http://localhost:3000" path)]
+                    "agent:content:read agent:question:create"))))))
       (testing "no indicator, or one naming a different resource, leaves the scope alone"
         (let [wide "agent:content:read agent:question:create"]
           (is (= wide (oauth-server/narrow-scope-to-resource nil wide)))
           (is (= wide (oauth-server/narrow-scope-to-resource [] wide)))
           (is (= wide (oauth-server/narrow-scope-to-resource
-                       ["http://localhost:3000/api/metabase-mcp"] wide)))))
+                       ["http://localhost:3000/api/agent"] wide)))))
       (testing "nil rather than an empty scope when nothing survives, so the caller drops the
                 parameter instead of sending a blank one"
-        (is (nil? (oauth-server/narrow-scope-to-resource [v2-uri] "agent:question:create"))))
+        (is (nil? (oauth-server/narrow-scope-to-resource [mcp-uri] "agent:question:create"))))
       (testing "blank and missing scopes stay absent rather than becoming an empty parameter"
         (doseq [blank [nil "" "   "]]
           (testing (pr-str blank)
-            (is (nil? (oauth-server/narrow-scope-to-resource [v2-uri] blank)))
+            (is (nil? (oauth-server/narrow-scope-to-resource [mcp-uri] blank)))
             (is (nil? (oauth-server/narrow-scope-to-resource nil blank))))))
       (testing "narrowing only ever removes — a client cannot gain a scope it did not request"
         (let [requested "agent:content:read agent:question:create mb:full"]
           (is (every? (scopes requested)
-                      (scopes (oauth-server/narrow-scope-to-resource [v2-uri] requested)))))))))
+                      (scopes (oauth-server/narrow-scope-to-resource [mcp-uri] requested)))))))))
 
 (deftest narrow-scope-to-resource-canonicalization-test
   (testing "resource indicators are compared canonically, not byte-for-byte. Clients disagree on
@@ -187,8 +196,7 @@
                            ["http://example.com:80/api/metabase-mcp/v2"] wide)))))
       (testing "canonicalization does not make unrelated resources match"
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-          (doseq [indicator ["http://localhost:3000/api/metabase-mcp"
-                             "http://localhost:3000/api/metabase-mcp/v2/extra"
+          (doseq [indicator ["http://localhost:3000/api/metabase-mcp/v2/extra"
                              "http://localhost:3000/API/METABASE-MCP/V2"
                              "http://localhost:3001/api/metabase-mcp/v2"
                              "https://localhost:3000/api/metabase-mcp/v2"

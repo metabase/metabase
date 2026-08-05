@@ -2,15 +2,12 @@
   "The v2 MCP resource registry — the `ui://` iframe shells behind the MCP Apps tools
    (`visualize_query`, `render_drill_through`).
 
-   Deliberately narrower than the v1 registry ([[metabase.mcp.resources]]): every v2 resource
-   carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]], the same
-   all-or-nothing gate v2 tools use, rather than v1's `public-or-matches?` where a nil scope
-   means \"any authenticated caller\". v2 has no public resources, so the looser gate would only
-   be a way to accidentally ship one. Documentation/skill resources land with the skills work
-   and will need their own registration path here.
+   Every resource carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]],
+   the same all-or-nothing gate v2 tools use. There are deliberately no public resources, so
+   there is no looser gate to accidentally ship one through. Documentation/skill resources land
+   with the skills work and will need their own registration path here.
 
-   Rendering and the `_meta.ui` sandbox block are shared with v1 via
-   [[metabase.mcp.ui-resource]] — that part must not drift between the two surfaces."
+   Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.ui-resource :as mcp.ui-resource]

@@ -2,9 +2,9 @@
 
 Metabase includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that lets AI
 clients connect directly to a Metabase instance. It uses the [Streamable HTTP
-transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) and builds on
-Metabase's [Agent API](../agent_api/) to expose tools for searching, navigating, querying, visualizing, and
-creating/updating content - all scoped to the connecting user's permissions.
+transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) and exposes
+tools for searching, browsing, querying, visualizing, and creating/updating content - all scoped to the connecting
+user's permissions.
 
 ## Endpoint
 
@@ -14,12 +14,13 @@ The MCP server is available at:
 https://{your-metabase.example.com}/api/metabase-mcp
 ```
 
-The legacy `/api/mcp` path still works as an alias for existing clients, but `/api/metabase-mcp` is the
-canonical URL to advertise.
+Admins turn it on with the `mcp-enabled?` setting; it also requires AI features to be enabled instance-wide.
+`/api/mcp` and `/api/metabase-mcp/v2` are aliases of the same surface, kept so existing client configs
+keep working.
 
 ## Connecting a client
 
-Point any MCP-compatible client at the `/api/metabase-mcp` endpoint. For example, with Claude Code:
+Point any MCP-compatible client at the endpoint. For example, with Claude Code:
 
 ```sh
 claude mcp add metabase https://{your-metabase.example.com}/api/metabase-mcp --transport streamable-http
@@ -50,27 +51,21 @@ Browser-based sessions (cookie auth) are also supported and receive unrestricted
 
 ### Scopes
 
-Access tokens are scoped to limit what tools a client can use:
+Five scopes cover the whole tool surface, chosen so a consent screen stays readable:
 
-| Scope                     | Grants access to                                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `agent:search`            | `search`                                                                                                       |
-| `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
-| `agent:query:construct`   | `construct_query`                                                                                              |
-| `agent:query`             | `query`                                                                                                        |
-| `agent:query:execute`     | `execute_query`                                                                                                |
-| `agent:sql:construct`     | `construct_native_query`                                                                                       |
-| `agent:sql:execute`       | `execute_sql`                                                                                                  |
-| `agent:question:create`   | `create_question`                                                                                              |
-| `agent:question:update`   | `update_question` (also covers "move card to collection" and archiving)                                        |
-| `agent:question:execute`  | `execute_question`                                                                                             |
-| `agent:metric:create`     | `create_metric`                                                                                                |
-| `agent:metric:update`     | `update_metric` (also covers "move metric to collection" and archiving)                                        |
-| `agent:dashboard:create`  | `create_dashboard`                                                                                             |
-| `agent:dashboard:update`  | `update_dashboard` (also covers archiving)                                                                     |
-| `agent:collection:create` | `create_collection`                                                                                            |
+| Scope                  | Grants access to                                                                                                                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent:content:read`   | `search`, `get_content`, `browse_collection`, `browse_data`, `get_parameter_values`, `learn`, `ping_v2`                                                                                        |
+| `agent:content:write`  | `question_write`, `dashboard_write`, `document_write`, `collection_write`, `metric_write`, `measure_write`, `segment_write`, `transform_write`, `duplicate_content`, `bookmark_content`        |
+| `agent:query:run`      | `execute_query`, `run_saved_question`, `visualize_query`, `render_drill_through`                                                                                                               |
+| `agent:sql:run`        | `execute_sql`                                                                                                                                                                                 |
+| `agent:delivery:write` | `alert_write`, `subscription_write`                                                                                                                                                           |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+
+The per-entity scopes declared in [`metabase.metabot.scope`](../metabot/scope.clj) are not part of this surface -
+they gate the [Agent API](../agent_api/) and Metabot. Scopes are never renamed, so a token minted against an older
+surface keeps whatever strings it carries; it just won't match a tool here.
 
 OAuth protected resource metadata is available at:
 
@@ -82,57 +77,65 @@ By default our consent screen grants access to all scopes without the opportunit
 
 ## Available tools
 
-The MCP server exposes these tools, dynamically generated from the Agent API endpoint metadata:
+Tools are declared with `deftool` in [`v2/tools/`](v2/tools/) and registered in
+[`v2/registry.clj`](v2/registry.clj). Individual tools can be turned off instance-wide via the
+`mcp-v2-disabled-tools` setting.
 
 ### Discovery + read
 
-| Tool            | Description                                                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search`        | Search for tables, metrics, cards, dashboards, and collections using keyword or natural-language queries.                                                           |
-| `read_resource` | Read one or more Metabase entities by `metabase://` URI. Covers database/schema/table/collection/question/dashboard/metric/transform navigation. Up to 5 URIs per call. |
+| Tool                   | Description                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `search`               | Find content across the instance by relevance.                                                    |
+| `get_content`          | Fetch content by `{type, id}` - the typed read for anything found via search or browse.           |
+| `browse_collection`    | Browse collections structurally, including `root` and `trash`.                                    |
+| `browse_data`          | Browse the data hierarchy: databases -> schemas -> tables -> fields.                              |
+| `get_parameter_values` | Fetch the valid values for one filter on a dashboard or saved question.                           |
+| `learn`                | Read this server's task docs (skills) for the write dialects the schemas can't fully describe.    |
+| `ping_v2`              | Health check.                                                                                     |
 
-### Query construction + execution
+### Query execution
 
-| Tool              | Description                                                                                                                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `construct_query` | Construct a query against a table or metric. Accepts the user's original `prompt` when available. Returns an opaque `query_handle` for use with `execute_query` or `visualize_query`.          |
-| `construct_native_query` | Construct a native (raw SQL) query for a database. Returns an opaque `query_handle` to feed `create_question` and save it. Does not execute the SQL; native handles are rejected by `execute_query`/`query` (use `execute_sql` to run raw SQL). |
-| `query`           | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                                 |
-| `execute_query`   | Execute a previously constructed query and return results with column metadata.                                                                                                                |
-| `execute_sql`     | Execute a raw SQL query against a database. Requires the user to have native-query permission on the target database. Can be disabled instance-wide via the `mcp-execute-sql-enabled` setting. |
-| `execute_question` | Run a saved question by id and return its rows + column metadata. Runs under the caller's permissions. Parameterized questions are not supported (returns an error). |
+| Tool                 | Description                                                            |
+| -------------------- | ------------------------------------------------------------------------ |
+| `execute_query`      | Validate and execute a query, returning rows plus a `query_handle`.    |
+| `execute_sql`        | Execute a raw SQL string against a database, returning rows plus a handle. Requires native-query permission on the database, and the instance-level `mcp-execute-sql-enabled` setting. |
+| `run_saved_question` | Run a saved question by id or entity id, returning rows inline.        |
+
+### Visualization
+
+These render inline in clients that advertise the `mcp-app-ui` extension; the iframe shells live in
+[`v2/resources.clj`](v2/resources.clj) and render through [`ui_resource.clj`](ui_resource.clj).
+
+| Tool                   | Description                                                          |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `visualize_query`      | Visualize a query as an interactive chart or table.                  |
+| `render_drill_through` | Render the drill-through visualization the user navigated into.      |
 
 ### Write
 
-| Tool                | Description                                                                                                       |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `create_metric`     | Save a query as a reusable metric. Accepts a `query_handle` from `construct_query`. The query needs one aggregation and at most one date grouping. |
-| `update_metric`     | Update a saved metric. Patch semantics. Setting `collection_id` moves it; setting `archived: true` archives it — a reversible soft delete, used when asked to delete a metric. A replacement `query` must still be a valid metric. |
-| `create_question`   | Save a query as a named question (card). Accepts a `query_handle` from `construct_query` (MBQL) or `construct_native_query` (native SQL). Saving native requires native-query DB permission. |
-| `update_question`   | Update a saved question. Patch semantics. Setting `collection_id` moves the card. Setting `archived: true` archives it — a reversible soft delete, used when asked to delete a question. Replacing the query accepts a `construct_query` or `construct_native_query` handle. |
-| `create_dashboard`  | Create a new dashboard, optionally populated with saved questions (auto-positioned on the grid).                  |
-| `update_dashboard`  | Update a dashboard's metadata (name, description, collection, archived — a reversible soft delete, used when asked to delete a dashboard). |
-| `create_collection` | Create a new collection. Optionally nested under a `parent_collection_id`.                                        |
+| Tool                 | Description                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `question_write`     | Create, update, or archive a saved question or model.                              |
+| `dashboard_write`    | Create or update a dashboard and edit its layout with ordered ops as one atomic save. |
+| `document_write`     | Create or update a document.                                                       |
+| `collection_write`   | Create, rename, move, archive, or restore a collection.                            |
+| `metric_write`       | Create or update a metric.                                                         |
+| `measure_write`      | Create or update a measure - a reusable aggregation attached to one table.         |
+| `segment_write`      | Create or update a segment - a reusable filter attached to one table.              |
+| `transform_write`    | Create or update a transform.                                                      |
+| `duplicate_content`  | Copy a question, dashboard, or document into a collection.                         |
+| `bookmark_content`   | Add or remove a bookmark for the calling user.                                     |
+| `alert_write`        | Create or update an alert.                                                         |
+| `subscription_write` | Create or update a dashboard subscription.                                         |
 
-Query results are limited to 200 rows per request. When more rows are available, the response includes a
-`continuation_token` that can be passed back to fetch the next page.
-
-`read_resource` list responses cap at 25 items with `truncated` / `total` signals; drill into specific URIs to see
-more, or refine via `search`.
+Result pages are bounded and paged with an opaque continuation token; read projections cap list responses and
+signal truncation rather than silently dropping rows.
 
 ## Resources
 
-The server exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) so
-clients can fetch supplementary content by URI without inflating tool descriptions.
-
-| Resource URI                         | Description                                                                                                       |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `metabase://docs/construct-query.md` | Program syntax for `construct_query` and `query`: sources, operations, operator forms, worked examples, pitfalls. |
-
-The `read_resource` **tool** (above) uses a separate URI scheme to navigate Metabase entities (`metabase://question/{id}`,
-`metabase://database/{id}/tables`, etc.). The two URI namespaces are independent: `metabase://docs/...` is for static
-reference content fetched via MCP `resources/read`, while `metabase://table/...` and friends are entity URIs passed
-to the `read_resource` tool.
+The server exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) for
+the `ui://` iframe shells the visualization tools render through. Every v2 resource carries a required scope, and a
+UI tool reads its shell's scope from the registry so the two can never drift apart.
 
 ## Supported JSON-RPC methods
 
@@ -151,21 +154,26 @@ Requests can be sent individually or as a JSON-RPC batch. The server responds wi
 
 ## Architecture
 
-The implementation lives in these files:
+- **[`transport.clj`](transport.clj)** - Shared HTTP/JSON-RPC machinery: request framing, auth, origin checks (DNS
+  rebinding protection), session handling, throttling, and JSON-vs-SSE response selection.
 
-- **[`api.clj`](api.clj)** - The HTTP handler. Parses JSON-RPC requests, validates authentication and session headers,
-  enforces origin checks (DNS rebinding protection), and dispatches to the appropriate method. Supports both JSON and
-  SSE response formats.
+- **[`paths.clj`](paths.clj)** - The URL paths the server is mounted on: the canonical one plus the back-compat
+  aliases. Read by both the handler and the OAuth server, so routing, RFC 9728 metadata, and RFC 8707 indicator
+  matching can never drift apart.
 
-- **[`tools.clj`](tools.clj)** - Tool dispatch and manifest generation. Builds the tool list from Agent API endpoint
-  metadata, checks scopes, and routes tool calls through synthetic Agent API requests.
+- **[`v2/api.clj`](v2/api.clj)** - The handler. Supplies method dispatch on top of `transport/make-handler`,
+  gated on `mcp-enabled?`.
 
-- **[`resources.clj`](resources.clj)** - MCP resource registry and handlers. Holds documentation resources (like
-  the `construct_query` reference) keyed by URI, with scope-based access control on `resources/list` and
-  `resources/read`.
+- **[`v2/registry.clj`](v2/registry.clj)** - Tool registry and dispatch. `deftool` registers a tool with its Malli
+  arg schema and scope; `call-tool` validates, checks scopes, dispatches, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
+- **[`v2/resources.clj`](v2/resources.clj)** - The `ui://` iframe shells behind the MCP Apps tools.
+
+- **[`scope.clj`](scope.clj)** - Scope matching. Supports exact matches, wildcard patterns, and the
   `::unrestricted` sentinel for session-based auth.
+
+- **[`callback_api.clj`](callback_api.clj)** - Iframe callbacks mounted at `/api/embed-mcp` (feedback, query
+  handles) used by the rendered visualization.
 
 ### Request flow
 
@@ -175,7 +183,7 @@ MCP client
   -> Origin + session validation
   -> Auth: OAuth bearer token or browser session
   -> Scope check against requested tool
-  -> Synthetic request to Agent API endpoint
+  -> Tool handler (registry dispatch)
   -> Response materialized as MCP content
   -> JSON or SSE back to client
 ```

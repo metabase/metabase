@@ -70,29 +70,35 @@ These render inline visualizations in your AI client, and only work in clients t
 
 ### Read-only tools
 
-- **Construct query** (`construct_query`): Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
-- **Execute query** (`execute_query`): Execute a previously constructed query and return the results with column metadata, row count, and execution time.
-- **Query tables and metrics** (`query`): Run a query and return results, paging through large result sets with a continuation token. Accepts a query handle from `construct_query`, a fresh query, or a continuation token. Paging returns up to 200 rows per page and 2,000 rows total.
-- **Read resource** (`read_resource`): Read up to five Metabase entities (or lists) per call by `metabase://` URI. List URIs (like a collection's items or a table's fields) return up to 25 items each. Entities available to read include:
-  - collection
-  - dashboard
-  - database
-  - metric
-  - model
-  - question
-  - schema
-  - table
-  - transform
-- **Search tables and metrics** (`search`): Find tables and metrics using keyword or natural language search.
+- **Browse collections** (`browse_collection`): Browse the collection tree, including the root collection and the trash.
+- **Browse data** (`browse_data`): Browse the data hierarchy: databases, schemas, tables, and fields.
+- **Get content** (`get_content`): Fetch a specific piece of content by type and id, like a question, dashboard, document, metric, or model.
+- **Get parameter values** (`get_parameter_values`): Fetch the valid values for a filter on a dashboard or saved question, so your agent filters with real values instead of guessing.
+- **Learn** (`learn`): Read the server's own task docs, which explain the write formats the tool schemas can't fully describe.
+- **Search** (`search`): Find content across your Metabase by relevance.
 
-### Write/delete tools
+### Query tools
 
-- **Create collection** (`create_collection`): Create a new collection, optionally nested under a parent collection.
-- **Create dashboard** (`create_dashboard`): Create a new dashboard, optionally populated with saved questions.
-- **Create question** (`create_question`): Save a query as a named question.
-- **Execute SQL** (`execute_sql`): Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default).
-- **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived).
-- **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
+- **Execute query** (`execute_query`): Validate and run a query, returning rows plus a query handle that the visualization tools can reuse.
+- **Execute SQL** (`execute_sql`): Run a raw SQL string against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default).
+- **Run saved question** (`run_saved_question`): Run a saved question by id and return its rows.
+
+### Write tools
+
+- **Alert write** (`alert_write`): Create or update an alert that goes out when a saved question's results meet a condition.
+- **Bookmark content** (`bookmark_content`): Add or remove a bookmark, the same starred list your Metabase sidebar shows.
+- **Collection write** (`collection_write`): Create, rename, move, archive, or restore a collection.
+- **Dashboard write** (`dashboard_write`): Create or update a dashboard and edit its layout. Layout edits are applied as one atomic save, so a failed call leaves the dashboard untouched.
+- **Document write** (`document_write`): Create or update a document.
+- **Duplicate content** (`duplicate_content`): Copy a question, dashboard, or document into a collection.
+- **Measure write** (`measure_write`): Create or update a measure, a reusable aggregation attached to one table.
+- **Metric write** (`metric_write`): Create or update a metric.
+- **Question write** (`question_write`): Create, update, or archive a saved question or model.
+- **Segment write** (`segment_write`): Create or update a segment, a reusable filter attached to one table.
+- **Subscription write** (`subscription_write`): Create or update a dashboard subscription.
+- **Transform write** (`transform_write`): Create or update a transform.
+
+Admins can turn individual tools off for the whole instance with the `mcp-v2-disabled-tools` setting.
 
 ## MCP server settings
 
@@ -165,7 +171,7 @@ Use the event filter to narrow the list to a single event type.
 
 MCP server requests are handled by whatever AI client you're using (like a desktop AI app or editor plugin). The MCP server just provides tools (like searching for an entity or running the query) for your AI.
 
-For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
+For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tools **search** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
 
 You don't need to have an [AI provider](settings.md#choose-ai-provider) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
 

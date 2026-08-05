@@ -1,7 +1,8 @@
-(ns metabase.mcp.callback-api-test
+(ns ^:synchronous metabase.mcp.callback-api-test
   (:require
    [clojure.test :refer :all]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -40,6 +41,13 @@
                                {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
                                                             "mcp-session-id" session-id}}}
                                {:encodedQuery "ZW5jb2RlZA=="}))
+
+(deftest callbacks-are-gated-on-the-mcp-surface-test
+  (testing "GHY-4250: with the MCP surface dark there is no iframe to call back from, so the
+            callbacks 403 rather than serving handles to nobody"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
+      (is (=? {:status 403 :body "MCP server is not enabled."}
+              (post-drill :crowberto 403 {:encodedQuery "ZW5jb2RlZA=="} {}))))))
 
 (deftest drills-post-stores-handle-test
   (testing "POST returns a UUID handle"
@@ -83,6 +91,20 @@
                              401
                              (mcp.session/issue-ui-credential credential-id user-id)
                              credential-id))))))))
+
+(deftest ui-credential-is-not-a-general-api-credential-test
+  (testing "GHY-4250: a UI credential authenticates only the iframe's allowlisted request surface
+            (metabase.server.middleware.session/mcp-ui-request-surface), never the wider API —
+            possession of one must not amount to a Metabase session"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          headers    {"x-metabase-mcp-ui-auth" (mcp.session/issue-ui-credential session-id user-id)}]
+      (testing "an allowlisted route authenticates"
+        (is (= 200 (:status (client/client-full-response :get 200 "user/current"
+                                                         {:request-options {:headers headers}})))))
+      (testing "anything outside the allowlist does not"
+        (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                         {:request-options {:headers headers}}))))))))
 
 (deftest drills-post-rejects-blank-body-test
   (testing "blank encodedQuery returns 400"
