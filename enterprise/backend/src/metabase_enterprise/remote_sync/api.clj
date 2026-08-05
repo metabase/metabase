@@ -362,20 +362,20 @@
                           e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
-  "Create a new branch from the current remote-sync branch. By default the instance switches onto the new
-  branch; pass `switch` false to create it and stay where you are, which is what checking a branch out into a
+  "Create a new branch from the current remote-sync branch. By default the instance checks the new branch out;
+  pass `checkout` false to create it and stay where you are, which is what checking a branch out into a
   worktree wants. Requires superuser permissions."
   [_route
    _query
-   {:keys [name switch]} :- [:map
-                             [:name ms/NonBlankString]
-                             [:switch {:default true} [:maybe ms/BooleanValue]]]]
+   {:keys [name checkout]} :- [:map
+                               [:name ms/NonBlankString]
+                               [:checkout {:default true} [:maybe ms/BooleanValue]]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try
-      (impl/create-branch! name base-branch :switch? (boolean switch))
+      (impl/create-branch! name base-branch :checkout? (boolean checkout))
       (events/publish-event! :event/remote-sync-create-branch
                              {:details {:branch_name name
                                         :base_branch base-branch}

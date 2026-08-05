@@ -1658,15 +1658,15 @@
                                     {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
-  "Creates a new remote branch from `base-branch`, and by default switches `remote-sync-branch` to the new name.
-   Pass `:switch?` false to leave the instance on its current branch -- what a worktree checkout wants, since it
-   syncs against its own branch and never touches the setting. Does not publish events or return a response map;
-   the caller is responsible for those concerns."
-  [name base-branch & {:keys [switch?] :or {switch? true}}]
+  "Creates a new remote branch from `base-branch`, and by default checks it out by pointing `remote-sync-branch`
+   at the new name. Pass `:checkout?` false to leave the instance on its current branch -- what checking a branch
+   out into a worktree wants, since a worktree syncs against its own branch and never touches the setting. Does
+   not publish events or return a response map; the caller is responsible for those concerns."
+  [name base-branch & {:keys [checkout?] :or {checkout? true}}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
-    (when switch?
+    (when checkout?
       (settings/remote-sync-branch! name))))
 
 (defn stash!
