@@ -42,8 +42,11 @@ import {
   type FeatureClickContext,
   buildFeatureClickObject,
 } from "./ChoroplethMap.utils";
-import { LeafletChoropleth } from "./LeafletChoropleth";
-import { LegacyChoropleth } from "./LegacyChoropleth";
+import {
+  type FeatureInteraction,
+  LeafletChoropleth,
+} from "./LeafletChoropleth";
+import { LegacyChoropleth, type ProjectionFrame } from "./LegacyChoropleth";
 import { computeMinimalBounds } from "./leaflet-bounds";
 
 const geoJsonCache = new Map<string, GeoJSONData>();
@@ -144,7 +147,6 @@ type ChoroplethMapState = {
 };
 
 type Projection = d3.GeoProjection | null;
-type ProjectionFrame = [[number, number], [number, number]];
 
 function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
   return value.type === "FeatureCollection";
@@ -201,7 +203,6 @@ function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
   return state;
 }
 
-// projectionFrame is the lng/lat of the top left and bottom right corners
 function getMapProjection(region: string | undefined): {
   projection: Projection;
   projectionFrame: ProjectionFrame | null;
@@ -354,7 +355,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
 
   const onClickFeature =
     onVisualizationClick != null
-      ? (click: { feature: Feature; event: MouseEvent }) => {
+      ? (click: FeatureInteraction) => {
           const row = rowByFeatureKey.get(getFeatureKey(click.feature));
           const clickData = {
             ...buildFeatureClickObject(row, click.feature, clickContext),
@@ -367,7 +368,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       : undefined;
 
   const onHoverFeature = onHoverChange
-    ? (hover: { feature: Feature; event: MouseEvent } | null) => {
+    ? (hover: FeatureInteraction | null) => {
         const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
         if (row && hover) {
           onHoverChange({
@@ -447,7 +448,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       isDocument={isDocument}
       isMetricsViewer={isMetricsViewer}
     >
-      {projection ? (
+      {projection && projectionFrame && isFeatureCollection(geoJson) ? (
         <LegacyChoropleth
           series={series}
           geoJson={geoJson}
