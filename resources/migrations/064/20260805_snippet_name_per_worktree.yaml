@@ -23,12 +23,15 @@ databaseChangeLog:
               ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
               ) STORED;
+        # VIRTUAL rather than STORED: MySQL refuses a stored generated column whose base column carries an
+        # ON DELETE CASCADE foreign key, which worktree_id does. A unique index over a virtual column is
+        # supported on both MySQL and MariaDB.
         - sql:
             dbms: mysql,mariadb
             sql: >-
               ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
-              ) STORED;
+              ) VIRTUAL;
         - sql:
             dbms: h2
             sql: >-
