@@ -9,6 +9,7 @@ import {
   Icon,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -23,6 +24,8 @@ export type ChecklistCardProps = {
   isDone?: boolean;
   /** Rendered muted and inert — the step's prerequisite is not met yet. */
   isLocked?: boolean;
+  /** Names the prerequisite, shown on hover while locked. */
+  lockedReason?: string;
   to?: string;
   onClick?: () => void;
 };
@@ -34,13 +37,14 @@ export function ChecklistCard({
   description,
   isDone = false,
   isLocked = false,
+  lockedReason,
   to,
   onClick,
 }: ChecklistCardProps) {
   const textColor = isLocked ? "text-tertiary" : "text-primary";
   const isInteractive = !isLocked && (to != null || onClick != null);
 
-  return (
+  const card = (
     <Card
       p="md"
       withBorder
@@ -86,6 +90,18 @@ export function ChecklistCard({
       </Stack>
     </Card>
   );
+
+  // "Complete the other steps to unlock" named nothing. The prerequisite is
+  // always a specific step, so say which one.
+  if (isLocked && lockedReason) {
+    return (
+      <Tooltip label={lockedReason} position="top" withArrow>
+        {card}
+      </Tooltip>
+    );
+  }
+
+  return card;
 }
 
 function StepBadge({

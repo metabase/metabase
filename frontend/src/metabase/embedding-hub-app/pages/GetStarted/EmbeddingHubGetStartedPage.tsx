@@ -101,9 +101,17 @@ export function EmbeddingHubGetStartedPage() {
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
   const { setOpenedModal, modals } = useEmbeddingHubModals();
 
-  // The design locks "Embed in production with SSO" until SSO is configured.
-  const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = useMemo(
-    () => ({ "embed-production": !completedSteps?.["sso-configured"] }),
+  // "Embed in production with SSO" is locked until SSO is configured -- that
+  // one step, nothing else. The reason is carried alongside so the card can
+  // name it rather than saying "complete the other steps".
+  const lockedSteps: Partial<
+    Record<EmbeddingHubStepId, { reason: string } | undefined>
+  > = useMemo(
+    () => ({
+      "embed-production": completedSteps?.["sso-configured"]
+        ? undefined
+        : { reason: t`Set up SSO first — this step embeds with it.` },
+    }),
     [completedSteps],
   );
 
@@ -150,7 +158,8 @@ export function EmbeddingHubGetStartedPage() {
         title={title}
         description={description}
         isDone={completedSteps?.[id] ?? false}
-        isLocked={lockedSteps[id] ?? false}
+        isLocked={lockedSteps[id] != null}
+        lockedReason={lockedSteps[id]?.reason}
         to={to}
         onClick={onClick}
       />
