@@ -47,7 +47,6 @@ export * from "./search";
 export * from "./security-center";
 export * from "./segment";
 export * from "./session";
-export * from "./settings";
 export * from "./setup";
 export * from "./slack";
 export * from "./snippet";

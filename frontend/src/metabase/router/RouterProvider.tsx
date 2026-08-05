@@ -1,92 +1,117 @@
-import type { History } from "history";
-import { type PropsWithChildren, createContext, useMemo } from "react";
-
-import { useHistory } from "metabase/history";
-
-import { type RouterEngine, getRouterEngine } from "./engine";
+import { useLayoutEffect, useState } from "react";
 import {
-  ReactRouterRoute,
-  Router,
-  type WithRouterProps,
-  reactRouterWithRouter,
-} from "./react-router";
-import { RouterProviderV7 } from "./v7/RouterProviderV7";
+  type DataRouter,
+  RouterProvider as ReactRouterProvider,
+  type RouteObject,
+} from "react-router";
 
-type RouterContextType = WithRouterProps;
+import { getBasename } from "metabase/utils/basename";
 
-export const RouterContext = createContext<RouterContextType | null>(null);
-
-const RouterContextProviderBase = ({
-  router,
-  location,
-  params,
-  routes,
-  children,
-}: PropsWithChildren<RouterContextType>) => {
-  // Memoize on the injected parts so a re-render that leaves them unchanged does
-  // not hand consumers a fresh object. Under the `element` bridge, navigation
-  // commits twice (the facade context update, then v3's own route re-render), and
-  // an unmemoized value would re-propagate on that second, location-unchanged
-  // render. That extra render breaks pages that derive transient state from
-  // `usePrevious(location.key)` (e.g. the document /new -> /new leave prompt),
-  // which `component`-based v3 routes never saw because v3 re-renders them once.
-  const value = useMemo(
-    () => ({ router, location, params, routes }),
-    [router, location, params, routes],
-  );
-  return (
-    <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
-  );
-};
-
-const RouterContextProvider = reactRouterWithRouter(RouterContextProviderBase);
-
-type RouterProviderProps = {
-  history?: History | undefined;
-};
+import {
+  type MemoryTestRouterHolder,
+  createAppRouter,
+  createMemoryAppRouter,
+} from "./create-router";
+import type { LocationMirror } from "./location-mirror";
 
 /**
- * This provider encapsulates react-router initiation and puts router and routes references to the context
- * This is v3's only solution to provide a router and routes.
- * Without extra Route component it doesn't work.
- * Additionally, it provides the history reference
+ * Mirrors every location out to `onLocationChange`, which is how the app emits
+ * LOCATION_CHANGE on navigation (see `createLocationMirror`). Replaces v3's
+ * `syncHistoryWithStore`.
  *
- * Uses the raw v3 `Route` here (not the facade's `element`-based one): this is the
- * component that establishes the router context, so it cannot itself consume that
- * context through `<Outlet/>`.
+ * Subscribing to the router rather than reading the rendered location matters
+ * because v3 dispatched LOCATION_CHANGE as part of the transition rather than
+ * after a render. Thunks read the store synchronously right after navigating, so
+ * a store that lags a render makes them push a stale location and clobber query
+ * params that were just set.
  */
-const RouterProviderV3 = ({
-  children,
-}: PropsWithChildren<RouterProviderProps>) => {
-  const { history } = useHistory();
-  return (
-    <Router history={history}>
-      <ReactRouterRoute component={RouterContextProvider}>
-        {children}
-      </ReactRouterRoute>
-    </Router>
-  );
-};
+function useLocationMirror(
+  router: DataRouter,
+  onLocationChange?: LocationMirror,
+): void {
+  useLayoutEffect(() => {
+    if (!onLocationChange) {
+      return;
+    }
+    // The router notifies its subscribers on every state update, not only on a
+    // location change, and replays the state it initialized with to the first
+    // subscriber. Key on the location so neither is mirrored twice.
+    let lastKey: string | null = null;
 
-type RouterProviderPropsWithEngine = RouterProviderProps & {
-  /**
-   * Which engine hosts the app. Defaults to the `use-v7-router` flag; tests pass
-   * it explicitly to exercise both engines. Goes away with the v3 engine.
-   */
-  engine?: RouterEngine;
-};
+    const mirror = ({ location }: DataRouter["state"]) => {
+      if (location.key === lastKey) {
+        return;
+      }
+      lastKey = location.key;
+      onLocationChange(location);
+    };
+
+    mirror(router.state);
+    return router.subscribe(mirror);
+  }, [router, onLocationChange]);
+}
 
 /**
- * Hosts the app on either engine. On v7 the facade hooks read the same
- * `RouterContext`, filled per route by the `RouterBridge` instead of v3's
- * `withRouter`, so nothing downstream changes.
+ * Hosts the app as a data router. The whole route tree goes in as real data
+ * routes, so there is no descendant `<Routes>` left. No route has a loader,
+ * `lazy`, or middleware yet: adding those per subtree is what DEV-2291 does from
+ * here.
+ *
+ * `useTransitions={false}` keeps navigation committing synchronously.
+ * react-router otherwise marks its own location update as a transition, which in
+ * a production React build deprioritises it so it can commit long after the click
+ * that caused it. v3 navigated synchronously, and the app was written against
+ * that: a navigation that lands mid-interaction remounts whatever is on screen,
+ * which silently discarded state such as the text typed into a modal that was
+ * opened right after clicking a link.
+ *
+ * `onLocationChange` is how the location reaches redux: the app passes
+ * `createLocationMirror(store.dispatch)`, so the router itself stays unaware of
+ * the store. The `isNavbarOpen` and `errorPage` reducers and trace-id rotation
+ * all react to the LOCATION_CHANGE it emits.
  */
-export const RouterProvider = ({
-  children,
-  engine = getRouterEngine(),
-}: PropsWithChildren<RouterProviderPropsWithEngine>) => {
-  if (engine === "v7") {
-    return <RouterProviderV7>{children}</RouterProviderV7>;
-  }
-  return <RouterProviderV3>{children}</RouterProviderV3>;
-};
+export function RouterProvider({
+  routes,
+  onLocationChange,
+}: {
+  routes: RouteObject[];
+  onLocationChange?: LocationMirror;
+}): JSX.Element {
+  const [router] = useState(() =>
+    createAppRouter(routes, getBasename() || undefined),
+  );
+  useLocationMirror(router, onLocationChange);
+
+  return <ReactRouterProvider router={router} useTransitions={false} />;
+}
+
+/**
+ * The same host on an in-memory history, for tests. Mirrors what
+ * `renderWithProviders({ withRouter: true })` mounts, including navigation
+ * blocking. Pass `routerHolder` to drive and inspect the router from outside the
+ * tree.
+ */
+export function RouterProviderMemory({
+  routes,
+  initialRoute,
+  basename,
+  routerHolder,
+  onLocationChange,
+}: {
+  routes: RouteObject[];
+  initialRoute: string;
+  basename?: string;
+  routerHolder?: MemoryTestRouterHolder;
+  onLocationChange?: LocationMirror;
+}): JSX.Element {
+  const [router] = useState(() => {
+    const created = createMemoryAppRouter(routes, initialRoute, basename);
+    if (routerHolder) {
+      routerHolder.current = created;
+    }
+    return created;
+  });
+  useLocationMirror(router, onLocationChange);
+
+  return <ReactRouterProvider router={router} useTransitions={false} />;
+}

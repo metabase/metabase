@@ -1103,7 +1103,9 @@
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 2 (call-count)))))))))
+            ;; 1. load the tables, 2. their permissions in one primed load however many there are, 3. the databases'
+            ;; own grants, which `table-permission-for-user` coalesces in and which loads once per request.
+            (is (<= (call-count) 3))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"

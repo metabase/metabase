@@ -24,12 +24,13 @@ beforeEach(() => {
 });
 
 describe("createAppBundle", () => {
-  it("exposes the built chunk", async () => {
+  it("exposes the built chunk and when it was built", async () => {
     const bundle = setup();
 
     expect(await bundle.rebuild()).toBe(true);
 
     expect(bundle.code).toBe("built");
+    expect(bundle.lastRebuildAt).toEqual(expect.any(Number));
   });
 
   it("reports a build failure instead of throwing at the dev server", async () => {
@@ -42,6 +43,7 @@ describe("createAppBundle", () => {
     expect(onError).toHaveBeenCalledWith(
       expect.stringContaining("syntax error in App.tsx"),
     );
+    expect(bundle.lastRebuildAt).toBeNull();
   });
 
   it("keeps the last good bundle when a later build fails", async () => {

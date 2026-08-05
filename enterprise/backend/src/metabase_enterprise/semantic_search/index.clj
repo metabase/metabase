@@ -222,7 +222,7 @@
     (->> (index-size connectable table-name)
          (analytics/set-gauge! :metabase-search/semantic-index-size))
     (catch Exception e
-      (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
+      (log/warnf "Failed to set :metabase-search/semantic-index-size metric: %s" (ex-message e)))))
 
 (defn- batch-update!
   [connectable table-name records->sql documents]
@@ -335,9 +335,7 @@
                     (if embedding
                       (map #(assoc % :embedding embedding) (get text->docs text))
                       (when-let [docs (get text->docs text)]
-                        (log/warn "No embedding found for" (count docs) "documents with searchable text:"
-                                  {:searchable_text text
-                                   :document_count (count docs)}))))
+                        (log/warn "No embedding found for" (count docs) "documents"))))
                   text->embedding)]
       (batch-update!
        connectable
@@ -524,6 +522,12 @@
         sql            (cond-> sql
                          concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
     (jdbc/execute! connectable (into [sql] params))))
+
+(defn drop-index-concurrently-if-exists!
+  "Drop `index-name` without blocking writes. Must run outside a transaction."
+  [connectable index-name]
+  (jdbc/execute! connectable
+                 [(str "DROP INDEX CONCURRENTLY IF EXISTS " (semantic.util/quote-table index-name))]))
 
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
@@ -1158,7 +1162,7 @@
                       {:strategy strategy :plan-node (or (:node-type scan) "unknown")} 1)
       (assoc scan :prefilter-pool-size pool))
     (catch Exception e
-      (log/warn e "Failed to record vector-search instrumentation")
+      (log/warnf "Failed to record vector-search instrumentation: %s" (ex-message e))
       nil)))
 
 (defn- time-waterfall
@@ -1179,16 +1183,23 @@
         search-string (:search-string search-context)]
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
-      (do
+      (let [index-name  (schema-qualified-index-name index (hnsw-index-name index))
+            index-state (when (contains? search.config/hnsw-index-backed-strategies
+                                         (vector-search-strategy search-context))
+                          (semantic.util/index-state db index-name))
+            search-context (cond-> search-context
+                             (= :building index-state) (assoc :vector-search-strategy :brute-force))]
         ;; `:vector-search-allow-missing-index?` is a deliberate opt-out for callers that want the inner
         ;; query to run without the HNSW index (e.g. the strategy matrix test probing the exact seq-scan
-        ;; path); production traffic leaves it unset and gets the fail-fast.
+        ;; path). A concurrent build also uses that exact path until PostgreSQL marks the index ready; an
+        ;; absent or abandoned invalid index fails fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (:vector-search-allow-missing-index? search-context))
-                   (not (semantic.util/index-exists? db (schema-qualified-index-name index (hnsw-index-name index)))))
-          (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
-                               "Set the semantic-search-vector-strategy setting to an index-backed strategy "
-                               "(:hnsw or :hnsw-iterative-*) to build it.")
+                   (contains? #{nil :invalid} index-state))
+          (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no usable HNSW index exists. "
+                               "The index is absent or was abandoned invalid. It will be rebuilt by the next "
+                               "maintenance pass; retry shortly, or pass :vector-search-allow-missing-index? true "
+                               "to bypass this check.")
                           {:table-name (:table-name index)
                            :strategy   (vector-search-strategy search-context)})))
         (let [timer (u/start-timer)

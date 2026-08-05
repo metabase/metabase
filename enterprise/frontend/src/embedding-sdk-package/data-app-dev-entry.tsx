@@ -10,55 +10,71 @@ import {
   DataAppDevProvider,
   DevToolbar,
   createDataAppSandbox,
-  installDevDiagnostics,
+  installDiagnosticsReporter,
+  sdkCallCapture,
+  devDiagnostics,
+  instanceConnectionCheck,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
   appSlug,
   bundleUrl,
+  diagnosticsChangedEvent,
   rebuiltEvent,
+  sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
+
+import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data_apps/sandbox/types";
 
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
 import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
 
-// The data-app dev entry. rspack bundles this file into the SDK dist as
-// `data-app-dev-entry.js` (see `rspack.embedding-sdk-package.config.js`),
-// inlining the sandbox + dev toolbar so they aren't part of the package's public
-// API. `react`, `react-dom`, `@metabase/embedding-sdk-react/*`, and the dev
-// plugin's `virtual:metabase-data-app-dev-config` are left EXTERNAL, so the
-// consumer's Vite resolves them — the bundle runs against the consumer's single
-// React/SDK instance (the same ones the app bundle is endowed with), and the dev
-// plugin provides the config (the app's `allowed_hosts` + the bundle URL/event).
-//
-// It mounts the diagnostics toolbar, builds the Near-Membrane sandbox, then
-// fetches + evaluates the app's IIFE bundle and renders it under
-// `DataAppDevProvider`. Load failures go through `console.error`, so the toolbar
-// surfaces them.
-
 const authConfig = {
-  metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL,
-  apiKey: import.meta.env.DATA_APP_MB_API_KEY,
+  metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL ?? "",
+  apiKey: import.meta.env.DATA_APP_MB_API_KEY ?? "",
 };
 
-installDevDiagnostics();
+devDiagnostics.install();
+
+instanceConnectionCheck.install({
+  metabaseUrl: authConfig.metabaseInstanceUrl,
+  sdkVersion,
+});
+
+sdkCallCapture.install(authConfig.metabaseInstanceUrl);
+
+const hot = import.meta.hot;
+
+const subscribeToDiagnostics = hot
+  ? (onChange: () => void) => {
+      hot.on(diagnosticsChangedEvent, onChange);
+
+      return () => hot.off(diagnosticsChangedEvent, onChange);
+    }
+  : undefined;
 
 const toolbarRoot = document.createElement("div");
+
 document.body.appendChild(toolbarRoot);
-createRoot(toolbarRoot).render(<DevToolbar />);
+createRoot(toolbarRoot).render(
+  <DevToolbar subscribe={subscribeToDiagnostics} />,
+);
 
 const root = document.getElementById("root");
+
 if (!root) {
   throw new Error("#root not found");
 }
+
 const appRoot = createRoot(root);
 
-const sandbox = createDataAppSandbox({
+const sandboxPromise = createDataAppSandbox({
   label: "dev",
   targetWindow: window,
   allowedHosts,
+  onBlocked: devDiagnostics.recordSandboxBlocked,
   endowments: {
     React,
     reactDom: ReactDOM,
@@ -72,6 +88,7 @@ const sandbox = createDataAppSandbox({
 });
 
 async function loadAndRender() {
+  const sandbox = await sandboxPromise;
   const res = await fetch(bundleUrl, { cache: "no-store" });
 
   if (!res.ok) {
@@ -83,11 +100,18 @@ async function loadAndRender() {
   const code = await res.text();
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
+  const rawProviderProps = providerProps ?? {};
+  const safeProviderProps = Object.fromEntries(
+    DATA_APP_PROVIDER_PROP_KEYS.filter((key) => key in rawProviderProps).map(
+      (key) => [key, rawProviderProps[key]],
+    ),
+  );
+
   appRoot.render(
     <DataAppDevProvider
       appSlug={appSlug}
       authConfig={authConfig}
-      {...providerProps}
+      {...safeProviderProps}
     >
       <Component />
     </DataAppDevProvider>,
@@ -98,8 +122,10 @@ loadAndRender().catch((error) => {
   console.error(error);
 });
 
-if (import.meta.hot) {
-  import.meta.hot.on(rebuiltEvent, () => {
+installDiagnosticsReporter();
+
+if (hot) {
+  hot.on(rebuiltEvent, () => {
     loadAndRender().catch((error) => {
       console.error(error);
     });

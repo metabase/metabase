@@ -7,7 +7,7 @@ import { t } from "ttag";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { ColumnBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/ColumnBucketPickerPopover";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box, type BoxProps, Button, Flex, Icon, Tooltip } from "metabase/ui";

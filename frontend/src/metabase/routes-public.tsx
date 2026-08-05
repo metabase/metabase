@@ -4,32 +4,26 @@ import PublicApp from "metabase/public/containers/PublicApp";
 import { PublicDocument } from "metabase/public/containers/PublicDocument";
 import { PublicOrEmbeddedDashboardPage } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
-import { Route, withRouteProps } from "metabase/router";
+import type { RouteObject } from "metabase/router";
 
-const RoutedPublicAction = withRouteProps(PublicAction);
-const RoutedPublicOrEmbeddedQuestion = withRouteProps(PublicOrEmbeddedQuestion);
-const RoutedPublicOrEmbeddedDashboardPage = withRouteProps(
-  PublicOrEmbeddedDashboardPage,
-);
-const RoutedPublicDocument = withRouteProps(PublicDocument);
-
-export const getRoutes = () => {
-  return (
-    <Route>
-      <Route path="public" element={<PublicApp />}>
-        <Route path="action/:uuid" element={<RoutedPublicAction />} />
-        <Route
-          path="question/:uuid"
-          element={<RoutedPublicOrEmbeddedQuestion />}
-        />
-        <Route
-          path="dashboard/:uuid/:tabSlug?"
-          element={<RoutedPublicOrEmbeddedDashboardPage />}
-        />
-        <Route path="document/:uuid" element={<RoutedPublicDocument />} />
-        <Route path="*" element={<PublicNotFound />} />
-      </Route>
-      <Route path="*" element={<PublicNotFound />} />
-    </Route>
-  );
-};
+export const getRoutes = (): RouteObject[] => [
+  {
+    children: [
+      {
+        path: "public",
+        element: <PublicApp />,
+        children: [
+          { path: "action/:uuid", element: <PublicAction /> },
+          { path: "question/:uuid", element: <PublicOrEmbeddedQuestion /> },
+          {
+            path: "dashboard/:uuid/:tabSlug?",
+            element: <PublicOrEmbeddedDashboardPage />,
+          },
+          { path: "document/:uuid", element: <PublicDocument /> },
+          { path: "*", element: <PublicNotFound /> },
+        ],
+      },
+      { path: "*", element: <PublicNotFound /> },
+    ],
+  },
+];

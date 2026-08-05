@@ -7,12 +7,12 @@ import {
   useUpdateMetabotSettingsMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
 import { useAIProviderConfigurationContext } from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Box,

@@ -1,19 +1,10 @@
-import type { Location } from "history";
-import { useCallback, useEffect, useState } from "react";
-import { match } from "ts-pattern";
+import { useCallback } from "react";
 
-import { useDispatch } from "metabase/redux";
-import type { InjectedRouter, PlainRoute, Route } from "metabase/router";
-import { goBack, push, replace } from "metabase/router";
+import { type Location, useRouteLeaveBlocker } from "metabase/router";
 
 import { useBeforeUnload } from "./use-before-unload";
 
 interface UseConfirmLeaveModalInput {
-  router: InjectedRouter;
-  // The matched route handed to `setRouteLeaveHook` (typed `any`). Accepts the
-  // route object in either representation the app threads it as: the config
-  // object from `useRouter().routes` (`PlainRoute`) or the `Route` prop type.
-  route: Route | PlainRoute;
   isEnabled: boolean;
   isLocationAllowed?: (location: Location | undefined) => boolean;
 }
@@ -25,11 +16,9 @@ interface UseConfirmLeaveModalResult {
   nextLocation: Location | undefined;
 }
 
-/**
- * If there is no "location" then it's beforeunload event, which is
- * handled by useBeforeUnload hook - no reason to duplicate its work.
- */
-export const IS_LOCATION_ALLOWED = (location?: Location) => !location;
+// Nothing is allowed through by default: every destination gets the modal.
+// Reload and tab close never reach here, they are `useBeforeUnload`'s job.
+const BLOCK_EVERY_LOCATION = () => false;
 
 // NOTE: there's a similar hook called useConfirmOnRouteLeave that should
 // ported to use this format instead
@@ -39,74 +28,24 @@ export const IS_LOCATION_ALLOWED = (location?: Location) => !location;
  * whenever they try to leave a route
  */
 export const useConfirmRouteLeaveModal = ({
-  router,
-  route,
   isEnabled,
-  isLocationAllowed = IS_LOCATION_ALLOWED,
+  isLocationAllowed = BLOCK_EVERY_LOCATION,
 }: UseConfirmLeaveModalInput): UseConfirmLeaveModalResult => {
-  const dispatch = useDispatch();
-  const [nextLocation, setNextLocation] = useState<Location | undefined>();
-
-  const [opened, setOpened] = useState<boolean>(false);
-  const close = useCallback(() => setOpened(false), []);
-
-  const [isConfirmed, setIsConfirmed] = useState(false);
-  const confirm = useCallback(() => setIsConfirmed(true), []);
-
   useBeforeUnload(isEnabled);
 
-  useEffect(() => {
-    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
-      if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
-        setOpened(true);
-        setNextLocation(location);
-        return false;
-      }
-    });
-
-    return removeLeaveHook;
-  }, [isLocationAllowed, router, route, isEnabled, isConfirmed]);
-
-  useEffect(
-    function confirmNavigation() {
-      if (isConfirmed && nextLocation) {
-        match(nextLocation.action)
-          .with("POP", () => {
-            /**
-             * Ideally we should be using dispatch(go(numberOfPages)), but there is no simple
-             * or reliable way to detect how many pages is user going back, so we use goBack()
-             * to go back just one page.
-             */
-            dispatch(goBack());
-          })
-          .with("PUSH", () => {
-            dispatch(push(nextLocation));
-          })
-          .with("REPLACE", () => {
-            dispatch(replace(nextLocation));
-          })
-          .exhaustive();
-      }
-    },
-    [dispatch, isConfirmed, nextLocation],
+  const blocker = useRouteLeaveBlocker(
+    ({ nextLocation }) => isEnabled && !isLocationAllowed(nextLocation),
   );
 
-  useEffect(
-    /**
-     * We need to reset the state in case programmatic navigation from confirmNavigation effect
-     * does not cause useConfirmRouteLeaveModal hook to unmount.
-     */
-    function resetState() {
-      setIsConfirmed(false);
-      setOpened(false);
-    },
-    [route],
-  );
+  // The blocker holds the attempted navigation, so confirming resumes it and
+  // dismissing drops it. Neither has to reproduce the navigation by hand.
+  const close = useCallback(() => blocker.reset?.(), [blocker]);
+  const confirm = useCallback(() => blocker.proceed?.(), [blocker]);
 
   return {
-    opened,
+    opened: blocker.state === "blocked",
     close,
     confirm,
-    nextLocation,
+    nextLocation: blocker.location,
   };
 };

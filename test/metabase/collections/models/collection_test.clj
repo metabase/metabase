@@ -346,6 +346,14 @@
              Exception
              (collection/children-location collection)))))))
 
+(defn- visible-collection-ids
+  "Every Collection ID the current user can see under `visibility-config`."
+  ([] (visible-collection-ids {}))
+  ([visibility-config]
+   (cond-> (t2/select-pks-set :model/Collection
+                              {:where (collection/visible-collection-filter-clause :id visibility-config)})
+     (collection/should-display-root-collection? visibility-config) (conj "root"))))
+
 (deftest visible-collection-ids-test
   (with-collection-hierarchy! [{:keys [a b c d e f g]}]
     (let [->names (fn [id-set]
@@ -353,25 +361,25 @@
                           others (when-let [non-root-ids (seq (disj id-set "root"))]
                                    (t2/select-fn-set :name :model/Collection :id [:in non-root-ids]))]
                       (set/union root others)))
-          visible-collection-ids (fn []
-                                   (->names
-                                    (set/intersection (collection/visible-collection-ids {})
-                                                      (set (conj (map :id [a b c d e f g]) "root")))))]
+          visible-names (fn []
+                          (->names
+                           (set/intersection (set (visible-collection-ids))
+                                             (set (conj (map :id [a b c d e f g]) "root")))))]
       (testing "All permissions => all the collections!"
         (with-current-user-perms-for-collections! [a b c d e f g]
-          (is (= #{"A" "B" "C" "D" "E" "F" "G"} (visible-collection-ids)))))
+          (is (= #{"A" "B" "C" "D" "E" "F" "G"} (visible-names)))))
       (testing "Some permissions => some of the collections!"
         (with-current-user-perms-for-collections! [a b c]
           (is (= #{"A" "B" "C"}
-                 (visible-collection-ids)))))
+                 (visible-names)))))
       (testing "Some other permissions => some other collections"
         (with-current-user-perms-for-collections! [d e f]
           (is (= #{"D" "E" "F"}
-                 (visible-collection-ids)))))
+                 (visible-names)))))
       (testing "If the current user is an admin, it should return *all* collections"
         (mt/with-test-user :crowberto
           (is (= #{"A" "B" "C" "D" "E" "F" "G" "root"}
-                 (visible-collection-ids))))))))
+                 (visible-names))))))))
 
 (deftest permissions-set->visible-collection-ids-test-with-config
   (mt/with-temp [:model/Collection {c1 :id} {:archived false :archive_operation_id nil}
@@ -381,7 +389,7 @@
     (letfn [(visible-collection-ids [config]
               (into #{}
                     (keep {c1 'c1, c2 'c2, c3 'c3, c4 'c4, (collection/trash-collection-id) 'trash, "root" 'root})
-                    (collection/visible-collection-ids config)))]
+                    (#'visible-collection-ids config)))]
       (with-current-user-perms-for-collections! [c1 c2 c3 c4]
         (testing "Archived"
           (testing "Default"
@@ -417,11 +425,8 @@
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
 
-(def ^:dynamic ^:private *visible-collection-ids* #{})
-
 (deftest effective-location-path-test
-  (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)
-                              collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
+  (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)]
     (testing "valid input"
       (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
                                              ["/10/20/30/" #{10 30}]    "/10/30/"
@@ -429,7 +434,8 @@
                                              ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
         (testing (format "path '%s' with visible ids '%s'" path (pr-str visible-ids))
           (is (= expected
-                 (binding [*visible-collection-ids* visible-ids]
+                 (binding [api/*current-user-permissions-set*
+                           (delay (into #{} (map perms/collection-read-path) visible-ids))]
                    (collection/effective-location-path {:location path})))))))
     (testing "invalid input"
       (doseq [path [nil [10 20]]]
@@ -1281,7 +1287,12 @@
        :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
                                                       :personal_owner_id nil}
        :model/Collection {top-level-coll :id}        {:location "/"}
-       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}
+       ;; a grandchild of a Personal Collection: only the *first* ID in the location is the personal one
+       :model/Collection {deep-personal-coll :id}    {:location (format "/%d/%d/" personal-coll nested-personal-coll)}
+       ;; Personal Collections only ever live in the Root Collection, so a personal ID appearing deeper in a
+       ;; location does not make that Collection personal
+       :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
       (let [check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
                                   (-> (t2/select-one :model/Collection id-or-ids)
@@ -1293,7 +1304,11 @@
         (testing "simple hydration and batched hydration should return correctly"
           (is (= [true true false false]
                  (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
-                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))
+          (testing "only the first ID of the location decides"
+            (is (= [true false]
+                   (map check-is-personal [deep-personal-coll sneaky-coll])
+                   (check-is-personal [deep-personal-coll sneaky-coll])))))
         (testing "root collection shouldn't be hydrated"
           (is (= nil (t2/hydrate nil :is_personal)))
           (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
@@ -1669,34 +1684,6 @@
               {:id 5 :here #{:card}}]}]
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
-
-(deftest identity-hash-test
-  (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection c1 {:name       "top level"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   "/"}
-                     :model/Collection c2 {:name       "nested"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   (format "/%s/" (:id c1))}
-                     :model/Collection c3 {:name       "grandchild"
-                                           :created_at now
-                                           :namespace  "yolocorp"
-                                           :location   (format "/%s/%s/" (:id c1) (:id c2))}]
-        (let [c1-hash (serdes/identity-hash c1)
-              c2-hash (serdes/identity-hash c2)]
-          (is (= "f2620cc6"
-                 (serdes/raw-hash ["top level" :yolocorp "ROOT" (:created_at c1)])
-                 c1-hash)
-              "Top-level collections should use a parent hash of 'ROOT'")
-          (is (= "a27aef0f"
-                 (serdes/raw-hash ["nested" :yolocorp c1-hash (:created_at c2)])
-                 c2-hash))
-          (is (= "e816af2d"
-                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash (:created_at c3)])
-                 (serdes/identity-hash c3))))))))
 
 ;;; TODO -- does this belong here, or in the `audit-app` module?
 (deftest instance-analytics-collections-test

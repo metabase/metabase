@@ -54,15 +54,42 @@ describe("WebhookForm", () => {
     jest.useRealTimers();
   });
 
-  it("should error when an invalid url is given", async () => {
-    await setup();
+  it.each(["A-bad-url", "webhook-tester:8080", " http://padded.example.com/"])(
+    "should error when an invalid url is given (%s)",
+    async (url) => {
+      await setup();
+      await userEvent.type(
+        await screen.findByLabelText("Webhook URL"),
+        `${url}{tab}`,
+      );
+      expect(
+        await screen.findByText("Please enter a correctly formatted URL"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("should accept bare-hostname URLs (metabase#74812)", async () => {
+    const { onSubmit } = await setup();
     await userEvent.type(
       await screen.findByLabelText("Webhook URL"),
-      "A-bad-url{tab}",
+      "http://webhook-tester:8080/",
     );
+    await userEvent.type(screen.getByLabelText("Give it a name"), "Local hook");
+    await userEvent.type(
+      screen.getByLabelText("Description"),
+      "Docker network hook",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create destination" }),
+    );
+
     expect(
-      await screen.findByText("Please enter a correctly formatted URL"),
-    ).toBeInTheDocument();
+      screen.queryByText("Please enter a correctly formatted URL"),
+    ).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "http://webhook-tester:8080/" }),
+      expect.anything(),
+    );
   });
 
   it("should error when no name is provided", async () => {

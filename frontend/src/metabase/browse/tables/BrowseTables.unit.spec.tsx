@@ -2,13 +2,11 @@ import fetchMock from "fetch-mock";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { BrowseTables } from "./BrowseTables";
-
-const RoutedBrowseTables = withRouteProps(BrowseTables);
 
 const setup = ({
   databases,
@@ -21,7 +19,7 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="/browse/databases/:dbId/schema/:schemaName"
-      element={<RoutedBrowseTables />}
+      element={<BrowseTables />}
     />,
     { withRouter: true, initialRoute },
   );
@@ -45,13 +43,13 @@ const SINGLE_TABLE_SALES = (dbId: number, name: string) =>
 describe("BrowseTables name-based schema permalinks", () => {
   describe("resolving the database from the url segment", () => {
     it("renders the schema browse page in place, keeping the name url", async () => {
-      const { history } = setup({
+      const { router } = setup({
         databases: [SINGLE_TABLE_SALES(7, "Sales")],
         initialRoute: "/browse/databases/Sales/schema/PUBLIC",
       });
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         "/browse/databases/Sales/schema/PUBLIC",
       );
     });

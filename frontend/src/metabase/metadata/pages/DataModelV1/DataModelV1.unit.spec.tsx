@@ -20,8 +20,9 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { Link } from "metabase/common/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link, Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -57,8 +58,6 @@ import { DataModelV1 } from "./DataModelV1";
 import type { ParsedRouteParams } from "./types";
 
 registerVisualizations();
-
-const RoutedDataModelV1 = withRouteProps(DataModelV1);
 
 const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
@@ -216,24 +215,24 @@ async function setup({
     );
   }
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
         <Route index element={redirect("database")} />
-        <Route path="database" element={<RoutedDataModelV1 />} />
-        <Route path="database/:databaseId" element={<RoutedDataModelV1 />} />
+        <Route path="database" element={<DataModelV1 />} />
+        <Route path="database/:databaseId" element={<DataModelV1 />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          element={<RoutedDataModelV1 />}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          element={<RoutedDataModelV1 />}
+          element={<DataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          element={<RoutedDataModelV1 />}
+          element={<DataModelV1 />}
         />
       </Route>
     </>,
@@ -256,7 +255,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { router };
 }
 
 describe("DataModelV1", () => {
@@ -675,7 +674,7 @@ describe("DataModelV1", () => {
 
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           initialRoute: "notAdmin",
           waitForDatabase: false,
           waitForTable: false,
@@ -689,7 +688,7 @@ describe("DataModelV1", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        router?.back();
 
         await waitFor(() => {
           expect(

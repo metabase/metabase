@@ -18,7 +18,8 @@ import {
   createMockAdminState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route, useRouter } from "metabase/router";
+import { Route, useLocation, useParams } from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
 import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
@@ -39,8 +40,10 @@ const TestComponent = ({
   q?: string;
   isLoggedIn: boolean;
 }) => {
-  const routerProps = useRouter();
-  useCommandPaletteBasicActions({ ...routerProps, isLoggedIn });
+  const location = useLocation();
+  const params = useParams();
+  const locationQuery = parseSearchQuery(location.search);
+  useCommandPaletteBasicActions({ location, params, isLoggedIn });
   const {
     searchRequestId,
     searchResults,
@@ -48,7 +51,7 @@ const TestComponent = ({
     debouncedSearchTerm,
   } = useCommandPalette({
     disabled: false,
-    locationQuery: routerProps.location.query,
+    locationQuery,
   });
 
   const { query } = useKBar();
@@ -62,7 +65,7 @@ const TestComponent = ({
 
   return (
     <PaletteResults
-      locationQuery={routerProps.location.query}
+      locationQuery={locationQuery}
       searchRequestId={searchRequestId}
       searchResults={searchResults}
       liveSearchTerm={liveSearchTerm}

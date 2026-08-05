@@ -12,7 +12,7 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
-import { useSetting, useTempStorage } from "metabase/common/hooks";
+import { useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
@@ -22,13 +22,13 @@ import {
   getDocsUrl,
   getIsHosted,
   getIsPaidPlan,
-  getSetting,
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
+import { getSetting, useSetting } from "metabase/settings";
 import {
   Accordion,
   Box,

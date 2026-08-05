@@ -15,7 +15,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -181,8 +180,7 @@
   "ContentStore for agent query construction. Alias for
   [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
   every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
-  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
-  avoid a full-table scan via `find-by-identity-hash`."
+  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
 (defn- check-first-stage-source-table-query-permissions!
@@ -462,7 +460,6 @@
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
                              :queries-state {(:query-id structured) (:query structured)}})
-              results-url  (:results-url chart-result)
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
@@ -480,16 +477,13 @@
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
           {:output (str "<result>\n" chart-xml "\n</result>\n"
                         "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when results-url
-                                [(streaming/viz-part
-                                  {:inline?     (shared/inline-viz-capable?)
-                                   :entity-id   (:chart-id chart-result)
-                                   :query-id    (:query-id structured)
-                                   :query       (links/->legacy-mbql (:query structured))
-                                   :display     chart-type
-                                   :title       title
-                                   :description description
-                                   :link        results-url})])
+           :data-parts        [(streaming/viz-part
+                                {:entity-id   (:chart-id chart-result)
+                                 :query-id    (:query-id structured)
+                                 :query       (links/->legacy-mbql (:query structured))
+                                 :display     chart-type
+                                 :title       title
+                                 :description description})]
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
@@ -506,9 +500,8 @@
         ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
         ;; is the tool's result and the LLM is expected to self-correct on the next turn.
         (do
-          (log/debug e "construct_notebook_query returned agent-error to the LLM")
+          (log/debugf "construct_notebook_query returned agent-error to the LLM: %s" (ex-message e))
           {:output (ex-message e)})
-        ;; Genuine unexpected failure — keep full stacktrace.
         (do
-          (log/error e "Failed to construct notebook query")
+          (log/errorf "Failed to construct notebook query: %s" (ex-message e))
           {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))

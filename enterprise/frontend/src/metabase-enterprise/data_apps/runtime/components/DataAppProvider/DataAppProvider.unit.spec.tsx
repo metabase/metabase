@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
+import { PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
 
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
 import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";

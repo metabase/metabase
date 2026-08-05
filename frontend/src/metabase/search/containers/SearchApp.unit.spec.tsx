@@ -14,7 +14,7 @@ import {
   within,
 } from "__support__/ui";
 import type { SearchFilters } from "metabase/common/search/types";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
 import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
@@ -30,8 +30,6 @@ import {
 jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 4,
 }));
-
-const RoutedSearchApp = withRouteProps(SearchApp);
 
 const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   collection: "Collection",
@@ -97,8 +95,8 @@ const setup = async ({
 
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
-  const { history } = renderWithProviders(
-    <Route path="search" element={<RoutedSearchApp />} />,
+  const { router } = renderWithProviders(
+    <Route path="search" element={<SearchApp />} />,
     {
       withRouter: true,
       initialRoute,
@@ -108,7 +106,7 @@ const setup = async ({
   await waitForLoaderToBeRemoved();
 
   return {
-    history: checkNotNull(history),
+    router: checkNotNull(router),
   };
 };
 
@@ -172,7 +170,7 @@ describe("SearchApp", () => {
     it.each(TEST_SEARCH_RESULTS)(
       "should reload with filtered searches when type=$model is changed in the dropdown sidebar filter",
       async ({ model }) => {
-        const { history } = await setup({
+        const { router } = await setup({
           searchText: "Test",
         });
 
@@ -196,8 +194,8 @@ describe("SearchApp", () => {
         );
         await userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
-        const url = history.getCurrentLocation();
-        expect(url.query.type).toEqual(model);
+        const url = router.location;
+        expect(new URLSearchParams(url.search).get("type")).toEqual(model);
       },
     );
   });

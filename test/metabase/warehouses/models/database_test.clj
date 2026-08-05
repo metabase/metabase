@@ -71,6 +71,35 @@
     (testing "All permissions are deleted when we delete the database"
       (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
+(deftest ^:synchronized delete-empty-database-does-not-run-field-delete-test
+  (testing "Deleting a Database with no Fields avoids the locking bulk-delete query"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (let [original-query-one @#'t2/query-one
+            delete-queries     (atom [])]
+        ;; A dynamic redef permanently proxies this hot var. This test is synchronized, so a temporary root swap is
+        ;; both safe and cheaper for the rest of the test JVM.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [t2/query-one (fn [& args]
+                                     (swap! delete-queries into (filter :delete-from args))
+                                     (apply original-query-one args))]
+          (#'database/delete-database-fields! db-id))
+        (is (empty? @delete-queries))))))
+
+(deftest ^:parallel delete-database-fields-test
+  (testing "Fields, including nested Fields, are deleted when the Database has Fields"
+    (mt/with-temp [:model/Database {db-id :id}     {}
+                   :model/Table    {table-id :id}  {:db_id db-id}
+                   :model/Field    {parent-id :id} {:table_id table-id}
+                   :model/Field    _               {:table_id table-id :parent_id parent-id}]
+      (t2/with-call-count [call-count]
+        ;; This only deletes the test-local Database Fields created above.
+        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+        (#'database/delete-database-fields! db-id)
+        (is (= 4 (call-count))
+            "One existence check, two successful DELETEs, and one terminating DELETE"))
+      (is (not (t2/exists? :model/Field :id parent-id)))
+      (is (not (t2/exists? :model/Field :table_id table-id))))))
+
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!
@@ -89,12 +118,41 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest health-check-candidates-test
+  (testing "startup health checks pick one representative database per engine: the lowest id, skipping
+            audit/sample/destination databases"
+    (mt/with-temp [:model/Database {router :id} {:engine :postgres}
+                   :model/Database {dest :id}   {:engine :mysql :router_database_id router}
+                   :model/Database {sample :id} {:engine :mysql :is_sample true}
+                   :model/Database {audit :id}  {:engine :mysql :is_audit true}
+                   :model/Database {_mysql :id} {:engine :mysql}
+                   :model/Database {pg2 :id}    {:engine :postgres}
+                   :model/Database {pg3 :id}    {:engine :postgres}]
+      (let [candidates    (#'database/health-check-candidates)
+            candidate-ids (into #{} (map :id) candidates)
+            engines       (into #{} (map :engine) candidates)]
+        (testing "exactly one representative per engine"
+          (is (= (count candidates) (count engines))))
+        (testing "every engine with an eligible database gets a representative"
+          (is (contains? engines :postgres))
+          (is (contains? engines :mysql)))
+        (testing "only the lowest-id database of an engine can be the representative"
+          (is (not (contains? candidate-ids pg2)))
+          (is (not (contains? candidate-ids pg3))))
+        (testing "router destinations are never candidates"
+          (is (not (contains? candidate-ids dest))))
+        (testing "sample databases can't claim an engine's slot"
+          (is (not (contains? candidate-ids sample))))
+        (testing "audit databases are never candidates"
+          (is (not (contains? candidate-ids audit))))))))
+
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
     (let [original-select (mt/original-fn #'t2/select)]
       (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
+                                  ;; make the startup candidate fetch return only the test DB
                                   t2/select (fn [model & args]
-                                              (if (and (= model :model/Database) (empty? args))
+                                              (if (= model :model/Database)
                                                 [(mt/db)]
                                                 (apply original-select model args)))]
         (binding [driver.settings/*allow-testing-h2-connections* true]
@@ -714,14 +772,6 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (t2/select-one-fn :engine :model/Database :id db-id))))))
-
-(deftest identity-hash-test
-  (testing "Database hashes are composed of the name and engine"
-    (mt/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
-      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes/identity-hash db)))
-      (is (= "b6f1a9e8"
-             (serdes/identity-hash db))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
   (testing "serdes/extract-one preserves :is_stub true and elides it when false"

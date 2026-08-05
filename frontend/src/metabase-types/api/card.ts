@@ -254,6 +254,9 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
+export type MapType = "region" | "pin" | "heat" | "grid";
+export type PinMapStyle = "tiles" | "markers" | "grid" | "heat";
+
 export type ColumnSettings = TimeOnlyOptions & {
   _column_title_full?: string;
   "pivot_table.column_show_totals"?: boolean;
@@ -522,6 +525,16 @@ export type VisualizationSettings = {
   /** Show median values, all values, or no value labels. */
   "boxplot.show_values_mode"?: BoxPlotShowValuesMode;
 
+  /** Map settings */
+  "map.type"?: MapType;
+  "map.pin_type"?: PinMapStyle;
+  "map.latitude_column"?: string;
+  "map.longitude_column"?: string;
+  "map.metric_column"?: string;
+  "map.center_latitude"?: number;
+  "map.center_longitude"?: number;
+  "map.zoom"?: number;
+
   /** Columns selected for custom list view. */
   "list.columns"?: ListViewColumns;
 
@@ -568,10 +581,10 @@ export type CardQueryMetadata = {
   fields: Field[];
 };
 
-export interface ListCardsRequest {
+export type ListCardsRequest = {
   f?: CardFilterOption;
   model_id?: CardId;
-}
+};
 
 export interface GetCardRequest {
   id: CardId | EntityToken;

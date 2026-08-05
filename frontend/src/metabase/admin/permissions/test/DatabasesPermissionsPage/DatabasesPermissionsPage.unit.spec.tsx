@@ -18,13 +18,9 @@ import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermission
 import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-const RoutedDataPermissionsPage = withRouteProps(DataPermissionsPage);
-const RoutedDatabasesPermissionsPage = withRouteProps(DatabasesPermissionsPage);
-
 const TEST_DATABASE = createSampleDatabase();
 
 const TEST_GROUPS = [
@@ -49,16 +45,22 @@ const setup = async () => {
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   renderWithProviders(
-    <Route
-      path="/admin/permissions/data"
-      element={<RoutedDataPermissionsPage />}
-    >
-      <Route
-        path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
-        element={<RoutedDatabasesPermissionsPage />}
-      >
-        {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
-      </Route>
+    <Route path="/admin/permissions/data" element={<DataPermissionsPage />}>
+      {/*
+       * v7 cannot parse v3 optional groups, so the app spells each depth out as
+       * its own route (see DATABASES_PERMISSIONS_PATHS in permissions/routes.tsx).
+       * Mirror that here.
+       */}
+      {[
+        "database",
+        "database/:databaseId",
+        "database/:databaseId/schema/:schemaName",
+        "database/:databaseId/schema/:schemaName/table/:tableId",
+      ].map((path) => (
+        <Route key={path} path={path} element={<DatabasesPermissionsPage />}>
+          {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
+        </Route>
+      ))}
     </Route>,
     {
       withRouter: true,

@@ -1,8 +1,10 @@
-import { trackSchemaEvent } from "metabase/analytics";
+import {
+  hashSearchTerm,
+  shouldReportSearchTerm,
+  trackSchemaEvent,
+} from "metabase/analytics";
 import { toSnowplowContext } from "metabase-types/analytics";
 import type { SearchContext } from "metabase-types/api";
-
-import { hashSearchTerm, shouldReportSearchTerm } from "./term";
 
 type TrackSearchClickParams = {
   itemType: "item" | "view_more";

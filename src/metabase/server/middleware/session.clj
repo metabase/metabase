@@ -26,6 +26,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -304,27 +305,59 @@
                 (m/update-existing :is-group-manager? boolean)
                 (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
 
+(def ^:private mcp-ui-request-surface
+  "The complete API surface used by the MCP visualization iframe. A UI credential
+   is deliberately not a general Metabase API credential."
+  #{[:get  "/api/user/current"]
+    [:get  "/api/session/properties"]
+    [:post "/api/dataset"]
+    [:post "/api/dataset/pivot"]
+    [:post "/api/dataset/query_metadata"]
+    [:post "/api/dataset/parameter/remapping"]
+    [:post "/api/embed-mcp/drills"]
+    [:post "/api/embed-mcp/feedback"]})
+
+(defn- current-user-info-for-mcp-ui-credential
+  "Resolve the short-lived credential rendered into an MCP visualization iframe.
+   It is accepted only for [[mcp-ui-request-surface]], so possession never
+   authenticates arbitrary API routes."
+  [request]
+  (when (and (init-status/complete?)
+             (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))
+    (when-let [{:keys [uid sid] :as claims}
+               (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
+      (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid]))
+              (m/update-existing :is-group-manager? boolean)
+              ;; Endpoint scope middleware treats this as session-like auth, but the
+              ;; route allowlist above is the actual authorization boundary.
+              (assoc :token-scopes #{::scope/unrestricted}
+                     :mcp-ui-session-id sid
+                     :mcp-ui-credential claims)))))
+
 (defn- auth-method
-  [session-info api-key-info oauth-info embedding-route]
+  [session-info api-key-info oauth-info mcp-ui-info embedding-route]
   (or ({"guest-embed" "guest"} embedding-route embedding-route)
       (cond session-info (or (:auth-provider session-info) "session")
             api-key-info "api-key"
-            oauth-info   "oauth")))
+            oauth-info   "oauth"
+            mcp-ui-info  "mcp-ui")))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
-        ;; Bearer is the lowest-precedence path: only consulted when there's no session or API key.
+        ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
         oauth-info   (when-not (or session-info api-key-info)
                        (current-user-info-for-oauth-token request))
+        mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
+                       (current-user-info-for-mcp-ui-credential request))
         embedding-route (analytics/get-route)
-        auth-method (auth-method session-info api-key-info oauth-info embedding-route)]
+        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
     (merge
      request
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
-     (dissoc (or session-info api-key-info oauth-info) :auth-provider)
+     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider)
      (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
@@ -332,8 +365,8 @@
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
-  token, API key, OR OAuth bearer access token was passed. A bearer token additionally sets `:token-scopes` (the access
-  it was granted); precedence is session > API key > bearer."
+  token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
+  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential."
   [handler]
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
@@ -382,7 +415,7 @@
                          :set    {:last_active_at :%now}
                          :where  [:= :key_hashed hashed]})
           (catch Exception e
-            (log/warn e "Failed to update session last_active_at")))))))
+            (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |

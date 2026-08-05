@@ -4,17 +4,13 @@ import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/Admin
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_DATA_APPS,
+  PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  Outlet,
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { Outlet, Route, type RouteComponent, redirect } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
@@ -40,10 +36,6 @@ import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSett
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
-
-const RoutedCustomVisualizationsFormPage = withRouteProps(
-  CustomVisualizationsFormPage,
-);
 
 export const getSettingsRoutes = (
   store: Store<State>,
@@ -80,6 +72,16 @@ export const getSettingsRoutes = (
         path="authentication/api-keys"
         element={<AuthenticationSettingsPage tab="api-keys" />}
       />
+      <Route path="authentication/2fa" element={<IsAdmin />}>
+        <Route
+          path="enrolled"
+          element={<PLUGIN_MULTI_FACTOR_AUTH.EnrolledUsersPage />}
+        />
+        <Route
+          path="unenrolled"
+          element={<PLUGIN_MULTI_FACTOR_AUTH.UnenrolledUsersPage />}
+        />
+      </Route>
       <Route path="authentication/google" element={<GoogleAuthForm />} />
       <Route path="authentication/ldap" element={<SettingsLdapForm />} />
       <Route
@@ -103,11 +105,8 @@ export const getSettingsRoutes = (
         element={<IsAdmin />}
       >
         <Route index element={<CustomVisualizationsManagePage />} />
-        <Route path="new" element={<RoutedCustomVisualizationsFormPage />} />
-        <Route
-          path="edit/:id"
-          element={<RoutedCustomVisualizationsFormPage />}
-        />
+        <Route path="new" element={<CustomVisualizationsFormPage />} />
+        <Route path="edit/:id" element={<CustomVisualizationsFormPage />} />
         {devModeEnabled && (
           <Route
             path="development"
@@ -115,14 +114,18 @@ export const getSettingsRoutes = (
           />
         )}
       </Route>
-      <Route
-        path={
-          Urls.DATA_APP_URL_SEGMENT
-        } /* do not allow users with "Settings access" permissions to access data apps pages */
-        element={<IsAdmin />}
-      >
-        <Route index element={<DataAppsManagePage />} />
-      </Route>
+      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so the
+          page shows the upsell without the token feature instead of 404ing */}
+      {PLUGIN_DATA_APPS.isEnabled && (
+        <Route
+          path={
+            Urls.DATA_APP_URL_SEGMENT
+          } /* do not allow users with "Settings access" permissions to access data apps pages */
+          element={<IsAdmin />}
+        >
+          <Route index element={<DataAppsManagePage />} />
+        </Route>
+      )}
       <Route path="uploads" element={<UploadSettingsPage />} />
       <Route
         path="python-runner"

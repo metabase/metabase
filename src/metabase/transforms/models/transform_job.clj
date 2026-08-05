@@ -208,10 +208,6 @@
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
-(defmethod serdes/hash-fields :model/TransformJob
-  [_job]
-  [:name :built_in_type])
-
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
   {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]

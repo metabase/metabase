@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { useSelector } from "metabase/redux";
 import { Navigate, Outlet } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 
 /**
  * Sends users away from `/setup` once the instance has been set up.

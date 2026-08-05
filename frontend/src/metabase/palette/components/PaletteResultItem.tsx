@@ -9,7 +9,7 @@ import type { PaletteActionImpl } from "../types";
 import {
   getCommandPaletteIcon,
   isAbsoluteURL,
-  locationDescriptorToURL,
+  navigationTargetToURL,
 } from "../utils";
 
 interface PaletteResultItemProps {
@@ -104,7 +104,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
     </Flex>
   );
   if (item.extra?.href) {
-    const url = locationDescriptorToURL(item.extra.href);
+    const url = navigationTargetToURL(item.extra.href);
     if (isAbsoluteURL(url)) {
       return (
         <Box

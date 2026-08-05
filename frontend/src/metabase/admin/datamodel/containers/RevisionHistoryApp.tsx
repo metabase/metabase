@@ -5,6 +5,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { useParams } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -12,14 +13,12 @@ import { RevisionHistory } from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";
 import { getRevisions } from "../selectors";
 
-type RevisionHistoryAppProps = {
-  params: {
-    id: string;
-  };
+type RevisionHistoryAppParams = {
+  id: string;
 };
 
-export function RevisionHistoryApp({ params }: RevisionHistoryAppProps) {
-  const { id } = params;
+export function RevisionHistoryApp() {
+  const { id = "" } = useParams<RevisionHistoryAppParams>();
   const dispatch = useDispatch();
   const user = checkNotNull(useSelector(getUser));
   const revisions = useSelector((state: State) => getRevisions(state));

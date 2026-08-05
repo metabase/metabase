@@ -2,8 +2,7 @@ import dayjs from "dayjs";
 import type { LocationSensorState } from "react-use/lib/useLocation";
 import { match } from "ts-pattern";
 
-import type { DispatchFn } from "metabase/redux";
-import { replace } from "metabase/router";
+import { navigate } from "metabase/router";
 import type { Comment, CommentEntityType, EntityId } from "metabase-types/api";
 
 import type { CommentThread } from "./types";
@@ -123,10 +122,7 @@ export function formatCommentDate(dateOrString: string | Date) {
   }).format(date);
 }
 
-export function deleteNewParamFromURLIfNeeded(
-  location: LocationSensorState,
-  dispatch: DispatchFn,
-) {
+export function deleteNewParamFromURLIfNeeded(location: LocationSensorState) {
   const search = new URLSearchParams(location.search);
 
   if (search.get("new") == null) {
@@ -135,5 +131,8 @@ export function deleteNewParamFromURLIfNeeded(
 
   search.delete("new");
   const newSearch = search.toString();
-  dispatch(replace({ pathname: location.pathname, search: newSearch }));
+  navigate(
+    { pathname: location.pathname, search: newSearch },
+    { replace: true },
+  );
 }

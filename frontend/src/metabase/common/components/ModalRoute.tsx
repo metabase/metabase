@@ -1,13 +1,7 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
-import {
-  Route,
-  useNavigate,
-  useParams,
-  useRoute,
-  useRouter,
-} from "metabase/router";
+import type { Location } from "metabase/router";
+import { Route, useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 
 type RouteParams = Record<string, string | undefined>;
@@ -20,12 +14,6 @@ type RouteParams = Record<string, string | undefined>;
 export type ModalComponentProps = {
   params: RouteParams;
   location: Location;
-  /**
-   * The matched route, passed through only for `LeaveRouteConfirmModal`, which
-   * hands it to react-router v3's `setRouteLeaveHook`. Do not use it to derive
-   * URLs: `onClose` already returns to the parent page.
-   */
-  route?: Route;
   onClose: () => void;
 };
 
@@ -52,9 +40,7 @@ export function modalRoute(
 ) {
   function ModalRouteComponent() {
     const params = useParams();
-    // The raw v3 location (with `query`), which some modals still read.
-    const { location } = useRouter();
-    const route = useRoute() ?? undefined;
+    const location = useLocation();
     const navigate = useNavigate();
     const onClose = useCallback(
       () => navigate("..", { relative: "route" }),
@@ -62,12 +48,7 @@ export function modalRoute(
     );
 
     const modal = (
-      <ComposedModal
-        params={params}
-        location={location}
-        route={route}
-        onClose={onClose}
-      />
+      <ComposedModal params={params} location={location} onClose={onClose} />
     );
 
     if (noWrap) {

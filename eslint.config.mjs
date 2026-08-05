@@ -27,6 +27,7 @@ import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
+  getPublicApiModules,
 } from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -295,6 +296,7 @@ const configs = [
     ],
     plugins: {
       boundaries,
+      metabase: metabasePlugin,
     },
     settings: {
       "boundaries/elements": boundaryElements,
@@ -308,6 +310,12 @@ const configs = [
           rules: boundaryRules,
           message: "${file.type} cannot import from ${dependency.type}",
         },
+      ],
+      // Modules flagged `enforcePublicApi` in module-boundaries.mjs must be imported through their index.
+      // Their own files must import relatively.
+      "metabase/enforce-module-public-api": [
+        "error",
+        { modules: getPublicApiModules() },
       ],
       // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
       "boundaries/no-unknown-files": "error",
@@ -1086,7 +1094,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/lint/**/*.js"],
+    files: ["frontend/lint/**/*.js", "frontend/lint/**/*.mjs"],
     languageOptions: {
       globals: {
         ...globals.node,

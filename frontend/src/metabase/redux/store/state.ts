@@ -1,7 +1,5 @@
 import type { Api } from "metabase/api/api";
 import type { DocumentsState } from "metabase/redux/store/documents";
-import type { RouterState } from "metabase/router";
-import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
 import type { AnalyticsExportState } from "./analytics-export";
@@ -17,7 +15,6 @@ import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
 import type { QueryBuilderState } from "./qb";
-import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
@@ -30,7 +27,6 @@ export interface State {
   analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
-  currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;
@@ -38,8 +34,6 @@ export interface State {
   parameters: ParametersState;
   pulse: PulseState;
   qb: QueryBuilderState;
-  routing: RouterState;
-  settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalState;

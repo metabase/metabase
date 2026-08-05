@@ -11,7 +11,10 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.metrics.core :as metrics]
+   [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -65,8 +68,8 @@
                          exported (repr.resolve/export-query mp definition shared.content-store/default-store)]
                      (get-in exported ["stages" 0 (name definition-key)]))
                    (catch Exception e
-                     (log/warn e "Failed to export measure/segment definition to portable form"
-                               {:id (:id metadata) :key definition-key})
+                     (log/warn "Failed to export measure/segment definition to portable form"
+                               {:id (:id metadata) :key definition-key :error (ex-message e)})
                      nil)))))))
 
 (defn verified-review?
@@ -130,9 +133,12 @@
   "Get field values for a field, creating them if they don't exist.
    Uses the user-aware API that respects sandboxing/impersonation."
   [id->values id]
-  (-> (get id->values id)
-      (or (params.field-values/get-or-create-field-values! (t2/select-one :model/Field :id id)))
-      :values))
+  (if-some [field-values (get id->values id)]
+    (:values field-values)
+    (let [field (t2/select-one :model/Field :id id)]
+      (when (and field
+                 (params.field-values/current-user-can-fetch-field-values? field))
+        (:values (params.field-values/get-or-create-field-values! field))))))
 
 (defn- add-field-values
   [cols]
@@ -140,6 +146,50 @@
     (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
+
+(defn- permission-filter-columns
+  "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns."
+  [columns]
+  (let [columns                (vec columns)
+        referenced-field-ids   (into #{}
+                                     (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
+                                           (filter some?))
+                                     columns)
+        referenced-fields      (when (seq referenced-field-ids)
+                                 (t2/select [:model/Field :id :table_id]
+                                            :id [:in referenced-field-ids]))
+        field-id->field         (m/index-by :id referenced-fields)
+        table-ids               (into #{}
+                                      (filter pos-int?)
+                                      (concat (keep :table-id columns)
+                                              (keep :table_id referenced-fields)))
+        _                       (perms/prime-table-perms-cache {:table-ids (set table-ids)})
+        readable-table-ids      (->> (t2/select :model/Table :id [:in table-ids])
+                                     (filter mi/can-read?)
+                                     (map :id)
+                                     set)
+        sandbox-restricted-ids  (metrics/sandbox-restricted-fields table-ids)
+        field-readable?         (fn [table-id field]
+                                  (and (contains? readable-table-ids table-id)
+                                       (if-let [allowed-field-ids (get sandbox-restricted-ids table-id)]
+                                         (contains? allowed-field-ids (u/id field))
+                                         true)))
+        referenced-field-readable?
+        (fn [field-id]
+          (when-let [field (get field-id->field field-id)]
+            (field-readable? (:table_id field) field)))
+        column-readable?        (fn [{:keys [fk-field-id table-id] :as column}]
+                                  (and (or (not (pos-int? table-id))
+                                           (field-readable? table-id column))
+                                       (or (nil? fk-field-id)
+                                           (referenced-field-readable? fk-field-id))))]
+    (->> columns
+         (filter column-readable?)
+         (mapv (fn [{:keys [fk-target-field-id] :as column}]
+                 (cond-> column
+                   (and fk-target-field-id
+                        (not (referenced-field-readable? fk-target-field-id)))
+                   (dissoc :fk-target-field-id)))))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -175,12 +225,16 @@
          ;; We accept both. `report_card.table_id` / metadata `:table-id` already points
          ;; to the metric's base table and is kept in sync, so we use it verbatim instead
          ;; of digging through `:dataset_query`.
+         ;; Reading the metric Card is collection-based and does not imply permission to
+         ;; reveal metadata for this physical Table.
          source-table-id (or (:table-id card) (:table_id card))
-         source-table (when source-table-id
+         source-table (when (and source-table-id
+                                 (mi/can-read? :model/Table source-table-id))
                         (lib.metadata/table metadata-provider source-table-id))
          base-table-portable-fk (when (and database-name source-table)
                                   [database-name (:schema source-table) (:name source-table)])
-         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
+         query-needed? (and source-table
+                            (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?))
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
          breakouts (when query-needed?
@@ -189,11 +243,16 @@
                       (lib/remove-all-breakouts metric-query))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
+                             permission-filter-columns
                              (map #(metabot.tools.u/add-table-reference base-query %))))
-         default-temporal-breakout (when with-default-temporal-breakout?
+         default-temporal-breakout (when (and query-needed? with-default-temporal-breakout?)
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
-                                          (m/find-first lib.types.isa/temporal?)))]
+                                          (m/find-first lib.types.isa/temporal?)))
+         queryable-columns (when (and query-needed? with-queryable-dimensions?)
+                             (->> (lib/filterable-columns base-query)
+                                  permission-filter-columns
+                                  field-values-fn))]
      (cond-> {:id id
               :type :metric
               :name (:name card)
@@ -201,28 +260,32 @@
               ;; Database identity — same shape as in `table-details` / `card-details`.
               :database_id database-id
               :database_name database-name
-              ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
-              ;; verbatim as `source-table:` in the query that consumes the metric.
-              :base_table_id source-table-id
-              :base_table_name (:name source-table)
-              :base_table_portable_fk base-table-portable-fk
               ;; Portable entity id — the string the LLM must copy verbatim into a
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
               ;; Accept both shapes (see `source-table-id` note above): t2 rows use
               ;; `:entity_id`, `lib.metadata/card` maps use `:entity-id`.
               :portable_entity_id (or (:entity-id card) (:entity_id card))
-              :default_time_dimension_field_id (some-> default-temporal-breakout
-                                                       (->> (metabot.tools.u/->result-column metric-query))
-                                                       :field_id)
               :verified (verified-review? id "card")}
-       with-queryable-dimensions?
+       ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
+       ;; verbatim as `source-table:` in the query that consumes the metric. These fields
+       ;; are added only when the base Table is readable.
+       source-table
+       (assoc :base_table_id source-table-id
+              :base_table_name (:name source-table)
+              :base_table_portable_fk base-table-portable-fk)
+
+       (and source-table with-default-temporal-breakout?)
+       (assoc :default_time_dimension_field_id (some-> default-temporal-breakout
+                                                       (->> (metabot.tools.u/->result-column metric-query))
+                                                       :field_id))
+
+       (and source-table with-queryable-dimensions?)
        (assoc :queryable-dimensions (into []
                                           (comp (map #(metabot.tools.u/add-table-reference base-query %))
                                                 (map #(metabot.tools.u/->result-column metric-query %)))
-                                          (->> (lib/filterable-columns base-query)
-                                               field-values-fn)))
+                                          queryable-columns))
 
-       with-segments?
+       (and source-table with-segments?)
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
                           (mapv #(convert-measure-or-segment % :filters) segments)
                           []))))))
@@ -621,10 +684,10 @@
         (throw (ex-info "Invalid measure_id format" {:agent-error? true :status-code 400})))
       {:structured-output (assoc (measure-or-segment-details :measure measure-id) :result-type :entity)})
     (catch Exception e
-      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+      (let [{:keys [status-code agent-error?]} (ex-data e)]
         ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
         (when-not agent-error?
-          (log/error e "Failed to fetch measure details" data))
+          (log/errorf "Failed to fetch measure details: %s" (ex-message e)))
         (if (= status-code 404)
           {:output (ex-message e) :status-code 404}
           (metabot.tools.u/handle-agent-error e))))))
@@ -638,10 +701,10 @@
         (throw (ex-info "Invalid segment_id format" {:agent-error? true :status-code 400})))
       {:structured-output (assoc (measure-or-segment-details :segment segment-id) :result-type :entity)})
     (catch Exception e
-      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+      (let [{:keys [status-code agent-error?]} (ex-data e)]
         ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
         (when-not agent-error?
-          (log/error e "Failed to fetch segment details" data))
+          (log/errorf "Failed to fetch segment details: %s" (ex-message e)))
         (if (= status-code 404)
           {:output (ex-message e) :status-code 404}
           (metabot.tools.u/handle-agent-error e))))))

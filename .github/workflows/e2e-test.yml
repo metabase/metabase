@@ -64,6 +64,12 @@ jobs:
       # workspace where the gate step runs; an absolute path anchored to the
       # workspace makes both agree regardless of cwd.
       QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
+      # Cypress records video for every spec but the passing specs' videos are
+      # deleted in after:spec so recording is ~5-10% slowdown per shard and almost
+      # never yields an artifact. Failure screenshots are unaffected, and the
+      # stress-test workflows have their own config and keep video.
+      # Re-run attempts override this on the run steps below.
+      CYPRESS_VIDEO: "false"
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -168,6 +174,8 @@ jobs:
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          # Re-run attempts run only the previously-failed specs (env.specs), so record them.
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         shell: bash
         run: |
@@ -184,6 +192,8 @@ jobs:
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          # Re-run attempts run only the previously-failed specs (env.specs), so record them.
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
@@ -216,11 +226,7 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          # Related to Trunk uploader
-          variant: e2e-tests
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
       - name: Quarantine gate
         # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.

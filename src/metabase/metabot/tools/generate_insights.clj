@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.lib.util :as lib.util]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.json :as json]))
 
@@ -31,6 +32,6 @@
         (throw (ex-info "Invalid table_id" {:agent-error? true
                                             :table_id id})))
       {:output results-url
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
+       :data-parts [(streaming/dashboard-entity-part {:url results-url})]})
     (catch Exception e
       (metabot.tools.u/handle-agent-error e))))

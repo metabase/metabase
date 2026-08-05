@@ -1,6 +1,5 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -12,8 +11,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
@@ -39,13 +37,8 @@ import {
 
 const EMPTY_RUNS: TransformGraphRun[] = [];
 
-type TransformGraphRunListPageProps = {
-  location: Location;
-};
-
-export function TransformGraphRunListPage({
-  location,
-}: TransformGraphRunListPageProps) {
+export function TransformGraphRunListPage() {
+  const location = useLocation();
   const params = useMemo(() => getParsedParams(location), [location]);
   const filterOptions = useMemo(() => getFilterOptions(params), [params]);
   const { page = 0 } = params;
@@ -54,7 +47,7 @@ export function TransformGraphRunListPage({
     useDisclosure();
   const [selectedRun, setSelectedRun] = useState<TransformGraphRun>();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     data,
@@ -101,9 +94,9 @@ export function TransformGraphRunListPage({
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformGraphRunListParams) => {
-      dispatch(replace(Urls.transformGraphRunList(newParams)));
+      navigate(Urls.transformGraphRunList(newParams), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleFilterOptionsChange = useCallback(

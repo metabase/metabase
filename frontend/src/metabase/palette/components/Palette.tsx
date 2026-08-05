@@ -1,12 +1,12 @@
-import type { Query } from "history";
 import { KBarPortal, VisualState, useKBar } from "kbar";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useSelector } from "metabase/redux";
-import { type PlainRoute, useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
+import { type SearchQuery, parseSearchQuery } from "metabase/utils/browser";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
@@ -16,26 +16,27 @@ import { HydratedKBarSearch } from "./HydratedKBarSearch";
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
-type CommandPaletteRouteProps = {
-  disableCommandPalette?: boolean;
-};
+// The setup flow runs before there is an instance to search or act on.
+const PALETTE_DISABLED_PATHS = ["/setup"];
 
 /** Command palette */
 export const Palette = () => {
-  const routerProps = useRouter();
-  const { routes, location } = routerProps;
+  const location = useLocation();
+  const params = useParams();
   const isLoggedIn = useSelector((state) => !!getUser(state));
-
-  const disableCommandPaletteForRoute = routes.some(
-    (route: PlainRoute<CommandPaletteRouteProps>) =>
-      route.props?.disableCommandPalette,
+  const locationQuery = useMemo(
+    () => parseSearchQuery(location.search),
+    [location.search],
   );
 
-  useCommandPaletteBasicActions({ ...routerProps, isLoggedIn });
+  const isDisabledForPath = PALETTE_DISABLED_PATHS.some((path) =>
+    location.pathname.startsWith(path),
+  );
+
+  useCommandPaletteBasicActions({ location, params, isLoggedIn });
 
   const { query } = useKBar();
-  const disabled =
-    isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute;
+  const disabled = isWithinIframe() || !isLoggedIn || isDisabledForPath;
   useEffect(() => {
     query.disable(disabled);
   }, [disabled, query]);
@@ -44,10 +45,7 @@ export const Palette = () => {
     <KBarPortal>
       <Overlay backgroundOpacity={0.5}>
         <Center pt="10vh">
-          <PaletteContainer
-            disabled={disabled}
-            locationQuery={location.query}
-          />
+          <PaletteContainer disabled={disabled} locationQuery={locationQuery} />
         </Center>
       </Overlay>
     </KBarPortal>
@@ -59,7 +57,7 @@ export const PaletteContainer = ({
   locationQuery,
 }: {
   disabled: boolean;
-  locationQuery: Query;
+  locationQuery: SearchQuery;
 }) => {
   const { query } = useKBar();
   const ref = useRef(null);

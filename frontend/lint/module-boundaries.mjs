@@ -1,19 +1,36 @@
+import { sharedRules } from "./shared-tiers.mjs";
+
 const createElement = ({
   type,
   name,
   pattern,
   mode,
   enforceOutgoing = true,
-}) => ({
-  type: `${type}/${name}`,
-  pattern: pattern ?? `frontend/src/metabase/${name}/**`,
-  ...(mode && { mode }),
-  enforceOutgoing,
-});
+  enforceSharedTiers = true,
+  // Outside code must import the module root alias, and the module's own files must import relatively.
+  // Enforced by the `metabase/enforce-module-public-api` rule via `getPublicApiModules` below.
+  enforcePublicApi = false,
+}) => {
+  if (enforcePublicApi && (pattern || mode)) {
+    // Single-file elements are their own entry point, and elements outside the
+    // `metabase` alias root would need their own alias derivation.
+    throw new Error(
+      `enforcePublicApi requires a default folder element (frontend/src/metabase/<name>/**): ${name}`,
+    );
+  }
+  return {
+    type: `${type}/${name}`,
+    pattern: pattern ?? `frontend/src/metabase/${name}/**`,
+    ...(mode && { mode }),
+    enforceOutgoing,
+    enforceSharedTiers,
+    ...(enforcePublicApi && { publicApiAlias: `metabase/${name}` }),
+  };
+};
 
 const elements = [
   // lib
-  createElement({ type: "lib", name: "analytics" }),
+  createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
   createElement({ type: "lib", name: "css" }),
   createElement({
     type: "lib",
@@ -44,17 +61,38 @@ const elements = [
   }),
 
   // basic
+  createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
-  createElement({ type: "shared", name: "api" }),
+  createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
   createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
+  ...[
+    "frontend/src/metabase/common/metrics/**",
+    "frontend/src/metabase/common/metrics-viewer/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "metrics-ui", pattern }),
+  ),
+  createElement({
+    type: "shared",
+    name: "upsells",
+    pattern: "frontend/src/metabase/common/components/upsells/**",
+    enforceSharedTiers: false,
+  }),
+  ...[
+    "frontend/src/metabase/common/search/**",
+    "frontend/src/metabase/common/components/SearchResult/**",
+    "frontend/src/metabase/common/components/SearchResultLink/**",
+    "frontend/src/metabase/common/components/InfoText/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "search-ui", pattern }),
+  ),
   createElement({ type: "shared", name: "common" }),
   createElement({
     type: "shared",
@@ -63,11 +101,10 @@ const elements = [
   }),
   createElement({ type: "shared", name: "data-grid" }),
   createElement({ type: "shared", name: "databases" }),
-  createElement({ type: "shared", name: "detail-view" }),
   createElement({
     type: "shared",
-    name: "embed",
-    pattern: "frontend/src/embed/**",
+    name: "detail-view",
+    enforceSharedTiers: false,
   }),
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
@@ -135,52 +172,68 @@ const elements = [
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
-  createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "history" }),
+  createElement({ type: "shared", name: "forms", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
-  createElement({ type: "shared", name: "hooks" }),
+  createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
+  createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
   createElement({
     type: "shared",
-    name: "metabase-shared",
-    pattern: "frontend/src/metabase-shared/**",
+    name: "metadata",
+    enforceSharedTiers: false,
   }),
-  createElement({ type: "shared", name: "metabot" }),
-  createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "monitor" }),
-  createElement({ type: "shared", name: "nav" }),
+  createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
-  createElement({ type: "shared", name: "plugins" }),
+  createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({ type: "shared", name: "querying" }),
+  createElement({
+    type: "shared",
+    name: "querying",
+    enforceSharedTiers: false,
+  }),
   createElement({ type: "shared", name: "questions" }),
-  createElement({ type: "shared", name: "redux" }),
+  createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
-  createElement({ type: "shared", name: "router" }),
+  createElement({ type: "shared", name: "route-guards" }),
   createElement({
     type: "shared",
     name: "schema",
     pattern: "frontend/src/metabase/schema.js",
     mode: "full",
+    enforceSharedTiers: false,
   }),
   createElement({ type: "shared", name: "selectors" }),
+  createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
-  createElement({ type: "shared", name: "styled-components" }),
+  createElement({
+    type: "shared",
+    name: "styled-components",
+    enforceSharedTiers: false,
+  }),
   createElement({ type: "shared", name: "timelines" }),
-  createElement({ type: "shared", name: "transforms" }),
+  createElement({
+    type: "shared",
+    name: "transforms",
+    enforceSharedTiers: false,
+  }),
   createElement({
     type: "shared",
     name: "types",
     pattern: "frontend/src/types/**",
   }),
-  createElement({ type: "shared", name: "urls" }),
-  createElement({ type: "shared", name: "visualizations" }),
+  createElement({ type: "shared", name: "urls", enforceSharedTiers: false }),
+  createElement({
+    type: "shared",
+    name: "visualizations",
+    enforceSharedTiers: false,
+  }),
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
@@ -275,6 +328,7 @@ const elements = [
     "frontend/src/metabase/reducers-common.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
+    "frontend/src/metabase/routes.unit.spec.tsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/LoadCurrentUser.tsx",
     "frontend/src/metabase/LoadCurrentUser.unit.spec.tsx",
@@ -327,7 +381,7 @@ const elements = [
     mode: "full",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "routes-stable-id-aware",
     pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
     mode: "full",
@@ -335,12 +389,12 @@ const elements = [
   createElement({
     type: "shared",
     name: "redux-store",
-    pattern: "frontend/src/metabase/store.js",
+    pattern: "frontend/src/metabase/store.ts",
     mode: "full",
   }),
 ];
 
-const rules = [
+const baseRules = [
   ...elements.map((element) => ({
     // always allow self-imports
     from: [element.type],
@@ -383,17 +437,6 @@ const rules = [
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
-  // TEMP(content-optimizer): the Monitor space is mid-migration — source files are
-  // being relocated here from admin/ and data-studio/ before their routes and
-  // dependencies are moved, so monitor currently imports heavily from feature
-  // modules (admin, etc.). We allow it to import from anywhere until the migration
-  // is complete.
-  // TODO (@stasgavrylov 24/06/26): remove this rule and give monitor proper boundaries once the
-  // Monitor migration is complete.
-  {
-    from: ["shared/monitor"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-  },
   // Whitelisted cross-tier edges. Keep this list short; every entry should
   // eventually be removed.
   // Window-bridge ABI: the payload shapes are owned by the bundle.
@@ -414,6 +457,10 @@ const rules = [
     allow: ["feature/admin-theme-preview"],
   },
 ];
+
+// The full rule set drives the standalone `bun run module-boundaries` count.
+// PR lint uses enforcedRules.
+const rules = [...baseRules, ...sharedRules];
 
 /**
  * Returns a subset of rules that only enforces boundaries for modules with
@@ -458,10 +505,41 @@ function buildEnforcedRules(elements, rules) {
   ];
 }
 
-const enforcedRules = buildEnforcedRules(elements, rules);
+/**
+ * Modules with enforceSharedTiers: false are dropped from the level rules,
+ * which leaves them on the blanket shared -> shared allow.
+ */
+function buildEnforcedSharedRules(elements, rules) {
+  const enforcedTypes = new Set(
+    elements
+      .filter((el) => el.type.startsWith("shared/") && el.enforceSharedTiers)
+      .map((el) => el.type),
+  );
+  return rules.flatMap((rule) => {
+    const from = rule.from.filter((type) => enforcedTypes.has(type));
+    return from.length > 0 ? [{ ...rule, from }] : [];
+  });
+}
+
+const enforcedRules = buildEnforcedRules(elements, [
+  ...baseRules,
+  ...buildEnforcedSharedRules(elements, sharedRules),
+]);
 
 function getFeatureModules(els = elements) {
   return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
 }
 
-export { elements, rules, enforcedRules, getFeatureModules };
+// The import aliases of the modules flagged `enforcePublicApi`, for the
+// `metabase/enforce-module-public-api` rule.
+function getPublicApiModules(els = elements) {
+  return els.map((element) => element.publicApiAlias).filter(Boolean);
+}
+
+export {
+  elements,
+  rules,
+  enforcedRules,
+  getFeatureModules,
+  getPublicApiModules,
+};

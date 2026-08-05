@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import type { Location } from "history";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -10,13 +10,7 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store";
-import {
-  type InjectedRouter,
-  Link,
-  Route,
-  type WithRouterProps,
-  withRouteProps,
-} from "metabase/router";
+import { Route, useLocation } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
@@ -53,9 +47,10 @@ function setup({
     },
   };
 
-  const RoutedDashboardComponent = ({ location }: { location: Location }) => {
+  const RoutedDashboardComponent = () => {
+    const location = useLocation();
     const { selectedTabId } = useDashboardTabs();
-    useDashboardUrlQuery(createMockRouter(), location);
+    useDashboardUrlQuery(location);
     return (
       <>
         <DashboardTabs />
@@ -79,7 +74,7 @@ function setup({
     );
   };
 
-  const DashboardRoute = withRouteProps((props: WithRouterProps) => {
+  const DashboardRoute = () => {
     return (
       <MockDashboardContext
         dashboardId={1}
@@ -95,14 +90,14 @@ function setup({
         navigateToNewCardFromDashboard={null}
         isEditing={isEditing}
       >
-        <RoutedDashboardComponent {...props} />
+        <RoutedDashboardComponent />
       </MockDashboardContext>
     );
-  });
+  };
 
   const { store } = renderWithProviders(
     <>
-      <Route path="dashboard/:slug(/:tabSlug)" element={<DashboardRoute />} />
+      <Route path="dashboard/:slug" element={<DashboardRoute />} />
       <Route path="someotherpath" element={<OtherComponent />} />
     </>,
     {
@@ -176,22 +171,6 @@ async function duplicateTab(num: number) {
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
   return screen.findByText(new RegExp(createTabSlug({ id: tabId, name })));
-}
-
-function createMockRouter(): InjectedRouter {
-  return {
-    push: jest.fn(),
-    replace: jest.fn(),
-    go: jest.fn(),
-    goBack: jest.fn(),
-    goForward: jest.fn(),
-    setRouteLeaveHook: jest.fn(),
-    createPath: jest.fn(),
-    createHref: jest.fn(),
-    isActive: jest.fn(),
-    // @ts-expect-error missing type definition
-    listen: jest.fn().mockReturnValue(jest.fn()),
-  };
 }
 
 describe("DashboardTabs", () => {

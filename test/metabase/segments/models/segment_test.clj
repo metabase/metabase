@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.session :as session]
@@ -80,17 +79,6 @@
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
                (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
-
-(deftest identity-hash-test
-  (testing "Segment hashes are composed of the segment name and table identity-hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
-                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Segment segment {:name "big customers" :table_id (:id table) :created_at now
-                                             :definition {:filter 1000}}]
-        (is (= "be199b7c"
-               (serdes/raw-hash ["big customers" (serdes/identity-hash table) (:created_at segment)])
-               (serdes/identity-hash segment)))))))
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"

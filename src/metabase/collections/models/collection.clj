@@ -740,10 +740,13 @@
         ;; root collection is nil
         [collection]))
     (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
+          ;; Personal Collections only ever live in the Root Collection, so a Collection is inside one exactly when
+          ;; the first ID of its location path is a Personal Collection. Testing that ID against the set beats
+          ;; scanning every personal collection per row: instances with thousands of each made this quadratic.
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
-                                          (some #(str/starts-with? location (format "/%d/" %)) personal-collection-ids))))]
+                                          (personal-collection-ids (first (location-path->ids location))))))]
       (map (fn [{:keys [location personal_owner_id] :as coll}]
              (if (some? coll)
                (assoc coll :is_personal (or (some? personal_owner_id)
@@ -761,12 +764,6 @@
 ;; For example, if a Collection has a `location` of `/10/20/30/`, and the current User is allowed to see Collections
 ;; 10 and 30, but not 20, we will show them an "effective" location path of `/10/30/`. This is used for things like
 ;; breadcrumbing in the frontend.
-
-(def ^:private VisibleCollections
-  "Includes the possible values for visible collections, possibly including `\"root\"` to represent the root
-  collection."
-  [:set
-   [:or [:= "root"] ms/PositiveInt]])
 
 (def ^:private CollectionVisibilityConfig
   [:map
@@ -974,47 +971,45 @@
                                 (when-not (collection.root/is-root-collection? parent-coll)
                                   [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
-(def ^{:arglists '([visibility-config])} visible-collection-ids*
-  "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[visibility-config]]
-                         (if-let [req-id *request-id*]
-                           [req-id api/*current-user-id* visibility-config]
-                           [(random-uuid) api/*current-user-id* visibility-config]))}
-   (fn
-     [visibility-config]
-     (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
-       (should-display-root-collection? visibility-config)
-       (conj "root")))
-   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
-   ;; large
-   :ttl/threshold (* 60 60 1000)))
+(defn visible-collection-id?
+  "Whether the current user can see the Collection with `collection-id`, at `:read` (the default) or `:write` level.
 
-(mu/defn visible-collection-ids :- VisibleCollections
-  "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
-  toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably use `visible-collection-filter-clause` instead."
-  [visibility-config :- CollectionVisibilityConfig]
-  (visible-collection-ids* visibility-config))
+  Answered from the current user's permission set rather than by listing every visible Collection, so it costs no
+  query. Note that it answers only the permission question: unlike [[visible-collection-query]] it applies no archival
+  filtering, and no `shared-tenant-collection` exclusion for instances with tenants disabled. Callers that need those
+  must say so themselves.
+
+  That is safe for the ancestors and descendants this is used on, because a collection tree never spans namespaces
+  (see `assert-valid-namespace`): they sit in the namespace of a collection the caller already holds, and so were
+  subject to the same filtering when the caller obtained it. Use [[visible-collection-filter-clause]] to filter
+  *inside* a query."
+  ([collection-id]
+   (visible-collection-id? collection-id :read))
+
+  ([collection-id permission-level]
+   (boolean
+    (or
+     (= collection-id (trash-collection-id))
+     (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                      (case permission-level
+                                        :read  (perms/collection-read-path collection-id)
+                                        :write (perms/collection-readwrite-path collection-id)))))))
 
 (mi/define-batched-hydration-method effective-location-path*
   :effective_location
   "Given a seq of `collections`, batch hydrates them with their effective location."
   [collections]
   (when (seq collections)
-    (let [collection-ids (visible-collection-ids {:include-archived-items :all
-                                                  :include-trash-collection? true})]
-      (for [collection collections]
-        (when (some? collection)
-          (assoc collection
-                 :effective_location
-                 (when-not (collection.root/is-root-collection? collection)
-                   (let [real-location-path (if (:archived_directly collection)
-                                              (trash-path)
-                                              (:location collection))]
-                     (apply location-path (for [id    (location-path->ids real-location-path)
-                                                :when (contains? collection-ids id)]
-                                            id))))))))))
+    (for [collection collections]
+      (when (some? collection)
+        (assoc collection
+               :effective_location
+               (when-not (collection.root/is-root-collection? collection)
+                 (let [real-location-path (if (:archived_directly collection)
+                                            (trash-path)
+                                            (:location collection))]
+                   (apply location-path (filter visible-collection-id?
+                                                (location-path->ids real-location-path))))))))))
 
 (defn effective-location-path
   "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."
@@ -1028,7 +1023,7 @@
 
 (defn- effective-parent-root []
   (select-keys
-   (collection.root/root-collection-with-ui-details {})
+   (collection.root/root-collection-with-ui-details nil)
    effective-parent-fields))
 
 (mi/define-batched-hydration-method effective-parent
@@ -2066,20 +2061,6 @@
      [:or [:= (maybe-alias :namespace) nil]
       [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
-
-(defn- parent-identity-hash [coll]
-  (let [parent-id (-> coll
-                      (t2/hydrate :parent_id)
-                      :parent_id)
-        parent    (when parent-id (t2/select-one :model/Collection :id parent-id))]
-    (cond
-      (not parent-id) "ROOT"
-      (not parent)    (throw (ex-info (format "Collection %s is an orphan" (:id coll)) {:parent-id parent-id}))
-      :else           (serdes/identity-hash parent))))
-
-(defmethod serdes/hash-fields :model/Collection
-  [_collection]
-  [:name :namespace parent-identity-hash :created_at])
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or

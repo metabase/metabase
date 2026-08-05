@@ -92,7 +92,7 @@
         (try
           (system/site-url! site-url)
           (catch Throwable e
-            (log/warn e "Failed to set site-url")))))))
+            (log/warnf "Failed to set site-url: %s" (ex-message e))))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` setting on the initial setup request"

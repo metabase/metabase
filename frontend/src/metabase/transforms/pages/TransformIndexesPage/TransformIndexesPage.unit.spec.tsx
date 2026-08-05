@@ -12,7 +12,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   TableIndexEntry,
@@ -29,8 +29,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { TransformIndexesPage } from "./TransformIndexesPage";
-
-const RoutedTransformIndexesPage = withRouteProps(TransformIndexesPage);
 
 type SetupOpts = {
   transform?: Transform;
@@ -60,7 +58,7 @@ function setup({
   const path = initialRoute.replace(`/${transform.id}/`, "/:transformId/");
 
   renderWithProviders(
-    <Route path={path} element={<RoutedTransformIndexesPage />} />,
+    <Route path={path} element={<TransformIndexesPage />} />,
     {
       withRouter: true,
       initialRoute,

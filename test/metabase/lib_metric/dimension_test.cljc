@@ -24,6 +24,23 @@
    {:dimension {:id nil :name name}
     :mapping   {:type :table :table-id table-id :target target}}))
 
+(deftest ^:parallel pick-default-dimension-test
+  (let [fallback {:id "fallback" :effective-type :type/Integer}
+        category {:id "category" :semantic-type :type/Category}
+        low-cardinality {:id "low-cardinality" :effective-type :type/Text :has-field-values :list}
+        state {:id "state" :effective-type :type/Text :semantic-type :type/State}
+        time {:id "time" :effective-type :type/DateTime}]
+    (testing "prefers time, then geo, then category or low-cardinality, then the first dimension (UXW-4788)"
+      (is (= time (lib-metric.dimension/pick-default-dimension
+                   [fallback category low-cardinality state time])))
+      (is (= state (lib-metric.dimension/pick-default-dimension
+                    [fallback category low-cardinality state])))
+      (is (= category (lib-metric.dimension/pick-default-dimension
+                       [fallback category low-cardinality])))
+      (is (= low-cardinality (lib-metric.dimension/pick-default-dimension
+                              [fallback low-cardinality])))
+      (is (= fallback (lib-metric.dimension/pick-default-dimension [fallback]))))))
+
 ;;; -------------------------------------------------- Target Comparison --------------------------------------------------
 
 (deftest ^:parallel targets-equal?-same-field-id-test
@@ -56,6 +73,35 @@
     (is (lib-metric.dimension/targets-equal? target-a target-b)
         "effective-type and base-type are ignored")))
 
+;;; -------------------------------------------------- field-ref->key --------------------------------------------------
+
+(deftest ^:parallel field-ref->key-ignores-transient-opts-test
+  (testing ":lib/uuid and type hints are not part of the key"
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :effective-type :type/Integer} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :base-type :type/BigInteger} 100])))))
+
+(deftest ^:parallel field-ref->key-distinguishes-source-field-test
+  (testing "the SAME field id reached via different FKs (:source-field) yields DISTINCT keys"
+    ;; This is the bug this function exists to prevent: field ids are not unique within a query when
+    ;; a table has multiple FKs to the same foreign table.
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:source-field 1} 100])
+              (lib-metric.dimension/field-ref->key [:field {:source-field 2} 100]))))
+  (testing "the same field id + same :source-field yields the same key (regardless of :lib/uuid)"
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :source-field 1} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :source-field 1} 100])))))
+
+(deftest ^:parallel field-ref->key-includes-bucketing-test
+  (testing "binning is part of the key"
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:binning {:strategy :default}} 100])
+              (lib-metric.dimension/field-ref->key [:field {} 100]))))
+  (testing "temporal-unit is part of the key"
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:temporal-unit :month} 100])
+              (lib-metric.dimension/field-ref->key [:field {:temporal-unit :day} 100])))))
+
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 
 (deftest ^:parallel reconcile-new-dimensions-get-random-uuids-test
@@ -81,7 +127,8 @@
 (deftest ^:parallel reconcile-matched-dimensions-preserve-modifications-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
         persisted-dims [{:id uuid-1 :name "col1" :display-name "Custom Name"
-                         :semantic-type :type/Category :status :status/active}]
+                         :semantic-type :type/Category :default-temporal-unit :week
+                         :status :status/active}]
         persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
@@ -89,6 +136,7 @@
         dim (first dimensions)]
     (is (= "Custom Name" (:display-name dim)))
     (is (= :type/Category (:semantic-type dim)))
+    (is (= :week (:default-temporal-unit dim)))
     (is (= :status/active (:status dim)))))
 
 (deftest ^:parallel reconcile-matching-ignores-lib-uuid-test
@@ -212,6 +260,11 @@
   (is (lib-metric.dimension/dimensions-changed?
        [{:id uuid-1 :name "col1" :status :status/active}]
        [{:id uuid-1 :name "col1" :status :status/orphaned}])))
+
+(deftest ^:parallel dimensions-changed?-true-when-default-temporal-unit-changes-test
+  (is (lib-metric.dimension/dimensions-changed?
+       [{:id uuid-1 :name "col1" :status :status/active :default-temporal-unit :month}]
+       [{:id uuid-1 :name "col1" :status :status/active :default-temporal-unit :week}])))
 
 (deftest ^:parallel dimensions-changed?-false-when-equal-test
   (is (not (lib-metric.dimension/dimensions-changed?
@@ -438,10 +491,12 @@
                       :name             "category"
                       :status           "status/active"
                       :has-field-values "search"
+                      :default-temporal-unit "week"
                       :sources          [{:type "field" :field-id 42}]}
           normalized (lib-metric.dimension/normalize-persisted-dimension raw)]
       (is (= :status/active (:status normalized)))
       (is (= :search (:has-field-values normalized)))
+      (is (= :week (:default-temporal-unit normalized)))
       (is (= :field (get-in normalized [:sources 0 :type])))))
   (testing "leaves already-keywordized values unchanged"
     (let [dim        {:id "dim-2" :name "col" :status :status/active :has-field-values :list}

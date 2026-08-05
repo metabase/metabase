@@ -142,7 +142,6 @@
         (if (seq batch)
           (do
             (log/debugf "Listener %s processing batch of %d" listener-name (count batch))
-            (log/tracef "Listener %s processing batch: %s" listener-name batch)
             (let [timer (u/start-timer)
                   output (handler batch)
                   duration (u/since-ms timer)]
@@ -154,7 +153,7 @@
         (throw e))
       (catch Exception e
         (err-handler e listener-name)
-        (log/errorf e "Error in %s while processing batch" listener-name))))
+        (log/errorf "Error in %s while processing batch: %s" listener-name (ex-message e)))))
   (log/infof "Listener %s stopped" listener-name))
 
 (def ^:private ^:const max-restart-backoff-ms 30000)
@@ -172,7 +171,7 @@
         (log/debugf "Listener thread %s stopped" listener-name)
         (throw (InterruptedException.)))
       (catch Throwable e
-        (log/errorf e "Listener thread %s crashed, restarting in %dms" listener-name backoff-ms)))
+        (log/errorf "Listener thread %s crashed, restarting in %dms: %s" listener-name backoff-ms (ex-message e))))
     (Thread/sleep ^long backoff-ms)
     (when-not (.isShutdown ^ExecutorService (get @listeners listener-name))
       (recur (min max-restart-backoff-ms (* 2 backoff-ms))))))
@@ -251,7 +250,7 @@
     (try
       (f k)
       (catch Throwable e
-        (log/errorf e "Error initializing listener %s" k)))))
+        (log/errorf "Error initializing listener %s: %s" k (ex-message e))))))
 
 (defn stop-listeners!
   "Stops all running listeners"

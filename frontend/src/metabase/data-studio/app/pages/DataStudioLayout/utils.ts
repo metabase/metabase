@@ -7,11 +7,9 @@ type TabName =
   | "jobs"
   | "runs"
   | "dependencies"
-  | "dependency-diagnostics"
   | "schema-viewer"
   | "glossary"
   | "git-sync"
-  | "workspaces"
   | "settings";
 
 export const getCurrentTab = (pathname: string): TabName => {
@@ -20,14 +18,10 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "glossary";
     case pathname.startsWith(Urls.dataStudioGitSync()):
       return "git-sync";
-    case pathname.startsWith(Urls.workspaces()):
-      return "workspaces";
     case pathname.startsWith(Urls.transformJobList()):
       return "jobs";
     case pathname.startsWith(Urls.dependencyGraph()):
       return "dependencies";
-    case pathname.startsWith(Urls.dependencyDiagnostics()):
-      return "dependency-diagnostics";
     case pathname.startsWith(Urls.dataStudioSchemaViewer()):
       return "schema-viewer";
     case pathname.startsWith(Urls.dataStudioLibrary()):
