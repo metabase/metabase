@@ -14,10 +14,8 @@ import { Stack } from "metabase/ui";
  *
  * Showing an upsell keeps the hub's tab set the same seven on every edition.
  *
- * No Figma frame exists for this one yet, so the copy is a placeholder and
- * there is deliberately no illustration: borrowing another upsell's artwork
- * (it was using the themes one) makes a pending design look finished.
- * `UpsellCardContent` renders a narrower text-only card without an image.
+ * No Figma frame exists for this one yet, so both the copy and the
+ * illustration are placeholders, flagged as such at their use sites.
  */
 export const UpsellContentTranslation = ({ source }: { source: string }) => {
   const hasContentTranslation = useHasTokenFeature("content_translation");
@@ -44,6 +42,11 @@ export const UpsellContentTranslation = ({ source }: { source: string }) => {
             description={t`Upload a dictionary so dashboard, question and column names appear in each viewer's own language.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
+            variant="image-full-height"
+            // Placeholder: no illustration has been exported for this upsell.
+            // Borrowed from whitelabel, which is the nearest subject matter.
+            // Replace once the design lands -- see 09-clarifications.md item 1.
+            image="app/assets/img/upsell-whitelabel.png"
           />
         </LineDecorator>
       </Stack>
