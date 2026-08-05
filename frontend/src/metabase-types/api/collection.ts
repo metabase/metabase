@@ -161,6 +161,10 @@ export type getCollectionRequest = {
   ignore_error?: boolean;
 };
 
+export type GetRootCollectionRequest = {
+  namespace?: CollectionNamespace;
+};
+
 export type ListCollectionItemsSortColumn =
   | "name"
   | "description"

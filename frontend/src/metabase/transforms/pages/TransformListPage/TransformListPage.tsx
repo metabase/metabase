@@ -5,6 +5,7 @@ import { t } from "ttag";
 import {
   skipToken,
   useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useListCollectionsTreeQuery,
   useListTransformsQuery,
 } from "metabase/api";
@@ -132,7 +133,7 @@ export const TransformListPage = () => {
     data: rootCollection,
     error: rootCollectionError,
     isLoading: isLoadingRootCollection,
-  } = useGetCollectionQuery({ id: "root", namespace: "transforms" });
+  } = useGetRootCollectionQuery({ namespace: "transforms" });
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId

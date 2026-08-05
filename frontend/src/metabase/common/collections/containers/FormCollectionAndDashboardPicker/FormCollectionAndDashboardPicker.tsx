@@ -7,6 +7,7 @@ import {
   skipToken,
   useGetCollectionQuery,
   useGetDashboardQuery,
+  useGetRootCollectionQuery,
   useLazyGetDashboardQuery,
 } from "metabase/api";
 import {
@@ -124,7 +125,7 @@ export function FormCollectionAndDashboardPicker({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const { data: openCollection } = useGetCollectionQuery({ id: "root" });
+  const { data: openCollection } = useGetRootCollectionQuery();
 
   const { currentData: selectedDashboard } = useGetDashboardQuery(
     dashboardIdInput.value != null ? { id: dashboardIdInput.value } : skipToken,

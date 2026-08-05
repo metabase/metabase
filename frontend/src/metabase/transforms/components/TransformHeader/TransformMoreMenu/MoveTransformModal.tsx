@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { c } from "ttag";
 
 import {
-  useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useUpdateTransformMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
@@ -37,8 +37,7 @@ export function MoveTransformModal({
   onClose,
 }: MoveTransformModalProps) {
   const [updateTransform] = useUpdateTransformMutation();
-  const { data: rootCollection, isLoading } = useGetCollectionQuery({
-    id: "root",
+  const { data: rootCollection, isLoading } = useGetRootCollectionQuery({
     namespace: "transforms",
   });
 

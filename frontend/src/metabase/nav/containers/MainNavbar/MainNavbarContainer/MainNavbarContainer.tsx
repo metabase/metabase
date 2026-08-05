@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import {
   useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useListBookmarksQuery,
   useListCollectionsTreeQuery,
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -83,9 +83,7 @@ function MainNavbarContainer({
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const [reorderBookmarksMutation] = useReorderBookmarksMutation();
 
-  const { data: rootCollection } = useGetCollectionQuery({
-    id: ROOT_COLLECTION.id,
-  });
+  const { data: rootCollection } = useGetRootCollectionQuery();
 
   const {
     data: trashCollection,

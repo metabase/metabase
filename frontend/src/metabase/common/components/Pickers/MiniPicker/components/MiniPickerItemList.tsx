@@ -5,7 +5,7 @@ import _ from "underscore";
 import {
   searchApi,
   skipToken,
-  useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useListCollectionItemsQuery,
   useListDatabaseSchemaTablesQuery,
   useListDatabaseSchemasQuery,
@@ -83,7 +83,7 @@ function RootItemList() {
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
-    useGetCollectionQuery({ id: "root" });
+    useGetRootCollectionQuery();
   const { data: libraryCollection, isLoading } =
     PLUGIN_LIBRARY.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");

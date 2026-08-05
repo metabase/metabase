@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import {
-  useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
@@ -62,7 +62,7 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery({
     "exclude-archived": true,
   });
-  const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
+  const { data: rootCollection } = useGetRootCollectionQuery();
   if (!collections || !rootCollection) {
     return null;
   }

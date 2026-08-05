@@ -10,6 +10,7 @@ import type {
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
+  GetRootCollectionRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
@@ -116,6 +117,23 @@ export const collectionApi = Api.injectEndpoints({
           noEvent: ignore_error,
         };
       },
+      providesTags: (collection) =>
+        collection ? provideCollectionTags(collection) : [],
+      onQueryStarted: (request, lifecycle) =>
+        hydrateMetadataStore(collectionSchemaForRequest(request))(
+          request,
+          lifecycle,
+        ),
+    }),
+    getRootCollection: builder.query<
+      Collection,
+      GetRootCollectionRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/root",
+        params: params ?? undefined,
+      }),
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
       onQueryStarted: (request, lifecycle) =>
@@ -242,6 +260,7 @@ export const {
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
   useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useGetCollectionPermissionsGraphQuery,
   useUpdateCollectionPermissionsGraphMutation,
   useCreateCollectionMutation,

@@ -6,8 +6,8 @@ import type * as Yup from "yup";
 
 import {
   skipToken,
-  useGetCollectionQuery,
   useGetDatabaseQuery,
+  useGetRootCollectionQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
@@ -127,7 +127,7 @@ function CreateTransformModalLoader({
     data: rootCollection,
     isLoading: isRootCollectionLoading,
     error: rootCollectionError,
-  } = useGetCollectionQuery({ id: "root", namespace: "transforms" });
+  } = useGetRootCollectionQuery({ namespace: "transforms" });
 
   const schemas = useMemo(() => {
     return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);

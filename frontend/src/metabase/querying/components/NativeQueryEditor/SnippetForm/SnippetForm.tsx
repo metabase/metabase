@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useGetCollectionQuery, useListCollectionsQuery } from "metabase/api";
+import {
+  useGetRootCollectionQuery,
+  useListCollectionsQuery,
+} from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -173,7 +176,7 @@ export function SnippetForm(props: SnippetFormOwnProps) {
     data: rootCollection,
     isLoading: isRootLoading,
     error: rootError,
-  } = useGetCollectionQuery({ id: "root", namespace: "snippets" });
+  } = useGetRootCollectionQuery({ namespace: "snippets" });
   const isLoading = isCollectionsLoading || isRootLoading;
   const error = collectionsError ?? rootError;
 

@@ -7,7 +7,7 @@ import { UserActivationModal } from "metabase/admin/people/containers/UserActiva
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import {
-  useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import {
@@ -275,14 +275,14 @@ export function initializePlugin() {
       );
 
       // Fetch shared collection root for non-tenant users to check write permissions
-      const { data: sharedCollectionRoot } = useGetCollectionQuery(
-        { id: "root", namespace: "shared-tenant-collection" },
+      const { data: sharedCollectionRoot } = useGetRootCollectionQuery(
+        { namespace: "shared-tenant-collection" },
         { skip: !useTenants || isTenantUser },
       );
 
       // Check if non-admin user has access to tenant-specific namespace
-      const { data: tenantSpecificRoot } = useGetCollectionQuery(
-        { id: "root", namespace: "tenant-specific" },
+      const { data: tenantSpecificRoot } = useGetRootCollectionQuery(
+        { namespace: "tenant-specific" },
         { skip: !useTenants || isTenantUser || isAdmin },
       );
       const canAccessTenantSpecificCollections =

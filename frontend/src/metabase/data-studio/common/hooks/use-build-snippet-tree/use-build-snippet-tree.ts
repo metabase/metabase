@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import {
-  useGetCollectionQuery,
+  useGetRootCollectionQuery,
   useListCollectionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
@@ -37,7 +37,7 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     data: rootCollection,
     isLoading: loadingRoot,
     isFetching: fetchingRoot,
-  } = useGetCollectionQuery({ id: "root", namespace: "snippets" });
+  } = useGetRootCollectionQuery({ namespace: "snippets" });
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );

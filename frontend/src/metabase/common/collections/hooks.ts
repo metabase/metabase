@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetRootCollectionQuery,
+} from "metabase/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";
@@ -58,8 +61,8 @@ export function useInitialCollectionId({
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAuthenticated = useSelector(getUser) != null;
-  const { data: rootCollection } = useGetCollectionQuery(
-    !disabled && isAuthenticated ? { id: ROOT_COLLECTION.id } : skipToken,
+  const { data: rootCollection } = useGetRootCollectionQuery(
+    !disabled && isAuthenticated ? {} : skipToken,
   );
 
   return useMemo(() => {

@@ -4,8 +4,8 @@ import * as Yup from "yup";
 
 import {
   skipToken,
-  useGetCollectionQuery,
   useGetDatabaseQuery,
+  useGetRootCollectionQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
@@ -101,7 +101,7 @@ function ReplaceWithTransformLoader({
     data: rootCollection,
     isLoading: isRootCollectionLoading,
     error: rootCollectionError,
-  } = useGetCollectionQuery({ id: "root", namespace: "transforms" });
+  } = useGetRootCollectionQuery({ namespace: "transforms" });
 
   const isLoading =
     isDatabaseLoading || isSchemasLoading || isRootCollectionLoading;
