@@ -24,7 +24,6 @@ const WORKTREES_ROOT_URL = `/data-studio/worktrees`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
 const INDIVIDUAL_RUNS_ROOT_URL = `${RUNS_ROOT_URL}/individual`;
-const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
 
 export type TransformPythonLibraryParams = {
   path: string;
@@ -330,8 +329,11 @@ export function pickCommonRunListParams(
   );
 }
 
-export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
-  return `${LIBRARY_ROOT_URL}/${path}`;
+export function transformPythonLibrary({
+  path,
+  worktreeId,
+}: TransformPythonLibraryParams & TransformUrlParams) {
+  return `${transformsRootUrl(worktreeId)}/library/${path}`;
 }
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {

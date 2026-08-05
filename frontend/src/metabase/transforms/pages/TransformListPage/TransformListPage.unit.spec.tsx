@@ -107,13 +107,13 @@ describe("TransformListPage", () => {
       expect(screen.getByText("Python library")).toBeInTheDocument();
     });
 
-    it("does not show the Python library row inside a worktree", async () => {
+    it("shows the Python library row inside a worktree", async () => {
       await setup({
         tokenFeatures: { "transforms-python": true },
         worktreeId: 7,
       });
 
-      expect(screen.queryByText("Python library")).not.toBeInTheDocument();
+      expect(screen.getByText("Python library")).toBeInTheDocument();
     });
   });
 

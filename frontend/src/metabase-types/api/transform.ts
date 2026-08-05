@@ -494,11 +494,13 @@ export type PythonLibrary = {
 
 export type GetPythonLibraryRequest = {
   path: string;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
+  worktree_id?: WorktreeId | null;
 };
 
 export type InspectorFieldStats = {

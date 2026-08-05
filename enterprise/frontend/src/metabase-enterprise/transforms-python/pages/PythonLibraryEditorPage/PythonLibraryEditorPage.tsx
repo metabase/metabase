@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
@@ -40,12 +41,13 @@ type PythonLibraryEditorProps = {
 function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
   const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const worktreeId = useWorktreeId();
 
   const {
     data: library,
     isLoading,
     error,
-  } = useGetPythonLibraryQuery({ path });
+  } = useGetPythonLibraryQuery({ path, "worktree-id": worktreeId });
   const [updatePythonLibrary, { isLoading: isSaving }] =
     useUpdatePythonLibraryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -67,7 +69,11 @@ function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
 
   async function handleSave() {
     try {
-      await updatePythonLibrary({ path, source }).unwrap();
+      await updatePythonLibrary({
+        path,
+        source,
+        worktree_id: worktreeId,
+      }).unwrap();
       sendSuccessToast(t`Python library saved`);
     } catch (error) {
       sendErrorToast(t`Python library could not be saved`);

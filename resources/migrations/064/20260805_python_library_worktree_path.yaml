@@ -1,0 +1,21 @@
+# A worktree checks out its own copy of the Python library, so a path holds one
+# row per worktree scope (nil worktree_id is the main app). Uniqueness within a
+# scope is enforced at the application level -- the upsert is keyed by
+# (path, worktree_id) -- like transform tag names, because a cross-database
+# unique index cannot treat two NULL worktree_ids as equal.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-05T12:00:00
+      author: alxnddr
+      comment: Drop the unique constraint on python_library.path; a path is unique per worktree scope, enforced in the application
+      changes:
+        - dropUniqueConstraint:
+            tableName: python_library
+            constraintName: uk_python_library_path
+            uniqueColumns: path
+      rollback:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: path
+            constraintName: uk_python_library_path

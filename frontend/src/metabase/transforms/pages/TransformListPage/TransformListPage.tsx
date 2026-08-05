@@ -149,8 +149,7 @@ export const TransformListPage = () => {
 
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
-      worktreeId == null &&
-      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
+      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
     if (shouldShowPythonLibraryRow) {
       data.push({
@@ -160,6 +159,7 @@ export const TransformListPage = () => {
         icon: "snippet",
         url: Urls.transformPythonLibrary({
           path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
+          worktreeId,
         }),
         can_read: transformsDatabases.length > 0,
       });

@@ -69,21 +69,28 @@
                        :allowed-paths allowed-paths})))))
 
 (defn get-python-library-by-path
-  "Get the Python library by path."
-  [path]
-  (let [normalized-path (normalize-path path)]
-    (validate-path! normalized-path)
-    (t2/select-one :model/PythonLibrary :path normalized-path)))
+  "Get the Python library by path within `worktree-id` (nil is the main app)."
+  ([path]
+   (get-python-library-by-path path nil))
+  ([path worktree-id]
+   (let [normalized-path (normalize-path path)]
+     (validate-path! normalized-path)
+     (t2/select-one :model/PythonLibrary :path normalized-path :worktree_id worktree-id))))
 
 (defn update-python-library-source!
-  "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
-  [path source]
-  (let [normalized-path (normalize-path path)]
-    (validate-path! normalized-path)
-    (let [id (app-db/update-or-insert! :model/PythonLibrary
-                                       {:path normalized-path}
-                                       (constantly {:path normalized-path :source source}))]
-      (t2/select-one :model/PythonLibrary id))))
+  "Update the Python library source code within `worktree-id` (nil is the main app). Creates a new record if none
+  exists. Returns the updated library."
+  ([path source]
+   (update-python-library-source! path source nil))
+  ([path source worktree-id]
+   (let [normalized-path (normalize-path path)]
+     (validate-path! normalized-path)
+     (let [id (app-db/update-or-insert! :model/PythonLibrary
+                                        {:path normalized-path :worktree_id worktree-id}
+                                        (constantly {:path        normalized-path
+                                                     :source      source
+                                                     :worktree_id worktree-id}))]
+       (t2/select-one :model/PythonLibrary id)))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

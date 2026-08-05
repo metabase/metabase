@@ -1,5 +1,8 @@
 import { TransformsSectionLayout } from "metabase/data-studio/app/pages/TransformsSectionLayout";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { Navigate, Route } from "metabase/router";
 import {
   NewCardTransformPage,
@@ -39,6 +42,7 @@ export function getDataStudioWorktreeRoutes() {
             />
           </Route>
         )}
+        {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
       </Route>
     </Route>
   );

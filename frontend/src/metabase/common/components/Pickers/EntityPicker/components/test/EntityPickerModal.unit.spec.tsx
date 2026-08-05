@@ -1146,5 +1146,65 @@ describe("EntityPickerModal", () => {
         expect(rootItemsRequest?.url).not.toContain("worktree-id");
       });
     });
+
+    describe("Search", () => {
+      const searchFor = async (query: string) => {
+        await userEvent.type(
+          await screen.findByPlaceholderText("Search…"),
+          query,
+          { delay: 50 },
+        );
+        await screen.findByText(/Search results/i, {}, { timeout: 600 });
+      };
+
+      const findSearchRequests = async () => {
+        const gets = await findRequests("GET");
+        return gets.filter((req) => req.url.includes("/api/search"));
+      };
+
+      it("should scope search to the worktree", async () => {
+        await setup({ worktreeId: 7 });
+
+        await searchFor("My");
+        const searchRequests = await findSearchRequests();
+        expect(searchRequests.length).toBeGreaterThan(0);
+        searchRequests.forEach((req) => {
+          expect(req.url).toContain("worktree-id=7");
+        });
+      });
+
+      it("should scope collection-scoped search to the worktree", async () => {
+        await setup({ worktreeId: 7 });
+        await userEvent.click(await screen.findByText("Our analytics"));
+        await userEvent.click(await screen.findByText("First Collection"));
+
+        await searchFor("My");
+        const searchRequests = await findSearchRequests();
+        const lastRequest = searchRequests.slice(-1)[0];
+        expect(lastRequest?.url).toContain("collection=11");
+        expect(lastRequest?.url).toContain("worktree-id=7");
+      });
+
+      it("should not scope the shared databases tree to the worktree", async () => {
+        await setup({ worktreeId: 7, options: { hasDatabases: true } });
+        await userEvent.click(await screen.findByText("Databases"));
+
+        await searchFor("My");
+        const searchRequests = await findSearchRequests();
+        const lastRequest = searchRequests.slice(-1)[0];
+        expect(lastRequest).toBeDefined();
+        expect(lastRequest?.url).not.toContain("worktree-id");
+      });
+
+      it("should not scope search without a worktreeId", async () => {
+        await setup();
+
+        await searchFor("My");
+        const searchRequests = await findSearchRequests();
+        const lastRequest = searchRequests.slice(-1)[0];
+        expect(lastRequest).toBeDefined();
+        expect(lastRequest?.url).not.toContain("worktree-id");
+      });
+    });
   });
 });

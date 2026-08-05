@@ -211,7 +211,10 @@
                                                  [alias (url-for-path [:table table_id :manifest])]))
                                        source-tables)
         payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
+                                  ;; only main-app libraries: worktree transforms never run, so a worktree's
+                                  ;; checked-out copy must not shadow the main app's here
+                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary
+                                                                         :worktree_id nil)
                                   :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)
