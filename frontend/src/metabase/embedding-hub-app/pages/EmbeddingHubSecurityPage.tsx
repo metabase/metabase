@@ -14,11 +14,9 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
-import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { UpsellProBanner } from "metabase/embedding-hub-app/components/UpsellProBanner";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
 import { Box, Title } from "metabase/ui";
 
@@ -45,7 +43,12 @@ export function EmbeddingHubSecurityPage() {
     <SettingsPageWrapper title={t`Security`}>
       <EmbeddingMethodsCard />
 
-      {!hasSimpleEmbedding && <SdkUpsellBanner />}
+      {!hasSimpleEmbedding && (
+        <UpsellProBanner
+          title={t`Upgrade to Metabase Pro to access the SDK for React and more advanced options.`}
+          location="embedding-hub-security"
+        />
+      )}
 
       <EmbeddingSecurityWidgets />
 
@@ -72,32 +75,5 @@ export function EmbeddingHubSecurityPage() {
           </SettingsSection>
         )}
     </SettingsPageWrapper>
-  );
-}
-
-/** The OSS design puts this directly under the methods card. */
-function SdkUpsellBanner() {
-  const campaign = "embedding-methods";
-  const location = "embedding-hub-security";
-
-  const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, { utm_campaign: campaign, utm_content: location }),
-  );
-  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
-    campaign,
-    location,
-  });
-
-  return (
-    <UpsellBanner
-      title={t`Upgrade to Metabase Pro to access the SDK for React and more advanced options.`}
-      campaign={campaign}
-      location={location}
-      buttonText={t`Try Metabase Pro`}
-      buttonLink={upgradeUrl}
-      onClick={triggerUpsellFlow}
-    >
-      {null}
-    </UpsellBanner>
   );
 }
