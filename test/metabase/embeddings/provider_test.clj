@@ -29,7 +29,10 @@
     (with-redefs [plugins/load-plugin! #(swap! activations conj %)]
       (embedding.provider/activate-provider! model)
       (embedding.provider/activate-provider! {:provider "another-plugin"})
-      (is (= ["Metabase In-Process Embedder"] @activations)))))
+      (is (= ["Metabase In-Process Embedder"] @activations)))
+    (testing "a missing optional plugin leaves provider availability to the registry"
+      (with-redefs [plugins/load-plugin! #(throw (ex-info "plugin not registered" {}))]
+        (is (nil? (embedding.provider/activate-provider! model)))))))
 
 (deftest registration-version-gate-test
   (let [name (provider-name)]

@@ -87,13 +87,17 @@
   {"in-process" "Metabase In-Process Embedder"})
 
 (defn activate-provider!
-  "Activate the lazy plugin that implements `requested-model`'s provider, if it has one.
+  "Best-effort activation of the lazy plugin that implements `requested-model`'s provider, if it has one.
 
   Plugin discovery registers its manifest but deliberately does not execute its initialization steps. The embedding
-  contract owns this activation boundary, so consumers can use provider plugins without depending on plugin internals."
+  contract owns this activation boundary, so consumers can use provider plugins without depending on plugin internals.
+  A missing or failed optional plugin is handled by the normal provider-registry path, which can report it as
+  unavailable without making every caller handle plugin initialization errors."
   [{:keys [provider]}]
   (when-let [plugin-name (get lazy-provider-plugins provider)]
-    (plugins/load-plugin! plugin-name)))
+    (try
+      (plugins/load-plugin! plugin-name)
+      (catch Exception _))))
 
 (defn- provider-request
   [{:keys [provider] :as requested-model}]
