@@ -21,6 +21,7 @@ import type {
   CacheStrategyType,
   CacheableModel,
 } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { rootId } from "./constants/simple";
@@ -81,12 +82,35 @@ export const getShortStrategyLabel = (
     .with({ type: "schedule" }, (strategy) =>
       getFrequencyFromCron(strategy.schedule),
     )
-    .with(
-      { type: "duration" },
-      (strategy) =>
-        c(
-          "{0} is a number. Indicates a number of hours (the length of a cache)",
-        ).t`${strategy.duration}h`,
+    .with({ type: "duration" }, ({ duration, unit }) =>
+      match(unit)
+        .with(
+          CacheDurationUnit.Minutes,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} minutes (the length of a cache)",
+            ).t`${duration}m`,
+        )
+        .with(
+          CacheDurationUnit.Seconds,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} seconds (the length of a cache)",
+            ).t`${duration}s`,
+        )
+        .with(
+          CacheDurationUnit.Days,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} days (the length of a cache)",
+            ).t`${duration}d`,
+        )
+        .otherwise(
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} hours (the length of a cache)",
+            ).t`${duration}h`,
+        ),
     )
     .otherwise(() => null);
   if (subLabel) {

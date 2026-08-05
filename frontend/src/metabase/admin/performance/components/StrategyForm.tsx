@@ -12,6 +12,7 @@ import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
   FormProvider,
+  FormSelect,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
@@ -197,12 +198,6 @@ const StrategyFormBody = ({
       setStatus("idle");
     }
   }, [dirty, wasDirty, setIsDirty, setStatus]);
-
-  useEffect(() => {
-    if (selectedStrategyType === "duration") {
-      setFieldValue("unit", CacheDurationUnit.Hours);
-    }
-  }, [selectedStrategyType, values, setFieldValue]);
 
   const headingId = "strategy-form-heading";
 
@@ -619,33 +614,59 @@ const MultiplierFieldSubtitle = () => (
   </Text>
 );
 
+const getDurationUnitOptions = () => [
+  { value: CacheDurationUnit.Seconds, label: t`seconds` },
+  { value: CacheDurationUnit.Minutes, label: t`minutes` },
+  { value: CacheDurationUnit.Hours, label: t`hours` },
+  { value: CacheDurationUnit.Days, label: t`days` },
+];
+
 const DurationStrategyFormFields = ({
   targetModel,
   onSwitchToggle,
 }: {
   targetModel: CacheableModel;
   onSwitchToggle: () => void;
-}) => (
-  <>
-    <StrategyFormField
-      title={t`Cache duration`}
-      subtitle={
-        <Text fz="md" lh="1.25rem" c="text-secondary">
-          {t`Cached results are refreshed after this period.`}
-        </Text>
-      }
-      unit={c("Unit suffix shown after the cache duration input").t`hours`}
-    >
-      <PositiveNumberInput strategyType="duration" name="duration" />
-    </StrategyFormField>
-    <input type="hidden" name="unit" />
-    {["question", "dashboard"].includes(targetModel) && (
-      <PLUGIN_CACHING.PreemptiveCachingSwitch
-        handleSwitchToggle={onSwitchToggle}
-      />
-    )}
-  </>
-);
+}) => {
+  const { values, setFieldValue } = useFormikContext<CacheStrategy>();
+  const unit = values.type === "duration" ? values.unit : undefined;
+
+  useEffect(() => {
+    if (!unit) {
+      setFieldValue("unit", CacheDurationUnit.Hours);
+    }
+  }, [unit, setFieldValue]);
+
+  return (
+    <>
+      <StrategyFormField
+        title={t`Cache duration`}
+        subtitle={
+          <Text fz="md" lh="1.25rem" c="text-secondary">
+            {t`Cached results are refreshed after this period.`}
+          </Text>
+        }
+      >
+        <Flex align="center" gap="sm">
+          <PositiveNumberInput strategyType="duration" name="duration" />
+          <FormSelect
+            name="unit"
+            data={getDurationUnitOptions()}
+            w="8rem"
+            allowDeselect={false}
+            aria-label={t`Cache duration unit`}
+            data-testid="duration-unit-select"
+          />
+        </Flex>
+      </StrategyFormField>
+      {["question", "dashboard"].includes(targetModel) && (
+        <PLUGIN_CACHING.PreemptiveCachingSwitch
+          handleSwitchToggle={onSwitchToggle}
+        />
+      )}
+    </>
+  );
+};
 
 export const PositiveNumberInput = ({
   strategyType,

@@ -16,7 +16,10 @@ import {
   type DurationStrategy,
   type ScheduleStrategy,
 } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockCacheConfig,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 function setup(opts: SetupOpts = {}) {
   baseSetup({
@@ -169,6 +172,10 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
 
+    expect(await screen.findByTestId("duration-unit-select")).toHaveValue(
+      "hours",
+    );
+
     await changeInput(/Cache duration/, 24, 48);
 
     await userEvent.click(
@@ -250,15 +257,77 @@ describe("StrategyEditorForDatabases", () => {
     expect(result).toBe("Scheduled: hourly");
   });
 
-  it("can abbreviate a 'Duration' strategy", () => {
+  it.each([
+    [CacheDurationUnit.Hours, "Duration: 5h"],
+    [CacheDurationUnit.Minutes, "Duration: 5m"],
+    [CacheDurationUnit.Seconds, "Duration: 5s"],
+    [CacheDurationUnit.Days, "Duration: 5d"],
+  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
     const strategy: DurationStrategy = {
       type: "duration",
       duration: 5,
-      unit: CacheDurationUnit.Hours,
+      unit,
       refresh_automatically: false,
     };
-    const result = getShortStrategyLabel(strategy);
-    expect(result).toBe("Duration: 5h");
+    expect(getShortStrategyLabel(strategy)).toBe(expected);
+  });
+
+  it("lets user change the duration unit", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit default policy (currently: Duration: 1h)",
+      ),
+    );
+
+    await userEvent.click(await screen.findByTestId("duration-unit-select"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "minutes" }),
+    );
+
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
+
+    expect(
+      await screen.findByLabelText(
+        "Edit default policy (currently: Duration: 1m)",
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("StrategyEditorForDatabases (sub-hour duration policy)", () => {
+  beforeEach(() => {
+    setup({
+      cacheConfigs: [
+        createMockCacheConfig({
+          model: "root",
+          model_id: 0,
+          strategy: {
+            type: "duration",
+            duration: 30,
+            unit: CacheDurationUnit.Minutes,
+            refresh_automatically: false,
+          },
+        }),
+      ],
+    });
+  });
+
+  it("shows a policy stored with a sub-hour unit faithfully", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit default policy (currently: Duration: 30m)",
+      ),
+    );
+
+    expect(await getCacheStrategySelect()).toHaveValue("Duration");
+    expect(
+      await screen.findByRole("spinbutton", { name: /Cache duration/ }),
+    ).toHaveValue(30);
+    expect(await screen.findByTestId("duration-unit-select")).toHaveValue(
+      "minutes",
+    );
   });
 });
 
