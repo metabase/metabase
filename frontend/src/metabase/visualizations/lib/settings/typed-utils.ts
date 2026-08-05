@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { getVisualization } from "metabase/visualizations";
+import { getVisualization } from "metabase/visualizations/lib/registry";
 import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
