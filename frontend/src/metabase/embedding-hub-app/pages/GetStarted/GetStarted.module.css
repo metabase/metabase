@@ -17,3 +17,15 @@
 .interactiveCard:hover {
   border-color: var(--mb-color-brand);
 }
+
+/*
+ * Flows instead of holding a fixed column count, so cards stop shrinking below
+ * a usable width when the window narrows. `auto-fill` rather than `auto-fit`:
+ * auto-fit collapses the empty tracks, which would stretch the last row's two
+ * cards to full width instead of leaving them column-sized as the design shows.
+ */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15.625rem, 1fr));
+  gap: var(--mantine-spacing-md);
+}

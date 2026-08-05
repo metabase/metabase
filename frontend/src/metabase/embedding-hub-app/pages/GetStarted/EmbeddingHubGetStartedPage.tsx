@@ -15,7 +15,7 @@ import type {
 } from "metabase/embedding/embedding-hub/types/embedding-checklist";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { useSetting } from "metabase/settings";
-import { Card, Group, Icon, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import { Box, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
@@ -117,9 +117,9 @@ export function EmbeddingHubGetStartedPage() {
           </Text>
         </Stack>
 
-        <SimpleGrid cols={3} spacing="md">
+        <Box className={S.cardGrid}>
           {FIRST_EMBED_STEPS.map((step, index) => renderStep(step, index + 1))}
-        </SimpleGrid>
+        </Box>
       </Stack>
 
       <Stack gap="md">
@@ -130,14 +130,14 @@ export function EmbeddingHubGetStartedPage() {
           </Text>
         </Stack>
 
-        <SimpleGrid cols={3} spacing="md">
+        <Box className={S.cardGrid}>
           {FINE_TUNE_STEPS.map((step, index) =>
             renderStep(step, index + FIRST_EMBED_STEPS.length + 1),
           )}
 
           <CustomThemeCard step={7} />
           <ConfigureAiCard step={8} />
-        </SimpleGrid>
+        </Box>
       </Stack>
 
       <UsefulLinksSection />
@@ -209,7 +209,7 @@ function UsefulLinksSection() {
     <Stack gap="md">
       <Title order={3} c="text-primary">{t`Useful links`}</Title>
 
-      <SimpleGrid cols={3} spacing="md">
+      <Box className={S.cardGrid}>
         <UsefulLink
           icon="embed"
           label={t`Embedding methods`}
@@ -225,7 +225,7 @@ function UsefulLinksSection() {
           label={t`Documentation`}
           href={documentationUrl}
         />
-      </SimpleGrid>
+      </Box>
     </Stack>
   );
 }
