@@ -305,3 +305,30 @@
 (deftest write-scope-grantable-test
   (testing "GHY-4148: the scope the tool checks is advertised, so a token can actually be granted it"
     (is (contains? (registry/registered-scopes) "agent:content:write"))))
+
+(deftest clear-unsets-description-and-authority-level-test
+  (testing "GHY-4191: `clear` unsets the properties `collection-write-entry` lists as `:clearable`.
+            A null cannot say \"clear this\" — strict clients fill every unset property with null and
+            `drop-nil-args` strips them at the boundary — so the explicit array is the only way to
+            erase one. Pinned because the tool description long claimed the opposite."
+    (mt/with-temp [:model/Collection {coll-id :id} {:name        "Q3 Planning"
+                                                    :description "Planning docs"}]
+      (testing "description clears"
+        (let [result (tool-result (call-tool! :crowberto {:method "update" :id coll-id
+                                                          :clear  ["description"]}))]
+          (is (nil? (:description result)) "the echo reports it unset")
+          (is (nil? (t2/select-one-fn :description :model/Collection :id coll-id))
+              "and it is unset in the database")))
+      (testing "a cleared property does not disturb the rest of the row"
+        (is (= "Q3 Planning" (t2/select-one-fn :name :model/Collection :id coll-id)))))))
+
+(deftest clear-unsets-authority-level-test
+  (testing "GHY-4191: authority_level is `:clearable` too — an Official collection can be made
+            unofficial again through the same array."
+    (mt/with-premium-features #{:official-collections}
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Official Docs" :authority_level "official"}]
+        (let [result (tool-result (call-tool! :crowberto {:method "update" :id coll-id
+                                                          :clear  ["authority_level"]}))]
+          (is (nil? (:authority_level result)) "the echo reports it unset")
+          (is (nil? (t2/select-one-fn :authority_level :model/Collection :id coll-id))
+              "and it is unset in the database"))))))

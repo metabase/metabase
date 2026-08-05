@@ -1,6 +1,7 @@
 (ns metabase.mcp.v2.tools.search-test
   (:require
    [clojure.test :refer :all]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
@@ -301,3 +302,23 @@
       (perms/grant-collection-read-permissions! (perms/all-users-group) a)
       (perms/grant-collection-read-permissions! (perms/all-users-group) b)
       (is (= "Alpha/Bravo" (path-for :rasta (:id b)))))))
+
+(def ^:private recents-page
+  #'tools.search/recents-page)
+
+(deftest recents-without-a-type-returns-every-tracked-model-test
+  (testing "GHY-4137: `recent: true` with no `type` lists every tracked model. `recents-page` maps
+            an absent `type` to an empty `:models` vector, which `get-recents` passes to `do-query`
+            — where `(when (seq db-models) ...)` omits the model filter entirely rather than
+            filtering to nothing. Pinned because the empty-vector-means-everything step is invisible
+            at this call site: tightening it into a real `IN ()` would silently return no recents."
+    (mt/with-temp [:model/Card      {card-id :id} {:name "Recent Card"}
+                   :model/Dashboard {dash-id :id} {:name "Recent Dashboard"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-model-cleanup [:model/RecentViews]
+          (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card card-id :view)
+          (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Dashboard dash-id :view)
+          (let [{:keys [rows]} (recents-page {} :concise 50 0)
+                ids            (set (map :id rows))]
+            (is (contains? ids card-id) "the card is listed with no type filter")
+            (is (contains? ids dash-id) "the dashboard is listed with no type filter")))))))

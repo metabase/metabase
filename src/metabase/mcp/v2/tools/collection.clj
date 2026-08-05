@@ -117,7 +117,8 @@
                                                "(SQL snippet folders). Omit for a normal collection.")}]]]
    [:authority_level {:optional true}
     [:maybe [:enum {:description (str "Marks the collection Official. Requires an admin on an instance with the "
-                                      "Official Collections feature. Can be set but not cleared through this tool.")}
+                                      "Official Collections feature. To make a collection unofficial again, name "
+                                      "it in `clear` — `clear: [\"authority_level\"]`.")}
              "official"]]]])
 
 (def ^:private collection-write-entry
@@ -134,7 +135,8 @@
   restores it — there is no hard delete, and omitting archived leaves the trashed state alone. namespace is create-only
   (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
   marks the collection Official and needs an admin on an instance with that feature. description and authority_level
-  can be set and rewritten but not cleared — sending null to erase one is not supported. Personal collections
+  can be set, rewritten, and cleared — to erase one, name it in clear (clear: [\"description\"]); sending null does
+  not work, because unset properties are stripped before the tool sees them. Personal collections
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
   Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
   {:name        "collection_write"
