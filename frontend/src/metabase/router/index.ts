@@ -31,6 +31,5 @@ export {
   navigate,
   notifyLocationListeners,
   subscribeLocation,
-  toNavigateArgs,
 } from "./navigator";
 export { getRawBrowserHistory } from "./raw-history";
