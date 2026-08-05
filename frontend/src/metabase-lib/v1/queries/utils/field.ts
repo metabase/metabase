@@ -47,9 +47,16 @@ export function getFieldValues(field?: RawField | null): FieldValue[] {
   return [];
 }
 
-// merge field values and remappings
-export function getRemappings(field?: RawField | null): FieldValue[] {
+/**
+ * Merge field values and remappings
+ */
+export function getRemappings(
+  field?: RawField | null,
+): [RowValue, string | undefined][] {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
-  return [...fieldValues, ...remappings];
+  return [...fieldValues, ...remappings].map(([value, label]) => [
+    value,
+    label,
+  ]);
 }

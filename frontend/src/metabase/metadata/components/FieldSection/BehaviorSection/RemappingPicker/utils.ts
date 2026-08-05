@@ -69,7 +69,7 @@ function getTableFields(table: Table | undefined): Field[] {
 function hasMappableNumeralValues(
   fieldValues: FieldValue[] | undefined,
 ): boolean {
-  const remapping = getFieldRemappedValues(fieldValues);
+  const remapping = new Map(getRemappings({ values: fieldValues }));
 
   // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
   // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -78,16 +78,6 @@ function hasMappableNumeralValues(
     [...remapping.keys()].every(
       (key) => typeof key === "number" || key === null,
     )
-  );
-}
-
-export function getFieldRemappedValues(
-  fieldValues: FieldValue[] | undefined,
-): Map<number, string> {
-  return new Map(
-    // Cast: Map rejects FieldValue [value] 1-tuples, and the pre-existing return
-    // type overstates the data (null keys, undefined labels); honest in a follow-up.
-    getRemappings({ values: fieldValues }) as [number, string][],
   );
 }
 

@@ -51,6 +51,13 @@ describe("queries/utils/field", () => {
   });
 
   describe("getRemappings", () => {
+    it("pads unlabeled values to [value, undefined] pairs", () => {
+      expect(getRemappings({ values: [[1], [2, "Two"]] })).toStrictEqual([
+        [1, undefined],
+        [2, "Two"],
+      ]);
+    });
+
     it("appends remappings after field values", () => {
       expect(
         getRemappings({
