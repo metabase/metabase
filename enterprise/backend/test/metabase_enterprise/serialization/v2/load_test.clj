@@ -107,9 +107,6 @@
           (mt/with-empty-h2-app-db!
             (is (ours? (load-failure-messages! (ingestion))))))
         (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
-          ;; Skipping does not make the import succeed - normalizing list-valued `template-tags` drops the variables,
-          ;; and `repair-card-template-tag-names` rejects that on its own. Asserting on that downstream failure is
-          ;; what proves our check, specifically, was the thing skipped.
           (mt/with-empty-h2-app-db!
             (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
               (let [messages (load-failure-messages! (ingestion))]

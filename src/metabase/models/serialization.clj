@@ -1281,10 +1281,10 @@
   "Throws when `query` is a full MBQL query that this instance's own query schema rejects.
 
   The exporting Metabase decides the shape of a serialized query, so an import can carry a shape this version has no
-  representation for - a list-valued `template-tags` against a map, say. Such a query normalizes without complaint
-  and is then stored, breaking the card on read, so refuse it instead.
+  representation for. Such a query normalizes without complaint and is then stored, breaking the card on read, so
+  refuse it instead.
 
-  Only full queries are checked. Bare refs and the MBQL fragments embedded in visualization settings have no
+  Only MBQL5 queries are checked. Bare refs and the MBQL fragments embedded in visualization settings have no
   standalone schema to check them against."
   [query]
   ;; `validate` before `explain` - explain is much slower, and this runs on every imported query
