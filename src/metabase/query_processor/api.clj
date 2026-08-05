@@ -97,8 +97,7 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+   query :- ::qp.schema/any-query]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -184,10 +183,12 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   query :- [:map
-             [:database ms/PositiveInt]
-             [:settings {:optional true} [:maybe [:map
-                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
+   query :- [:and
+             ::qp.schema/any-query
+             [:map
+              [:database ms/PositiveInt]
+              [:settings {:optional true} [:maybe [:map
+                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]]
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
@@ -201,9 +202,11 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty] :as query} :- [:and
+                                           ::qp.schema/any-query
+                                           [:map
+                                            [:database ms/PositiveInt]
+                                            [:pretty   {:default true} [:maybe :boolean]]]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
@@ -217,8 +220,10 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
-                                    [:database ms/PositiveInt]]]
+   {:keys [database] :as query} :- [:and
+                                    ::qp.schema/any-query
+                                    [:map
+                                     [:database ms/PositiveInt]]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]

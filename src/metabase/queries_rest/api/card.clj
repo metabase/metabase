@@ -910,6 +910,9 @@
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
+       ;; same loose shape as the `/:card-id/query/:export-format` endpoint below -- see the TODO there about why
+       ;; `::parameters.schema/parameter` can't be used yet
+       [:parameters         {:optional true} [:maybe [:sequential [:map-of :keyword :any]]]]
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
