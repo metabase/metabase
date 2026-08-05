@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAsyncFn } from "react-use";
 
 import { resolveMcpQueryHandle } from "../api";
+import { getMcpMetabaseConfig } from "../config";
 
 export interface McpAppState {
   query: string | null;
@@ -46,12 +47,6 @@ type VisualizeQueryToolResult = {
 };
 
 type ToolCallResult = McpUiToolResultNotification["params"];
-
-interface McpGlobalConfig {
-  instanceUrl?: string;
-  uiCredential?: string;
-  mcpSessionId?: string;
-}
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
@@ -110,8 +105,7 @@ export function useMcpApp(): McpAppState {
       }
 
       const { instanceUrl, uiCredential, mcpSessionId } =
-        // The base type didn't have uiCredential and mcpSessionId in global config
-        (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+        getMcpMetabaseConfig();
 
       if (!instanceUrl || !uiCredential || !mcpSessionId) {
         throw new Error("Credential or MCP session is invalid.");

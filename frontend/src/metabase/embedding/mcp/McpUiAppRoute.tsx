@@ -14,6 +14,7 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import { getMcpMetabaseConfig } from "./config";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -36,12 +37,6 @@ interface McpUiAppRouteContentProps {
   uiCredential: string;
 }
 
-interface McpMetabaseConfig {
-  instanceUrl: string;
-  uiCredential: string;
-  mcpSessionId: string;
-}
-
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
   <div className="mcp-loading">
@@ -52,9 +47,7 @@ const SimpleLoader = () => (
 export function McpUiAppRoute() {
   const { app, error: appError, hostContext, prompt, query } = useMcpApp();
 
-  const { instanceUrl = "", uiCredential = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
+  const { instanceUrl = "", uiCredential = "" } = getMcpMetabaseConfig();
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -106,9 +99,7 @@ function McpUiAppRouteContent({
   const handleDrillThrough = useHandleMcpDrillThrough(app);
   const isHosted = useSelector(getIsHosted);
 
-  const { mcpSessionId = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
+  const { mcpSessionId = "" } = getMcpMetabaseConfig();
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 

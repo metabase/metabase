@@ -7,12 +7,7 @@ import type * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import { storeDrillQuery } from "../api";
-
-interface McpGlobalConfig {
-  instanceUrl?: string;
-  uiCredential?: string;
-  mcpSessionId?: string;
-}
+import { getMcpMetabaseConfig } from "../config";
 
 type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
   T extends `drill-thru/${infer Name}` ? Name : never;
@@ -54,8 +49,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       }
 
       const { instanceUrl, uiCredential, mcpSessionId } =
-        // Unjustified type cast. FIXME
-        (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+        getMcpMetabaseConfig();
 
       if (isClaudeHost(app)) {
         if (!instanceUrl) {
