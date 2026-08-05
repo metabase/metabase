@@ -295,7 +295,7 @@ export function DataAppView() {
       {!appReady && (
         <Box
           pos="absolute"
-          bg="background-primary"
+          bg="background_page-primary"
           style={{ inset: 0, zIndex: 1 }}
         >
           <LoadingAndErrorWrapper loading data-testid="data-app-loading" />

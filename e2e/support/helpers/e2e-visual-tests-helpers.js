@@ -78,7 +78,7 @@ export function chartGridLines() {
 }
 
 export function splitPanelAxisLines() {
-  const borderStrong = getColor("border-strong");
+  const borderStrong = getColor("border-neutral-strong");
   return echartsContainer().find(`path[stroke="${borderStrong}"]`);
 }
 

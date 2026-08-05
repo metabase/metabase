@@ -7,11 +7,14 @@ describe("deriveFullMetabaseTheme", () => {
   it("applies whitelabel colors over the base theme", () => {
     const derived = deriveFullMetabaseTheme({
       colorScheme: "light",
-      whitelabelColors: { brand: "#ff0000" },
+      // The setting stores brand/filter/summarize under their own names
+      whitelabelColors: { brand: "#ff0000", filter: "#00ff00" },
     });
 
-    // The whitelabel color should override the base theme color
-    expect(derived.colors["brand"]).toBe("#ff0000");
+    // The whitelabel color should override the base theme color, under the
+    // token name it is translated to
+    expect(derived.colors["core-brand"]).toBe("#ff0000");
+    expect(derived.colors["core-filter"]).toBe("#00ff00");
 
     // Other colors should remain from base theme
     expect(derived.colors["text-primary"]).toBe(
@@ -23,11 +26,14 @@ describe("deriveFullMetabaseTheme", () => {
     const derived = deriveFullMetabaseTheme({
       colorScheme: "light",
       whitelabelColors: { brand: "#ff0000" },
-      embeddingThemeOverride: { version: 2, colors: { brand: "#00ff00" } },
+      embeddingThemeOverride: {
+        version: 2,
+        colors: { "core-brand": "#00ff00" },
+      },
     });
 
     // User overrides takes precedence over instance whitelabel colors
-    expect(derived.colors["brand"]).toBe("#00ff00");
+    expect(derived.colors["core-brand"]).toBe("#00ff00");
   });
 
   it("filters out all internal colors from embedding overrides", () => {

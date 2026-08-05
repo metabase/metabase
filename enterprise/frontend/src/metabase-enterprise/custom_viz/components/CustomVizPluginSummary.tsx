@@ -53,7 +53,7 @@ export function CustomVizPluginSummary({ plugin }: Props) {
 
         {plugin.warnings.map((warning) => (
           <Group align="center" gap="xs" key={warning.type} wrap="nowrap">
-            <Icon c="warning" flex="0 0 auto" name="warning" />
+            <Icon c="feedback-warning" flex="0 0 auto" name="warning" />
 
             <Text c="text-secondary" size="sm">
               {getCustomVizPluginWarningMessage(warning)}

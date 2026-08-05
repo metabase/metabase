@@ -75,7 +75,7 @@ export function DimensionRow({
               {isOrphaned(dimension) && (
                 <Icon
                   name="warning"
-                  c="warning"
+                  c="feedback-warning"
                   tooltip={t`This column is no longer available in the metric's data`}
                 />
               )}

@@ -17,8 +17,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   pulse: (palette) => color("accent4", palette),
   "text-primary": (palette) => color("text-primary", palette),
   "text-secondary": (palette) => color("text-secondary", palette),
-  "text-tertiary": (palette) => color("text-tertiary", palette),
-  background: (palette) => color("white", palette),
+  background: (palette) => color("core-white", palette),
   "background-disbaled": (palette) => color("accent-gray", palette),
   focus: (palette) => getFocusColor("core-brand", palette),
 
@@ -43,10 +42,10 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
 
 /**
  * @deprecated use CSS variables instead where possible,
- * i.e. `var(--mb-color-text-tertiary)`.
+ * i.e. `var(--mb-color-text-disabled)`.
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `theme.fn.themeColor("text-tertiary")`
+ * from Mantine's theme, i.e. `theme.fn.themeColor("text-disabled")`
  */
 export function color(colorName: ColorName, palette?: ColorPalette): ColorName;
 export function color(color: string, palette?: ColorPalette): string;
@@ -73,7 +72,7 @@ export function color(color: any, palette: ColorPalette = colors) {
  * where possible, i.e. `color-mix(in srgb, var(--mb-color-background_page-secondary), transparent 10%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-tertiary"), 0.1)`
+ * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-disabled"), 0.1)`
  */
 export const alpha = (c: string, a: number) => {
   return Color(color(c)).alpha(a).string();
@@ -81,10 +80,10 @@ export const alpha = (c: string, a: number) => {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-tertiary), white 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-disabled), white 10%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-tertiary"), 0.1)`
+ * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-disabled"), 0.1)`
  */
 export const lighten = (c: string, f: number = 0.5) => {
   return Color(color(c)).lighten(f).string();
@@ -92,10 +91,10 @@ export const lighten = (c: string, f: number = 0.5) => {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-tertiary), black 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-disabled), black 10%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-tertiary"), 0.1)`
+ * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-disabled"), 0.1)`
  */
 export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c)).darken(f).string();

@@ -6,6 +6,7 @@ import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import { applyColorOperation } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { colors, isDark } from "metabase/ui/colors";
+import { mapWhitelabelColorToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorPalette } from "metabase/ui/colors/types";
 
 import { EMBED_FLOW_DERIVED_COLORS_CONFIG } from "./dynamic-sdk-color-defaults";
@@ -45,12 +46,14 @@ export function getDerivedDefaultColorsForEmbedFlow({
     };
   }
 
+  const appColorTokens = mapWhitelabelColorToTokens(applicationColors);
+
   const userColors = theme.colors ?? {};
 
   const backgroundColor = getSdkColorByName(
     "background",
     userColors,
-    applicationColors,
+    appColorTokens,
   );
   const isDarkTheme = backgroundColor && isDark(backgroundColor);
 
@@ -59,7 +62,7 @@ export function getDerivedDefaultColorsForEmbedFlow({
   // Ensure the primary colors are defined, as they cannot be derived.
   for (const colorKey of PRIMARY_COLORS) {
     derivedColors[colorKey] =
-      getSdkColorByName(colorKey, userColors, applicationColors) ?? undefined;
+      getSdkColorByName(colorKey, userColors, appColorTokens) ?? undefined;
   }
 
   // Apply theme-aware derived colors for SDK colors not defined by the user
@@ -87,7 +90,7 @@ export function getDerivedDefaultColorsForEmbedFlow({
     const sourceColor = getSdkColorByName(
       operation.source,
       userColors,
-      applicationColors,
+      appColorTokens,
     );
 
     if (sourceColor === null) {

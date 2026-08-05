@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { Box, Stack, Tabs } from "metabase/ui";
+import { mapWhitelabelColorToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import BrandColorSettings from "../BrandColorSettings";
@@ -23,7 +24,7 @@ export const ColorSettings = ({
   const [colors, setColors] = useState(initialColors ?? {});
 
   const colorPalette = useMemo(() => {
-    return { ...themeColors, ...colors };
+    return { ...themeColors, ...mapWhitelabelColorToTokens(colors) };
   }, [colors, themeColors]);
 
   const handleChange = useCallback(

@@ -24,6 +24,7 @@ import type {
   MetabaseColorKey,
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import { mapWhitelabelColorToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
@@ -66,33 +67,17 @@ export function getEmbeddingThemeOverride(
     colors: {},
   };
 
-  // Apply whitelabeled colors from appearance settings
-  for (const key in whitelabeledColors) {
+  const whitelabeledTokens = mapWhitelabelColorToTokens(whitelabeledColors);
+
+  for (const key in whitelabeledTokens) {
     if (!override.colors) {
       override.colors = {};
     }
 
     // Unjustified type cast. FIXME
     override.colors[key as MetabaseColorKey] = colorTuple(
-      whitelabeledColors[key],
+      whitelabeledTokens[key],
     );
-  }
-
-  // Whitelabel keys flow in here directly (admin form + DB still use the
-  // legacy `brand`/`filter`/`summarize` names), bypassing
-  // SDK_TO_MAIN_APP_COLORS_MAPPING. Mirror them to the `core-*` counterparts
-  // so consumers reading `var(--mb-color-core-brand)` see the whitelabel value.
-  // Temporary compatibility layer for the colors migration (GDGT-2517).
-  if (override.colors) {
-    if (override.colors.brand) {
-      override.colors["core-brand"] = override.colors.brand;
-    }
-    if (override.colors.filter) {
-      override.colors["core-filter"] = override.colors.filter;
-    }
-    if (override.colors.summarize) {
-      override.colors["core-summarize"] = override.colors.summarize;
-    }
   }
 
   if (theme.colors) {

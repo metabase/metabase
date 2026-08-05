@@ -44,7 +44,7 @@ function DisableForm({ onSuccess, onCancel }: DisableFormProps) {
     <ConfirmCodeForm
       message={t`Are you sure you want to disable two-factor authentication? Your account will be protected by your password only, and your recovery codes will stop working.`}
       submitLabel={t`Disable`}
-      submitColor="error"
+      submitColor="feedback-negative"
       onSubmit={handleSubmit}
       onCancel={onCancel}
     />

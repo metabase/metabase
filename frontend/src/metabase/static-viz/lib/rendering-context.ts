@@ -1,13 +1,13 @@
-import type { ColorPalette } from "metabase/ui/colors/types";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 import { createColorGetter } from "../lib/colors";
 
 import { measureTextHeight, measureTextWidth } from "./text";
 
 export const createStaticRenderingContext = (
-  colors?: ColorPalette,
+  colors?: ColorSettings,
 ): RenderingContext => {
   const getColor = createColorGetter(colors);
 

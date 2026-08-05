@@ -20,7 +20,13 @@ export const StorageSetupErrorView = () => {
 
   return (
     <StorageSetupStatusView
-      badge={<Icon name="warning_triangle_filled" size={12} color="warning" />}
+      badge={
+        <Icon
+          name="warning_triangle_filled"
+          size={12}
+          color="feedback-warning"
+        />
+      }
       title={t`Storage setup didn't finish`}
       description={description}
     />

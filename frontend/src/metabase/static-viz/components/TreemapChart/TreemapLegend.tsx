@@ -61,7 +61,7 @@ export function TreemapLegend({
                 x2={width}
                 y1={-PADDING_TOP}
                 y2={-PADDING_TOP}
-                stroke={getColor("border")}
+                stroke={getColor("border-neutral")}
               />
             )}
             {row.color !== undefined && (

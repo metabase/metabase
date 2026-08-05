@@ -414,7 +414,7 @@ function getNameCell({
 
   const hasWarning = !!getWarningMessage();
   const iconColor = hasWarning
-    ? "warning"
+    ? "feedback-warning"
     : (syncColor ?? getNodeIconColor(row.original));
 
   return (

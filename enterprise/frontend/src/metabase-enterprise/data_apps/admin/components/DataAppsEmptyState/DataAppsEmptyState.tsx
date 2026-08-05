@@ -8,9 +8,9 @@ export const DataAppsEmptyState = () => (
     align="center"
     justify="center"
     gap="md"
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     bdrs="md"
-    bg="background-primary"
+    bg="background_page-primary"
     mih="16rem"
     p="xl"
   >
@@ -19,10 +19,10 @@ export const DataAppsEmptyState = () => (
       justify="center"
       w="6rem"
       h="6rem"
-      bg="background-secondary"
+      bg="background_page-secondary"
       style={{ borderRadius: "50%" }}
     >
-      <Icon name="app" size={48} c="border" />
+      <Icon name="app" size={48} c="border-neutral" />
     </Flex>
     <Text c="text-disabled">{t`Your data apps will appear here`}</Text>
   </Flex>

@@ -23,15 +23,16 @@ describe("useDefaultEmbeddingThemeSettings", () => {
     const theme = result.current;
     const expectedColors = getColors();
 
-    expect(theme?.colors?.brand).toBe(expectedColors.brand);
+    expect(theme?.colors?.brand).toBe(expectedColors["core-brand"]);
     expect(theme?.colors?.["text-secondary"]).toBe(
       expectedColors["text-secondary"],
     );
 
-    // The SDK maps background-secondary as [background-secondary, background-tertiary]
-    // It should use the first defined value which is "background-secondary"
+    // The SDK maps the public `background-secondary` key as
+    // [background_page-secondary, background_page-tertiary]; it should use the
+    // first defined value.
     expect(theme?.colors?.["background-secondary"]).toBe(
-      expectedColors["background-secondary"],
+      expectedColors["background_page-secondary"],
     );
   });
 

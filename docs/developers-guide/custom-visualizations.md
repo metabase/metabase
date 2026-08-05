@@ -358,7 +358,7 @@ formatValue(row[1], settings.column?.(cols[1]));
 
 For layout math (like fitting labels or sizing axes), use the `renderingContext` prop: `renderingContext.measureText(text, style)` returns `{ width, height }` in pixels, where `style` is `{ size, weight, family }`. The optional `style.family` defaults to the font your Metabase is rendering with, so measurements match what people see; pass it explicitly only when you render text in a different font. That font is also available as `renderingContext.fontFamily` for styling your own markup.
 
-To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
+To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-core-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
 Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
@@ -395,7 +395,7 @@ The icon shows up in the chart type picker and elsewhere in the Metabase UI.
 </svg>
 ```
 
-- For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-brand)"`.
+- For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-core-brand)"`.
 - Keep the icon simple and monochromatic. Skip gradients and multiple colors.
 
 ## Build and package the plugin

@@ -1,6 +1,6 @@
 .documentHeader {
   align-items: flex-start;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   gap: var(--mantine-spacing-md);
   justify-content: space-between;
   margin-bottom: var(--mantine-spacing-md);

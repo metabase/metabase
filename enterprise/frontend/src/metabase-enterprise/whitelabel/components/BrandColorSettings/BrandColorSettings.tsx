@@ -79,7 +79,7 @@ const BrandColorTable = ({
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
-            originalColor={color(option.name, colorPalette)}
+            originalColor={color(option.tokenName, colorPalette)}
             option={option}
             onChange={onChange}
           />
