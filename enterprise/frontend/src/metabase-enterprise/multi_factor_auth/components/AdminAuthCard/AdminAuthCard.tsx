@@ -2,12 +2,12 @@ import dayjs from "dayjs";
 import { msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Alert, Anchor, DateInput, Group, Select, Text } from "metabase/ui";
+import { useAdminSetting } from "metabase/settings";
+import { Alert, Anchor, DateInput, Group, Switch, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 

@@ -18,7 +18,7 @@ import {
 } from "metabase/forms";
 import { PLUGIN_CACHING, isModelWithClearableCache } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import {
   Box,
   Button,

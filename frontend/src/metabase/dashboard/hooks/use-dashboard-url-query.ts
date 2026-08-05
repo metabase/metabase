@@ -2,18 +2,17 @@ import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import {
   type Location,
-  push,
   queryToSearch,
-  replace,
   subscribeLocation,
   useIsNavigationHeld,
+  useNavigate,
 } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -35,6 +34,7 @@ export function useDashboardUrlQuery(location: Location) {
   const isNavigationHeld = useIsNavigationHeld();
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const parameterValuesBySlug = useMemo(
     () => getParameterValuesBySlug(parameters),
@@ -111,8 +111,10 @@ export function useDashboardUrlQuery(location: Location) {
         previousQueryParams?.tab &&
         queryParams.tab !== previousQueryParams.tab;
 
-      const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
+      navigate(
+        { ...location, search: queryToSearch(nextQuery) },
+        { replace: !isDashboardTabChange, state: location.state },
+      );
     }
   }, [
     dashboardId,
@@ -120,7 +122,7 @@ export function useDashboardUrlQuery(location: Location) {
     previousQueryParams,
     location,
     siteUrl,
-    dispatch,
+    navigate,
     isNavigationHeld,
   ]);
 

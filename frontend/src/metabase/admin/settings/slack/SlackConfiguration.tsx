@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useGetSlackAppInfoQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 
 import { SlackBugReportChannelInput } from "./SlackBugReportChannelInput";

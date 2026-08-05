@@ -65,13 +65,13 @@ describe("AI Auditing routes", () => {
   it.each([false, true])(
     "redirects the section root to Usage stats and preserves the query when upsell is %s",
     async (upsell) => {
-      const { history } = setup({
+      const { router } = setup({
         route: `${Urls.monitorAiAuditing()}?date=past7days~`,
         upsell,
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation()).toMatchObject({
+        expect(router?.location).toMatchObject({
           pathname: Urls.monitorAiAuditingUsage(),
           search: "?date=past7days~",
         });

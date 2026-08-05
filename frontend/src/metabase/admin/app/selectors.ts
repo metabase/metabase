@@ -1,7 +1,7 @@
 import { getEngines } from "metabase/databases/selectors";
 import { isDeprecatedEngine } from "metabase/databases/utils/engine";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 interface Props {

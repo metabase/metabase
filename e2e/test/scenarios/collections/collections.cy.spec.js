@@ -512,6 +512,116 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
+    it("should be able to drag an item into a sub-collection shown in the items table (metabase#37329)", () => {
+      H.createDocument({
+        name: "Quarterly Notes",
+        collection_id: null,
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Notes" }],
+              attrs: { _id: "1" },
+            },
+          ],
+        },
+      });
+      H.createQuestion({
+        name: "Count of orders",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      visitRootCollection();
+
+      cy.log("Drag a question into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders").as("dragSubject");
+        cy.findByText("First collection").as("dropTarget");
+      });
+
+      H.dragAndDrop("dragSubject", "dropTarget");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Moved question");
+      cy.findByTestId("collection-table")
+        .findByText("Orders")
+        .should("not.exist");
+
+      cy.log("Drag a document into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Quarterly Notes").as("documentDragSubject");
+        cy.findByText("First collection").as("documentDropTarget");
+      });
+
+      H.dragAndDrop("documentDragSubject", "documentDropTarget");
+
+      cy.findByTestId("collection-table")
+        .findByText("Quarterly Notes")
+        .should("not.exist");
+
+      cy.log("Drag a metric into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Count of orders").as("metricDragSubject");
+        cy.findByText("First collection").as("metricDropTarget");
+      });
+
+      H.dragAndDrop("metricDragSubject", "metricDropTarget");
+
+      cy.findByTestId("collection-table")
+        .findByText("Count of orders")
+        .should("not.exist");
+
+      H.visitCollection(FIRST_COLLECTION_ID);
+      cy.findByTestId("collection-table").findByText("Orders");
+      cy.findByTestId("collection-table").findByText("Quarterly Notes");
+      cy.findByTestId("collection-table").findByText("Count of orders");
+    });
+
+    it("should reject dragging a subcollection directly or in a mixed selection (metabase#37329)", () => {
+      H.createCollection({ name: "Destination collection" });
+      visitRootCollection();
+
+      cy.intercept(
+        "PUT",
+        /\/api\/(card|collection)\/\d+$/,
+        cy.spy().as("moveRequest"),
+      );
+
+      cy.log("Subcollections cannot initiate a drag");
+      cy.findByTestId("collection-table")
+        .findByText("First collection")
+        .closest("a")
+        .should("have.attr", "draggable", "false");
+      cy.findByTestId("items-drag-preview").should("not.exist");
+      cy.findByTestId("collection-table")
+        .findByText("First collection")
+        .should("be.visible");
+      cy.get("@moveRequest").should("not.have.been.called");
+
+      cy.log("A mixed selection is rejected as one operation");
+      cy.findByTestId("collection-table").within(() => {
+        selectItemUsingCheckbox("Orders");
+        selectItemUsingCheckbox("First collection");
+        cy.findByText("Orders").as("dragSubject");
+        cy.findByText("Destination collection").as("dropTarget");
+      });
+
+      H.dragAndDrop("dragSubject", "dropTarget");
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText("First collection").should("be.visible");
+        cy.findByText("Destination collection").should("be.visible");
+      });
+      cy.get("@moveRequest").should("not.have.been.called");
+    });
+
     describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;

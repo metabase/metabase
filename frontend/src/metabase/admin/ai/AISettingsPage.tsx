@@ -6,18 +6,18 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListMetabotsQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { queryToSearch, useSearchParams } from "metabase/router";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";

@@ -32,7 +32,7 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Location } from "metabase/router";
-import { Outlet, replace, useLocation, useParams } from "metabase/router";
+import { Outlet, useLocation, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   parseHashOptions,
@@ -81,6 +81,7 @@ export const DashboardApp = () => {
   const location = useLocation();
   const params = useParams();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [error, setError] = useState<string>();
 
@@ -132,7 +133,10 @@ export const DashboardApp = () => {
       const hashString = stringifyHashOptions(options);
       const hash = hashString ? "#" + hashString : "";
       if (hash !== location.hash) {
-        await dispatch(replace({ ...location, hash }));
+        await navigate(
+          { ...location, hash },
+          { replace: true, state: location.state },
+        );
       }
     } catch (error) {
       // 400: provided entity id format is invalid.

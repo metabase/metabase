@@ -10,7 +10,7 @@ import { init } from "metabase/app";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { getUser } from "metabase/selectors/user";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
@@ -59,7 +59,7 @@ init(mainReducers, getRoutes, (store) => {
     if (getUser(store.getState())) {
       store.dispatch(Api.util.resetApiState());
     }
-    store.dispatch(push("/auth/login"));
+    navigate("/auth/login");
   });
 
   // received a 403 response

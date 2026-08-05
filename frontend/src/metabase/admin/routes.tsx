@@ -48,7 +48,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";

@@ -339,7 +339,7 @@ describe("McpAnalyticsPage", () => {
   });
 
   it("updates the page URL param immediately when Next is clicked", async () => {
-    const { history } = setup({ dataset: multiPageDatasetResponse });
+    const { router } = setup({ dataset: multiPageDatasetResponse });
 
     await screen.findByRole("heading", { name: "MCP analytics" });
     await userEvent.click(
@@ -351,11 +351,11 @@ describe("McpAnalyticsPage", () => {
     });
     await userEvent.click(within(pagination).getByLabelText("Next page"));
 
-    expect(history?.getCurrentLocation().search).toContain("page=1");
+    expect(router?.location.search).toContain("page=1");
   });
 
   it("issues exactly one events query per page change (no redundant refetch)", async () => {
-    const { history } = setup({ dataset: multiPageDatasetResponse });
+    const { router } = setup({ dataset: multiPageDatasetResponse });
 
     await screen.findByRole("heading", { name: "MCP analytics" });
     await userEvent.click(
@@ -371,9 +371,7 @@ describe("McpAnalyticsPage", () => {
 
     // Wait for the debounced URL update to land — it's the last re-render trigger around a page
     // change, and where the old `sortingOptions`-object dependency used to fire redundant refetches.
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().search).toContain("page=1"),
-    );
+    await waitFor(() => expect(router?.location.search).toContain("page=1"));
 
     // The query memo depends on the primitive sort values, so it stays referentially stable across
     // those re-renders: one page change → exactly one events request, not one per render.

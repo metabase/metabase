@@ -23,8 +23,8 @@ const SHARED_UTILS_LEVELS = [
   ["shared/router"],
   // U3 — the store slices and hooks.
   ["shared/redux"],
-  // U4 — the plugin registry.
-  ["shared/plugins"],
+  // U4 — the plugin registry, and instance settings over the api and store.
+  ["shared/plugins", "shared/settings"],
   // U5 — app services over the store and registry.
   [
     "shared/selectors",

@@ -8,7 +8,7 @@ import type {
   State,
   UserInfo,
 } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import type { DatabaseData, LocaleData } from "metabase-types/api";
 
 const DEFAULT_LOCALES: LocaleData[] = [];

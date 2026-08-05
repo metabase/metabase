@@ -2,12 +2,9 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
 import type { State } from "metabase/redux/store";
-import {
-  getIsHosted,
-  getSetting,
-  getTokenFeature,
-} from "metabase/selectors/settings";
+import { getIsHosted } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting, getTokenFeature } from "metabase/settings";
 
 export const canAccessTransforms = (state: State): boolean => {
   if (getUserIsAdmin(state)) {

@@ -4,8 +4,7 @@ import { jt, t } from "ttag";
 
 import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Alert,
   Box,
@@ -64,7 +63,7 @@ export const DeleteDatabaseModal = ({
   onDelete,
   ...props
 }: DeleteDatabaseModalProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { data: usageInfo, isLoading: loading } = useGetDatabaseUsageInfoQuery(
     database.id,
@@ -90,7 +89,7 @@ export const DeleteDatabaseModal = ({
   const handleEditConnectionDetailsClick: MouseEventHandler = (e) => {
     e.preventDefault();
     onClose();
-    dispatch(push(Urls.editDatabase(database.id)));
+    navigate(Urls.editDatabase(database.id));
   };
 
   const hasContent = usageInfo && hasContentInDatabase(usageInfo);

@@ -2,11 +2,11 @@ import { useEffect } from "react";
 
 import { type Location, Navigate, Outlet } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
-import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { replaceLocation } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { createGuard, createRedirectGuard } from "./create-guard";
 import {
@@ -39,7 +39,7 @@ export const MetabaseIsSetup = createRedirectGuard(
 );
 
 export const AvailableInEmbedding = createRedirectGuard(
-  (state) => !getIsEmbeddingIframe(state),
+  () => !isWithinIframe(),
   "/unauthorized",
 );
 

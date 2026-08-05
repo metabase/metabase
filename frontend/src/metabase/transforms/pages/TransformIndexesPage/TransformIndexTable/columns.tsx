@@ -2,7 +2,14 @@ import { t } from "ttag";
 
 import { parseTimestampWithTimezone } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified, Flex, Group, Icon, Tooltip } from "metabase/ui";
+import {
+  Ellipsified,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Icon,
+  Tooltip,
+} from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { TableIndexEntry } from "metabase-types/api";
 
@@ -32,13 +39,13 @@ export function getColumns({
     {
       id: "name",
       header: t`Name`,
-      minWidth: "auto",
+      width: "auto",
       maxAutoWidth: 240,
       enableSorting: true,
       accessorFn: (index) => getIndexName(index),
       cell: ({ getValue }) => (
-        <Group gap="sm" wrap="nowrap">
-          <Icon name="table_index" c="brand" />
+        <Group gap="sm" wrap="nowrap" miw={0}>
+          <FixedSizeIcon name="table_index" c="brand" />
           <Ellipsified>{String(getValue())}</Ellipsified>
         </Group>
       ),
@@ -54,8 +61,8 @@ export function getColumns({
     {
       id: "columns",
       header: t`Columns`,
-      width: "auto",
-      maxAutoWidth: 240,
+      minWidth: "auto",
+      maxAutoWidth: 480,
       enableSorting: true,
       accessorFn: (index) => index.key_columns.join(", "),
       cell: ({ getValue }) => {

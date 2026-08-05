@@ -1,15 +1,12 @@
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-
-import { getSetting } from "./settings";
+import { getSetting } from "metabase/settings";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export interface RouterProps {
   location: Location;
@@ -30,7 +27,7 @@ export const getErrorMessage = (state: State) => {
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
-    getIsEmbeddingIframe,
+    selectIsWithinIframe,
     getEmbedOptions,
     (_state: State) => window.location.hash,
     (state: State) => state.app.isNavbarOpen,

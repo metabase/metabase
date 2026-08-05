@@ -8,8 +8,8 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Schedule } from "metabase/common/components/Schedule";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
