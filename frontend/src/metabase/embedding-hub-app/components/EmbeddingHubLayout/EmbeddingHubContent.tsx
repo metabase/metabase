@@ -42,7 +42,12 @@ export function EmbeddingHubContent({
         ) : (
           // The design caps hub pages at 800px; only Permissions and the theme
           // editor use the whole area.
-          <Box maw={CONTENT_MAX_WIDTH} mx="auto" w="100%">
+          <Box
+            maw={CONTENT_MAX_WIDTH}
+            mx="auto"
+            w="100%"
+            data-testid="embedding-hub-content-cap"
+          >
             {children}
           </Box>
         )}

@@ -18,17 +18,22 @@ type EmbeddingHubTab = {
   isGated?: boolean;
 };
 
-// Two things need the whole area: the theme editor, which puts its editor panel
-// and live preview side by side (the trailing slash keeps the theme *list*
-// capped), and the permissions editor, which is a full-width app of its own.
-// Every other page is capped at 800px, per the design.
-const FULL_WIDTH_PATH_PREFIXES = [
-  `${Urls.embeddingHubAppearance()}/`,
-  Urls.embeddingHubPermissions(),
-];
+// Matches a whole path segment, never a string prefix: /embedding/permissions
+// is otherwise a prefix of /embedding/permissions-setup, which would strip that
+// wizard's padding.
+function isUnder(pathname: string, base: string) {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
 
+// Two things need the whole area: the theme editor, which puts its editor panel
+// and live preview side by side, and the permissions editor, which is a
+// full-width app of its own. Every other page is capped at 800px, per the
+// design. The theme *list* stays capped, so appearance matches only deeper.
 function isFullWidthPath(pathname: string) {
-  return FULL_WIDTH_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return (
+    pathname.startsWith(`${Urls.embeddingHubAppearance()}/`) ||
+    isUnder(pathname, Urls.embeddingHubPermissions())
+  );
 }
 
 // The setup wizard's two sub-pages belong to Get started, so they keep that
@@ -45,9 +50,7 @@ function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
     return pathname === tab.to || GET_STARTED_PATHS.includes(pathname);
   }
 
-  // Match whole path segments, not a string prefix: /embedding/permissions-setup
-  // starts with the Permissions tab's path and would otherwise light it up.
-  return pathname === tab.to || pathname.startsWith(`${tab.to}/`);
+  return isUnder(pathname, tab.to);
 }
 
 export function EmbeddingHubLayout() {

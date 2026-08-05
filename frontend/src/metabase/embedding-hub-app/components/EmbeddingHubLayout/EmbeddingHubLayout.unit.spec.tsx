@@ -157,6 +157,16 @@ describe("EmbeddingHubLayout", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
+  it("keeps the width cap on the permissions-setup wizard", async () => {
+    setup({ initialRoute: "/embedding/permissions-setup" });
+
+    await screen.findByText("Permissions wizard body");
+
+    // /embedding/permissions is a string prefix of this path. Treating it as
+    // the Permissions editor would drop the page padding and width cap.
+    expect(screen.getByTestId("embedding-hub-content-cap")).toBeInTheDocument();
+  });
+
   it("renders the routed body", async () => {
     setup({ initialRoute: "/embedding/security" });
 
