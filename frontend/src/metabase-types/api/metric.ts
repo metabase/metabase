@@ -188,7 +188,7 @@ export type RemoveMetricDimensionsRequest = {
 
 export type SetDefaultMetricDimensionRequest = {
   metricId: MetricId;
-  dimension_id: DimensionId;
+  dimension_id: DimensionId | null;
 };
 
 export type ReorderMetricDimensionsRequest = {

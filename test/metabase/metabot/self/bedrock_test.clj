@@ -198,6 +198,19 @@
     (testing "temperature is omitted for openai.-prefixed reasoning models"
       (is (not (contains? body :temperature))))))
 
+(defn- captured-body!
+  "The decoded request body `bedrock-raw` would send for `opts`, with a stock user message."
+  [opts]
+  (json/decode+kw (:body (captured-raw-request! (merge {:input [{:role :user :content "hi"}]} opts)))))
+
+(deftest anthropic-model-max-tokens-test
+  (testing "the `anthropic.` prefix is stripped so the model's own ceiling resolves"
+    (are [opts tokens] (= tokens (:max_tokens (captured-body! opts)))
+      {:model "anthropic.claude-opus-4-8"}                  128000
+      {:model "anthropic.claude-opus-4-8" :max-tokens 128}     128))
+  (testing "openai.* models omit the field entirely"
+    (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))
+
 (deftest reasoning-is-disabled-test
   (testing "anthropic models get no thinking config and reasoning parts are stripped"
     (let [body (json/decode+kw

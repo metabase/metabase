@@ -71,7 +71,7 @@
    [metabase.transforms-rest.api.transform]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
-   [metabase.typed-schemas.api]
+   [metabase.typed-schemas-rest.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -128,7 +128,7 @@
          metabase.transforms-rest.api.transform/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
-         metabase.typed-schemas.api/keep-me
+         metabase.typed-schemas-rest.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -249,7 +249,7 @@
    "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
-   "/typed-schemas"        (+auth metabase.typed-schemas.api/routes)
+   "/typed-schemas"        (+auth 'metabase.typed-schemas-rest.api)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
