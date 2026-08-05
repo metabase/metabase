@@ -73,6 +73,7 @@ export function useMcpApp(): McpAppState {
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const queryHandleRef = useRef<string | null>(null);
+  const inlineQueryRef = useRef<string | null>(null);
 
   const [{ error: toolCallResultError }, handleToolCallResult] = useAsyncFn(
     async (callResult: ToolCallResult) => {
@@ -98,6 +99,10 @@ export function useMcpApp(): McpAppState {
 
       // Workaround: Claude strips structuredContent from the tool result.
       // Resolve the query handle manually on the frontend.
+      if (inlineQueryRef.current) {
+        return;
+      }
+
       const queryHandle = queryHandleRef.current;
 
       if (!queryHandle) {
@@ -146,6 +151,8 @@ export function useMcpApp(): McpAppState {
           (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
 
         if (query) {
+          inlineQueryRef.current = query;
+
           setQuery(query);
           setPrompt(null);
         }

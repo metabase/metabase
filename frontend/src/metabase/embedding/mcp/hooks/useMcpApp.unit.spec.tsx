@@ -144,6 +144,23 @@ describe("useMcpApp", () => {
     });
   });
 
+  it("preserves inline queries when MCP host strips structuredContent", async () => {
+    const { result } = renderHook(() => useMcpApp());
+
+    await act(async () => {
+      onToolInput?.({ arguments: { query: "encoded-query" } });
+
+      await onToolResult?.({ content: [], isError: false });
+    });
+
+    await waitFor(() => {
+      expect(result.current.query).toBe("encoded-query");
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(resolveMcpQueryHandle).not.toHaveBeenCalled();
+  });
+
   it("shows an error when tool input is missed and structuredContent is absent", async () => {
     const { result } = renderHook(() => useMcpApp());
 
