@@ -25,7 +25,7 @@
    Excludes transform model types when transform sync is disabled."
   ([] (dirty? nil))
   ([worktree-id]
-   (let [excluded (spec/excluded-model-types)]
+   (let [excluded (spec/excluded-model-types worktree-id)]
      (if (empty? excluded)
        (t2/exists? :model/RemoteSyncObject :status [:not= "synced"] :worktree_id worktree-id)
        (t2/exists? :model/RemoteSyncObject
@@ -38,7 +38,7 @@
   the main app), excluding disabled model types (e.g. transforms when transform sync is off)."
   ([] (dirty-rows nil))
   ([worktree-id]
-   (let [excluded (spec/excluded-model-types)]
+   (let [excluded (spec/excluded-model-types worktree-id)]
      (if (empty? excluded)
        (t2/select :model/RemoteSyncObject :status [:not= "synced"] :worktree_id worktree-id)
        (t2/select :model/RemoteSyncObject

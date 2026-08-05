@@ -325,14 +325,29 @@
 
 ;;; ------------------------------------------------- Helper Functions -------------------------------------------------
 
+(defn transforms-synced?
+  "Whether transform content syncs in the scope a sync is running in. `remote-sync-transforms` describes the main
+  app -- it is set from what the main branch contains -- but a worktree exists precisely to work on transform
+  content, so it always syncs it: gating a worktree on that setting would leave it unable to track or push
+  anything whenever the main branch happens to have no transforms.
+
+  This reads the ambient sync scope, so it only answers for a pull or push. Event-time tracking runs outside one
+  and takes the scope from the row instead (see [[check-eligibility]])."
+  []
+  (or (some? serdes/*worktree-id*)
+      (rs-settings/remote-sync-transforms)))
+
 (defn spec-enabled?
-  "Returns true if the spec is currently enabled based on its :enabled? value."
+  "Returns true if the spec is currently enabled based on its :enabled? value.
+
+  Inside a worktree the transform family is always on -- see [[transforms-synced?]]."
   [{:keys [enabled?]}]
   (cond
-    (true? enabled?)            true
+    (true? enabled?)             true
     (= enabled? :library-synced) (rs-settings/library-is-remote-synced?)
-    (keyword? enabled?)         (boolean (setting/get-value-of-type :boolean enabled?))
-    :else                       false))
+    (= enabled? :remote-sync-transforms) (transforms-synced?)
+    (keyword? enabled?)          (boolean (setting/get-value-of-type :boolean enabled?))
+    :else                        false))
 
 (defn export-conditions
   "Returns conditions to apply when querying entities for export.
@@ -449,15 +464,20 @@
 (defn excluded-model-types
   "Returns a set of model type strings that should be excluded from dirty detection
    based on current settings. Models with a setting-based or library-synced :enabled?
-   that is currently false will be excluded."
-  []
-  (->> remote-sync-specs
-       (filter (fn [[_ spec]]
-                 (let [enabled? (:enabled? spec)]
-                   (and (keyword? enabled?)
-                        (not (spec-enabled? spec))))))
-       (map (fn [[_ spec]] (:model-type spec)))
-       set))
+   that is currently false will be excluded.
+
+   `worktree-id` is the scope being asked about; inside a worktree the transform family is always synced, so
+   nothing in it is excluded."
+  ([] (excluded-model-types nil))
+  ([worktree-id]
+   (binding [serdes/*worktree-id* (or worktree-id serdes/*worktree-id*)]
+     (->> remote-sync-specs
+          (filter (fn [[_ spec]]
+                    (let [enabled? (:enabled? spec)]
+                      (and (keyword? enabled?)
+                           (not (spec-enabled? spec))))))
+          (map (fn [[_ spec]] (:model-type spec)))
+          set))))
 
 (defn all-model-types
   "Returns a set of all model type strings."
@@ -724,7 +744,7 @@
    or snippets-namespace with Library synced."
   [collection]
   (or (collections/remote-synced-collection? collection)
-      (and (rs-settings/remote-sync-transforms)
+      (and (transforms-synced?)
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
            (snippets-namespace-collection? collection))))
@@ -741,7 +761,7 @@
   (into []
         cat
         [(t2/select-pks-vec :model/Collection :is_remote_synced true :worktree_id serdes/*worktree-id*)
-         (when (rs-settings/remote-sync-transforms)
+         (when (transforms-synced?)
            (t2/select-pks-vec :model/Collection
                               :namespace (name collections/transforms-ns)
                               :worktree_id serdes/*worktree-id*))
@@ -808,7 +828,7 @@
       (boolean (collections/remote-synced-collection? collection-id))
 
       :transforms-namespace
-      (and (rs-settings/remote-sync-transforms)
+      (and (transforms-synced?)
            (transforms-namespace-collection? object))
 
       :snippets-namespace
@@ -817,7 +837,7 @@
 
       :any
       (or (collections/remote-synced-collection? (or collection-id object))
-          (and (rs-settings/remote-sync-transforms)
+          (and (transforms-synced?)
                (transforms-namespace-collection? object))
           (and (rs-settings/library-is-remote-synced?)
                (snippets-namespace-collection? object)))
@@ -838,8 +858,12 @@
        (check-eligibility (spec-for-model-key parent-model) table)))))
 
 (defmethod check-eligibility :setting
-  [{:keys [eligibility]} _object]
-  (boolean (setting/get-value-of-type :boolean (:setting eligibility))))
+  [{:keys [eligibility]} object]
+  ;; content already checked out into a worktree is tracked whatever the setting says: the setting describes the
+  ;; main app, and event-time tracking runs outside any sync, so the scope comes from the row rather than
+  ;; [[serdes/*worktree-id*]].
+  (boolean (or (:worktree_id object)
+               (setting/get-value-of-type :boolean (:setting eligibility)))))
 
 (defmethod check-eligibility :library-synced
   [_spec _object]
@@ -1217,7 +1241,7 @@
                                 [:= :location "/"]
                                 [:= :worktree_id serdes/*worktree-id*]
                                 [:not :archived]]})
-     (when (rs-settings/remote-sync-transforms)
+     (when (transforms-synced?)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
                          {:where [:and
