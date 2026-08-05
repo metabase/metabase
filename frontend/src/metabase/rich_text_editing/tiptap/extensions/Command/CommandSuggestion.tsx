@@ -11,6 +11,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
@@ -34,6 +35,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { EMBED_SEARCH_MODELS, LINK_SEARCH_MODELS } from "../shared/constants";
@@ -106,6 +108,7 @@ export const CommandSuggestion = forwardRef<
 ) {
   const host = useEditorHost();
   const document = useSelector(host.selectors.getCurrentDocument);
+  const [sendToast] = useToast();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
@@ -159,7 +162,7 @@ export const CommandSuggestion = forwardRef<
     areChartsAllowed;
 
   const onSelectLinkEntity = useCallback(
-    (item: { id: number | string; model: string }) => {
+    (item: { id: number | string; model: string; display?: string | null }) => {
       if (viewMode === "linkTo") {
         command({
           selectItem: true,
@@ -170,6 +173,16 @@ export const CommandSuggestion = forwardRef<
           host.analytics.trackAddSmartLink(document);
         }
       } else {
+        const isBlockedCustomViz =
+          Boolean(document?.public_uuid) && isCustomVizDisplay(item.display);
+        if (isBlockedCustomViz) {
+          sendToast({
+            icon: "warning",
+            toastColor: "error",
+            message: t`This card uses a custom visualization, which isn't supported in public links, so it can't be added.`,
+          });
+          return;
+        }
         command({
           embedItem: true,
           entityId: item.id,
@@ -180,7 +193,7 @@ export const CommandSuggestion = forwardRef<
         }
       }
     },
-    [viewMode, command, document, host],
+    [viewMode, command, document, host, sendToast],
   );
 
   const onTriggerCreateNewQuestion = useCallback(() => {

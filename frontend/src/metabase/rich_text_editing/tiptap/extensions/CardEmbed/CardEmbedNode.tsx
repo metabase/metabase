@@ -42,6 +42,7 @@ import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSke
 import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -369,6 +370,13 @@ export const CardEmbedComponent = memo(
 
     const handleReplaceModalSelect = useCallback(
       (item: QuestionPickerValueItem) => {
+        if (
+          Boolean(document?.public_uuid) &&
+          "display" in item &&
+          isCustomVizDisplay(item.display)
+        ) {
+          return;
+        }
         updateAttributes({
           id: item.id,
           name: null,
@@ -705,6 +713,11 @@ export const CardEmbedComponent = memo(
             <QuestionPickerModal
               onChange={handleReplaceModalSelect}
               onClose={() => setIsReplaceModalOpen(false)}
+              isDisabledItem={(item) =>
+                Boolean(document?.public_uuid) &&
+                "display" in item &&
+                isCustomVizDisplay(item.display)
+              }
             />
           )}
         </NodeViewWrapper>
