@@ -638,7 +638,15 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (dashboards-rest.db/public-dashboards))
+  (let [dashboards (dashboards-rest.db/public-dashboards)
+        ;; dashboards with a dashcard whose primary card renders a custom visualization (display "custom:<id>")
+        custom-viz-dashboard-ids
+        (when (seq dashboards)
+          (into #{}
+                (map :dashboard_id)
+                (dashboards-rest.db/dashboard-ids-with-custom-viz (map :id dashboards))))]
+    (for [dashboard dashboards]
+      (assoc dashboard :contains_custom_viz (contains? custom-viz-dashboard-ids (:id dashboard))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

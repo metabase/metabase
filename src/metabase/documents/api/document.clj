@@ -292,7 +292,8 @@
 (api.macros/defendpoint :get "/public" :- [:sequential [:map
                                                         [:name :string]
                                                         [:id ms/PositiveInt]
-                                                        [:public_uuid ms/UUIDString]]]
+                                                        [:public_uuid ms/UUIDString]
+                                                        [:contains_custom_viz :boolean]]]
   "List all Documents that have public links.
 
   Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,
@@ -305,7 +306,14 @@
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (documents.db/public-documents))
+  (let [documents (documents.db/public-documents)
+        custom-viz-document-ids
+        (when (seq documents)
+          (into #{}
+                (map :document_id)
+                (documents.db/document-ids-with-custom-viz (map :id documents))))]
+    (for [document documents]
+      (assoc document :contains_custom_viz (contains? custom-viz-document-ids (:id document))))))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 

@@ -63,9 +63,9 @@
                           :order-by [[[:lower :c.name] :asc]]}))
 
 (mu/defn public-cards
-  "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
+  "The name, id, public uuid, schema, and display of the unarchived Cards that are publicly shared."
   []
-  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Card :name :id :public_uuid :card_schema :display], :public_uuid [:not= nil], :archived false))
 
 (mu/defn embeddable-cards
   "The name, id, and schema of the unarchived Cards with embedding enabled."
