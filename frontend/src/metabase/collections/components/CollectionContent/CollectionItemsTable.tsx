@@ -17,12 +17,9 @@ import {
   DEFAULT_VISIBLE_COLUMNS_LIST,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
-import {
-  type CollectionItemTypeFilterValue,
-  type CreateBookmark,
-  type DeleteBookmark,
-  OFFICIAL_COLLECTION_FILTER,
-  REGULAR_COLLECTION_FILTER,
+import type {
+  CreateBookmark,
+  DeleteBookmark,
 } from "metabase/common/collections/types";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -74,40 +71,14 @@ const getDefaultSortingOptions = (
 
 const getQueryFilters = (
   models: CollectionItemModel[],
-  selectedFilters: CollectionItemTypeFilterValue[] | null,
-): Pick<ListCollectionItemsRequest, "models" | "authority_level"> => {
+  selectedFilters: CollectionItemModel[] | null,
+): Pick<ListCollectionItemsRequest, "models"> => {
   if (selectedFilters == null) {
     return { models };
   }
 
-  const hasUnscopedCollections = selectedFilters.includes("collection");
-  const hasRegularCollections = selectedFilters.includes(
-    REGULAR_COLLECTION_FILTER,
-  );
-  const hasOfficialCollections = selectedFilters.includes(
-    OFFICIAL_COLLECTION_FILTER,
-  );
-  const selectedModels = Array.from(
-    new Set<CollectionItemModel>(
-      selectedFilters.map((filter) => {
-        return filter === REGULAR_COLLECTION_FILTER ||
-          filter === OFFICIAL_COLLECTION_FILTER
-          ? "collection"
-          : filter;
-      }),
-    ),
-  );
-  let authorityLevel: ListCollectionItemsRequest["authority_level"];
-  if (
-    !hasUnscopedCollections &&
-    hasRegularCollections !== hasOfficialCollections
-  ) {
-    authorityLevel = hasRegularCollections ? "regular" : "official";
-  }
-
   return {
-    models: selectedModels.length > 0 ? selectedModels : ["no_models"],
-    ...(authorityLevel ? { authority_level: authorityLevel } : {}),
+    models: selectedFilters.length > 0 ? selectedFilters : ["no_models"],
   };
 };
 
@@ -193,7 +164,7 @@ export const CollectionItemsTable = ({
   const searchText = search.collectionId === collectionId ? search.value : "";
   const [filterSelection, setFilterSelection] = useState<{
     collectionId?: CollectionId;
-    value: CollectionItemTypeFilterValue[] | null;
+    value: CollectionItemModel[] | null;
   }>({ collectionId, value: null });
   const selectedFilters =
     filterSelection.collectionId === collectionId
@@ -229,7 +200,7 @@ export const CollectionItemsTable = ({
   );
 
   const handleSelectedFiltersChange = useCallback(
-    (nextFilters: CollectionItemTypeFilterValue[] | null) => {
+    (nextFilters: CollectionItemModel[] | null) => {
       setFilterSelection({ collectionId, value: nextFilters });
       setPage(0);
     },
@@ -300,15 +271,13 @@ export const CollectionItemsTable = ({
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   searchText: string;
-  selectedFilters: CollectionItemTypeFilterValue[] | null;
+  selectedFilters: CollectionItemModel[] | null;
   unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
   unpinnedQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onSearchTextChange: (searchText: string) => void;
-  onSelectedFiltersChange: (
-    filters: CollectionItemTypeFilterValue[] | null,
-  ) => void;
+  onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
   onUnpinnedItemsSortingChange: (
     unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
@@ -351,7 +320,6 @@ const CollectionItemsTableContent = ({
 
   const unpinnedItems = data?.data ?? [];
   const availableModels = data?.available_models ?? [];
-  const availableAuthorityLevels = data?.available_authority_levels;
   const total = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -395,7 +363,6 @@ const CollectionItemsTableContent = ({
         <CollectionItemsToolbar
           searchText={searchText}
           availableModels={availableModels}
-          availableAuthorityLevels={availableAuthorityLevels}
           selectedFilters={selectedFilters}
           onSearchTextChange={onSearchTextChange}
           onSelectedFiltersChange={onSelectedFiltersChange}

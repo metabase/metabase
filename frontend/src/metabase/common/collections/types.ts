@@ -8,26 +8,11 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   CollectionItem,
-  CollectionItemModel,
   CollectionType,
   Dashboard,
   IconName,
   TableId,
 } from "metabase-types/api";
-
-export const REGULAR_COLLECTION_FILTER = "collection-regular" as const;
-export const OFFICIAL_COLLECTION_FILTER = "collection-official" as const;
-
-export type CollectionItemTypeFilterValue =
-  | CollectionItemModel
-  | typeof REGULAR_COLLECTION_FILTER
-  | typeof OFFICIAL_COLLECTION_FILTER;
-
-export type CollectionItemTypeFilterOption = {
-  value: CollectionItemTypeFilterValue;
-  model: CollectionItemModel;
-  label: string;
-};
 
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;

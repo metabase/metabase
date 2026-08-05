@@ -1,28 +1,23 @@
 import { t } from "ttag";
 
-import type { CollectionItemTypeFilterValue } from "metabase/common/collections/types";
 import { Flex, Icon, Input, Loader, TextInput } from "metabase/ui";
-import type { CollectionAuthorityLevelFilter } from "metabase-types/api";
+import type { CollectionItemModel } from "metabase-types/api";
 
 import { CollectionTypeFilter } from "./CollectionTypeFilter";
 
 type CollectionItemsToolbarProps = {
   searchText: string;
   availableModels: string[];
-  availableAuthorityLevels?: CollectionAuthorityLevelFilter[];
-  selectedFilters: CollectionItemTypeFilterValue[] | null;
+  selectedFilters: CollectionItemModel[] | null;
   onSearchTextChange: (searchText: string) => void;
   hasPinnedItems?: boolean;
   isSearching: boolean;
-  onSelectedFiltersChange: (
-    filters: CollectionItemTypeFilterValue[] | null,
-  ) => void;
+  onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
 };
 
 export function CollectionItemsToolbar({
   searchText,
   availableModels,
-  availableAuthorityLevels,
   selectedFilters,
   onSearchTextChange,
   hasPinnedItems,
@@ -59,7 +54,6 @@ export function CollectionItemsToolbar({
       />
       <CollectionTypeFilter
         availableModels={availableModels}
-        availableAuthorityLevels={availableAuthorityLevels}
         selectedFilters={selectedFilters}
         onSelectedFiltersChange={onSelectedFiltersChange}
       />

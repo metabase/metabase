@@ -35,8 +35,6 @@ export type CollectionContentModel = CollectionItemModel;
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionAuthorityLevelFilter = "official" | "regular";
-
 export type CollectionType =
   | "instance-analytics"
   | "trash"
@@ -173,7 +171,6 @@ export type ListCollectionItemsSortColumn =
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: (CollectionItemModel | "no_models")[];
-  authority_level?: CollectionAuthorityLevelFilter;
   q?: string;
   include_available_models?: boolean;
   archived?: boolean;
@@ -188,9 +185,7 @@ export type ListCollectionItemsRequest = {
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
-  // Metadata can include collection item types the filter UI does not support.
   available_models?: string[];
-  available_authority_levels?: CollectionAuthorityLevelFilter[];
 } & PaginationResponse;
 
 export interface UpdateCollectionRequest {

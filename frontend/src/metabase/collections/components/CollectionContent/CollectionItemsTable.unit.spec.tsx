@@ -2,9 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import {
   act,
   renderWithProviders,
@@ -23,7 +21,6 @@ import type {
 import {
   createMockCollection,
   createMockCollectionItem,
-  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
@@ -120,12 +117,6 @@ function findItemsSearchParamsByModels(models: string[]) {
     (searchParams) =>
       JSON.stringify(searchParams.getAll("models").sort()) ===
       JSON.stringify(sortedModels),
-  );
-}
-
-function findItemsSearchParamsByAuthorityLevel(authorityLevel: string) {
-  return getItemsSearchParams().find(
-    (searchParams) => searchParams.get("authority_level") === authorityLevel,
   );
 }
 
@@ -691,7 +682,7 @@ describe("CollectionItemsTable", () => {
     ).not.toBeInTheDocument();
   });
 
-  describe("with the official collections plugin", () => {
+  it("keeps official collections in the generic Collection filter", async () => {
     const regularCollection = createMockCollectionItem({
       id: 4,
       collection_id: collection.id,
@@ -706,99 +697,30 @@ describe("CollectionItemsTable", () => {
       name: "Official collection",
       authority_level: "official",
     });
-
-    beforeEach(() => {
-      mockSettings({
-        "token-features": createMockTokenFeatures({
-          official_collections: true,
-        }),
-      });
-      setupEnterpriseOnlyPlugin("collections");
+    setup({
+      collectionItems: [
+        collectionItems[0],
+        regularCollection,
+        officialCollection,
+      ],
     });
 
-    it("keeps dashboards when filtering for official collections", async () => {
-      setup({
-        collectionItems: [
-          collectionItems[0],
-          regularCollection,
-          officialCollection,
-        ],
-      });
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    expect(screen.getByText("Regular collection")).toBeInTheDocument();
+    expect(screen.getByText("Official collection")).toBeInTheDocument();
 
-      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
-      expect(screen.getByText("Regular collection")).toBeInTheDocument();
-      expect(screen.getByText("Official collection")).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+    await userEvent.click(screen.getByLabelText("Dashboard"));
 
-      await userEvent.click(
-        screen.getByTestId("collection-type-filter-button"),
-      );
-      await userEvent.click(screen.getByLabelText("Collection"));
-
-      await waitFor(() => {
-        const searchParams = findItemsSearchParamsByAuthorityLevel("official");
-        expect({
-          authorityLevel: searchParams?.get("authority_level"),
-          models: searchParams?.getAll("models").sort(),
-        }).toEqual({
-          authorityLevel: "official",
-          models: ["collection", "dashboard"],
-        });
-      });
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Regular collection"),
-        ).not.toBeInTheDocument();
-      });
-      expect(screen.getByText("Revenue overview")).toBeInTheDocument();
-      expect(screen.getByText("Official collection")).toBeInTheDocument();
+    await waitFor(() => {
+      const searchParams = findItemsSearchParamsByModels(["collection"]);
+      expect(searchParams).toBeDefined();
+      expect(searchParams?.has("authority_level")).toBe(false);
     });
-
-    it("filters official and regular collections independently", async () => {
-      setup({
-        collectionItems: [regularCollection, officialCollection],
-        pageSize: 1,
-      });
-
-      expect(await screen.findByText("Regular collection")).toBeInTheDocument();
-      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
-      expect(
-        await screen.findByText("Official collection"),
-      ).toBeInTheDocument();
-
-      await userEvent.click(
-        screen.getByTestId("collection-type-filter-button"),
-      );
-      expect(screen.getByLabelText("Collection")).toBeChecked();
-      expect(screen.getByLabelText("Official collections")).toBeChecked();
-
-      await userEvent.click(screen.getByLabelText("Collection"));
-
-      await waitFor(() => {
-        const searchParams = findItemsSearchParamsByAuthorityLevel("official");
-        expect(searchParams?.getAll("models")).toEqual(["collection"]);
-        expect(searchParams?.get("offset")).toBe("0");
-      });
-      expect(screen.queryByText("Regular collection")).not.toBeInTheDocument();
-      expect(screen.getByText("Official collection")).toBeInTheDocument();
-
-      await userEvent.click(screen.getByLabelText("Collection"));
-      await userEvent.click(screen.getByLabelText("Official collections"));
-
-      await waitFor(() => {
-        expect(
-          findItemsSearchParamsByAuthorityLevel("regular")?.getAll("models"),
-        ).toEqual(["collection"]);
-      });
-      expect(await screen.findByText("Regular collection")).toBeInTheDocument();
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Official collection"),
-        ).not.toBeInTheDocument();
-      });
-      await act(async () => {
-        // Let RTK Query finish the last mocked request before test teardown.
-        await fetchMock.callHistory.flush();
-      });
+    expect(screen.getByText("Regular collection")).toBeInTheDocument();
+    expect(screen.getByText("Official collection")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
     });
   });
 });

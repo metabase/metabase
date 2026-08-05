@@ -2,12 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useId } from "react";
 import { t } from "ttag";
 
-import type {
-  CollectionItemTypeFilterOption,
-  CollectionItemTypeFilterValue,
-} from "metabase/common/collections/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   Button,
   Checkbox,
@@ -17,39 +12,29 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CollectionAuthorityLevelFilter } from "metabase-types/api";
+import type { CollectionItemModel } from "metabase-types/api";
 
 import { TYPE_FILTER_MODELS } from "./constants";
 
 type CollectionTypeFilterProps = {
   availableModels: string[];
-  availableAuthorityLevels?: CollectionAuthorityLevelFilter[];
-  selectedFilters: CollectionItemTypeFilterValue[] | null;
-  onSelectedFiltersChange: (
-    filters: CollectionItemTypeFilterValue[] | null,
-  ) => void;
+  selectedFilters: CollectionItemModel[] | null;
+  onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
 };
 
 export function CollectionTypeFilter({
   availableModels,
-  availableAuthorityLevels,
   selectedFilters,
   onSelectedFiltersChange,
 }: CollectionTypeFilterProps) {
   const [opened, { close, toggle }] = useDisclosure(false);
   const headingId = useId();
-  const baseOptions: CollectionItemTypeFilterOption[] =
-    TYPE_FILTER_MODELS.filter((model) => availableModels.includes(model)).map(
-      (model) => ({
-        value: model,
-        model,
-        label: getTranslatedEntityName(model) ?? model,
-      }),
-    );
-  const options = PLUGIN_COLLECTIONS.getCollectionItemTypeFilterOptions(
-    baseOptions,
-    availableAuthorityLevels ?? [],
-  );
+  const options = TYPE_FILTER_MODELS.filter((model) =>
+    availableModels.includes(model),
+  ).map((model) => ({
+    value: model,
+    label: getTranslatedEntityName(model) ?? model,
+  }));
   const optionValues = options.map(({ value }) => value);
   const checkedFilters = selectedFilters ?? optionValues;
   const isFiltering = selectedFilters != null;
@@ -58,7 +43,7 @@ export function CollectionTypeFilter({
     return null;
   }
 
-  const handleToggle = (filter: CollectionItemTypeFilterValue) => {
+  const handleToggle = (filter: CollectionItemModel) => {
     const nextFilters = checkedFilters.includes(filter)
       ? checkedFilters.filter((checkedFilter) => checkedFilter !== filter)
       : [...checkedFilters, filter];
@@ -78,8 +63,9 @@ export function CollectionTypeFilter({
     >
       <Indicator
         disabled={!isFiltering}
-        size={8}
+        size={7}
         data-testid="type-filter-indicator"
+        offset={12}
       >
         <Popover.Target>
           <Button
@@ -96,8 +82,13 @@ export function CollectionTypeFilter({
         aria-labelledby={headingId}
         data-testid="collection-type-filter-popover"
       >
-        <Stack gap="sm" p="md" miw="11rem">
-          <Text id={headingId} fw="bold">{t`Filter by type`}</Text>
+        <Stack gap="sm" px="lg" py="md" miw="11rem">
+          <Text
+            id={headingId}
+            fw="bold"
+            lh="1.25rem"
+            mb="sm"
+          >{t`Filter by type`}</Text>
           {options.map(({ value, label }) => (
             <Checkbox
               key={value}
@@ -105,6 +96,7 @@ export function CollectionTypeFilter({
               label={label}
               checked={checkedFilters.includes(value)}
               onChange={() => handleToggle(value)}
+              mb="xs"
             />
           ))}
         </Stack>

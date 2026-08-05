@@ -171,7 +171,7 @@ export const dashboardApi = Api.injectEndpoints({
         ListCollectionItemsResponse,
         Omit<
           ListCollectionItemsRequest,
-          "id" | "q" | "authority_level" | "include_available_models"
+          "id" | "q" | "include_available_models"
         > & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({

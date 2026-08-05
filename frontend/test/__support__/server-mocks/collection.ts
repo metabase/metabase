@@ -166,7 +166,6 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
-  const authorityLevel = url.searchParams.get("authority_level");
 
   // When the models filter is an empty array, return all items.
   // In the API, omitting the `models` param returns all collection items.
@@ -181,19 +180,10 @@ function handleCollectionItemsResponse({
     );
   }
 
-  const authorityMatchedItems = matchedItems.filter((item) => {
-    if (item.model !== "collection" || authorityLevel == null) {
-      return true;
-    }
-    return authorityLevel === "official"
-      ? item.authority_level === "official"
-      : item.authority_level !== "official";
-  });
-
   const q = url.searchParams.get("q")?.toLowerCase().trim();
   const searchedItems = q
-    ? authorityMatchedItems.filter(({ name }) => name.toLowerCase().includes(q))
-    : authorityMatchedItems;
+    ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
+    : matchedItems;
 
   const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
@@ -214,15 +204,6 @@ function handleCollectionItemsResponse({
     ...response,
     available_models: Array.from(
       new Set(collectionItems.map((item) => item.model)),
-    ),
-    available_authority_levels: Array.from(
-      new Set(
-        collectionItems
-          .filter(({ model }) => model === "collection")
-          .map(({ authority_level }) =>
-            authority_level === "official" ? "official" : "regular",
-          ),
-      ),
     ),
   };
 }

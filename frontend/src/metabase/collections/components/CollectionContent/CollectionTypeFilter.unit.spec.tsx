@@ -1,33 +1,23 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  type CollectionItemTypeFilterValue,
-  REGULAR_COLLECTION_FILTER,
-} from "metabase/common/collections/types";
-import type { CollectionAuthorityLevelFilter } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { CollectionItemModel } from "metabase-types/api";
 
 import { CollectionTypeFilter } from "./CollectionTypeFilter";
 
 type SetupOpts = {
   availableModels?: string[];
-  availableAuthorityLevels?: CollectionAuthorityLevelFilter[];
-  selectedFilters?: CollectionItemTypeFilterValue[] | null;
+  selectedFilters?: CollectionItemModel[] | null;
 };
 
 function setup({
   availableModels = ["dashboard", "card"],
-  availableAuthorityLevels,
   selectedFilters = null,
 }: SetupOpts = {}) {
   const onSelectedFiltersChange = jest.fn();
   const view = renderWithProviders(
     <CollectionTypeFilter
       availableModels={availableModels}
-      availableAuthorityLevels={availableAuthorityLevels}
       selectedFilters={selectedFilters}
       onSelectedFiltersChange={onSelectedFiltersChange}
     />,
@@ -79,6 +69,9 @@ describe("CollectionTypeFilter", () => {
       expect(screen.getByLabelText(label)).toBeChecked();
     }
     expect(screen.queryByLabelText("Timeline")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Official collections"),
+    ).not.toBeInTheDocument();
   });
 
   it("returns the remaining models when an option is unchecked", async () => {
@@ -110,117 +103,5 @@ describe("CollectionTypeFilter", () => {
     setup({ selectedFilters: ["dashboard"] });
 
     expect(queryIndicatorDot()).toBeInTheDocument();
-  });
-
-  it("keeps official collections inside the generic Collection option without the plugin", async () => {
-    setup({
-      availableModels: ["collection"],
-      availableAuthorityLevels: ["regular", "official"],
-    });
-
-    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
-
-    expect(screen.getByLabelText("Collection")).toBeChecked();
-    expect(
-      screen.queryByLabelText("Official collections"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("keeps official collections inside the generic Collection option when the premium feature is disabled", async () => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        official_collections: false,
-      }),
-    });
-    setupEnterpriseOnlyPlugin("collections");
-    setup({
-      availableModels: ["collection"],
-      availableAuthorityLevels: ["regular", "official"],
-    });
-
-    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
-
-    expect(screen.getByLabelText("Collection")).toBeChecked();
-    expect(
-      screen.queryByLabelText("Official collections"),
-    ).not.toBeInTheDocument();
-  });
-
-  describe("with the official collections plugin", () => {
-    beforeEach(() => {
-      mockSettings({
-        "token-features": createMockTokenFeatures({
-          official_collections: true,
-        }),
-      });
-      setupEnterpriseOnlyPlugin("collections");
-    });
-
-    it("shows separate regular and official options when both are available", async () => {
-      setup({
-        availableModels: ["collection", "dashboard"],
-        availableAuthorityLevels: ["regular", "official"],
-      });
-
-      await userEvent.click(
-        screen.getByTestId("collection-type-filter-button"),
-      );
-
-      const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes).toEqual([
-        screen.getByLabelText("Collection"),
-        screen.getByLabelText("Official collections"),
-        screen.getByLabelText("Dashboard"),
-      ]);
-      for (const checkbox of checkboxes) {
-        expect(checkbox).toBeChecked();
-      }
-    });
-
-    it("shows only Official collections when no regular collection is available", async () => {
-      setup({
-        availableModels: ["collection"],
-        availableAuthorityLevels: ["official"],
-      });
-
-      await userEvent.click(
-        screen.getByTestId("collection-type-filter-button"),
-      );
-
-      expect(screen.queryByLabelText("Collection")).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Official collections")).toBeChecked();
-    });
-
-    it("shows only Collection when no official collection is available", async () => {
-      setup({
-        availableModels: ["collection"],
-        availableAuthorityLevels: ["regular"],
-      });
-
-      await userEvent.click(
-        screen.getByTestId("collection-type-filter-button"),
-      );
-
-      expect(screen.getByLabelText("Collection")).toBeChecked();
-      expect(
-        screen.queryByLabelText("Official collections"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("returns the regular alias when Official collections is unchecked", async () => {
-      const { onSelectedFiltersChange } = setup({
-        availableModels: ["collection"],
-        availableAuthorityLevels: ["regular", "official"],
-      });
-
-      await userEvent.click(
-        screen.getByTestId("collection-type-filter-button"),
-      );
-      await userEvent.click(screen.getByLabelText("Official collections"));
-
-      expect(onSelectedFiltersChange).toHaveBeenCalledWith([
-        REGULAR_COLLECTION_FILTER,
-      ]);
-    });
   });
 });
