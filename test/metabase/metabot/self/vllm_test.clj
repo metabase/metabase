@@ -5,6 +5,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.test :as mt])
@@ -166,19 +167,63 @@
                     (apply str))]
       (is (re-find #"<think>" text)))))
 
-(deftest ^:parallel reasoning-content-is-dropped-test
-  (testing "with --reasoning-parser, thinking arrives on delta.reasoning_content and is dropped; the answer still streams"
-    (let [parts (into [] (comp (vllm/vllm->aisdk-chunks-xf) (self.core/aisdk-xf))
-                      [{:id "chatcmpl-1" :model "vllm-test"
-                        :choices [{:index 0 :delta {:role "assistant" :reasoning_content "Let me"} :finish_reason nil}]}
-                       {:id "chatcmpl-1" :model "vllm-test"
-                        :choices [{:index 0 :delta {:reasoning_content " think."} :finish_reason nil}]}
-                       {:id "chatcmpl-1" :model "vllm-test"
-                        :choices [{:index 0 :delta {:content "Ready."} :finish_reason nil}]}
-                       {:id "chatcmpl-1" :model "vllm-test"
-                        :choices [{:index 0 :delta {} :finish_reason "stop"}]}])]
-      (is (= ["Ready."] (map :text (filter #(= :text (:type %)) parts))))
-      (is (empty? (filter #(= :reasoning (:type %)) parts))))))
+;;; Recorded from vLLM 0.26.0 serving Qwen3-14B with `--reasoning-parser qwen3`. The shape that
+;;; could not be guessed: the field is `reasoning`, not `reasoning_content` — 0.26 renamed it and
+;;; documents the old spelling as deprecated. The opening chunk carries `content ""`, which must not
+;;; open a text block ahead of the reasoning.
+(def ^:private reasoning-stream
+  [{:id "chatcmpl-b3043ba7f7b178ce" :model "vllm-test"
+    :choices [{:index 0 :delta {:role "assistant" :content ""} :finish_reason nil}]}
+   {:id "chatcmpl-b3043ba7f7b178ce" :model "vllm-test"
+    :choices [{:index 0 :delta {:reasoning "\nOkay"} :finish_reason nil}]}
+   {:id "chatcmpl-b3043ba7f7b178ce" :model "vllm-test"
+    :choices [{:index 0 :delta {:reasoning ", the user asks 2+2."} :finish_reason nil}]}
+   {:id "chatcmpl-b3043ba7f7b178ce" :model "vllm-test"
+    :choices [{:index 0 :delta {:content "Four"} :finish_reason nil}]}
+   {:id "chatcmpl-b3043ba7f7b178ce" :model "vllm-test"
+    :choices [{:index 0 :delta {:content "."} :finish_reason nil}]}
+   {:id "chatcmpl-b3043ba7f7b178ce" :model "vllm-test"
+    :choices [{:index 0 :delta {} :finish_reason "stop"}]}])
+
+;;; The deprecated spelling, still emitted by older vLLM builds and other OpenAI-compatible servers.
+(def ^:private deprecated-reasoning-stream
+  (mapv (fn [chunk]
+          (update-in chunk [:choices 0 :delta]
+                     (fn [delta]
+                       (if-let [r (:reasoning delta)]
+                         (-> delta (dissoc :reasoning) (assoc :reasoning_content r))
+                         delta))))
+        reasoning-stream))
+
+(deftest ^:parallel reasoning-becomes-reasoning-parts-test
+  (testing "with --reasoning-parser, thinking streams as reasoning and the answer still streams as text"
+    (doseq [[spelling stream] {"reasoning"         reasoning-stream
+                               "reasoning_content" deprecated-reasoning-stream}]
+      (testing spelling
+        (let [parts (into [] (comp (vllm/vllm->aisdk-chunks-xf) (self.core/aisdk-xf)) stream)]
+          (is (= ["\nOkay, the user asks 2+2."] (map :text (filter #(= :reasoning (:type %)) parts))))
+          (is (= ["Four."] (map :text (filter #(= :text (:type %)) parts)))))))))
+
+(deftest ^:parallel reasoning-chunks-are-bracketed-test
+  (testing "the raw chunk stream brackets reasoning the way self.core expects to group it"
+    (let [chunks  (into [] (vllm/vllm->aisdk-chunks-xf) reasoning-stream)
+          by-type (group-by :type chunks)]
+      (testing "the opening `content \"\"` chunk does not open a text block ahead of the reasoning"
+        (is (= [:start :reasoning-start :reasoning-delta :reasoning-delta :reasoning-end
+                :text-start :text-delta :text-delta :text-end]
+               (mapv :type chunks))))
+      (testing "every reasoning chunk shares one id, so aisdk-xf joins them into a single part"
+        (is (= 1 (count (into #{} (map :id) (mapcat by-type [:reasoning-start :reasoning-delta :reasoning-end])))))))))
+
+(deftest ^:parallel reasoning-forwarding-is-opt-in-test
+  (testing "the shared xf still drops reasoning for the adapters that did not opt in"
+    (doseq [[spelling stream] {"reasoning"         reasoning-stream
+                               "reasoning_content" deprecated-reasoning-stream}]
+      (testing spelling
+        (let [parts (into [] (comp (chat-completions/chat-completions->aisdk-chunks-xf) (self.core/aisdk-xf))
+                          stream)]
+          (is (empty? (filter #(= :reasoning (:type %)) parts)))
+          (is (= ["Four."] (map :text (filter #(= :text (:type %)) parts)))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Auth
@@ -446,7 +491,7 @@
   (testing "a reasoning model that never stops thinking is named as such, not as a server missing tool-calling flags"
     (let [e (try (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
                                 {:message       {:content           nil
-                                                 :reasoning_content "Okay, the user wants me to record a table name, so"
+                                                 :reasoning "Okay, the user wants me to record a table name, so"
                                                  :tool_calls        []}
                                  :finish_reason "length"})
                  (catch clojure.lang.ExceptionInfo e e))]
@@ -502,6 +547,37 @@
                                                          (is (.await arrived 10 TimeUnit/SECONDS))
                                                          {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
           (vllm/list-models {:probe? true}))))))
+
+(deftest preflight-records-whether-the-probed-model-reasons-test
+  (testing "the probe is the only place this is knowable — /v1/models carries no reasoning field"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? false]
+      ;; Recorded shape: vLLM 0.26 puts it on the non-streaming message under `reasoning`.
+      (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                     {:message       (assoc tool-calling-message
+                                            :reasoning "\nOkay, the user wants me to record \"orders\".")
+                      :finish_reason "tool_calls"})
+      (is (true? (llm.settings/llm-vllm-model-reasoning?)))))
+  (testing "and under the deprecated spelling older servers still use"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? false]
+      (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                     {:message       (assoc tool-calling-message
+                                            :reasoning_content "Older vLLM builds spell it this way.")
+                      :finish_reason "tool_calls"})
+      (is (true? (llm.settings/llm-vllm-model-reasoning?)))))
+  (testing "a model that answers without reasoning records false"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
+      (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)
+      (is (false? (llm.settings/llm-vllm-model-reasoning?))))))
+
+(deftest preflight-does-not-record-reasoning-when-it-fails-test
+  (testing "a failed probe leaves the previously recorded value alone rather than writing a guess"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"--enable-auto-tool-choice"
+           (probe! [{:id "vllm-test" :max_model_len 32768}]
+                   {:content "I'll record the table name orders for you." :tool_calls []})))
+      (is (true? (llm.settings/llm-vllm-model-reasoning?))))))
 
 (deftest preflight-failures-are-surfaced-as-client-errors-test
   (testing "a preflight failure is tagged 400 so the admin sees the message instead of a 500"

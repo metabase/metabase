@@ -123,6 +123,17 @@
         (mt/with-temporary-setting-values [llm-metabot-provider provider-and-model]
           (is (= expected (metabot.settings/llm-metabot-supports-reasoning?))))))))
 
+(deftest metabot-supports-reasoning-vllm-test
+  (testing "vLLM answers from what the connect-time probe recorded, since its catalog has no reasoning field"
+    (doseq [recorded [true false]]
+      (testing (str "recorded " recorded)
+        (mt/with-temporary-setting-values [llm-metabot-provider     "vllm/vllm-test"
+                                           llm-vllm-model-reasoning? recorded]
+          (is (= recorded (metabot.settings/llm-metabot-supports-reasoning?)))))))
+  (testing "an unprobed server defaults to the non-reasoning renderer rather than guessing"
+    (mt/with-temporary-setting-values [llm-metabot-provider "vllm/vllm-test"]
+      (is (false? (metabot.settings/llm-metabot-supports-reasoning?))))))
+
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
 ;; The validator is private; exercise it through the setting setter.
 

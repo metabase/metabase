@@ -252,6 +252,16 @@
   :export?    false
   :setter     (partial set-trimmed-string! :llm-vllm-api-key))
 
+(defsetting llm-vllm-model-reasoning?
+  "Whether the connected vLLM model streams reasoning. Recorded by the connect-time contract probe —
+  vLLM's `/v1/models` carries no reasoning indicator, and whether thinking is emitted at all depends
+  on the operator's `--reasoning-parser` flag as much as on the model."
+  :type       :boolean
+  :default    false
+  :visibility :internal
+  :export?    false
+  :doc        false)
+
 (defsetting llm-vllm-request-timeout-ms
   (deferred-tru "Socket timeout in milliseconds for requests to your vLLM server.")
   ;; Self-hosted time-to-first-token is bounded by the operator's hardware, so the shared 60s

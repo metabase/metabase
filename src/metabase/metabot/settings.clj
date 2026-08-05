@@ -359,12 +359,18 @@
   :doc        false)
 
 (defn- llm-provider-streams-reasoning?
-  "Whether a provider-and-model string names a model that streams its reasoning back to us."
+  "Whether a provider-and-model string names a model that streams its reasoning back to us.
+
+  Anthropic and OpenAI answer from the model name because thinking is requested in the request body.
+  vLLM cannot: its catalog carries no reasoning field, and whether thinking is emitted depends on the
+  operator's `--reasoning-parser` flag as well as the model — so it answers from what the connect-time
+  probe observed (see `metabase.metabot.self.vllm/preflight!`)."
   [provider-and-model]
   (let [model (provider-util/provider-and-model->model provider-and-model)]
     (case (provider-util/provider-and-model->provider provider-and-model)
       "anthropic" (claude/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
+      "vllm"      (boolean (llm.settings/llm-vllm-model-reasoning?))
       false)))
 
 (defsetting llm-metabot-supports-reasoning?

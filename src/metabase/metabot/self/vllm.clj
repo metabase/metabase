@@ -12,6 +12,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -179,11 +180,16 @@
   "With `tool_choice \"auto\"` a tool call comes back only when the server was started with
   `--enable-auto-tool-choice` and a `--tool-call-parser` whose sentinel tokens match what this model
   emits. A wrong-but-valid parser name produces no error at any layer — the call stays in `content`
-  as prose and Metabot chats without ever acting."
+  as prose and Metabot chats without ever acting.
+
+  Returns whether the model emitted reasoning, which is the only signal available anywhere that it
+  is a reasoning model — the `/v1/models` catalog carries none."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model "auto")
         content    (str (:content message))
-        reasoning  (str (:reasoning_content message))
+        ;; `reasoning` since vLLM 0.26; `reasoning_content` is the deprecated spelling older builds
+        ;; and other OpenAI-compatible servers still use.
+        reasoning  (str (or (:reasoning message) (:reasoning_content message)))
         tool-calls (:tool_calls message)
         truncated? (= "length" finish_reason)]
     (cond
@@ -202,7 +208,8 @@
                     (tru "{0} reached the {1} token connection-test ceiling partway through a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
                          (str model) (str probe-max-tokens))
                     (tru "The vLLM server returned a tool call whose arguments are not valid JSON. The --tool-call-parser most likely does not match {0}''s output format."
-                         (str model)))))))
+                         (str model))))))
+        (not (str/blank? reasoning)))
 
       (and truncated? (not (str/blank? reasoning)))
       (throw (preflight-ex
@@ -268,7 +275,11 @@
   | No structured-output support      | Titles and the `sql` profile fail   |
 
   The probes run concurrently; deref order fixes the verdict, tool calling being the more actionable
-  diagnosis when a server fails both."
+  diagnosis when a server fails both.
+
+  On success, records whether the probed model reasons in `llm-vllm-model-reasoning?`. Only the
+  probe can answer that — the catalog has no such field — and the answer drives which chain-of-thought
+  renderer the frontend picks, via `metabot.settings/llm-metabot-supports-reasoning?`."
   [{:keys [credentials ai-proxy?]} entries requested-model]
   (let [entry (probe-target entries requested-model)]
     (check-context-budget! entry)
@@ -276,9 +287,10 @@
       (let [auth         (vllm-auth credentials ai-proxy?)
             model        (:id entry)
             tool-calling (future (check-tool-calling! auth model))
-            structured   (future (check-structured-output! auth model))]
-        (await-probe! tool-calling)
-        (await-probe! structured))
+            structured   (future (check-structured-output! auth model))
+            reasoning?   (await-probe! tool-calling)]
+        (await-probe! structured)
+        (setting/set! :llm-vllm-model-reasoning? (boolean reasoning?)))
       (catch SocketTimeoutException _
         (throw (preflight-ex
                 (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
@@ -373,11 +385,15 @@
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
-  A model started with `--reasoning-parser` routes thinking to `delta.reasoning_content`, which the
-  shared xf drops; the answer still streams from `delta.content`. Without that flag the thinking
-  arrives in `delta.content` as literal `<think>` tags, which is what [[preflight!]] sniffs for."
+  A model started with `--reasoning-parser` routes thinking to `delta.reasoning` (`reasoning_content`
+  before vLLM 0.26) and its answer back to `delta.content`; both are forwarded. Without that flag the
+  thinking arrives in `delta.content` as literal `<think>` tags, which is what [[preflight!]] rejects.
+
+  Nothing here needs to know whether the served model reasons: the field is present only when it
+  does, so the branch is self-gating. That is unlike Claude and OpenAI, where thinking is requested
+  in the request body and so has to be known up front."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf {:forward-reasoning? true}))
 
 (defn vllm
   "Call a vLLM server's Chat Completions API, return AISDK stream."
