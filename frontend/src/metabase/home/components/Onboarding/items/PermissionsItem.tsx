@@ -31,7 +31,7 @@ export const PermissionsItem = ({ value, itemRef }: OnboardingItemProps) => {
         isAdmin
           ? [
               {
-                label: t`Go to Admin`,
+                label: t`Go to permissions`,
                 to: "/admin/permissions",
                 cta: "primary",
               },

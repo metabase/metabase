@@ -10,6 +10,7 @@ import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Accordion, Box, Button, Stack, Text, Title, rem } from "metabase/ui";
 
+import { AiProviderModalProvider } from "./AiProviderModal";
 import S from "./Onboarding.module.css";
 import { trackChecklistItemExpanded } from "./analytics";
 import { useChecklistItems } from "./use-checklist-items";
@@ -66,38 +67,42 @@ export const Onboarding = () => {
       pb={212}
     >
       <Box maw={592} m="0 auto" ref={checklistRef}>
-        <Accordion
-          className={S.accordion}
-          defaultValue={defaultItem}
-          transitionDuration={ACCORDION_TRANSITION_DURATION}
-          classNames={{
-            chevron: S.chevron,
-            content: S.content,
-            control: S.control,
-            icon: S.icon,
-            item: S.item,
-            label: S.label,
-          }}
-          onChange={
-            // Unjustified type cast. Accordion does not support generics
-            (value) => handleValueChange(value as ChecklistItemValue | null)
-          }
-        >
-          {itemsGroups.map((group) => (
-            <Box key={group.title} mb={60}>
-              <Title order={3} mb="lg">
-                {group.title}
-              </Title>
-              {group.items.map(({ Component, value }) => (
-                <Component
-                  key={value}
-                  value={value}
-                  itemRef={itemsRefs[value]}
-                />
-              ))}
-            </Box>
-          ))}
-        </Accordion>
+        <AiProviderModalProvider>
+          <Accordion
+            className={S.accordion}
+            defaultValue={defaultItem}
+            transitionDuration={ACCORDION_TRANSITION_DURATION}
+            classNames={{
+              chevron: S.chevron,
+              content: S.content,
+              control: S.control,
+              icon: S.icon,
+              item: S.item,
+              label: S.label,
+            }}
+            onChange={
+              // `Accordion` is not generic, so it widens the value to `string`.
+              // Everything it can emit is the `value` of an `Accordion.Item`
+              // rendered below, all of which are `ChecklistItemValue`.
+              (value) => handleValueChange(value as ChecklistItemValue | null)
+            }
+          >
+            {itemsGroups.map((group) => (
+              <Box key={group.title} mb={60}>
+                <Title order={3} mb="lg">
+                  {group.title}
+                </Title>
+                {group.items.map(({ Component, value }) => (
+                  <Component
+                    key={value}
+                    value={value}
+                    itemRef={itemsRefs[value]}
+                  />
+                ))}
+              </Box>
+            ))}
+          </Accordion>
+        </AiProviderModalProvider>
         {(showMetabaseLinks || isPaidPlan) && (
           <Box component="footer">
             {showMetabaseLinks && (
@@ -127,9 +132,11 @@ export const Onboarding = () => {
                   <Title order={4}>{t`Need to talk with someone?`}</Title>
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>
-                <ExternalLink href={helpLink.href} key="help">
-                  <Button variant="filled">{t`Get Help`}</Button>
-                </ExternalLink>
+                <Button
+                  component={ExternalLink}
+                  href={helpLink.href}
+                  variant="filled"
+                >{t`Get Help`}</Button>
               </Box>
             )}
           </Box>

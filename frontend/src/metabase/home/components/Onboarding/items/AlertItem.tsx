@@ -30,6 +30,11 @@ export const AlertItem = ({ value, itemRef }: OnboardingItemProps) => {
           <b key="subscriptions">{t`Dashboard subscriptions`}</b>
         )} to send results to people, including to people that don't have accounts in your ${applicationName}.`}
       </Text>
+      <VideoTutorial
+        id="IustSQH6bfQ"
+        si="GYTUdFsXfpc2QL8S"
+        title="How to create a dashboard email subscription?"
+      />
     </ChecklistItem>
   );
 };

@@ -4,6 +4,7 @@ import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
 
+import { useAiProviderModal } from "../AiProviderModal";
 import type { ChecklistImageStyles } from "../ChecklistItem";
 import { ChecklistImage, ChecklistItem } from "../ChecklistItem";
 import type { OnboardingItemProps } from "../types";
@@ -16,6 +17,7 @@ const ILLUSTRATION_STYLE: ChecklistImageStyles = {
 
 export const AiItem = ({ value, itemRef }: OnboardingItemProps) => {
   const applicationName = useSelector(getApplicationName);
+  const openProviderModal = useAiProviderModal();
 
   return (
     <ChecklistItem
@@ -24,7 +26,12 @@ export const AiItem = ({ value, itemRef }: OnboardingItemProps) => {
       icon="metabot"
       label={t`Set up AI (optional)`}
       actions={[
-        { label: t`Set up MCP`, to: "/admin/metabot/mcp", cta: "primary" },
+        {
+          label: t`Connect to an AI provider`,
+          onClick: openProviderModal,
+          cta: "primary",
+        },
+        { label: t`Set up MCP`, to: "/admin/metabot/mcp", cta: "secondary" },
       ]}
     >
       <ChecklistImage

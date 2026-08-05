@@ -2,6 +2,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
   setupPropertiesEndpoints,
+  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -24,6 +25,7 @@ import { Onboarding } from "../Onboarding";
 export type SetupProps = {
   isAdmin?: boolean;
   isAnalyst?: boolean;
+  canWriteToCollections?: boolean;
   aiFeaturesEnabled?: boolean;
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
@@ -34,6 +36,7 @@ export type SetupProps = {
 export const setup = ({
   isAdmin = true,
   isAnalyst = false,
+  canWriteToCollections = true,
   aiFeaturesEnabled = true,
   openItem,
   showMetabaseLinks = true,
@@ -43,6 +46,8 @@ export const setup = ({
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupPropertiesEndpoints(createMockSettings());
   setupBugReportingDetailsEndpoint();
+  // The AI item's "Connect to an AI provider" modal reads admin settings.
+  setupSettingsEndpoints([]);
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {
@@ -52,6 +57,7 @@ export const setup = ({
     currentUser: createMockUser({
       is_superuser: isAdmin,
       is_data_analyst: isAnalyst,
+      can_write_any_collection: canWriteToCollections,
     }),
     settings: mockSettings({
       "ai-features-enabled?": aiFeaturesEnabled,
@@ -67,7 +73,9 @@ export const setup = ({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(
+  // `store` lets a test assert on actions whose effect is rendered by the
+  // app-level modal host, which lives outside this page's tree.
+  const { store } = renderWithProviders(
     <Route path="/getting-started" element={<Onboarding />} />,
     {
       initialRoute: "/getting-started",
@@ -75,4 +83,6 @@ export const setup = ({
       withRouter: true,
     },
   );
+
+  return { store };
 };

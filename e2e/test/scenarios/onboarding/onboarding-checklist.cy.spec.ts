@@ -17,7 +17,7 @@ describe("Onboarding checklist page", () => {
         "be.visible",
       );
 
-      cy.findByText("Create a dashboard").click();
+      cy.findByTestId("dashboard-item").click();
       cy.contains(
         "You can present questions, text, and links on a dashboard",
       ).should("be.visible");
@@ -133,7 +133,9 @@ describe("Onboarding checklist events", () => {
         })
         .should("have.attr", "aria-selected", "true");
 
-      cy.findByTestId("database-cta").button("Add database").click();
+      cy.findByTestId("database-cta")
+        .findByRole("link", { name: "Add database" })
+        .click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "database",
@@ -143,7 +145,9 @@ describe("Onboarding checklist events", () => {
       cy.go("back");
 
       cy.findByTestId("invite-item").click();
-      cy.findByTestId("invite-cta").button("Invite people").click();
+      cy.findByTestId("invite-cta")
+        .findByRole("link", { name: "Invite people" })
+        .click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
@@ -152,7 +156,9 @@ describe("Onboarding checklist events", () => {
 
       cy.go("back");
 
-      cy.findByTestId("invite-cta").button("Set up single sign-on").click();
+      cy.findByTestId("invite-cta")
+        .findByRole("link", { name: "Set up single sign-on" })
+        .click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "invite",
@@ -162,17 +168,47 @@ describe("Onboarding checklist events", () => {
       cy.go("back");
 
       cy.findByTestId("ai-item").click();
-      cy.findByTestId("ai-cta").button("Set up MCP").click();
+      cy.findByTestId("ai-cta").button("Connect to an AI provider").click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "ai",
         event_detail: "primary",
       });
 
+      // This CTA opens a modal instead of navigating, so dismiss it in place.
+      // Wait for it to unmount before clicking on: while it fades out, its
+      // overlay still covers the CTA underneath.
+      cy.findByTestId("ai-provider-configuration-modal")
+        .findByLabelText("Close")
+        .click();
+      cy.findByTestId("ai-provider-configuration-modal").should("not.exist");
+
+      cy.findByTestId("ai-cta")
+        .findByRole("link", { name: "Set up MCP" })
+        .click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "onboarding_checklist_cta_clicked",
+        triggered_from: "ai",
+        event_detail: "secondary",
+      });
+
       cy.go("back");
 
+      cy.findByTestId("dashboard-item").click();
+      cy.findByTestId("dashboard-cta").button("Create a dashboard").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "onboarding_checklist_cta_clicked",
+        triggered_from: "dashboard",
+        event_detail: "primary",
+      });
+
+      cy.findByTestId("new-dashboard-modal").findByLabelText("Close").click();
+      cy.findByTestId("new-dashboard-modal").should("not.exist");
+
       cy.findByTestId("data-studio-item").click();
-      cy.findByTestId("data-studio-cta").button("Go to Data studio").click();
+      cy.findByTestId("data-studio-cta")
+        .findByRole("link", { name: "Go to Data studio" })
+        .click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "data-studio",
@@ -182,7 +218,9 @@ describe("Onboarding checklist events", () => {
       cy.go("back");
 
       cy.findByTestId("permissions-item").click();
-      cy.findByTestId("permissions-cta").button("Go to Admin").click();
+      cy.findByTestId("permissions-cta")
+        .findByRole("link", { name: "Go to permissions" })
+        .click();
       H.expectUnstructuredSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
         triggered_from: "permissions",

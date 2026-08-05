@@ -13,7 +13,19 @@ const getItemControl = (label: string) => {
   // A substring match — the control's accessible name also picks up its icon.
   // A matcher function rather than a regex, so labels containing regex
   // metacharacters (e.g. "Set up AI (optional)") need no escaping.
-  return screen.getByRole("button", { name: (name) => name.includes(label) });
+  // Only accordion controls carry `aria-expanded`, which is what tells them
+  // apart from a CTA button repeating the label (e.g. "Create a dashboard").
+  const controls = screen
+    .getAllByRole("button", { name: (name) => name.includes(label) })
+    .filter((button) => button.hasAttribute("aria-expanded"));
+
+  if (controls.length !== 1) {
+    throw new Error(
+      `Expected one checklist control matching "${label}", found ${controls.length}`,
+    );
+  }
+
+  return controls[0];
 };
 
 describe("Onboarding", () => {
@@ -60,7 +72,9 @@ describe("Onboarding", () => {
 
     const databaseItem = getItem("database");
     const databaseItemControl = getItemControl("Connect Metabase to your data");
-    const cta = within(databaseItem).getByRole("link");
+    const cta = within(databaseItem).getByRole("link", {
+      name: "Add database",
+    });
 
     expect(databaseItem).toHaveAttribute("data-active", "true");
     expect(databaseItemControl).toHaveAttribute("data-active", "true");
@@ -73,9 +87,6 @@ describe("Onboarding", () => {
     ).toBeInTheDocument();
 
     expect(cta).toHaveAttribute("href", "/admin/databases/create");
-    expect(
-      within(cta).getByRole("button", { name: "Add database" }),
-    ).toBeInTheDocument();
 
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
@@ -146,12 +157,11 @@ describe("Onboarding", () => {
       ).toBeInTheDocument();
 
       const databaseItem = getItem("database");
-      const cta = within(databaseItem).getByRole("link");
+      const cta = within(databaseItem).getByRole("link", {
+        name: "Add database",
+      });
 
       expect(cta).toHaveAttribute("href", "/admin/databases/create");
-      expect(
-        within(cta).getByRole("button", { name: "Add database" }),
-      ).toBeInTheDocument();
     });
 
     it("'invite' item should render properly", () => {
@@ -159,8 +169,12 @@ describe("Onboarding", () => {
 
       const inviteItem = getItem("invite");
       const controlLabel = getItemControl("Invite people to your Metabase");
-      const [primaryCTA, secondaryCTA] =
-        within(inviteItem).getAllByRole("link");
+      const primaryCTA = within(inviteItem).getByRole("link", {
+        name: "Invite people",
+      });
+      const secondaryCTA = within(inviteItem).getByRole("link", {
+        name: "Set up single sign-on",
+      });
 
       expect(controlLabel).not.toHaveAttribute("href");
       expect(
@@ -174,17 +188,6 @@ describe("Onboarding", () => {
         "href",
         "/admin/settings/authentication",
       );
-
-      expect(
-        within(primaryCTA).getByRole("button", {
-          name: "Invite people",
-        }),
-      ).toBeInTheDocument();
-      expect(
-        within(secondaryCTA).getByRole("button", {
-          name: "Set up single sign-on",
-        }),
-      ).toBeInTheDocument();
     });
 
     it("'ai' item should render properly", () => {
@@ -197,11 +200,31 @@ describe("Onboarding", () => {
         within(aiItem).getByText(/ask Metabot directly in the Metabase app/),
       ).toBeInTheDocument();
 
-      const cta = within(screen.getByTestId("ai-cta")).getByRole("link");
+      const cta = within(screen.getByTestId("ai-cta"));
 
-      expect(cta).toHaveAttribute("href", "/admin/metabot/mcp");
       expect(
-        within(cta).getByRole("button", { name: "Set up MCP" }),
+        cta.getByRole("button", { name: "Connect to an AI provider" }),
+      ).toBeInTheDocument();
+
+      const mcpLink = cta.getByRole("link", { name: "Set up MCP" });
+      expect(mcpLink).toHaveAttribute("href", "/admin/metabot/mcp");
+    });
+
+    it("'ai' item CTA should open the AI provider modal", async () => {
+      setup({ openItem: "ai" });
+
+      expect(
+        screen.queryByTestId("ai-provider-configuration-modal"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("ai-cta")).getByRole("button", {
+          name: "Connect to an AI provider",
+        }),
+      );
+
+      expect(
+        await screen.findByTestId("ai-provider-configuration-modal"),
       ).toBeInTheDocument();
     });
 
@@ -247,6 +270,31 @@ describe("Onboarding", () => {
         within(dashboardItem).getByTitle("How to use dashboards?"),
       ).toHaveAttribute("src", expect.stringContaining("FAst1nabBck"));
 
+      expect(
+        within(screen.getByTestId("dashboard-cta")).getByRole("button", {
+          name: "Create a dashboard",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    // The modal itself is rendered by the app-level host, outside this page.
+    it("'dashboard' item CTA should request the new dashboard modal", async () => {
+      const { store } = setup({ openItem: "dashboard" });
+
+      expect(store.getState().modal.id).toBeNull();
+
+      await userEvent.click(
+        within(screen.getByTestId("dashboard-cta")).getByRole("button", {
+          name: "Create a dashboard",
+        }),
+      );
+
+      expect(store.getState().modal.id).toBe("dashboard");
+    });
+
+    it("'dashboard' CTA should not render without collection write access", () => {
+      setup({ isAdmin: false, canWriteToCollections: false });
+
       expect(screen.queryByTestId("dashboard-cta")).not.toBeInTheDocument();
     });
 
@@ -266,6 +314,11 @@ describe("Onboarding", () => {
       expect(
         within(alertItem).getByTitle("How to create an alert?"),
       ).toHaveAttribute("src", expect.stringContaining("MPw5__mVg58"));
+      expect(
+        within(alertItem).getByTitle(
+          "How to create a dashboard email subscription?",
+        ),
+      ).toHaveAttribute("src", expect.stringContaining("IustSQH6bfQ"));
 
       expect(screen.queryByTestId("alert-cta")).not.toBeInTheDocument();
     });
@@ -287,12 +340,10 @@ describe("Onboarding", () => {
 
       const cta = within(screen.getByTestId("data-studio-cta")).getByRole(
         "link",
+        { name: "Go to Data studio" },
       );
 
       expect(cta).toHaveAttribute("href", "/data-studio");
-      expect(
-        within(cta).getByRole("button", { name: "Go to Data studio" }),
-      ).toBeInTheDocument();
     });
 
     it("'data-studio' copy is visible to viewers, but the CTA is not", () => {
@@ -331,12 +382,10 @@ describe("Onboarding", () => {
 
       const cta = within(screen.getByTestId("permissions-cta")).getByRole(
         "link",
+        { name: "Go to permissions" },
       );
 
       expect(cta).toHaveAttribute("href", "/admin/permissions");
-      expect(
-        within(cta).getByRole("button", { name: "Go to Admin" }),
-      ).toBeInTheDocument();
     });
 
     it("'permissions' copy is visible to non-admins, but the CTA is not", () => {
