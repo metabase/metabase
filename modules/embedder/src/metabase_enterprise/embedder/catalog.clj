@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (def default-model-name
-  "Canonical name of the one model bundled by this plugin."
+  "Canonical Library retrieval model bundled by this plugin."
   "Snowflake/snowflake-arctic-embed-l-v2.0")
 
 (defn- plugin-resource

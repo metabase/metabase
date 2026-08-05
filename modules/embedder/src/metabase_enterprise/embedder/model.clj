@@ -1,5 +1,5 @@
 (ns metabase-enterprise.embedder.model
-  "Lazy DJL/ONNX Runtime lifecycle for the single bundled Arctic embedding model."
+  "Lazy DJL/ONNX Runtime lifecycle for the bundled embedding models."
   (:require
    [metabase-enterprise.embedder.catalog :as catalog]
    [metabase.util.log :as log])
@@ -37,24 +37,25 @@
         (.loadModel))))
 
 ;; Only successful loads are retained. A transient first-load failure is therefore retryable without restarting.
-(defonce ^:private loaded-model (atom nil))
+;; Keep one resident ZooModel per catalog model: Library retrieval uses Arctic while Data Complexity Score uses MiniLM.
+(defonce ^:private loaded-models (atom {}))
 
 (defn- model
   ^ZooModel [model-name]
-  (or @loaded-model
-      (locking loaded-model
-        (or @loaded-model
+  (or (get @loaded-models model-name)
+      (locking loaded-models
+        (or (get @loaded-models model-name)
             (let [loaded (build-model model-name)]
-              (reset! loaded-model loaded)
+              (swap! loaded-models assoc model-name loaded)
               loaded)))))
 
 (defn reset-model!
   "Close the resident model. Intended for tests and REPL use when no inference is active."
   []
-  (locking loaded-model
-    (when (instance? ZooModel @loaded-model)
-      (.close ^ZooModel @loaded-model))
-    (reset! loaded-model nil)))
+  (locking loaded-models
+    (doseq [loaded (vals @loaded-models)]
+      (.close ^ZooModel loaded))
+    (reset! loaded-models {})))
 
 (defn embed-batch
   "Embed one already-bounded batch of texts."
