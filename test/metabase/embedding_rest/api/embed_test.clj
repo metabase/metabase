@@ -25,7 +25,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
@@ -35,8 +34,6 @@
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
@@ -795,8 +792,6 @@
 
 (deftest embed-download-query-execution-test
   (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
-    ;; Clear out the query execution log so that test doesn't read stale state
-    (t2/delete! :model/QueryExecution)
     (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
