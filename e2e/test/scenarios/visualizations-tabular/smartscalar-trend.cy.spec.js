@@ -365,7 +365,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.error).rgb().string(),
+      Color(colors["feedback-negative"]).rgb().string(),
     );
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
@@ -377,7 +377,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.success).rgb().string(),
+      Color(colors["feedback-positive"]).rgb().string(),
     );
 
     // open the metric column's formatting (now in a popover, since the date

@@ -73,9 +73,9 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
             value = defaultValue;
           }
         } catch (error) {}
-        const errorColor = Color(colorHex("error")).hex();
-        const warningColor = Color(colorHex("warning")).hex();
-        const successColor = Color(colorHex("success")).hex();
+        const errorColor = Color(colorHex("feedback-negative")).hex();
+        const warningColor = Color(colorHex("feedback-warning")).hex();
+        const successColor = Color(colorHex("feedback-positive")).hex();
         return [
           { min: 0, max: value / 2, color: errorColor, label: "" },
           { min: value / 2, max: value, color: warningColor, label: "" },
