@@ -793,6 +793,7 @@
 (deftest embed-download-query-execution-test
   (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
     ;; Clear out the query execution log so that test doesn't read stale state
+    (mt/initialize-if-needed! :db)
     (t2/delete! :model/QueryExecution)
     (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key!
