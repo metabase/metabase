@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.instance :as server.instance]
@@ -171,6 +172,54 @@
                                                   :state "test-state")]
             (is (sso.test-setup/successful-login? response))
             (is (= "/" (get-in response [:headers "Location"])))))))))
+
+;;; -------------------------------------------------- Provisioning / Reactivation Tests --------------------------------------------------
+
+(defn- do-oidc-login!
+  "Initiate + complete an OIDC login against the mock provider, via `client-fn` (`mt/client-real-response` or
+   `mt/client-full-response`), expecting `expected-status` from the callback."
+  [client-fn expected-status]
+  (let [init-response (mt/client-full-response :get 302 "/auth/sso/test-idp"
+                                               {:request-options {:redirect-strategy :none}}
+                                               :redirect "/")
+        cookie-header (->> (get-in init-response [:headers "Set-Cookie"])
+                           (map #(first (str/split % #";")))
+                           (str/join "; "))]
+    (client-fn :get expected-status "/auth/sso/test-idp/callback"
+               {:request-options {:redirect-strategy :none
+                                  :headers {"Cookie" cookie-header}}}
+               :code "test-code"
+               :state "test-state")))
+
+(deftest deactivated-user-reactivated-if-provisioning-is-on-test
+  (testing "An existing OIDC user is reactivated on a new login when provisioning is enabled (#79412)"
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
+        (with-successful-oidc!
+          (try
+            (is (not (t2/exists? :model/User :%lower.email "oidcuser@example.com")))
+            (testing "login once to create the user"
+              (is (sso.test-setup/successful-login?
+                   (do-oidc-login! mt/client-real-response 302))))
+            (t2/update! :model/User :%lower.email "oidcuser@example.com" {:is_active false})
+            (testing "a deactivated user is reactivated (not left crashing with a 500) on a new login"
+              (is (sso.test-setup/successful-login?
+                   (do-oidc-login! mt/client-real-response 302)))
+              (is (t2/select-one-fn :is_active :model/User :%lower.email "oidcuser@example.com")))
+            (t2/update! :model/User :%lower.email "oidcuser@example.com" {:is_active false})
+            (testing "a deactivated user gets a clean error, not a raw stacktrace, when provisioning is off (#79412)"
+              ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+              ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+              (with-redefs [ee-sso-settings/oidc-user-provisioning-enabled? (constantly false)]
+                (let [response (do-oidc-login! mt/client-full-response 401)]
+                  (is (not (str/includes? (:body response) "ClassCastException")))
+                  ;; both possible messages here ("account is disabled" and "you'll need a ... account") end
+                  ;; with this same sentence, so this holds regardless of exactly which one fires
+                  (is (str/includes? (:body response) "contact your administrator"))))
+              (is (not (t2/select-one-fn :is_active :model/User :%lower.email "oidcuser@example.com"))))
+            (finally
+              (t2/delete! :model/User :%lower.email "oidcuser@example.com"))))))))
 
 ;;; -------------------------------------------------- Open Redirect Protection Tests --------------------------------------------------
 
