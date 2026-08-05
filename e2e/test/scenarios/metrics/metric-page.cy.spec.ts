@@ -20,6 +20,8 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar" as const,
 };
 
+// Renders as a time series through its curated default dimension, which
+// H.setMetricDefaultDimension sets to Created At; metric queries carry no breakout.
 const ORDERS_TIMESERIES_METRIC = {
   name: "Orders over time",
   description: "Count of orders over time",
@@ -41,28 +43,6 @@ const OVERVIEW_DIMENSIONS_TO_ADD = [
   ["User", "Source"],
   ["User", "State"],
 ] as const;
-
-// Reading a metric seeds its curated dimension list, which the default is picked from.
-function setDefaultDimension(metricId: number, displayName: string) {
-  return cy
-    .request("GET", `/api/metric/${metricId}`)
-    .then(() =>
-      cy.request<ListMetricDimensionsResponse>(
-        "GET",
-        `/api/metric/${metricId}/dimension`,
-      ),
-    )
-    .then(({ body }) => {
-      const dimension = body.added.find(
-        (candidate) => candidate.display_name === displayName,
-      );
-
-      expect(dimension, `${displayName} dimension`).to.exist;
-      cy.request("POST", `/api/metric/${metricId}/dimension/set-default`, {
-        dimension_id: dimension?.id,
-      });
-    });
-}
 
 function addOverviewDimensions(metricId: number) {
   return cy
@@ -244,7 +224,7 @@ describe("scenarios > metrics > metric page", () => {
   it("should display timeseries metric and navigate between tabs", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
       // Set default dimension so the metric can be previewed as a timeseries chart.
-      setDefaultDimension(metric.id, "Created At");
+      H.setMetricDefaultDimension(metric.id, "Created At");
       H.visitMetric(metric.id);
     });
 

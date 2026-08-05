@@ -257,7 +257,7 @@
    `persisted-dims`. Returns the updated dimensions vector."
   [persisted-dims id]
   (perf/mapv (fn [dim]
-               (if (and (some? id) (= id (:id dim)))
+               (if (and id (= id (:id dim)))
                  (assoc dim :default true)
                  (dissoc dim :default)))
              persisted-dims))

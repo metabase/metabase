@@ -64,25 +64,7 @@ function startNewMetricWithSavedItem(collection, name) {
   });
 }
 
-// Metrics are created without a default dimension, so they preview as a scalar
-// until one is curated. Reading the metric seeds the list to pick from.
-function setDefaultDimension(metricId, displayName) {
-  return cy
-    .request("GET", `/api/metric/${metricId}`)
-    .then(() => cy.request("GET", `/api/metric/${metricId}/dimension`))
-    .then(({ body }) => {
-      const dimension = body.added.find(
-        (candidate) => candidate.display_name === displayName,
-      );
-
-      expect(dimension, `${displayName} dimension`).to.exist;
-      cy.request("POST", `/api/metric/${metricId}/dimension/set-default`, {
-        dimension_id: dimension.id,
-      });
-    });
-}
-
-function saveNewMetric({ name } = {}) {
+function saveNewMetric({ name, defaultDimension = "Created At" } = {}) {
   cy.intercept("POST", "/api/card").as("createCard");
   H.MetricPage.saveButton().click();
   H.modal().within(() => {
@@ -95,7 +77,7 @@ function saveNewMetric({ name } = {}) {
   // Revisit rather than rely on the post-save redirect, so the page is rendered
   // with the default dimension in place.
   cy.wait("@createCard").then(({ response }) => {
-    setDefaultDimension(response.body.id, "Created At");
+    H.setMetricDefaultDimension(response.body.id, defaultDimension);
     cy.visit(`/metric/${response.body.id}`);
   });
 }
@@ -198,7 +180,7 @@ describe("scenarios > metrics > editing", () => {
     it("should be able to change the query definition of a metric", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-        setDefaultDimension(card.id, "Created At");
+        H.setMetricDefaultDimension(card.id, "Created At");
         cy.visit(`/metric/${card.id}/query`);
       });
       H.MetricPage.queryEditor().should("be.visible");

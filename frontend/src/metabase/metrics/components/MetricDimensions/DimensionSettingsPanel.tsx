@@ -70,7 +70,9 @@ export function DimensionSettingsPanel({
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
-  const showDefaultButton = !isOrphaned(dimension);
+  // An orphaned dimension can't be made the default, but one that already is
+  // still needs a way out.
+  const showDefaultButton = !isOrphaned(dimension) || dimension.default;
 
   useEffect(() => {
     setDefaultTemporalUnit(dimension.default_temporal_unit);

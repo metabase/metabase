@@ -581,6 +581,30 @@ describe("MetricDimensions", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("still offers remove-default for an orphaned default dimension", async () => {
+    setup({
+      added: [
+        { ...CREATED_AT, default: false },
+        COUNTRY,
+        { ...SUSPEND_AT, default: true },
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Suspend At/));
+    await userEvent.click(
+      settings.getByRole("button", { name: "Remove default" }),
+    );
+
+    await waitFor(async () => {
+      expect(
+        await getPostBody(
+          `path:/api/metric/${METRIC_ID}/dimension/set-default`,
+        ),
+      ).toEqual({ dimension_id: null });
+    });
+  });
+
   it("shows a loading state while setting a default dimension", async () => {
     let resolveSetDefault: (dimensions: (typeof COUNTRY)[]) => void = () => {};
     setup();

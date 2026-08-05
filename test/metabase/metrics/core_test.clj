@@ -110,7 +110,7 @@
                                          :table_id      (mt/id :orders)
                                          :dataset_query orders-query}]
         (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [dimensions (:dimensions (t2/select-one :model/Card :id (:id metric)))]
+        (let [dimensions (t2/select-one-fn :dimensions :model/Card :id (:id metric))]
           (is (seq dimensions))
           (is (empty? (filter :default dimensions))))))))
 
