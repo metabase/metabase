@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive, and the :collection projection its echo is built from.
    [metabase.mcp.v2.tools.collection :as tools.collection]
@@ -62,10 +63,11 @@
   (mt/with-model-cleanup [:model/Collection]
     (let [payload (create! :crowberto {:name "Agent Collection" :description "made by an agent"})
           coll    (t2/select-one :model/Collection :id (:id payload))]
-      (testing "the collection is really there, at the root"
+      (testing "GHY-4218: the collection is really there, inside the caller's personal collection"
         (is (= "Agent Collection" (:name coll)))
         (is (= "made by an agent" (:description coll)))
-        (is (= "/" (:location coll)))
+        (is (= (str "/" (:id (collection/user->personal-collection (mt/user->id :crowberto))) "/")
+               (:location coll)))
         (is (false? (:archived coll))))
       (testing "the echo is the concise read projection plus entity_id, url, and the two write args
                 the concise projection omits"
@@ -109,9 +111,14 @@
         (let [payload (create! :crowberto {:name "Child by eid" :parent_id (:entity_id parent)})]
           (is (= (str "/" (:id parent) "/")
                  (t2/select-one-fn :location :model/Collection :id (:id payload))))))
-      (testing "parent_id \"root\" is the root collection, same as omitting it"
+      (testing "GHY-4218: parent_id \"root\" is the root collection — the only way to ask for it,
+                now that omitting parent_id means the caller's personal collection"
         (let [payload (create! :crowberto {:name "Child at root" :parent_id "root"})]
-          (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload))))))
+      (testing "GHY-4218: an omitted parent_id nests under the caller's personal collection"
+        (let [payload (create! :crowberto {:name "Child in personal"})]
+          (is (= (str "/" (:id (collection/user->personal-collection (mt/user->id :crowberto))) "/")
+                 (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
 
 (deftest create-accepts-namespace-test
   (mt/with-model-cleanup [:model/Collection]
@@ -119,7 +126,11 @@
       (let [payload (create! :crowberto {:name "Agent Snippet Folder" :namespace "snippets"})]
         (is (= "snippets" (name (t2/select-one-fn :namespace :model/Collection :id (:id payload)))))
         (testing "and the echo confirms it, so the agent needn't re-read to know it landed"
-          (is (= "snippets" (:namespace payload))))))))
+          (is (= "snippets" (:namespace payload))))
+        (testing "GHY-4218: a namespaced collection still defaults to the root of its own hierarchy —
+                  personal collections exist only in the default namespace, so there is none to
+                  default into"
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
 
 (deftest create-rejects-update-only-args-test
   (doseq [[k v] {:archived true :id 1}]

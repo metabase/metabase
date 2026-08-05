@@ -12,7 +12,6 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
@@ -111,15 +110,12 @@
 
 (defn- create!
   "Run the shared REST create check stack on the resolved query and target collection, then save a
-   `metric` card. An omitted `collection_id` means the caller's personal collection, as the v1
-   create_metric tool and `question_write` both do."
+   `metric` card. An omitted `collection_id` means the caller's personal collection."
   [{:keys [name description collection_position] :as args} session-id]
   (let [dataset-query (or (resolve-definition args session-id)
                           (common/throw-teaching-error
                            "Pass the metric's query: `definition` (inline) or `query_handle` (from an execute tool)."))
-        collection-id (if (contains? args :collection_id)
-                        (common/resolve-collection-id (:collection_id args))
-                        (:id (collection/user->personal-collection api/*current-user-id*)))]
+        collection-id (common/resolve-collection-id-or-personal (:collection_id args))]
     (check-metric-shape! dataset-query)
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id} :metric)
     (-> (queries/create-card!

@@ -99,12 +99,9 @@
 
 (defn- destination-collection-id
   "The copy's collection: the caller's `collection_id` when they passed one (`\"root\"` included),
-   otherwise the source's own collection — \"duplicate\" without a destination means \"right here\",
-   not \"in the root collection\"."
-  [args source]
-  (if (contains? args :collection_id)
-    (common/resolve-collection-id (:collection_id args))
-    (:collection_id source)))
+   otherwise the caller's personal collection."
+  [args]
+  (common/resolve-collection-id-or-personal (:collection_id args)))
 
 (def ^:private duplicate-content-args-schema
   [:map {:closed true}
@@ -115,7 +112,7 @@
          [:string {:min 1 :description "A 21-character entity_id of the item to copy."}]]]
    [:collection_id {:optional true}
     [:maybe [:or
-             [:int {:description "Collection to copy into. Omit to copy into the source's own collection; pass \"root\" for the root collection."}]
+             [:int {:description "Collection to copy into. Omit to copy into your personal collection; pass \"root\" for the root collection."}]
              [:string {:min 1 :description "A 21-character collection entity_id, or \"root\"."}]]]]
    [:new_name {:optional true}
     [:maybe [:string {:min 1 :description "Name for the copy. Defaults to \"Copy of <source name>\"."}]]]
@@ -123,7 +120,7 @@
     [:maybe [:boolean {:description "Dashboards only: also copy the dashboard's questions into the destination collection, instead of pointing the copy at the originals."}]]]])
 
 (registry/deftool duplicate-content
-  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into the source's own collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection."
+  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection."
   {:name            "duplicate_content"
    :scope           metabot.scope/agent-content-write
    :annotations     {:readOnlyHint false :destructiveHint false}
@@ -134,7 +131,7 @@
       (common/throw-teaching-error
        (format "`is_deep_copy` applies to dashboards only — omit it when duplicating a %s." type)))
     (let [source        (fetch id)
-          collection-id (destination-collection-id args source)
+          collection-id (destination-collection-id args)
           copy          (copy! source collection-id (or new_name (tru "Copy of {0}" (:name source)))
                                (boolean is_deep_copy))]
       (common/success-content

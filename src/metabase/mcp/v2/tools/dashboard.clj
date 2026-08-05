@@ -361,7 +361,7 @@
    [:description {:optional true} [:maybe [:string {:description "One or two sentences on what the dashboard answers."}]]]
    [:collection_id {:optional true}
     [:maybe [:or
-             [:int {:description "Numeric id of the collection to put it in."}]
+             [:int {:description "Numeric id of the collection to put it in. Omit on create for your personal collection."}]
              [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
    [:collection_position {:optional true}
     [:maybe [:int {:min 1 :description "Pin position within the collection; omit to leave it unpinned."}]]]
@@ -400,6 +400,13 @@
   (cond-> (select-keys body attribute-keys)
     (contains? body :collection_id)
     (assoc :collection_id (common/resolve-collection-id (:collection_id body)))))
+
+(defn- create-attrs
+  "[[dashboard-attrs]] for the create path, where an omitted `collection_id` means the caller's
+   personal collection rather than the root collection."
+  [body]
+  (assoc (dashboard-attrs body)
+         :collection_id (common/resolve-collection-id-or-personal (:collection_id body))))
 
 (defn- compact-op
   "Strip null-valued keys from one op. Strict MCP clients send every declared property, filling
@@ -463,7 +470,7 @@
                        (case (first dispatched)
                          :create
                          (let [[_ body]       dispatched
-                               attrs          (dashboard-attrs body)
+                               attrs          (create-attrs body)
                                ops            (:ops body)
                                validate-only? (boolean (:validate_only body))]
                            (when (contains? body :archived)

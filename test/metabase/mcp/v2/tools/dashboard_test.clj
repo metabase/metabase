@@ -6,6 +6,7 @@
    pins the tool's contract, permission inheritance, and dry-run behavior on top of it."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
@@ -50,6 +51,25 @@
         (testing "concise projection keys only"
           (is (= #{:id :name :description :tabs :parameters :dashcards}
                  (into #{} (keys result)))))))))
+
+(deftest create-collection-target-test
+  (mt/with-model-cleanup [:model/Dashboard]
+    (let [create! (fn [args]
+                    (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                             (wire (merge {:method "create"} args)))))]
+      (testing "GHY-4218: an omitted collection_id saves to the caller's personal collection"
+        (is (= (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+               (t2/select-one-fn :collection_id :model/Dashboard
+                                 :id (:id (create! {:name "dashboard-test personal"}))))))
+      (testing "GHY-4218: collection_id \"root\" still saves to the root collection"
+        (is (nil? (t2/select-one-fn :collection_id :model/Dashboard
+                                    :id (:id (create! {:name "dashboard-test root" :collection_id "root"}))))))
+      (testing "GHY-4218: an explicit collection_id is unaffected"
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (is (= coll-id
+                 (t2/select-one-fn :collection_id :model/Dashboard
+                                   :id (:id (create! {:name "dashboard-test explicit"
+                                                      :collection_id coll-id}))))))))))
 
 (deftest create-requires-name-test
   (testing "GHY-4147: create without a name is a teaching error, not a schema dump"

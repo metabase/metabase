@@ -62,13 +62,18 @@
 (defn- create!
   [{:keys [name description parent_id authority_level], coll-namespace :namespace, :as args}]
   (check-method-args! :create args)
-  (write-result
-   (collections/create-collection!
-    (cond-> {:name name}
-      description                 (assoc :description description)
-      (contains? args :parent_id) (assoc :parent_id (common/resolve-collection-id parent_id))
-      coll-namespace              (assoc :namespace coll-namespace)
-      authority_level             (assoc :authority_level authority_level)))))
+  ;; A namespaced collection ("snippets") is its own hierarchy, and personal collections only
+  ;; exist in the default one — so only a normal collection can default into the caller's.
+  (let [parent-id (if coll-namespace
+                    (common/resolve-collection-id parent_id)
+                    (common/resolve-collection-id-or-personal parent_id))]
+    (write-result
+     (collections/create-collection!
+      (cond-> {:name name}
+        description     (assoc :description description)
+        parent-id       (assoc :parent_id parent-id)
+        coll-namespace  (assoc :namespace coll-namespace)
+        authority_level (assoc :authority_level authority_level))))))
 
 (defn- update!
   [id {:keys [name description parent_id archived authority_level] :as args}]
@@ -102,7 +107,7 @@
    [:parent_id {:optional true}
     [:maybe [:or {:description (str "The collection to nest under (create) or move into (update). Numeric id, "
                                     "21-character entity_id, or \"root\" for the top level. Omitted on create means "
-                                    "the root collection. You need write access to the parent.")}
+                                    "your personal collection. You need write access to the parent.")}
              :int :string]]]
    [:clear {:optional true}
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, authority_level). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
@@ -130,7 +135,8 @@
   documents. method: \"create\" requires name and accepts description, parent_id, namespace, and authority_level;
   method: \"update\" requires id and accepts name, description, parent_id, archived, and authority_level. parent_id
   nests a new collection or moves an existing one: pass a numeric id, a 21-character entity_id, or \"root\" for the top
-  level; omitting it on create means the root collection, and omitting it on update leaves the collection where it is.
+  level; omitting it on create means your personal collection (the root collection for a namespaced one), and omitting
+  it on update leaves the collection where it is.
   You need write access to the parent. archived: true moves the collection and everything in it to the trash, false
   restores it — there is no hard delete, and omitting archived leaves the trashed state alone. namespace is create-only
   (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
