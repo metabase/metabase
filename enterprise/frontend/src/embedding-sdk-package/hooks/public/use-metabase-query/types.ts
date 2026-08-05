@@ -386,13 +386,21 @@ type TableQueryBase<TTable> = {
 export type QuestionQuery<TQuestion = unknown> = {
   source: TQuestion extends QuestionSchema ? TQuestion : QuestionSchema;
   fields?: never;
-  filters?: never;
+  filters?: readonly MetabaseDimensionFilterForDimension<
+    QuestionResultColumn<TQuestion>
+  >[];
   aggregations?: never;
   breakouts?: never;
   orderBys?: never;
   limit?: never;
   enabled?: boolean;
 };
+
+type QuestionResultColumn<TQuestion> = TQuestion extends {
+  columns?: readonly (infer TColumn)[];
+}
+  ? TColumn
+  : never;
 
 type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];

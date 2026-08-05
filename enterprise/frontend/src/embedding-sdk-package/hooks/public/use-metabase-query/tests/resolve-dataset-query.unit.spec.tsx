@@ -123,6 +123,41 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("applies generated field filters on top of a saved question source", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+      filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [
+        {
+          "source-card": 41,
+          filters: [
+            [
+              "=",
+              expect.anything(),
+              ["field", expect.anything(), "STATUS"],
+              "paid",
+            ],
+          ],
+        },
+      ],
+    });
+  });
+
+  it("rejects filters for fields not returned by a saved question", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        filters: [filter(TEST_SCHEMA.tables.orders.fields.id, "=", 1)],
+      }),
+    ).rejects.toThrow(
+      "Saved question query filters must reference a result column of the saved question.",
+    );
+  });
+
   it("loads metric aggregation metadata and passes the public table source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
 
@@ -301,6 +336,32 @@ describe("resolveDatasetQuery", () => {
         {
           "lib/type": "mbql.stage/mbql",
           "source-card": 41,
+        },
+      ],
+    });
+  });
+
+  it("applies filters on top of a saved question source", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+      filters: [
+        filter(TEST_SCHEMA.questions.ordersQuestion.columns[0], "=", "paid"),
+      ],
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [
+        {
+          "source-card": 41,
+          filters: [
+            [
+              "=",
+              expect.anything(),
+              ["field", expect.anything(), "STATUS"],
+              "paid",
+            ],
+          ],
         },
       ],
     });

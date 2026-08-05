@@ -9,7 +9,7 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   enabled?: boolean;
 };
 
-export type QuestionQueryInput = {
+export type QuestionQueryInput = Pick<TestStageWithSourceSpec, "filters"> & {
   source: QuestionSchema;
   enabled?: boolean;
 };

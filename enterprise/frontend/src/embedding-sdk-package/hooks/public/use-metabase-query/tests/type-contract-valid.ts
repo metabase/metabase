@@ -7,9 +7,10 @@ import type { RowValue } from "../../data-schema";
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
-import { breakout, orderBy, sum, useMetabaseQuery } from "..";
+import { breakout, filter, orderBy, sum, useMetabaseQuery } from "..";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
+type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
 
 // --------
 // Compile-time contracts that must pass type-checking.
@@ -45,6 +46,13 @@ function ValidTypeFixtures() {
     selectedFieldsResult.data?.rows[0]?.ID;
 
   void selectedFieldValue;
+
+  const savedQuestionWithFilter = {
+    source: TEST_SCHEMA.questions.ordersQuestion,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.id, "=", 1)],
+  } satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+  useMetabaseQuery(savedQuestionWithFilter);
 
   const selectedFieldsQuery = {
     source: TEST_SCHEMA.tables.orders,

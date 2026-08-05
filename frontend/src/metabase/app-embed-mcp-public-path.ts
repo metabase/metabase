@@ -22,6 +22,7 @@
 // so the assignment below is rewritten to set the runtime's `publicPath`.
 declare let __webpack_public_path__: string;
 
+"Invalid input: [\"Query should have :database unless it is :type :internal, got: {:lib/type \\\"mbql/query\\\", :stages [{:lib/type \\\"mbql.stage/mbql\\\", :source-card 279}], :middleware {:js-int-to-string? true}}\"]"
 const instanceUrl: string = window.metabaseConfig?.instanceUrl ?? "";
 
 // In hot/dev mode `output.publicPath` is already an absolute localhost URL served

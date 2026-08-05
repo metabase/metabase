@@ -14,6 +14,7 @@ export { DataAppRouter } from "./components/public/DataAppRouter";
 export { DataAppLink } from "./components/public/DataAppLink";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
+export { useCurrentUser } from "./hooks/public/use-current-user";
 export {
   aggregations,
   breakout,

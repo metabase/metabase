@@ -135,7 +135,7 @@ describe("resolveDatasetQuery validation", () => {
         fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
       }),
     ).rejects.toThrow(
-      "Saved question queries only support source and enabled, but received fields.",
+      "Saved question queries only support source, filters, and enabled, but received fields.",
     );
 
     await expect(
@@ -144,7 +144,7 @@ describe("resolveDatasetQuery validation", () => {
         limit: 10,
       }),
     ).rejects.toThrow(
-      "Saved question queries only support source and enabled, but received limit.",
+      "Saved question queries only support source, filters, and enabled, but received limit.",
     );
 
     await expect(
@@ -153,7 +153,7 @@ describe("resolveDatasetQuery validation", () => {
         aggregations: [avg(TEST_SCHEMA.questions.ordersQuestion.columns[1])],
       }),
     ).rejects.toThrow(
-      "Saved question queries only support source and enabled, but received aggregations.",
+      "Saved question queries only support source, filters, and enabled, but received aggregations.",
     );
   });
 

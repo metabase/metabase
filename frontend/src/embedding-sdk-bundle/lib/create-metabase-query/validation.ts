@@ -33,16 +33,31 @@ function isQuestionQueryInput(input: QueryInput): input is QuestionQueryInput {
 
 function validateQuestionInput(input: QuestionQueryInput) {
   const extraKeys = Object.keys(input).filter(
-    (key) => key !== "source" && key !== "enabled",
+    (key) => key !== "source" && key !== "enabled" && key !== "filters",
   );
 
   if (extraKeys.length > 0) {
     throw new Error(
-      `Saved question queries only support source and enabled, but received ${extraKeys.join(
+      `Saved question queries only support source, filters, and enabled, but received ${extraKeys.join(
         ", ",
       )}.`,
     );
   }
+
+  input.filters?.forEach((filter) => {
+    const column = getFirstOperatorArg(filter);
+
+    if (
+      !isObject(column) ||
+      column.type !== "column" ||
+      typeof column.name !== "string" ||
+      !input.source.columns?.some(({ name }) => name === column.name)
+    ) {
+      throw new Error(
+        "Saved question query filters must reference a result column of the saved question.",
+      );
+    }
+  });
 }
 
 function validateTableScopedInputs(input: TableQueryInput) {

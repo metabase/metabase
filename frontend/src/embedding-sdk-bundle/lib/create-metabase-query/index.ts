@@ -51,9 +51,13 @@ function resolveQueryFromLoadedMetadata(
   const databaseId = getSourceDatabaseId(input, metadata);
   const provider = Lib.metadataProvider(databaseId, metadata);
 
-  return Lib.toJsQuery(
+  const datasetQuery = Lib.toJsQuery(
     Lib.createTestQuery(provider, { stages: [input] } satisfies TestQuerySpec),
   );
+
+  // Card-source queries inherit their database from the metadata provider, but
+  // `/api/dataset` still requires it in the serialized query.
+  return { ...datasetQuery, database: databaseId };
 }
 
 async function loadSourceMetadata(store: SdkStore, input: QueryInput) {

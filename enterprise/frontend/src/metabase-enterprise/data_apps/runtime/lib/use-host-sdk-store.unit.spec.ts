@@ -5,6 +5,7 @@ import { initAuth } from "embedding-sdk-bundle/store/auth/auth";
 import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import { loadCurrentUser } from "metabase/api";
 
 import { useHostSdkStore } from "./use-host-sdk-store";
 
@@ -18,6 +19,11 @@ jest.mock("embedding-sdk-bundle/store/reducer", () => ({
     payload: ready,
   })),
 }));
+
+jest.mock("metabase/api", () => ({
+  loadCurrentUser: jest.fn(),
+}));
+
 jest.mock(
   "embedding-sdk-shared/lib/ensure-metabase-provider-props-store",
   () => ({
@@ -27,6 +33,7 @@ jest.mock(
 
 const mockedGetSdkStore = jest.mocked(getSdkStore);
 const mockedEnsurePropsStore = jest.mocked(ensureMetabaseProviderPropsStore);
+const mockedLoadCurrentUser = jest.mocked(loadCurrentUser);
 
 const setup = (initialProps: Record<string, unknown> = {}) => {
   const dispatch = jest.fn();
@@ -53,6 +60,10 @@ const setup = (initialProps: Record<string, unknown> = {}) => {
 };
 
 describe("useHostSdkStore", () => {
+  beforeEach(() => {
+    mockedLoadCurrentUser.mockReturnValue({ type: "load-current-user" } as any);
+  });
+
   afterEach(() => jest.clearAllMocks());
 
   it("returns a single SDK store that stays stable across renders", () => {
@@ -77,6 +88,12 @@ describe("useHostSdkStore", () => {
     });
     expect(dispatch).toHaveBeenCalledWith({ type: initAuth.fulfilled.type });
     expect(dispatch).toHaveBeenCalledWith(setPluginsReady(true));
+  });
+
+  it("loads the authenticated host user into the SDK store", () => {
+    const { dispatch } = setup();
+
+    expect(dispatch).toHaveBeenCalledWith({ type: "load-current-user" });
   });
 
   it("forwards the host auth config and the caller's props into the props store", () => {

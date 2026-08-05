@@ -5,7 +5,7 @@ import { TEST_SCHEMA } from "./fixtures";
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
-import { breakout, sum, useMetabaseQuery } from "..";
+import { breakout, filter, sum, useMetabaseQuery } from "..";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
@@ -44,8 +44,16 @@ const _invalidCrossTableFieldQuery = {
 const _invalidSavedQuestionClauseQuery = {
   source: TEST_SCHEMA.questions.ordersQuestion,
 
-  // @ts-expect-error saved question queries only support source and enabled
+  // @ts-expect-error saved question queries only support filters and enabled
   fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+const _invalidSavedQuestionFilter = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+  filters: [
+    // @ts-expect-error saved question filters must target result columns
+    filter(TEST_SCHEMA.tables.orders.fields.id, "=", 1),
+  ],
 } satisfies MetabaseQueryOptions<OrdersQuestion>;
 
 // Only this value's type is used to reject passing the entire hook result to a card.
