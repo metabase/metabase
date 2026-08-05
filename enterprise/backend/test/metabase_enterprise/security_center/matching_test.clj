@@ -74,9 +74,11 @@
       (is (false? (in-range? nil []))))))
 
 (deftest ^:parallel evaluate-advisory-test
-  (testing ":error query-result propagates regardless of in-range?"
-    (is (= :error (matching/evaluate-advisory true  :error)))
-    (is (= :error (matching/evaluate-advisory false :error))))
+  (testing ":error only survives when the version check didn't already settle it"
+    (is (= :error (matching/evaluate-advisory true :error)))
+    (testing "out-of-range: the version alone rules the instance out, so an
+              undeterminable query must not escalate to :error"
+      (is (= :not_affected (matching/evaluate-advisory false :error)))))
   (testing "falsey query-result → :not_affected regardless of in-range?"
     (is (= :not_affected (matching/evaluate-advisory true  false)))
     (is (= :not_affected (matching/evaluate-advisory false false))))
@@ -181,6 +183,25 @@
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :error
+                 :last_evaluated_at some?}
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
+    ;; An advisory whose query names a table this version doesn't have yet. Reported as
+    ;; :error before, which the notification task treats the same as :active — so instances
+    ;; the version check had already cleared got notified anyway. See GDGT-2972.
+    (testing "out-of-range + query error → :not_affected, never :error"
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     {:advisory_id       "SC-MATCH-005"
+                      :severity          "high"
+                      :title             "Test"
+                      :description       "Test"
+                      :remediation       "Upgrade"
+                      :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                      :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                      :match_status      "unknown"
+                      :published_at      #t "2026-03-24T00:00:00Z"
+                      :updated_at        #t "2026-03-24T00:00:00Z"}]
+        (matching/evaluate-advisory! advisory)
+        (is (=? {:match_status      :not_affected
                  :last_evaluated_at some?}
                 (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
     ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
