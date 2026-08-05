@@ -16,7 +16,11 @@ export type ChartTypeSettingsProps = {
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
 } & Pick<
   ChartTypeListProps,
-  "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
+  | "selectedVisualization"
+  | "onSelectVisualization"
+  | "onOpenSettings"
+  | "isVisualizationDisabled"
+  | "disabledReason"
 > &
   StackProps;
 
@@ -26,6 +30,8 @@ export const ChartTypeSettings = ({
   sensibleVisualizations,
   nonSensibleVisualizations,
   onOpenSettings,
+  isVisualizationDisabled,
+  disabledReason,
   ...stackProps
 }: ChartTypeSettingsProps) => {
   const collapsibleGroups = useMemo(() => {
@@ -57,6 +63,8 @@ export const ChartTypeSettings = ({
         onSelectVisualization={onSelectVisualization}
         selectedVisualization={selectedVisualization}
         onOpenSettings={onOpenSettings}
+        isVisualizationDisabled={isVisualizationDisabled}
+        disabledReason={disabledReason}
       />
 
       {collapsibleGroups.map((group) => (
@@ -91,6 +99,8 @@ export const ChartTypeSettings = ({
                 onSelectVisualization={onSelectVisualization}
                 selectedVisualization={selectedVisualization}
                 onOpenSettings={onOpenSettings}
+                isVisualizationDisabled={isVisualizationDisabled}
+                disabledReason={disabledReason}
               />
             </>
           </CollapseSection>
