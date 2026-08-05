@@ -573,9 +573,8 @@
    :where  [:= :archived (boolean archived?)]})
 
 (defmethod collection-children-query :snippet
-  [_model collection {:keys [pinned-state] :as options}]
-  (-> (snippets-collection-children-query collection options)
-      (sql.helpers/where (poison-when-pinned-clause pinned-state))))
+  [_model collection options]
+  (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
