@@ -852,7 +852,8 @@
    [:query {:optional true} :string]
    [:include-personal-collections {:optional true} :boolean]
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
-   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
+   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]
+   [:worktree-id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private dependency-items-response
   [:map
