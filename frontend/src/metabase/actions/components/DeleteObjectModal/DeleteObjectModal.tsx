@@ -8,11 +8,9 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { Button } from "metabase/ui";
 import type { WritebackActionId } from "metabase-types/api";
 
-import type { ObjectId } from "./types";
-
 interface Props {
   actionId: WritebackActionId | undefined;
-  objectId: ObjectId | undefined;
+  objectId: number | string | null | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }
