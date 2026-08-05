@@ -41,9 +41,10 @@
 (def ^:private unrestricted-scope :metabase.api.macros.scope/unrestricted)
 
 (defn- full-access?
-  "True when `token-scopes` represents an unrestricted credential (a normal session, or a
-  full-access bearer / MCP-UI credential). Only such requests may be narrowed by the marker;
-  an already-scoped token must not be broadened."
+  "True when `token-scopes` represents an unrestricted credential — a normal session or a
+  full-access bearer token. Only such requests may be narrowed by the marker; an
+  already-scoped credential (an OAuth/agent token, or an MCP-UI credential — itself confined
+  to a whitelist like `agent:viz:mcp-ui:query`) must not be broadened, so it stays untouched."
   [token-scopes]
   (or (nil? token-scopes)
       (contains? token-scopes unrestricted-scope)))
