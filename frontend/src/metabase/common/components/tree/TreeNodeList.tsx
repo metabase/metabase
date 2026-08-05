@@ -4,8 +4,8 @@ import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
+import { TreeLoadMore } from "./TreeLoadMore";
 import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
-import { TreeShowMore } from "./TreeShowMore";
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeNodeListProps<TData = unknown> extends Omit<
@@ -19,11 +19,11 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   role?: string;
   onToggleExpand: (id: ITreeNodeItem<TData>["id"]) => void;
   onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
-  /** Whether this list itself was cut short, so a "Show more" row belongs at its end. */
+  /** Whether this list itself was cut short, so its end should load the next page when reached. */
   hasMore?: boolean;
-  /** The parent whose level this is, or `null` for the top level. Passed back by `onShowMore`. */
-  showMoreFor?: ITreeNodeItem<TData>["id"] | null;
-  onShowMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
+  /** The parent whose level this is, or `null` for the top level. Passed back by `onLoadMore`. */
+  loadMoreFor?: ITreeNodeItem<TData>["id"] | null;
+  onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
@@ -39,8 +39,8 @@ function BaseTreeNodeList<TData = unknown>({
   onToggleExpand,
   onNodeHover,
   hasMore,
-  showMoreFor = null,
-  onShowMore,
+  loadMoreFor = null,
+  onLoadMore,
   loadingMoreIds,
   TreeNode,
   rightSection,
@@ -90,8 +90,8 @@ function BaseTreeNodeList<TData = unknown>({
                   onToggleExpand={onToggleExpand}
                   onNodeHover={onNodeHover}
                   hasMore={item.childrenHaveMore}
-                  showMoreFor={item.id}
-                  onShowMore={onShowMore}
+                  loadMoreFor={item.id}
+                  onLoadMore={onLoadMore}
                   loadingMoreIds={loadingMoreIds}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
@@ -102,11 +102,11 @@ function BaseTreeNodeList<TData = unknown>({
           </Fragment>
         );
       })}
-      {hasMore && onShowMore && (
-        <TreeShowMore
+      {hasMore && onLoadMore && (
+        <TreeLoadMore
           depth={depth}
-          isLoading={loadingMoreIds?.has(showMoreFor) ?? false}
-          onClick={() => onShowMore(showMoreFor)}
+          isLoading={loadingMoreIds?.has(loadMoreFor) ?? false}
+          onLoadMore={() => onLoadMore(loadMoreFor)}
         />
       )}
     </Box>

@@ -28,7 +28,7 @@ export type CollectionsNavTreeProps = {
   onToggleExpand?: (id: number | string) => void;
   onNodeHover?: (id: number | string) => void;
   hasMore?: boolean;
-  onShowMore?: (parentId: number | string | null) => void;
+  onLoadMore?: (parentId: number | string | null) => void;
   loadingMoreIds?: Set<number | string | null>;
 };
 

@@ -37,6 +37,8 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
   });
 
   describe("paged levels", () => {
+    const { setIntersecting } = setupMockIntersectionObserver();
+
     const MANY_COLLECTIONS = Array.from({ length: 5 }, (_, index) =>
       createMockCollection({
         id: 100 + index,
@@ -44,7 +46,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       }),
     );
 
-    it("should show only the first page, then the rest on Show more", async () => {
+    it("should show only the first page until the end of the list is reached", async () => {
       await setup({
         simulateLargeInstance: true,
         collections: MANY_COLLECTIONS,
@@ -58,9 +60,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Wide collection 3/ }),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(
-        within(screen.getByTestId("tree-show-more")).getByRole("button"),
-      );
+      setIntersecting(true);
 
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 3/ }),
@@ -71,32 +71,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       ).toBeInTheDocument();
     });
 
-    describe("scrolling to the end of a level", () => {
-      const { setIntersecting } = setupMockIntersectionObserver();
-
-      it("should load the next page without a click", async () => {
-        await setup({
-          simulateLargeInstance: true,
-          collections: MANY_COLLECTIONS,
-          lazyPageSize: 2,
-        });
-
-        expect(
-          await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
-        ).toBeInTheDocument();
-        expect(
-          screen.queryByRole("treeitem", { name: /Wide collection 3/ }),
-        ).not.toBeInTheDocument();
-
-        setIntersecting(true);
-
-        expect(
-          await screen.findByRole("treeitem", { name: /Wide collection 3/ }),
-        ).toBeInTheDocument();
-      });
-    });
-
-    it("should stop offering Show more once the level is exhausted", async () => {
+    it("should stop watching once the level is exhausted", async () => {
       await setup({
         simulateLargeInstance: true,
         collections: MANY_COLLECTIONS,
@@ -107,15 +82,13 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
       ).toBeInTheDocument();
 
-      await userEvent.click(
-        within(screen.getByTestId("tree-show-more")).getByRole("button"),
-      );
+      setIntersecting(true);
 
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 5/ }),
       ).toBeInTheDocument();
       await waitFor(() =>
-        expect(screen.queryByTestId("tree-show-more")).not.toBeInTheDocument(),
+        expect(screen.queryByTestId("tree-load-more")).not.toBeInTheDocument(),
       );
     });
   });

@@ -153,7 +153,7 @@ function MainNavbarContainer({
     expandedIds,
     toggleExpand,
     prefetchChildren,
-    showMore,
+    loadMore,
     loadingMoreIds,
     hasMore,
   } = useLazyCollectionTree({
@@ -272,7 +272,7 @@ function MainNavbarContainer({
         expandedCollectionIds={expandedIds}
         onToggleCollectionExpand={toggleExpand}
         onCollectionHover={prefetchChildren}
-        onCollectionShowMore={showMore}
+        onCollectionLoadMore={loadMore}
         loadingMoreCollectionIds={loadingMoreIds}
         collectionsHaveMore={hasMore}
         selectedItems={selectedItems}

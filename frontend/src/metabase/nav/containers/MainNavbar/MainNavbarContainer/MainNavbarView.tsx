@@ -64,7 +64,7 @@ type Props = {
   expandedCollectionIds: Set<string | number>;
   onToggleCollectionExpand: (id: string | number) => void;
   onCollectionHover: (id: string | number) => void;
-  onCollectionShowMore: (parentId: string | number | null) => void;
+  onCollectionLoadMore: (parentId: string | number | null) => void;
   loadingMoreCollectionIds: Set<string | number | null>;
   collectionsHaveMore: boolean;
   selectedItems: SelectedItem[];
@@ -91,7 +91,7 @@ export function MainNavbarView({
   expandedCollectionIds,
   onToggleCollectionExpand,
   onCollectionHover,
-  onCollectionShowMore,
+  onCollectionLoadMore,
   loadingMoreCollectionIds,
   collectionsHaveMore,
   selectedItems,
@@ -299,7 +299,7 @@ export function MainNavbarView({
                     onToggleExpand={onToggleCollectionExpand}
                     onNodeHover={onCollectionHover}
                     hasMore={collectionsHaveMore}
-                    onShowMore={onCollectionShowMore}
+                    onLoadMore={onCollectionLoadMore}
                     loadingMoreIds={loadingMoreCollectionIds}
                   />
                 ) : (
@@ -311,7 +311,7 @@ export function MainNavbarView({
                     onToggleExpand={onToggleCollectionExpand}
                     onNodeHover={onCollectionHover}
                     hasMore={collectionsHaveMore}
-                    onShowMore={onCollectionShowMore}
+                    onLoadMore={onCollectionLoadMore}
                     loadingMoreIds={loadingMoreCollectionIds}
                     TreeNode={SidebarCollectionLink}
                     role="tree"

@@ -1,0 +1,7 @@
+/*
+ * Invisible, but not zero height: an element with no box is unreliable to observe, and this one has to be seen
+ * scrolling into view for the next page to load.
+ */
+.sentinel {
+  height: 1px;
+}

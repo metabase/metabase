@@ -22,10 +22,10 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   onToggleExpand?: (id: ITreeNodeItem<TData>["id"]) => void;
   /** Called when the pointer settles on a node, so a lazy tree can fetch its children ahead of the click. */
   onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
-  /** Whether the top level itself was cut short, so a "Show more" row belongs at its end. */
+  /** Whether the top level itself was cut short, so its end should load the next page when reached. */
   hasMore?: boolean;
   /** Called with the parent whose level should grow, or `null` for the top level. */
-  onShowMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
+  onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
@@ -43,7 +43,7 @@ function BaseTree<TData = unknown>({
   onToggleExpand: controlledOnToggleExpand,
   onNodeHover,
   hasMore,
-  onShowMore,
+  onLoadMore,
   loadingMoreIds,
   onSelect,
   TreeNode = DefaultTreeNode,
@@ -119,7 +119,7 @@ function BaseTree<TData = unknown>({
       onToggleExpand={handleToggleExpand}
       onNodeHover={onNodeHover}
       hasMore={hasMore}
-      onShowMore={onShowMore}
+      onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
       rightSection={rightSection}
       {...boxProps}

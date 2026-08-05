@@ -17,7 +17,7 @@ interface CollectionsNavTreeProps {
   onToggleExpand?: (id: number | string) => void;
   onNodeHover?: (id: number | string) => void;
   hasMore?: boolean;
-  onShowMore?: (parentId: number | string | null) => void;
+  onLoadMore?: (parentId: number | string | null) => void;
   loadingMoreIds?: Set<number | string | null>;
 }
 
@@ -29,7 +29,7 @@ export const CollectionsNavTree = ({
   onToggleExpand,
   onNodeHover,
   hasMore,
-  onShowMore,
+  onLoadMore,
   loadingMoreIds,
 }: CollectionsNavTreeProps) => {
   // Fetch flat list to check for remote-synced collections
@@ -63,7 +63,7 @@ export const CollectionsNavTree = ({
       onToggleExpand={onToggleExpand}
       onNodeHover={onNodeHover}
       hasMore={hasMore}
-      onShowMore={onShowMore}
+      onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
       TreeNode={SidebarCollectionLink}
       role="tree"

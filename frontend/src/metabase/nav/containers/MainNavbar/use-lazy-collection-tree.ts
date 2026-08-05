@@ -272,7 +272,7 @@ export function useLazyCollectionTree({
     });
   }, []);
 
-  const showMore = useCallback(
+  const loadMore = useCallback(
     (parentId: NodeId | null) => {
       const key: LevelKey =
         parentId == null || !isFetchableId(parentId) ? ROOT_LEVEL : parentId;
@@ -304,7 +304,7 @@ export function useLazyCollectionTree({
     expandedIds,
     toggleExpand,
     prefetchChildren,
-    showMore,
+    loadMore,
     loadingMoreIds,
     hasMore: levels.get(ROOT_LEVEL)?.hasMore ?? false,
     isLoading,
