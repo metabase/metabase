@@ -15,7 +15,6 @@ import type {
   ClickActionModeGetter,
   ClickActionsMode,
   ClickObject,
-  QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type { BrushClickObject } from "metabase-lib/query/types";
@@ -253,7 +252,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

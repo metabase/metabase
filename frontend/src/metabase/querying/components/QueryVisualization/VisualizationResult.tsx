@@ -6,6 +6,7 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
+import { getDefaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { Anchor, Button, Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -144,6 +145,10 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
       {...vizSpecificProps}
+      // Visualization no longer falls back to a default mode itself, so
+      // default it here for the consumers that never pass one (dataset
+      // editor, data-studio overview, SDK with a null resolved mode).
+      mode={props.mode ?? getDefaultClickActionMode}
     />
   );
 }
