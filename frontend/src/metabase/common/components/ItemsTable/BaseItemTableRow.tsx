@@ -120,7 +120,6 @@ export const ItemDragSourceTableRow = ({
   onToggleSelected,
   item,
   isSelected,
-  itemKey,
   collection,
   onClick,
   selectedItems,
@@ -134,7 +133,6 @@ export const ItemDragSourceTableRow = ({
     const row = (
       // We can't use <TableRow> due to React DnD throwing an error: Only native element nodes can now be passed to React DnD connectors.
       <tr
-        key={itemKey}
         data-dnd-state={dndState}
         data-testid={testIdPrefix}
         style={{ height: 48 }}
@@ -175,7 +173,6 @@ export const ItemDragSourceTableRow = ({
         isSelected={isSelected}
         selected={selectedItems}
         onDrop={onDrop}
-        key={`item-drag-source-${itemKey}`}
       >
         {dropTargetRow}
       </ItemDragSource>
