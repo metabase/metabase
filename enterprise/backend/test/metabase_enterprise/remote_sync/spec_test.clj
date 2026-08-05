@@ -495,19 +495,21 @@
              (spec/removal-where-clauses {:removal-conditions {:status ["removed" "delete"]}} #{} []))))))
 
 (deftest check-eligibility-applies-conditions-uniformly-test
-  (testing ":conditions are enforced for non-:collection eligibility types"
-    (testing "TransformTag (:setting): built-in tags fail eligibility even when the setting is on"
-      (mt/with-temporary-setting-values [remote-sync-transforms true]
-        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+  (let [spec {:model-type  "TransformTag"
+              :model-key   :model/TransformTag
+              :eligibility {:type :setting :setting :remote-sync-transforms}
+              :conditions  {:built_in_type nil}}]
+    (testing ":conditions are enforced for non-:collection eligibility types"
+      (testing "a :setting spec's conditions are applied even when the setting is on"
+        (mt/with-temporary-setting-values [remote-sync-transforms true]
           (is (true?  (spec/check-eligibility spec {:id 1 :name "user-tag"   :built_in_type nil})))
           (is (false? (spec/check-eligibility spec {:id 2 :name "system-tag" :built_in_type "system"}))
-              "built-in TransformTag must NOT be eligible — was previously creating wasteful RSO churn")
+              "a conditioned-out row must NOT be eligible — it was previously creating wasteful RSO churn")
           (is (= {1 true 2 false}
                  (spec/batch-check-eligibility spec [{:id 1 :built_in_type nil}
-                                                     {:id 2 :built_in_type "system"}]))))))
-    (testing "TransformTag (:setting): setting off short-circuits regardless of conditions"
-      (mt/with-temporary-setting-values [remote-sync-transforms false]
-        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+                                                     {:id 2 :built_in_type "system"}])))))
+      (testing "the setting being off short-circuits regardless of conditions"
+        (mt/with-temporary-setting-values [remote-sync-transforms false]
           (is (false? (spec/check-eligibility spec {:id 1 :built_in_type nil}))))))))
 (deftest check-deletion-conflicts-test
   (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"

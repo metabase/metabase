@@ -670,7 +670,7 @@
    predicate (a global, unconditioned delete)."
   [spec synced-collection-ids entity-ids]
   (let [scope-key (get-in spec [:removal :scope-key])
-        wt-clause (serdes/worktree-scope-clause (:model-type spec))]
+        wt-clause (some-> (:model-type spec) serdes/worktree-scope-clause)]
     (when-not (and scope-key (empty? synced-collection-ids))
       (cond-> []
         scope-key        (conj [:in scope-key synced-collection-ids])

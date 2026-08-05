@@ -2296,7 +2296,7 @@
       collection/check-same-worktree)
 
   Only the move needs catching -- `worktree_id` itself can never change, which [[metabase.models.interface]]'s
-  `:hook/worktree-id` blocks outright. Moving to a root is always allowed."
+  `:hook/worktree-id` blocks outright. Moving to a root is always allowed, so a nil `collection_id` passes."
   [instance]
   (u/prog1 instance
     (when-let [collection-id (:collection_id instance)]
@@ -2304,23 +2304,6 @@
        (if (contains? instance :worktree_id)
          instance
          (assoc instance :worktree_id (:worktree_id (t2/original instance))))
-       (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
-
-(defn check-same-worktree
-  "Guard for content changing collections: throws a 400 when `instance` and the collection it is moving into
-  belong to different worktrees. Returns `instance`, so it threads:
-
-    (cond-> instance
-      (contains? (t2/changes instance) :collection_id)
-      collection/check-same-worktree)
-
-  Only the move needs catching -- `worktree_id` itself can never change, which `:hook/worktree-id` blocks
-  outright. Moving to a root is always allowed, so a nil `collection_id` passes."
-  [instance]
-  (u/prog1 instance
-    (when-let [collection-id (:collection_id instance)]
-      (remote-sync/check-same-worktree
-       instance
        (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
 
 (defn check-collection-namespace
