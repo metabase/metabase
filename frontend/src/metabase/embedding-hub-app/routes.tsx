@@ -1,14 +1,18 @@
 import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
-import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
-import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
+import {
+  SetupPermissionsAndTenantsPage,
+  SetupSsoPage,
+} from "metabase/embedding/embedding-hub";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { EmbeddingHubLayout } from "./components/EmbeddingHubLayout";
 import {
+  EmbeddingHubAppearancePage,
   EmbeddingHubAuthenticationPage,
+  EmbeddingHubGetStartedPage,
   EmbeddingHubLocalizationPage,
   EmbeddingHubPermissionsPage,
   EmbeddingHubSecurityPage,
@@ -28,7 +32,12 @@ export function getEmbeddingHubRoutes() {
         path={Urls.EMBEDDING_HUB_ROOT_PATH}
         element={<EmbeddingHubLayout />}
       >
-        <Route index element={<EmbeddingHubAdminSettingsPage />} />
+        <Route index element={<EmbeddingHubGetStartedPage />} />
+        <Route
+          path="permissions-setup"
+          element={<SetupPermissionsAndTenantsPage />}
+        />
+        <Route path="sso-setup" element={<SetupSsoPage />} />
         <Route path="security" element={<EmbeddingHubSecurityPage />} />
         <Route
           path="authentication"
@@ -41,14 +50,7 @@ export function getEmbeddingHubRoutes() {
           {PLUGIN_TENANTS.tenantsRoutes}
         </Route>
         <Route path="appearance">
-          <Route
-            index
-            element={
-              <EmbeddingThemeListingApp
-                basePath={Urls.embeddingHubAppearance()}
-              />
-            }
-          />
+          <Route index element={<EmbeddingHubAppearancePage />} />
           <Route
             path=":themeId"
             element={

@@ -7,6 +7,7 @@ import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarConta
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import {
+  type SetupGuideUrls,
   useCompletedEmbeddingHubSteps,
   useGetEmbeddingHubSteps,
 } from "../hooks";
@@ -22,8 +23,12 @@ import {
   StepperWithCards,
 } from "./StepperWithCards/StepperWithCards";
 
-export const EmbeddingHub = () => {
-  const embeddingSteps = useGetEmbeddingHubSteps();
+export const EmbeddingHub = ({
+  setupGuideUrls,
+}: {
+  setupGuideUrls?: SetupGuideUrls;
+} = {}) => {
+  const embeddingSteps = useGetEmbeddingHubSteps(setupGuideUrls);
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
 
   const [openedModal, setOpenedModal] =

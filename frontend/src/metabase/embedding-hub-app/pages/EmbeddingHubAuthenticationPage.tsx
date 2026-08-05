@@ -1,14 +1,45 @@
 import { t } from "ttag";
 
-import { EmbeddingHubPlaceholderPage } from "./EmbeddingHubPlaceholderPage";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { UpsellSSO } from "metabase/admin/upsells";
+import { Link } from "metabase/common/components/Link";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import { Anchor, Stack, Text } from "metabase/ui";
 
-// TODO (Kelvin 2026-07-31) items 13 and 14 of 01-questions-for-roman.md are still open: whether the User provisioning radio appears here, and whether the JWT regenerate button appears at all (EMB-1849). The tab is JWT-only (resolved), so it mirrors SettingsJWTForm once those two are answered.
+/**
+ * A JWT-only view of the authentication settings. The admin authentication
+ * page does not change -- this is a second view onto the same settings.
+ *
+ * The admin JWT card is mounted as-is, which is what brings User provisioning
+ * along: it is part of SettingsJWTForm, and its absence from the mockup is the
+ * mockup being a sketch. Regenerate behaves exactly as it does in admin;
+ * softening that edge is a change to the admin card, not to this tab.
+ *
+ * After the admin embedding section is removed this tab is the only route from
+ * the hub to the other SSO methods, so the link out is functional rather than
+ * decoration. It is a single link, not admin's RelatedSettingsSection grid --
+ * that grid is in no hub frame.
+ */
 export function EmbeddingHubAuthenticationPage() {
+  const hasSsoJwt = useHasTokenFeature("sso_jwt");
+
+  if (!hasSsoJwt) {
+    return <UpsellSSO location="embedding-hub-authentication" />;
+  }
+
   return (
-    <EmbeddingHubPlaceholderPage
-      title={t`Authentication`}
-      currentLocationLabel={t`Authentication settings`}
-      currentLocationUrl="/admin/settings/authentication"
-    />
+    <SettingsPageWrapper title={t`Authentication`}>
+      <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />
+
+      <Stack gap="xs">
+        <Text c="text-secondary">
+          {t`SAML, OIDC, Google and LDAP are configured in admin.`}
+        </Text>
+        <Anchor component={Link} to="/admin/settings/authentication">
+          {t`Go to authentication settings`}
+        </Anchor>
+      </Stack>
+    </SettingsPageWrapper>
   );
 }

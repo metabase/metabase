@@ -45,13 +45,23 @@ function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
   );
 }
 
-function EmbeddingSettingsEE() {
-  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
-
-  const isHosted = useSetting("is-hosted?");
+/**
+ * The embedding-method toggles, without the page wrapper around them, so the
+ * embedding hub's Security tab composes them under its own title instead of
+ * nesting two SettingsPageWrappers.
+ *
+ * Renders nothing without `embedding_simple` -- below that paywall the guest
+ * toggle in SharedCombinedEmbeddingSettings is the only embedding method.
+ */
+export function EmbeddingMethodSettings() {
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
   const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
+
+  if (!hasSimpleEmbedding) {
+    return null;
+  }
 
   return (
     <>
@@ -79,6 +89,18 @@ function EmbeddingSettingsEE() {
       {PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettingsCard && (
         <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettingsCard />
       )}
+    </>
+  );
+}
+
+function EmbeddingSettingsEE() {
+  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
+
+  const isHosted = useSetting("is-hosted?");
+
+  return (
+    <>
+      <EmbeddingMethodSettings />
 
       <Text size="lg" fw="bold" lh="xs">
         {t`Settings`}

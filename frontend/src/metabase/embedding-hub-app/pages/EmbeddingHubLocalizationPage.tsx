@@ -1,14 +1,28 @@
 import { t } from "ttag";
 
-import { EmbeddingHubPlaceholderPage } from "./EmbeddingHubPlaceholderPage";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { UpsellContentTranslation } from "metabase/admin/upsells";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
-// TODO (Kelvin 2026-07-31) content translation is the one embedding-owned piece of this tab — it renders today inside the admin embedding section (EmbeddingSettings.tsx and SharedCombinedEmbeddingSettings.tsx), so it moves here rather than being mirrored. Which of the instance-wide localization settings join it is still open; see item 7 of 01-questions-for-roman.md.
+/**
+ * Content translation only. It renders today *only* from the admin embedding
+ * section, so this is the one tab with a genuine migration in it: it moves
+ * here and admin loses it.
+ *
+ * The instance-wide localization settings -- site-locale, report-timezone,
+ * start-of-week, custom-formatting -- stay in admin and are not surfaced.
+ */
 export function EmbeddingHubLocalizationPage() {
+  const hasContentTranslation = useHasTokenFeature("content_translation");
+
+  if (!hasContentTranslation) {
+    return <UpsellContentTranslation source="embedding-hub-localization" />;
+  }
+
   return (
-    <EmbeddingHubPlaceholderPage
-      title={t`Localization`}
-      currentLocationLabel={t`Localization settings`}
-      currentLocationUrl="/admin/settings/localization"
-    />
+    <SettingsPageWrapper title={t`Localization`}>
+      <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+    </SettingsPageWrapper>
   );
 }

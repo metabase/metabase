@@ -29,7 +29,9 @@ import {
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 import { useLastXrayDashboard } from "./hooks/use-xray-dashboards";
 import { createEmptyTenantDraft } from "./utils";
-const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+// Relative so the wizard resolves back to whichever host mounted it: the
+// admin setup guide, or the embedding hub's Get started tab.
+const SETUP_GUIDE_PATH = "..";
 
 export const SetupPermissionsAndTenantsPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
