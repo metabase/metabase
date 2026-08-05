@@ -68,7 +68,8 @@
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
                          (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
-                                                               :name snippet-name)]
+                                                               :name        snippet-name
+                                                               :worktree_id (:worktree_id snippet))]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -82,9 +83,12 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (collection/inherit-worktree-id (add-template-tags snippet))
+  (u/prog1 (add-template-tags (collection/inherit-worktree-id snippet))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+
+(t2/define-after-select :model/NativeQuerySnippet [snippet]
+  (dissoc snippet :worktree_id_helper))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
@@ -95,8 +99,10 @@
   [snippet]
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
-             (contains? (t2/changes snippet) :collection_id) collection/check-same-worktree
-             (:content snippet)                              add-template-tags)
+             ;; only when moving into a real collection: a snippet is one of the two models that may sit at a
+             ;; worktree root, so a move to one is legal and has no collection to compare worktrees against
+             (some? (:collection_id (t2/changes snippet))) collection/check-same-worktree
+             (:content snippet)                            add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
@@ -184,7 +190,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
@@ -218,7 +224,9 @@
   ;; there will be no conflicts and skip the query to the db
   (if (and (not= (:name ingested) (:name maybe-local))
            (t2/exists? :model/NativeQuerySnippet
-                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+                       :name        (:name ingested)
+                       :entity_id   [:!= (:entity_id ingested)]
+                       :worktree_id serdes/*worktree-id*))
     (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))

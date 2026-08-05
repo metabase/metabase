@@ -234,6 +234,10 @@
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
 
+    :model/NativeQuerySnippet
+    ;; worktree_id_helper is a computed/generated column
+    (map #(dissoc % :worktree_id_helper))
+
     ;; else
     identity))
 

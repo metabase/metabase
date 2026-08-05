@@ -259,6 +259,11 @@
                                 (t2/update! :model/Transform tf-id {:collection_id (:id wt-coll)})))
           (testing "but moving to the root is always allowed"
             (is (= 1 (t2/update! :model/Transform tf-id {:collection_id nil}))))))
+      (testing "a transform is one of the two models that can sit at a worktree root, so it may move there"
+        (mt/with-temp [:model/Transform {tf-id :id} {:name          "worktree transform"
+                                                     :collection_id (:id wt-coll)}]
+          (is (= 1 (t2/update! :model/Transform tf-id {:collection_id nil})))
+          (is (= wt-id (t2/select-one-fn :worktree_id :model/Transform tf-id)))))
       (testing "a transform in the same worktree as its collection is fine"
         (mt/with-temp [:model/Transform tf {:name          "matched"
                                             :collection_id (:id wt-coll)

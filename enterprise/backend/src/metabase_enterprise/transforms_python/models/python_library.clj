@@ -97,6 +97,7 @@
 (defmethod serdes/make-spec "PythonLibrary"
   [_model-name _opts]
   {:copy      [:path :source :entity_id]
+   :skip      [:worktree_id]
    :transform {:created_at (serdes/date)}})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]

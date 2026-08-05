@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -163,3 +164,37 @@
               "nil should remain nil")
           (is (contains? (first hydrated) :can_write)
               "non-nil snippet should be hydrated"))))))
+
+(deftest snippet-names-are-unique-per-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Worktree {other-wt-id :id} {}
+                   :model/Collection {wt-coll :id} {:namespace "snippets" :worktree_id wt-id}
+                   :model/Collection {other-coll :id} {:namespace "snippets" :worktree_id other-wt-id}
+                   :model/NativeQuerySnippet _ {:name "shared" :content "SELECT 1"}]
+      (testing "the main app still rejects a second snippet of the same name"
+        (is (thrown? Exception
+                     (t2/insert! :model/NativeQuerySnippet
+                                 (merge (mt/with-temp-defaults :model/NativeQuerySnippet)
+                                        {:name "shared" :content "SELECT 2"})))))
+      (testing "but a worktree may check out its own snippet under that name"
+        (mt/with-temp [:model/NativeQuerySnippet wt-snippet {:name          "shared"
+                                                             :content       "SELECT 2"
+                                                             :collection_id wt-coll}]
+          (is (= wt-id (:worktree_id wt-snippet)))
+          (testing "and so may a second worktree, independently"
+            (mt/with-temp [:model/NativeQuerySnippet other {:name          "shared"
+                                                            :content       "SELECT 3"
+                                                            :collection_id other-coll}]
+              (is (= other-wt-id (:worktree_id other)))
+              (is (= 3 (t2/count :model/NativeQuerySnippet :name "shared")))))
+          (testing "while a name collision within one worktree is still rejected"
+            (is (thrown? Exception
+                         (t2/insert! :model/NativeQuerySnippet
+                                     (merge (mt/with-temp-defaults :model/NativeQuerySnippet)
+                                            {:name          "shared"
+                                             :content       "SELECT 4"
+                                             :collection_id wt-coll})))))))
+      (testing "the helper column backing the index never reaches a caller"
+        (is (not (contains? (t2/select-one :model/NativeQuerySnippet :name "shared")
+                            :worktree_id_helper)))))))

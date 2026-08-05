@@ -2296,15 +2296,22 @@
       collection/check-same-worktree)
 
   Only the move needs catching -- `worktree_id` itself can never change, which [[metabase.models.interface]]'s
-  `:hook/worktree-id` blocks outright. Moving to a root is always allowed, so a nil `collection_id` passes."
+  `:hook/worktree-id` blocks outright.
+
+  Moving worktree content to a root is rejected outright: a worktree checks out real collections and not the
+  root itself, so the row would end up outside everything the worktree holds. Transforms and snippets are the
+  two models that can sit at a worktree root, and they skip the call when the move is to one."
   [instance]
   (u/prog1 instance
-    (when-let [collection-id (:collection_id instance)]
+    (if-let [collection-id (:collection_id instance)]
       (remote-sync/check-same-worktree
-       (if (contains? instance :worktree_id)
-         instance
-         (assoc instance :worktree_id (:worktree_id (t2/original instance))))
-       (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
+       instance
+       (t2/select-one-fn :worktree_id :model/Collection :id collection-id))
+      (when (:worktree_id instance)
+        (let [msg (tru "Cannot move remote sync worktree content to the root collection.")]
+          (throw (ex-info msg {:status-code 400
+                               :errors      {:collection_id msg}
+                               :worktree-id (:worktree_id instance)})))))))
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

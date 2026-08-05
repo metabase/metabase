@@ -1799,7 +1799,15 @@
       (testing "nor out of one, back into the main app"
         (mt/with-temp [:model/Card {card-id :id} {:collection_id (:id wt-coll)}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
-                                (t2/update! :model/Card card-id {:collection_id (:id main-coll)}))))))))
+                                (t2/update! :model/Card card-id {:collection_id (:id main-coll)})))))
+      (testing "nor to a root, where it would sit outside every collection the worktree checked out"
+        (mt/with-temp [:model/Card {card-id :id} {:collection_id (:id wt-coll)}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move remote sync worktree content to the root"
+                                (t2/update! :model/Card card-id {:collection_id nil})))))
+      (testing "a main-app card moving to the root is untouched by any of this"
+        (mt/with-temp [:model/Card {card-id :id} {:collection_id (:id main-coll)}]
+          (is (pos? (t2/update! :model/Card card-id {:collection_id nil})))
+          (is (nil? (t2/select-one-fn :collection_id :model/Card card-id))))))))
 
 (deftest worktree-cards-are-admin-only-test
   (when config/ee-available?

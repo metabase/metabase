@@ -61,8 +61,11 @@
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
 
-(defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
+(defn- check-snippet-name-is-unique
+  "A snippet name is unique within a worktree rather than globally, so a worktree may check out its own snippet
+  under a name the main app already uses."
+  [snippet-name worktree-id]
+  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name :worktree_id worktree-id)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
@@ -82,13 +85,14 @@
                                                                     ;; only meaningful at a root: with a collection the
                                                                     ;; snippet takes its worktree from that collection
                                                                     [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-snippet-name-is-unique name)
-  (let [snippet {:content       content
-                 :creator_id    api/*current-user-id*
-                 :description   description
-                 :name          name
-                 :collection_id collection_id
-                 :worktree_id   worktree_id}]
+  (let [snippet (collections/inherit-worktree-id
+                 {:content       content
+                  :creator_id    api/*current-user-id*
+                  :description   description
+                  :name          name
+                  :collection_id collection_id
+                  :worktree_id   worktree_id})]
+    (check-snippet-name-is-unique name (:worktree_id snippet))
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 
@@ -104,7 +108,7 @@
     (when (seq changes)
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
-        (check-snippet-name-is-unique new-name))
+        (check-snippet-name-is-unique new-name (:worktree_id snippet)))
       (t2/with-transaction [_conn]
         (t2/update! :model/NativeQuerySnippet id changes)
         (collections/check-for-remote-sync-update snippet)))

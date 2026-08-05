@@ -32,8 +32,9 @@
   its transform).
 
   Call this only when the row actually has a container: content at the root -- a null `collection_id`, a
-  collection at `/` -- is left to whichever worktree it already belongs to, so a worktree's own root content is
-  legal and moving to the root is always allowed. Returns nil; call for side effect."
+  collection at `/` -- has nothing to compare against. Whether a root is a legal place for the row at all is a
+  separate question, and one only its own model can answer; see
+  [[metabase.collections.models.collection/check-same-worktree]]. Returns nil; call for side effect."
   [instance container-worktree-id]
   (when (not= (:worktree_id instance) container-worktree-id)
     (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")

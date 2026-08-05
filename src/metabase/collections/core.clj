@@ -21,6 +21,7 @@
   check-remote-synced-dependents
   create-library-collection!
   descendant-ids
+  inherit-worktree-id
   library-collection
   library-collection-type
   library-data-collection-type

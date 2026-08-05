@@ -189,7 +189,9 @@
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
   (cond-> transform
-    (contains? (t2/changes transform) :collection_id) collection/check-same-worktree)
+    ;; only when moving into a real collection: a transform is one of the two models that may sit at a
+    ;; worktree root, so a move to one is legal and has no collection to compare worktrees against
+    (some? (:collection_id (t2/changes transform))) collection/check-same-worktree)
   ;; The target db is recomputed when source changes because for MBQL transforms,
   ;; the source query's :database is the source of truth for the target database.
   (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))
