@@ -19,8 +19,8 @@ import type { MfaEnrollResponse } from "metabase-types/api";
 
 import { TOTP_CODE_LENGTH } from "../../../constants";
 import { withTotpCodeRules } from "../../../schemas";
+import { RecoveryCodesForm } from "../../common/RecoveryCodesForm";
 import { TotpEnrollInstructions } from "../../common/TotpEnrollInstructions";
-import { RecoveryCodesForm } from "../RecoveryCodesForm";
 
 type SetupModalProps = {
   opened: boolean;

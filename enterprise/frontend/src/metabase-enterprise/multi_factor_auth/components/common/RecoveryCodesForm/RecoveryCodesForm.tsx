@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Input, Stack, Text } from "metabase/ui";
 
-import { CopyableCodeBlock } from "../../common/CopyableCodeBlock";
+import { CopyableCodeBlock } from "../CopyableCodeBlock";
 
 type RecoveryCodesFormProps = {
   recoveryCodes: string[];
