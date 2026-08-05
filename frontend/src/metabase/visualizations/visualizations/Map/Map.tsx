@@ -2,7 +2,6 @@ import { Suspense, lazy, memo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import { Flex } from "metabase/ui";
 import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
 import MetabaseSettings from "metabase/utils/settings";
@@ -262,7 +261,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       get title() {
         return t`Color`;
       },
-      widget: ColorRangeSelector,
+      widget: "colorRangeSelector",
       getProps: () => ({
         colors: getAccentColors(),
         colorMapping: Object.fromEntries(
