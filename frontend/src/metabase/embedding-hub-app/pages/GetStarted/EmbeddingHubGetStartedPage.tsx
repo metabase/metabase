@@ -29,18 +29,64 @@ const SETUP_GUIDE_URLS = {
   sso: `${Urls.embeddingHub()}/sso-setup`,
 };
 
-/** The order and copy come from the design; the icons match its glyphs. */
-const FIRST_EMBED_STEPS: { id: EmbeddingHubStepId; icon: IconName }[] = [
-  { id: "add-data", icon: "database" },
-  { id: "create-dashboard", icon: "dashboard" },
-  { id: "create-test-embed", icon: "embed" },
-];
+type ChecklistStep = {
+  id: EmbeddingHubStepId;
+  icon: IconName;
+  title: string;
+  description: string;
+};
 
-const FINE_TUNE_STEPS: { id: EmbeddingHubStepId; icon: IconName }[] = [
-  { id: "data-permissions-and-enable-tenants", icon: "group" },
-  { id: "sso-configured", icon: "lock" },
-  { id: "embed-production", icon: "embed" },
-];
+/**
+ * Title and description come from the design rather than from
+ * `useGetEmbeddingHubSteps`, which also drives the home page stepper and would
+ * change there too. Only the action and the completion state come from the
+ * hook.
+ */
+function getFirstEmbedSteps(): ChecklistStep[] {
+  return [
+    {
+      id: "add-data",
+      icon: "database",
+      title: t`Connect a database`,
+      description: t`Automatically generate a dashboard from your data using x-rays.`,
+    },
+    {
+      id: "create-dashboard",
+      icon: "dashboard",
+      title: t`Create a dashboard`,
+      description: t`Automatically generate a dashboard from your data using x-rays.`,
+    },
+    {
+      id: "create-test-embed",
+      icon: "embed",
+      title: t`Get embed snippet`,
+      description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
+    },
+  ];
+}
+
+function getFineTuneSteps(): ChecklistStep[] {
+  return [
+    {
+      id: "data-permissions-and-enable-tenants",
+      icon: "group",
+      title: t`Configure data permissions and tenants`,
+      description: t`Share data with external users and allow them to create content.`,
+    },
+    {
+      id: "sso-configured",
+      icon: "lock",
+      title: t`Set up SSO`,
+      description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
+    },
+    {
+      id: "embed-production",
+      icon: "embed",
+      title: t`Embed in production with SSO`,
+      description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
+    },
+  ];
+}
 
 export function EmbeddingHubGetStartedPage() {
   const steps = useGetEmbeddingHubSteps(SETUP_GUIDE_URLS);
@@ -67,7 +113,7 @@ export function EmbeddingHubGetStartedPage() {
   }, [steps]);
 
   function renderStep(
-    { id, icon }: { id: EmbeddingHubStepId; icon: IconName },
+    { id, icon, title, description }: ChecklistStep,
     step: number,
   ) {
     const action = actionsByStepId[id];
@@ -93,8 +139,8 @@ export function EmbeddingHubGetStartedPage() {
         key={id}
         step={step}
         icon={icon}
-        title={action.title}
-        description={action.description}
+        title={title}
+        description={description}
         isDone={completedSteps?.[id] ?? false}
         isLocked={lockedSteps[id] ?? false}
         to={to}
@@ -118,7 +164,9 @@ export function EmbeddingHubGetStartedPage() {
         </Stack>
 
         <Box className={S.cardGrid}>
-          {FIRST_EMBED_STEPS.map((step, index) => renderStep(step, index + 1))}
+          {getFirstEmbedSteps().map((step, index) =>
+            renderStep(step, index + 1),
+          )}
         </Box>
       </Stack>
 
@@ -131,8 +179,8 @@ export function EmbeddingHubGetStartedPage() {
         </Stack>
 
         <Box className={S.cardGrid}>
-          {FINE_TUNE_STEPS.map((step, index) =>
-            renderStep(step, index + FIRST_EMBED_STEPS.length + 1),
+          {getFineTuneSteps().map((step, index) =>
+            renderStep(step, index + getFirstEmbedSteps().length + 1),
           )}
 
           <CustomThemeCard step={7} />

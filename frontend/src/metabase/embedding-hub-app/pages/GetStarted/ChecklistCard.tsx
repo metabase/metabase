@@ -44,27 +44,30 @@ export function ChecklistCard({
       aria-disabled={isLocked || undefined}
     >
       <Stack gap="sm" h="100%" justify="space-between">
-        <Stack gap="sm">
-          <Group gap="sm" align="flex-start" wrap="nowrap">
-            <Icon
-              name={icon}
-              size={16}
-              c={isLocked ? "text-tertiary" : "brand"}
-              mt="0.15rem"
-            />
+        {/* The description sits in the same column as the title, indented past
+            the icon, rather than starting back at the icon's edge. */}
+        <Group gap="sm" align="flex-start" wrap="nowrap">
+          <Icon
+            name={icon}
+            size={16}
+            c={isLocked ? "text-tertiary" : "brand"}
+            mt="0.15rem"
+          />
+
+          <Stack gap="sm">
             <Text fw="bold" fz="lg" lh="1.25rem" c={textColor}>
               {title}
             </Text>
-          </Group>
 
-          <Text
-            fz="sm"
-            lh="1.25rem"
-            c={isLocked ? "text-tertiary" : "text-secondary"}
-          >
-            {description}
-          </Text>
-        </Stack>
+            <Text
+              fz="sm"
+              lh="1.25rem"
+              c={isLocked ? "text-tertiary" : "text-secondary"}
+            >
+              {description}
+            </Text>
+          </Stack>
+        </Group>
 
         <Flex justify="flex-end">
           <StepBadge step={step} isDone={isDone} isLocked={isLocked} />
