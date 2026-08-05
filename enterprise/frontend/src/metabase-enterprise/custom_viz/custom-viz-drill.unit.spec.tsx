@@ -4,11 +4,13 @@ import { screen, waitFor, within } from "__support__/ui";
 import { setup } from "metabase/query_builder/containers/test-utils";
 import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
+import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import type { CustomVizDisplayType } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCustomVizPluginRuntime,
   createMockDataset,
   createMockDatasetData,
   createMockNumericColumn,
@@ -20,7 +22,7 @@ import {
   createOrdersCreatedAtDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 
-import { registerMockCustomViz } from "./test-utils";
+import { applyDefaultVisualizationProps } from "./custom-viz-common";
 
 const DISPLAY: CustomVizDisplayType = "custom:drill-demo-viz";
 
@@ -93,7 +95,24 @@ function DemoVisualization({ onVisualizationClick }: VisualizationProps) {
 }
 
 registerVisualizations();
-registerMockCustomViz({ display: DISPLAY, Component: DemoVisualization });
+// registered the way a loaded plugin bundle would be, minus the sandbox
+registerVisualization(
+  applyDefaultVisualizationProps(
+    DemoVisualization,
+    {
+      id: DISPLAY,
+      getName: () => "Drill demo viz",
+      checkRenderable: () => undefined,
+      mount: () => ({ update: () => undefined, unmount: () => undefined }),
+      VisualizationComponent: () => null,
+    },
+    {
+      identifier: DISPLAY,
+      plugin: createMockCustomVizPluginRuntime(),
+      getUiName: () => "Drill demo viz",
+    },
+  ),
+);
 
 async function drillFromCustomViz(actionName: RegExp) {
   expect(await screen.findByText("Custom viz rendered")).toBeInTheDocument();

@@ -1,7 +1,8 @@
 import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { CustomVizDisplayType } from "metabase-types/api";
+import type { CustomVizDisplayType, RawSeries } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCategoryColumn,
   createMockDatasetData,
   createMockDatetimeColumn,
@@ -10,7 +11,10 @@ import {
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
 
-import { groupVisualizationsBySensibility } from "./sensibility";
+import {
+  getSensibleDisplays,
+  groupVisualizationsBySensibility,
+} from "./sensibility";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 registerVisualizations();
@@ -288,26 +292,66 @@ describe("groupVisualizationsBySensibility", () => {
 
     expect(recommended).toStrictEqual(["table", "object", "map", "scatter"]);
   });
+});
 
-  it("keeps custom visualizations in their own group even when they are sensible", () => {
-    const display: CustomVizDisplayType = "custom:sensible-viz";
+describe("getSensibleDisplays", () => {
+  function registerCustomViz(
+    display: CustomVizDisplayType,
+    checkRenderable: () => void,
+  ) {
     registerVisualization({
       identifier: display,
-      getUiName: () => "Sensible custom viz",
-      isSensible: () => true,
-      checkRenderable: () => undefined,
+      getUiName: () => `Custom viz ${display}`,
+      checkRenderable,
+    });
+  }
+
+  function createMockRawSeries(numRows: number): RawSeries {
+    return [
+      {
+        card: createMockCard(),
+        data: createMockData({ numRows, numMetrics: 1, numDateDimensions: 1 }),
+      },
+    ];
+  }
+
+  it("should keep a visualization without `isSensible` when it can render the data", () => {
+    const display: CustomVizDisplayType = "custom:renderable";
+    registerCustomViz(display, () => undefined);
+
+    expect(getSensibleDisplays(createMockRawSeries(10))).toContain(display);
+  });
+
+  it("should drop a visualization without `isSensible` when it cannot render the data (metabase#GDGT-2218)", () => {
+    const display: CustomVizDisplayType = "custom:not-renderable";
+    registerCustomViz(display, () => {
+      throw new Error("Unsupported data");
     });
 
-    const data = createMockData({ numMetrics: 1, numDateDimensions: 1 });
+    expect(getSensibleDisplays(createMockRawSeries(10))).not.toContain(display);
+  });
 
-    const { recommended, sensible, nonsensible } =
-      groupVisualizationsBySensibility({
-        orderedVizTypes: [...DEFAULT_VIZ_ORDER, display],
-        data,
-      });
+  it("should judge renderability of a visualization without `isSensible` even for a single row", () => {
+    const display: CustomVizDisplayType = "custom:not-renderable-single-row";
+    registerCustomViz(display, () => {
+      throw new Error("Unsupported data");
+    });
 
-    expect(recommended).not.toContain(display);
-    expect(sensible).not.toContain(display);
-    expect(nonsensible).toContain(display);
+    expect(getSensibleDisplays(createMockRawSeries(1))).not.toContain(display);
+  });
+
+  it("should never offer hidden visualizations", () => {
+    expect(getSensibleDisplays(createMockRawSeries(10))).not.toContain("text");
+  });
+
+  it("should let a visualization with `isSensible` answer for itself", () => {
+    const rawSeries = createMockRawSeries(10);
+
+    expect(getSensibleDisplays(rawSeries)).toContain("line");
+    expect(getSensibleDisplays(rawSeries)).not.toContain("scalar");
+  });
+
+  it("should keep every `isSensible` visualization for a single row (metabase#12476)", () => {
+    expect(getSensibleDisplays(createMockRawSeries(1))).toContain("scalar");
   });
 });

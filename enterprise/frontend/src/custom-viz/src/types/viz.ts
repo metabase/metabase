@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { Column, DatasetData, RowValue, Series } from "./data";
+import type { Column, RowValue, Series } from "./data";
 import type { TextMeasurer } from "./measure-text";
 import type {
   BaseVisualizationSettings,
@@ -67,16 +67,6 @@ export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
     keyof TSettings,
     CustomVisualizationSettingDefinition<TSettings>
   >;
-
-  /**
-   * This function should return true if the data shape makes sense for this
-   * visualization. Metabase keeps a visualization selected as long as it is
-   * sensible for the data; a visualization that isn't sensible can be swapped
-   * for a default one when the query changes (e.g. after a drill-through).
-   *
-   * When omitted, the visualization is always considered sensible.
-   */
-  isSensible?: (data: DatasetData) => boolean;
 
   /**
    * This function should throw if the visualization cannot be rendered with given data and settings.

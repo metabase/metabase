@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import visualizations from "metabase/visualizations";
+import visualizations, {
+  type RegisteredVisualization,
+} from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import {
   hasLatitudeAndLongitudeColumns,
@@ -17,6 +20,8 @@ import {
   type Dataset,
   type DatasetData,
   type QueryVisualizationDisplayType,
+  type RawSeries,
+  type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
@@ -24,6 +29,48 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;
+
+function isRenderable(
+  viz: RegisteredVisualization,
+  rawSeries: RawSeries,
+  display: VisualizationDisplay,
+) {
+  // `checkRenderable` reads settings computed for the display it is asked
+  // about, not for whichever display the card currently has.
+  const series = rawSeries.map((single) => ({
+    ...single,
+    card: { ...single.card, display },
+  }));
+
+  try {
+    viz.checkRenderable(series, getComputedSettingsForSeries(series));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Displays that `Question.maybeResetDisplay` may keep for this data.
+ *
+ * A visualization that declares `isSensible` answers for itself. One that
+ * doesn't — every custom viz — is judged by whether it can render the data at
+ * all, so the user keeps their chart when it works and gets a default one
+ * instead of an error card when it doesn't.
+ */
+export function getSensibleDisplays(rawSeries: RawSeries) {
+  const [{ data }] = rawSeries;
+
+  return Array.from(visualizations)
+    .filter(([display, viz]) => {
+      if (viz.isSensible) {
+        // don't rule out displays if there's no data
+        return data.rows.length <= 1 || viz.isSensible(data);
+      }
+      return !viz.hidden && isRenderable(viz, rawSeries, display);
+    })
+    .map(([display]) => display);
+}
 
 export type VisualizationSensibility =
   | "recommended"
@@ -48,13 +95,13 @@ export function groupVisualizationsBySensibility({
     nonsensible: [],
   };
 
-  // Custom visualizations are never grouped by sensibility — the picker always
-  // shows them in their own separate group.
   for (const vizType of orderedVizTypes) {
-    const isSensible =
-      !isCustomVizDisplay(vizType) &&
-      Boolean(visualizations.get(vizType)?.isSensible?.(data));
-    groups[isSensible ? "sensible" : "nonsensible"].push(vizType);
+    const viz = visualizations.get(vizType);
+    if (viz?.isSensible?.(data)) {
+      groups.sensible.push(vizType);
+    } else {
+      groups.nonsensible.push(vizType);
+    }
   }
 
   const recommended = _.uniq(
@@ -80,6 +127,7 @@ export function groupVisualizationsBySensibility({
 function getRecommendedVisualizations(
   data: DatasetData,
   sensible: QueryVisualizationDisplayType[],
+  // Custom Visualizations are not grouped by sensibility, they will always have their separate group
 ): QueryVisualizationDisplayType[] {
   const { cols, rows } = data;
   const metricCount = cols.filter(isMetric).length;
@@ -210,9 +258,10 @@ export const getSensibleVisualizations = ({
 
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,
-    (vizType) =>
-      !isCustomVizDisplay(vizType) &&
-      Boolean(visualizations.get(vizType)?.isSensible),
+    (vizType) => {
+      const viz = visualizations.get(vizType);
+      return Boolean(viz?.isSensible);
+    },
   );
 
   return { sensibleVisualizations, nonSensibleVisualizations };
