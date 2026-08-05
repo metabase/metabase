@@ -56,14 +56,10 @@ export type DataAppTestEnv = {
   };
   /**
    * `/card-source` page: exercises a saved-question source with filters,
-   * aggregations, and breakouts. Every clause set runs twice — once against
-   * `tableSource`, once against `source` — and the page reports whether the two
-   * agree, so the assertions don't have to hardcode sample-database numbers.
-   *
-   * The question behind `source` MUST be an unfiltered copy of `tableSource`, or
-   * the two sides can legitimately disagree and the comparison proves nothing.
-   * `*Field` references address the table, `*Column` references address the
-   * question's own result columns.
+   * aggregations, and breakouts. Each clause set runs against both sources and
+   * the page reports whether they agree, so `source` must be an unfiltered copy
+   * of `tableSource`. `*Field` addresses the table, `*Column` the question's
+   * result columns.
    */
   cardSource?: {
     source: CardSource;

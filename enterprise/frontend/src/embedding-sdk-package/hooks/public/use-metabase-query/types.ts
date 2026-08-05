@@ -371,10 +371,9 @@ export type BinningOptions =
   | { strategy: "bin-width"; "bin-width": number };
 
 /**
- * The clauses a single query stage accepts, scoped to the dimensions that stage
- * can actually see. A table stage sees the table's fields (plus its Segments,
- * Measures, and Metrics); a saved-question stage sees only the question's own
- * result columns.
+ * The clauses one query stage accepts, scoped to the dimensions it can see: a
+ * table stage its fields, Segments, Measures, and Metrics; a question stage only
+ * the question's result columns.
  */
 type StageClauses<TDimension, TAggregation, TFilter> = {
   filters?: readonly (
@@ -411,11 +410,9 @@ type QuestionResultColumn<TQuestion> = TQuestion extends {
   : never;
 
 /**
- * A column returned by the saved question — what `filter`, `breakout`, and
- * `orderBy` take on a question-source query. A card stage exposes the question's
- * result columns rather than the fields of the tables underneath it, so the
- * columns are resolved by name. Apps without a generated `metabase.data.ts`
- * schema fall back to naming a result column by hand.
+ * What `filter`, `breakout`, and `orderBy` take on a question source. A card
+ * stage exposes the question's result columns, not the fields underneath, so they
+ * resolve by name — an app without a generated schema names one by hand.
  */
 export type QuestionColumnReference<TQuestion = unknown> = [
   QuestionResultColumn<TQuestion>,
