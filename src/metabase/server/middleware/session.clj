@@ -138,10 +138,13 @@
                                                                  :full-app-embed [:raw "?"])]]
                                  cat
                                  [(when mfa-required
-                                    (map (fn [mfa-supporting-provider]
-                                           [:not= :auth_identity.provider
-                                            [:raw (str "'" (name mfa-supporting-provider) "'")]])
-                                         (descendants :metabase.auth-identity.provider/supports-mfa)))
+                                    [:or
+                                     [:not= :session.mfa_auth_identity_id nil]
+                                     (into [:and]
+                                           (map (fn [mfa-supporting-provider]
+                                                  [:not= :auth_identity.provider
+                                                   [:raw (str "'" (name mfa-supporting-provider) "'")]])
+                                                (descendants :metabase.auth-identity.provider/supports-mfa)))])
                                   (when session-timeout-seconds
                                     [[:> [:coalesce :session.last_active_at :session.created_at]
                                       (oldest-allowed-expr db-type session-timeout-seconds :second)]])])
