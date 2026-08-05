@@ -84,12 +84,18 @@ runs:
         echo "RERUN_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
         echo "RERUN_PREV_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
 
+    # `pattern` (not `name`) because the artifact is legitimately absent whenever the
+    # previous attempt recorded nothing: `name` treats that as an error, `pattern`
+    # downloads nothing and moves on. The value is a literal — no glob metacharacters —
+    # so it matches exactly one artifact, which lands at `target/failed-tests`. A pattern
+    # that ever matched two would nest them under their artifact names instead, leaving
+    # the file absent and falling back to the full suite.
     - name: Restore previously-failed tests
       if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
       continue-on-error: true
       uses: actions/download-artifact@v8
       with:
-        name: ${{ env.RERUN_PREV_ARTIFACT }}
+        pattern: ${{ env.RERUN_PREV_ARTIFACT }}
         path: target
 
     - name: Test database driver
