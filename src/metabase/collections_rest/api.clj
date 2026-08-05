@@ -1264,9 +1264,9 @@
                                          [:available_authority_levels [:sequential :string]]]
   "Return the models and collection authority levels that have at least one visible item in `collection`. Respect the
   requested scope and visibility, but ignore model, authority-level, and search filters. When present,
-  `restrict-models` limits the candidate models."
+  `restrict-models` limits the candidate models. Snippets are never reported: they are not a filterable type."
   [collection restrict-models {:keys [archived?] :as options}]
-  (let [candidates (cond->> (valid-collection-models (:namespace collection))
+  (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
                      (seq restrict-models) (filter (set restrict-models)))
         options    (-> options
                        (dissoc :models :authority-level :search-text)

@@ -1215,7 +1215,8 @@
                                                           :authority_level "official"}
                    :model/Collection currency-collection {:name      "UXW4950 currency child"
                                                           :namespace "currency"
-                                                          :location  "/"}]
+                                                          :location  "/"}
+                   :model/NativeQuerySnippet _            {:name "UXW4950 root snippet"}]
       (testing "searches root items and reports models before search filtering"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :q "UXW4950 ROOT revenue"
@@ -1245,6 +1246,12 @@
           (is (= ["collection"] (:available_models response)))
           (is (= ["regular"] (:available_authority_levels response)))
           (is (some #(= (:id currency-collection) (:id %)) (:data response)))))
+      (testing "never reports snippets in available models"
+        (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                             :namespace "snippets"
+                                             :include_available_models true)]
+          (is (some #(= (:model %) "snippet") (:data response)))
+          (is (not (contains? (set (:available_models response)) "snippet")))))
       (testing "restricts metadata to collections for a user without root read permission"
         (mt/with-non-admin-groups-no-root-collection-perms
           (perms/revoke-collection-permissions! (perms/all-users-group) official-collection)
