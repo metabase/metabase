@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
@@ -104,7 +105,7 @@ export function buildCreateExplorationRequest(
     name,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
     timeline_ids: timelines.map((tl) => tl.id),
-    collection_id: collectionId,
+    collection_id: canonicalCollectionId(collectionId),
     // Drop empties: the planner ignores them, but they'd linger as empty sidebar headings.
     blocks: blocks.filter(isNonEmptyBlock).map(blockToSelection),
   };

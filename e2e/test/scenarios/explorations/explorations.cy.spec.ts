@@ -104,11 +104,20 @@ describe("scenarios > explorations > new research > manual flow", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("picks metrics + dimensions + timelines, creates an exploration, and lands on the detail page", () => {
+  it("picks Our analytics + metrics + timelines, creates an exploration, and lands on the detail page", () => {
     createTimelineWithSentinelEvent("Releases", "star").then((releasesId) => {
       createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
         (marketingId) => {
           H.visitNewExploration();
+
+          // Root is a FE-only id (`"root"`); the create POST must send
+          // `collection_id: null` or the BE schema rejects it.
+          cy.findByRole("button", { name: /Personal collection/i }).click();
+          H.pickEntity({ path: ["Our analytics"], select: true });
+          cy.findByRole("button", { name: /Our analytics/i }).should(
+            "be.visible",
+          );
+
           H.startManualExploration();
 
           // Manual setup is its own location, so browser back returns here
@@ -135,10 +144,13 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
           H.beginResearch().then((id) => {
             // `beginResearch` consumed the create request; re-read it off its
-            // alias to assert both timeline ids were forwarded.
+            // alias to assert timeline ids + root collection were forwarded.
             cy.get("@createExploration")
-              .its("request.body.timeline_ids")
-              .should("deep.eq", [marketingId, releasesId]);
+              .its("request.body")
+              .should((body) => {
+                expect(body.timeline_ids).to.deep.eq([marketingId, releasesId]);
+                expect(body.collection_id).to.eq(null);
+              });
 
             H.expectUnstructuredSnowplowEvent({
               event: "exploration_plan_edited",

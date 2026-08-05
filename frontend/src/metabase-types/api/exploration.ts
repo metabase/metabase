@@ -121,7 +121,7 @@ export interface CreateExplorationRequest {
   name: string;
   description?: string | null;
   prompt?: string | null;
-  collection_id?: CollectionId | null;
+  collection_id?: number | null;
   timeline_ids?: TimelineId[];
   blocks: {
     type: "metric" | "dimension";
