@@ -227,12 +227,12 @@
               (let [colls-dir  (io/file dump-dir "collections")
                     coll-count (count (for [f (file-set colls-dir)
                                             :when (= "Collection" (yaml-model-at colls-dir f))]
-                                        f))]
+                                        f))
+                    roots      (count (ts/root-collection-entity-ids))]
                 ;; +1 for Trash collection, +1 per namespace root collection; exact count may vary by 1 depending
                 ;; on naming collisions
-                (let [roots (count (ts/root-collection-entity-ids))]
-                  (is (<= (+ 109 roots) coll-count (+ 111 roots))
-                      "which all go in collections/, even the snippets ones"))))
+                (is (<= (+ 109 roots) coll-count (+ 111 roots))
+                    "which all go in collections/, even the snippets ones")))
             (testing "for Databases"
               (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
             (testing "for Tables"
