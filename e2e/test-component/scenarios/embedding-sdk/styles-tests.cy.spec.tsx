@@ -642,7 +642,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot().findByText("Product ID").should("exist");
 
-      const MANTINE_VAR = "--mantine-color-brand-0";
+      const MANTINE_VAR = "--mantine-color-core-brand-0";
 
       cy.get(".mb-wrapper")
         .first()
