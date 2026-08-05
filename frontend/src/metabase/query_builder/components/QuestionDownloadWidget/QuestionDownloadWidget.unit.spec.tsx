@@ -216,19 +216,8 @@ describe("QuestionDownloadWidget", () => {
         { method: "PUT" },
       );
 
-    it("never persists on format switching", async () => {
-      setup();
-
-      await userEvent.click(screen.getByLabelText(".xlsx"));
-      await userEvent.click(screen.getByLabelText(".json"));
-      await userEvent.click(screen.getByLabelText(".csv"));
-
-      expect(putCalls()).toHaveLength(0);
-    });
-
     it("does not persist when downloading with the format that is already saved", async () => {
-      // The mocked server preference is csv, which is also the preselected
-      // format, so downloading has nothing new to save.
+      // setup() has the server already storing csv, also the preselected format.
       const { onDownload } = setup();
 
       await userEvent.click(

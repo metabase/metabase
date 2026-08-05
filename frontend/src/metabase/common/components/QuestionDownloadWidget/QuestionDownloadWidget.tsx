@@ -116,14 +116,6 @@ export const QuestionDownloadWidget = ({
     setUserSelectedFormat(newFormat);
   };
 
-  // Remember the format the user actually exports with, so the popover
-  // reopens on it next time. Fire-and-forget on top of the export itself;
-  // switching formats never sends anything, and a value the server already
-  // has is not re-sent. The comparison reads the fetched preference, which
-  // the mutation patches optimistically and reverts on failure, so it holds
-  // for sequential use; a still-loading preference or two overlapping
-  // exports can race into one redundant or out-of-order write, accepted as
-  // harmless for a preference value.
   const persistExportFormat = (exportFormat: ExportFormat) => {
     if (!setFormatPreference) {
       return;
@@ -139,9 +131,9 @@ export const QuestionDownloadWidget = ({
 
     const isUnchanged =
       preference.last_download_format ===
-        formatPreference?.last_download_format &&
+        formatPreference.last_download_format &&
       preference.last_table_download_format ===
-        formatPreference?.last_table_download_format;
+        formatPreference.last_table_download_format;
     if (isUnchanged) {
       return;
     }

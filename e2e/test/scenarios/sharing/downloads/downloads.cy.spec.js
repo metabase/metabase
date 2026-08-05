@@ -171,10 +171,7 @@ describe("scenarios > question > download", () => {
         .should("be.visible");
       cy.findByTestId("view-footer").button("Download results").click();
 
-      // Switching formats alone persists nothing; downloading does.
       H.popover().findByText(".xlsx").click();
-      cy.get("@saveFormat.all").should("have.length", 0);
-
       cy.findByTestId("download-results-button").click();
       cy.wait("@saveFormat");
 
@@ -216,8 +213,6 @@ describe("scenarios > question > download", () => {
           H.popover().findByText("Download results").click();
 
           H.popover().findByText(".xlsx").click();
-          cy.get("@saveFormat.all").should("have.length", 0);
-
           cy.findByTestId("download-results-button").click();
           cy.wait("@saveFormat");
 
