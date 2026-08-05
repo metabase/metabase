@@ -36,6 +36,7 @@ import type {
   RawDataRouteParams,
 } from "../../types";
 import { assertNumericId, parseDataRouteParams } from "../../types";
+import { getPermissionsBasePath } from "../../utils/base-path";
 import {
   getDatabaseFocusPermissionsUrl,
   getDatabasesBasePath,
@@ -87,7 +88,7 @@ export function DatabasesPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      navigate(`/admin/permissions/data/${entityType}`);
+      navigate(`${getPermissionsBasePath()}/data/${entityType}`);
     },
     [navigate],
   );

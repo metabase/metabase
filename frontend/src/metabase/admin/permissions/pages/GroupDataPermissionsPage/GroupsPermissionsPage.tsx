@@ -35,6 +35,7 @@ import type {
   RawGroupRouteParams,
 } from "../../types";
 import { parseGroupRouteParams } from "../../types";
+import { getPermissionsBasePath } from "../../utils/base-path";
 import {
   getGroupFocusPermissionsUrl,
   getGroupsBasePath,
@@ -78,7 +79,7 @@ export function GroupsPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      navigate(`/admin/permissions/data/${entityType}/`);
+      navigate(`${getPermissionsBasePath()}/data/${entityType}/`);
     },
     [navigate],
   );
