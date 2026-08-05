@@ -8,6 +8,8 @@ import { EmbeddingSecurityWidgets } from "../EmbeddingSecuritySettings";
 
 const setup = async () => {
   await baseSetup({
+    // SameSite is paid-only now: it is inert for guest embeds.
+    tokenFeatures: { embedding_simple: true },
     renderCallback: ({ state }) =>
       renderWithProviders(<EmbeddingSecurityWidgets />, {
         storeInitialState: state,
