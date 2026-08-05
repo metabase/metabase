@@ -9,9 +9,13 @@ import { Box } from "metabase/ui";
 
 type EmbeddingHubContentProps = {
   children?: ReactNode;
+  fullWidth?: boolean;
 };
 
-export function EmbeddingHubContent({ children }: EmbeddingHubContentProps) {
+export function EmbeddingHubContent({
+  children,
+  fullWidth,
+}: EmbeddingHubContentProps) {
   return (
     <Box
       data-testid="embedding-hub-main"
@@ -30,7 +34,7 @@ export function EmbeddingHubContent({ children }: EmbeddingHubContentProps) {
       >
         <AppSwitcher />
       </Box>
-      <AreaContent>{children}</AreaContent>
+      <AreaContent fullWidth={fullWidth}>{children}</AreaContent>
     </Box>
   );
 }

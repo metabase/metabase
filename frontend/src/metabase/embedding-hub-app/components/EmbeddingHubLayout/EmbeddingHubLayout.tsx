@@ -18,6 +18,14 @@ type EmbeddingHubTab = {
   isGated?: boolean;
 };
 
+// The theme editor puts its editor panel and live preview side by side, so it
+// needs the whole area. The trailing slash keeps the theme *list* padded.
+const FULL_WIDTH_PATH_PREFIXES = [`${Urls.embeddingHubAppearance()}/`];
+
+function isFullWidthPath(pathname: string) {
+  return FULL_WIDTH_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
   // The Get started tab is the index route, so it only matches exactly —
   // every other path would otherwise match its prefix too.
@@ -106,7 +114,7 @@ export function EmbeddingHubLayout() {
       onNavbarToggle={setIsNavbarOpened}
       upperNav={upperNav}
     >
-      <EmbeddingHubContent>
+      <EmbeddingHubContent fullWidth={isFullWidthPath(pathname)}>
         <Outlet />
       </EmbeddingHubContent>
     </AreaLayout>
