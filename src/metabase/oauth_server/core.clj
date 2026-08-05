@@ -47,8 +47,11 @@
   "The scopes advertised in the MCP resource's RFC 9728 protected-resource metadata: the agent/MCP
    scopes plus the opt-in MCP scopes (e.g. `agent:snippets:read`), so a client discovering scopes
    via the resource doc can still learn about and request them. `mb:full` is intentionally omitted
-   — it is a first-party full-access scope, not specific to the MCP resource, and remains in
-   [[supported-scopes]] for the authorization-server metadata."
+   — it is a first-party full-access scope, not specific to the MCP resource — and GHY-4226 removed
+   it from [[supported-scopes]] too, so it is now advertised nowhere.
+
+   Identical to [[supported-scopes]] today, deliberately: they answer different questions (what this
+   resource accepts vs. what the authorization server knows about) and are free to diverge again."
   []
   (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
 
