@@ -1946,7 +1946,7 @@
             (is (=? {:message "Cannot connect to a private or internal network address."}
                     (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db))
                                           {:details private-details})))))
-        (testing "a Database with internal details cannot be written directly either (serialization import, config files)"
+        (testing "a Database with internal details cannot be written directly (serialization import, config files)"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"private or internal network address"
                                 (t2/insert! :model/Database {:name    "internal"

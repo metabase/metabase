@@ -506,29 +506,35 @@
   [:details :write_data_details :admin_details])
 
 (defn- validate-connection-hosts!
-  "Refuse to store details pointing at a private/internal network address . Enforcing this on the model, and not just on the endpoints
-  that test a connection, covers the routes that write a Database without ever testing it: serialization import,
-  config-file provisioning, and destination databases."
-  [engine database]
+  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
+  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+  import, config-file provisioning, and destination databases.
+
+  `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
+  [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
+  overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing."
+  [engine database keys-to-check]
   (when-let [engine (some-> engine keyword)]
-    (doseq [k     details-keys
+    (doseq [k     keys-to-check
             :let  [details (get database k)]
             :when (map? details)]
-      (driver.u/validate-connection-hosts! engine details))))
+      (driver.u/validate-connection-hosts! engine (cond->> details
+                                                    (not= k :details) (merge (:details database)))))))
 
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
   (let [changes  (t2/changes database)
-        original (t2/original database)
-        engine   (or (:engine changes) (:engine original))]
-    ;; An engine change can make existing detail keys acquire new meaning, so validate the complete candidate database
-    ;; under the new driver. Otherwise validate only details being written so an unrelated update to a grandfathered
-    ;; database does not start failing.
-    (validate-connection-hosts! engine
+        original (t2/original database)]
+    ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
+    ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
+    ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
+    ;; it accompanies rather than on its own.
+    (validate-connection-hosts! (or (:engine changes) (:engine original))
+                                (merge original changes)
                                 (if (contains? changes :engine)
-                                  (merge original changes)
-                                  (select-keys changes details-keys))))
+                                  details-keys
+                                  (filterv #(contains? changes %) details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -586,7 +592,7 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-hosts! engine database)
+  (validate-connection-hosts! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)

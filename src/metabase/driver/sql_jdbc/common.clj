@@ -1,8 +1,10 @@
 (ns metabase.driver.sql-jdbc.common
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
-   [metabase.util.http :as u.http]))
+   [metabase.util.http :as u.http]
+   [metabase.util.performance :refer [not-empty]]))
 
 (def ^:private valid-separator-styles #{:url :comma :semicolon})
 
@@ -88,10 +90,49 @@
           kvs       (map kv-fn pairs)]
       (into {} kvs))))
 
+(def ^:private authority-regex
+  "The `//host:port` of a JDBC URL, or the `@host:port` Oracle writes instead. Matched wherever it appears rather than
+  anchored at the front, since a driver may put something of its own first."
+  #"(?://|@)([^/]*)")
+
+(defn- authority-host
+  "The host named by one `host:port` entry of a URL authority, or nil when the entry names none. Unlike
+  [[metabase.util.http/->hostname]], which guesses at a string of unknown shape, this reads a value already known to
+  be an authority: a colon is always the port separator and an IPv6 literal is always bracketed."
+  [entry]
+  (let [entry (-> entry str/trim (str/replace #"^.*@" ""))]        ; userinfo
+    (not-empty
+     (cond
+       (str/starts-with? entry "[") (subs entry 1 (or (str/index-of entry "]") (count entry)))
+       (str/index-of entry ":")     (subs entry 0 (str/index-of entry ":"))
+       :else                        entry))))
+
+(defn connection-string-hosts
+  "The hosts named by the authority of a JDBC `connection-string` -- the `//host:port` (or Oracle's `@host:port`) that
+  precedes the first parameter, and every entry of it when the driver accepts a comma-separated list.
+
+  Reading the string the driver built, rather than the `:host` detail it was built from, is what catches a client that
+  supplies a host of its own: every `:sql-jdbc` driver here substitutes `localhost` when the host detail is missing or
+  blank, so the details alone name nowhere while the connection still opens somewhere.
+
+  A connection string with no authority at all names no host, which is the honest answer for a file-backed database.
+  An authority that is *present but holds no host* throws instead: `//:5439/db` is the same substitution seen from the
+  other side, and pgjdbc handed one connects to localhost. [[metabase.driver/connection-hosts]] turns that into a
+  refusal."
+  [connection-string]
+  (let [before-parameters (first (str/split (str connection-string) #"[?;]" 2))]
+    (when-let [[_ authority] (re-find authority-regex before-parameters)]
+      (let [entries (str/split authority #",")
+            hosts   (into [] (keep authority-host) entries)]
+        (when-not (= (count entries) (count hosts))
+          (throw (ex-info "JDBC connection string has an authority that names no host"
+                          {:connection-string connection-string})))
+        hosts))))
+
 (defn- connection-string-parameters
   "The `name=value` pairs in a JDBC `connection-string`, whichever separator style the driver that built it uses. Only
-  what follows the first separator is read: the authority (`//host:port/db`) is [[metabase.driver/connection-hosts]]'
-  business, not ours."
+  what follows the first separator is read: the authority (`//host:port/db`) is [[connection-string-hosts]]' business,
+  not ours."
   [connection-string]
   (when-let [params (second (str/split (str connection-string) #"[?;,]" 2))]
     (for [pair  (str/split params #"[&;,]")

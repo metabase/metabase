@@ -33,7 +33,8 @@
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid warehouse-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
+                          (tru (str "Invalid warehouse-allowed-networks! Only values of `external-only`, "
+                                    "`allow-private`,` and `allow-all` are allowed."))))
                 (setting/set-value-of-type! :keyword :warehouse-allowed-networks new-value)))
 
 (defsetting ssh-heartbeat-interval-sec

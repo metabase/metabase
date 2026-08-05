@@ -50,7 +50,9 @@
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(defmethod driver/host-carrying-parameters :oracle [_driver] ["oracle.net.httpsProxyHost" "oracle.net.socksProxyHost" "oracle.jdbc.ociIamUrl"])
+(defmethod driver/host-carrying-parameters :oracle
+  [_driver]
+  ["oracle.net.httpsProxyHost" "oracle.net.socksProxyHost" "oracle.jdbc.ociIamUrl"])
 
 (defmethod driver/non-host-parameters :oracle
   [_driver]

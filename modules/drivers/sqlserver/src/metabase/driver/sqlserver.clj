@@ -48,7 +48,9 @@
 
 (driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
-(defmethod driver/host-carrying-parameters :sqlserver [_driver] ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+(defmethod driver/host-carrying-parameters :sqlserver
+  [_driver]
+  ["serverName" "failoverPartner" "enclaveAttestationUrl"])
 
 (defmethod driver/non-host-parameters :sqlserver
   [_driver]

@@ -110,8 +110,12 @@
     {:datasource data-source}))
 
 ;; The connection string is built into a `DataSource` rather than left on the spec, so the generic `:sql-jdbc`
-;; implementation cannot see it. `:jdbc-flags` is appended to the URL verbatim, which is where a parameter would
-;; arrive. HiveServer2 has no parameter that names a host of its own, so only the free IP-literal check applies.
+;; implementations cannot see it and both of these read it from [[connection-url]] instead. That is also the only
+;; place the substituted `localhost` shows up when the details name no host at all.
+(defmethod driver/connection-hosts :sparksql
+  [_driver details]
+  (sql-jdbc.common/connection-string-hosts (connection-url details)))
+
 (defmethod driver/connection-parameter-hosts :sparksql
   [driver details]
   (sql-jdbc.common/connection-parameter-hosts (connection-url details)

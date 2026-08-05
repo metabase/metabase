@@ -652,12 +652,24 @@
       (is (= (:message (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))
              (:message (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
     (testing "public and unresolvable hosts are left alone"
-      (doseq [details [{}
-                       {:host "8.8.8.8"}
-                       {:host "metabase-ssrf-test.invalid"}
-                       {:db "/tmp/whatever.db"}]]
+      (doseq [details [{:host "8.8.8.8"}
+                       {:host "metabase-ssrf-test.invalid"}]]
         (is (nil? (driver.u/validate-connection-hosts! :postgres details))
             (str "should be allowed: " (pr-str details)))))
+    (testing "a database with no host of its own is refused: the client fills one in and connects anyway"
+      ;; every `:sql-jdbc` client substitutes `localhost` for a host detail that is missing or blank, so reading only
+      ;; the details would leave every port on the Metabase host reachable -- and an open one distinguishable from a
+      ;; closed one -- to anybody who can add a database
+      (doseq [details [{}
+                       {:port 6379 :dbname "db"}
+                       {:host "" :port 6379 :dbname "db"}
+                       {:host "   " :port 6379 :dbname "db"}
+                       {:db "/tmp/whatever.db"}]]
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres details)))
+            (str "should be refused: " (pr-str details)))))
+    (testing "a driver whose database really is a file, rather than a client with a default host, still has no host"
+      (is (nil? (driver.u/validate-connection-hosts! :sqlite {:db "/tmp/whatever.db"}))))
     (testing "auth-provider URLs are fetched by Metabase itself, so they are checked too"
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts!
@@ -672,7 +684,8 @@
       (testing "...but a public auth URL is fine, and the keys are ignored when the provider is off"
         (is (nil? (driver.u/validate-connection-hosts!
                    :postgres
-                   {:host "db.example.com" :use-auth-provider true :oauth-token-url "https://login.example.com/token"})))
+                   {:host            "db.example.com" :use-auth-provider true
+                    :oauth-token-url "https://login.example.com/token"})))
         (is (nil? (driver.u/validate-connection-hosts!
                    :postgres
                    {:host "db.example.com" :oauth-token-url "http://127.0.0.1:8080/token"})))))
@@ -684,6 +697,19 @@
               (ssrf-error #(driver.u/validate-connection-hosts!
                             :postgres
                             {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"})))))))
+
+(deftest can-connect-with-details?-refused-host-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [details {:host "127.0.0.1" :port 5432 :dbname "db"}]
+      (testing "the boolean arity keeps its contract and answers `false` rather than throwing"
+        ;; sync, the unhidden-table resync task, and the legacy-details migration loop all branch on this answer;
+        ;; a throw from here abandons work that used to carry on to the next database or the next candidate details
+        (is (false? (driver.u/can-connect-with-details? :postgres details))))
+      (testing "the throwing arity reports the refusal, unhumanized"
+        ;; a driver's `humanize-connection-error-message` must not get to rewrite this into something more revealing
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"^Cannot connect to a private or internal network address\.$"
+                              (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))))))
 
 (deftest validate-connection-hosts!-connection-parameters-test
   ;; A JDBC client honors a host named in the connection parameters over the one in the URL it was handed -- pgjdbc

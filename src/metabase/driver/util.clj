@@ -197,31 +197,33 @@
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   ^Boolean [driver details-map & [throw-exceptions]]
   {:pre [(keyword? driver) (map? details-map)]}
-  ;; deliberately outside the `try` below: this error is already the message we want the caller to see, and running it
-  ;; through `humanize-connection-error-message` would let a driver turn it into something more revealing
-  (validate-connection-hosts! driver details-map)
   (if throw-exceptions
-    (try
-      (u/with-timeout (driver.settings/db-connection-timeout-ms)
-        (or (driver/can-connect? driver details-map)
-            (throw (Exception. "Failed to connect to Database"))))
-      ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
-      ;; first
-      (catch Throwable e
-        (log/errorf "Failed to connect to Database: %s" (ex-message e))
-        (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
-                                                   (driver/humanize-connection-error-message driver))]
-                 (let [error-data (cond
-                                    (keyword? humanized-message)
-                                    (tr-connection-error-messages humanized-message)
+    (do
+      ;; deliberately outside the `try` below: this error is already the message we want the caller to see, and
+      ;; running it through `humanize-connection-error-message` would let a driver turn it into something more
+      ;; revealing. The boolean arity reaches it through its own `try`, so that one still answers `false`.
+      (validate-connection-hosts! driver details-map)
+      (try
+        (u/with-timeout (driver.settings/db-connection-timeout-ms)
+          (or (driver/can-connect? driver details-map)
+              (throw (Exception. "Failed to connect to Database"))))
+        ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the
+        ;; message first
+        (catch Throwable e
+          (log/errorf "Failed to connect to Database: %s" (ex-message e))
+          (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
+                                                     (driver/humanize-connection-error-message driver))]
+                   (let [error-data (cond
+                                      (keyword? humanized-message)
+                                      (tr-connection-error-messages humanized-message)
 
-                                    (connection-error? e)
-                                    (tr-connection-error-messages :cannot-connect-check-host-and-port)
+                                      (connection-error? e)
+                                      (tr-connection-error-messages :cannot-connect-check-host-and-port)
 
-                                    :else
-                                    {:message humanized-message})]
-                   (ex-info (str (:message error-data)) error-data e))
-                 e))))
+                                      :else
+                                      {:message humanized-message})]
+                     (ex-info (str (:message error-data)) error-data e))
+                   e)))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e

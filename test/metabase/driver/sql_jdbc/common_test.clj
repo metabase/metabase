@@ -67,3 +67,31 @@
            (sql-jdbc.common/connection-parameter-hosts "jdbc:vertica://real.example.com:5433/db"
                                                        {:backupservernode "backup.corp" :loginTimeout 10}
                                                        ["backupservernode"])))))
+
+(deftest ^:parallel connection-string-hosts-test
+  (testing "the authority is read whichever shape the driver built it in"
+    (are [conn-str expected] (= expected (sql-jdbc.common/connection-string-hosts conn-str))
+      "//localhost:5432/db"                        ["localhost"]
+      "//db.example.com"                           ["db.example.com"]  ; SQL Server leaves the port out of the URL
+      "@db.example.com:1521:orcl"                  ["db.example.com"]  ; Oracle's SID form
+      "@db.example.com:1521/svc"                   ["db.example.com"]  ; Oracle's service-name form
+      "//[::1]:5432/db"                            ["::1"]
+      "//user:pw@10.0.0.1:5432/db"                 ["10.0.0.1"]
+      "//localhost;serverName=db.corp"             ["localhost"]
+      "jdbc:hive2://localhost:10000/db"            ["localhost"]
+      "url=http://h.example.com:8082/druid/v2/"    ["h.example.com"])) ; Druid buries a whole URL in a parameter
+  (testing "every entry of a replica-set style authority is read, not just the first"
+    (is (= ["a.example.com" "b.example.com"]
+           (sql-jdbc.common/connection-string-hosts "//a.example.com:5432,b.example.com:5432/db"))))
+  (testing "a connection string with no authority names no host -- a file-backed database is not a network connection"
+    (are [conn-str] (empty? (sql-jdbc.common/connection-string-hosts conn-str))
+      "/tmp/sparrow.db"
+      "file:./sparrow"
+      "mem:sparrow"
+      nil))
+  (testing "an authority with no host in it throws, because that is a default the client fills in where we cannot see"
+    ;; pgjdbc handed `//:5439/db` connects to localhost, exactly as it does for a URL with no authority at all
+    (are [conn-str] (thrown? clojure.lang.ExceptionInfo (sql-jdbc.common/connection-string-hosts conn-str))
+      "//:5439/db"
+      "//:443/;ConnCatalog=c"
+      "//a.example.com:5432,:5432/db")))

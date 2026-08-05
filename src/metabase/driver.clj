@@ -290,7 +290,13 @@
   The default implementation reads the usual `:host`/`:hostname` detail keys, tolerating values written as a URL, a
   `host:port` pair, a bracketed IPv6 literal, or a comma-separated list. Concrete drivers should implement this
   explicitly so their complete connection behavior remains auditable, including hosts from connection URIs and fixed
-  or derived vendor endpoints."
+  or derived vendor endpoints.
+
+  Returning an empty collection says these details name nowhere at all, which lets the connection through unchecked --
+  so return it only when that is true, as it is for a file-backed database. It is not true of details that merely
+  leave the host out: a client substitutes a default of its own, which is why the `:sql-jdbc` implementation reads the
+  connection string it builds rather than the details alone. When the hosts cannot be worked out, throw; Metabase
+  turns that into a refusal."
   {:added "0.58.23" :arglists '([driver details])}
   dispatch-on-initialized-driver-safe-keys
   :hierarchy #'hierarchy)

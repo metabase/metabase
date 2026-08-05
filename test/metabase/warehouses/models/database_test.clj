@@ -787,6 +787,21 @@
            #"private or internal network address"
            (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
+(deftest overlay-details-are-validated-the-way-they-are-resolved-test
+  ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
+  ;; [[metabase.driver.connection/effective-details]] rather than used on their own, so that merge is what has to
+  ;; satisfy the policy -- an overlay holding nothing but credentials repoints nothing.
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
+                                       :details {:host "8.8.8.8"}}]
+      (testing "an overlay carrying only credentials inherits the host it will be merged with"
+        (is (pos? (t2/update! :model/Database (:id db) {:write_data_details {:user "hummingbird"}}))))
+      (testing "an overlay that repoints the connection at an internal address is refused"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]

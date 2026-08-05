@@ -12,7 +12,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u])
   (:import
-   (java.sql Driver)
+   (java.sql Driver DriverPropertyInfo)
    (java.util Properties)))
 
 (set! *warn-on-reflection* true)
@@ -49,7 +49,10 @@
   (let [{:keys [connection-uri subprotocol subname classname]} (sql-jdbc.conn/connection-details->spec driver details)]
     (when-let [url (or connection-uri (when (and subprotocol subname) (str "jdbc:" subprotocol ":" subname)))]
       (when classname
-        [(.newInstance (Class/forName classname)) url]))))
+        [(-> (Class/forName classname)
+             (.getDeclaredConstructor (into-array Class []))
+             (.newInstance (object-array 0)))
+         url]))))
 
 (defn- host-ish-parameters
   "The parameters of `driver`'s client whose names look like they could carry a host, or nil when the client will not
@@ -58,8 +61,8 @@
   [driver details]
   (try
     (when-let [[^Driver jdbc-driver ^String url] (jdbc-driver-and-url driver details)]
-      (not-empty (sort (for [info (.getPropertyInfo jdbc-driver url (Properties.))
-                             :when (re-find host-ish (.-name info))]
+      (not-empty (sort (for [^DriverPropertyInfo info (.getPropertyInfo jdbc-driver url (Properties.))
+                             :when                    (re-find host-ish (.-name info))]
                          (.-name info)))))
     (catch Throwable _ nil)))
 
@@ -95,3 +98,23 @@
                      " second, next to the driver's other connection methods.")))
           (testing "does not enumerate its parameters, so its declaration comes from documentation"
             (is (some? (driver/host-carrying-parameters driver)))))))))
+
+(def ^:private opens-no-connection-without-a-host
+  "Drivers for which details naming no host really do name nowhere, so reporting no hosts is the honest answer: `:h2`
+  and `:sqlite` back onto a file, and `:druid-jdbc` builds `url=:8082/...`, which Avatica rejects as a malformed URI
+  rather than filling a host in. Every other client here substitutes `localhost` instead."
+  #{:h2 :sqlite :druid-jdbc})
+
+(deftest ^:parallel host-less-details-name-a-host-or-fail-closed-test
+  (testing "a client that fills in its own host does not thereby slip past the network policy"
+    (doseq [[driver details] (sort-by key probe-details)
+            :when            (and (not (opens-no-connection-without-a-host driver))
+                                  (loaded-driver driver))]
+      (testing driver
+        (let [hosts (try
+                      (not-empty (vec (driver/connection-hosts driver (dissoc details :host))))
+                      (catch Throwable _ ::refused))]
+          (is (some? hosts)
+              (str driver " reports no hosts at all for details that name none, which reads as \"this database is"
+                   " nowhere\" and lets the connection through unchecked -- but its client will substitute a host of"
+                   " its own and connect. Report where it would really connect, or throw.")))))))

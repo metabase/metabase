@@ -216,7 +216,8 @@ title: Driver interface changelog
 
   If you cannot work out the hosts -- an unparseable connection URI, say -- throw rather than guessing or returning
   an empty list. Metabase turns a throw into a refusal, which is the safe answer; an empty list reads as "these
-  details name no hosts" and lets the connection through unchecked.
+  details name no hosts" and lets the connection through unchecked. Return an empty list only when the details really
+  do name nowhere, as a file-backed database does.
 
 - `metabase.driver/host-carrying-parameters` `[driver]` -- new multimethod returning possible client parameters
   that can carry a host that the client will connect to: a proxy, a failover partner, a token or authentication
@@ -240,7 +241,7 @@ title: Driver interface changelog
 - `metabase.driver/connection-parameter-hosts` `[driver details]` -- new multimethod returning the host *values*
   those parameters hold, once the details, `:additional-options`, and any driver-specific rewriting have been folded
   in. The default implementation is almost always valid, but exists as a possible multimethod for special cases
-  such as when your connection string is somewhere the default impleentation cannot see.
+  such as when your connection string is somewhere the default implementation cannot see.
 
 - `metabase.driver/routes-connection-through-ssh-tunnel?` `[driver]` -- new multimethod saying whether the driver
   opens its warehouse connection through the SSH tunnel described by the `:tunnel-*` details.
