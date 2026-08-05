@@ -3,8 +3,6 @@ import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
 import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
-import type { ChartSettingEnumToggleProps } from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
-import type { ChartSettingSegmentedControlProps } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import {
   getMaxDimensionsSupported,
@@ -55,6 +53,10 @@ import type {
   SeriesSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
+import type {
+  ChartSettingEnumToggleProps,
+  ChartSettingSegmentedControlProps,
+} from "metabase/visualizations/types/widget-props";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
