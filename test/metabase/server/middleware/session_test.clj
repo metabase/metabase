@@ -541,14 +541,23 @@
         ;; fully anonymous, non-special route
         nil                         nil nil nil nil            nil))))
 
+(defn session-valid?
+  [session-key]
+  (boolean (#'mw.session/current-user-info-for-session session-key nil)))
+
 (defn- generate-session!
   [user-id auth-identity-id]
   (let [session-id (session/generate-session-id)
         session-key (str (random-uuid))
         session-key-hashed (session/hash-session-key session-key)]
     (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id :auth_identity_id auth-identity-id})
-    (let [session (#'mw.session/current-user-info-for-session session-key nil)]
-      session)))
+    session-key))
+
+(defn- generate-session-and-get-user-info!
+  [user-id auth-identity-id]
+  (let [session-key (generate-session! user-id auth-identity-id)
+        session     (#'mw.session/current-user-info-for-session session-key nil)]
+    session))
 
 (deftest mfa-password-test
   (testing "password"
@@ -558,8 +567,22 @@
         (mt/with-temp
           [:model/User {user-id :id} {}]
           (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                session       (generate-session! user-id (:id auth-identity))]
+                session       (generate-session-and-get-user-info! user-id (:id auth-identity))]
             (is (some? session))))))
+    (testing "When you lose access to the feature, MFA doesn't apply anymore."
+      (mt/when-ee-evailable
+       (mt/with-premium-features
+        #{:multi-factor-auth}
+         (mt/with-temporary-setting-values
+           [mfa-enforcement          :required
+            mfa-requirement-deadline nil]
+           (mt/with-premium-features
+            #{}
+             (mt/with-temp
+               [:model/User {user-id :id} {}]
+               (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+                     session       (generate-session-and-get-user-info! user-id (:id auth-identity))]
+                 (is (some? session)))))))))
     (mt/when-ee-evailable
      (testing "With feature flag on, password doesn't work"
        (mt/with-premium-features
@@ -570,7 +593,7 @@
            (mt/with-temp
              [:model/User {user-id :id} {}]
              (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                   session       (generate-session! user-id (:id auth-identity))]
+                   session       (generate-session-and-get-user-info! user-id (:id auth-identity))]
                (is (nil? session)))))))
      (testing "With feature flag on before deadline, password doesn't work"
        (mt/with-premium-features
@@ -582,7 +605,7 @@
            (mt/with-temp
              [:model/User {user-id :id} {}]
              (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                   session       (generate-session! user-id (:id auth-identity))]
+                   session       (generate-session-and-get-user-info! user-id (:id auth-identity))]
                (is (some? session)))))))
      (testing "With feature flag on after deadline, password doesn't work"
        (mt/with-premium-features
@@ -594,7 +617,7 @@
            (mt/with-temp
              [:model/User {user-id :id} {}]
              (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
-                   session       (generate-session! user-id (:id auth-identity))]
+                   session       (generate-session-and-get-user-info! user-id (:id auth-identity))]
                (is (nil? session))))))))))
 
 (deftest mfa-providers-test
@@ -612,8 +635,23 @@
             [:model/User {user-id :id} {}
              :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
                                                          :provider (name provider)}]
-            (let [session (generate-session! user-id auth-identity-id)]
+            (let [session (generate-session-and-get-user-info! user-id auth-identity-id)]
               (is (some? session))))))
+      (testing "When you lose access to the feature, MFA doesn't apply anymore."
+        (mt/when-ee-evailable
+         (mt/with-premium-features
+          #{:multi-factor-auth}
+           (mt/with-temporary-setting-values
+             [mfa-enforcement          :required
+              mfa-requirement-deadline nil]
+             (mt/with-premium-features
+              #{}
+               (mt/with-temp
+                 [:model/User {user-id :id} {}
+                  :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
+                                                              :provider (name provider)}]
+                 (let [session (generate-session-and-get-user-info! user-id auth-identity-id)]
+                   (is (some? session)))))))))
       (mt/when-ee-evailable
        (let [supports-mfa (isa? provider :metabase.auth-identity.provider/supports-mfa)]
          (testing "With mfa is being enforced, methods that support mfa don't work"
@@ -626,7 +664,7 @@
                  [:model/User {user-id :id} {}
                   :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
                                                               :provider (name provider)}]
-                 (let [session (generate-session! user-id auth-identity-id)]
+                 (let [session (generate-session-and-get-user-info! user-id auth-identity-id)]
                    (is ((if supports-mfa nil? some?) session)))))))
          (testing "With mfa is being enforced but the enrollment deadline has not passed, methods that support mfa still work"
            (mt/with-premium-features
@@ -639,7 +677,7 @@
                  [:model/User {user-id :id} {}
                   :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
                                                               :provider (name provider)}]
-                 (let [session (generate-session! user-id auth-identity-id)]
+                 (let [session (generate-session-and-get-user-info! user-id auth-identity-id)]
                    (is (some? session)))))))
          (testing "With mfa is being enforced but the enrollment deadline has not passed, methods that support mfa don't work"
            (mt/with-premium-features
@@ -652,10 +690,34 @@
                  [:model/User {user-id :id} {}
                   :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
                                                               :provider (name provider)}]
-                 (let [session (generate-session! user-id auth-identity-id)]
+                 (let [session (generate-session-and-get-user-info! user-id auth-identity-id)]
                    (is ((if supports-mfa nil? some?) session))))))))))))
 
 (deftest mfa-providers-list-test
   (testing "Ldap and password are the only ones that support mfa"
     (is (= #{:provider/password :provider/ldap}
            (descendants :metabase.auth-identity.provider/supports-mfa)))))
+
+(deftest pre-mfa-session-test
+  (init-status/set-complete!)
+  (doseq [provider (->> (descendants :metabase.auth-identity.provider/provider)
+                        ;; We test password separately above because of toucan weirdnes
+                        (remove #{:provider/password}))]
+    (testing "If you had a session before MFA was required, it is invalid"
+      (mt/when-ee-evailable
+       (mt/with-premium-features
+        #{}
+         (mt/with-temp
+           [:model/User {user-id :id} {}
+            :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
+                                                        :provider (name provider)}]
+           (let [session-key (generate-session! user-id auth-identity-id)]
+             (is (session-valid? session-key))
+             (mt/with-temporary-setting-values
+               [mfa-enforcement          :required
+                mfa-requirement-deadline nil]
+               (mt/with-premium-features
+                #{:multi-factor-auth}
+                 (is (not (session-valid? session-key))))))))))
+    (testing "If you had a session before MFA was required, but it was MFA'd, it is still valid")
+    (testing "If you had a session before the MFA requirement deadline, but it was MFA'd, it is still valid")))
