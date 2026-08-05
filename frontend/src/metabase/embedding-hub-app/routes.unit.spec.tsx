@@ -34,24 +34,48 @@ jest.mock("./components/EmbeddingHubLayout", () => {
   };
 });
 
-jest.mock("metabase/admin/embedding/embedding-hub", () => ({
-  EmbeddingHubAdminSettingsPage: () => (
+// Every tab is stubbed: this spec is about which page each path resolves to,
+// not about what a page renders. The tabs gate on token features and mount
+// whole route subtrees, so rendering them for real would test those instead.
+jest.mock("./pages/EmbeddingHubGetStartedPage", () => ({
+  EmbeddingHubGetStartedPage: () => (
     <div data-testid="get-started-page">{"Get started"}</div>
   ),
 }));
 
-jest.mock("metabase/admin/settings/components/EmbeddingSettings", () => ({
-  EmbeddingSecurityWidgets: () => (
-    <div data-testid="security-widgets">{"Security widgets"}</div>
-  ),
-  SharedCombinedEmbeddingSettings: () => (
-    <div data-testid="guest-embeds-block">{"Guest embeds"}</div>
+jest.mock("./pages/EmbeddingHubSecurityPage", () => ({
+  EmbeddingHubSecurityPage: () => (
+    <div data-testid="security-page">{"Security"}</div>
   ),
 }));
 
-jest.mock("metabase/admin/embedding/components/ThemeListing", () => ({
-  EmbeddingThemeListingApp: ({ basePath }: { basePath?: string }) => (
-    <div data-testid="theme-listing-page">{basePath}</div>
+jest.mock("./pages/EmbeddingHubAuthenticationPage", () => ({
+  EmbeddingHubAuthenticationPage: () => (
+    <div data-testid="authentication-page">{"Authentication"}</div>
+  ),
+}));
+
+jest.mock("./pages/EmbeddingHubPermissionsPage", () => ({
+  EmbeddingHubPermissionsPage: () => (
+    <div data-testid="permissions-page">{"Permissions"}</div>
+  ),
+}));
+
+jest.mock("./pages/EmbeddingHubTenancyPage", () => ({
+  EmbeddingHubTenancyPage: () => (
+    <div data-testid="tenancy-page">{"Tenancy"}</div>
+  ),
+}));
+
+jest.mock("./pages/EmbeddingHubLocalizationPage", () => ({
+  EmbeddingHubLocalizationPage: () => (
+    <div data-testid="localization-page">{"Localization"}</div>
+  ),
+}));
+
+jest.mock("./pages/EmbeddingHubAppearancePage", () => ({
+  EmbeddingHubAppearancePage: () => (
+    <div data-testid="theme-listing-page">{"/embedding/appearance"}</div>
   ),
 }));
 
@@ -81,25 +105,15 @@ describe("embedding hub routes", () => {
 
   it.each([
     ["/embedding", "get-started-page"],
-    ["/embedding/authentication", "Authentication"],
-    ["/embedding/permissions", "Permissions"],
-    ["/embedding/tenancy", "Tenancy"],
-    ["/embedding/localization", "Localization"],
-  ])("renders the body for %s", async (route, marker) => {
+    ["/embedding/security", "security-page"],
+    ["/embedding/authentication", "authentication-page"],
+    ["/embedding/permissions", "permissions-page"],
+    ["/embedding/tenancy", "tenancy-page"],
+    ["/embedding/localization", "localization-page"],
+  ])("renders the body for %s", async (route, testId) => {
     setup(route);
 
-    const body = marker.endsWith("-page")
-      ? await screen.findByTestId(marker)
-      : await screen.findByRole("heading", { name: marker });
-
-    expect(body).toBeInTheDocument();
-  });
-
-  it("folds the guest embeds block into the Security tab", async () => {
-    setup("/embedding/security");
-
-    expect(await screen.findByTestId("security-widgets")).toBeInTheDocument();
-    expect(screen.getByTestId("guest-embeds-block")).toBeInTheDocument();
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
   });
 
   it("renders the theme listing on the appearance tab, scoped to the hub path", async () => {

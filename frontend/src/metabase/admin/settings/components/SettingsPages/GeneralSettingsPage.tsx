@@ -14,6 +14,7 @@ import { useAdminSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
+import { VersionPinningSetting } from "../GeneralSettings/VersionPinningSetting";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { HomepageSetting } from "../widgets/HomepageSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
@@ -134,6 +135,8 @@ export function GeneralSettingsPage() {
           {hasAuditAppFeature && <CollectUserDataInput />}
         </SettingsSection>
       )}
+
+      <VersionPinningSetting />
 
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>

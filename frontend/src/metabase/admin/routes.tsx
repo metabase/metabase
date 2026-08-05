@@ -8,10 +8,6 @@ import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
 import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
-import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
-import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
-import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
-import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
 import { Help } from "metabase/admin/help";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -25,16 +21,7 @@ import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessMo
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import { PermissionsBasePath } from "metabase/admin/permissions/components/PermissionsBasePath";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
-import {
-  EmbeddingSecuritySettings,
-  EmbeddingSettings,
-  GuestEmbedsSettings,
-} from "metabase/admin/settings/components/EmbeddingSettings";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import {
-  SetupPermissionsAndTenantsPage,
-  SetupSsoPage,
-} from "metabase/embedding/embedding-hub";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -49,7 +36,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
-import { getTokenFeature } from "metabase/settings";
+import * as Urls from "metabase/urls";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
@@ -69,9 +56,6 @@ export const getRoutes = (
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
-  const state = store.getState();
-  const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
-
   return (
     <Route path="/admin" element={<CanAccessSettings />}>
       <Route element={<AdminApp />}>
@@ -184,48 +168,45 @@ export const getRoutes = (
           </Route>
         </Route>
 
-        {/* EMBEDDING */}
+        {/* EMBEDDING moved to the /embedding hub. Every old path still
+            resolves: redirect() renders <Navigate replace>, so a redirect whose
+            target is itself a redirect simply re-matches and fires again, and
+            `replace` keeps history at one entry however deep the chain runs. */}
         <Route
-          path="embedding"
-          element={createElement(createAdminRouteGuard("embedding"))}
-        >
-          <Route element={<AdminEmbeddingApp />}>
-            <Route index element={<EmbeddingSettings />} />
+          path="/admin/embedding"
+          element={redirect(Urls.embeddingHubSecurity())}
+        />
+        <Route
+          path="/admin/embedding/setup-guide"
+          element={redirect(Urls.embeddingHub())}
+        />
+        <Route
+          path="/admin/embedding/setup-guide/permissions"
+          element={redirect(`${Urls.embeddingHub()}/permissions-setup`)}
+        />
+        <Route
+          path="/admin/embedding/setup-guide/sso"
+          element={redirect(`${Urls.embeddingHub()}/sso-setup`)}
+        />
+        <Route
+          path="/admin/embedding/guest"
+          element={redirect(Urls.embeddingHubSecurity())}
+        />
+        <Route
+          path="/admin/embedding/security"
+          element={redirect(Urls.embeddingHubSecurity())}
+        />
+        <Route
+          path="/admin/embedding/themes"
+          element={redirect(Urls.embeddingHubAppearance())}
+        />
+        <Route
+          path="/admin/embedding/themes/:themeId"
+          element={redirect(`${Urls.embeddingHubAppearance()}/:themeId`)}
+        />
 
-            <Route path="setup-guide">
-              <Route index element={<EmbeddingHubAdminSettingsPage />} />
-
-              <Route
-                path="permissions"
-                element={<SetupPermissionsAndTenantsPage />}
-              />
-
-              <Route path="sso" element={<SetupSsoPage />} />
-            </Route>
-
-            {/* EE with non-starter plan has embedding settings on different pages */}
-            {hasSimpleEmbedding && (
-              <Route path="guest" element={<GuestEmbedsSettings />} />
-            )}
-
-            <Route path="security" element={<EmbeddingSecuritySettings />} />
-            <Route path="themes" element={<EmbeddingThemeListingApp />} />
-            <Route
-              path="themes/:themeId"
-              element={<EmbeddingThemeEditorApp />}
-            />
-          </Route>
-        </Route>
-
-        {/* OSS/Starter has all embedding settings on the same page */}
-        {!hasSimpleEmbedding && (
-          <Route
-            path="/admin/embedding/guest"
-            element={redirect("/admin/embedding")}
-          />
-        )}
-
-        {/* Backwards compatibility for embedding settings */}
+        {/* Backwards compatibility for embedding settings. These chain through
+            the layer above rather than pointing at their final destination. */}
         <Route
           path="/admin/embedding/modular"
           element={redirect("/admin/embedding")}
