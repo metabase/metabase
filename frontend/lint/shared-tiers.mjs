@@ -44,8 +44,8 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — the data grid, a rendering primitive visualizations builds on.
-  ["shared/data-grid"],
+  // P0 — independent peers: the data grid and the action execution surface.
+  ["shared/data-grid", "shared/actions-execution"],
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
   // P2 — query editing and subscription editing compose visualizations;
