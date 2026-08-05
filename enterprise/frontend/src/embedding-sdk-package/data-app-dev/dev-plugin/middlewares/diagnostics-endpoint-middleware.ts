@@ -64,9 +64,10 @@ const isFlagSet = (value: string | null): boolean =>
 
 /**
  * The `DATA_APP_DIAGNOSTICS_URL` endpoint: `GET` serves the feed (from
- * `?startEventId=` onward, current build only unless `?includeStale=true`),
- * `POST` takes the page reporter's batches, `DELETE` empties the feed.
- * Mutations broadcast a changed-event so readers re-read.
+ * `?startEventId=` onward, withholding what a later build superseded unless
+ * `?includeStale` opts in — bare, `=true` or `=1`), `POST` takes the page
+ * reporter's batches, `DELETE` empties the feed. Mutations broadcast a
+ * changed-event so readers re-read.
  */
 export const getDiagnosticsEndpointMiddleware =
   ({

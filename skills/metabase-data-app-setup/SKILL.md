@@ -227,7 +227,7 @@ curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"
   }],
   "clients": 1,       // connected preview tabs — 0 means nothing ran
   "buildId": 7,       // the generation running now
-  "staleEntries": 164, // earlier generations', withheld — see below
+  "staleEntries": 164, // held back, reported by an older build — see below
   "nextEventId": 32   // pass back as ?startEventId=
 }
 ```
