@@ -1,10 +1,11 @@
 import type {
-  ContentDiagnosticsCoveredFilterType,
   ContentDiagnosticsFilterType,
+  ContentDiagnosticsNonCollectionFilterType,
 } from "metabase-types/api";
 
 export type ContentDiagnosticsBaseFilterOptions<
-  T extends ContentDiagnosticsFilterType = ContentDiagnosticsCoveredFilterType,
+  T extends ContentDiagnosticsFilterType =
+    ContentDiagnosticsNonCollectionFilterType,
 > = {
   entityTypes: T[];
   includePersonalCollections: boolean;

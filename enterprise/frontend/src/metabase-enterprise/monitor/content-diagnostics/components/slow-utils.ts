@@ -4,8 +4,8 @@ import { t } from "ttag";
 import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
 import {
-  CONTENT_DIAGNOSTICS_FILTER_TYPES,
-  type ContentDiagnosticsCoveredFilterType,
+  CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
+  type ContentDiagnosticsNonCollectionFilterType,
   type ContentDiagnosticsSlowSortColumn,
 } from "metabase-types/api";
 
@@ -13,8 +13,8 @@ import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "./constants";
 import type { SlowContentFilterOptions } from "./types";
 import { areEntityTypesEqual } from "./utils";
 
-const ALL_FILTER_TYPES: ContentDiagnosticsCoveredFilterType[] = [
-  ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
+const ALL_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] = [
+  ...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
 ];
 
 type DurationFilterOption = {
@@ -101,8 +101,8 @@ export function getSlowParamsWithoutDefaults({
 }
 
 export function getSlowEntityTypesParam(
-  entityTypes: ContentDiagnosticsCoveredFilterType[],
-): ContentDiagnosticsCoveredFilterType[] | undefined {
+  entityTypes: ContentDiagnosticsNonCollectionFilterType[],
+): ContentDiagnosticsNonCollectionFilterType[] | undefined {
   return match(entityTypes)
     .when(
       (entityTypes) => entityTypes.length === ALL_FILTER_TYPES.length,

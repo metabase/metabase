@@ -1,40 +1,35 @@
-import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
-  CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
+  CONTENT_DIAGNOSTICS_FILTER_TYPES,
   type ContentDiagnosticsDuplicatedUserParams,
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
 export function parseDuplicatedUrlParams(
-  location: Location,
+  searchParams: URLSearchParams,
 ): Urls.DuplicatedContentParams {
-  const {
-    page,
-    query,
-    "entity-types": entityTypes,
-    "include-personal-collections": includePersonalCollections,
-    "min-duplicate-count": minDuplicateCount,
-    "sort-column": sortColumn,
-    "sort-direction": sortDirection,
-  } = location.query;
-
   return {
-    page: Urls.parseNumberParam(page),
-    query: Urls.parseStringParam(query),
-    entityTypes: Urls.parseListParam(entityTypes, (item) =>
-      Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES),
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    query: Urls.parseStringParam(searchParams.get("query")),
+    entityTypes: Urls.parseListParam(
+      searchParams.getAll("entity-types"),
+      (item) => Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
     ),
     includePersonalCollections: Urls.parseBooleanParam(
-      includePersonalCollections,
+      searchParams.get("include-personal-collections"),
     ),
-    minDuplicateCount: Urls.parseNumberParam(minDuplicateCount),
+    minDuplicateCount: Urls.parseNumberParam(
+      searchParams.get("min-duplicate-count"),
+    ),
     sortColumn: Urls.parseEnumParam(
-      sortColumn,
+      searchParams.get("sort-column"),
       CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
     ),
-    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
+    sortDirection: Urls.parseEnumParam(
+      searchParams.get("sort-direction"),
+      SORT_DIRECTIONS,
+    ),
   };
 }
 
@@ -76,6 +71,8 @@ const DUPLICATED_URL_PARAM_KEYS = [
   "sort-direction",
 ] as const;
 
-export function isEmptyDuplicatedParams(location: Location): boolean {
-  return DUPLICATED_URL_PARAM_KEYS.every((key) => location.query[key] == null);
+export function isEmptyDuplicatedParams(
+  searchParams: URLSearchParams,
+): boolean {
+  return DUPLICATED_URL_PARAM_KEYS.every((key) => !searchParams.has(key));
 }

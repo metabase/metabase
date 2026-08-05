@@ -22,8 +22,12 @@ export const CONTENT_DIAGNOSTICS_ENTITY_TYPES = [
 export type ContentDiagnosticsEntityType =
   (typeof CONTENT_DIAGNOSTICS_ENTITY_TYPES)[number];
 
-/** Filter vocabulary shared by the stale and slow endpoints - neither spans collections. */
-export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
+export type ContentDiagnosticsNonCollectionEntityType = Exclude<
+  ContentDiagnosticsEntityType,
+  "collection"
+>;
+
+export const CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES = [
   "question",
   "model",
   "metric",
@@ -31,17 +35,19 @@ export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
   "document",
   "transform",
 ] as const;
-export type ContentDiagnosticsCoveredFilterType =
-  (typeof CONTENT_DIAGNOSTICS_FILTER_TYPES)[number];
-
-export const CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES = [
-  ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
-  "collection",
-] as const;
 
 /** Every filter value any endpoint accepts; each endpoint pins its own subset. */
+export const CONTENT_DIAGNOSTICS_FILTER_TYPES = [
+  ...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
+  "collection",
+] as const;
 export type ContentDiagnosticsFilterType =
-  (typeof CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES)[number];
+  (typeof CONTENT_DIAGNOSTICS_FILTER_TYPES)[number];
+
+export type ContentDiagnosticsNonCollectionFilterType = Exclude<
+  ContentDiagnosticsFilterType,
+  "collection"
+>;
 
 export const CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS = [
   "name",
@@ -74,7 +80,7 @@ export type ContentDiagnosticsDuplicatedSortColumn =
   (typeof CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS)[number];
 
 export type ContentDiagnosticsStaleUserParams = {
-  entity_types?: ContentDiagnosticsCoveredFilterType[];
+  entity_types?: ContentDiagnosticsNonCollectionFilterType[];
   include_personal_collections?: boolean;
   sort_column?: ContentDiagnosticsStaleSortColumn;
   sort_direction?: SortDirection;
@@ -123,14 +129,9 @@ export type ContentDiagnosticsStaleFindingDetails =
     threshold_days?: number;
   };
 
-export type ContentDiagnosticsCoveredEntityType = Exclude<
-  ContentDiagnosticsEntityType,
-  "collection"
->;
-
 export type ContentDiagnosticsStaleFinding = ContentDiagnosticsBaseFinding & {
   finding_type: "stale";
-  entity_type: ContentDiagnosticsCoveredEntityType;
+  entity_type: ContentDiagnosticsNonCollectionEntityType;
   last_active_at: string | null;
   details: ContentDiagnosticsStaleFindingDetails;
 };
@@ -144,7 +145,7 @@ export type ContentDiagnosticsScanResult = {
 
 export type ListStaleFindingsRequest = {
   query?: string;
-  "entity-types"?: ContentDiagnosticsCoveredFilterType[];
+  "entity-types"?: ContentDiagnosticsNonCollectionFilterType[];
   "include-personal-collections"?: boolean;
   "sort-column"?: ContentDiagnosticsStaleSortColumn;
   "sort-direction"?: SortDirection;
@@ -159,7 +160,7 @@ export type ListStaleFindingsResponse = {
 };
 
 export type ContentDiagnosticsSlowUserParams = {
-  entity_types?: ContentDiagnosticsCoveredFilterType[];
+  entity_types?: ContentDiagnosticsNonCollectionFilterType[];
   include_personal_collections?: boolean;
   min_duration_ms?: number;
   sort_column?: ContentDiagnosticsSlowSortColumn;
@@ -182,14 +183,14 @@ export type ContentDiagnosticsSlowFindingDetails =
 
 export type ContentDiagnosticsSlowFinding = ContentDiagnosticsBaseFinding & {
   finding_type: "slow";
-  entity_type: ContentDiagnosticsCoveredEntityType;
+  entity_type: ContentDiagnosticsNonCollectionEntityType;
   duration_ms: number;
   details: ContentDiagnosticsSlowFindingDetails;
 };
 
 export type ListSlowFindingsRequest = {
   query?: string;
-  "entity-types"?: ContentDiagnosticsCoveredFilterType[];
+  "entity-types"?: ContentDiagnosticsNonCollectionFilterType[];
   "include-personal-collections"?: boolean;
   "min-duration-ms"?: number;
   "sort-column"?: ContentDiagnosticsSlowSortColumn;

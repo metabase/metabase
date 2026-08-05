@@ -3,23 +3,23 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
 import {
-  CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
   type ContentDiagnosticsBaseFinding,
   type ContentDiagnosticsCollection,
-  type ContentDiagnosticsCoveredFilterType,
   type ContentDiagnosticsDuplicateEntity,
   type ContentDiagnosticsFilterType,
+  type ContentDiagnosticsNonCollectionFilterType,
   type ContentDiagnosticsUser,
   type IconName,
 } from "metabase-types/api";
 
-export const ALL_FILTER_TYPES: ContentDiagnosticsCoveredFilterType[] = [
-  ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
+export const ALL_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] = [
+  ...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
 ];
 
 export const ALL_DUPLICATED_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
-  ...CONTENT_DIAGNOSTICS_DUPLICATED_FILTER_TYPES,
+  ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 
 type ContentDiagnosticsCollectionBreadcrumbEntry =

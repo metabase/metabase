@@ -1,6 +1,6 @@
 import * as Urls from "metabase/urls";
 import {
-  CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS,
   type ContentDiagnosticsSlowUserParams,
   SORT_DIRECTIONS,
@@ -16,7 +16,11 @@ export function parseSlowUrlParams(
     query: Urls.parseStringParam(searchParams.get("query")),
     entityTypes: Urls.parseListParam(
       searchParams.getAll("entity-types"),
-      (item) => Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
+      (item) =>
+        Urls.parseEnumParam(
+          item,
+          CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
+        ),
     ),
     includePersonalCollections: Urls.parseBooleanParam(
       searchParams.get("include-personal-collections"),

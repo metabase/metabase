@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch } from "metabase/redux";
-import { replace, useRouter } from "metabase/router";
+import { useNavigate, useSearchParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { DuplicatedContent } from "../components";
@@ -17,9 +16,9 @@ import {
 } from "./duplicated-utils";
 
 export function DuplicatedContentPage() {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isInitializingRef = useRef(false);
-  const dispatch = useDispatch();
 
   const {
     value: rawLastUsedParams,
@@ -31,14 +30,14 @@ export function DuplicatedContentPage() {
   });
 
   const shouldRestoreLastUsedParamsRef = useRef(
-    isEmptyDuplicatedParams(location),
+    isEmptyDuplicatedParams(searchParams),
   );
 
   const params = useMemo(() => {
     return shouldRestoreLastUsedParamsRef.current
       ? parseDuplicatedUserParams(rawLastUsedParams)
-      : parseDuplicatedUrlParams(location);
-  }, [location, rawLastUsedParams]);
+      : parseDuplicatedUrlParams(searchParams);
+  }, [searchParams, rawLastUsedParams]);
 
   const handleParamsChange = (
     params: Urls.DuplicatedContentParams,
@@ -49,20 +48,19 @@ export function DuplicatedContentPage() {
     if (withSetLastUsedParams) {
       setLastUsedParams(getDuplicatedUserParams(paramsWithoutDefaults));
     }
-    dispatch(replace(Urls.duplicatedContent(paramsWithoutDefaults)));
+    navigate(Urls.duplicatedContent(paramsWithoutDefaults), { replace: true });
   };
 
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
       shouldRestoreLastUsedParamsRef.current = false;
-      dispatch(
-        replace(
-          Urls.duplicatedContent(getDuplicatedParamsWithoutDefaults(params)),
-        ),
+      navigate(
+        Urls.duplicatedContent(getDuplicatedParamsWithoutDefaults(params)),
+        { replace: true },
       );
     }
-  }, [params, isLoadingParams, dispatch]);
+  }, [params, isLoadingParams, navigate]);
 
   return (
     <DuplicatedContent

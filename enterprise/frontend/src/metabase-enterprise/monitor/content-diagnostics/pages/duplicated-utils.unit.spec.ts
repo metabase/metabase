@@ -1,27 +1,24 @@
-import type { Location } from "metabase/router";
-
 import {
   isEmptyDuplicatedParams,
   parseDuplicatedUrlParams,
 } from "./duplicated-utils";
 
-function createLocation(query: Location["query"]): Location {
-  return {
-    pathname: "/monitor/content-diagnostics/duplicated",
-    search: "",
-    hash: "",
-    state: undefined,
-    action: "POP",
-    key: "test",
-    query,
-  };
+function createSearchParams(
+  query: Record<string, string | string[]>,
+): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach((item) => searchParams.append(key, item));
+  }
+  return searchParams;
 }
 
 describe("parseDuplicatedUrlParams", () => {
   it("accepts collections as an entity type", () => {
     expect(
       parseDuplicatedUrlParams(
-        createLocation({ "entity-types": ["collection", "model"] }),
+        createSearchParams({ "entity-types": ["collection", "model"] }),
       ).entityTypes,
     ).toEqual(["collection", "model"]);
   });
@@ -29,21 +26,22 @@ describe("parseDuplicatedUrlParams", () => {
   it("drops entity-types values that are not covered types", () => {
     expect(
       parseDuplicatedUrlParams(
-        createLocation({ "entity-types": ["model", "bogus"] }),
+        createSearchParams({ "entity-types": ["model", "bogus"] }),
       ).entityTypes,
     ).toEqual(["model"]);
   });
 
   it("parses min-duplicate-count", () => {
     expect(
-      parseDuplicatedUrlParams(createLocation({ "min-duplicate-count": "3" }))
-        .minDuplicateCount,
+      parseDuplicatedUrlParams(
+        createSearchParams({ "min-duplicate-count": "3" }),
+      ).minDuplicateCount,
     ).toBe(3);
   });
 
   it("parses sort-column and sort-direction", () => {
     const params = parseDuplicatedUrlParams(
-      createLocation({
+      createSearchParams({
         "sort-column": "duplicate-count",
         "sort-direction": "desc",
       }),
@@ -54,7 +52,10 @@ describe("parseDuplicatedUrlParams", () => {
 
   it("drops sort values that are not allowed", () => {
     const params = parseDuplicatedUrlParams(
-      createLocation({ "sort-column": "duration-ms", "sort-direction": "up" }),
+      createSearchParams({
+        "sort-column": "duration-ms",
+        "sort-direction": "up",
+      }),
     );
     expect(params.sortColumn).toBeUndefined();
     expect(params.sortDirection).toBeUndefined();
@@ -63,16 +64,16 @@ describe("parseDuplicatedUrlParams", () => {
 
 describe("isEmptyDuplicatedParams", () => {
   it("returns true when the URL carries no recognized params", () => {
-    expect(isEmptyDuplicatedParams(createLocation({}))).toBe(true);
-    expect(isEmptyDuplicatedParams(createLocation({ unrelated: "1" }))).toBe(
-      true,
-    );
+    expect(isEmptyDuplicatedParams(createSearchParams({}))).toBe(true);
+    expect(
+      isEmptyDuplicatedParams(createSearchParams({ unrelated: "1" })),
+    ).toBe(true);
   });
 
   it("returns false when the URL explicitly asks for default values", () => {
     expect(
       isEmptyDuplicatedParams(
-        createLocation({
+        createSearchParams({
           page: "0",
           "entity-types": [
             "question",
@@ -91,10 +92,12 @@ describe("isEmptyDuplicatedParams", () => {
 
   it("returns false for non-default params", () => {
     expect(
-      isEmptyDuplicatedParams(createLocation({ "min-duplicate-count": "2" })),
+      isEmptyDuplicatedParams(
+        createSearchParams({ "min-duplicate-count": "2" }),
+      ),
     ).toBe(false);
-    expect(isEmptyDuplicatedParams(createLocation({ query: "sales" }))).toBe(
-      false,
-    );
+    expect(
+      isEmptyDuplicatedParams(createSearchParams({ query: "sales" })),
+    ).toBe(false);
   });
 });

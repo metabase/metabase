@@ -1,7 +1,7 @@
 import type {
-  ContentDiagnosticsCoveredFilterType,
   ContentDiagnosticsDuplicatedSortColumn,
   ContentDiagnosticsFilterType,
+  ContentDiagnosticsNonCollectionFilterType,
   ContentDiagnosticsSlowSortColumn,
   ContentDiagnosticsStaleSortColumn,
   SortDirection,
@@ -16,7 +16,7 @@ export function contentDiagnostics() {
 export type StaleContentParams = {
   page?: number;
   query?: string;
-  entityTypes?: ContentDiagnosticsCoveredFilterType[];
+  entityTypes?: ContentDiagnosticsNonCollectionFilterType[];
   includePersonalCollections?: boolean;
   sortColumn?: ContentDiagnosticsStaleSortColumn;
   sortDirection?: SortDirection;
@@ -67,7 +67,7 @@ export function staleContent(params?: StaleContentParams) {
 export type SlowContentParams = {
   page?: number;
   query?: string;
-  entityTypes?: ContentDiagnosticsCoveredFilterType[];
+  entityTypes?: ContentDiagnosticsNonCollectionFilterType[];
   includePersonalCollections?: boolean;
   minDurationMs?: number;
   sortColumn?: ContentDiagnosticsSlowSortColumn;

@@ -6,6 +6,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
+  type TestRouter,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -15,6 +16,7 @@ import {
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import type {
   ContentDiagnosticsDuplicatedFinding,
   ContentDiagnosticsDuplicatedUserParams,
@@ -89,7 +91,7 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={Urls.duplicatedContent()}
       element={
@@ -107,7 +109,11 @@ function setup({
     },
   );
 
-  return { history };
+  return { router };
+}
+
+function getUrlQuery(router: TestRouter | undefined) {
+  return parseSearchQuery(router?.location.search ?? "");
 }
 
 function getLastRequestUrl() {
@@ -144,8 +150,9 @@ describe("DuplicatedContentPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the selected finding details and its duplicates in the sidebar", async () => {
-    const finding = createMockContentDiagnosticsDuplicatedFinding({
+  it("renders sidebar details for card and collection findings", async () => {
+    const cardFinding = createMockContentDiagnosticsDuplicatedFinding({
+      id: 1,
       entity_id: 42,
       entity_display_name: "Revenue by category",
       duplicate_count: 2,
@@ -175,39 +182,8 @@ describe("DuplicatedContentPage", () => {
         ],
       },
     });
-    setup({ findings: [finding] });
-
-    const list = await screen.findByRole("treegrid");
-    await userEvent.click(await within(list).findByText("Revenue by category"));
-
-    const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
-    expect(sidebarRegion).toHaveTextContent("Revenue by category");
-    expect(sidebarRegion).toHaveTextContent("Executive dashboards");
-    expect(sidebarRegion).toHaveTextContent(
-      "Shows revenue grouped by product category.",
-    );
-    expect(sidebarRegion).toHaveTextContent("Grace Creator");
-
-    const duplicates = within(sidebarRegion).getByRole("region", {
-      name: "Duplicates",
-    });
-    expect(within(duplicates).getByText("Duplicates (2)")).toBeInTheDocument();
-    expect(
-      within(duplicates).getByRole("link", {
-        name: "Revenue by Category, Model",
-      }),
-    ).toHaveAttribute("href", expect.stringContaining("/model/43"));
-    expect(
-      within(duplicates).getByRole("link", {
-        name: "revenue by category, Question",
-      }),
-    ).toHaveAttribute("href", expect.stringContaining("/question/44"));
-    expect(within(duplicates).getByText("3 views")).toBeInTheDocument();
-    expect(within(duplicates).getByText("1 view")).toBeInTheDocument();
-  });
-
-  it("renders a collection finding and its collection duplicate", async () => {
-    const finding = createMockContentDiagnosticsDuplicatedFinding({
+    const collectionFinding = createMockContentDiagnosticsDuplicatedFinding({
+      id: 2,
       entity_type: "collection",
       entity_id: 54,
       entity_display_name: "Reporting",
@@ -224,44 +200,64 @@ describe("DuplicatedContentPage", () => {
         ],
       },
     });
-    setup({ findings: [finding] });
+    setup({ findings: [cardFinding, collectionFinding] });
 
     const list = await screen.findByRole("treegrid");
-    const row = await within(list).findByRole("row", { name: /Reporting/ });
-    expect(within(row).getByText("Collection")).toBeInTheDocument();
-
-    await userEvent.click(within(row).getByText("Reporting"));
+    await userEvent.click(await within(list).findByText("Revenue by category"));
 
     const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
-    const duplicates = within(sidebarRegion).getByRole("region", {
+    expect(sidebarRegion).toHaveTextContent("Revenue by category");
+    expect(sidebarRegion).toHaveTextContent("Executive dashboards");
+    expect(sidebarRegion).toHaveTextContent(
+      "Shows revenue grouped by product category.",
+    );
+    expect(sidebarRegion).toHaveTextContent("Grace Creator");
+
+    const cardDuplicates = within(sidebarRegion).getByRole("region", {
       name: "Duplicates",
     });
     expect(
-      within(duplicates).getByRole("link", { name: "reporting, Collection" }),
+      within(cardDuplicates).getByText("Duplicates (2)"),
+    ).toBeInTheDocument();
+    expect(
+      within(cardDuplicates).getByRole("link", {
+        name: "Revenue by Category, Model",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("/model/43"));
+    expect(
+      within(cardDuplicates).getByRole("link", {
+        name: "revenue by category, Question",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("/question/44"));
+    expect(within(cardDuplicates).getByText("3 views")).toBeInTheDocument();
+    expect(within(cardDuplicates).getByText("1 view")).toBeInTheDocument();
+
+    const collectionRow = within(list).getByRole("row", { name: /Reporting/ });
+    expect(within(collectionRow).getByText("Collection")).toBeInTheDocument();
+    await userEvent.click(within(collectionRow).getByText("Reporting"));
+
+    const collectionDuplicates = within(sidebarRegion).getByRole("region", {
+      name: "Duplicates",
+    });
+    expect(
+      await within(collectionDuplicates).findByRole("link", {
+        name: "reporting, Collection",
+      }),
     ).toHaveAttribute("href", expect.stringContaining("/collection/55"));
-    expect(within(duplicates).queryByText(/view/)).not.toBeInTheDocument();
+    expect(
+      within(collectionDuplicates).queryByText(/view/),
+    ).not.toBeInTheDocument();
   });
 
-  it("tells the user when none of the duplicates are visible to them", async () => {
-    const finding = createMockContentDiagnosticsDuplicatedFinding({
+  it("reports duplicates that aren't visible to the user", async () => {
+    const noneVisible = createMockContentDiagnosticsDuplicatedFinding({
+      id: 1,
       entity_display_name: "Hidden peers",
       duplicate_count: 3,
       details: { duplicate_entities: [] },
     });
-    setup({ findings: [finding] });
-
-    const list = await screen.findByRole("treegrid");
-    await userEvent.click(await within(list).findByText("Hidden peers"));
-
-    const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
-    expect(sidebarRegion).toHaveTextContent("Duplicates (3)");
-    expect(sidebarRegion).toHaveTextContent(
-      "None of these duplicates are visible to you.",
-    );
-  });
-
-  it("tells the user when only some of the duplicates are visible to them", async () => {
-    const finding = createMockContentDiagnosticsDuplicatedFinding({
+    const someVisible = createMockContentDiagnosticsDuplicatedFinding({
+      id: 2,
       entity_display_name: "Partially hidden peers",
       duplicate_count: 3,
       details: {
@@ -273,72 +269,35 @@ describe("DuplicatedContentPage", () => {
         ],
       },
     });
-    setup({ findings: [finding] });
+    setup({ findings: [noneVisible, someVisible] });
 
     const list = await screen.findByRole("treegrid");
-    await userEvent.click(
-      await within(list).findByText("Partially hidden peers"),
-    );
+    await userEvent.click(await within(list).findByText("Hidden peers"));
 
     const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+    expect(sidebarRegion).toHaveTextContent("Duplicates (3)");
+    expect(sidebarRegion).toHaveTextContent(
+      "None of these duplicates are visible to you.",
+    );
+
+    await userEvent.click(within(list).getByText("Partially hidden peers"));
+
     const duplicates = within(sidebarRegion).getByRole("region", {
       name: "Duplicates",
     });
-    expect(within(duplicates).getByText("Duplicates (3)")).toBeInTheDocument();
     expect(
-      within(duplicates).getByRole("link", { name: "Visible peer, Question" }),
+      await within(duplicates).findByRole("link", {
+        name: "Visible peer, Question",
+      }),
     ).toBeInTheDocument();
+    expect(within(duplicates).getByText("Duplicates (3)")).toBeInTheDocument();
     expect(
       within(duplicates).getByText("2 duplicates aren't visible to you."),
     ).toBeInTheDocument();
   });
 
-  it("sends table sort changes to the server and URL", async () => {
-    const { history } = setup({ findings: FINDINGS });
-    await waitForListToLoad();
-
-    await userEvent.click(
-      screen.getByRole("columnheader", { name: /^Duplicates/ }),
-    );
-
-    await waitFor(() => {
-      expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
-        "duplicate-count",
-      );
-    });
-    expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
-    expect(history?.getCurrentLocation().query).toEqual({
-      "sort-column": "duplicate-count",
-      "sort-direction": "asc",
-    });
-  });
-
-  it("refetches the duplicated endpoint with the next offset and renders the next page", async () => {
-    const secondPageFinding = createMockContentDiagnosticsDuplicatedFinding({
-      id: 3,
-      entity_display_name: "Second page question",
-    });
-    const { history } = setup({
-      total: 50,
-      getResponse: (url) =>
-        createMockListDuplicatedFindingsResponse({
-          data: url.includes("offset=25") ? [secondPageFinding] : FINDINGS,
-          total: 50,
-        }),
-    });
-    await waitForListToLoad();
-
-    await userEvent.click(screen.getByLabelText("Next page"));
-
-    expect(await screen.findByText("Second page question")).toBeInTheDocument();
-    expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
-    expect(getLastRequestUrl().searchParams.get("limit")).toBe("25");
-    expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
-  });
-
-  it("resets pagination when table sorting changes", async () => {
-    const { history } = setup({
+  it("sends table sort changes to the server and URL, resetting pagination", async () => {
+    const { router } = setup({
       findings: FINDINGS,
       total: 50,
       urlParams: { page: 1 },
@@ -352,16 +311,44 @@ describe("DuplicatedContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(getLastRequestUrl().searchParams.get("offset")).toBe("0");
+      expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
+        "duplicate-count",
+      );
     });
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
+    expect(getLastRequestUrl().searchParams.get("offset")).toBe("0");
+    expect(getUrlQuery(router)).toEqual({
       "sort-column": "duplicate-count",
       "sort-direction": "asc",
     });
   });
 
-  it("filters by personal collections server-side via the Location toggle", async () => {
-    const { history } = setup({ findings: FINDINGS });
+  it("refetches the duplicated endpoint with the next offset and renders the next page", async () => {
+    const secondPageFinding = createMockContentDiagnosticsDuplicatedFinding({
+      id: 3,
+      entity_display_name: "Second page question",
+    });
+    const { router } = setup({
+      total: 50,
+      getResponse: (url) =>
+        createMockListDuplicatedFindingsResponse({
+          data: url.includes("offset=25") ? [secondPageFinding] : FINDINGS,
+          total: 50,
+        }),
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(screen.getByLabelText("Next page"));
+
+    expect(await screen.findByText("Second page question")).toBeInTheDocument();
+    expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
+    expect(getUrlQuery(router)).toEqual({ page: "1" });
+    expect(getLastRequestUrl().searchParams.get("limit")).toBe("25");
+    expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
+  });
+
+  it("filters by personal collections server-side", async () => {
+    const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
     expect(
@@ -379,7 +366,7 @@ describe("DuplicatedContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(getUrlQuery(router)).toEqual({
         "include-personal-collections": "false",
       });
     });
@@ -389,7 +376,7 @@ describe("DuplicatedContentPage", () => {
   });
 
   it("reflects the minimum duplicate count from the URL and sends changes made in the Filter popover", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: { minDuplicateCount: 3 },
     });
@@ -411,7 +398,7 @@ describe("DuplicatedContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(getUrlQuery(router)).toEqual({
         "min-duplicate-count": "5",
       });
     });
@@ -422,7 +409,7 @@ describe("DuplicatedContentPage", () => {
     await userEvent.click(within(popover).getByLabelText("Clear"));
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(getUrlQuery(router)).toEqual({});
     });
     expect(
       within(popover).getByPlaceholderText("Any number of duplicates"),
@@ -450,7 +437,7 @@ describe("DuplicatedContentPage", () => {
   });
 
   it("offers collections as an entity type and sends the selection to the server", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: { entityTypes: ["question"] },
     });
@@ -474,7 +461,7 @@ describe("DuplicatedContentPage", () => {
     const expectedTypes = ["question", "collection"];
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(getUrlQuery(router)).toEqual({
         "entity-types": expectedTypes,
       });
     });
@@ -494,7 +481,7 @@ describe("DuplicatedContentPage", () => {
   });
 
   it("restores the last-used filter when the URL has no params", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: {},
       lastUsedParams: { min_duplicate_count: 5 },
@@ -502,7 +489,7 @@ describe("DuplicatedContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "min-duplicate-count": "5",
     });
     expect(getLastRequestUrl().searchParams.get("min-duplicate-count")).toBe(
@@ -511,7 +498,7 @@ describe("DuplicatedContentPage", () => {
   });
 
   it("lets an explicit default-valued URL win over the last-used filter", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: { page: 0, includePersonalCollections: true },
       lastUsedParams: { min_duplicate_count: 5 },
@@ -525,6 +512,6 @@ describe("DuplicatedContentPage", () => {
     expect(
       getLastRequestUrl().searchParams.get("include-personal-collections"),
     ).toBe("true");
-    expect(history?.getCurrentLocation().query).toEqual({});
+    expect(getUrlQuery(router)).toEqual({});
   });
 });
