@@ -102,8 +102,8 @@
    [:name {:optional true}
     [:maybe [:string {:min 1 :description "Create only (editable on update): display name of the collection."}]]]
    [:description {:optional true}
-    [:maybe [:string {:min 1 :description (str "Optional human-readable description. Can be set and rewritten but "
-                                               "not cleared through this tool.")}]]]
+    [:maybe [:string {:min 1 :description (str "Optional human-readable description. To remove one, name it in "
+                                               "`clear` — `clear: [\"description\"]`.")}]]]
    [:parent_id {:optional true}
     [:maybe [:or {:description (str "The collection to nest under (create) or move into (update). Numeric id, "
                                     "21-character entity_id, or \"root\" for the top level. Omitted on create means "
