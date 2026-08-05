@@ -14,6 +14,9 @@
   {:provider   "in-process"
    :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"})
 
+(def ^:private plugin-name
+  "Metabase In-Process Embedder")
+
 (defn- cosine
   [^floats a ^floats b]
   (loop [index 0, dot 0.0]
@@ -64,7 +67,10 @@
            #(hash-map :readiness (embeddings.provider/readiness requested-model)
                       :resolved  (embeddings.provider/resolve-model requested-model)))]
       (plugins/load-plugins!)
-      (testing "the implementation was discovered through its jar manifest"
+      ;; Non-driver plugins are registered eagerly but initialized only when a feature selects them. The provider
+      ;; registration lives in the plugin init namespace, so activate this artifact explicitly before exercising it.
+      (plugins/load-plugin! plugin-name)
+      (testing "the implementation was activated through its jar manifest"
         (is (embeddings.provider/registered? "in-process"))
         (is (= "true" (System/getProperty "ai.djl.offline")))
         (is (= "true" (System/getProperty "OPT_OUT_TRACKING")))

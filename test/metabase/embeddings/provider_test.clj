@@ -251,7 +251,8 @@
           [["vectors" [[0.0 1.0] [2.0 3.0]]]
            ["lists" (list (list 0.0 1.0) (list 2.0 3.0))]
            ["lazy sequences" (map #(map identity %) [[0.0 1.0] [2.0 3.0]])]
-           ["Java lists" (java.util.ArrayList. [[0.0 1.0] [2.0 3.0]])]
+           ["Java lists" (doto (java.util.ArrayList.)
+                           (.addAll ^java.util.Collection [[0.0 1.0] [2.0 3.0]]))]
            ["JVM arrays" (object-array [(float-array [0.0 1.0])
                                         (object-array [2.0 3.0])])]]]
     (testing description
