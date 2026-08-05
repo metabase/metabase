@@ -89,12 +89,14 @@
 
 (deftest worktree-scoped-models-test
   (testing "collections, everything in them, and the data-model content on shared tables are checked out"
-    (is (every? serdes/worktree-scoped? ["Card" "Collection" "Dashboard" "DashboardCard" "DashboardCardSeries"
-                                         "DashboardTab" "Document" "Measure" "NativeQuerySnippet"
-                                         "PythonLibrary" "Segment" "Timeline" "TimelineEvent" "Transform"
-                                         "TransformTag" "TransformTransformTag"])))
+    (is (every? serdes/worktree-scoped? ["Card" "Collection" "Dashboard" "Document" "Measure"
+                                         "NativeQuerySnippet" "PythonLibrary" "Segment" "Timeline"
+                                         "Transform" "TransformTag" "TransformTransformTag"])))
   (testing "the shared warehouse metadata itself is skipped by a worktree pull"
-    (is (not-any? serdes/worktree-scoped? ["Table" "Field"]))))
+    (is (not-any? serdes/worktree-scoped? ["Table" "Field"])))
+  (testing "so are the models inlined into a parent, which are covered by the parent's own scope"
+    (is (not-any? serdes/worktree-scoped? ["DashboardCard" "DashboardCardSeries" "DashboardTab"
+                                           "TimelineEvent"]))))
 
 ;;; ---------------------------------------------- Deletion ----------------------------------------------
 
