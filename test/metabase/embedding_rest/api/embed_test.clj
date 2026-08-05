@@ -25,6 +25,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
@@ -34,6 +35,8 @@
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
