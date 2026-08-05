@@ -7,7 +7,6 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  Icon,
   Tooltip,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
