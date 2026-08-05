@@ -275,6 +275,14 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
+  fix-module-cycles
+  {:doc "Tighten the recorded module dependency cycles in .clj-kondo/module-cycles.edn to match the modules config."
+   :examples [["./bin/mage fix-module-cycles" "Record any cycles that have been broken (never records new ones)"]
+              ["./bin/mage fix-module-cycles --seed" "Record the tree's cycles verbatim, widening if it has to"]]
+   :options [["-s" "--seed" "Accept the tree's cycles as the new baseline (may widen; defend it in your PR)"]]
+   :requires [[dev.module-cycles]]
+   :task (task! (dev.module-cycles/fix! (:options parsed)))}
+
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
    :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
