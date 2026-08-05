@@ -111,7 +111,6 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     ],
   },
   vllm: {
-    // vLLM serves whatever the operator loaded, so the id is free text and is its own label.
     value: "vllm/Qwen3-14B",
     models: [{ id: "Qwen3-14B", display_name: "Qwen3-14B" }],
   },
@@ -319,8 +318,7 @@ async function setup({
       key: "llm-zai-api-key",
       value: mergedApiKeyValues.zai ?? undefined,
     }),
-    // vLLM is configured by its base URL alone; the API key is optional, so the fixture leaves it
-    // unset to exercise the keyless server case.
+    // vLLM is configured by its base URL alone; the fixture leaves the key unset.
     "llm-vllm-api-base-url": createMockSettingDefinition({
       key: "llm-vllm-api-base-url",
       value: mergedApiKeyValues.vllm
@@ -2455,8 +2453,6 @@ describe("AIProviderSettingsSection", () => {
       await screen.findByLabelText("Base URL");
       await confirmDisconnectProvider();
 
-      // vLLM must take the `credentials: null` path. Falling through to the shared api-key
-      // lookup would throw on a provider that has no entry there.
       await waitFor(async () => {
         expect(await findPutRequests()).toEqual([
           {

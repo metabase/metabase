@@ -90,8 +90,6 @@ export function getProviderOptions(
       value: "vllm",
       label: "vLLM",
       apiKey: {
-        // A vLLM server only has a key when it was started with `--api-key`, so there is
-        // no key to go get and no console to get it from.
         placeholder: t`Enter your vLLM API key`,
         addKeyUrl:
           "https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html",
@@ -109,8 +107,7 @@ export function getProviderOptions(
   };
 }
 
-/** Providers whose entire credential is a single API key, saved via the shared api-key path.
- * Azure, Bedrock, and vLLM carry additional or optional fields and have their own save paths. */
+/** Providers whose entire credential is a single API key, saved via the shared api-key path. */
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
   "metabase" | "azure" | "bedrock" | "vllm"

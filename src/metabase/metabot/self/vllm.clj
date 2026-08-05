@@ -1,17 +1,9 @@
 (ns metabase.metabot.self.vllm
   "vLLM / Chat Completions adapter for self-hosted, OpenAI-compatible inference servers.
 
-  vLLM serves an OpenAI-compatible Chat Completions API from hardware the customer operates, so
-  prompt content never leaves their network. Two things make it unlike every other adapter here:
-
-  - **The base URL is required and the API key is optional.** A bare vLLM server has no auth
-    unless it was started with `--api-key`, so the auth map is built from the base URL alone and
-    the `Authorization` header is omitted when no key is set.
-  - **There is no model whitelist.** The operator serves whatever they loaded, so `list-models`
-    passes the catalog through instead of intersecting it with a curated set.
-
-  Because nothing about the served model is guaranteed, [[preflight!]] exercises the contract the
-  agent loop depends on at configuration time — see the misconfiguration table on that var.
+  Unlike the other adapters here the base URL is required and the API key is optional, and there is
+  no model whitelist — the operator serves whatever they loaded. [[preflight!]] exercises the
+  agent-loop contract at configuration time.
 
   https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html"
   (:require
@@ -33,9 +25,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private min-context-length
-  "Smallest `max_model_len` [[preflight!]] will accept. The `internal` profile's system prompt plus
-  tool schemas is a ~9k-token floor before a single conversation turn, so a model served under this
-  cannot complete a realistic multi-turn session. A product floor, not a measurement."
+  "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
   16384)
 
 (defn- ai-proxy-unsupported-ex []
@@ -44,9 +34,6 @@
             :error-code :proxy-unsupported}))
 
 (defn- missing-base-url-ex []
-  ;; Without this an unset base URL reaches `core/request`'s `(update :url #(str url %))` and
-  ;; produces the relative URL "/chat/completions" plus a clj-http error naming neither vLLM nor
-  ;; the missing setting.
   (ex-info (tru "No vLLM base URL is set")
            {:api-error  true
             :error-code :base-url-missing}))
@@ -69,8 +56,8 @@
       (tru "vLLM API error (HTTP {0})" status))))
 
 (defn- vllm-auth
-  "Auth map for a vLLM request: the base URL is required, the `Authorization` header is added only
-  when a key is configured. Because the map is never nil, `core/resolve-auth` cannot reach its
+  "Auth map for a vLLM request. The base URL is required; the `Authorization` header is added only
+  when a key is configured. The map is never nil, so `core/resolve-auth` cannot reach its
   `missing-api-key-ex` branch — a keyless server is a complete configuration."
   [credentials ai-proxy?]
   (when ai-proxy?
@@ -87,32 +74,24 @@
                        ai-proxy?)))
 
 (defn- inference-timeouts
-  "Timeouts for a generation request. The connection timeout is the valuable half: an unreachable or
-  mistyped base URL is a top misconfiguration and should fail fast rather than hang."
+  "Timeouts for a generation request."
   []
   {:socket-timeout     (llm/llm-vllm-request-timeout-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
 (defn- control-timeouts
-  "Timeouts for the non-generating `/models` call. Listing is instant on a healthy server, so this
-  uses the shared (much shorter) request timeout rather than the generous inference one — an admin
-  waiting on the Connect button shouldn't sit through the prefill budget."
+  "Timeouts for the non-generating `/models` call, on the shared (much shorter) request budget."
   []
   {:socket-timeout     (llm/llm-request-timeout-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
 (def ^:private probe-timeout-ceiling-ms
-  "Upper bound on a single preflight probe. `PUT /api/metabot/settings` blocks on the preflight behind
-  a non-cancellable spinner, so the generous inference budget cannot apply: a server that needs longer
-  than this to answer a 60-token prompt cannot drive Metabot interactively, and saying so beats
-  hanging the admin's browser until a proxy in front of Metabase cuts the connection first."
+  "Upper bound on a single preflight probe, which blocks the admin behind a spinner."
   120000)
 
 (defn- probe-timeouts
-  "Timeouts for a preflight probe — the third tier between [[control-timeouts]] and
-  [[inference-timeouts]]. Generation is involved, so the listing budget is too tight; an admin is
-  watching, so the inference budget is far too loose. An operator who lowers
-  `llm-vllm-request-timeout-ms` below the ceiling gets their own, shorter value."
+  "Timeouts for a preflight probe — between [[control-timeouts]] and [[inference-timeouts]]. An
+  operator who lowers `llm-vllm-request-timeout-ms` below the ceiling gets their own value."
   []
   {:socket-timeout     (min (llm/llm-vllm-request-timeout-ms) probe-timeout-ceiling-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
@@ -120,11 +99,8 @@
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
 (defn- list-all-models
-  "Fetch the served model catalog (`GET /models`).
-
-  Doubles as the credential round-trip behind the admin Connect button: a 2xx proves the base URL
-  is reachable and, when the server enforces auth, that the key is accepted.
-  `:ai-proxy?` is not supported for vLLM and throws when true."
+  "Fetch the served model catalog (`GET /models`), which doubles as the credential round-trip behind
+  the admin Connect button. `:ai-proxy?` is not supported for vLLM and throws when true."
   [{:keys [credentials ai-proxy?]}]
   (try
     (let [auth (vllm-auth credentials ai-proxy?)
@@ -140,8 +116,6 @@
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 
 (def ^:private probe-tool
-  "A single trivial tool for the preflight probes. Kept minimal so a probe costs the prefill of a few
-  hundred tokens rather than a realistic session."
   {:type     "function"
    :function {:name        "record_table_name"
               :description "Record the name of the table the user mentioned."
@@ -156,28 +130,30 @@
 
 (def ^:private probe-max-tokens
   "Generation ceiling for a preflight probe. A reasoning model's thinking counts against this budget
-  and routinely runs several hundred tokens even on a trivial prompt, so the ceiling has to clear it
-  comfortably: a probe that stops at `length` before the tool call is emitted is indistinguishable
-  from a server that will not call tools at all."
+  and routinely runs several hundred tokens even on a trivial prompt, so the ceiling has to clear
+  it: a probe that stops at `length` before the tool call looks identical to a server that will not
+  call tools at all."
   2048)
 
+(def ^:private forced-tool-call-token-floor
+  "Smallest `max_tokens` a forced tool call is given, regardless of what the caller asked for. A
+  reasoning model bills its thinking against this budget *before* emitting the tool call, so a
+  smaller ceiling (conversation titling asks for 128) stops at `length` with no tool call at all.
+  Equal to [[probe-max-tokens]], which [[preflight!]] already proves the served model can clear."
+  probe-max-tokens)
+
 (defn- preflight-ex
-  "A preflight failure. `:status-code 400` plus `:api-error` makes `metabase.metabot.api`'s
-  `provider-client-error?` treat it as a configuration problem, so the message reaches the admin
-  verbatim instead of surfacing as a 500."
+  "A preflight failure, tagged so `metabase.metabot.api`'s `provider-client-error?` surfaces the
+  message to the admin verbatim rather than as a 500."
   [msg]
   (ex-info msg {:api-error   true
                 :status-code 400
                 :error-code  :vllm-preflight-failed}))
 
 (defn- probe-chat!
-  "Run one non-streaming Chat Completions turn against `model` and return the first choice — both its
-  `message` and its `finish_reason`. Non-streaming on purpose: the probe asserts on the assembled
-  message, and skipping SSE keeps the check independent of the streaming translation it is
-  validating.
-
-  The `finish_reason` is part of the return value because a generation truncated at
-  [[probe-max-tokens]] and a server that will not call tools produce the same empty `tool_calls`."
+  "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
+  `finish_reason` is part of the return value because a generation truncated at
+  [[probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
   [auth model tool-choice]
   (let [res (core/request auth (merge {:method  :post
                                        :url     "/chat/completions"
@@ -200,17 +176,13 @@
                  (str id) (str max_model_len) (str min-context-length))))))
 
 (defn- check-tool-calling!
-  "The check that pays for the whole feature. With `tool_choice \"auto\"` — what the agent loop uses
-  on every profile but `sql` — a tool call only comes back when the server was started with
-  `--enable-auto-tool-choice` *and* a `--tool-call-parser` whose sentinel tokens match what this
-  model emits. A wrong-but-valid parser name produces no error at any layer: the sentinels never
-  match, the call stays in `content` as prose, and Metabot just chats without ever acting."
+  "With `tool_choice \"auto\"` a tool call comes back only when the server was started with
+  `--enable-auto-tool-choice` and a `--tool-call-parser` whose sentinel tokens match what this model
+  emits. A wrong-but-valid parser name produces no error at any layer — the call stays in `content`
+  as prose and Metabot chats without ever acting."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model "auto")
         content    (str (:content message))
-        ;; Populated instead of `content` when the server runs with `--reasoning-parser`. It is the
-        ;; only signal that separates a model whose thinking overran the probe budget from one that
-        ;; simply will not call tools — both end with no `tool_calls`.
         reasoning  (str (:reasoning_content message))
         tool-calls (:tool_calls message)
         truncated? (= "length" finish_reason)]
@@ -245,8 +217,7 @@
 (defn- check-structured-output!
   "`tool_choice \"required\"` drives guided decoding rather than the tool-call parser, so this covers
   a different failure than [[check-tool-calling!]]: a model whose grammar the server cannot compile
-  chats fine but breaks conversation titling (which runs on every new conversation, regardless of
-  profile) and the whole `sql` profile."
+  chats fine but breaks conversation titling and the whole `sql` profile."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model "required")]
     (when (empty? (:tool_calls message))
@@ -262,11 +233,10 @@
 (defn- probe-target
   "The catalog entry [[preflight!]] will probe.
 
-  When the request names a model, that model is the only acceptable target: falling back to some
-  other served model would pass every check and then persist a provider string pointing at a model
-  the server does not have, which is exactly the silent misconfiguration the preflight exists to
-  eliminate. The fallback is correct only on the connect path, which supplies no model because the
-  served name is knowable only from this catalog."
+  A requested model is the only acceptable target: falling back to another served model would pass
+  every check and then persist a provider string naming a model the server does not have. The
+  fallback applies only to the connect path, which supplies no model because the served name is
+  knowable only from this catalog."
   [entries requested-model]
   (if requested-model
     (or (u/seek #(= requested-model (:id %)) entries)
@@ -278,9 +248,8 @@
         (throw (no-models-ex)))))
 
 (defn- await-probe!
-  "Deref a probe future, unwrapping the `ExecutionException` a failing future is wrapped in so the
-  preflight's own `ex-info` — and the `:api-error` tag `core/rethrow-api-error!` passes through
-  untouched — reaches the caller intact."
+  "Deref a probe future, unwrapping the `ExecutionException` so the preflight's own `ex-info` — and
+  the `:api-error` tag `core/rethrow-api-error!` passes through untouched — reaches the caller."
   [fut]
   (try
     @fut
@@ -290,8 +259,6 @@
 (defn- preflight!
   "Exercise the contract the agent loop depends on, against the model that will actually be used.
 
-  Every failure this catches is otherwise silent and looks like a Metabase bug:
-
   | Misconfiguration                  | What the admin would otherwise see  |
   |-----------------------------------|-------------------------------------|
   | No `--enable-auto-tool-choice`    | Metabot chats but never acts        |
@@ -300,17 +267,14 @@
   | Context window too small          | A 400 mid-conversation              |
   | No structured-output support      | Titles and the `sql` profile fail   |
 
-  `requested-model` is the candidate from the request; without one the served model is adopted (see
-  the connect flow in `metabase.metabot.api`)."
+  The probes run concurrently; deref order fixes the verdict, tool calling being the more actionable
+  diagnosis when a server fails both."
   [{:keys [credentials ai-proxy?]} entries requested-model]
   (let [entry (probe-target entries requested-model)]
     (check-context-budget! entry)
     (try
       (let [auth         (vllm-auth credentials ai-proxy?)
             model        (:id entry)
-            ;; Concurrent so a slow server costs one probe budget rather than two — the admin is
-            ;; blocked on this. Deref order fixes the verdict: when a server fails both checks, the
-            ;; tool-calling diagnosis is the more actionable one.
             tool-calling (future (check-tool-calling! auth model))
             structured   (future (check-structured-output! auth model))]
         (await-probe! tool-calling)
@@ -325,10 +289,9 @@
 (defn list-models
   "List the models the configured vLLM server is serving.
 
-  Pass-through: the operator serves whatever they loaded, so there is nothing to whitelist and
-  `display_name` falls back to the served id. When `:probe?` is true, additionally runs
-  [[preflight!]] — reserved for the `PUT` settings path, since a tool-call probe on every `GET`
-  would stall the admin model dropdown behind a full prefill.
+  Pass-through: there is nothing to whitelist, and `display_name` falls back to the served id. When
+  `:probe?` is true, additionally runs [[preflight!]] — reserved for the `PUT` settings path, since
+  a tool-call probe on every `GET` would stall the admin model dropdown behind a full prefill.
   `:ai-proxy?` is not supported for vLLM and throws when true."
   ([] (list-models {}))
   ([{:keys [model probe?] :as opts}]
@@ -344,24 +307,24 @@
 (mu/defn vllm-request-body
   "Build the Chat Completions request body for an LLM request.
 
-  vLLM's Chat Completions dialect matches what [[chat-completions/request-body]] emits, except that
-  an explicit `max_tokens` is always sent. Without a ceiling vLLM falls back to whatever remains of
-  the context window, so a single looping small model can consume the entire budget in one call.
-  Kept adapter-local rather than pushed into the shared builder, which would silently cap Z.AI,
-  Mistral, and OpenRouter too."
-  [{:keys [max-tokens] :as opts} :- core/LLMRequestOpts]
-  (cond-> (chat-completions/request-body opts)
-    (not max-tokens) (assoc :max_tokens (llm/llm-max-tokens))))
+  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent and
+  is raised to [[forced-tool-call-token-floor]] when the request forces a tool call. Without a
+  ceiling vLLM falls back to whatever remains of the context window, so one looping small model can
+  consume the entire budget in a single call; with too small a ceiling a reasoning model spends it
+  all thinking and never emits the forced call. Both are kept adapter-local rather than pushed into
+  the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
+  [{:keys [max-tokens schema tool_choice] :as opts} :- core/LLMRequestOpts]
+  (let [ceiling (or max-tokens (llm/llm-max-tokens))
+        forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
+    (assoc (chat-completions/request-body opts)
+           :max_tokens (cond-> ceiling
+                         forced? (max forced-tool-call-token-floor)))))
 
 (defn- timeout-guarded
   "Wrap a stream reducible so a socket timeout while *consuming* it surfaces as a non-retryable vLLM
-  error.
-
-  The adapter's `try` covers only establishing the request; the SSE body is consumed later, outside
-  it. A raw `SocketTimeoutException` escaping from there satisfies
-  `metabase.metabot.self/retryable-error?`, and `call-llm`'s retry gate is still open because
-  nothing has been emitted — so a server whose only problem is that it is slow would be asked to
-  replay three full cold prefills."
+  error. The adapter's `try` covers only establishing the request; a raw `SocketTimeoutException`
+  escaping the stream satisfies `metabase.metabot.self/retryable-error?` with the retry gate still
+  open, so a merely slow server would be asked to replay three full cold prefills."
   [reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -410,10 +373,9 @@
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
-  A reasoning model started with `--reasoning-parser` routes its thinking to `delta.reasoning_content`
-  and its answer back to `delta.content`; the shared xf keys off `content` and `tool_calls` only, so
-  the thinking is dropped and the answer streams normally. Without that flag the thinking arrives in
-  `delta.content` as literal `<think>` tags — which is why [[preflight!]] sniffs for them."
+  A model started with `--reasoning-parser` routes thinking to `delta.reasoning_content`, which the
+  shared xf drops; the answer still streams from `delta.content`. Without that flag the thinking
+  arrives in `delta.content` as literal `<think>` tags, which is what [[preflight!]] sniffs for."
   []
   (chat-completions/chat-completions->aisdk-chunks-xf))
 

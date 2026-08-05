@@ -145,8 +145,7 @@
   managed `metabase` provider uses the proxied `provider/model` form.
 
   Azure and vLLM are absent on purpose — neither has a defensible default. Azure's model is composed by the FE from
-  required inputs; a vLLM server's model name is whatever the operator loaded, knowable only from its catalog (see the
-  connect flow in `metabase.metabot.api`)."
+  required inputs; a vLLM server's model name is knowable only from its catalog."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
@@ -318,7 +317,6 @@
     "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
-    ;; A nil `:api-key` inside a non-nil map is a valid, complete vLLM configuration.
     "vllm"       (when-let [base-url (non-blank (llm.settings/llm-vllm-api-base-url))]
                    {:base-url base-url
                     :api-key  (non-blank (llm.settings/llm-vllm-api-key))})

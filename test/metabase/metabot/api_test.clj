@@ -2428,6 +2428,32 @@
           (is (= "http://new:8000/v1" (llm.settings/llm-vllm-api-base-url)))
           (is (= "local-dev-key" (llm.settings/llm-vllm-api-key))))))))
 
+(deftest settings-put-vllm-base-url-edit-is-allowed-with-an-env-set-api-key-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      "env-key"]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    "http://old:8000/v1"
+                                       metabot.settings/llm-metabot-provider "vllm/vllm-test"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider _opts] {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
+        (testing "only the settings the request supplied are checked for env shadowing"
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider "vllm" :credentials {:base-url "http://new:8000/v1"}})
+          (is (= "http://new:8000/v1" (llm.settings/llm-vllm-api-base-url))))))))
+
+(deftest settings-put-vllm-rejects-an-api-key-edit-that-is-env-shadowed-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      "env-key"]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    "http://old:8000/v1"
+                                       metabot.settings/llm-metabot-provider "vllm/vllm-test"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider _opts] (is false "should reject before verifying credentials"))]
+        (testing "an edit that does touch the env-shadowed key is still rejected"
+          (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                               {:provider "vllm" :credentials {:api-key "typed-in-the-ui"}})]
+            (is (re-find #"MB_LLM_VLLM_API_KEY" (:message response)))))))))
+
 (deftest settings-put-vllm-clears-an-api-key-that-was-blanked-test
   (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
                                 mb-llm-vllm-api-base-url nil

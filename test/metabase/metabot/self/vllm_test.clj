@@ -33,6 +33,39 @@
                                                  :input      [{:role :user :content "hi"}]
                                                  :max-tokens 128}))))))
 
+(deftest ^:parallel request-body-raises-max-tokens-for-a-forced-tool-call-test
+  (testing "a forced tool call gets the token floor even when the caller asked for less"
+    (testing "schema"
+      (is (= 2048
+             (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
+                                                   :input      [{:role :user :content "hi"}]
+                                                   :schema     {:type "object"}
+                                                   :max-tokens 128})))))
+    (testing "tool_choice required"
+      (is (= 2048
+             (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
+                                                   :input       [{:role :user :content "hi"}]
+                                                   :tools       [(metabot.tu/get-time-tool)]
+                                                   :tool_choice "required"
+                                                   :max-tokens  128})))))))
+
+(deftest ^:parallel request-body-floor-never-lowers-a-ceiling-test
+  (testing "a caller-supplied ceiling above the floor is left alone"
+    (is (= 8192
+           (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
+                                                 :input      [{:role :user :content "hi"}]
+                                                 :schema     {:type "object"}
+                                                 :max-tokens 8192}))))))
+
+(deftest ^:parallel request-body-floor-applies-only-to-forced-tool-calls-test
+  (testing "an unforced request keeps the caller's ceiling — the floor exists for thinking that precedes a tool call"
+    (is (= 128
+           (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :tools       [(metabot.tu/get-time-tool)]
+                                                 :tool_choice "auto"
+                                                 :max-tokens  128}))))))
+
 (deftest ^:parallel request-body-no-default-model-test
   (testing "the model is never defaulted — a vLLM server's model name is whatever the operator loaded"
     (is (nil? (:model (vllm/vllm-request-body {:input [{:role :user :content "hi"}]}))))))
@@ -78,11 +111,7 @@
 ;;; Streaming chunk conversion
 ;;;
 ;;; Recorded verbatim from vLLM 0.26.0 serving Qwen3-14B with
-;;; `--tool-call-parser hermes`. The shapes that matter and could not be
-;;; guessed reliably: the first tool-call delta carries `id` and `name` but
-;;; no `arguments` key at all, continuations carry only `index`, `content`
-;;; is an explicit null on tool-call chunks, and the final usage block has
-;;; no `prompt_tokens_details`.
+;;; `--tool-call-parser hermes`.
 ;;; ──────────────────────────────────────────────────────────────────
 
 (def ^:private recorded-tool-call-stream
@@ -131,8 +160,6 @@
 
 (deftest ^:parallel think-tags-reach-the-text-stream-test
   (testing "without --reasoning-parser a model's thinking arrives in delta.content and streams as assistant text"
-    ;; This is what the connect-time `<think>` sniff exists to prevent; asserting it here keeps the
-    ;; justification for that check honest.
     (let [text (->> (into [] (comp (vllm/vllm->aisdk-chunks-xf) (self.core/aisdk-xf)) recorded-tool-call-stream)
                     (filter #(= :text (:type %)))
                     (map :text)
@@ -231,8 +258,6 @@
 
 (deftest vllm-stream-socket-timeout-is-not-retryable-test
   (testing "a socket timeout while consuming the stream surfaces as a tagged vLLM error, not a raw SocketTimeoutException"
-    ;; A raw one satisfies `metabase.metabot.self/retryable-error?` and, since nothing has been
-    ;; emitted yet, `call-llm` would replay the whole request — three full cold prefills.
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
       (with-redefs [self.core/sse-reducible (fn [_]
                                               (reify clojure.lang.IReduceInit
@@ -303,9 +328,6 @@
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Preflight
-;;;
-;;; Each case is a misconfiguration that produces no error at any layer
-;;; today and looks like a Metabase bug at conversation time.
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- probing-server
@@ -405,8 +427,6 @@
 
 (deftest preflight-rejects-a-model-the-server-does-not-serve-test
   (testing "a requested model absent from the catalog fails and names what is served, rather than probing something else"
-    ;; Falling back to another served model passes every check and then persists a provider string
-    ;; pointing at a model the server does not have.
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
       (let [generated? (atom false)]
         (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
@@ -446,8 +466,6 @@
 
 (deftest preflight-probe-timeout-is-capped-test
   (testing "a probe runs on its own budget, capped below the inference timeout"
-    ;; The admin is blocked on this behind a non-cancellable spinner, so the generous self-hosted
-    ;; prefill budget cannot apply.
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url        base-url
                                        llm.settings/llm-vllm-request-timeout-ms 600000]
       (let [socket-timeouts (atom [])]
