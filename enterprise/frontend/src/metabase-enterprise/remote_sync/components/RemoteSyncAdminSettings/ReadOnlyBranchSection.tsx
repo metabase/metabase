@@ -2,6 +2,7 @@ import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import { FormSwitch, FormTextInput } from "metabase/forms";
+import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { Box, Stack } from "metabase/ui";
 
 import { AUTO_IMPORT_KEY, BRANCH_KEY, REMOTE_SYNC_KEY } from "../../constants";
@@ -10,7 +11,6 @@ import { getEnvSettingProps } from "../../utils";
 
 import { PullChangesButton } from "./PullChangesButton";
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
-import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 
 export const ReadOnlyBranchSection = () => {
   const { dirty, values } = useFormikContext<RemoteSyncSettingsFormState>();

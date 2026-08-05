@@ -2,6 +2,7 @@ import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import { FormTextInput } from "metabase/forms";
+import { useGetAdminSettingsDetailsQuery } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
 
 import { TOKEN_KEY, URL_KEY } from "../../constants";
@@ -10,7 +11,6 @@ import { getEnvSettingProps } from "../../utils";
 
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
 import { TestConnectionButton } from "./TestConnectionButton";
-import { useGetAdminSettingsDetailsQuery } from "metabase/settings";
 
 export const GitSettingsSection = () => {
   const { values } = useFormikContext<RemoteSyncSettingsFormState>();

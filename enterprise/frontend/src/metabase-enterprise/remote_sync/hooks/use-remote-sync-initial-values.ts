@@ -2,6 +2,11 @@ import { useMemo } from "react";
 
 import { useListCollectionItemsQuery } from "metabase/api";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { LibraryCollection } from "metabase-types/api";
 
@@ -17,11 +22,6 @@ import type {
   RemoteSyncSettingsFormState,
   RemoteSyncSettingsVariant,
 } from "../types";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useSetting,
-} from "metabase/settings";
 
 export const useRemoteSyncInitialValues = (
   variant: RemoteSyncSettingsVariant,

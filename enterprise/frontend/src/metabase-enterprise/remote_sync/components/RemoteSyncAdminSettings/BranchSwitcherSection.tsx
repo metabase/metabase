@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
+import { useGetAdminSettingsDetailsQuery } from "metabase/settings";
+import type { RemoteSyncEntity } from "metabase-types/api";
+
 import { BRANCH_KEY } from "../../constants";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 
 import { BranchSwitcher } from "./BranchSwitcher";
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
-import { useGetAdminSettingsDetailsQuery } from "metabase/settings";
-import { RemoteSyncEntity } from "metabase-types/api";
 
 type BranchSwitcherSectionProps = {
   dirty: RemoteSyncEntity[];

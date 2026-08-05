@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/settings";
 import { Stack, Text } from "metabase/ui";
 
 import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
-import { useSetting } from "metabase/settings";
 
 export const CollectionsToSyncSection = () => {
   const useTenants = useSetting("use-tenants");

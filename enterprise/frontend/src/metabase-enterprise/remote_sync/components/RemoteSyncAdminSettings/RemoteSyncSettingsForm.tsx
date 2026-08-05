@@ -8,6 +8,11 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
 import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 
@@ -33,11 +38,6 @@ import {
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
 import { SyncModeSection } from "./SyncModeSection";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useSetting,
-} from "metabase/settings";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
