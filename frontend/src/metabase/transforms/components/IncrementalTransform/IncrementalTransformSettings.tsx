@@ -94,9 +94,7 @@ export const IncrementalTransformSettings = ({
 
     const switchContent = (
       <Switch
-        disabled={
-          readOnly || remoteSyncReadOnly || (!incremental && transformHasIssues)
-        }
+        disabled={readOnly || (!incremental && transformHasIssues)}
         checked={incremental}
         size="sm"
         label={getLabel()}
