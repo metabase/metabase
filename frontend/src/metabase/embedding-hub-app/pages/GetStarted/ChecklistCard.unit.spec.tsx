@@ -13,7 +13,7 @@ describe("ChecklistCard", () => {
         title="Embed in production with SSO"
         description="Embed a dashboard, question, the query builder or the collection browser."
         isLocked
-        lockedReason="Set up SSO first — this step embeds with it."
+        lockedReason="Set up SSO to unlock"
       />,
     );
 
@@ -21,7 +21,7 @@ describe("ChecklistCard", () => {
 
     // The stepper said "Complete the other steps to unlock", which named
     // nothing. Only one step actually gates this one.
-    expect(await screen.findByText(/Set up SSO first/)).toBeInTheDocument();
+    expect(await screen.findByText(/Set up SSO to unlock/)).toBeInTheDocument();
   });
 
   it("does not offer a tooltip once unlocked", async () => {
@@ -37,7 +37,7 @@ describe("ChecklistCard", () => {
 
     await userEvent.hover(screen.getByText("Embed in production with SSO"));
 
-    expect(screen.queryByText(/Set up SSO first/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Set up SSO to unlock/)).not.toBeInTheDocument();
   });
 
   it("does not fire its action while locked", async () => {
@@ -50,7 +50,7 @@ describe("ChecklistCard", () => {
         title="Embed in production with SSO"
         description="Embed a dashboard."
         isLocked
-        lockedReason="Set up SSO first."
+        lockedReason="Set up SSO to unlock"
         onClick={onClick}
       />,
     );

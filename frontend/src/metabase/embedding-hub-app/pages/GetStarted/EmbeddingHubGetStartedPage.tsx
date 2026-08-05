@@ -110,7 +110,7 @@ export function EmbeddingHubGetStartedPage() {
     () => ({
       "embed-production": completedSteps?.["sso-configured"]
         ? undefined
-        : { reason: t`Set up SSO first — this step embeds with it.` },
+        : { reason: t`Set up SSO to unlock` },
     }),
     [completedSteps],
   );
