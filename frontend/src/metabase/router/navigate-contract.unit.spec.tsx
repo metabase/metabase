@@ -11,12 +11,12 @@ import { Route, navigate } from "metabase/router";
 // mirrored into redux.
 
 const setup = () => {
-  const { history } = renderWithProviders(<Route path="*" element={null} />, {
+  const { router } = renderWithProviders(<Route path="*" element={null} />, {
     withRouter: true,
     initialRoute: "/",
   });
 
-  const location = () => history?.getCurrentLocation();
+  const location = () => router?.location;
 
   const go = async (run: () => void) => {
     await act(async () => {

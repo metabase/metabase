@@ -219,7 +219,7 @@ async function setup({
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
@@ -239,7 +239,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions };
+  return { model, router, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({
@@ -695,13 +695,11 @@ describe("ModelActions", () => {
 
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
-      const { model: question, history } = await setup({
+      const { model: question, router } = await setup({
         model: createSavedStructuredCard(),
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(
-        Urls.question(question),
-      );
+      expect(router?.location.pathname).toBe(Urls.question(question));
     });
 
     it("shows 404 when opening an archived model", async () => {
