@@ -134,9 +134,11 @@
   "Get document by id checking if the current user has permission to access and if the document exists.
   Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
   [id & {:keys [log-view?] :or {log-view? true}}]
-  (u/prog1 (api/check-404
-            (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+  (u/prog1 (-> (api/check-404 (t2/select-one :model/Document :id id))
+               (t2/hydrate :creator :can_write :can_delete :can_restore :is_remote_synced)
+               (assoc :contains_custom_viz
+                      (t2/exists? :model/Card :document_id id, :archived false, :display [:like "custom:%"]))
+               api/read-check)
     (when log-view?
       (events/publish-event! :event/document-read
                              {:object-id id
@@ -409,7 +411,8 @@
 (api.macros/defendpoint :get "/public" :- [:sequential [:map
                                                         [:name :string]
                                                         [:id ms/PositiveInt]
-                                                        [:public_uuid ms/UUIDString]]]
+                                                        [:public_uuid ms/UUIDString]
+                                                        [:contains_custom_viz :boolean]]]
   "List all Documents that have public links.
 
   Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,
@@ -422,7 +425,19 @@
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (let [documents (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false)
+        custom-viz-document-ids
+        (when (seq documents)
+          (into #{}
+                (map :document_id)
+                (t2/query {:select-distinct [:document_id]
+                           :from            [:report_card]
+                           :where           [:and
+                                             [:in :document_id (map :id documents)]
+                                             [:= :archived false]
+                                             [:like :display "custom:%"]]})))]
+    (for [document documents]
+      (assoc document :contains_custom_viz (contains? custom-viz-document-ids (:id document))))))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 

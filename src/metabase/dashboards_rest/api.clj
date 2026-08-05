@@ -614,7 +614,20 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (let [dashboards (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false)
+        ;; dashboards with a dashcard whose primary card renders a custom visualization (display "custom:<id>")
+        custom-viz-dashboard-ids
+        (when (seq dashboards)
+          (into #{}
+                (map :dashboard_id)
+                (t2/query {:select-distinct [:dc.dashboard_id]
+                           :from            [[:report_dashboardcard :dc]]
+                           :join            [[:report_card :c] [:= :c.id :dc.card_id]]
+                           :where           [:and
+                                             [:in :dc.dashboard_id (map :id dashboards)]
+                                             [:like :c.display "custom:%"]]})))]
+    (for [dashboard dashboards]
+      (assoc dashboard :contains_custom_viz (contains? custom-viz-dashboard-ids (:id dashboard))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
