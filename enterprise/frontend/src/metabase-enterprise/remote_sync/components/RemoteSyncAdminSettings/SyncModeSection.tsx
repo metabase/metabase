@@ -4,24 +4,27 @@ import { FormRadioGroup } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Radio, Stack, Text, Tooltip } from "metabase/ui";
+import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { REMOTE_SYNC_KEY, TYPE_KEY } from "../../constants";
-import { useRemoteSyncChanges } from "../../hooks/use-remote-sync-changes";
 
 import { DevInstanceUpsell } from "./DevInstanceUpsell";
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 
-export const SyncModeSection = () => {
+type SyncModeSectionProps = {
+  dirty: RemoteSyncEntity[];
+};
+
+export const SyncModeSection = ({ dirty }: SyncModeSectionProps) => {
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const { data: dirtyData } = useRemoteSyncChanges();
   const applicationName = useSelector(getApplicationName);
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isDevInstance = useSetting("development-mode?");
 
   const typeDetails = settingDetails?.[TYPE_KEY];
   const isSetByEnv = !!typeDetails?.is_env_setting;
-  const hasUnsyncedChanges = !!dirtyData?.dirty?.length && isRemoteSyncEnabled;
+  const hasUnsyncedChanges = dirty.length > 0 && isRemoteSyncEnabled;
 
   return (
     <RemoteSyncSettingsSection

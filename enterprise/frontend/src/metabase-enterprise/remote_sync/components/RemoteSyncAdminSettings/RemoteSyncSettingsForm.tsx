@@ -9,6 +9,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 
 import {
   REMOTE_SYNC_KEY,
@@ -52,6 +53,9 @@ export const RemoteSyncSettingsForm = ({
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const { initialValues, libraryCollection } =
     useRemoteSyncInitialValues(variant);
   const { handleSubmit, branchChangeModal, isUpdating, isCreatingLibrary } =
@@ -63,6 +67,7 @@ export const RemoteSyncSettingsForm = ({
     });
   const { handleDisable, disableModal, isDisabling } = useDisableRemoteSync();
 
+  const dirtyEntities = dirtyData?.dirty ?? [];
   const isModalVariant = variant === "settings-modal";
   const isSaving = isUpdating || isDisabling;
   const canDisable =
@@ -87,10 +92,10 @@ export const RemoteSyncSettingsForm = ({
                 {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
 
                 <GitSettingsSection />
-                <SyncModeSection />
+                <SyncModeSection dirty={dirtyEntities} />
 
                 {isRemoteSyncEnabled && isReadWrite && !isModalVariant && (
-                  <BranchSwitcherSection />
+                  <BranchSwitcherSection dirty={dirtyEntities} />
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
                 {(isRemoteSyncEnabled || isReadWrite) && !isModalVariant && (

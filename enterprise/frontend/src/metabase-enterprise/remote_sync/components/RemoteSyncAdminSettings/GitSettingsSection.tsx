@@ -35,7 +35,7 @@ export const GitSettingsSection = () => {
         }
         type="password"
         {...getEnvSettingProps(settingDetails?.[TOKEN_KEY], {
-          inputWrapperOrder: ["label", "description", "erorr"],
+          inputWrapperOrder: ["label", "description", "error"],
         })}
       />
       <Box>
