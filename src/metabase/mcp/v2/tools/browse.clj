@@ -23,6 +23,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -164,10 +165,12 @@
 
 (defn- list-databases
   [args]
-  (let [dbs (->> (t2/select database-select-columns
-                            {:where    (schema.table/browsable-databases-honeysql-filter)
-                             :order-by [[:%lower.name :asc]]})
-                 (filterv mi/can-read?))]
+  (let [rows (t2/select database-select-columns
+                        {:where    (schema.table/browsable-databases-honeysql-filter)
+                         :order-by [[:%lower.name :asc]]})
+        ;; `mi/can-read?` below is one permission check per database; load them in one query first.
+        _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
+        dbs  (filterv mi/can-read? rows)]
     (paged-list-content args dbs {:empty-hint no-databases-hint}
                         #(project-rows :database args %))))
 

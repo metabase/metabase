@@ -207,12 +207,15 @@
                 ;; clients, so we apply sensible defaults here:
                 ;; - application_type defaults to "native" (not the RFC default "web") so
                 ;;   CLI tools and desktop apps can use HTTP loopback redirects.
-                ;; - scope defaults to all provider-supported scopes when not specified.
+                ;; - scope defaults to every scope any surface advertises. That is a ceiling on
+                ;;   what the client may later request, not a grant (see
+                ;;   [[metabase.oauth-server.core/default-grant-scopes]]), and clients derive what
+                ;;   to request from discovery metadata rather than from this value.
                 (let [body       (cond-> body
                                    (not (contains? body :application_type))
                                    (assoc :application_type "native")
                                    (not (contains? body :scope))
-                                   (assoc :scope (str/join " " (oauth-server/all-agent-scopes)))
+                                   (assoc :scope (str/join " " (oauth-server/default-grant-scopes)))
                                    ;; Remove client_credentials grant type — tokens issued without a
                                    ;; user context are unusable for MCP (validate-bearer-token requires
                                    ;; a valid user-id).

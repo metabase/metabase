@@ -2,28 +2,58 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; load-bearing: all-agent-scopes reads the agent-api routes and the v2 tool registry, so both
-   ;; must be loaded for the snippet-scope assertions to see the real surface
+   ;; load-bearing: the advertised scope sets are derived from the agent-api routes and the v2 tool
+   ;; registry, so both must be loaded for these assertions to see the real surface
    [metabase.agent-api.api]
-   [metabase.mcp.v2.api]
+   [metabase.mcp.v2.api :as v2.api]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]))
 
-(comment metabase.agent-api.api/keep-me metabase.mcp.v2.api/keep-me)
+(comment metabase.agent-api.api/keep-me)
 
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
                       (thunk)
                       (oauth-server/reset-provider!)))
 
-(deftest mb-full-stays-out-of-the-protected-resource-doc-test
-  (testing "`mb:full` is a first-party full-access scope, not specific to the MCP resource: it
-            belongs in the authorization-server metadata but not the RFC 9728 protected-resource
-            doc. (This assertion used to ride along with an `agent:snippets:read` opt-in test;
-            GHY-4225 folded the per-type read scopes into `agent:content:read`, so there is no
-            longer a v2 opt-in read scope to assert about.)"
-    (is (contains? (set (oauth-server/supported-scopes)) "mb:full"))
-    (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full")))))
+(deftest mb-full-is-advertised-nowhere-test
+  (testing "GHY-4226: `mb:full` grants full user-equivalent REST access, and advertising it put that
+            in front of every client reading discovery metadata. It is now absent from all three
+            advertised sets and from the default DCR grant, so no client is led toward it and none
+            can request it without having registered for it explicitly."
+    (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
+    (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-scopes)) "mb:full")))
+    (is (not (contains? (set (oauth-server/default-grant-scopes)) "mb:full")))))
+
+(deftest default-grant-covers-everything-advertised-test
+  (testing "GHY-4226: the DCR default is a ceiling, and clients derive what to request from
+            discovery metadata rather than from what they registered with. A scope we advertise but
+            do not register for is therefore not a narrower grant — it is an `invalid_scope`
+            rejection at /authorize for any client that asks for everything advertised, which is
+            what Claude and ChatGPT both do."
+    (let [ceiling (set (oauth-server/default-grant-scopes))]
+      (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
+                                 "protected-resource"   (oauth-server/protected-resource-scopes)
+                                 "mcp-resource"          (oauth-server/mcp-resource-scopes)}]
+        (testing metadata
+          (is (empty? (remove ceiling scopes))))))))
+
+(deftest v2-default-ask-is-read-only-and-requestable-test
+  (testing "GHY-4226: the v2 401 challenge asks an uninstructed client for read scopes only. Those
+            must still be in the ceiling, or the narrower ask would itself be rejected — the point
+            is to ask for less than we accept, not to advertise something unrequestable."
+    (is (= #{"agent:content:read" "agent:query:run"} (set v2.api/default-ask-scopes)))
+    (let [ceiling (set (oauth-server/default-grant-scopes))]
+      (doseq [scope v2.api/default-ask-scopes]
+        (testing scope
+          (is (contains? ceiling scope)))))
+    (testing "and the write scopes stay advertised, so a client that wants them can still ask"
+      (let [advertised (set (oauth-server/mcp-resource-scopes))]
+        (doseq [scope ["agent:content:write" "agent:sql:run" "agent:delivery:write"]]
+          (testing scope
+            (is (contains? advertised scope))
+            (is (not (contains? (set v2.api/default-ask-scopes) scope)))))))))
 
 (deftest advertised-scopes-are-distinct-test
   (testing "GHY-4151: scopes_supported is a set of scope strings (RFC 8414) — it unions the default
@@ -41,7 +71,7 @@
             client receives, or the tool surface advertises capabilities no such client can use.
             (This replaces a check on `agent:document:create`, which duplicate_content required
             until GHY-4225 collapsed the per-type create scopes into `agent:content:write`.)"
-    (let [granted (set (oauth-server/all-agent-scopes))]
+    (let [granted (set (oauth-server/default-grant-scopes))]
       (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
                      "agent:sql:run" "agent:delivery:write"]]
         (testing scope
@@ -104,11 +134,14 @@
           (is (= (set advertised)
                  (scopes (oauth-server/narrow-scope-to-resource
                           [mcp-uri] (str/join " " advertised)))))))
-      (testing "`mb:full` survives: a first-party client may legitimately request it alongside MCP
-                scopes, and it is deliberately absent from the MCP resource doc"
-        (is (= #{"mb:full" "agent:content:read"}
+      (testing "GHY-4226: `mb:full` is dropped like any other scope the surface does not accept. A
+                client naming the MCP resource wants a token for that surface, which accepts none of
+                the REST API that scope unlocks."
+        (is (= #{"agent:content:read"}
                (scopes (oauth-server/narrow-scope-to-resource
-                        [mcp-uri] "mb:full agent:content:read agent:question:create")))))
+                        [mcp-uri] "mb:full agent:content:read agent:question:create"))))
+        (testing "and it is the only thing requested, nothing survives"
+          (is (nil? (oauth-server/narrow-scope-to-resource [mcp-uri] "mb:full")))))
       (testing "GHY-4250: every alias narrows, not just the canonical path — a client that connected
                 through an alias was handed that path as its resource identifier, so recognizing
                 only the canonical one would silently hand it the wide consent screen"
