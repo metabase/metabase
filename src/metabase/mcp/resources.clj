@@ -385,12 +385,12 @@
                     "display types, use visualization settings, or use a Metabase panel, "
                     "sidebar, or right-hand panel. "
                     "Use this tool, not execute_query, when the user asks to show the result and "
-                    "their message includes a `handle` UUID. This is the exact follow-up for the "
+                    "their message includes a `query_handle` UUID. This is the exact follow-up for the "
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "
-                    "`handle` UUID as the `handle` argument.")
+                    "`query_handle` UUID as the `query_handle` argument.")
   :inputSchema
   [:map
-   [:handle {:description "Handle UUID from the user's drill-through message."}
+   [:query_handle {:description "Query handle UUID from the user's drill-through message."}
     ms/UUIDString]]
   :outputSchema
   [:map
@@ -401,8 +401,8 @@
                 :idempotentHint  true
                 :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
-                 (if-let [handle (:handle arguments)]
-                   (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* handle)]
+                 (if-let [query-handle (:query_handle arguments)]
+                   (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* query-handle)]
                      {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
                       :structuredContent {:query encoded}}
                      {:content [{:type "text" :text "No drill-through found for that handle."}]

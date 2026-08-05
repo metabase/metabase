@@ -11,7 +11,7 @@ type StoreDrillQueryRequest = {
 };
 
 type StoreDrillQueryResponse = {
-  handle: string;
+  query_handle: string;
 };
 
 type ResolveMcpQueryRequest = {
@@ -32,7 +32,7 @@ type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
 };
 
 /**
- * Stores the drill-through's query on the server and returns a handle UUID
+ * Stores the drill-through's query on the server and returns a query handle UUID
  * that the iframe threads into the agent message so `render_drill_through`
  * can fetch the payload without the LLM ever seeing it.
  *

@@ -76,14 +76,14 @@
     (is (= 401 (:status (post-resolve-query-handle-with-ui-credential
                          401 "not-a-credential" session-id query-handle))))))
 
-(deftest drills-post-stores-handle-test
-  (testing "POST returns a UUID handle"
+(deftest drills-post-stores-query-handle-test
+  (testing "POST returns a UUID query handle"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           response   (post-drill {:encodedQuery "ZW5jb2RlZA=="}
                                  {"mcp-session-id" session-id})]
       (is (=? {:status 200
-               :body   {:handle parse-uuid}}
+               :body   {:query_handle parse-uuid}}
               response)))))
 
 (deftest drills-post-validates-session-header-test

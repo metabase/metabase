@@ -54,7 +54,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"
   "Stash a base64-encoded MBQL query for the iframe's pending drill-through and
-   return a handle UUID the iframe will thread into the agent message so the
+   return a query handle UUID the iframe will thread into the agent message so the
    `render_drill_through` tool can fetch it."
   [_route-params
    _query-params
@@ -62,7 +62,7 @@
    request]
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id* request)
-    {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
+    {:query_handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
 
 (api.macros/defendpoint :post "/query-handle/resolve" :- [:map
                                                           [:query ms/NonBlankString]
