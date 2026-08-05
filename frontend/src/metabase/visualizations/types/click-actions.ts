@@ -14,9 +14,16 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export type ClickActionModeGetter = (data: {
+export type ClickActionModeGetter = ((data: {
   question: Question;
-}) => QueryClickActionsMode | ClickActionsMode;
+}) => ClickActionsMode) & {
+  /**
+   * Getters wrapping a QueryClickActionsMode can advertise its legacy actions
+   * so hosts (TableInteractive's add-column shortcut) can probe them without
+   * resolving the mode.
+   */
+  clickActions?: LegacyDrill[];
+};
 
 export type {
   BrushClickObject,
@@ -217,6 +224,8 @@ export interface ClickActionsMode {
     settings?: Record<string, any>,
     extraData?: Record<string, any>,
   ): ClickAction[];
+  /** See ClickActionModeGetter; a resolved mode may advertise them the same way. */
+  clickActions?: LegacyDrill[];
 }
 
 export function isClickActionsMode(value: unknown): value is ClickActionsMode {

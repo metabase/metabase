@@ -57,7 +57,8 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type {
-  QueryClickActionsMode,
+  ClickActionModeGetter,
+  ClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
@@ -123,7 +124,7 @@ interface TableProps extends VisualizationProps {
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
-  mode: QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   scrollToColumn?: number;
   scrollToLastColumn?: boolean;
   theme: MantineTheme;

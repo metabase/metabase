@@ -20,8 +20,6 @@ import type { ContentTranslationFunction } from "metabase/content-translation/ty
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { Mode } from "metabase/querying/click-actions/Mode";
-import { getMode } from "metabase/querying/click-actions/lib/modes";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -56,7 +54,6 @@ import {
   type HighlightedObject,
   type HoveredObject,
   type OnBrush,
-  type QueryClickActionsMode,
   type VisualizationDefinition,
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
@@ -153,7 +150,7 @@ type VisualizationOwnProps = {
   /** Shown while a custom viz plugin loads; owning surfaces (documents) supply their own. */
   customVizLoadingView?: ReactNode;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -441,11 +438,7 @@ class Visualization extends PureComponent<
 
   _getClickActionsCached(
     clickedObject: ClickObject | null | undefined,
-    mode:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
+    mode: ClickActionModeGetter | ClickActionsMode | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
@@ -493,32 +486,22 @@ class Visualization extends PureComponent<
       : [];
   }
 
+  // There is no default: composition sites own their mode and must pass it
+  // (or a getter) explicitly; without one, clicks resolve no actions.
   private static getMode(
-    modeOrModeGetter:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
+    modeOrModeGetter: ClickActionModeGetter | ClickActionsMode | undefined,
     question: Question | undefined,
   ) {
-    const modeOrQueryMode =
+    const mode =
       typeof modeOrModeGetter === "function"
         ? question
           ? modeOrModeGetter({ question })
-          : null
+          : undefined
         : modeOrModeGetter;
 
-    if (isClickActionsMode(modeOrQueryMode)) {
-      return modeOrQueryMode;
-    }
-
-    if (question && modeOrQueryMode) {
-      return new Mode(question, modeOrQueryMode);
-    }
-
-    if (question) {
-      return getMode(question);
-    }
+    // Untyped callers can still sneak in a bare QueryClickActionsMode; treat
+    // anything without actionsForClick as no mode rather than crashing.
+    return isClickActionsMode(mode) ? mode : undefined;
   }
 
   getClickActions(clickedObject?: ClickObject | null) {

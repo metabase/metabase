@@ -1,11 +1,13 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
 import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import type { Mode } from "metabase/querying/click-actions/Mode";
+import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -104,12 +106,18 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
+  // Re-wrap the query mode per click so drills always see the clicked
+  // question, matching the wrapping Visualization used to do itself.
+  const clickActionMode = useMemo(() => {
+    const queryMode = mode?.queryMode();
+    return queryMode ? queryModeToClickActionMode(queryMode) : undefined;
+  }, [mode]);
+
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
   }
 
-  const queryMode = mode && mode.queryMode();
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
@@ -146,7 +154,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           {...visualizationResultProps}
           noHeader
           className={CS.spread}
-          mode={queryMode}
+          mode={clickActionMode}
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

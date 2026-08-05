@@ -1,9 +1,10 @@
 import { NativeQueryClickFallback } from "metabase/querying/click-actions/actions/NativeQueryClickFallback";
+import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { ColumnFormattingAction } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction";
 import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 
-export const DocumentMode: QueryClickActionsMode = {
+const DocumentMode: QueryClickActionsMode = {
   name: "document-mode",
   hasDrills: true,
   clickActions: [HideColumnAction, ColumnFormattingAction],
@@ -30,3 +31,5 @@ export const DocumentMode: QueryClickActionsMode = {
     // we want to skip "drill-thru/zoom"
   ],
 };
+
+export const documentClickActionMode = queryModeToClickActionMode(DocumentMode);

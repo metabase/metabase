@@ -18,7 +18,6 @@ import type {
 import type {
   ClickActionModeGetter,
   ClickActionsMode,
-  QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
@@ -222,7 +221,7 @@ export type SdkQuestionContextType = Omit<
     | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: QueryClickActionsMode | ClickActionsMode | null | undefined;
+    mode: ClickActionsMode | null | undefined;
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
     lastVisibleStageIndex: number;

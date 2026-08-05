@@ -5,6 +5,7 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { getDefaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
@@ -416,6 +417,7 @@ export const NativeQueryModal = ({
                   <Visualization
                     rawSeries={rawSeries}
                     metadata={metadata}
+                    mode={getDefaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
                     isEditing={false}

@@ -25,7 +25,6 @@ import type {
   ClickActionModeGetter,
   ClickActionsMode,
   ClickObject,
-  QueryClickActionsMode,
 } from "./click-actions";
 import type { ComputedVisualizationSettings } from "./computed-settings";
 import type {
@@ -164,7 +163,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
