@@ -4,7 +4,7 @@ import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
 import type { UserId } from "./user";
 
-export const CONTENT_DIAGNOSTICS_FINDING_TYPES = ["stale"] as const;
+export const CONTENT_DIAGNOSTICS_FINDING_TYPES = ["stale", "slow"] as const;
 export type ContentDiagnosticsFindingType =
   (typeof CONTENT_DIAGNOSTICS_FINDING_TYPES)[number];
 
@@ -37,6 +37,16 @@ export const CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS = [
 ] as const;
 export type ContentDiagnosticsStaleSortColumn =
   (typeof CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS)[number];
+
+export const CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS = [
+  "name",
+  "entity-type",
+  "created-by",
+  "created-at",
+  "duration-ms",
+] as const;
+export type ContentDiagnosticsSlowSortColumn =
+  (typeof CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS)[number];
 
 export type ContentDiagnosticsStaleUserParams = {
   entity_types?: ContentDiagnosticsFilterType[];
@@ -111,6 +121,51 @@ export type ListStaleFindingsRequest = {
 
 export type ListStaleFindingsResponse = {
   data: ContentDiagnosticsStaleFinding[];
+  total: number;
+  limit: number | null;
+  offset: number | null;
+  last_scan_at: string | null;
+};
+
+export type ContentDiagnosticsSlowUserParams = {
+  entity_types?: ContentDiagnosticsFilterType[];
+  include_personal_collections?: boolean;
+  min_duration_ms?: number;
+  sort_column?: ContentDiagnosticsSlowSortColumn;
+  sort_direction?: SortDirection;
+};
+
+export type ContentDiagnosticsSlowEntity = {
+  id: number;
+  name: string | null;
+  entity_type: ContentDiagnosticsEntityType;
+  card_type?: CardType | null;
+  view_count: number;
+};
+
+export type ContentDiagnosticsSlowFindingDetails =
+  ContentDiagnosticsBaseFindingDetails & {
+    threshold_ms?: number;
+    slow_entities?: ContentDiagnosticsSlowEntity[];
+  };
+
+export type ContentDiagnosticsSlowFinding = ContentDiagnosticsBaseFinding & {
+  finding_type: "slow";
+  duration_ms: number;
+  details: ContentDiagnosticsSlowFindingDetails;
+};
+
+export type ListSlowFindingsRequest = {
+  query?: string;
+  "entity-types"?: ContentDiagnosticsFilterType[];
+  "include-personal-collections"?: boolean;
+  "min-duration-ms"?: number;
+  "sort-column"?: ContentDiagnosticsSlowSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListSlowFindingsResponse = {
+  data: ContentDiagnosticsSlowFinding[];
   total: number;
   limit: number | null;
   offset: number | null;

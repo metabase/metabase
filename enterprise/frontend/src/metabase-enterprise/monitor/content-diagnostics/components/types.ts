@@ -7,6 +7,10 @@ export type ContentDiagnosticsBaseFilterOptions = {
 
 export type StaleContentFilterOptions = ContentDiagnosticsBaseFilterOptions;
 
+export type SlowContentFilterOptions = ContentDiagnosticsBaseFilterOptions & {
+  minDurationMs?: number;
+};
+
 export type ContentDiagnosticsParamsOptions = {
   withSetLastUsedParams?: boolean;
 };

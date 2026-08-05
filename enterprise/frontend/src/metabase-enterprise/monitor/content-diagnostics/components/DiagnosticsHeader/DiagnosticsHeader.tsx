@@ -16,6 +16,11 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
       to: Urls.staleContent(),
       icon: "clock",
     },
+    {
+      label: t`Slow`,
+      to: Urls.slowContent(),
+      icon: "gauge",
+    },
   ];
 
   return (

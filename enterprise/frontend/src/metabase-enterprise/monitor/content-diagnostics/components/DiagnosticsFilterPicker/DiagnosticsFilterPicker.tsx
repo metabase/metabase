@@ -41,9 +41,11 @@ export function DiagnosticsFilterPicker<
   const [isOpened, { toggle, close }] = useDisclosure();
 
   const handleTypesChange = (newValue: string[]) => {
-    const entityTypes = availableTypes.filter((type) =>
+    const selectedTypes = availableTypes.filter((type) =>
       newValue.includes(type),
     );
+    const entityTypes =
+      selectedTypes.length > 0 ? selectedTypes : availableTypes;
     onFilterOptionsChange({ ...filterOptions, entityTypes });
   };
 

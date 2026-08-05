@@ -2,5 +2,6 @@
  [:value [:map
           [:entity_types {:optional true} [:sequential [:enum "question" "model" "metric" "dashboard" "document" "transform"]]]
           [:include_personal_collections {:optional true} :boolean]
-          [:sort_column {:optional true} [:enum "name" "entity-type" "created-by" "created-at" "last-active-at"]]
+          [:min_duration_ms {:optional true} [:int {:min 1}]]
+          [:sort_column {:optional true} [:enum "name" "entity-type" "created-by" "created-at" "last-active-at" "duration-ms"]]
           [:sort_direction {:optional true} [:enum "asc" "desc"]]]]]
