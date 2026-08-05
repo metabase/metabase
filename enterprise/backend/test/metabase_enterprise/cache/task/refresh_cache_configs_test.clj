@@ -224,6 +224,36 @@
                                                card-id
                                                rerun-cutoff))))))))))
 
+(deftest refresh-schedule-cache-uses-invalidated-at-as-rerun-cutoff-test
+  (testing "refresh-schedule-cache! re-warms parameter variants popular since the cache config was last
+            refreshed (:invalidated_at), not since the config was first created (metabase#78341)"
+    (binding [task.cache/*run-cache-refresh-async* false]
+      (let [created-at       (t/minus (t/offset-date-time) (t/days 30))
+            last-invalidated (t/minus (t/offset-date-time) (t/hours 1))
+            captured-cutoffs (atom [])]
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
+                                                  :dataset_query (parameterized-native-query)}
+                       :model/CacheConfig {config-id :id} {:model                 "question"
+                                                           :model_id              card-id
+                                                           :strategy              :schedule
+                                                           :refresh_automatically true
+                                                           :created_at            created-at
+                                                           :invalidated_at        last-invalidated
+                                                           :config                {:schedule "0 0 * * * ?"}}]
+          ;; re-select rather than reusing the with-temp instance, so this sees exactly what
+          ;; select-ready-to-run would hand refresh-schedule-cache! in production
+          (let [cache-config (t2/select-one :model/CacheConfig :id config-id)]
+            (mt/with-dynamic-fn-redefs [task.cache/scheduled-queries-to-rerun
+                                        (fn [_card-id rerun-cutoff]
+                                          (swap! captured-cutoffs conj rerun-cutoff)
+                                          [])]
+              (@#'task.cache/refresh-schedule-cache! cache-config))))
+        (is (= 1 (count @captured-cutoffs)))
+        (let [[cutoff] @captured-cutoffs]
+          (testing "cutoff tracks the last refresh, not the (30-day-old) creation time"
+            (is (t/after? cutoff (t/minus last-invalidated (t/seconds 5))))
+            (is (t/before? cutoff (t/plus last-invalidated (t/seconds 5))))))))))
+
 (deftest duration-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
     (testing "We refresh expired :duration caches for queries that were run at least once in the last caching duration"
