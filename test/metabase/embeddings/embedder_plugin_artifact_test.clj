@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.embeddings.provider :as embeddings.provider]
-   [metabase.plugins.impl :as plugins])
+   [metabase.plugins.impl :as plugins]
+   [metabase.plugins.initialize :as plugin-initialize])
   (:import
    (java.net Proxy ProxySelector)))
 
@@ -69,7 +70,7 @@
       (plugins/load-plugins!)
       ;; Non-driver plugins are registered eagerly but initialized only when a feature selects them. The provider
       ;; registration lives in the plugin init namespace, so activate this artifact explicitly before exercising it.
-      (plugins/load-plugin! plugin-name)
+      (plugin-initialize/load-plugin! plugin-name)
       (testing "the implementation was activated through its jar manifest"
         (is (embeddings.provider/registered? "in-process"))
         (is (= "true" (System/getProperty "ai.djl.offline")))
