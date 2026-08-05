@@ -76,11 +76,11 @@
            :scope     scope/agent-explorations-read}
   list-research-metrics-tool
   "List the metrics available for research: one slim row per metric (id, name, description,
-   in_library — a quality signal). Dimensions are not included; pass metric ids from this index to
-   `get_research_candidates` to see their candidate dimensions. Pass `q` to filter by a
-   case-insensitive substring of a metric or dimension name — e.g. `q: \"region\"` returns the
-   metrics that have a Region-like dimension. More than 500 matches are truncated to the top 500
-   with `truncated: true` — narrow with `q`."
+   in_library — a quality signal), best first. Dimensions are not included; pass metric ids from
+   this index to `get_research_candidates` to see their candidate dimensions. Pass `q` to filter
+   by a case-insensitive substring of a metric or dimension name — e.g. `q: \"region\"` returns
+   the metrics that have a Region-like dimension. More than 500 matches are truncated to the top
+   500 with `truncated: true` — narrow with `q`."
   [{:keys [q]} :- list-research-metrics-schema]
   {:output (json/encode (explorations/research-metric-index {:q q}))})
 
@@ -94,17 +94,20 @@
   get-research-candidates-tool
   "Get the candidate dimensions for chosen research metrics. Pass `metric_ids` (up to 20, from
    `list_research_metrics`) and/or `q` (a case-insensitive substring of a metric or dimension
-   name) — at least one is required. Each dimension group states its name, types, and
-   interestingness once, plus `dimension_id_and_name_by_metric`: the per-metric dimension id (and
-   that metric's display name for it) keyed by metric id. Every metric and dimension id you pass
-   to `add_research_groups` must come from this tool. A too-broad `q` returns the top matches with
+   name) — at least one is required. Each metric lists the `dimensions` it can be sliced by: the
+   `id` to pass to `add_research_groups`, the `group` it belongs to, and a `name` only when this
+   metric calls it something other than the group name. Each entry in `dimension_groups` states
+   that group's types and interestingness once, plus the `metric_ids` it can slice. Every metric
+   and dimension id you pass to `add_research_groups` must come from this tool. Requested ids you
+   can't see come back as `missing_metric_ids`; a too-broad `q` returns the top matches with
    `truncated: true` — narrow the search or pass explicit `metric_ids`."
   [{:keys [q metric_ids]} :- get-research-candidates-schema]
   (cond
     (and (str/blank? q) (empty? metric_ids))
     {:output (str "Error: pass metric_ids (up to " explorations/research-candidates-max-metrics
-                  ", from list_research_metrics) and/or q (a search term). The unfiltered catalog"
-                  " is too large to return.")}
+                  ", from list_research_metrics) and/or q (a search term). This tool reports"
+                  " dimensions for metrics you have already chosen; use list_research_metrics or"
+                  " search to choose them.")}
 
     (> (count metric_ids) explorations/research-candidates-max-metrics)
     {:output (str "Error: pass at most " explorations/research-candidates-max-metrics

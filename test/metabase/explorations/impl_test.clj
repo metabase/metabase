@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -126,8 +127,19 @@
    {:id 2 :name "Churn" :description "churn" :result_column_name "count" :in_library false
     :dimensions [(dim "region-2" "Region" 0.9 [region-source])]}])
 
+(defn- synthetic-hydrated
+  "Stand-in for the metric-loading functions over [[synthetic-metrics]], honouring the same
+   `:metric-ids` restriction and `:q` match the real ones do — so tests can exercise filtering,
+   and an id no metric has behaves like one the user can't read."
+  [{:keys [metric-ids q]}]
+  (cond->> synthetic-metrics
+    (seq metric-ids)     (filterv (comp (set metric-ids) :id))
+    (not (str/blank? q)) (filterv #(@#'explorations.impl/metric-matches-search?
+                                    % (u/lower-case-en q)))))
+
 (defmacro ^:private with-synthetic-metrics [& body]
-  `(with-redefs [explorations.impl/hydrated-metrics (fn [~'_] synthetic-metrics)]
+  `(mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics synthetic-hydrated
+                               explorations.impl/index-metrics    synthetic-hydrated]
      ~@body))
 
 (deftest research-metric-index-test
@@ -140,9 +152,9 @@
 (deftest research-metric-index-truncates-descriptions-test
   (let [long-desc (apply str (repeat 40 "long desc "))
         stub      [{:id 1 :name "M" :description long-desc :in_library false :dimensions []}]]
-    (with-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
+    (mt/with-dynamic-fn-redefs [explorations.impl/index-metrics (fn [_] stub)]
       (let [[{:keys [description]}] (:metrics (explorations.impl/research-metric-index {}))]
-        (is (= 151 (count description)))
+        (is (= (inc @#'explorations.impl/catalog-description-max-length) (count description)))
         (is (str/ends-with? description "…"))))))
 
 (deftest research-metric-index-cap-test
@@ -152,7 +164,7 @@
                      :in_library (< i 5)
                      :dimensions [(dim (str "d" i) (str "D" i) (+ 0.1 (/ i 1000.0))
                                        [{:source i}])]}))]
-    (with-redefs [explorations.impl/hydrated-metrics (fn [_] many)]
+    (mt/with-dynamic-fn-redefs [explorations.impl/index-metrics (fn [_] many)]
       (let [{:keys [metrics truncated shown matched]} (explorations.impl/research-metric-index {})]
         (testing "an over-cap index is truncated and stamped"
           (is (true? truncated))
@@ -162,26 +174,117 @@
         (testing "library metrics survive the cut, ranked first"
           (is (= [4 3 2 1 0] (mapv :id (take 5 metrics)))))))))
 
+(deftest research-metric-index-ranks-below-the-cap-too-test
+  (testing "an under-cap index is ranked the same way an over-cap one is, so a metric doesn't
+            move just because the instance grew past the cap"
+    (let [few (vec (for [i (range 6)]
+                     {:id i :name (str "M" i) :description nil
+                      :in_library (< i 2)
+                      :dimensions [(dim (str "d" i) (str "D" i) (+ 0.1 (/ i 100.0))
+                                        [{:source i}])]}))]
+      (mt/with-dynamic-fn-redefs [explorations.impl/index-metrics (fn [_] few)]
+        (let [{:keys [metrics truncated]} (explorations.impl/research-metric-index {})]
+          (is (nil? truncated))
+          (is (= [1 0 5 4 3 2] (mapv :id metrics))))))))
+
+(deftest research-metric-index-ranks-on-candidate-dimensions-test
+  (testing "a metric whose only dimension scores below min-interestingness has no candidates, so
+            it ranks with the dimension-less metrics rather than above them"
+    ;; Input order matters: `bare` is listed first, so it only stays ahead of `sub` if `sub`
+    ;; scored nothing. Ranking on raw (unfiltered) dimensions would lift `sub` above it.
+    (let [bare {:id 2 :name "Bare" :description nil :in_library false :dimensions []}
+          sub  {:id 1 :name "Sub" :description nil :in_library false
+                :dimensions [(dim "d1" "D1" 0.09 [{:source 1}])]}
+          real {:id 3 :name "Real" :description nil :in_library false
+                :dimensions [(dim "d3" "D3" 0.2 [{:source 3}])]}]
+      (mt/with-dynamic-fn-redefs [explorations.impl/index-metrics (fn [_] [bare sub real])]
+        (is (= [3 2 1] (mapv :id (:metrics (explorations.impl/research-metric-index {})))))))))
+
 (deftest research-candidates-test
   (with-synthetic-metrics
     (let [{:keys [metrics dimension_groups truncated]} (explorations.impl/research-candidates
                                                         {:metric-ids [1 2]})]
-      (testing "metrics carry catalog fields only — no inline dimensions"
-        (is (= [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"}
-                {:id 2 :name "Churn" :description "churn" :result_column_name "count"}]
+      (testing "each metric carries the dimension ids it can be sliced by, tagged with their group"
+        (is (= [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"
+                 :dimensions [{:id "region-1" :group "Region"} {:id "plan-1" :group "Plan"}]}
+                {:id 2 :name "Churn" :description "churn" :result_column_name "count"
+                 :dimensions [{:id "region-2" :group "Region"}]}]
                metrics)))
-      (testing "groups state descriptive fields once, with per-metric dimension ids and names"
-        (let [by-name (u/index-by :name dimension_groups)
-              region  (get by-name "Region")]
-          (is (= "type/Text" (:effective_type region)))
-          (is (= 0.9 (:interestingness region)))
-          (is (= {1 {:id "region-1" :name "Region"}
-                  2 {:id "region-2" :name "Region"}}
-                 (:dimension_id_and_name_by_metric region)))
-          (is (= {1 {:id "plan-1" :name "Plan"}}
-                 (:dimension_id_and_name_by_metric (get by-name "Plan"))))))
+      (testing "groups state the descriptive fields once, and which metrics they slice"
+        (is (= [{:name "Region" :effective_type "type/Text" :semantic_type nil
+                 :interestingness 0.9 :metric_ids [1 2]}
+                {:name "Plan" :effective_type "type/Text" :semantic_type nil
+                 :interestingness 0.5 :metric_ids [1]}]
+               dimension_groups)))
       (testing "an explicit metric-ids request is not truncated"
         (is (nil? truncated))))))
+
+(deftest research-candidates-renamed-dimension-test
+  (testing "a dimension a metric renamed carries that metric's name; ones matching their group
+            don't repeat it"
+    (let [stub [{:id 1 :name "Revenue" :description nil :result_column_name "count"
+                 :in_library false :dimensions [(dim "region-1" "Region" 0.9 [region-source])]}
+                {:id 2 :name "Churn" :description nil :result_column_name "count"
+                 :in_library false :dimensions [(dim "region-2" "Territory" 0.9 [region-source])]}]]
+      (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
+        (let [{:keys [metrics]} (explorations.impl/research-candidates {:metric-ids [1 2]})]
+          (is (= [[{:id "region-1" :group "Region"}]
+                  [{:id "region-2" :group "Region" :name "Territory"}]]
+                 (mapv :dimensions metrics))))))))
+
+(deftest research-candidates-two-dimensions-in-one-group-test
+  (testing "a metric with two dimensions in the same group keeps both — neither is dropped"
+    (let [stub [{:id 1 :name "Revenue" :description nil :result_column_name "count"
+                 :in_library false
+                 :dimensions [(dim "region-a" "Region" 0.9 [region-source])
+                              (dim "region-b" "Region (billing)" 0.9 [region-source])]}]]
+      (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
+        (let [{:keys [metrics dimension_groups]} (explorations.impl/research-candidates
+                                                  {:metric-ids [1]})]
+          (is (= ["region-a" "region-b"] (mapv :id (:dimensions (first metrics)))))
+          (is (= [[1]] (mapv :metric_ids dimension_groups))))))))
+
+(deftest research-candidates-heterogeneous-group-test
+  (testing "when a group's dimensions don't agree on their types (group-by-source unions
+            transitively, so a group can span Fields) nothing is stated at the group level"
+    (let [shared {:source 1}
+          stub   [{:id 1 :name "Revenue" :description nil :result_column_name "count"
+                   :in_library false
+                   :dimensions [(dim "d1" "Region" 0.9 [shared])
+                                (assoc (dim "d2" "Signup" 0.9 [shared])
+                                       :effective-type "type/DateTime")]}]]
+      (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
+        (let [groups (:dimension_groups (explorations.impl/research-candidates {:metric-ids [1]}))]
+          (is (= 1 (count groups)))
+          (is (not (contains? (first groups) :effective_type)))
+          (is (not (contains? (first groups) :semantic_type))))))))
+
+(deftest research-candidates-truncates-descriptions-test
+  (testing "descriptions are capped here too — 20 essay-length ones would otherwise be most of
+            the payload"
+    (let [stub [{:id 1 :name "M" :description (apply str (repeat 40 "long desc "))
+                 :result_column_name "count" :in_library false :dimensions []}]]
+      (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] stub)]
+        (let [[{:keys [description]}] (:metrics (explorations.impl/research-candidates
+                                                 {:metric-ids [1]}))]
+          (is (= (inc @#'explorations.impl/catalog-description-max-length) (count description))))))))
+
+(deftest research-candidates-metric-ids-and-q-test
+  (with-synthetic-metrics
+    (testing "metric_ids and q compose — q narrows the requested metrics rather than replacing them"
+      (is (= [1] (mapv :id (:metrics (explorations.impl/research-candidates
+                                      {:metric-ids [1 2] :q "plan"}))))))))
+
+(deftest research-candidates-missing-metric-ids-test
+  (with-synthetic-metrics
+    (testing "ids the user can't see are reported rather than silently dropped"
+      (let [{:keys [metrics missing_metric_ids]} (explorations.impl/research-candidates
+                                                  {:metric-ids [1 999 1000]})]
+        (is (= [1] (mapv :id metrics)))
+        (is (= [999 1000] missing_metric_ids))))
+    (testing "nothing is stamped when every requested id came back"
+      (is (nil? (:missing_metric_ids (explorations.impl/research-candidates
+                                      {:metric-ids [1 2]})))))))
 
 (deftest research-candidates-q-truncation-test
   ;; 25 matches: ids 0-4 in the library, the rest not; interestingness rises with id.
@@ -190,7 +293,7 @@
                      :in_library (< i 5)
                      :dimensions [(dim (str "d" i) (str "D" i) (+ 0.1 (/ i 100.0))
                                        [{:source i}])]}))]
-    (with-redefs [explorations.impl/hydrated-metrics (fn [_] many)]
+    (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] many)]
       (let [{:keys [metrics truncated shown matched]} (explorations.impl/research-candidates
                                                        {:q "m"})]
         (testing "a q match beyond the cap is truncated and stamped"
@@ -201,6 +304,34 @@
         (testing "library metrics rank first, then by interestingness"
           (is (= [4 3 2 1 0] (mapv :id (take 5 metrics))))
           (is (= 24 (:id (nth metrics 5)))))))))
+
+;;; The whole point of the two-tier split (UXW-4967) is that neither research tool can hand the
+;;; LLM an unbounded blob. These guard that: the payloads are a function of the caps, not of how
+;;; many metrics the instance has. Sizes are generous ceilings — they catch a return to
+;;; per-metric-inlined dimensions (which ran ~1KB/metric over the whole catalog), not drift.
+
+(defn- realistic-metrics
+  "`n` metrics shaped like real ones: uuid dimension ids, prose descriptions, `d` dimensions each
+   drawn from a small pool of shared groups (as same-table metrics really do share Fields)."
+  [n d]
+  (vec (for [i (range n)]
+         {:id i :name (str "Metric number " i) :in_library false :result_column_name "sum"
+          :description (apply str (repeat 30 "some prose describing this metric. "))
+          :dimensions (vec (for [j (range d)]
+                             (dim (str (random-uuid)) (str "Dimension " j) (+ 0.1 (/ j 100.0))
+                                  [{:source j}])))})))
+
+(deftest research-metric-index-payload-is-bounded-test
+  (mt/with-dynamic-fn-redefs [explorations.impl/index-metrics (fn [_] (realistic-metrics 5000 8))]
+    (let [payload (explorations.impl/research-metric-index {})]
+      (is (true? (:truncated payload)))
+      (is (> 120000 (count (json/encode payload)))))))
+
+(deftest research-candidates-payload-is-bounded-test
+  (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] (realistic-metrics 5000 8))]
+    (let [payload (explorations.impl/research-candidates {:q "metric"})]
+      (is (true? (:truncated payload)))
+      (is (> 20000 (count (json/encode payload)))))))
 
 (deftest research-groups-metric-anchored-test
   (with-synthetic-metrics
@@ -283,7 +414,7 @@
 
 (deftest exploration-data-no-dangling-dimension-ids-test
   (testing "metric :dimension_ids and :dimension_groups apply the same interestingness filter"
-    (with-redefs [explorations.impl/hydrated-metrics (fn [_] threshold-metrics)]
+    (mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics (fn [_] threshold-metrics)]
       (let [{:keys [metrics dimension_groups]} (explorations.impl/exploration-data {})
             metric-dim-ids (set (:dimension_ids (first metrics)))
             group-dim-ids  (into #{} (mapcat #(map :id (:dimensions %))) dimension_groups)]
