@@ -82,12 +82,9 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (add-template-tags snippet)
+  (u/prog1 (collection/inherit-worktree-id (add-template-tags snippet))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
-    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))
-    (when-let [collection-id (:collection_id snippet)]
-      (remote-sync/check-same-worktree
-       snippet (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
+    (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
@@ -97,13 +94,9 @@
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
-  (when (contains? (t2/changes snippet) :collection_id)
-    (remote-sync/check-same-worktree
-     snippet
-     (when-let [collection-id (:collection_id (t2/changes snippet))]
-       (t2/select-one-fn :worktree_id :model/Collection :id collection-id))))
   (u/prog1 (cond-> snippet
-             (:content snippet) add-template-tags)
+             (contains? (t2/changes snippet) :collection_id) collection/check-same-worktree
+             (:content snippet)                              add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))

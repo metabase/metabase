@@ -44,15 +44,22 @@
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
-  "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
+  "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines. `worktree-id` lists
+  the timelines checked out into a remote-sync worktree instead of the main app (admin only)."
   [_route-params
-   {:keys [include], archived? :archived} :- [:map
-                                              [:include  {:optional true} ::include]
-                                              [:archived {:default false} ms/BooleanValue]]]
+   {:keys [include worktree-id], archived? :archived} :- [:map
+                                                          [:include     {:optional true} ::include]
+                                                          [:archived    {:default false} ms/BooleanValue]
+                                                          [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   (let [timelines (->> (t2/select :model/Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
-                                              (collection/visible-collection-filter-clause)]
+                                              [:= :worktree_id worktree-id]
+                                              (collection/visible-collection-filter-clause
+                                               :collection_id
+                                               {:worktree-id worktree-id})]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)

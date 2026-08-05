@@ -848,11 +848,9 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert
-        populate-query-fields)
-    (collection/check-allowed-content (:type <>) (:collection_id <>))
-    (when-let [collection-id (:collection_id <>)]
-      (remote-sync/check-same-worktree
-       <> (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
+        populate-query-fields
+        collection/inherit-worktree-id)
+    (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -900,12 +898,8 @@
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
-    (when (contains? changes :collection_id)
-      (remote-sync/check-same-worktree
-       card
-       (when-let [collection-id (:collection_id changes)]
-         (t2/select-one-fn :worktree_id :model/Collection :id collection-id))))
     (-> card
+        (cond-> (contains? changes :collection_id) collection/check-same-worktree)
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
@@ -1058,7 +1052,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :document_id :worktree_id]
+                                             :cache_ttl :type :dashboard_id :document_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)

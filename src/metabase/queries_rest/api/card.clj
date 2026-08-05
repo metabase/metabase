@@ -548,8 +548,7 @@
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
    [:size                   {:optional true} [:maybe [:map
                                                       [:size_x ms/PositiveInt]
-                                                      [:size_y ms/PositiveInt]]]]
-   [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]])
+                                                      [:size_y ms/PositiveInt]]]]])
 
 (defn- normalize-dataset-query-or-400
   "Strictly normalize an incoming `:dataset_query` from an API request, converting any normalization

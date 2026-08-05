@@ -1778,14 +1778,15 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
-  (when-let [parent-id (some-> (:location collection) location-path->parent-id)]
-    (remote-sync/check-same-worktree collection
-                                     (t2/select-one-fn :worktree_id :model/Collection :id parent-id)))
-  (u/prog1 (-> collection
-               (assoc :slug (slugify collection-name))
-               (cond->
-                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)))
+  (let [collection (if-let [parent-id (some-> (:location collection) location-path->parent-id)]
+                     (assoc collection :worktree_id
+                            (t2/select-one-fn :worktree_id :model/Collection :id parent-id))
+                     collection)]
+    (u/prog1 (-> collection
+                 (assoc :slug (slugify collection-name))
+                 (cond->
+                  (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+      (assert-valid-remote-synced-parent <>))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2251,6 +2252,54 @@
 (defmethod allowed-namespaces :default
   [_]
   #{nil :analytics :shared-tenant-collection :tenant-specific})
+
+(defn inherit-worktree-id
+  "Set `instance`'s `:worktree_id` from the collection it is going into: content belongs to whichever worktree its
+  collection was checked out into, so the parent answers the question and no caller has to pass an id.
+
+  Content at a root has no parent to ask -- only transforms and snippets can be there, since a worktree checks
+  out real collections and not the root itself -- so there a `:worktree_id` supplied by the caller stands. Every
+  other model rejects the field at the API instead."
+  [instance]
+  (if-let [collection-id (:collection_id instance)]
+    (assoc instance :worktree_id (t2/select-one-fn :worktree_id :model/Collection :id collection-id))
+    instance))
+
+(defn check-same-worktree
+  "Guard for content changing collections: throws a 400 when `instance` and the collection it is moving into
+  belong to different worktrees. Returns `instance`, so it threads:
+
+    (cond-> instance
+      (contains? (t2/changes instance) :collection_id)
+      collection/check-same-worktree)
+
+  Only the move needs catching -- `worktree_id` itself can never change, which [[metabase.models.interface]]'s
+  `:hook/worktree-id` blocks outright. Moving to a root is always allowed."
+  [instance]
+  (u/prog1 instance
+    (when-let [collection-id (:collection_id instance)]
+      (remote-sync/check-same-worktree
+       (if (contains? instance :worktree_id)
+         instance
+         (assoc instance :worktree_id (:worktree_id (t2/original instance))))
+       (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
+
+(defn check-same-worktree
+  "Guard for content changing collections: throws a 400 when `instance` and the collection it is moving into
+  belong to different worktrees. Returns `instance`, so it threads:
+
+    (cond-> instance
+      (contains? (t2/changes instance) :collection_id)
+      collection/check-same-worktree)
+
+  Only the move needs catching -- `worktree_id` itself can never change, which `:hook/worktree-id` blocks
+  outright. Moving to a root is always allowed, so a nil `collection_id` passes."
+  [instance]
+  (u/prog1 instance
+    (when-let [collection-id (:collection_id instance)]
+      (remote-sync/check-same-worktree
+       instance
+       (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

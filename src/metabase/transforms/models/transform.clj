@@ -150,10 +150,9 @@
   [{:keys [source collection_id source_database_id] :as transform}]
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
-    (collection/check-allowed-content :model/Transform collection_id)
-    (remote-sync/check-same-worktree transform
-                                     (t2/select-one-fn :worktree_id :model/Collection :id collection_id)))
-  (let [target-db-id (transforms-base.i/target-db-id transform)
+    (collection/check-allowed-content :model/Transform collection_id))
+  (let [transform    (collection/inherit-worktree-id transform)
+        target-db-id (transforms-base.i/target-db-id transform)
         valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
     ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
     ;; serdes-imported transform whose source database is missing), not a
@@ -188,9 +187,9 @@
   [{:keys [source source_database_id] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
-    (collection/check-allowed-content :model/Transform new-collection)
-    (remote-sync/check-same-worktree transform
-                                     (t2/select-one-fn :worktree_id :model/Collection :id new-collection)))
+    (collection/check-allowed-content :model/Transform new-collection))
+  (cond-> transform
+    (contains? (t2/changes transform) :collection_id) collection/check-same-worktree)
   ;; The target db is recomputed when source changes because for MBQL transforms,
   ;; the source query's :database is the source of truth for the target database.
   (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))

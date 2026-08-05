@@ -1781,21 +1781,25 @@
 ;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The model they
 ;;; cover is OSS.
 
-(deftest card-must-match-its-collection-worktree-test
+(deftest card-takes-its-worktree-from-its-collection-test
   (when config/ee-available?
     (mt/with-temp [:model/Worktree {wt-id :id} {}
                    :model/Collection main-coll {:name "main"}
                    :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}]
-      (testing "a card cannot be created in a collection from another worktree"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
-                              (mt/with-temp [:model/Card _ {:collection_id (:id wt-coll)}]))))
-      (testing "a card in the same worktree as its collection is fine"
-        (mt/with-temp [:model/Card card {:collection_id (:id wt-coll) :worktree_id wt-id}]
+      (testing "a card takes its worktree from the collection it is created in"
+        (mt/with-temp [:model/Card card {:collection_id (:id wt-coll)}]
           (is (= wt-id (:worktree_id card)))))
+      (testing "and the collection wins over a worktree the caller asked for"
+        (mt/with-temp [:model/Card card {:collection_id (:id main-coll) :worktree_id wt-id}]
+          (is (nil? (:worktree_id card)))))
       (testing "a card cannot be moved into another worktree's collection"
         (mt/with-temp [:model/Card {card-id :id} {:collection_id (:id main-coll)}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
-                                (t2/update! :model/Card card-id {:collection_id (:id wt-coll)}))))))))
+                                (t2/update! :model/Card card-id {:collection_id (:id wt-coll)})))))
+      (testing "nor out of one, back into the main app"
+        (mt/with-temp [:model/Card {card-id :id} {:collection_id (:id wt-coll)}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
+                                (t2/update! :model/Card card-id {:collection_id (:id main-coll)}))))))))
 
 (deftest worktree-cards-are-admin-only-test
   (when config/ee-available?

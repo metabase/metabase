@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -31,7 +32,22 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(defmethod mi/can-read? :model/Document
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
+  ([_model pk]
+   (mi/can-read? (t2/select-one :model/Document :id pk))))
+
+(defmethod mi/can-write? :model/Document
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Document :id pk))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -138,6 +154,7 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
+           :worktree-id :worktree_id
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at
@@ -282,8 +299,9 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (collection/inherit-worktree-id model))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  model)
+  (cond-> model
+    (contains? (t2/changes model) :collection_id) collection/check-same-worktree))

@@ -73,11 +73,12 @@
     [:map-of :keyword :any]]
    (deferred-tru "value must be a parameter map with an ''id'' key")))
 
-(defn- dashboards-list [filter-option]
+(defn- dashboards-list [filter-option worktree-id]
   (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
-                                                [:= :archived (= (keyword filter-option) :archived)]]
+                                                [:= :archived (= (keyword filter-option) :archived)]
+                                                [:= :worktree_id worktree-id]]
                                      :order-by [:%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
@@ -93,12 +94,18 @@
   Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
   *  `all`      - Return all Dashboards.
   *  `mine`     - Return Dashboards created by the current user.
-  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)
+
+  `worktree-id` lists the dashboards checked out into a remote-sync worktree instead of the main app (admin
+  only)."
   {:deprecated true}
   [_route-params
-   {:keys [f]} :- [:map
-                   [:f {:optional true} [:maybe [:enum "all" "mine" "archived"]]]]]
-  (let [dashboards (dashboards-list f)
+   {:keys [f worktree-id]} :- [:map
+                               [:f           {:optional true} [:maybe [:enum "all" "mine" "archived"]]]
+                               [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  (let [dashboards (dashboards-list f worktree-id)
         edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []
           (map (fn [{:keys [id] :as dashboard}]

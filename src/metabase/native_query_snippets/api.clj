@@ -74,17 +74,21 @@
   "Create a new `NativeQuerySnippet`."
   [_route-params
    _query-params
-   {:keys [content description name collection_id]} :- [:map
-                                                        [:content       :string]
-                                                        [:description   {:optional true} [:maybe :string]]
-                                                        [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [content description name collection_id worktree_id]} :- [:map
+                                                                    [:content       :string]
+                                                                    [:description   {:optional true} [:maybe :string]]
+                                                                    [:name          native-query-snippet/NativeQuerySnippetName]
+                                                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                    ;; only meaningful at a root: with a collection the
+                                                                    ;; snippet takes its worktree from that collection
+                                                                    [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
                  :name          name
-                 :collection_id collection_id}]
+                 :collection_id collection_id
+                 :worktree_id   worktree_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 

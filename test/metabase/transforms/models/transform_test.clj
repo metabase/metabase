@@ -240,18 +240,19 @@
                                             (merge (mt/with-temp-defaults :model/Transform)
                                                    {:name "sneaky" :worktree_id wt-id})))))))))
 
-(deftest transform-must-match-its-collection-worktree-test
+(deftest transform-takes-its-worktree-from-its-collection-test
   (when config/ee-available?
     (mt/with-temp [:model/Worktree {wt-id :id} {}
                    :model/Collection main-coll {:name "main transforms" :namespace "transforms"}
                    :model/Collection wt-coll {:name        "worktree transforms"
                                               :namespace   "transforms"
                                               :worktree_id wt-id}]
-      (testing "a transform cannot be created in a collection from another worktree"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
-                              (t2/insert! :model/Transform
-                                          (merge (mt/with-temp-defaults :model/Transform)
-                                                 {:name "mismatched" :collection_id (:id wt-coll)})))))
+      (testing "a transform takes its worktree from the collection it is created in"
+        (mt/with-temp [:model/Transform tf {:name "inherited" :collection_id (:id wt-coll)}]
+          (is (= wt-id (:worktree_id tf)))))
+      (testing "at a root there is no collection to ask, so the caller's worktree stands"
+        (mt/with-temp [:model/Transform tf {:name "rootless" :collection_id nil :worktree_id wt-id}]
+          (is (= wt-id (:worktree_id tf)))))
       (testing "a transform cannot be moved into another worktree's collection"
         (mt/with-temp [:model/Transform {tf-id :id} {:name "main transform" :collection_id (:id main-coll)}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"

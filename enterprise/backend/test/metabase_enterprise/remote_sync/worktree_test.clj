@@ -88,11 +88,13 @@
                (serdes/local-entity-ids "Transform" [branch-eid "not-checked-out-in-wt"])))))))
 
 (deftest worktree-scoped-models-test
-  (testing "collections, the content in them, and the data-model content on shared tables are checked out"
-    (is (every? serdes/worktree-scoped? ["Card" "Collection" "Measure" "NativeQuerySnippet" "PythonLibrary"
-                                         "Segment" "Transform" "TransformTag" "TransformTransformTag"])))
-  (testing "shared warehouse metadata and the models still to come are skipped by a worktree pull"
-    (is (not-any? serdes/worktree-scoped? ["Table" "Field" "Dashboard" "Document" "Timeline"]))))
+  (testing "collections, everything in them, and the data-model content on shared tables are checked out"
+    (is (every? serdes/worktree-scoped? ["Card" "Collection" "Dashboard" "DashboardCard" "DashboardCardSeries"
+                                         "DashboardTab" "Document" "Measure" "NativeQuerySnippet"
+                                         "PythonLibrary" "Segment" "Timeline" "TimelineEvent" "Transform"
+                                         "TransformTag" "TransformTransformTag"])))
+  (testing "the shared warehouse metadata itself is skipped by a worktree pull"
+    (is (not-any? serdes/worktree-scoped? ["Table" "Field"]))))
 
 ;;; ---------------------------------------------- Deletion ----------------------------------------------
 
