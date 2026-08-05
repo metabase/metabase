@@ -135,6 +135,16 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network"),
       ).then((before) => {
+        // The first page goes on reporting past this snapshot — its reporter
+        // batches, and the blocked entry waited for above lands while the app's
+        // requests are still in flight. So "the buffer grew" does not mean the
+        // reloaded page has said anything yet; a batch from the page about to
+        // be replaced grows it too. Wait for a session this snapshot has never
+        // seen instead.
+        const sessionsBefore = new Set(
+          before.entries.map((entry) => entry.sessionId),
+        );
+
         cy.reload();
         cy.findByTestId("dev-app-content", { timeout: TIMEOUT_MS }).should(
           "exist",
@@ -146,8 +156,11 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         // consumed up to N never skips or re-reads anything.
         readDiagnosticsUntil(
           DIAGNOSTICS_URL,
-          "the reloaded page's events appended after the first session's",
-          (report) => report.entries.length > before.entries.length,
+          "the reloaded page's own events appended after the first session's",
+          (report) =>
+            report.entries.some(
+              (entry) => !sessionsBefore.has(entry.sessionId),
+            ),
         ).then((after) => {
           const beforeIds = before.entries.map((entry) => entry.eventId);
           const afterIds = after.entries.map((entry) => entry.eventId);
