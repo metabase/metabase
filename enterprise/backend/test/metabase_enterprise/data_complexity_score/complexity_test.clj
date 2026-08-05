@@ -744,6 +744,18 @@
         (is (fn? embedder)
             "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
+(deftest ^:sequential synonym-source-in-process-opts-pin-bundled-minilm-test
+  (testing "the in-process synonym provider selects the bundled MiniLM model, not Library retrieval's Arctic model"
+    (test-util/with-synonym-source [:provider "in-process"]
+      (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)]
+        (is (= {:provider         "in-process"
+                :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+                :model-dimensions 384}
+               embedding-model-meta))
+        (is (= :names-split text-variant))
+        (is (fn? embedder)
+            "synonym-source returns a provider embedder that passes the MiniLM descriptor to the plugin SPI")))))
+
 (deftest ^:sequential provider-embedder-suppresses-token-tracking-test
   (testing "provider-embedder always passes :record-tokens? false to get-embeddings-batch"
     ;; Complexity scoring isn't user-driven search traffic; the score itself is the analytics
