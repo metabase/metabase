@@ -3,7 +3,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   useCompletedEmbeddingHubSteps,
   useEmbeddingHubModals,
@@ -13,7 +13,10 @@ import type {
   EmbeddingHubAction,
   EmbeddingHubStepId,
 } from "metabase/embedding/embedding-hub/types/embedding-checklist";
+import { UpsellProBanner } from "metabase/embedding-hub-app/components/UpsellProBanner";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { useSelector } from "metabase/redux";
+import { getUrlWithUtm } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
 import {
   Box,
@@ -101,19 +104,31 @@ export function EmbeddingHubGetStartedPage() {
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
   const { setOpenedModal, modals } = useEmbeddingHubModals();
 
-  // "Embed in production with SSO" is locked until SSO is configured -- that
-  // one step, nothing else. The reason is carried alongside so the card can
-  // name it rather than saying "complete the other steps".
+  // Each Fine-tune step is locked by the feature it actually needs, not by one
+  // stand-in for "Pro": an instance can license SSO without modular embedding,
+  // and greying its SSO steps out would be wrong.
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+  const hasSsoJwt = useHasTokenFeature("sso_jwt");
+  const hasTenants = useHasTokenFeature("tenants");
+
+  // A feature-locked step carries no reason: naming a prerequisite would imply
+  // the step is reachable, and the upsell banner already says what it takes.
   const lockedSteps: Partial<
-    Record<EmbeddingHubStepId, { reason: string } | undefined>
-  > = useMemo(
-    () => ({
-      "embed-production": completedSteps?.["sso-configured"]
-        ? undefined
-        : { reason: t`Set up SSO to unlock` },
-    }),
-    [completedSteps],
-  );
+    Record<EmbeddingHubStepId, { reason?: string } | undefined>
+  > = useMemo(() => {
+    const isSsoConfigured = completedSteps?.["sso-configured"] ?? false;
+
+    return {
+      "data-permissions-and-enable-tenants": hasTenants ? undefined : {},
+      "sso-configured": hasSsoJwt ? undefined : {},
+      "embed-production": match({ hasSsoJwt, isSsoConfigured })
+        .with({ hasSsoJwt: false }, () => ({}))
+        .with({ isSsoConfigured: false }, () => ({
+          reason: t`Set up SSO to unlock`,
+        }))
+        .otherwise(() => undefined),
+    };
+  }, [completedSteps, hasSsoJwt, hasTenants]);
 
   const actionsByStepId = useMemo(() => {
     const entries = steps.flatMap((step) =>
@@ -133,8 +148,12 @@ export function EmbeddingHubGetStartedPage() {
     step: number,
   ) {
     const action = actionsByStepId[id];
+    const isLocked = lockedSteps[id] != null;
 
-    if (!action) {
+    // The shared hook omits steps whose feature the instance lacks -- tenants
+    // drops step 4 below the paywall. The design still shows those, greyed, so
+    // a missing action only removes the card when the step is not locked.
+    if (!action && !isLocked) {
       return null;
     }
 
@@ -158,7 +177,7 @@ export function EmbeddingHubGetStartedPage() {
         title={title}
         description={description}
         isDone={completedSteps?.[id] ?? false}
-        isLocked={lockedSteps[id] != null}
+        isLocked={isLocked}
         lockedReason={lockedSteps[id]?.reason}
         to={to}
         onClick={onClick}
@@ -188,19 +207,33 @@ export function EmbeddingHubGetStartedPage() {
       </Stack>
 
       <Stack gap="md">
+        {/* Below the paywall the design replaces the subtitle with the upsell
+            banner rather than stacking both. The banner is a sibling of the
+            heading, not part of its 4px stack, so it sits at the section's
+            own spacing. */}
         <Stack gap={4}>
           <Title order={3} c="text-primary">{t`Fine-tune your embed`}</Title>
-          <Text c="text-secondary">
-            {t`If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`}
-          </Text>
+
+          {hasSimpleEmbedding && (
+            <Text c="text-secondary">
+              {t`If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`}
+            </Text>
+          )}
         </Stack>
+
+        {!hasSimpleEmbedding && (
+          <UpsellProBanner
+            title={t`Upgrade to Metabase Pro to configure advanced options.`}
+            location="embedding-hub-get-started"
+          />
+        )}
 
         <Box className={S.cardGrid}>
           {getFineTuneSteps().map((step, index) =>
             renderStep(step, index + getFirstEmbedSteps().length + 1),
           )}
 
-          <CustomThemeCard step={7} />
+          <CustomThemeCard step={7} isLocked={!hasSimpleEmbedding} />
           <ConfigureAiCard step={8} />
         </Box>
       </Stack>
@@ -216,10 +249,17 @@ export function EmbeddingHubGetStartedPage() {
  * Steps 7 and 8 are specific to the embedding hub: they are not in the shared
  * checklist, which also drives the home page.
  */
-function CustomThemeCard({ step }: { step: number }) {
+function CustomThemeCard({
+  step,
+  isLocked,
+}: {
+  step: number;
+  isLocked: boolean;
+}) {
   return (
     <ChecklistCard
       step={step}
+      isLocked={isLocked}
       icon="palette"
       title={t`Create a custom theme`}
       description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
@@ -230,16 +270,25 @@ function CustomThemeCard({ step }: { step: number }) {
 
 function ConfigureAiCard({ step }: { step: number }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const isConfigured = useSetting("llm-metabot-configured?");
+  const hasMetabot = useHasTokenFeature("metabot-v3");
+
+  // Both halves, as the checklist spec has it: credentials for the selected
+  // provider, and embedded Metabot actually switched on. `embedded-metabot-
+  // enabled?` defaults to true, so on its own it would report a fresh instance
+  // as done; `llm-metabot-configured?` on its own misses the embed switch.
+  const hasCredentials = useSetting("llm-metabot-configured?");
+  const isEmbeddedMetabotEnabled = useSetting("embedded-metabot-enabled?");
+  const isConfigured = Boolean(hasCredentials) && isEmbeddedMetabotEnabled;
 
   return (
     <>
       <ChecklistCard
         step={step}
+        isLocked={!hasMetabot}
         icon="metabot"
         title={t`Configure AI`}
         description={t`Set up AI in the Admin to embed an AI chat interface to let your users query data using natural language.`}
-        isDone={Boolean(isConfigured)}
+        isDone={isConfigured}
         // Configured, the card links out to the admin AI page rather than
         // reopening the modal. That is a product decision, not a constraint --
         // the modal still works, offering a switch-provider flow.
@@ -256,19 +305,42 @@ function ConfigureAiCard({ step }: { step: number }) {
 }
 
 function UsefulLinksSection() {
-  const utm = {
+  // `embedding_hub`, underscored, is what the existing hub already sends
+  // (embedding-hub/components/EmbeddingHub.tsx). Hyphens are the house style
+  // everywhere else, but matching the live value keeps this one campaign
+  // across the rewrite rather than splitting it in two.
+  const campaign = "embedding_hub";
+
+  // Content identifies the link, not the page: one value for all three would
+  // report clicks without saying which card was clicked.
+  const docsUtm = (content: string) => ({
     utm_source: "product",
     utm_medium: "docs",
-    utm_campaign: "embedding-hub",
-    utm_content: "embedding-hub-get-started",
-  };
+    utm_campaign: campaign,
+    utm_content: content,
+  });
 
   // The hub is admin-only, so these always show. The rule is already off for
   // this directory in eslint.config.mjs, same as for admin/**.
   const { url: introductionUrl } = useDocsUrl("embedding/introduction", {
-    utm,
+    utm: docsUtm("get-started-embedding-methods"),
   });
-  const { url: documentationUrl } = useDocsUrl("embedding/start", { utm });
+  const { url: documentationUrl } = useDocsUrl("embedding/start", {
+    utm: docsUtm("get-started-documentation"),
+  });
+
+  // The demo goes to marketing rather than the docs, so it does not run
+  // through useDocsUrl -- but it is the one link here that most wants
+  // attribution, so it gets the same treatment by hand.
+  const demoUrl = useSelector((state) =>
+    getUrlWithUtm(state, {
+      url: MARKETING_DEMO_URL,
+      utm_source: "product",
+      utm_medium: "demo",
+      utm_campaign: campaign,
+      utm_content: "get-started-demo",
+    }),
+  );
 
   return (
     <Stack gap="md">
@@ -280,11 +352,7 @@ function UsefulLinksSection() {
           label={t`Embedding methods`}
           href={introductionUrl}
         />
-        <UsefulLink
-          icon="embed_static"
-          label={t`Demo`}
-          href={MARKETING_DEMO_URL}
-        />
+        <UsefulLink icon="embed_static" label={t`Demo`} href={demoUrl} />
         <UsefulLink
           icon="reference"
           label={t`Documentation`}
