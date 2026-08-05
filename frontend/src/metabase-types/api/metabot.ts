@@ -212,8 +212,11 @@ export interface AzureCredentials {
   "base-url"?: string | null;
 }
 
-/** Base URL required, API key optional. */
-export type VllmCredentials = AzureCredentials;
+/** Base URL required, API key optional; an omitted field keeps the saved value. */
+export interface VllmCredentials {
+  "api-key"?: string | null;
+  "base-url"?: string | null;
+}
 
 /** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
  * material, Azure and vLLM send an API key and base URL. */

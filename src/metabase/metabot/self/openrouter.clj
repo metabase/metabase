@@ -139,12 +139,10 @@
             "sonnet" (>= major 5))))))
 
 (defn- model-supports-temperature?
-  "Whether an OpenRouter model id accepts an explicit `temperature`.
-
-  Two families reject it: OpenAI's GPT-5 and o-series, and current-generation Claude. Neither
-  `openai.clj`'s nor `claude.clj`'s predicate can be reused — both are keyed to their own provider's
-  id shape, and OpenRouter prefixes the vendor with a slash and writes version numbers with dots
-  (`claude-opus-4.8`), so both would silently return true here."
+  "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's
+  GPT-5 and o-series, and current-generation Claude. Neither `openai.clj`'s nor `claude.clj`'s
+  predicate can be reused — both are keyed to their own provider's id shape, and would silently
+  return true for OpenRouter's `vendor/model` ids with dotted versions."
   [model]
   (let [model (str model)]
     (not (or (str/starts-with? model "openai/gpt-5")
@@ -161,9 +159,9 @@
   Other models (OpenAI) keep the generic plain string system message: OpenAI prompt caching is automatic server-side
   and takes no request markup.
 
-  `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). The shared builder assocs
-  it unconditionally, and gating it there would apply these provider-specific rules to every Chat Completions adapter
-  — including vLLM, whose model names are customer-chosen free text."
+  `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). Gating it in the shared
+  builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
+  whose model names are customer-chosen free text."
   [{:keys [model system] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (cond-> (chat-completions/request-body (assoc opts :model model))

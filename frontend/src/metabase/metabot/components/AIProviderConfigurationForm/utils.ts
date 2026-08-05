@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 
-type ApiKeylessProviders = "metabase";
-type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
+type ProvidersWithoutApiKeyOption = "metabase" | "vllm";
+type ApiKeyProviders = Exclude<MetabotProvider, ProvidersWithoutApiKeyOption>;
 
-type MetabotApiKeylessProviderOption = {
-  value: ApiKeylessProviders;
+type MetabotBasicProviderOption = {
+  value: ProvidersWithoutApiKeyOption;
   label: string;
 };
 
@@ -20,12 +20,12 @@ type MetabotApiKeyProviderOption = {
 };
 
 export type MetabotProviderOption =
-  | MetabotApiKeylessProviderOption
+  | MetabotBasicProviderOption
   | MetabotApiKeyProviderOption;
 
 export function getProviderOptions(
   hasMetabaseProviderAccess: boolean,
-): Partial<Record<ApiKeylessProviders, MetabotApiKeylessProviderOption>> &
+): Partial<Record<ProvidersWithoutApiKeyOption, MetabotBasicProviderOption>> &
   Record<ApiKeyProviders, MetabotApiKeyProviderOption> {
   return {
     ...(hasMetabaseProviderAccess && {
@@ -86,14 +86,10 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    // The key is optional and has no issuing console, so VllmProviderFields renders its own field.
     vllm: {
       value: "vllm",
       label: "vLLM",
-      apiKey: {
-        placeholder: t`Enter your vLLM API key`,
-        addKeyUrl:
-          "https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html",
-      },
     },
     zai: {
       value: "zai",

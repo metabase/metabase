@@ -117,9 +117,7 @@ function AIProviderConfigurationFormBody({
   const [updateMetabotSettings] = useUpdateMetabotSettingsMutation();
   const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Setting details come from a single admin endpoint, so one `isLoading`
-  // covers every provider. Gate the provider fields on it below: their forms
-  // use Formik `enableReinitialize`/hydrate-once effects that would wipe
+  // Gate the provider fields on `isLoading`: their forms hydrate once and would wipe
   // in-progress input if they rendered before the saved credentials arrived.
   const { details: providerApiKeyDetails, isLoading: areDetailsLoading } =
     useAdminSettings([
@@ -127,7 +125,6 @@ function AIProviderConfigurationFormBody({
       "llm-mistral-api-key",
       "llm-openai-api-key",
       "llm-openrouter-api-key",
-      "llm-vllm-api-key",
       "llm-zai-api-key",
     ] as const);
 
@@ -166,9 +163,8 @@ function AIProviderConfigurationFormBody({
         connectedProvider === "azure" ||
         connectedProvider === "vllm"
       ) {
-        // Bedrock, Azure, and vLLM key material spans several settings; an explicit
-        // `credentials: null` clears them all in one call. It runs before the provider
-        // is deselected so a failure can't leave saved keys behind.
+        // Key material spans several settings; `credentials: null` clears them all in one
+        // call, before the provider is deselected so a failure leaves no saved keys behind.
         await updateMetabotSettings({
           provider: connectedProvider,
           credentials: null,

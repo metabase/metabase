@@ -110,12 +110,10 @@
 ;;; Streaming response → AISDK v5 chunks
 
 (defn- delta-reasoning
-  "Reasoning text carried by a Chat Completions delta or message, under either spelling.
-
-  vLLM 0.26 emits `reasoning` and documents `reasoning_content` as the deprecated name it renames
-  on the way in; older vLLM builds, Z.AI, and other OpenAI-compatible servers still emit
-  `reasoning_content`. A self-hosted provider means the customer picks the server version, so both
-  are read."
+  "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
+  emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
+  other OpenAI-compatible servers still emit the latter, and a self-hosted server's version is the
+  customer's choice."
   [m]
   (or (not-empty (:reasoning m))
       (not-empty (:reasoning_content m))))
@@ -142,13 +140,11 @@
   Parallel tool calls arrive with different `index` values; when a new index
   appears the previous tool is complete.
 
-  `:forward-reasoning?` additionally translates `delta.reasoning_content` into
-  :reasoning-start / :reasoning-delta / :reasoning-end. It is opt-in because a
-  provider that emits the field is not necessarily one whose reasoning we are
-  ready to surface: whether the reasoning renders at all is a separate,
-  per-provider question (see `metabot.settings/llm-metabot-supports-reasoning?`),
-  and forwarding chunks nothing consumes only adds stream volume. Left off, this
-  fn behaves exactly as it did before the option existed."
+  `:forward-reasoning?` additionally translates reasoning deltas (see
+  [[delta-reasoning]]) into :reasoning-start / :reasoning-delta / :reasoning-end.
+  Opt-in, because whether a provider's reasoning renders at all is a separate
+  question (see `metabot.settings/llm-metabot-supports-reasoning?`) and chunks
+  nothing consumes only add stream volume."
   ([] (chat-completions->aisdk-chunks-xf nil))
   ([{:keys [forward-reasoning?]}]
    (fn [rf]

@@ -29,8 +29,8 @@ type VllmCredentialValues = {
   apiKey: string;
 };
 
-/** Follows `BedrockProviderFields`: `ApiKeyProviderFields` gates the model picker on an API key
- * being present, which is wrong for a server that may legitimately have none. */
+/** Follows `BedrockProviderFields`; `ApiKeyProviderFields` gates the model picker on an API key,
+ * which a vLLM server may legitimately not have. */
 export const VllmProviderFields = ({
   connectedModel,
   isCurrentConfigured,
@@ -56,8 +56,7 @@ export const VllmProviderFields = ({
     values: VllmCredentialValues,
     { resetForm }: FormikHelpers<VllmCredentialValues>,
   ) => {
-    // Per-field presence contract: an unchanged field is omitted so the backend keeps the saved
-    // value, while a field the user blanked is sent as an explicit null to clear it.
+    // Unchanged fields are omitted so the backend keeps them; a blanked field sends null to clear.
     const credentials: VllmCredentials = {};
     if (values.baseUrl !== initialValues.baseUrl) {
       credentials["base-url"] = values.baseUrl || null;
@@ -123,8 +122,7 @@ const VllmCredentialFields = ({
     ? apiKeySetting.env_name
     : undefined;
 
-  // The base URL alone decides completeness; `hasVerifiedCredentials` shows the picker right
-  // after a successful connect rather than waiting for the saved settings to refetch.
+  // `hasVerifiedCredentials` shows the picker right after a connect, without waiting for a refetch.
   const needsCredentials =
     !hasConfiguredSettingValue(baseUrlSetting) && !hasVerifiedCredentials;
 

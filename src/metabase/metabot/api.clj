@@ -463,8 +463,8 @@
    [:models [:sequential llm-model-response-schema]]])
 
 (def ^:private provider-credentials-schema
-  "Provider credentials carried by the request body's `:credentials` map.
-  Bedrock sends AWS key material; Azure sends an API key and base URL."
+  "Credentials carried by the request body's `:credentials` map — a permissive union over every
+  provider's field set, narrowed per provider by [[request-credentials]]."
   [:map
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
@@ -599,11 +599,11 @@
   Validate against `:credentials` in `opts` when provided and the provider's saved credentials otherwise. The shape
   of the credentials map varies by provider (see [[metabot.settings/configured-provider-credentials]]). `:model` in
   `opts` is the candidate model for providers whose validation depends on it (Azure's wire family, vLLM's preflight
-  target). `:probe?` additionally runs the provider's connect-time contract checks; it is set on the `PUT` path only,
-  since `GET` backs the admin model dropdown and must stay cheap.
+  target). `:probe?` additionally runs the provider's connect-time contract checks; `PUT` only, since `GET` backs the
+  admin model dropdown and must stay cheap.
 
-  A probe that identifies which model it exercised rides back as `:probed-model`, which the `PUT` handler adopts and
-  then strips — it is an internal hand-off between the two, not part of the endpoint's response."
+  A probe reports the model it exercised as `:probed-model`, which the `PUT` handler adopts and then strips — an
+  internal hand-off, not part of the endpoint's response."
   ([provider]
    (provider-models-response provider nil))
   ([provider {credentials-override :credentials model :model probe? :probe?}]
@@ -704,11 +704,10 @@
 
   Follows Bedrock's per-field presence contract, not Azure's layering: a field present in the request replaces the
   saved value (blank clears it), an absent field keeps it. Azure's \"blank means keep\" rule would make an *optional*
-  API key unclearable. The base URL is normalized exactly as its setter normalizes it.
+  API key unclearable.
 
-  The returned map merges saved values in, because credential validation needs the complete view. Which fields the
-  *request* supplied is carried separately as metadata (see [[vllm-supplied-fields]]) — `contains?` cannot answer that,
-  since the saved map already carries both keys whenever the provider is configured."
+  Saved values are merged in because validation needs the complete view; which fields the *request* carried rides
+  along as metadata (see [[vllm-supplied-fields]]), which `contains?` cannot answer once the provider is configured."
   [supplied-creds]
   (let [supplied (filterv #(contains? supplied-creds %) vllm-credential-fields)]
     (with-meta
@@ -879,11 +878,9 @@
                                                :provider    provider})))
                             (when model
                               (metabot.settings/validate-azure-model! (str provider "/" model) model)))
-        ;; vLLM's catalog is the only source of a model name, so connecting without a reachable base
-        ;; URL cannot resolve to anything. Without this guard the round-trip below short-circuits to
-        ;; an empty catalog, which downstream reads as "the server is serving no models" — a verdict
-        ;; on a server that was never contacted. Scoped to a connect, so a disconnect (which resolves
-        ;; to deliberately empty credentials) still goes through.
+        ;; Without this the round-trip below short-circuits to an empty catalog, which downstream
+        ;; reads as "the server is serving no models" — a verdict on a server never contacted.
+        ;; Connect only: a disconnect resolves to deliberately empty credentials.
         _                 (when (and (= provider "vllm") provider-changed?)
                             (let [creds (or credentials
                                             (metabot.settings/configured-provider-credentials provider))]
@@ -900,9 +897,8 @@
                             (run! check-not-env-shadowed! (credential-setting-keys provider credentials)))
         _                 (when (or model provider-changed?)
                             (check-not-env-shadowed! :llm-metabot-provider))
-        ;; Azure validation needs the candidate model's wire family; vLLM's preflight probes the model
-        ;; that will actually be used. Credential-only rotations on an already-connected provider fall
-        ;; back to the saved model.
+        ;; Azure validation needs the candidate model's wire family; vLLM's preflight probes it.
+        ;; Credential-only rotations on an already-connected provider fall back to the saved model.
         validation-model  (when (contains? #{"azure" "vllm"} provider)
                             (or model
                                 (when-not provider-changed?
@@ -916,12 +912,9 @@
                                                            :model       validation-model
                                                            :probe?      probe?})
                               throw-credentials-error!)
-        ;; vLLM has no default model — the served name is knowable only from the catalog — so a
-        ;; connect without an explicit model adopts the model the preflight actually probed. Taking
-        ;; it from the probe rather than re-deriving it from `:models` is what keeps the verified
-        ;; model and the persisted one the same one: they agree today only because
-        ;; `decorate-provider-models` happens not to reorder vLLM's catalog. An empty catalog needs
-        ;; no branch here — the preflight raises for it, and it runs on every connect.
+        ;; vLLM has no default model, so a connect adopts the model the preflight probed. Taking it
+        ;; from the probe rather than re-deriving it from `:models` keeps the verified and the
+        ;; persisted model the same one even if `decorate-provider-models` starts reordering.
         resolved-model    (or model
                               (when (and (= provider "vllm") provider-changed?)
                                 (:probed-model response)))]

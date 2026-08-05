@@ -1,9 +1,9 @@
 (ns metabase.metabot.self.vllm
   "vLLM / Chat Completions adapter for self-hosted, OpenAI-compatible inference servers.
 
-  Unlike the other adapters here the base URL is required and the API key is optional, and there is
-  no model whitelist — the operator serves whatever they loaded. [[preflight!]] exercises the
-  agent-loop contract at configuration time.
+  The base URL is required and the API key is optional, and there is no model whitelist — the
+  operator serves whatever they loaded, so [[preflight!]] exercises the agent-loop contract at
+  configuration time instead.
 
   https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html"
   (:require
@@ -53,13 +53,12 @@
       400 (tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
       401 (tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
       404 (tru "vLLM API endpoint was not found — the base URL should end in /v1")
-      429 (tru "vLLM has rate limited us")
+      429 (tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
       500 (tru "vLLM returned an internal server error")
       (tru "vLLM API error (HTTP {0})" status))))
 
 (defn- vllm-auth
-  "Auth map for a vLLM request. The base URL is required; the `Authorization` header is added only
-  when a key is configured. The map is never nil, so `core/resolve-auth` cannot reach its
+  "Auth map for a vLLM request. The map is never nil, so `core/resolve-auth` cannot reach its
   `missing-api-key-ex` branch — a keyless server is a complete configuration."
   [credentials ai-proxy?]
   (when ai-proxy?
@@ -92,8 +91,8 @@
   120000)
 
 (defn- probe-timeouts
-  "Timeouts for a preflight probe — between [[control-timeouts]] and [[inference-timeouts]]. An
-  operator who lowers `llm-vllm-request-timeout-ms` below the ceiling gets their own value."
+  "Timeouts for a preflight probe. An operator who lowers `llm-vllm-request-timeout-ms` below the
+  ceiling gets their own value."
   []
   {:socket-timeout     (min (llm/llm-vllm-request-timeout-ms) probe-timeout-ceiling-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
@@ -101,16 +100,15 @@
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
 (defn- list-all-models
-  "Fetch the served model catalog (`GET /models`), which doubles as the credential round-trip behind
-  the admin Connect button. `:ai-proxy?` is not supported for vLLM and throws when true."
-  [{:keys [credentials ai-proxy?]}]
+  "Fetch the served model catalog, which doubles as the credential round-trip behind the admin
+  Connect button."
+  [auth]
   (try
-    (let [auth (vllm-auth credentials ai-proxy?)
-          res  (core/request auth (merge {:method  :get
-                                          :url     "/models"
-                                          :as      :json
-                                          :headers {"Content-Type" "application/json"}}
-                                         (control-timeouts)))]
+    (let [res (core/request auth (merge {:method  :get
+                                         :url     "/models"
+                                         :as      :json
+                                         :headers {"Content-Type" "application/json"}}
+                                        (control-timeouts)))]
       (get-in res [:body :data]))
     (catch Exception e
       (core/rethrow-api-error! "vllm" vllm-error-msg e))))
@@ -131,31 +129,25 @@
   [{:role "user" :content "Record the table name: orders"}])
 
 (def ^:private probe-max-tokens
-  "Generation ceiling for a preflight probe. A reasoning model's thinking counts against this budget
-  and routinely runs several hundred tokens even on a trivial prompt, so the ceiling has to clear
-  it: a probe that stops at `length` before the tool call looks identical to a server that will not
-  call tools at all."
+  "Generation ceiling for a preflight probe. High enough to clear a reasoning model's thinking, which
+  is billed against it: a probe that stops at `length` before the tool call looks identical to a
+  server that will not call tools at all."
   2048)
 
 (def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a forced tool call is given, regardless of what the caller asked for. A
-  reasoning model bills its thinking against this budget *before* emitting the tool call, so a
-  smaller ceiling (conversation titling asks for 128) stops at `length` with no tool call at all.
-  Equal to [[probe-max-tokens]], which [[preflight!]] already proves the served model can clear."
+  "Smallest `max_tokens` a forced tool call is given, regardless of what the caller asked for — below
+  it a reasoning model spends the budget thinking and emits no tool call. Equal to
+  [[probe-max-tokens]], which [[preflight!]] already proves the served model can clear."
   probe-max-tokens)
 
 (def ^:private reasoning-model-token-floor
   "Smallest `max_tokens` any request gets once [[preflight!]] has observed the served model reasoning.
-
-  On the Chat Completions path there is no separate thinking budget: thinking, answer, and tool call
-  are all billed against `max_tokens`, so the agent path's `llm-max-tokens` default of 4096 has to
-  cover all three. Mirrors `claude-request-body`, which raises to 16384 whenever thinking is on.
-  Above [[forced-tool-call-token-floor]], which only has to cover thinking plus one tool call."
+  Chat Completions bills thinking, answer, and tool call against one budget. Mirrors
+  `claude-request-body`."
   16384)
 
 (defn- preflight-ex
-  "A preflight failure, tagged so `metabase.metabot.api`'s `provider-client-error?` surfaces the
-  message to the admin verbatim rather than as a 500."
+  "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500."
   [msg]
   (ex-info msg {:api-error   true
                 :status-code 400
@@ -187,13 +179,11 @@
                  (str id) (str max_model_len) (str min-context-length))))))
 
 (defn- check-tool-calling!
-  "With `tool_choice \"auto\"` a tool call comes back only when the server was started with
-  `--enable-auto-tool-choice` and a `--tool-call-parser` whose sentinel tokens match what this model
-  emits. A wrong-but-valid parser name produces no error at any layer — the call stays in `content`
-  as prose and Metabot chats without ever acting.
+  "Check that the server was started with `--enable-auto-tool-choice` and a `--tool-call-parser` whose
+  sentinels match this model. A wrong-but-valid parser name errors at no layer — the call stays in
+  `content` as prose and Metabot chats without ever acting.
 
-  Returns whether the model emitted reasoning, which is the only signal available anywhere that it
-  is a reasoning model — the `/v1/models` catalog carries none."
+  Returns whether the model emitted reasoning, the only signal anywhere that it is a reasoning model."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model "auto")
         content    (str (:content message))
@@ -232,9 +222,8 @@
                    (str model)))))))
 
 (defn- check-structured-output!
-  "`tool_choice \"required\"` drives guided decoding rather than the tool-call parser, so this covers
-  a different failure than [[check-tool-calling!]]: a model whose grammar the server cannot compile
-  chats fine but breaks conversation titling and the whole `sql` profile."
+  "Check that guided decoding works. A different failure from [[check-tool-calling!]]: a model whose
+  grammar the server cannot compile chats fine but breaks titling and the whole `sql` profile."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model "required")]
     (when (empty? (:tool_calls message))
@@ -250,14 +239,9 @@
 (defn- connect-candidates
   "Catalog entries eligible to be adopted when the connect path picks a model for the admin.
 
-  A LoRA adapter registered with `--lora-modules` is served as its own catalog entry whose `parent`
-  names the base model it adapts; adopting one would point Metabot at an adapter the admin never
-  chose. Nothing in the catalog distinguishes an embedding or reranker deployment from a chat model,
-  so a multi-model server can still be adopted from wrongly — the admin re-picks from the dropdown.
-
-  Falls back to the whole catalog rather than erroring if a server somehow reports only adapters:
-  vLLM always serves the base model alongside them, so an empty result means the assumption is wrong
-  and a bad default beats refusing to connect."
+  Skips LoRA adapters, whose `parent` names the base model they adapt. Nothing in the catalog
+  distinguishes an embedding or reranker deployment, so a multi-model server can still be adopted
+  from wrongly — the admin re-picks from the dropdown."
   [entries]
   (or (seq (remove :parent entries)) entries))
 
@@ -266,8 +250,8 @@
 
   A requested model is the only acceptable target: falling back to another served model would pass
   every check and then persist a provider string naming a model the server does not have. The
-  fallback applies only to the connect path, which supplies no model because the served name is
-  knowable only from this catalog."
+  fallback is for the connect path, which supplies no model because the served name is knowable
+  only from this catalog."
   [entries requested-model]
   (if requested-model
     (or (u/seek #(= requested-model (:id %)) entries)
@@ -279,8 +263,8 @@
         (throw (no-models-ex)))))
 
 (defn- await-probe!
-  "Deref a probe future, unwrapping the `ExecutionException` so the preflight's own `ex-info` — and
-  the `:api-error` tag `core/rethrow-api-error!` passes through untouched — reaches the caller."
+  "Deref a probe future, unwrapping the `ExecutionException` so the preflight's own `ex-info` reaches
+  the caller with its `:api-error` tag intact."
   [fut]
   (try
     @fut
@@ -288,35 +272,22 @@
       (throw (or (ex-cause e) e)))))
 
 (defn- preflight!
-  "Exercise the contract the agent loop depends on, against the model that will actually be used.
-
-  | Misconfiguration                  | What the admin would otherwise see  |
-  |-----------------------------------|-------------------------------------|
-  | No `--enable-auto-tool-choice`    | Metabot chats but never acts        |
-  | Wrong `--tool-call-parser`        | Malformed or absent tool calls      |
-  | Reasoning model, no parser        | `<think>` tags in the chat          |
-  | Context window too small          | A 400 mid-conversation              |
-  | No structured-output support      | Titles and the `sql` profile fail   |
+  "Exercise the contract the agent loop depends on, against the model that will actually be used, and
+  return that model's id. The connect path must adopt exactly this value rather than re-deriving it
+  from the listing, which agrees only while `decorate-provider-models` leaves vLLM's order alone.
 
   The probes run concurrently; deref order fixes the verdict, tool calling being the more actionable
-  diagnosis when a server fails both. The loser is cancelled rather than abandoned — the first
-  failure returns the admin's 400 immediately, and without the cancel its sibling would keep
-  generating against the operator's server long after anyone is listening.
+  diagnosis when a server fails both. The loser is cancelled rather than left generating against the
+  operator's server long after anyone is listening.
 
-  On success, records whether the probed model reasons in `llm-vllm-model-reasoning?`. Only the
-  probe can answer that — the catalog has no such field — and the answer drives which chain-of-thought
-  renderer the frontend picks, via `metabot.settings/llm-metabot-supports-reasoning?`.
-
-  Returns the id of the model it probed. The connect path must adopt exactly this value: re-deriving
-  it from the listing agrees only while `metabase.metabot.api`'s `decorate-provider-models` leaves
-  vLLM's catalog order alone."
-  [{:keys [credentials ai-proxy?]} entries requested-model]
+  On success, records whether the probed model reasons in `llm-vllm-model-reasoning?` — only the
+  probe can answer that, and the answer drives which renderer the frontend picks."
+  [auth entries requested-model]
   (let [entry (probe-target entries requested-model)
         model (:id entry)]
     (check-context-budget! entry)
     (try
-      (let [auth         (vllm-auth credentials ai-proxy?)
-            tool-calling (future (check-tool-calling! auth model))
+      (let [tool-calling (future (check-tool-calling! auth model))
             structured   (future (check-structured-output! auth model))]
         (try
           (let [reasoning? (await-probe! tool-calling)]
@@ -334,18 +305,18 @@
     model))
 
 (defn list-models
-  "List the models the configured vLLM server is serving.
+  "List the models the configured vLLM server is serving. Pass-through: there is nothing to
+  whitelist, and `display_name` falls back to the served id.
 
-  Pass-through: there is nothing to whitelist, and `display_name` falls back to the served id. When
-  `:probe?` is true, additionally runs [[preflight!]] — reserved for the `PUT` settings path, since
-  a tool-call probe on every `GET` would stall the admin model dropdown behind a full prefill — and
-  returns the probed model id as `:probed-model` for the connect path to adopt.
-  `:ai-proxy?` is not supported for vLLM and throws when true."
+  `:probe?` additionally runs [[preflight!]] and returns the model it probed as `:probed-model`, for
+  the connect path to adopt. Reserved for the `PUT` settings path — a tool-call probe on every `GET`
+  would stall the admin model dropdown behind a full prefill."
   ([] (list-models {}))
-  ([{:keys [model probe?] :as opts}]
-   (let [entries      (list-all-models opts)
+  ([{:keys [credentials ai-proxy? model probe?]}]
+   (let [auth         (vllm-auth credentials ai-proxy?)
+         entries      (list-all-models auth)
          probed-model (when probe?
-                        (preflight! opts entries model))]
+                        (preflight! auth entries model))]
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}
@@ -356,18 +327,11 @@
 (mu/defn vllm-request-body
   "Build the Chat Completions request body for an LLM request.
 
-  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent and
-  is raised to a floor the request cannot function below. Without a ceiling vLLM falls back to
-  whatever remains of the context window, so one looping small model can consume the entire budget in
-  a single call; with too small a ceiling a reasoning model spends it all thinking and never reaches
-  the answer. Two floors, because they answer different questions:
-
-  - [[forced-tool-call-token-floor]] whenever the request forces a tool call, which yields nothing
-    usable rather than a short answer if it truncates.
-  - [[reasoning-model-token-floor]] whenever [[preflight!]] observed the served model reasoning,
-    which the agent path needs because it forces nothing and supplies no ceiling of its own.
-
-  Both stay adapter-local rather than moving into the shared builder, which would also change Z.AI,
+  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent —
+  without a ceiling vLLM falls back to the remaining context window, so one looping small model
+  consumes the whole budget in a single call — and is raised to
+  [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies. Both
+  stay adapter-local rather than moving into the shared builder, which would also change Z.AI,
   Mistral, and OpenRouter."
   [{:keys [max-tokens schema tool_choice] :as opts} :- core/LLMRequestOpts]
   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
@@ -377,13 +341,9 @@
                          (llm/llm-vllm-model-reasoning?) (max reasoning-model-token-floor)))))
 
 (defn- stream-io-ex
-  "The vLLM error for a transport failure while *consuming* a response stream.
-
-  `metabase.metabot.self/retryable-error?` matches on exception *class* — every `IOException`, which
-  covers `SocketTimeoutException` and `ConnectException` both — so anything escaping the stream raw
-  is replayed as three full cold prefills with the retry gate still open. Wrapping in an `ex-info`
-  carrying no `:status` is what makes these non-retryable, which is correct: on a self-hosted server
-  a stalled or severed response means \"too slow\" or \"it died\", not \"transient\"."
+  "The vLLM error for a transport failure while *consuming* a response stream. Carries no `:status`,
+  which is what makes it non-retryable: on a self-hosted server a stalled or severed response means
+  \"too slow\" or \"it died\", not \"transient\", and a retry replays a full cold prefill."
   [^IOException e timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model."
@@ -397,12 +357,9 @@
              e)))
 
 (defn- request-io-ex
-  "The vLLM error for a transport failure while *establishing* a request.
-
-  `core/rethrow-api-error!`'s no-response fallback would render these as \"vllm API request failed:
-  Read timed out\" — the lowercase provider slug, no mention of the server being slow, and no mention
-  of the setting that governs it. The preflight got a bespoke message for exactly this; this is the
-  same message on the path an admin actually meets it."
+  "The vLLM error for a transport failure while *establishing* a request. `core/rethrow-api-error!`
+  would render these as \"vllm API request failed: Read timed out\", naming neither the server's
+  slowness nor the setting that governs it."
   [^IOException e base-url timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
@@ -417,9 +374,8 @@
              e)))
 
 (defn- io-guarded
-  "Wrap a stream reducible so a transport failure while consuming it surfaces as a non-retryable vLLM
-  error rather than a raw `IOException` (see [[stream-io-ex]]). The adapter's own `try` covers only
-  establishing the request."
+  "Wrap a stream reducible so a transport failure while consuming it surfaces as [[stream-io-ex]]
+  rather than a raw `IOException`. The adapter's own `try` covers only establishing the request."
   [reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -458,9 +414,8 @@
                                      :url      "/chat/completions"
                                      :request  req})
               (io-guarded timeout-ms)))
-        ;; Ordered: clj-http raises an `IOException` when there is no response at all and an
-        ;; `ex-info` carrying `:status`/`:body` for a non-2xx, so this catch cannot swallow a
-        ;; response `vllm-error-msg` would have translated.
+        ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
+        ;; cannot swallow one `vllm-error-msg` would have translated.
         (catch IOException e
           (throw (request-io-ex e (llm/llm-vllm-api-base-url) timeout-ms)))
         (catch Exception e
@@ -469,13 +424,9 @@
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
-  A model started with `--reasoning-parser` routes thinking to `delta.reasoning` (`reasoning_content`
-  before vLLM 0.26) and its answer back to `delta.content`; both are forwarded. Without that flag the
-  thinking arrives in `delta.content` as literal `<think>` tags, which is what [[preflight!]] rejects.
-
-  Nothing here needs to know whether the served model reasons: the field is present only when it
-  does, so the branch is self-gating. That is unlike Claude and OpenAI, where thinking is requested
-  in the request body and so has to be known up front."
+  A model started with `--reasoning-parser` routes thinking to `delta.reasoning` and its answer back
+  to `delta.content`; both are forwarded. The branch is self-gating — the field is present only when
+  the served model reasons — so nothing here needs to know which model is loaded."
   []
   (chat-completions/chat-completions->aisdk-chunks-xf {:forward-reasoning? true}))
 

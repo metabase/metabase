@@ -144,8 +144,7 @@
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form.
 
-  Azure and vLLM are absent on purpose — neither has a defensible default. Azure's model is composed by the FE from
-  required inputs; a vLLM server's model name is knowable only from its catalog."
+  Azure and vLLM are absent on purpose: neither has a defensible default."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
@@ -298,10 +297,9 @@
   "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured.
 
   The shape of the map varies by provider: API-key providers return `{:api-key ...}`, Azure and vLLM return `:api-key`
-  and `:base-url`, and Bedrock returns `:access-key-id`, `:secret-access-key`, `:session-token`, and `:region` from the
-  `llm-bedrock-*` settings. Azure counts as configured only when both the API key and base URL are set; Bedrock only
-  when both the access key ID and secret access key are set; vLLM on the base URL alone, since a server started
-  without `--api-key` needs no key."
+  and `:base-url`, and Bedrock returns `:access-key-id`, `:secret-access-key`, `:session-token`, and `:region`. Azure
+  counts as configured only when both the API key and base URL are set; Bedrock only when both the access key ID and
+  secret access key are set; vLLM on the base URL alone, since its API key is optional."
   [provider]
   (case provider
     "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
@@ -361,10 +359,9 @@
 (defn- llm-provider-streams-reasoning?
   "Whether a provider-and-model string names a model that streams its reasoning back to us.
 
-  Anthropic and OpenAI answer from the model name because thinking is requested in the request body.
-  vLLM cannot: its catalog carries no reasoning field, and whether thinking is emitted depends on the
-  operator's `--reasoning-parser` flag as well as the model — so it answers from what the connect-time
-  probe observed (see `metabase.metabot.self.vllm/preflight!`)."
+  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body.
+  vLLM answers from what the connect-time probe observed — the flag depends on the operator's
+  `--reasoning-parser` as well as the model, so the name cannot settle it."
   [provider-and-model]
   (let [model (provider-util/provider-and-model->model provider-and-model)]
     (case (provider-util/provider-and-model->provider provider-and-model)
