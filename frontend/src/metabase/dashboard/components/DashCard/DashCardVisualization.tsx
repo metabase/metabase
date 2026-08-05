@@ -21,7 +21,7 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
+import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
@@ -180,7 +180,7 @@ export function DashCardVisualization({
   const navigate = useNavigate();
 
   const onSameOriginNavigation = useCallback(
-    (location: LocationDescriptorObject) => {
+    (location: Partial<Path>) => {
       navigate(location);
       dispatch(
         setParameterValuesFromQueryParams(

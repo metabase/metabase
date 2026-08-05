@@ -1,6 +1,6 @@
 import type { NavigateFunction, NavigateOptions, To } from "react-router";
 
-import type { Location as HistoryLocation, LocationDescriptor } from "./types";
+import type { Location as HistoryLocation } from "./types";
 
 /**
  * The live `navigate`, registered by the host's `AppShell` once the router
@@ -76,28 +76,6 @@ export function notifyLocationListeners(location: HistoryLocation): void {
   for (const listener of [...locationListeners]) {
     listener(location);
   }
-}
-
-/**
- * Turn a `LocationDescriptor` (string or `{ pathname, search, hash, state }`)
- * into `navigate(to, options)` arguments. Used by the test harness, whose
- * `history` handle still takes descriptors.
- */
-export function toNavigateArgs(
-  location: LocationDescriptor,
-  options: NavigateOptions = {},
-): [To, NavigateOptions] {
-  if (typeof location === "string") {
-    return [location, options];
-  }
-  return [
-    {
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-    },
-    { ...options, state: location.state },
-  ];
 }
 
 /**

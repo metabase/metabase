@@ -1,40 +1,4 @@
-import {
-  navigate,
-  setRouterExpected,
-  setRouterNavigate,
-  toNavigateArgs,
-} from "./navigator";
-
-describe("toNavigateArgs", () => {
-  it("maps a descriptor's URL parts onto a v7 target", () => {
-    const [to] = toNavigateArgs({
-      pathname: "/dashboard/1",
-      search: "?filter-date=2024-01-01&tab=2-tab-two",
-    });
-
-    expect(to).toEqual({
-      pathname: "/dashboard/1",
-      search: "?filter-date=2024-01-01&tab=2-tab-two",
-      hash: undefined,
-    });
-  });
-
-  it("passes a string target through untouched", () => {
-    expect(toNavigateArgs("/dashboard/1?tab=2")).toEqual([
-      "/dashboard/1?tab=2",
-      {},
-    ]);
-  });
-
-  it("carries `state` across as a navigate option", () => {
-    const [, options] = toNavigateArgs(
-      { pathname: "/a", state: { from: "here" } },
-      { replace: true },
-    );
-
-    expect(options).toEqual({ replace: true, state: { from: "here" } });
-  });
-});
+import { navigate, setRouterExpected, setRouterNavigate } from "./navigator";
 
 // Non-component callers navigate before the router mounts and registers its
 // `navigate`. A navigation made in that window (a guard redirecting from a mount
