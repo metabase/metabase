@@ -19,7 +19,6 @@
         (is (= :embedding_next (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
-        (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
         (is (contains? (tool-names profile) "search"))
@@ -31,7 +30,6 @@
         (is (= :internal (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
-        (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
@@ -44,7 +42,6 @@
         (is (= :transforms_codegen (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 30 (:max-iterations profile)))
-        (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "list_available_fields"))))
@@ -53,7 +50,6 @@
         (is (=? {:name :sql
                  :model "anthropic/claude-sonnet-4-6"
                  :max-iterations int?
-                 :temperature pos?
                  :required-tool-call? true}
                 profile))
         (is (contains? (tool-names profile) "search"))
@@ -65,7 +61,6 @@
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
-        (is (= 0.3 (:temperature profile)))
         ;; In tests the library index can't answer, so :nlq is transparently served the general-search
         ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
         (is (contains? (tool-names profile) "search"))
@@ -77,7 +72,6 @@
         (is (= :slackbot (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
-        (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))
@@ -92,7 +86,6 @@
           (is (= profile-id (:name profile)))
           (is (contains? profile :model))
           (is (contains? profile :max-iterations))
-          (is (contains? profile :temperature))
           (is (contains? profile :tools))
           (is (every? var? (:tools profile))))))))
 
@@ -252,7 +245,6 @@
   (let [base {:name            :scratch
               :prompt-template "internal.selmer"
               :max-iterations  10
-              :temperature     0.3
               :tools           [#'tools/read-resource-tool]}]
     (testing "rejects :always-on-skills that don't resolve to a registered skill"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown always-on skill"
