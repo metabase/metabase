@@ -31,6 +31,13 @@
    (dissoc opts :lib/uuid :effective-type :base-type)
    id-or-name])
 
+(defn field-ref->column-key
+  "Like [[field-ref->key]], but keyed on the underlying column rather than the bucketed expression —
+   `:temporal-unit` and `:binning` are dropped as well. Use it to match a bucketed ref (a breakout,
+   say) against the unbucketed mapping target for the same column."
+  [field-ref]
+  (update (field-ref->key field-ref) 1 dissoc :temporal-unit :binning))
+
 (defn targets-equal?
   "Compare two target refs for equality, ignoring transient options like :lib/uuid."
   [target-a target-b]

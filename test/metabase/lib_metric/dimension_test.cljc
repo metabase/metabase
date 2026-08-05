@@ -102,6 +102,21 @@
     (is (not= (lib-metric.dimension/field-ref->key [:field {:temporal-unit :month} 100])
               (lib-metric.dimension/field-ref->key [:field {:temporal-unit :day} 100])))))
 
+;;; -------------------------------------------------- field-ref->column-key --------------------------------------------------
+
+(deftest ^:parallel field-ref->column-key-ignores-bucketing-test
+  (testing (str "bucketing is NOT part of the key, so a bucketed breakout ref and the unbucketed "
+                "mapping target for the same column produce the same key")
+    (is (= (lib-metric.dimension/field-ref->column-key [:field {:temporal-unit :year} 100])
+           (lib-metric.dimension/field-ref->column-key [:field {} 100])))
+    (is (= (lib-metric.dimension/field-ref->column-key [:field {:binning {:strategy :default}} 100])
+           (lib-metric.dimension/field-ref->column-key [:field {} 100]))))
+  (testing "everything else stays identity-relevant"
+    (is (not= (lib-metric.dimension/field-ref->column-key [:field {:source-field 1} 100])
+              (lib-metric.dimension/field-ref->column-key [:field {:source-field 2} 100])))
+    (is (not= (lib-metric.dimension/field-ref->column-key [:field {} 100])
+              (lib-metric.dimension/field-ref->column-key [:field {} 101])))))
+
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 
 (deftest ^:parallel reconcile-new-dimensions-get-random-uuids-test

@@ -66,6 +66,7 @@
      dimensions-for-metric
      dimensions-for-table
      extract-persisted-dimensions
+     field-ref->column-key
      field-ref->key
      get-persisted-dimension-mappings
      get-persisted-dimensions

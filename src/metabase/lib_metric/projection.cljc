@@ -366,20 +366,11 @@
 
 ;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
 
-(defn- column-key
-  "Collision-safe key for the underlying column of a field ref, ignoring any bucketing. Unlike a bare
-   field id, this keeps the `:source-field`/`:join-alias` so columns reached via different FKs to the
-   same table don't collide. See [[lib-metric.dimension/field-ref->key]]."
-  [field-ref]
-  (-> field-ref
-      (update 1 dissoc :temporal-unit :binning)
-      lib-metric.dimension/field-ref->key))
-
 (defn- dimension-column-key
   "Column key for a metadata dimension, derived from its mapping target (which carries the
    `:source-field`). Returns nil when the dimension has no mapping."
   [dimension]
-  (some-> dimension :dimension-mapping :target column-key))
+  (some-> dimension :dimension-mapping :target lib-metric.dimension/field-ref->column-key))
 
 (defn- source-query-breakout-dimensions
   "Dimensions matching the breakout columns of the source metric's own dataset_query."
@@ -400,7 +391,7 @@
                 breakout-clauses (lib/breakouts mbql5-query)
                 ;; Key by the full column ref (incl. :source-field), not the bare field id, since a
                 ;; field id can be reached via multiple FKs to the same foreign table.
-                breakout-keys    (into #{} (keep column-key) breakout-clauses)]
+                breakout-keys    (into #{} (keep lib-metric.dimension/field-ref->column-key) breakout-clauses)]
             (if (perf/empty? breakout-keys)
               []
               (filterv #(when-let [k (dimension-column-key %)]
