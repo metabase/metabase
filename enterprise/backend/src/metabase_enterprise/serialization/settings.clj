@@ -10,7 +10,6 @@
   :setter     :none
   :audit      :never
   :export?    false
-  :doc        (str "On import Metabase validates every question against the query format it understands, and refuses "
-                   "one it cannot read to catche content this version cannot understand. "
-                   "Set this to true to skip that validation. Doing so will not necessarily make the import succeed: "
-                   "import may still fail on a later step."))
+  :doc        (str "On import, Metabase validates every question against the query format this version understands, and refuses "
+                   "any it cannot read. Set this to true to skip that validation. "
+                   "Skipping it will not necessarily make the import succeed. Import may still fail on a later step."))
