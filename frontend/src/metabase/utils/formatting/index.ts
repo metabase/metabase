@@ -26,6 +26,7 @@ export {
   type FormatNumberOptions,
   formatChangeWithSign,
   formatNumber,
+  formatPercent,
   numberFormatterForOptions,
   roundFloat,
 } from "./numbers";
