@@ -21,7 +21,7 @@
 
 .HeaderContainer {
   &.isFixedWidth.offsetSidebar {
-    /* full sidebar offset while the content keeps its 40rem stacking width, then shrink it continuously so the header is never crushed and never jumps */
+    /* Shrink the offset instead of dropping it at 40rem, so the header never jumps. Must match the stacking breakpoint below. */
     margin-right: clamp(0px, calc(100cqw - 40rem), var(--sidebar-width));
   }
 }
