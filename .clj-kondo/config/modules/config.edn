@@ -2061,8 +2061,7 @@
 
   segments
   {:team "Graphy"
-   :api  #{metabase.segments.api
-           metabase.segments.schema}
+   :api  #{metabase.segments.api}
    :uses #{api
            events
            lib
@@ -2071,10 +2070,16 @@
            permissions
            remote-sync
            search
+           segments-schema
            util
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
+
+  segments-schema
+  {:team "Graphy"
+   :api #{metabase.segments-schema.core}
+   :uses #{lib util}}
 
   server
   {:team "UX West"
@@ -2836,7 +2841,7 @@
            queries
            query-permissions
            query-processor
-           segments
+           segments-schema
            settings
            util
            warehouse-schema}

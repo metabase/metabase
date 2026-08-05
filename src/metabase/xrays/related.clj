@@ -8,7 +8,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
-   [metabase.segments.schema :as segments.schema]
+   [metabase.segments-schema.core :as segments.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]

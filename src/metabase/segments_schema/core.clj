@@ -1,4 +1,4 @@
-(ns metabase.segments.schema
+(ns metabase.segments-schema.core
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]

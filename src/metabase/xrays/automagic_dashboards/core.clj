@@ -155,7 +155,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
-   [metabase.segments.schema :as segments.schema]
+   [metabase.segments-schema.core :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.log :as log]

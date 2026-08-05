@@ -12,7 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
-   [metabase.segments.schema :as segments.schema]
+   [metabase.segments-schema.core :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
