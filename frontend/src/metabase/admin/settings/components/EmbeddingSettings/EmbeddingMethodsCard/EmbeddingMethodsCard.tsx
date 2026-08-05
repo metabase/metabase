@@ -13,10 +13,11 @@ import {
 /**
  * The embedding methods, as one card of rows rather than a card per method.
  *
- * Guest embeds stay their own row. The design folds guest into the modular
- * toggle, but that merge is sequenced separately: it changes which of two
- * consent moments survives, and that is unanswered. Modular and SDK are merged
- * here, which is safe -- both already prompt at the admin toggle.
+ * Every method keeps its own toggle, one per backend setting. The design shows
+ * a single "Modular embedding and SDK for React" switch that also folds in
+ * guest embeds, but that merge is unconfirmed and is sequenced separately: it
+ * decides what a merged switch reads on an instance already in a mixed state,
+ * and which of two consent moments survives.
  */
 export function EmbeddingMethodsCard() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
@@ -27,12 +28,19 @@ export function EmbeddingMethodsCard() {
         <Title order={4}>{t`Availability of embedding methods`}</Title>
 
         {hasSimpleEmbedding && (
-          <EmbeddingMethodRow
-            title={t`Modular embedding and SDK for React`}
-            description={t`Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data.`}
-            settingKey="enable-embedding-simple"
-            dependentSettingKeys={["enable-embedding-sdk"]}
-          />
+          <>
+            <EmbeddingMethodRow
+              title={t`Modular embedding`}
+              description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming.`}
+              settingKey="enable-embedding-simple"
+            />
+
+            <EmbeddingMethodRow
+              title={t`SDK for React`}
+              description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+              settingKey="enable-embedding-sdk"
+            />
+          </>
         )}
 
         <EmbeddingMethodRow
@@ -55,12 +63,10 @@ function EmbeddingMethodRow({
   title,
   description,
   settingKey,
-  dependentSettingKeys,
 }: {
   title: string;
   description: ReactNode;
   settingKey: EmbeddingSettingKey;
-  dependentSettingKeys?: EmbeddingSettingKey[];
 }) {
   return (
     <Flex gap="xl" justify="space-between" align="flex-start">
@@ -73,10 +79,7 @@ function EmbeddingMethodRow({
         </Text>
       </Box>
 
-      <EmbeddingToggle
-        settingKey={settingKey}
-        dependentSettingKeys={dependentSettingKeys}
-      />
+      <EmbeddingToggle settingKey={settingKey} />
     </Flex>
   );
 }

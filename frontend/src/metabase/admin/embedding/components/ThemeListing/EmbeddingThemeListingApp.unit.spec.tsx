@@ -47,11 +47,10 @@ describe("EmbeddingThemeListingApp", () => {
   it("renders the themes listing for Pro users", async () => {
     setup({ hasSimpleEmbedding: true });
 
+    // The "Themes" heading belongs to the Appearance page, which puts this
+    // grid under it -- the listing renders the grid alone.
     expect(
-      await screen.findByRole("heading", { name: "Themes" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /New theme/ }),
+      await screen.findByRole("button", { name: /New theme/ }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Create custom themes")).not.toBeInTheDocument();
   });
