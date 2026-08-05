@@ -22,17 +22,18 @@
         #{}))))
 
 (deftest ^:parallel query-top-level-keys-test
-  (testing (str "Every key the legacy and MBQL 5 query schemas name has to be in "
-                "[[qp.schema/query-top-level-keys]], or an API endpoint taking a query as its body will drop it "
-                "from the request. Add the key there as well as to the schema.")
-    (are [schema] (empty? (set/difference (top-level-keys schema) qp.schema/query-top-level-keys))
+  (testing (str "Every key the legacy and MBQL 5 query schemas name has to be named by `::qp.schema/any-query` too, "
+                "or an API endpoint taking a query as its body will drop it from the request. Add the key to "
+                "`::qp.schema/any-query` as well as to the schema you are extending.")
+    (are [schema] (empty? (set/difference (top-level-keys schema)
+                                          (top-level-keys ::qp.schema/any-query)))
       ::mbql.s/Query
       ::lib.schema/query))
-  (testing "keys that no schema names are the ones needing their own justification in the docstring"
+  (testing "keys no other schema names are the ones needing their own justification in the docstring"
     (is (= #{;; internal audit app queries
              :fn :args :limit :offset
              ;; set by the QP rather than a client
              :cache-strategy :viz-settings}
-           (set/difference qp.schema/query-top-level-keys
+           (set/difference (top-level-keys ::qp.schema/any-query)
                            (top-level-keys ::mbql.s/Query)
                            (top-level-keys ::lib.schema/query))))))
