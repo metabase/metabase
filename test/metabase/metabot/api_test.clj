@@ -2330,3 +2330,131 @@
         (is (= {:value  "azure/anthropic/claude-sonnet-4-5"
                 :models []}
                (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "azure")))))))
+
+;;; ------------------------------------------------ vLLM ------------------------------------------------
+
+(deftest settings-put-connect-vllm-adopts-the-served-model-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    nil
+                                       llm.settings/llm-vllm-api-key         nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials probe?]}]
+                                                             (is (= "vllm" provider))
+                                                             (is (= {:base-url "http://vllm.internal:8000/v1"}
+                                                                    credentials)
+                                                                 "validation runs against the normalized request credentials")
+                                                             (is (true? probe?)
+                                                                 "a connect exercises the agent-loop contract")
+                                                             (is (nil? (llm.settings/llm-vllm-api-base-url))
+                                                                 "validation should happen before saving the credentials")
+                                                             {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
+        (testing "connecting vLLM with a base URL alone adopts the served model"
+          (is (=? {:value  "vllm/vllm-test"
+                   :models [{:id "vllm-test" :display_name "vllm-test"}]}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "vllm"
+                                         :credentials {:base-url "http://vllm.internal:8000/v1/"}}))))
+        (testing "the trailing slash is trimmed before persisting"
+          (is (= "http://vllm.internal:8000/v1" (llm.settings/llm-vllm-api-base-url))))
+        (testing "no API key is written for a keyless server"
+          (is (nil? (llm.settings/llm-vllm-api-key))))
+        (is (= "vllm/vllm-test" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-vllm-requires-a-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    nil
+                                       llm.settings/llm-vllm-api-key         nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             (is false "should reject before verifying credentials"))]
+        (testing "an API key alone is not a usable configuration"
+          (is (=? {:message      "A base URL is required to connect a vLLM server."
+                   :missing-keys ["base-url"]}
+                  (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                        {:provider    "vllm"
+                                         :credentials {:api-key "local-dev-key"}})))
+          (is (nil? (llm.settings/llm-vllm-api-key)))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest settings-put-vllm-surfaces-a-preflight-failure-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider _opts]
+                                    (throw (ex-info "The vLLM server answered with text instead of calling a tool."
+                                                    {:api-error true :status-code 400})))]
+        (testing "a failed contract probe reaches the admin verbatim and saves nothing"
+          (is (= "The vLLM server answered with text instead of calling a tool."
+                 (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                                 {:provider    "vllm"
+                                                  :credentials {:base-url "http://vllm.internal:8000/v1"}}))))
+          (is (nil? (llm.settings/llm-vllm-api-base-url)))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest settings-put-vllm-clears-credentials-on-disconnect-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    "http://vllm.internal:8000/v1"
+                                       llm.settings/llm-vllm-api-key         "local-dev-key"
+                                       metabot.settings/llm-metabot-provider "vllm/vllm-test"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts] {:models []})]
+        (testing "an explicit credentials clear wipes both settings"
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider "vllm" :credentials nil})
+          (is (nil? (llm.settings/llm-vllm-api-base-url)))
+          (is (nil? (llm.settings/llm-vllm-api-key))))))))
+
+(deftest settings-put-vllm-base-url-edit-keeps-the-saved-api-key-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    "http://old:8000/v1"
+                                       llm.settings/llm-vllm-api-key         "local-dev-key"
+                                       metabot.settings/llm-metabot-provider "vllm/vllm-test"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider {:keys [credentials]}]
+                                    (is (= {:base-url "http://new:8000/v1" :api-key "local-dev-key"} credentials))
+                                    {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
+        (testing "a field absent from the request keeps its saved value"
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider "vllm" :credentials {:base-url "http://new:8000/v1"}})
+          (is (= "http://new:8000/v1" (llm.settings/llm-vllm-api-base-url)))
+          (is (= "local-dev-key" (llm.settings/llm-vllm-api-key))))))))
+
+(deftest settings-put-vllm-clears-an-api-key-that-was-blanked-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider  nil
+                                mb-llm-vllm-api-base-url nil
+                                mb-llm-vllm-api-key      nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    "http://vllm.internal:8000/v1"
+                                       llm.settings/llm-vllm-api-key         "local-dev-key"
+                                       metabot.settings/llm-metabot-provider "vllm/vllm-test"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider _opts] {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
+        (testing "an operator who drops --api-key from their server can clear it here — the key is optional"
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider "vllm" :credentials {:api-key nil}})
+          (is (nil? (llm.settings/llm-vllm-api-key)))
+          (is (= "http://vllm.internal:8000/v1" (llm.settings/llm-vllm-api-base-url))))))))
+
+(deftest settings-get-vllm-does-not-probe-test
+  (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url    "http://vllm.internal:8000/v1"
+                                     llm.settings/llm-vllm-api-key         nil
+                                     metabot.settings/llm-metabot-provider "vllm/vllm-test"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials probe?]}]
+                                                           (is (= "vllm" provider))
+                                                           (is (= {:base-url "http://vllm.internal:8000/v1"
+                                                                   :api-key  nil}
+                                                                  credentials))
+                                                           (is (nil? probe?)
+                                                               "the model dropdown must not pay for a generation request")
+                                                           {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
+      (is (= {:value  "vllm/vllm-test"
+              :models [{:id "vllm-test" :display_name "vllm-test"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "vllm"))))))

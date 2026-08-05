@@ -110,6 +110,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  vllm: {
+    // vLLM serves whatever the operator loaded, so the id is free text and is its own label.
+    value: "vllm/Qwen3-14B",
+    models: [{ id: "Qwen3-14B", display_name: "Qwen3-14B" }],
+  },
   zai: {
     value: "zai/glm-5.2",
     models: [{ id: "glm-5.2", display_name: "GLM-5.2" }],
@@ -136,6 +141,8 @@ type MetabotSettingKey =
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-zai-api-key"
+  | "llm-vllm-api-base-url"
+  | "llm-vllm-api-key"
   | "llm-bedrock-access-key-id"
   | "llm-bedrock-secret-access-key"
   | "llm-bedrock-region"
@@ -231,7 +238,7 @@ async function setup({
   const updateMetabotSettingsDeferred = defer<void>();
 
   const mergedApiKeyValues: Record<
-    MetabotApiKeyProvider | "azure" | "bedrock",
+    MetabotApiKeyProvider | "azure" | "bedrock" | "vllm",
     string | null
   > = {
     anthropic: "**********45",
@@ -240,6 +247,7 @@ async function setup({
     mistral: null,
     openai: null,
     openrouter: null,
+    vllm: null,
     zai: null,
     ...apiKeyValues,
   };
@@ -310,6 +318,18 @@ async function setup({
     "llm-zai-api-key": createMockSettingDefinition({
       key: "llm-zai-api-key",
       value: mergedApiKeyValues.zai ?? undefined,
+    }),
+    // vLLM is configured by its base URL alone; the API key is optional, so the fixture leaves it
+    // unset to exercise the keyless server case.
+    "llm-vllm-api-base-url": createMockSettingDefinition({
+      key: "llm-vllm-api-base-url",
+      value: mergedApiKeyValues.vllm
+        ? "http://vllm.internal:8000/v1"
+        : undefined,
+    }),
+    "llm-vllm-api-key": createMockSettingDefinition({
+      key: "llm-vllm-api-key",
+      value: undefined,
     }),
     "llm-bedrock-access-key-id": createMockSettingDefinition({
       key: "llm-bedrock-access-key-id",
@@ -2366,6 +2386,92 @@ describe("AIProviderSettingsSection", () => {
       expect(await findSettingUpdates()).toEqual([]);
       expect(
         screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("vLLM", () => {
+    it("shows a base URL field and an optional API key field when vLLM is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("vLLM");
+
+      expect(await screen.findByLabelText("Base URL")).toBeInTheDocument();
+      expect(screen.getByLabelText("API key")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Optional. Only needed if you started your server with --api-key.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("connects vLLM with a base URL alone, omitting the untouched API key", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "vllm/Qwen3-14B",
+          models: DEFAULT_RESPONSES.vllm.models,
+        },
+      });
+
+      await selectProvider("vLLM");
+      await userEvent.type(
+        await screen.findByLabelText("Base URL"),
+        "http://vllm.internal:8000/v1",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "vllm",
+            credentials: { "base-url": "http://vllm.internal:8000/v1" },
+          },
+        ]);
+      });
+
+      await screen.findByLabelText("Model");
+      await openModelSelector();
+      await userEvent.click(await screen.findByText("Qwen3-14B"));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "vllm",
+            credentials: { "base-url": "http://vllm.internal:8000/v1" },
+          },
+          { provider: "vllm", model: "Qwen3-14B" },
+        ]);
+      });
+    });
+
+    it("disconnects vLLM by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "vllm/Qwen3-14B",
+        apiKeyValues: { vllm: "configured" },
+      });
+
+      await screen.findByLabelText("Base URL");
+      await confirmDisconnectProvider();
+
+      // vLLM must take the `credentials: null` path. Falling through to the shared api-key
+      // lookup would throw on a provider that has no entry there.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
+            body: { provider: "vllm", credentials: null },
+          },
+          {
+            path: SETTING_PATH,
+            body: { "llm-metabot-provider": null },
+          },
+        ]);
+      });
+
+      expect(
+        await screen.findByText("Connect to an AI provider"),
       ).toBeInTheDocument();
     });
   });

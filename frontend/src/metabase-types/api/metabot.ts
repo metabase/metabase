@@ -197,6 +197,7 @@ export type MetabotProvider =
   | "mistral"
   | "openai"
   | "openrouter"
+  | "vllm"
   | "zai";
 
 export interface BedrockCredentials {
@@ -211,8 +212,12 @@ export interface AzureCredentials {
   "base-url"?: string | null;
 }
 
+/** Same fields as Azure, but the base URL is what's required and the API key is
+ * optional — a vLLM server only has one if it was started with `--api-key`. */
+export type VllmCredentials = AzureCredentials;
+
 /** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure sends an API key and base URL. */
+ * material, Azure and vLLM send an API key and base URL. */
 export interface MetabotCredentials
   extends BedrockCredentials, AzureCredentials {}
 

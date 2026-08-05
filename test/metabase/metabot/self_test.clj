@@ -37,7 +37,10 @@
     (is (=? {:provider "zai" :model "glm-5.2" :ai-proxy? false}
             (#'self/parse-provider-model "zai/glm-5.2")))
     (is (=? {:provider "mistral" :model "mistral-medium-3-5" :ai-proxy? false}
-            (#'self/parse-provider-model "mistral/mistral-medium-3-5"))))
+            (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
+    ;; vLLM served names are often HF repo ids, so the model segment keeps its slashes.
+    (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
+            (#'self/parse-provider-model "vllm/mlx-community/Qwen3-14B-4bit"))))
   (testing "parses metabase/ prefix (AI proxy)"
     (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
             (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -56,7 +59,8 @@
     (is (fn? (#'self/resolve-adapter "openai")))
     (is (fn? (#'self/resolve-adapter "openrouter")))
     (is (fn? (#'self/resolve-adapter "zai")))
-    (is (fn? (#'self/resolve-adapter "mistral"))))
+    (is (fn? (#'self/resolve-adapter "mistral")))
+    (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))

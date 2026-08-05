@@ -21,6 +21,7 @@
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
@@ -38,6 +39,7 @@
     "mistral"    mistral/mistral
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
@@ -51,6 +53,7 @@
     "mistral"    mistral/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
@@ -296,9 +299,10 @@
   `tracking-opts` is a map with analytics context for prometheus and snowplow events. See [[report-token-usage-xf]]
   above for details.
 
-  `llm-opts` is an optional map of provider-facing call options. Currently this
-  supports `:tool-choice`, used by profiles like `:sql` that must end in a tool
-  call instead of plain assistant text.
+  `llm-opts` is an optional map of provider-facing call options:
+  `:tool-choice`, used by profiles like `:sql` that must end in a tool call
+  instead of plain assistant text, and `:temperature`, the profile's sampling
+  temperature.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
@@ -306,7 +310,7 @@
   exponential backoff, matching the Python ai-service retry behavior."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
-  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice temperature]}]
    (if-let [limit-msg (usage/check-usage-limits!)]
      (reify clojure.lang.IReduceInit
        (reduce [_ rf init]
@@ -318,6 +322,7 @@
              streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
                               system-msg                    (assoc :system system-msg)
                               (and (seq tools) tool-choice) (assoc :tool_choice tool-choice)
+                              temperature                   (assoc :temperature temperature)
                               (:session-id tracking-opts)   (assoc :prompt-cache-key (:session-id tracking-opts)))
              make-source    (fn []
                               (eduction (comp (core/tool-executor-xf tools)

@@ -106,7 +106,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "mistral" "openai" "openrouter" "zai"})
+  #{"anthropic" "azure" "bedrock" "mistral" "openai" "openrouter" "vllm" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -142,7 +142,11 @@
   "Default model payload keyed by provider for `PUT /api/metabot/settings`.
 
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
-  managed `metabase` provider uses the proxied `provider/model` form."
+  managed `metabase` provider uses the proxied `provider/model` form.
+
+  Azure and vLLM are absent on purpose — neither has a defensible default. Azure's model is composed by the FE from
+  required inputs; a vLLM server's model name is whatever the operator loaded, knowable only from its catalog (see the
+  connect flow in `metabase.metabot.api`)."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
@@ -294,10 +298,11 @@
 (defn configured-provider-credentials
   "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured.
 
-  The shape of the map varies by provider: API-key providers return `{:api-key ...}`, Azure returns `:api-key` and
-  `:base-url` from the `llm-azure-*` settings, and Bedrock returns `:access-key-id`, `:secret-access-key`,
-  `:session-token`, and `:region` from the `llm-bedrock-*` settings. Azure counts as configured only when both the
-  API key and base URL are set; Bedrock only when both the access key ID and secret access key are set."
+  The shape of the map varies by provider: API-key providers return `{:api-key ...}`, Azure and vLLM return `:api-key`
+  and `:base-url`, and Bedrock returns `:access-key-id`, `:secret-access-key`, `:session-token`, and `:region` from the
+  `llm-bedrock-*` settings. Azure counts as configured only when both the API key and base URL are set; Bedrock only
+  when both the access key ID and secret access key are set; vLLM on the base URL alone, since a server started
+  without `--api-key` needs no key."
   [provider]
   (case provider
     "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
@@ -313,13 +318,17 @@
     "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
+    ;; A nil `:api-key` inside a non-nil map is a valid, complete vLLM configuration.
+    "vllm"       (when-let [base-url (non-blank (llm.settings/llm-vllm-api-base-url))]
+                   {:base-url base-url
+                    :api-key  (non-blank (llm.settings/llm-vllm-api-key))})
     "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))
     nil))
 
 (defn provider-credentials-complete?
   "Whether a credentials map carries everything `provider` needs to make requests: both the AWS access key ID and
-  secret access key for Bedrock, both the API key and base URL for Azure, an `:api-key` for the other direct
-  providers."
+  secret access key for Bedrock, both the API key and base URL for Azure, the base URL alone for vLLM (whose API key
+  is optional), an `:api-key` for the other direct providers."
   [provider credentials]
   (boolean
    (case provider
@@ -327,6 +336,7 @@
                     (non-blank (:secret-access-key credentials)))
      "azure"   (and (non-blank (:api-key credentials))
                     (non-blank (:base-url credentials)))
+     "vllm"    (non-blank (:base-url credentials))
      (non-blank (:api-key credentials)))))
 
 (defn- llm-provider-configured?

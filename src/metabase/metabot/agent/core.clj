@@ -242,7 +242,10 @@
         system-msg   (messages/build-system-message context profile tools)
         input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
-        llm-opts     (cond-> {}
+        ;; Every profile declares a `:temperature`, but until now nothing forwarded it, so providers
+        ;; sampled at their own defaults (1.0 on the Chat Completions path). Forwarding it changes
+        ;; sampling for every provider, not just vLLM.
+        llm-opts     (cond-> {:temperature (:temperature profile)}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
       (debug-log! {:iteration iteration

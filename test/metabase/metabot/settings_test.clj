@@ -289,6 +289,31 @@
     (mt/with-temporary-setting-values [llm-mistral-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "mistral"))))))
 
+(deftest configured-provider-credentials-vllm-test
+  (testing "vLLM is configured by its base URL alone — a nil api-key inside the map is a complete configuration"
+    (mt/with-temporary-setting-values [llm-vllm-api-base-url "http://vllm.internal:8000/v1"
+                                       llm-vllm-api-key      nil]
+      (is (= {:base-url "http://vllm.internal:8000/v1" :api-key nil}
+             (metabot.settings/configured-provider-credentials "vllm")))
+      (is (true? (metabot.settings/provider-credentials-complete?
+                  "vllm" (metabot.settings/configured-provider-credentials "vllm")))))
+    (testing "and unconfigured without one, even when a key is set"
+      (mt/with-temporary-setting-values [llm-vllm-api-base-url nil
+                                         llm-vllm-api-key      "local-dev-key"]
+        (is (nil? (metabot.settings/configured-provider-credentials "vllm")))
+        (is (false? (metabot.settings/provider-credentials-complete? "vllm" {:api-key "local-dev-key"})))))))
+
+(deftest metabot-configured-with-vllm-base-url-only-test
+  (testing "a keyless vLLM server counts as configured"
+    (mt/with-temporary-setting-values [llm-metabot-provider  "vllm/vllm-test"
+                                       llm-vllm-api-base-url "http://vllm.internal:8000/v1"
+                                       llm-vllm-api-key      nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest vllm-has-no-default-model-test
+  (testing "there is no defensible default served-model name, so a vLLM connect must resolve one from the catalog"
+    (is (nil? (metabot.settings/default-model-for-provider "vllm")))))
+
 (deftest configured-provider-credentials-bedrock-fully-configured-test
   (testing "returns the AWS credentials map when bedrock is fully configured"
     (mt/with-temporary-setting-values [llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"

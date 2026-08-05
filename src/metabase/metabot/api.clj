@@ -598,10 +598,12 @@
   "List a provider's models.
   Validate against `:credentials` in `opts` when provided and the provider's saved credentials otherwise. The shape
   of the credentials map varies by provider (see [[metabot.settings/configured-provider-credentials]]). `:model` in
-  `opts` is the candidate model for providers whose validation depends on it (Azure's wire family)."
+  `opts` is the candidate model for providers whose validation depends on it (Azure's wire family, vLLM's preflight
+  target). `:probe?` additionally runs the provider's connect-time contract checks; it is set on the `PUT` path only,
+  since `GET` backs the admin model dropdown and must stay cheap."
   ([provider]
    (provider-models-response provider nil))
-  ([provider {credentials-override :credentials model :model}]
+  ([provider {credentials-override :credentials model :model probe? :probe?}]
    (if (= provider provider-util/metabase-provider-prefix)
      {:models (decorate-provider-models
                provider
@@ -613,7 +615,8 @@
            {:models (decorate-provider-models
                      provider
                      (:models (metabot.self/list-models provider (cond-> {:credentials credentials}
-                                                                   model (assoc :model model)))))}
+                                                                   model  (assoc :model model)
+                                                                   probe? (assoc :probe? true)))))}
            (catch clojure.lang.ExceptionInfo e
              (if (provider-client-error? e)
                {:models []
@@ -685,17 +688,38 @@
    :base-url (or (llm.settings/normalize-llm-base-url base-url)
                  (llm.settings/normalize-llm-base-url (llm.settings/llm-azure-api-base-url)))})
 
+(def ^:private vllm-credential-fields
+  [:base-url :api-key])
+
+(defn- effective-vllm-credentials
+  "The vLLM credentials a settings request resolves to.
+
+  Follows Bedrock's per-field presence contract, not Azure's layering: a field present in the request replaces the
+  saved value (blank clears it), an absent field keeps it. Azure's \"blank means keep\" rule is wrong here because it
+  would make an *optional* API key unclearable — an operator who drops `--api-key` from their server must be able to
+  clear it from Metabase. The base URL is normalized exactly as its setter normalizes it, so the validation round-trip
+  exercises what would actually be persisted."
+  [supplied-creds]
+  (reduce (fn [creds field]
+            (cond-> creds
+              (contains? supplied-creds field)
+              (assoc field (if (= field :base-url)
+                             (llm.settings/normalize-llm-base-url (get supplied-creds field))
+                             (non-blank-string (get supplied-creds field))))))
+          (metabot.settings/configured-provider-credentials "vllm")
+          vllm-credential-fields))
+
 (defn- request-credentials
   "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
 
   nil when the request does not touch credentials for `provider`.
 
-  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock and
-  Azure — resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the Bedrock
-  credentials map follow that map's presence contract (see [[effective-bedrock-credentials]]); blank fields *inside*
-  the Azure credentials map mean \"keep the saved value\" (see [[effective-azure-credentials]]), so e.g. a key-only
-  rotation can't wipe the base URL. Throws a 400 when non-nil Bedrock/Azure credentials don't resolve to a complete
-  set."
+  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock,
+  Azure, and vLLM — resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the
+  Bedrock and vLLM credentials maps follow those maps' presence contract (see [[effective-bedrock-credentials]] and
+  [[effective-vllm-credentials]]); blank fields *inside* the Azure credentials map mean \"keep the saved value\" (see
+  [[effective-azure-credentials]]), so e.g. a key-only rotation can't wipe the base URL. Throws a 400 when non-nil
+  Bedrock/Azure/vLLM credentials don't resolve to a complete set."
   [provider {:keys [api-key credentials] :as body}]
   (case provider
     "bedrock"
@@ -726,6 +750,19 @@
                              :api-error    true
                              :missing-keys (vec (remove #(non-blank-string (get creds %))
                                                         [:api-key :base-url]))})))
+          creds)))
+
+    "vllm"
+    (when (contains? body :credentials)
+      (if (nil? credentials)
+        {:api-key  nil
+         :base-url nil}
+        (let [creds (effective-vllm-credentials credentials)]
+          (when-not (metabot.settings/provider-credentials-complete? provider creds)
+            (throw (ex-info (tru "A base URL is required to connect a vLLM server.")
+                            {:status-code  400
+                             :api-error    true
+                             :missing-keys [:base-url]})))
           creds)))
 
     (when (contains? body :api-key)
@@ -760,6 +797,16 @@
   (setting/set! :llm-azure-api-key api-key)
   (setting/set! :llm-azure-api-base-url base-url))
 
+(defn- save-vllm-credentials!
+  "Persist a vLLM credentials map resolved by [[request-credentials]]; nil values clear those settings. Each setting is
+  written only when the map carries its field, matching [[effective-vllm-credentials]]'s presence contract — so a
+  base-URL-only edit can't silently clear an already-saved API key."
+  [{:keys [api-key base-url] :as credentials}]
+  (when (contains? credentials :base-url)
+    (setting/set! :llm-vllm-api-base-url base-url))
+  (when (contains? credentials :api-key)
+    (setting/set! :llm-vllm-api-key api-key)))
+
 (defn- save-credentials!
   "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
   [provider credentials]
@@ -767,6 +814,7 @@
     (case provider
       "bedrock" (save-bedrock-credentials! credentials)
       "azure"   (save-azure-credentials! credentials)
+      "vllm"    (save-vllm-credentials! credentials)
       (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
 
 (defn- credential-setting-keys
@@ -774,12 +822,16 @@
   (mirrors [[save-credentials!]]). Used to reject writes to env-shadowed settings up front: a write
   to an env-shadowed setting persists a DB row the env var then silently wins over. Bedrock writes
   `:llm-bedrock-region` only when the credentials carry it (see [[save-bedrock-credentials!]]), so it
-  is guarded only then; the other fields are always written."
+  is guarded only then; the other fields are always written. vLLM guards both of its settings the
+  same way (see [[save-vllm-credentials!]])."
   [provider credentials]
   (case provider
     "bedrock" (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
                 (contains? credentials :region) (conj :llm-bedrock-region))
     "azure"   [:llm-azure-api-key :llm-azure-api-base-url]
+    "vllm"    (cond-> []
+                (contains? credentials :base-url) (conj :llm-vllm-api-base-url)
+                (contains? credentials :api-key)  (conj :llm-vllm-api-key))
     [(provider-api-key-setting-key provider)]))
 
 (api.macros/defendpoint :put "/settings"
@@ -816,25 +868,47 @@
                               (metabot.settings/validate-azure-model! (str provider "/" model) model)))
         ;; Reject writes to env-shadowed settings before verifying or persisting anything: guard every
         ;; credential setting a save would touch (see [[credential-setting-keys]]), plus the
-        ;; provider/model setting whenever a provider/model write would happen.
+        ;; provider/model setting whenever a provider/model write would happen. A provider switch
+        ;; always ends in such a write — including vLLM's, whose model is only resolved below — so
+        ;; the guard keys off the switch too, not just a supplied model.
         _                 (when credentials
                             (run! check-not-env-shadowed! (credential-setting-keys provider credentials)))
-        _                 (when model
+        _                 (when (or model provider-changed?)
                             (check-not-env-shadowed! :llm-metabot-provider))
-        ;; Azure connect validation needs the candidate model's wire family; credential-only
-        ;; rotations on a connected Azure provider fall back to the saved model.
-        validation-model  (when (= provider "azure")
+        ;; Azure validation needs the candidate model's wire family; vLLM's preflight probes the model
+        ;; that will actually be used. Credential-only rotations on an already-connected provider fall
+        ;; back to the saved model.
+        validation-model  (when (contains? #{"azure" "vllm"} provider)
                             (or model
                                 (when-not provider-changed?
                                   (provider-util/provider-and-model->model (metabot.settings/llm-metabot-provider)))))
+        ;; Nothing about a customer-served model is guaranteed, so a vLLM connect or model change
+        ;; exercises the agent-loop contract before saving. Tool-calling support is a property of the
+        ;; model *and* the server's `--tool-call-parser`, so a model switch is exactly when it can
+        ;; silently break — hence probing on more than just credential changes.
+        probe?            (and (= provider "vllm")
+                               (or provider-changed? (some? credentials) (some? model)))
         ;; The model listing validates the request credentials before anything is saved.
         response          (-> (settings-response provider {:credentials credentials
-                                                           :model       validation-model})
-                              throw-credentials-error!)]
+                                                           :model       validation-model
+                                                           :probe?      probe?})
+                              throw-credentials-error!)
+        ;; vLLM has no default model — the served name is knowable only from the catalog — so a
+        ;; connect without an explicit model adopts what the server is serving. Without this, `model`
+        ;; stays nil, `llm-metabot-provider` is never written, and the UI never reports connected even
+        ;; though the credentials saved.
+        resolved-model    (or model
+                              (when (and (= provider "vllm") provider-changed?)
+                                (some-> response :models first :id)))
+        _                 (when (and (= provider "vllm") provider-changed? (nil? resolved-model))
+                            (throw (ex-info (tru "The vLLM server is reachable but is not serving any models.")
+                                            {:status-code 400
+                                             :api-error   true
+                                             :provider    provider})))]
     (when credentials
       (save-credentials! provider credentials))
-    (when model
-      (setting/set! :llm-metabot-provider (str provider "/" model)))
+    (when resolved-model
+      (setting/set! :llm-metabot-provider (str provider "/" resolved-model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))
 
 (def ^{:arglists '([request respond raise])} routes

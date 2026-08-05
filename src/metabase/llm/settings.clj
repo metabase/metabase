@@ -235,6 +235,36 @@
   :setter      (fn [new-value]
                  (setting/set-value-of-type! :string :llm-azure-api-base-url (normalize-llm-base-url new-value))))
 
+;;; --------------------------------------------------- vLLM ----------------------------------------------------
+
+(defsetting llm-vllm-api-base-url
+  (deferred-tru "The base URL of your vLLM server''s OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :string :llm-vllm-api-base-url (normalize-llm-base-url new-value))))
+
+(defsetting llm-vllm-api-key
+  (deferred-tru "The API key for your vLLM server. Only needed when the server was started with `--api-key`.")
+  ;; A bare vLLM server has no auth at all, so unlike every other provider here the key is optional
+  ;; and there is no format to validate against.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-vllm-api-key))
+
+(defsetting llm-vllm-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your vLLM server.")
+  ;; Self-hosted time-to-first-token is bounded by the operator's hardware and nothing else — a cold
+  ;; prefill of a realistic prompt measured 30s on a laptop-class GPU — so the shared 60s
+  ;; `llm-request-timeout-ms` would reject working configurations. This is the one place the knob
+  ;; genuinely belongs.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
+
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url

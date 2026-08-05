@@ -86,6 +86,17 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    vllm: {
+      value: "vllm",
+      label: "vLLM",
+      apiKey: {
+        // A vLLM server only has a key when it was started with `--api-key`, so there is
+        // no key to go get and no console to get it from.
+        placeholder: t`Enter your vLLM API key`,
+        addKeyUrl:
+          "https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html",
+      },
+    },
     zai: {
       value: "zai",
       label: "Z.AI",
@@ -98,9 +109,11 @@ export function getProviderOptions(
   };
 }
 
+/** Providers whose entire credential is a single API key, saved via the shared api-key path.
+ * Azure, Bedrock, and vLLM carry additional or optional fields and have their own save paths. */
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  "metabase" | "azure" | "bedrock"
+  "metabase" | "azure" | "bedrock" | "vllm"
 >;
 
 export function isMetabotProvider(
@@ -118,6 +131,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "mistral" ||
     provider === "openai" ||
     provider === "openrouter" ||
+    provider === "vllm" ||
     provider === "zai"
   );
 }

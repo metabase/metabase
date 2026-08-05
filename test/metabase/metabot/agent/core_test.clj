@@ -106,7 +106,7 @@
             (is (pos? (count result)))
             ;; Should have state data (final part)
             (is (some #(= :data (:type %)) result)))))
-      (testing "sql profile requests required tool choice"
+      (testing "sql profile requests required tool choice, alongside the profile's temperature"
         (let [captured (atom nil)]
           (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
                                                       (reset! captured llm-opts)
@@ -117,7 +117,7 @@
                        :state      {}
                        :profile-id :sql
                        :context    {}}))
-            (is (= {:tool-choice "required"} @captured)))))
+            (is (= {:tool-choice "required" :temperature 0.3} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
