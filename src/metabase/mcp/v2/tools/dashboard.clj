@@ -1,6 +1,12 @@
 (ns metabase.mcp.v2.tools.dashboard
   "The v2 MCP `dashboard_write` tool: create and update dashboards, and apply an ordered list of
-   editor operations as one atomic save.
+   editor operations.
+
+   An update applies its ops as one save. A create does not: it writes the dashboard row, then
+   applies the ops to it. The ops are compiled against a blank dashboard first so a malformed one
+   fails before anything is written, but per-field parameter-mapping permission checks run only on
+   the real save — so that second save can still fail and leave an empty dashboard behind. The tool
+   description says so, since the agent is the one that has to recover.
 
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state, hands it to the pure compiler in
@@ -374,7 +380,9 @@
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:ops {:optional true}
-    [:maybe [:sequential {:description "Editor operations, applied in order as one atomic save."} op-schema]]]])
+    [:maybe [:sequential {:description (str "Editor operations, applied in order. One atomic save on update; on "
+                                            "create the dashboard row is written before the ops are applied.")}
+             op-schema]]]])
 
 (def ^:private dashboard-write-entry
   {:create-required [:name]
@@ -421,9 +429,13 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (registry/deftool dashboard-write
-  "Create or update a dashboard and edit its layout with ordered ops applied as one atomic save — nothing is
-  written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry cannot
-  double-add. method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
+  "Create or update a dashboard and edit its layout with ordered ops. On update the ops are one atomic save —
+  nothing is written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry
+  cannot double-add. Create is not atomic: the dashboard row is written first and the ops applied second, so a
+  failure on that second save leaves an empty dashboard behind (the ops are compiled beforehand, but per-field
+  parameter-mapping permission checks run only on the real save). Find it by name and finish it with method
+  \"update\" — calling create again leaves a second one.
+  method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
   false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
   ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
   add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove,
