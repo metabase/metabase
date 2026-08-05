@@ -191,7 +191,6 @@ CLAUDE.local.md
 
 .eslintcache
 
-/logs
 /.clojure-mcp
 
 # Python dependencies (pip-installed, not committed)
