@@ -12,7 +12,7 @@ import { getSubmitValues, getValidationSchema } from "../../utils/schema";
 import { DatabaseFormBody } from "./DatabaseFormBody";
 import { DatabaseFormFooter } from "./DatabaseFormFooter";
 import { FormDirtyStateProvider } from "./context";
-import { getEngine, getEngineKey } from "./utils";
+import { castEngineValues, getEngine, getEngineKey } from "./utils";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -82,11 +82,12 @@ export const DatabaseForm = ({
   );
 
   const initialValues = useMemo(() => {
-    return getSchema(initialEngineKey).cast(
+    return castEngineValues(
+      engines,
       { ...initialData, engine: initialEngineKey },
-      { stripUnknown: true },
+      isAdvanced,
     );
-  }, [getSchema, initialData, initialEngineKey]);
+  }, [engines, initialData, initialEngineKey, isAdvanced]);
 
   const handleSubmit = useCallback(
     (values: DatabaseData) => {

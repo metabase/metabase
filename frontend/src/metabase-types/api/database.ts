@@ -94,6 +94,8 @@ export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
+  /** Hosting provider detected from the connection details, e.g. "AWS RDS" */
+  provider_name?: string | null;
   // If current user lacks write permission to database, `details` will be
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:

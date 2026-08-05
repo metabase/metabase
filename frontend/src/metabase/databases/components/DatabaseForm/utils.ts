@@ -1,6 +1,8 @@
 import { useContext } from "react";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
+import type { DatabaseFormValues } from "metabase/databases/types";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import {
   getFlattenedFields,
@@ -39,24 +41,35 @@ export const useIsFormDirty = () => {
   return useContext(FormDirtyStateContext);
 };
 
-export const getEngineDefaults = (
+export const castEngineValues = (
   engines: Record<string, Engine>,
-  engineKey: string | undefined,
+  values: Partial<DatabaseData>,
   isAdvanced: boolean,
 ): DatabaseData => {
+  const engineKey = values.engine;
   const schema = getValidationSchema(
     getEngine(engines, engineKey),
     engineKey,
     isAdvanced,
   );
-  return schema.cast({ engine: engineKey }, { stripUnknown: true });
+  return schema.cast(values, { stripUnknown: true });
 };
+
+export const getEngineDefaults = (
+  engines: Record<string, Engine>,
+  engineKey: string | undefined,
+  isAdvanced: boolean,
+): DatabaseData => castEngineValues(engines, { engine: engineKey }, isAdvanced);
 
 /**
  * Values that describe the engine that was selected rather than the connection itself,
  * so they cannot be carried over to another engine.
  */
-const ENGINE_SPECIFIC_KEYS = ["engine", "connection-string", "provider_name"];
+const ENGINE_SPECIFIC_KEYS: (keyof DatabaseFormValues)[] = [
+  "engine",
+  "connection-string",
+  "provider_name",
+];
 
 export const mergeRetainedValues = (
   previousValues: DatabaseData,
@@ -88,15 +101,19 @@ const canRetainDetail = (field: EngineField | undefined, value: unknown) => {
     return false;
   }
 
-  switch (field.type) {
-    case "hidden":
-      return false;
-    case "integer":
-      return typeof value === "number";
-    case "boolean":
-    case "section":
-      return typeof value === "boolean";
-    default:
-      return typeof value === "string";
-  }
+  return match(field.type)
+    .with("hidden", () => false)
+    .with("integer", () => typeof value === "number")
+    .with("boolean", "section", () => typeof value === "boolean")
+    .with(
+      "string",
+      "password",
+      "text",
+      "select",
+      "textFile",
+      "info",
+      undefined,
+      () => typeof value === "string",
+    )
+    .exhaustive();
 };
