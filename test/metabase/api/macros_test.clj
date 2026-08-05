@@ -100,42 +100,58 @@
 
 (def ^:private closed-params-endpoint
   (api.macros/defendpoint :post "/closed-params-test/:id"
-    "Echoes back its params."
-    [{:keys [id]} :- [:map [:id :int]]
-     {:keys [q]}  :- [:map [:q {:optional true} :int]]
-     {:keys [b]}  :- [:map [:b :int]]]
-    {:id id, :q q, :b b}))
+    "Echoes back the params the handler was given."
+    [route-params :- [:map [:id :int]]
+     query-params :- [:map [:q {:optional true} :int]]
+     body-params  :- [:map [:b :int] [:nested {:optional true} [:map [:keep :int]]]]]
+    {:route route-params, :query query-params, :body body-params}))
 
 (defn- call-with-params [endpoint route-params query-params body-params]
-  (try
-    (api.macros/call-core-fn endpoint route-params query-params body-params nil)
-    (catch clojure.lang.ExceptionInfo e
-      (-> (ex-data e)
-          (select-keys [:status-code :errors])
-          (update :errors update-vals str)))))
+  (:body (api.macros/call-core-fn endpoint route-params query-params body-params nil)))
 
 (deftest ^:parallel closed-params-test
   (let [endpoint closed-params-endpoint]
-    (testing "declared params are accepted"
-      (is (= {:status 200, :headers {}, :body {:id 1, :q 2, :b 3}}
+    (testing "declared params reach the handler"
+      (is (= {:route {:id 1}, :query {:q 2}, :body {:b 3}}
              (call-with-params endpoint {:id 1} {:q 2} {:b 3}))))
-    (testing "a param the endpoint does not declare is rejected rather than ignored"
-      (are [route-params query-params body-params] (= {:status-code 400
-                                                       :errors      {:sneaky "unexpected parameter"}}
+    (testing "a param the endpoint does not declare is stripped before the handler sees it"
+      (are [route-params query-params body-params] (= {:route {:id 1}, :query {:q 2}, :body {:b 3}}
                                                       (call-with-params endpoint route-params query-params body-params))
         {:id 1, :sneaky 1} {:q 2}            {:b 3}
         {:id 1}            {:q 2, :sneaky 1} {:b 3}
-        {:id 1}            {:q 2}            {:b 3, :sneaky 1}))))
+        {:id 1}            {:q 2}            {:b 3, :sneaky 1}))
+    (testing "only the top level is stripped -- maps nested inside a param keep their undeclared keys"
+      (is (= {:route {:id 1}, :query {:q 2}, :body {:b 3, :nested {:keep 4, :undeclared 5}}}
+             (call-with-params endpoint {:id 1} {:q 2} {:b 3, :nested {:keep 4, :undeclared 5}}))))))
 
 (deftest ^:parallel open-params-test
-  (testing "an endpoint can opt out of closed params by specifying :closed itself"
+  (testing "an endpoint can opt out of stripping by specifying :closed itself"
     (let [endpoint (api.macros/defendpoint :post "/open-params-test"
                      "Echoes back its body."
                      [_route-params
                       _query-params
                       body :- [:map {:closed false} [:b :int]]]
                      body)]
-      (is (= {:status 200, :headers {}, :body {:b 3, :sneaky 1}}
+      (is (= {:b 3, :sneaky 1}
+             (call-with-params endpoint nil nil {:b 3, :sneaky 1})))))
+  (testing "a hand-closed map still rejects undeclared params instead of dropping them"
+    (let [endpoint (api.macros/defendpoint :post "/hand-closed-params-test"
+                     "Echoes back its body."
+                     [_route-params
+                      _query-params
+                      body :- [:map {:closed true} [:b :int]]]
+                     body)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid body"
+           (call-with-params endpoint nil nil {:b 3, :sneaky 1})))))
+  (testing "a schema with no entries declares nothing, so nothing is stripped"
+    (let [endpoint (api.macros/defendpoint :post "/unschematized-params-test"
+                     "Echoes back its body."
+                     [_route-params
+                      _query-params
+                      body :- :map]
+                     body)]
+      (is (= {:b 3, :sneaky 1}
              (call-with-params endpoint nil nil {:b 3, :sneaky 1}))))))
 
 (deftest ^:parallel multipart-tempfile-cleanup-on-throw-test

@@ -2648,11 +2648,10 @@
             (is (= ["Archived Snippet"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
                                                                       "collection/root/items?namespace=snippets&archived=true"))))))
-          (testing "\nA query param the endpoint doesn't declare is rejected"
-            (is (= {:errors {:model "unexpected parameter"}
-                    :specific-errors {:model ["should be spelled :models, received: \"snippet\""]}}
-                   (mt/user-http-request :rasta :get 400
-                                         "collection/root/items?namespace=snippets&model=snippet")))))))))
+          (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
+            (is (= ["My Snippet", "My Snippet 2"]
+                   (only-test-item-names (:data (mt/user-http-request :rasta :get 200
+                                                                      "collection/root/items?namespace=snippets&model=snippet")))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              POST /api/collection                                              |

@@ -303,8 +303,31 @@
        (str/replace #" " "-")
        (str/replace #":" ""))))
 
+(def ^:private strip-extra-keys-transformer
+  "Dissoc keys a `:map` does not declare, so that a request carrying undeclared params is served as if it had not sent
+  them instead of being rejected with a 400.
+
+  Unlike [[malli.transform/strip-extra-keys-transformer]] this only touches the maps
+  that [[closed-params-schema]] closed on the endpoint's behalf, marked with `::strip-extra-keys`. Two kinds of map are
+  deliberately left alone:
+
+  * maps nested inside a param schema, since stripping those would silently discard the contents of things like a
+    query or `visualization_settings`;
+
+  * maps an endpoint author closed by hand, where `:closed true` is a rejection the endpoint wants -- see the
+    multipart schema on `POST /api/table/:id/append-csv`, which is closed so that a file part smuggled under another
+    part name is a 400 rather than something we quietly drop."
+  (mtx/transformer
+   {:decoders {:map {:compile (fn [schema _options]
+                                (when (::strip-extra-keys (mc/properties schema))
+                                  (let [declared (into #{} (map first) (mc/children schema))]
+                                    (fn [x]
+                                      (cond-> x
+                                        (map? x) (select-keys declared))))))}}}))
+
 (def ^:private decode-transformer
   (mtx/transformer
+   strip-extra-keys-transformer
    (mtx/string-transformer)
    (mtx/json-transformer)
    (mtx/default-value-transformer)
@@ -495,18 +518,24 @@
               body))))))
 
 (defn closed-params-schema
-  "Return `schema` with its top-level `:map` closed, so that a request carrying params the endpoint does not declare is
-  rejected rather than silently ignored. A schema that specifies `:closed` itself keeps that value, which is how an
-  endpoint that really does accept arbitrary params opts out:
+  "Return `schema` with its top-level `:map` closed, so that params the endpoint does not declare never reach the
+  handler. Undeclared params are dissoc'd by [[strip-extra-keys-transformer]], which is what the `::strip-extra-keys`
+  marker asks for; `:closed` then catches anything that reaches validation with the stripping skipped.
 
-    [:map {:closed false} [:name :string]]
+  A schema that specifies `:closed` itself keeps that value and is not marked, so an endpoint author stays in control:
 
-  Schemas that are not a `:map` at the top level (`:merge`, `:multi`, refs, ...) are returned unchanged and stay open."
+    [:map {:closed false} [:name :string]]    ; accept any param
+    [:map {:closed true}  [:name :string]]    ; reject an undeclared param with a 400 instead of dropping it
+
+  Schemas that are not a `:map` at the top level (`:merge`, `:multi`, refs, ...) are returned unchanged and stay open,
+  as is a `:map` with no entries -- that is how an endpoint says it has no schema for these params at all, so there is
+  nothing to close it against."
   [schema]
   (let [schema (mc/schema schema)]
     (if (and (= (mc/type schema) :map)
+             (seq (mc/children schema))
              (not (contains? (mc/properties schema) :closed)))
-      (malli.util/update-properties schema assoc :closed true)
+      (malli.util/update-properties schema assoc :closed true ::strip-extra-keys true)
       schema)))
 
 (defn validate-schema
