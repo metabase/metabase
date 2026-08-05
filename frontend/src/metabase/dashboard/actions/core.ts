@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 
 import type { Dispatch } from "metabase/redux/store";
-import { type Location, push } from "metabase/router";
+import { type Location, navigate } from "metabase/router";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -20,14 +20,12 @@ export const setEditingDashboard = (
     // current location, since this no longer reads the retired routing slice.
     //
     // Only navigate when there is actually a hash to strip. The location is
-    // captured when the caller rendered, so pushing it unconditionally would
+    // captured when the caller rendered, so navigating unconditionally would
     // clobber query params written since then (e.g. the tab the dashboard URL
     // sync just selected, which it will not re-add because it dedupes on the
-    // previous params). Push a path string rather than spreading the location:
-    // it has no v3 `query` field, and the v3 history rebuilds `search` from
-    // `query`, so spreading it would drop the query string entirely.
+    // previous params).
     if (dashboard === null && location?.hash) {
-      dispatch(push(`${location.pathname}${location.search}`));
+      navigate(`${location.pathname}${location.search}`);
     }
 
     dispatch({

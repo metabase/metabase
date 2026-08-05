@@ -184,7 +184,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         message: t`Failed to send comment`,
       });
     } else {
-      deleteNewParamFromURLIfNeeded(location, dispatch);
+      deleteNewParamFromURLIfNeeded(location);
     }
   };
 

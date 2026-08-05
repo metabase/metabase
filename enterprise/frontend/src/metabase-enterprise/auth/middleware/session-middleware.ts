@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 
 import { logout, refreshSession } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
-import { replace } from "metabase/router";
+import { navigate } from "metabase/router";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 export const SESSION_KEY = "metabase.TIMEOUT";
@@ -54,7 +54,7 @@ export const createSessionMiddleware = (
         const redirectUrl = getRedirectUrl();
 
         if (wasLoggedIn && !!redirectUrl && !preventImmedidateRedirect()) {
-          store.dispatch(replace(redirectUrl));
+          navigate(redirectUrl, { replace: true });
         }
 
         intervalId = setInterval(async () => {
@@ -67,7 +67,7 @@ export const createSessionMiddleware = (
               await store.dispatch(refreshSession())?.unwrap();
 
               if (redirectUrl !== null) {
-                store.dispatch(replace(redirectUrl));
+                navigate(redirectUrl, { replace: true });
               }
             } else {
               const url = location.pathname + location.search + location.hash;

@@ -18,7 +18,7 @@ import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
@@ -189,6 +189,7 @@ function SaveChartAction({
   readonly: boolean;
 }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [saveMetabotEntity] = useSaveMetabotEntityMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
@@ -212,7 +213,7 @@ function SaveChartAction({
         message: t`Saved`,
         extraAction: {
           label: t`View`,
-          action: () => dispatch(push(Urls.question(savedQuestion))),
+          action: () => navigate(Urls.question(savedQuestion)),
         },
       }),
     );

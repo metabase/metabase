@@ -18,8 +18,8 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -32,7 +32,7 @@ import S from "./NewSnippetPage.module.css";
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
 export function NewSnippetPage() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const [name, setName] = useState(t`New SQL snippet`);
   const [description, setDescription] = useState("");
@@ -69,9 +69,9 @@ export function NewSnippetPage() {
 
   useEffect(() => {
     if (savedSnippet) {
-      dispatch(push(Urls.dataStudioSnippet(savedSnippet.id)));
+      navigate(Urls.dataStudioSnippet(savedSnippet.id));
     }
-  }, [savedSnippet, dispatch]);
+  }, [savedSnippet, navigate]);
 
   const handleSave = async () => {
     if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
@@ -82,7 +82,7 @@ export function NewSnippetPage() {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    navigate(Urls.dataStudioLibrary());
   };
 
   const handleCollectionSelected = async (

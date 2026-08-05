@@ -21,7 +21,7 @@ import type {
 } from "metabase/redux/store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { navigate } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
@@ -336,7 +336,7 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
-      dispatch(replace(Urls.unauthorized()));
+      navigate(Urls.unauthorized(), { replace: true });
       return;
     }
   }

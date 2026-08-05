@@ -20,7 +20,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { push, useLocation, useParams } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
@@ -37,15 +37,16 @@ export const NewModals = () => {
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
       const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
-      dispatch(push(nextLocation));
+      navigate(nextLocation);
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleModalClose = useCallback(() => {

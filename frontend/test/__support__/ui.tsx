@@ -48,8 +48,6 @@ import {
   type RouteObject,
   RouterProviderMemory,
   createLocationMirror,
-  createRouterNavigator,
-  routerMiddleware,
   toFacadeLocation,
   toNavigateArgs,
   toRouteObjects,
@@ -242,11 +240,7 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
-  const routerNavigator = withRouter ? createRouterNavigator() : undefined;
-  const storeMiddleware = _.compact([
-    Api.middleware,
-    routerNavigator && routerMiddleware(routerNavigator),
-  ]);
+  const storeMiddleware = [Api.middleware];
 
   // Unjustified type cast. FIXME
   const store = getStore(

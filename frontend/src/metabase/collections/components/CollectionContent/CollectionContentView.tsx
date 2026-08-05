@@ -41,7 +41,7 @@ import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -85,6 +85,7 @@ export const CollectionContentView = ({
   visibleColumns?: CollectionContentTableColumn[];
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [deleteCollection] = useDeleteCollectionMutation();
 
   useCollectionChartPaste(collection);
@@ -278,7 +279,7 @@ export const CollectionContentView = ({
           onDeletePermanently={async () => {
             try {
               await deleteCollection({ id: collectionId }).unwrap();
-              dispatch(push("/trash"));
+              navigate("/trash");
               dispatch(
                 addUndo({
                   message: t`This item has been permanently deleted.`,

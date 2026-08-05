@@ -11,8 +11,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useDispatch } from "metabase/redux";
-import { replace, useLocation } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
@@ -48,7 +47,7 @@ export function TransformGraphRunListPage() {
     useDisclosure();
   const [selectedRun, setSelectedRun] = useState<TransformGraphRun>();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     data,
@@ -95,9 +94,9 @@ export function TransformGraphRunListPage() {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformGraphRunListParams) => {
-      dispatch(replace(Urls.transformGraphRunList(newParams)));
+      navigate(Urls.transformGraphRunList(newParams), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleFilterOptionsChange = useCallback(
