@@ -1,4 +1,4 @@
-import { registerVisualization } from "metabase/visualizations";
+import { registerVisualization } from "metabase/visualizations/lib/registry";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   createMockCard,

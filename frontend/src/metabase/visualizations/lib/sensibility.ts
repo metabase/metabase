@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import visualizations from "metabase/visualizations";
+import visualizations from "metabase/visualizations/lib/registry";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import {
   hasLatitudeAndLongitudeColumns,

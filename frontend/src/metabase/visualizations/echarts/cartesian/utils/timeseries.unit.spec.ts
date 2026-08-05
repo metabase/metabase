@@ -6,7 +6,6 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-import { getVisualizationTransformed } from "metabase/visualizations";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
@@ -19,6 +18,7 @@ import {
   getTimezoneOrOffset,
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import { getVisualizationTransformed } from "metabase/visualizations/lib/registry";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 import {
