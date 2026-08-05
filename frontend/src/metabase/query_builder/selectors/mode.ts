@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getMode as getQuestionMode } from "metabase/querying/click-actions/lib/modes";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import Question from "metabase-lib/v1/Question";
 
 const getLastRunCard = (state: State) => state.qb.lastRunCard;

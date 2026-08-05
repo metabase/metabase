@@ -40,8 +40,8 @@ import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
+import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 import { Box, Group, Stack } from "metabase/ui";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 

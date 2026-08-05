@@ -6,10 +6,10 @@ import {
   getParameterValuesBySlug,
 } from "metabase/dashboard/click-behavior/dashboard-click-drill";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import { CombineColumnsAction } from "metabase/visualizations/click-actions/actions/CombineColumnsAction";
-import { ExtractColumnAction } from "metabase/visualizations/click-actions/actions/ExtractColumnAction";
+import { CombineColumnsAction } from "metabase/querying/click-actions/actions/CombineColumnsAction";
+import { ExtractColumnAction } from "metabase/querying/click-actions/actions/ExtractColumnAction";
+import { NativeQueryClickFallback } from "metabase/querying/click-actions/actions/NativeQueryClickFallback";
 import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
-import { NativeQueryClickFallback } from "metabase/visualizations/click-actions/actions/NativeQueryClickFallback";
 import type {
   ClickObject,
   LegacyDrill,
