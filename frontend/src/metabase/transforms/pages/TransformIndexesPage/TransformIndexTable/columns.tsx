@@ -1,8 +1,15 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { parseTimestampWithTimezone } from "metabase/transforms/utils";
-import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified, Flex, Group, Icon, Tooltip } from "metabase/ui";
+import {
+  Ellipsified,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Icon,
+  Tooltip,
+  type TreeTableColumnDef,
+} from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { TableIndexEntry } from "metabase-types/api";
 
@@ -20,12 +27,14 @@ type Actions = {
 type ColumnsProps = {
   systemTimezone: string | undefined;
   kindLabels: Map<string, string>;
+  applicationName: string;
   actions: Actions | undefined;
 };
 
 export function getColumns({
   systemTimezone,
   kindLabels,
+  applicationName,
   actions,
 }: ColumnsProps): TreeTableColumnDef<IndexRow>[] {
   const columns: TreeTableColumnDef<IndexRow>[] = [
@@ -71,10 +80,27 @@ export function getColumns({
       id: "source",
       header: t`Source`,
       width: "auto",
+      maxAutoWidth: 240,
       enableSorting: true,
       accessorFn: (index) =>
         index.metabase_managed ? t`Managed` : t`Unmanaged`,
-      cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+      cell: ({ row, getValue }) => {
+        const ctx = c("{0} is the application name");
+        return (
+          <Group gap="sm" wrap="nowrap" miw={0}>
+            <Ellipsified>{String(getValue())}</Ellipsified>
+            <Tooltip
+              label={
+                row.original.metabase_managed
+                  ? ctx.t`This index was created by ${applicationName} and is reapplied each time the transform runs`
+                  : ctx.t`This index was created outside of ${applicationName}`
+              }
+            >
+              <FixedSizeIcon name="info_outline" c="text-secondary" />
+            </Tooltip>
+          </Group>
+        );
+      },
     },
     {
       id: "status",
