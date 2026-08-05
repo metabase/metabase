@@ -789,10 +789,6 @@
       "duration": 210483
     },
     {
-      "spec": "../test/scenarios/embedding/modular-embedding-settings.cy.spec.ts",
-      "duration": 3615
-    },
-    {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/common-ee.cy.spec.ts",
       "duration": 42193
     },
