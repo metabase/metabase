@@ -35,6 +35,14 @@ export function EmbeddingMethodsCard() {
           settingKey="enable-embedding-simple"
         />
 
+        {hasSimpleEmbedding && (
+          <EmbeddingMethodRow
+            title={t`Modular embedding SDK`}
+            description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+            settingKey="enable-embedding-sdk"
+          />
+        )}
+
         <EmbeddingMethodRow
           title={t`Guest embeds`}
           description={t`A secure way to embed charts and dashboards, without single sign-on, when you don't want to offer ad-hoc querying or chart drill-through.`}
@@ -42,19 +50,11 @@ export function EmbeddingMethodsCard() {
         />
 
         {hasSimpleEmbedding && (
-          <>
-            <EmbeddingMethodRow
-              title={t`SDK for React`}
-              description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
-              settingKey="enable-embedding-sdk"
-            />
-
-            <EmbeddingMethodRow
-              title={t`Full-app embedding`}
-              description={t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`}
-              settingKey="enable-embedding-interactive"
-            />
-          </>
+          <EmbeddingMethodRow
+            title={t`Full-app embedding`}
+            description={t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`}
+            settingKey="enable-embedding-interactive"
+          />
         )}
       </Stack>
     </SettingsSection>
