@@ -209,9 +209,7 @@ describe(
               expect(total).to.equal(800);
             },
           );
-          cy.findByTestId("visualization-root")
-            .should("be.visible")
-            .and("have.attr", "data-viz-ui-name", "Number");
+          H.echartsContainer().should("be.visible");
         });
       });
 
