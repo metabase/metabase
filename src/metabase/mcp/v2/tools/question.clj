@@ -243,10 +243,9 @@
   (check-dashboard-collection-exclusive! dashboard_id args)
   (let [dataset-query (resolve-query-source args session-id)
         dashboard-id  (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
-        collection-id (cond
-                        dashboard-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)
-                        (contains? args :collection_id) (common/resolve-collection-id (:collection_id args))
-                        :else (:id (collection/user->personal-collection api/*current-user-id*)))]
+        collection-id (if dashboard-id
+                        (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)
+                        (common/resolve-collection-id-or-personal (:collection_id args)))]
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id}
                                            (keyword (or card_type "question")))
     (let [result-metadata (when (seq column_metadata)

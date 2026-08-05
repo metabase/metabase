@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.test :as mt]
@@ -187,6 +189,25 @@
   (is (nil? (common/resolve-collection-id "root")))
   (is (= 99 (common/resolve-collection-id "trash" {:trash-collection-id 99})))
   (is (thrown? Exception (common/resolve-collection-id "trash"))))
+
+(deftest resolve-collection-id-or-personal-test
+  (testing "GHY-4218: an absent collection argument defaults to the caller's personal collection"
+    (mt/with-test-user :rasta
+      (is (= (:id (collection/user->personal-collection (mt/user->id :rasta)))
+             (common/resolve-collection-id-or-personal nil)))))
+  (testing "GHY-4218: the explicit \"root\" sentinel still means the root collection"
+    (mt/with-test-user :rasta
+      (is (nil? (common/resolve-collection-id-or-personal "root")))))
+  (testing "GHY-4218: an explicit id is resolved as usual"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (is (= coll-id (common/resolve-collection-id-or-personal coll-id))))))
+  (testing "GHY-4218: a caller with no personal collection (API-key users) gets a teaching error
+            rather than silently falling back to the root collection"
+    (mt/with-temp [:model/User {user-id :id} {:type :api-key}]
+      (binding [api/*current-user-id* user-id]
+        (is (thrown-with-msg? Exception #"no personal collection"
+                              (common/resolve-collection-id-or-personal nil)))))))
 
 (deftest frontend-url-test
   (testing "a configured site URL is prefixed onto the relative path"

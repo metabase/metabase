@@ -4,6 +4,7 @@
    gating, Malli validation, and teaching-error conversion are exercised for free."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.test-util :as documents.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -48,8 +49,8 @@
 ;;; ------------------------------------------------- question -----------------------------------------------------
 
 (deftest duplicate-question-test
-  (testing "GHY-4151: a question copy lands in the source's collection under a \"Copy of\" name,
-            with the source's query and display intact"
+  (testing "GHY-4218: an omitted collection_id copies into the caller's personal collection, not
+            the source's own collection; the \"Copy of\" name, query, and display stay intact"
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:name          "Revenue by region"
@@ -57,13 +58,14 @@
                                                 :display       :bar
                                                 :collection_id coll-id
                                                 :dataset_query (venues-query)}]
-        (let [result (tool-result (call-tool! :crowberto {:type "question" :id card-id}))
-              copy   (t2/select-one :model/Card :id (:id result))]
-          (is (=? {:type "question" :name "Copy of Revenue by region" :collection_id coll-id}
+        (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+              result      (tool-result (call-tool! :crowberto {:type "question" :id card-id}))
+              copy        (t2/select-one :model/Card :id (:id result))]
+          (is (=? {:type "question" :name "Copy of Revenue by region" :collection_id personal-id}
                   result))
           (is (not= card-id (:id result)))
           (is (= "Copy of Revenue by region" (:name copy)))
-          (is (= coll-id (:collection_id copy)))
+          (is (= personal-id (:collection_id copy)))
           (is (= :bar (:display copy)))
           (is (= :question (:type copy)))
           (is (= (:dataset_query (t2/select-one :model/Card :id card-id))
@@ -162,8 +164,9 @@
                                                 :dataset_query (venues-query)}
                      :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (let [result (tool-result (call-tool! :crowberto {:type "dashboard" :id dash-id}))]
-          (is (=? {:type "dashboard" :name "Copy of Sales" :collection_id coll-id} result))
+        (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+              result      (tool-result (call-tool! :crowberto {:type "dashboard" :id dash-id}))]
+          (is (=? {:type "dashboard" :name "Copy of Sales" :collection_id personal-id} result))
           (is (not= dash-id (:id result)))
           (testing "the copy's dashcards point at the original card"
             (is (= [card-id] (map :card_id (copied-dashcards (:id result))))))
@@ -219,8 +222,12 @@
                 "the unreadable card must be reported by id alone — no name, no query")
             (testing "the unreadable card is left out of the copy entirely"
               (is (= 1 (count (copied-dashcards (:id result))))))
-            (testing "while the readable card is duplicated (same collection, so name-suffixed)"
-              (is (= 1 (t2/count :model/Card :name "Revenue - Duplicate"))))))))))
+            (testing "while the readable card is duplicated into the caller's personal collection —
+                      a different collection from the source, so the name is not suffixed"
+              (is (= 1 (t2/count :model/Card
+                                 :name "Revenue"
+                                 :collection_id (:id (collection/user->personal-collection
+                                                      (mt/user->id :rasta)))))))))))))
 
 (deftest duplicate-dashboard-shallow-with-dashboard-questions-test
   (testing "GHY-4151: a shallow copy of a dashboard holding dashboard questions is a teaching error
@@ -245,15 +252,16 @@
 ;;; -------------------------------------------------- document ----------------------------------------------------
 
 (deftest duplicate-document-test
-  (testing "GHY-4151: a document copy lands in the source's collection under a \"Copy of\" name"
+  (testing "GHY-4218: a document copy lands in the caller's personal collection under a \"Copy of\" name"
     (mt/with-model-cleanup [:model/Document]
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Document {doc-id :id} {:name          "Q3 summary"
                                                    :collection_id coll-id
                                                    :document      (documents.tu/text->prose-mirror-ast "Revenue was up.")}]
-        (let [result (tool-result (call-tool! :crowberto {:type "document" :id doc-id}))
-              copy   (t2/select-one :model/Document :id (:id result))]
-          (is (=? {:type "document" :name "Copy of Q3 summary" :collection_id coll-id} result))
+        (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+              result      (tool-result (call-tool! :crowberto {:type "document" :id doc-id}))
+              copy        (t2/select-one :model/Document :id (:id result))]
+          (is (=? {:type "document" :name "Copy of Q3 summary" :collection_id personal-id} result))
           (is (not= doc-id (:id result)))
           (is (= (:document (t2/select-one :model/Document :id doc-id))
                  (:document copy))))))))

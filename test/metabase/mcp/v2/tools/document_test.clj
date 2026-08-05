@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -70,6 +71,27 @@
             (testing "get_content returns the same Markdown body the tool returned"
               (is (= (:content_markdown payload)
                      (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
+
+(deftest create-collection-target-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (with-tool-documents
+      (fn [created!]
+        (let [create! (fn [args]
+                        (created! (call (merge {:method "create" :content_markdown "Body."} args))))]
+          (testing "GHY-4218: an omitted collection_id saves to the caller's personal collection"
+            (is (= (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                   (t2/select-one-fn :collection_id :model/Document
+                                     :id (:id (create! {:name "document-test personal"}))))))
+          (testing "GHY-4218: collection_id \"root\" still saves to the root collection"
+            (is (nil? (t2/select-one-fn :collection_id :model/Document
+                                        :id (:id (create! {:name "document-test root"
+                                                           :collection_id "root"}))))))
+          (testing "GHY-4218: an explicit collection_id is unaffected"
+            (mt/with-temp [:model/Collection {coll-id :id} {}]
+              (is (= coll-id
+                     (t2/select-one-fn :collection_id :model/Document
+                                       :id (:id (create! {:name "document-test explicit"
+                                                          :collection_id coll-id}))))))))))))
 
 (deftest dangling-card-embed-test
   (mt/with-current-user (mt/user->id :crowberto)

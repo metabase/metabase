@@ -9,7 +9,9 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
+   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.core :as lib]
    [metabase.mcp.scope :as mcp.scope]
@@ -232,6 +234,25 @@
        (when-not (t2/exists? :model/Collection :id id)
          (throw-not-found :model/Collection id-or-sentinel))
        id))))
+
+(defn resolve-collection-id-or-personal
+  "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
+   instead of the root collection. Explicit `\"root\"` still resolves to the root collection, so
+   callers keep a way to ask for it. Arguments arrive nil-stripped ([[drop-nil-args]]), so a nil
+   here is always an omitted argument rather than an explicit null.
+
+   For create paths only. On update an absent collection argument must leave content where it is,
+   so update paths guard [[resolve-collection-id]] with `contains?` instead.
+
+   API-key users have no personal collection; that nil is a teaching error here rather than a
+   silent write into the root collection."
+  [id-or-sentinel]
+  (if (some? id-or-sentinel)
+    (resolve-collection-id id-or-sentinel)
+    (or (:id (collection/user->personal-collection api/*current-user-id*))
+        (throw-teaching-error
+         (str "The current user has no personal collection. Pass an explicit collection_id "
+              "(or \"root\" for the root collection) instead.")))))
 
 ;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
 
