@@ -84,23 +84,22 @@ export function getColumns({
       enableSorting: true,
       accessorFn: (index) =>
         index.metabase_managed ? t`Managed` : t`Unmanaged`,
-      cell: ({ row, getValue }) => {
-        const ctx = c("{0} is the application name");
-        return (
-          <Group gap="sm" wrap="nowrap" miw={0}>
-            <Ellipsified>{String(getValue())}</Ellipsified>
-            <Tooltip
-              label={
-                row.original.metabase_managed
-                  ? ctx.t`This index was created by ${applicationName} and is reapplied each time the transform runs`
-                  : ctx.t`This index was created outside of ${applicationName}`
-              }
-            >
-              <FixedSizeIcon name="info_outline" c="text-secondary" />
-            </Tooltip>
-          </Group>
-        );
-      },
+      cell: ({ row, getValue }) => (
+        <Group gap="sm" wrap="nowrap" miw={0}>
+          <Ellipsified>{String(getValue())}</Ellipsified>
+          <Tooltip
+            label={
+              row.original.metabase_managed
+                ? c("{0} is the application name")
+                    .t`This index was created by ${applicationName} and is reapplied each time the transform runs`
+                : c("{0} is the application name")
+                    .t`This index was created outside of ${applicationName}`
+            }
+          >
+            <FixedSizeIcon name="info_outline" c="text-secondary" />
+          </Tooltip>
+        </Group>
+      ),
     },
     {
       id: "status",
@@ -116,14 +115,14 @@ export function getColumns({
             <Ellipsified>{String(getValue())}</Ellipsified>
             {errorMessage != null && (
               <Tooltip label={errorMessage}>
-                <Icon name="info_outline" c="text-secondary" />
+                <FixedSizeIcon name="info_outline" c="text-secondary" />
               </Tooltip>
             )}
             {isPendingStatus(request?.status) && (
               <Tooltip
                 label={t`Changes will be applied the next time the transform runs`}
               >
-                <Icon name="info_outline" c="text-secondary" />
+                <FixedSizeIcon name="info_outline" c="text-secondary" />
               </Tooltip>
             )}
           </Group>
