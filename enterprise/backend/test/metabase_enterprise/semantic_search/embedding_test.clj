@@ -122,7 +122,8 @@
         analytics-calls  (atom [])
         tracking-calls   (atom [])
         resolution-calls (atom [])]
-    (with-redefs [embeddings.provider/resolve-model               (fn [requested]
+    (with-redefs [embeddings.provider/activate-provider!          (constantly nil)
+                  embeddings.provider/resolve-model               (fn [requested]
                                                                     (swap! resolution-calls conj requested)
                                                                     (assoc requested :model-name "local-model"))
                   embeddings.provider/embed-text                  (fn [_ text _] [text])
