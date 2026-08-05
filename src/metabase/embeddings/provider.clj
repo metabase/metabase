@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    ^{:clj-kondo/ignore [:metabase/modules]} [metabase.plugins.core :as plugins]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
    (java.nio.charset StandardCharsets)
@@ -97,7 +98,9 @@
   (when-let [plugin-name (get lazy-provider-plugins provider)]
     (try
       (plugins/load-plugin! plugin-name)
-      (catch Exception _))))
+      (catch Exception e
+        (log/warnf "Unable to activate embedding provider plugin %s for %s: %s"
+                   plugin-name provider (ex-message e))))))
 
 (defn- provider-request
   [{:keys [provider] :as requested-model}]
