@@ -86,10 +86,10 @@
                (serdes/local-entity-ids "Transform" [branch-eid "not-checked-out-in-wt"])))))))
 
 (deftest worktree-scoped-models-test
-  (testing "only transform content and collections are checked out into a worktree"
-    (is (every? serdes/worktree-scoped? ["Collection" "Transform" "TransformTag" "TransformTransformTag"]))
+  (testing "collections and the content that lives in them are checked out into a worktree"
+    (is (every? serdes/worktree-scoped? ["Card" "Collection" "Transform" "TransformTag" "TransformTransformTag"]))
     (testing "everything else is skipped by a worktree pull rather than written to the main app"
-      (is (not-any? serdes/worktree-scoped? ["Card" "Dashboard" "NativeQuerySnippet" "PythonLibrary" "Action"])))))
+      (is (not-any? serdes/worktree-scoped? ["Dashboard" "NativeQuerySnippet" "PythonLibrary" "Action"])))))
 
 ;;; ---------------------------------------------- Deletion ----------------------------------------------
 
