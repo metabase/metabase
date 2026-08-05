@@ -122,13 +122,9 @@
                                  (= :source/joins (get-in % [:dimension :lib/source])))
                             computed-pairs)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)
-        dimensions (lib-metric/extract-persisted-dimensions dimensions)
-        default-dimension (lib-metric/pick-default-dimension dimensions)
-        dimensions (cond-> dimensions
-                     default-dimension (lib-metric/set-default-dimension (:id default-dimension)))]
+        (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)]
     (save-dimensions! entity
-                      dimensions
+                      (lib-metric/extract-persisted-dimensions dimensions)
                       dimension-mappings)))
 
 (defn- refresh-metric-dimensions!
@@ -288,14 +284,7 @@
                                       :mapping   (assoc (:mapping pair) :dimension-id (:id d))}))
                                  api-dims)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/add-dimensions persisted-dims persisted-mappings pairs)
-        added?              (> (count dimensions) (count persisted-dims))
-        default-dimension   (when (and added? (not-any? :default dimensions))
-                              (lib-metric/pick-default-dimension
-                               (remove #(= :status/orphaned (:status %)) dimensions)))
-        dimensions          (cond-> dimensions
-                              default-dimension
-                              (lib-metric/set-default-dimension (:id default-dimension)))]
+        (lib-metric/add-dimensions persisted-dims persisted-mappings pairs)]
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 
@@ -305,15 +294,8 @@
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
-        removed-ids        (set dimension-ids)
-        removed-default?   (some #(and (:default %) (removed-ids (:id %))) persisted-dims)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/remove-dimensions persisted-dims persisted-mappings dimension-ids)
-        next-default       (when removed-default?
-                             (lib-metric/pick-default-dimension
-                              (remove #(= :status/orphaned (:status %)) dimensions)))
-        dimensions         (cond-> dimensions
-                             next-default (lib-metric/set-default-dimension (:id next-default)))]
+        (lib-metric/remove-dimensions persisted-dims persisted-mappings dimension-ids)]
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 
@@ -377,18 +359,20 @@
             metrics.dimension/->api-dimension)))
 
 (defn set-default-dimension!
-  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default.
-   Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
+  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default. A nil
+   `dimension-id` clears the default without setting a new one, leaving the entity to render as a
+   scalar. Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
    Returns the updated `:added` list."
   [metadata-type id dimension-id]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
-        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
-        current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
-                               (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
-        _                  (when (= :status/orphaned (:status current))
-                             (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
-                                             {:status-code 400})))
-        dimensions         (lib-metric/set-default-dimension persisted-dims dimension-id)]
-    (save-dimensions! entity dimensions persisted-mappings)
-    (added-dimensions dimensions persisted-mappings)))
+        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])]
+    (when dimension-id
+      (let [current (or (u/seek #(= dimension-id (:id %)) persisted-dims)
+                        (throw (ex-info (tru "Dimension not found.") {:status-code 404})))]
+        (when (= :status/orphaned (:status current))
+          (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
+                          {:status-code 400})))))
+    (let [dimensions (lib-metric/set-default-dimension persisted-dims dimension-id)]
+      (save-dimensions! entity dimensions persisted-mappings)
+      (added-dimensions dimensions persisted-mappings))))

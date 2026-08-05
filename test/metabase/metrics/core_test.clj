@@ -99,8 +99,8 @@
         (is (some? (:dimension_mappings stored)))
         (is (= first-ids next-ids))))))
 
-(deftest metric-sync-dimensions-picks-default-test
-  (testing "new metrics persist the preferred seeded dimension as default (UXW-4788)"
+(deftest metric-sync-dimensions-picks-no-default-test
+  (testing "new metrics are seeded with a curated dimension list and no default dimension"
     (let [mp (mt/metadata-provider)
           orders-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/count)))]
@@ -110,9 +110,9 @@
                                          :table_id      (mt/id :orders)
                                          :dataset_query orders-query}]
         (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [defaults (filter :default
-                               (:dimensions (t2/select-one :model/Card :id (:id metric))))]
-          (is (= ["CREATED_AT"] (mapv :name defaults))))))))
+        (let [dimensions (t2/select-one-fn :dimensions :model/Card :id (:id metric))]
+          (is (seq dimensions))
+          (is (empty? (filter :default dimensions))))))))
 
 (deftest metric-sync-dimensions-preserves-user-modifications-test
   (testing "sync-dimensions! preserves user modifications like display-name for metrics"

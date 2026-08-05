@@ -5,7 +5,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -184,17 +183,6 @@
   [pair]
   (= "main" (perf/get-in pair [:dimension :group :type])))
 
-(defn pick-default-dimension
-  "Pick the preferred default from an ordered collection of dimensions."
-  [dimensions]
-  (let [dimensions (vec dimensions)]
-    (or (u/seek types.isa/date-or-datetime? dimensions)
-        (u/seek #(or (types.isa/country? %) (types.isa/state? %)) dimensions)
-        (u/seek #(or (= :list (:has-field-values %))
-                     (types.isa/category? %))
-                dimensions)
-        (first dimensions))))
-
 (defn addable-pairs
   "Computed dimension pairs whose target is not already mapped by one of `persisted-mappings` — i.e. the columns
   available to add to the curated set."
@@ -265,10 +253,11 @@
 
 (defn set-default-dimension
   "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension.
-   Assumes `id` exists in `persisted-dims`. Returns the updated dimensions vector."
+   A nil `id` clears the default without setting a new one. Assumes a non-nil `id` exists in
+   `persisted-dims`. Returns the updated dimensions vector."
   [persisted-dims id]
   (perf/mapv (fn [dim]
-               (if (= id (:id dim))
+               (if (and id (= id (:id dim)))
                  (assoc dim :default true)
                  (dissoc dim :default)))
              persisted-dims))
