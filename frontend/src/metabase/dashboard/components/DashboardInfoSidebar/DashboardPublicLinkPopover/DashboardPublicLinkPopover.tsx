@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
@@ -8,6 +10,7 @@ import {
   trackPublicLinkRemoved,
 } from "metabase/embedding/lib/analytics";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/urls";
+import { dashboardContainsCustomViz } from "metabase/visualizations/custom-visualizations/contains-custom-viz";
 import type { Dashboard } from "metabase-types/api";
 
 export const DashboardPublicLinkPopover = ({
@@ -59,6 +62,11 @@ export const DashboardPublicLinkPopover = ({
       url={url}
       onCopyLink={onCopyLink}
       canRemoveLink={dashboard.can_write}
+      warningText={
+        dashboardContainsCustomViz(dashboard)
+          ? t`This dashboard contains custom visualizations, which aren't supported in public links. They appear as tables instead.`
+          : undefined
+      }
     />
   );
 };
