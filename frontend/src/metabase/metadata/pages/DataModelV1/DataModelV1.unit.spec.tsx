@@ -20,8 +20,9 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { Link } from "metabase/common/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link, Route, redirect } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -214,7 +215,7 @@ async function setup({
     );
   }
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
@@ -254,7 +255,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { router };
 }
 
 describe("DataModelV1", () => {
@@ -673,7 +674,7 @@ describe("DataModelV1", () => {
 
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           initialRoute: "notAdmin",
           waitForDatabase: false,
           waitForTable: false,
@@ -687,7 +688,7 @@ describe("DataModelV1", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        router?.back();
 
         await waitFor(() => {
           expect(

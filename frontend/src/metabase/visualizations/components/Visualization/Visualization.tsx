@@ -24,8 +24,8 @@ import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
-import type { LocationDescriptorObject } from "metabase/router";
-import { getTokenFeature } from "metabase/selectors/settings";
+import type { Path } from "metabase/router";
+import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
@@ -62,10 +62,7 @@ import {
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import {
-  formatVisualizerClickObject,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+import { formatVisualizerClickObject } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -80,6 +77,7 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
 
@@ -187,7 +185,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
-  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
+  onSameOriginNavigation?: (location: Partial<Path>) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
   enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;

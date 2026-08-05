@@ -278,3 +278,15 @@
                                        metabot-chat-system-prompt ""]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"NLQ only instruction" rendered)))))))
+
+(deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
+  (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
+    (doseq [template ["internal.selmer"
+                      "natural-language-querying-only.selmer"
+                      "natural-language-querying-fallback.selmer"]]
+      (let [rendered (render-template template all-yes-perms)]
+        (is (not (re-find #"silent between tool calls" rendered))
+            template))))
+  (testing "the embedding SDK template (loader only) keeps the narration guidance"
+    (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
+      (is (re-find #"silent between tool calls" rendered)))))

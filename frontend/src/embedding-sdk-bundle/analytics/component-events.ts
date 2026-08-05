@@ -2,8 +2,8 @@ import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/settings";
 
 import {
   getSdkAuthMethod,

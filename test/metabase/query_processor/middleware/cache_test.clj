@@ -374,6 +374,16 @@
             (is (= :cached
                    (run-query))
                 "only the lease winner pays for the early refresh")))))
+    (testing "an entry written just after an explicit invalidation has its whole window left, not the sliver since
+              the invalidation"
+      (with-mock-cache! [save-chan]
+        (let [strategy (assoc (ttl-strategy) :invalidated-at (t/offset-date-time t0))]
+          (mt/with-clock (t/plus t0 (t/seconds 1))
+            (run-query :cache-strategy strategy)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 31))
+            (is (= :cached
+                   (run-query :cache-strategy strategy)))))))
     (testing "early refreshing is off when the ratio is 0"
       (with-mock-cache! [save-chan]
         (mt/with-temporary-setting-values [query-caching-early-refresh-ratio 0.0]
@@ -513,7 +523,7 @@
           (is (=? {:data          {}
                    :cache/details {:cached     true
                                    :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
-                                   :cache-hash some?}
+                                   :hash some?}
                    :row_count     8
                    :status        :completed}
                   result)))))))
@@ -609,9 +619,7 @@
                     cached-result   (qp/process-query query)]
                 (is (=? {:cache/details  {:cached     true
                                           :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                          :hash       some?
-                                          ;; TODO: this check is not working if the key is not present in the data
-                                          :cache-hash some?}
+                                          :hash       some?}
                          :row_count 5
                          :status    :completed}
                         (dissoc cached-result :data))
@@ -718,10 +726,7 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                   :hash       some?
-                                                   ;; TODO: this check is not working if the key is not present in the
-                                                   ;; data
-                                                   :cache-hash some?}
+                                                   :hash       some?}
                                    :row_count     5
                                    :status        :completed}
                                   (dissoc cached-results :data))))
@@ -743,9 +748,7 @@
                   (testing "\n\nOuter queries are cached *separately*"
                     (is (=? {:cache/details {:cached     true
                                              :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                             :hash       some?
-                                             ;; TODO: this check is not working if the key is not present in the data
-                                             :cache-hash some?}
+                                             :hash       some?}
                              :row_count     5
                              :status        :completed}
                             (dissoc rerun-outer1 :data))
@@ -815,10 +818,7 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                    :hash       some?
-                                                    ;; TODO: this check is not working if the key is not present in the
-                                                    ;; data
-                                                    :cache-hash some?}
+                                                    :hash       some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
@@ -960,7 +960,7 @@
                 (request/with-current-user (mt/user->id :crowberto)
                   (is (=? {:cache/details {:cached     true
                                            :updated_at some?
-                                           :cache-hash some?}}
+                                           :hash some?}}
                           (run-forbidden-query)))))
               (testing "Run query as regular user, should get perms Exception even though result is cached"
                 (is (thrown-with-msg?

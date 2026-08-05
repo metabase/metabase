@@ -11,16 +11,16 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { useSelector } from "metabase/redux";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { createMetabotMentionSuggestionNew } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestionNew";
+} from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotMentionExtension";
+import { createMetabotMentionSuggestionNew } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew";
+import { useSelector } from "metabase/redux";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DatabaseId } from "metabase-types/api";
 

@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting, useUpdateSettingMutation } from "metabase/settings";
 import { Center, Text } from "metabase/ui";
 
 import { EnableTransformsCard } from "./EnableTransformsCard";

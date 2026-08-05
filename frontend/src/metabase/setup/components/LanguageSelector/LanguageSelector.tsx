@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useUpdateSettingMutation } from "metabase/settings";
 import {
   getAvailableLocales,
   getIsStepCompleted,

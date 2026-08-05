@@ -18,6 +18,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
+   [metabase-enterprise.custom-viz-plugin.api.sandbox-host]
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
@@ -63,7 +64,7 @@
    :content-diagnostics        (deferred-tru "Content Diagnostics")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
-   :data-apps                  (deferred-tru "Data Apps")
+   :data-apps-preview          (deferred-tru "Data Apps")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
@@ -99,7 +100,7 @@
    ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
    ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
    ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
-   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
+   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps-preview)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -116,7 +117,14 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
+   ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in
+   ;; its own namespace, tested before the rest of the session-authed custom-viz routes. Both stay behind
+   ;; the :custom-viz premium gate.
+   "/custom-viz-plugin"            (premium-handler
+                                    (handlers/routes
+                                     metabase-enterprise.custom-viz-plugin.api.sandbox-host/routes
+                                     metabase-enterprise.custom-viz-plugin.api/routes)
+                                    :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.

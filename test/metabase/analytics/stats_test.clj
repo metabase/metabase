@@ -547,7 +547,7 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :content-diagnostics
-    :data-apps
+    :data-apps-preview
     :data-complexity-score
     :development-mode
     :library

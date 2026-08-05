@@ -12,6 +12,7 @@ export * from "./data-studio";
 export * from "./dependencies";
 export * from "./documents";
 export * from "./indexed-entities";
+export * from "./metabase-protocol";
 export * from "./metabot";
 export * from "./metrics";
 export * from "./misc";

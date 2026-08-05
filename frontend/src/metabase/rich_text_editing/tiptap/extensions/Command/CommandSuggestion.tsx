@@ -11,10 +11,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import {
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
@@ -48,7 +44,7 @@ import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
 import type { CommandOption, CommandSection } from "./types";
 import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
-import { getAllCommandSections } from "./utils";
+import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
@@ -56,9 +52,10 @@ export interface CommandSuggestionProps {
   editor: Editor;
   range: Range;
   query: string;
+  metabotCommand?: MetabotCommandConfig | null;
 }
 
-interface SuggestionRef {
+export interface CommandSuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
@@ -101,13 +98,14 @@ const CommandMenuItem = forwardRef<
 });
 
 export const CommandSuggestion = forwardRef<
-  SuggestionRef,
+  CommandSuggestionRef,
   CommandSuggestionProps
->(function CommandSuggestionComponent({ command, editor, query }, ref) {
+>(function CommandSuggestionComponent(
+  { command, editor, query, metabotCommand },
+  ref,
+) {
   const host = useEditorHost();
   const document = useSelector(host.selectors.getCurrentDocument);
-  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
-  const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
@@ -118,8 +116,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled, metabotName),
-    [isMetabotEnabled, metabotName],
+    () => getAllCommandSections(metabotCommand),
+    [metabotCommand],
   );
 
   const allCommandOptions = useMemo(

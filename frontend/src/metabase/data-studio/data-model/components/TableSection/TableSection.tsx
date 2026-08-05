@@ -22,8 +22,8 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -97,26 +97,24 @@ const TableSectionBase = ({
     });
   };
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleTabChange = useCallback(
-    (tab: string | null) => {
-      if (!Urls.isDataStudioTableMetadataTab(tab)) {
+    (tab: DataStudioTableMetadataTab | null) => {
+      if (tab == null) {
         return;
       }
 
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-            tab,
-          }),
-        ),
+      navigate(
+        Urls.dataStudioData({
+          databaseId: table.db_id,
+          schemaName: table.schema,
+          tableId: table.id,
+          tab,
+        }),
       );
     },
-    [dispatch, table.db_id, table.schema, table.id],
+    [table.db_id, table.schema, table.id, navigate],
   );
 
   const handleNameChange = async (name: string) => {

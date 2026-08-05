@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { Link } from "metabase/router";
 import { Box, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

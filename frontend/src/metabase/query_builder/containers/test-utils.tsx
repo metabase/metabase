@@ -284,7 +284,7 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { container, history, store } = renderWithProviders(
+  const { container, router, store } = renderWithProviders(
     <>
       <Route>
         <Route path="/" element={<TestHome />} />
@@ -327,7 +327,7 @@ export const setup = async ({
 
   return {
     container,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
     mockEventListener,
     store,
   };

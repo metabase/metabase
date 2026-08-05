@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { loadCurrentUser } from "metabase/api";
 import { useDispatch } from "metabase/redux";
-import { loadCurrentUser } from "metabase/redux/user";
 import { Outlet } from "metabase/router";
 
 /**

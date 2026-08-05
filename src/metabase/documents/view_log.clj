@@ -16,8 +16,8 @@
   "keyword to use for locking document updates that can deadlock"
   ::document-statistics-lock)
 
-(derive ::document-read :metabase/event)
-(derive :event/document-read ::document-read)
+(events/derive! ::document-read :metabase/event)
+(events/derive! :event/document-read ::document-read)
 
 (def ^:private update-document-last-viewed-at-interval-seconds 20)
 

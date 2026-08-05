@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -18,6 +19,7 @@ import {
   createMockDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
+  createMockMetricDimension,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockParameter,
@@ -249,6 +251,59 @@ describe("DashCardCardParameterMapper", () => {
     });
 
     expect(screen.getByText("Section.Name")).toBeInTheDocument();
+  });
+
+  it("shows only curated metric dimensions", async () => {
+    const card = createMockCard({ type: "metric" });
+    setupMetricDimensionsEndpoints(card.id, {
+      added: [
+        createMockMetricDimension({
+          id: "category",
+          display_name: "Product category",
+          sources: [{ type: "field", "field-id": 2 }],
+        }),
+        createMockMetricDimension({
+          id: "title",
+          display_name: "Product title",
+          sources: [{ type: "field", "field-id": 1 }],
+        }),
+      ],
+      addable: [],
+    });
+
+    setup({
+      card,
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 1, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Title",
+        },
+        {
+          target: ["dimension", ["field", 2, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Category",
+        },
+        {
+          target: ["dimension", ["field", 3, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "User",
+          name: "Email",
+        },
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Select…"));
+
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent("Product category");
+    expect(options[1]).toHaveTextContent("Product title");
   });
 
   describe("Auto-connected hint", () => {

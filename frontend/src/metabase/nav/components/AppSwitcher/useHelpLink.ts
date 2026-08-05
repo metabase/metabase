@@ -1,8 +1,8 @@
 import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
-import { useSetting } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 
 import { getUser } from "../../../selectors/user";
 

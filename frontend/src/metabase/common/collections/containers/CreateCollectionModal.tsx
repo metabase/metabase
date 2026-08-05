@@ -4,8 +4,7 @@ import { t } from "ttag";
 import { useCreateCollectionMutation } from "metabase/api";
 import { getCollectionPathAsArray } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
@@ -29,7 +28,7 @@ function CreateCollectionModal({
   shouldNavigateOnCreate = true,
   ...props
 }: CreateCollectionModalOwnProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [createCollection] = useCreateCollectionMutation();
 
   const handleCreate = useCallback(
@@ -57,10 +56,10 @@ function CreateCollectionModal({
           });
         }
 
-        dispatch(push(visitUrl));
+        navigate(visitUrl);
       }
     },
-    [createCollection, dispatch, onCreate, onClose, shouldNavigateOnCreate],
+    [createCollection, onCreate, onClose, shouldNavigateOnCreate, navigate],
   );
 
   return (

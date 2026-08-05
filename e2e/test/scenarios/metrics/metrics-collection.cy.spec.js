@@ -45,11 +45,11 @@ describe("scenarios > metrics > collection", () => {
     H.getPinnedSection().within(() => {
       cy.findByText("Metrics").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByTestId("scalar-container")
-        .findByText("18,760")
-        .should("be.visible");
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      H.echartsContainer().should("be.visible");
+      cy.findAllByTestId("scalar-container")
+        .should("have.length", 2)
+        .and("be.visible");
+      cy.findAllByText("18,760").should("have.length", 2).and("be.visible");
     });
   });
 
@@ -76,6 +76,29 @@ describe("scenarios > metrics > collection", () => {
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("not.exist");
+
+    cy.log(
+      "should persist pinned metric visualization on collection page reload (UXW-4958)",
+    );
+    H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
+      cy.request("GET", `/api/metric/${metric.id}/dimension`).then(
+        ({ body }) => {
+          const createdAt = body.added.find(
+            (dimension) => dimension.display_name === "Created At",
+          );
+          expect(createdAt).to.exist;
+          cy.request("POST", `/api/metric/${metric.id}/dimension/set-default`, {
+            dimension_id: createdAt.id,
+          });
+        },
+      );
+      cy.reload();
+      H.getPinnedSection()
+        .findByRole("link", { name: new RegExp(ORDERS_TIMESERIES_METRIC.name) })
+        .findByTestId("visualization-root")
+        .should("have.attr", "data-viz-ui-name", "Line")
+        .and("be.visible");
+    });
   });
 
   it("should be possible to add and remove a metric from bookmarks", () => {

@@ -231,7 +231,7 @@
         (let [result (run-query-for-card card)]
           (is (=? {:status :completed}
                   result))
-          (is (= [[100]] (mt/rows result))))))))
+          (is (= [[100]] (mt/formatted-rows [int] result))))))))
 
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
