@@ -987,8 +987,9 @@
 
   embeddings
   {:team "Metabot"
-   :api  #{}
-   :uses #{util}}
+   :api  #{metabase.embeddings.provider}
+   :uses #{plugins
+            util}}
 
   entity-retrieval
   {:team "Metabot"
