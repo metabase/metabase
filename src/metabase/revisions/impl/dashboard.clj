@@ -20,7 +20,10 @@
     ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
     :public_uuid :made_public_by_id
     :position :initially_published_at :view_count
-    :last_viewed_at})
+    :last_viewed_at
+    ;; which worktree a dashboard belongs to is fixed at creation, so a revision can neither describe nor
+    ;; revert it
+    :worktree_id})
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
