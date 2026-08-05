@@ -546,12 +546,24 @@
   (boolean (#'mw.session/current-user-info-for-session session-key nil)))
 
 (defn- generate-session!
-  [user-id auth-identity-id]
+  [user-id auth-identity-id & {:keys [mfa_auth_identity_id]}]
   (let [session-id (session/generate-session-id)
         session-key (str (random-uuid))
         session-key-hashed (session/hash-session-key session-key)]
-    (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id :auth_identity_id auth-identity-id})
+    (t2/insert! :model/Session {:id session-id
+                                :key_hashed session-key-hashed
+                                :user_id user-id
+                                :auth_identity_id auth-identity-id
+                                :mfa_auth_identity_id mfa_auth_identity_id})
     session-key))
+
+(defn generate-mfa-session!
+  [user-id auth-identity-id]
+  (let [totp-auth-identity-id (t2/insert! :model/AuthIdentity {:user_id  user-id
+                                                               :provider "totp"})]
+    (generate-session! user-id
+                       auth-identity-id
+                       :mfa_auth_identity_id totp-auth-identity-id)))
 
 (defn- generate-session-and-get-user-info!
   [user-id auth-identity-id]
@@ -698,26 +710,51 @@
     (is (= #{:provider/password :provider/ldap}
            (descendants :metabase.auth-identity.provider/supports-mfa)))))
 
-(deftest pre-mfa-session-test
+(deftest mfa-session-preservation-test
   (init-status/set-complete!)
-  (doseq [provider (->> (descendants :metabase.auth-identity.provider/provider)
-                        ;; We test password separately above because of toucan weirdnes
-                        (remove #{:provider/password}))]
-    (testing "If you had a session before MFA was required, it is invalid"
-      (mt/when-ee-evailable
-       (mt/with-premium-features
-        #{}
-         (mt/with-temp
-           [:model/User {user-id :id} {}
-            :model/AuthIdentity {auth-identity-id :id} {:user_id  user-id
-                                                        :provider (name provider)}]
-           (let [session-key (generate-session! user-id auth-identity-id)]
-             (is (session-valid? session-key))
-             (mt/with-premium-features
-              #{:multi-factor-auth}
-               (mt/with-temporary-setting-values
-                 [mfa-enforcement          :required
-                  mfa-requirement-deadline nil]
-                 (is (not (session-valid? session-key))))))))))
-    (testing "If you had a session before MFA was required, but it was MFA'd, it is still valid")
-    (testing "If you had a session before the MFA requirement deadline, but it was MFA'd, it is still valid")))
+  (testing "If you had a session before MFA was required, it is not preserved"
+    (mt/when-ee-evailable
+     (mt/with-premium-features
+      #{}
+       (mt/with-temp
+         [:model/User {user-id :id} {}]
+         (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+               session-key (generate-session! user-id (:id auth-identity))]
+           (is (session-valid? session-key))
+           (mt/with-premium-features
+            #{:multi-factor-auth}
+             (mt/with-temporary-setting-values
+               [mfa-enforcement :required
+                mfa-requirement-deadline nil]
+               (is (not (session-valid? session-key))))))))))
+  (testing "If you had a session before MFA was required, but it was MFA'd, it is still preserved"
+    (mt/when-ee-evailable
+     (mt/with-premium-features
+      #{}
+       (mt/with-temp
+         [:model/User {user-id :id} {}]
+         (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+               session-key   (generate-mfa-session! user-id (:id auth-identity))]
+           (is (session-valid? session-key))
+           (mt/with-premium-features
+            #{:multi-factor-auth}
+             (mt/with-temporary-setting-values
+               [mfa-enforcement :required
+                mfa-requirement-deadline nil]
+               (is (session-valid? session-key)))))))))
+  (testing "If you had a session before the MFA requirement deadline, but it was MFA'd, it is still preserved"
+    (mt/when-ee-evailable
+     (mt/with-premium-features
+      #{}
+       (mt/with-temp
+         [:model/User {user-id :id} {}]
+         (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id)
+               session-key   (generate-mfa-session! user-id (:id auth-identity))]
+           (is (session-valid? session-key))
+           (mt/with-premium-features
+            #{:multi-factor-auth}
+             (mt/with-temporary-setting-values
+               [mfa-enforcement :required
+                mfa-requirement-deadline (t/minus (t/offset-date-time)
+                                                  (t/hours 16))]
+               (is (session-valid? session-key))))))))))

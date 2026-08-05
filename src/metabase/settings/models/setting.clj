@@ -926,8 +926,8 @@
    :string
    setting-definition-or-name
    (some-> new-value
-           (u.time/coerce-to-timestamp)
-           (u.date/format))))
+           u.time/coerce-to-timestamp
+           u.date/format)))
 
 (defn- serialize-csv [value]
   (cond
