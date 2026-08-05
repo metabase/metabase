@@ -7,11 +7,11 @@ import {
   EChartsTooltip,
   type EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getPercent } from "metabase/visualizations/echarts/tooltip/utils";
 import {
   getMarkerColorClass,
   getTooltipBaseOption,
 } from "metabase/visualizations/echarts/tooltip";
+import { getPercent } from "metabase/visualizations/echarts/tooltip/utils";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 

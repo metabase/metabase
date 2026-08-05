@@ -3,6 +3,7 @@ import { isValidElement, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
@@ -12,7 +13,6 @@ import type {
 } from "metabase/visualizations/types";
 import type { DatasetColumn } from "metabase-types/api";
 
-import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 
 import S from "./KeyValuePairChartTooltip.module.css";
 
