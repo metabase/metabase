@@ -15,11 +15,6 @@ import type {
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import {
-  getPercent,
-  getTotalValue,
-} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
-import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
-import {
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
@@ -45,6 +40,11 @@ import type {
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
+import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
+import {
+  getPercent,
+  getTotalValue,
+} from "metabase/visualizations/echarts/tooltip/utils";
 import {
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesMouseEvent,

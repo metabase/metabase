@@ -7,7 +7,7 @@ import {
   EChartsTooltip,
   type EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getPercent } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { getPercent } from "metabase/visualizations/echarts/tooltip/utils";
 import {
   getMarkerColorClass,
   getTooltipBaseOption,

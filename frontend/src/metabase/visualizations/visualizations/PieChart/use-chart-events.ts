@@ -8,7 +8,7 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { getTotalValue } from "metabase/visualizations/echarts/tooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type {
   PieChartModel,

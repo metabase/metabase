@@ -1,5 +1,5 @@
 import { registerStaticVisualizations } from "metabase/static-viz/register";
-import { getVisualizationTransformed } from "metabase/visualizations";
+import { getVisualizationTransformed } from "metabase/visualizations/lib/registry";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 

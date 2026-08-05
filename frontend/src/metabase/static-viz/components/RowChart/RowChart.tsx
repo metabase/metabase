@@ -4,7 +4,7 @@ import type { StaticChartProps } from "metabase/static-viz/components/StaticVisu
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
 import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/visualizations/lib/remapping";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";

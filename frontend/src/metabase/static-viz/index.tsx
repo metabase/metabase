@@ -16,7 +16,8 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
-import { extractRemappings, isCartesianChart } from "metabase/visualizations";
+import { isCartesianChart } from "metabase/visualizations/lib/registry";
+import { extractRemappings } from "metabase/visualizations/lib/remapping";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
