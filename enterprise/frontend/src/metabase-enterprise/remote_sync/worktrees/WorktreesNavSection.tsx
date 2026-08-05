@@ -17,6 +17,7 @@ import {
   FixedSizeIcon,
   Flex,
   Icon,
+  Loader,
   Menu,
   Text,
   Tooltip,
@@ -24,11 +25,15 @@ import {
 import * as Urls from "metabase/urls";
 import {
   useDeleteWorktreeMutation,
+  useGetRemoteSyncHasChangesQuery,
   useListWorktreesQuery,
 } from "metabase-enterprise/api";
-import type { Worktree } from "metabase-types/api";
+import type { Worktree, WorktreeId } from "metabase-types/api";
+
+import { CollectionSyncStatusBadge } from "../components/SyncedCollectionsSidebarSection";
 
 import { NewWorktreeModal } from "./NewWorktreeModal";
+import { useWorktreeSyncActions } from "./use-worktree-sync-actions";
 
 export function WorktreesNavSection({
   isNavbarOpened,
@@ -114,6 +119,7 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
         <Text lh="sm" flex={1} truncate title={worktree.branch}>
           {worktree.branch}
         </Text>
+        <WorktreeDirtyBadge worktreeId={worktree.id} />
         <WorktreeMenu worktree={worktree} isInsideWorktree={isInsideWorktree} />
       </Flex>
       <Collapse in={isExpanded}>
@@ -131,12 +137,20 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
   );
 }
 
+function WorktreeDirtyBadge({ worktreeId }: { worktreeId: WorktreeId }) {
+  const { data } = useGetRemoteSyncHasChangesQuery({
+    "worktree-id": worktreeId,
+  });
+  return data?.is_dirty ? <CollectionSyncStatusBadge /> : null;
+}
+
 type WorktreeMenuProps = {
   worktree: Worktree;
   isInsideWorktree: boolean;
 };
 
 function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
+  const [isMenuOpened, setIsMenuOpened] = useState(false);
   const [
     isDeleteModalOpened,
     { open: openDeleteModal, close: closeDeleteModal },
@@ -145,6 +159,25 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
     useDeleteWorktreeMutation();
   const [sendToast] = useToast();
   const navigate = useNavigate();
+
+  const {
+    isDirty,
+    hasRemoteChanges,
+    isFetchingRemoteChanges,
+    isReadOnly,
+    isPullDisabled,
+    isPushDisabled,
+    pull,
+    push,
+    modals,
+  } = useWorktreeSyncActions(worktree, {
+    // Only check statuses while the menu is open, so a long sidebar doesn't query per worktree.
+    enabled: isMenuOpened,
+    // With the banner's WorktreeSyncControls disabled, this menu is the worktree's only sync UI, so
+    // it owns the progress modal and conflict feedback everywhere. If the banner comes back inside
+    // the worktree, scope this back to !isInsideWorktree or the two double up.
+    ownsTaskFeedback: true,
+  });
 
   const handleDelete = async () => {
     try {
@@ -163,7 +196,11 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
 
   return (
     <>
-      <Menu position="bottom-end">
+      <Menu
+        position="bottom-end"
+        opened={isMenuOpened}
+        onChange={setIsMenuOpened}
+      >
         <Menu.Target>
           <ActionIcon
             size="sm"
@@ -174,6 +211,37 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
+          <Tooltip
+            label={
+              hasRemoteChanges ? t`Pull from remote` : t`No changes to pull`
+            }
+          >
+            <Menu.Item
+              leftSection={
+                isFetchingRemoteChanges ? (
+                  <Loader size={12} data-testid="worktree-menu-pull-loader" />
+                ) : (
+                  <Icon name="arrow_down" />
+                )
+              }
+              disabled={isPullDisabled || isFetchingRemoteChanges}
+              onClick={pull}
+            >
+              {t`Pull changes`}
+            </Menu.Item>
+          </Tooltip>
+          {!isReadOnly && (
+            <Tooltip label={isDirty ? t`Push changes` : t`No changes to push`}>
+              <Menu.Item
+                leftSection={<Icon name="arrow_up" />}
+                disabled={isPushDisabled}
+                onClick={push}
+              >
+                {t`Push changes`}
+              </Menu.Item>
+            </Tooltip>
+          )}
+          <Menu.Divider />
           <Menu.Item
             leftSection={<Icon name="trash" />}
             onClick={openDeleteModal}
@@ -182,6 +250,7 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      {modals}
       <ConfirmModal
         opened={isDeleteModalOpened}
         title={t`Delete the worktree for "${worktree.branch}"?`}

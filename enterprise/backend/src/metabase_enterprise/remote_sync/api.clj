@@ -224,13 +224,17 @@
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
-  "Cancels the current task if one is running"
-  []
+  "Cancels the current task if one is running. Pass `worktree_id` to cancel a worktree's task instead of
+  the main app's."
+  [_route
+   _query
+   {:keys [worktree_id]} :- [:map [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
-  (let [task (remote-sync.task/most-recent-task)]
+  (let [worktree-id (check-worktree worktree_id)
+        task        (remote-sync.task/most-recent-task worktree-id)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (t2/hydrate (remote-sync.task/most-recent-task worktree-id) :status)))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.

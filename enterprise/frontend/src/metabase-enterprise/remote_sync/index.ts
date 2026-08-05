@@ -25,6 +25,7 @@ import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-
 import { getIsRemoteSyncReadOnly } from "./selectors";
 import { remoteSyncReducer } from "./sync-task-slice";
 import { WorktreesNavSection, getDataStudioWorktreeRoutes } from "./worktrees";
+import { useWorktreeBreadcrumb } from "./worktrees/use-worktree-breadcrumb";
 
 /**
  * Initialize remote sync plugin features that depend on hasPremiumFeature.
@@ -53,6 +54,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection = WorktreesNavSection;
     PLUGIN_REMOTE_SYNC.getDataStudioWorktreeRoutes =
       getDataStudioWorktreeRoutes;
+    PLUGIN_REMOTE_SYNC.useWorktreeBreadcrumb = useWorktreeBreadcrumb;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

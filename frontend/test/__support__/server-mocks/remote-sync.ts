@@ -23,6 +23,18 @@ export const setupRemoteSyncDirtyEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync is-dirty endpoint
+ */
+export const setupRemoteSyncIsDirtyEndpoint = (isDirty = false) => {
+  fetchMock.removeRoute("remote-sync-is-dirty");
+  fetchMock.get(
+    "path:/api/ee/remote-sync/is-dirty",
+    { is_dirty: isDirty },
+    { name: "remote-sync-is-dirty" },
+  );
+};
+
+/**
  * Setup the remote-sync worktree list endpoint
  */
 export const setupRemoteSyncWorktreesEndpoint = (
@@ -203,6 +215,7 @@ export const setupRemoteSyncEndpoints = ({
   worktrees = [],
   dirty = [],
   changedCollections = {},
+  isDirty = false,
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
   hasRemoteChangesError = false,
@@ -214,6 +227,7 @@ export const setupRemoteSyncEndpoints = ({
   worktrees?: Worktree[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
+  isDirty?: boolean;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
   hasRemoteChangesError?: boolean;
@@ -226,6 +240,7 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncBranchesEndpoint(branches);
   setupRemoteSyncWorktreesEndpoint(worktrees);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
+  setupRemoteSyncIsDirtyEndpoint(isDirty);
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncExportEndpoint();

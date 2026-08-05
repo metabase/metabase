@@ -277,6 +277,57 @@ describe("remote-sync-listener-middleware", () => {
       });
     });
 
+    it("should attribute the started task to the worktree the import targets", async () => {
+      fetchMock.post("path:/api/ee/remote-sync/import", {
+        status: "running",
+        task_id: 456,
+      });
+
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.importChanges.initiate({
+          branch: "feature-branch",
+          expected_branch: "feature-branch",
+          worktree_id: 5,
+        }),
+      );
+
+      await waitForCondition(() => {
+        const state = store.getState();
+        return state.remoteSyncPlugin?.showModal === true;
+      });
+
+      expect(store.getState().remoteSyncPlugin?.currentTask?.worktree_id).toBe(
+        5,
+      );
+    });
+
+    it("does NOT open the setup modal when a worktree import task ends in conflict", async () => {
+      // Worktree conflicts are surfaced by the worktree's own sync controls, not the setup modal.
+      fetchMock.get("path:/api/ee/remote-sync/current-task", {
+        status: 200,
+        body: { status: "conflict", sync_task_type: "import", worktree_id: 5 },
+      });
+
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
+      );
+
+      await waitFor(() => {
+        expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
+      });
+      expect(store.getState().remoteSyncPlugin?.syncConflictVariant).not.toBe(
+        "setup",
+      );
+    });
+
     it("does NOT open the setup modal when an export task ends in conflict", async () => {
       // Export conflicts are surfaced as a toast by GitSyncControls (which can use the useToast hook),
       // not by the middleware — so the middleware must not route them to the setup-conflict modal.

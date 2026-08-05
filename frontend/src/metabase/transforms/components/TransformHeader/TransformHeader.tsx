@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { isRootCollection } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
@@ -59,14 +60,17 @@ export function TransformHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
           <Link to={Urls.transformList({ worktreeId })}>{t`Transforms`}</Link>
-          {path?.map((folder) => (
-            <Link
-              key={folder.id}
-              to={Urls.transformList({ worktreeId, collectionId: folder.id })}
-            >
-              {folder.name}
-            </Link>
-          ))}
+          {/* the root transforms collection is the hardcoded crumb above, so keep only real folders */}
+          {path
+            ?.filter((folder) => !isRootCollection(folder))
+            .map((folder) => (
+              <Link
+                key={folder.id}
+                to={Urls.transformList({ worktreeId, collectionId: folder.id })}
+              >
+                {folder.name}
+              </Link>
+            ))}
           {transform.name}
         </DataStudioBreadcrumbs>
       }

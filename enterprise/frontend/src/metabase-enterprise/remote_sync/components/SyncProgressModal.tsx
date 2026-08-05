@@ -6,7 +6,11 @@ import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
-import type { RemoteSyncOutcome, RemoteSyncTaskType } from "metabase-types/api";
+import type {
+  RemoteSyncOutcome,
+  RemoteSyncTaskType,
+  WorktreeId,
+} from "metabase-types/api";
 
 interface SyncProgressModalProps {
   taskType: RemoteSyncTaskType;
@@ -17,6 +21,8 @@ interface SyncProgressModalProps {
   errorMessage: string;
   isSuccess: boolean;
   outcome: RemoteSyncOutcome | null;
+  /** The worktree whose task this modal tracks; null for the main app's. */
+  worktreeId?: WorktreeId | null;
   onDismiss: () => void;
 }
 
@@ -29,6 +35,7 @@ export function SyncProgressModal({
   errorMessage,
   isSuccess,
   outcome,
+  worktreeId = null,
   onDismiss,
 }: SyncProgressModalProps) {
   const canCancel = useSelector(getUserIsAdmin);
@@ -39,7 +46,9 @@ export function SyncProgressModal({
 
   const onCancel = async () => {
     try {
-      await cancelRemoteSyncCurrentTask().unwrap();
+      await cancelRemoteSyncCurrentTask(
+        worktreeId != null ? { worktree_id: worktreeId } : undefined,
+      ).unwrap();
       onDismiss();
     } catch (error: any) {
       let message = t`Failed to cancel sync`;

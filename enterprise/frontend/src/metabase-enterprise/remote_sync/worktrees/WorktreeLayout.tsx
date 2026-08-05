@@ -1,5 +1,3 @@
-import { jt, t } from "ttag";
-
 import { skipToken } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -7,15 +5,9 @@ import { WorktreeProvider } from "metabase/common/worktrees";
 import { useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Flex, Group, Icon, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import {
-  useGetRemoteSyncHasChangesQuery,
-  useGetWorktreeQuery,
-} from "metabase-enterprise/api";
-import type { Worktree } from "metabase-types/api";
-
-import S from "./WorktreeLayout.module.css";
+import { useGetWorktreeQuery } from "metabase-enterprise/api";
 
 export function WorktreeLayout() {
   const params = useParams<{ worktreeId: string }>();
@@ -41,22 +33,28 @@ export function WorktreeLayout() {
   return (
     <WorktreeProvider worktreeId={worktreeId}>
       <Flex direction="column" h="100%" mih={0}>
-        <WorktreeBanner worktree={worktree} />
+        {/* <WorktreeBanner worktree={worktree} /> */}
         <Outlet />
       </Flex>
     </WorktreeProvider>
   );
 }
 
+/* Branch banner with sync status, currently disabled — the worktree's sidebar menu
+   (WorktreesNavSection) carries the sync actions and owns the task feedback. If this comes back,
+   move task-feedback ownership back here (see ownsTaskFeedback in WorktreeMenu).
+
+import { jt } from "ttag";
+import { Group, Icon, Text } from "metabase/ui";
+import type { Worktree } from "metabase-types/api";
+import S from "./WorktreeLayout.module.css";
+import { WorktreeSyncControls } from "./WorktreeSyncControls";
+
 type WorktreeBannerProps = {
   worktree: Worktree;
 };
 
 function WorktreeBanner({ worktree }: WorktreeBannerProps) {
-  const { data: dirtyData } = useGetRemoteSyncHasChangesQuery({
-    "worktree-id": worktree.id,
-  });
-
   return (
     <Group
       justify="space-between"
@@ -71,11 +69,8 @@ function WorktreeBanner({ worktree }: WorktreeBannerProps) {
           {jt`Working in ${<strong key="branch">{worktree.branch}</strong>}`}
         </Text>
       </Group>
-      {dirtyData != null && (
-        <Text c="text-secondary" size="sm">
-          {dirtyData.is_dirty ? t`Uncommitted changes` : t`Up to date`}
-        </Text>
-      )}
+      <WorktreeSyncControls worktree={worktree} />
     </Group>
   );
 }
+*/

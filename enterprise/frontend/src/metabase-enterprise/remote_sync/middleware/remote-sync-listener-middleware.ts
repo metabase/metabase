@@ -68,8 +68,13 @@ const ALL_INVALIDATION_TAGS = [
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "export" }));
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "export",
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -82,8 +87,13 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "import" }));
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "import",
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -124,8 +134,9 @@ remoteSyncListenerMiddleware.startListening({
         dispatch(modalDismissed());
         // The first-import / setup flow surfaces conflicts as a task status. Export conflicts are
         // surfaced as a toast by GitSyncControls (which observes the task), not here — middleware can't
-        // use the useToast hook.
-        if (task.sync_task_type !== "export") {
+        // use the useToast hook. Worktree conflicts (any type) are likewise handled by the worktree's
+        // own sync controls observing the task.
+        if (task.sync_task_type !== "export" && task.worktree_id == null) {
           dispatch(syncConflictVariantUpdated("setup"));
         }
         return;

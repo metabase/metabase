@@ -20,51 +20,6 @@ export const getShowModal = createSelector(
   (state) => state.showModal,
 );
 
-export const getIsRunning = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask !== null && currentTask.ended_at === null,
-);
-
-export const getTaskType = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.sync_task_type,
-);
-
-export const getProgress = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.progress ?? 0,
-);
-
-export const getIsError = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.status === "errored",
-);
-
-export const getIsStalled = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.status === "timed-out",
-);
-
-export const getLastProgressReportAt = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.last_progress_report_at ?? null,
-);
-
-export const getIsSuccess = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.status === "successful",
-);
-
-export const getErrorMessage = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.error_message ?? "",
-);
-
-export const getTaskOutcome = createSelector(
-  getCurrentTask,
-  (currentTask) => currentTask?.outcome ?? null,
-);
-
 export const getHasPendingMutation = createSelector(
   [(state: State) => state[remoteSyncApi.reducerPath]?.mutations],
   (mutations) => {

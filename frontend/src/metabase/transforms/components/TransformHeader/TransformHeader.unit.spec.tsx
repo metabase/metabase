@@ -3,9 +3,10 @@ import {
   setupCollectionByIdEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { Collection, CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTransform,
@@ -16,15 +17,24 @@ import { TransformHeader } from "./TransformHeader";
 type SetupOpts = {
   hasMenu?: boolean;
   isEditMode?: boolean;
+  collectionId?: CollectionId | null;
+  collections?: Collection[];
 };
 
-function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
-  const transform = createMockTransform({ id: 1, name: "Test Transform" });
+function setup({
+  hasMenu = true,
+  isEditMode = false,
+  collectionId = null,
+  collections = [createMockCollection({ id: "root", name: "Transforms" })],
+}: SetupOpts = {}) {
+  const transform = createMockTransform({
+    id: 1,
+    name: "Test Transform",
+    collection_id: typeof collectionId === "number" ? collectionId : null,
+  });
 
   setupUserMetabotPermissionsEndpoint();
-  setupCollectionByIdEndpoint({
-    collections: [createMockCollection({ id: "root" })],
-  });
+  setupCollectionByIdEndpoint({ collections });
 
   renderWithProviders(
     <Route
@@ -110,6 +120,39 @@ describe("TransformHeader", () => {
       expect(
         within(inspectLink).queryByTestId("upsell-gem"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("breadcrumbs", () => {
+    it("shows a single Transforms crumb for a transform in the root collection", async () => {
+      setup();
+
+      const breadcrumbs = await screen.findByTestId("data-studio-breadcrumbs");
+      await waitFor(() => {
+        expect(within(breadcrumbs).getByText("Test Transform")).toBeVisible();
+      });
+      expect(within(breadcrumbs).getAllByText("Transforms")).toHaveLength(1);
+    });
+
+    it("shows the folder path between the Transforms crumb and the name", async () => {
+      setup({
+        collectionId: 2,
+        collections: [
+          createMockCollection({
+            id: 2,
+            name: "Marketing",
+            effective_ancestors: [
+              createMockCollection({ id: "root", name: "Transforms" }),
+            ],
+          }),
+        ],
+      });
+
+      const breadcrumbs = await screen.findByTestId("data-studio-breadcrumbs");
+      await waitFor(() => {
+        expect(within(breadcrumbs).getByText("Marketing")).toBeInTheDocument();
+      });
+      expect(within(breadcrumbs).getAllByText("Transforms")).toHaveLength(1);
     });
   });
 

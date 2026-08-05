@@ -18,6 +18,7 @@ import type { State } from "metabase/redux/store";
 import type {
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
+  WorktreeId,
 } from "metabase-types/api";
 
 export type CollectionsNavTreeProps = {
@@ -51,13 +52,24 @@ export interface RemoteSyncDirtyState {
   /** Refetch the dirty state data */
   refetch: ReturnType<
     UseQuery<
-      QueryDefinition<void, BaseQueryFn, TagType, RemoteSyncChangesResponse>
+      QueryDefinition<
+        { "worktree-id": WorktreeId } | void,
+        BaseQueryFn,
+        TagType,
+        RemoteSyncChangesResponse
+      >
     >
   >["refetch"];
 }
 
 export type DataStudioWorktreesSectionProps = {
   isNavbarOpened: boolean;
+};
+
+/** Leading breadcrumb item shown on pages scoped to a remote-sync worktree. */
+export type WorktreeBreadcrumb = {
+  branch: string;
+  url: string;
 };
 
 const getDefaultPluginRemoteSync = () => ({
@@ -78,6 +90,7 @@ const getDefaultPluginRemoteSync = () => ({
     // the cast keeps the nullable component type instead of narrowing the field to `null`
     null as ComponentType<DataStudioWorktreesSectionProps> | null,
   getDataStudioWorktreeRoutes: (): ReactNode => null,
+  useWorktreeBreadcrumb: (): WorktreeBreadcrumb | null => null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -109,6 +122,8 @@ export const PLUGIN_REMOTE_SYNC: {
   CollectionSyncStatusBadge: ComponentType | null;
   DataStudioWorktreesSection: ComponentType<DataStudioWorktreesSectionProps> | null;
   getDataStudioWorktreeRoutes: () => ReactNode;
+  /** The worktree the current page is scoped to, as a breadcrumb item; null in the main app. */
+  useWorktreeBreadcrumb: () => WorktreeBreadcrumb | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

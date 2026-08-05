@@ -2,19 +2,25 @@ import { t } from "ttag";
 
 import { Box, Loader, Text } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
+import type { WorktreeId } from "metabase-types/api";
 
 import { AllChangesView } from "./AllChangesView";
 
 interface ChangesListsProps {
   title?: string;
+  /** List a worktree's local changes instead of the main app's. */
+  worktreeId?: WorktreeId | null;
 }
 
-export const ChangesLists = ({ title }: ChangesListsProps) => {
+export const ChangesLists = ({ title, worktreeId }: ChangesListsProps) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
-    useGetRemoteSyncChangesQuery(undefined, {
-      refetchOnMountOrArgChange: true,
-      refetchOnFocus: true,
-    });
+    useGetRemoteSyncChangesQuery(
+      worktreeId != null ? { "worktree-id": worktreeId } : undefined,
+      {
+        refetchOnMountOrArgChange: true,
+        refetchOnFocus: true,
+      },
+    );
 
   if (isLoadingChanges) {
     return (
