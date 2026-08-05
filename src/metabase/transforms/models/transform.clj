@@ -254,10 +254,17 @@
   [_model k transforms]
   (hydrate-permission k transforms transform-writable?))
 
+(defn- transform-executable?
+  "Whether the current user can run `instance`. Running requires write permission, and a transform checked out
+  into a remote-sync worktree is never run: a worktree is a working copy of a branch."
+  [instance & args]
+  (and (nil? (:worktree_id instance))
+       (apply transform-writable? instance args)))
+
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
-  "Add can_execute to transforms. Executing a transform requires write permission."
+  "Add can_execute to transforms. Executing a transform requires write permission, and worktree transforms never run."
   [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  (hydrate-permission k transforms transform-executable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -365,7 +372,9 @@
   [transform-id tag-ids]
   (when transform-id
     (t2/with-transaction [_conn]
-      (let [;; Deduplicate while preserving order of first occurrence
+      (let [;; an assignment belongs to the same worktree as the transform it is for
+            worktree-id          (t2/select-one-fn :worktree_id :model/Transform :id transform-id)
+            ;; Deduplicate while preserving order of first occurrence
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
             current-associations (t2/select [:model/TransformTransformTag :tag_id :position]
@@ -404,6 +413,7 @@
                       (for [tag-id to-insert]
                         {:transform_id transform-id
                          :tag_id       tag-id
+                         :worktree_id  worktree-id
                          :position     (get new-positions tag-id)})))))))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------

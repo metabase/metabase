@@ -423,7 +423,7 @@
   `count 0`. Caller guarantees `da-changed` is positive."
   [outcome da-changed]
   (case (:kind outcome)
-    "pull-skipped" {:kind "pulled" :count da-changed :branch (settings/remote-sync-branch)}
+    "pull-skipped" {:kind "pulled" :count da-changed}
     "pulled"       (update outcome :count (fnil + 0) da-changed)
     "merged"       (update outcome :pulled (fnil + 0) da-changed)
     outcome))
@@ -515,8 +515,7 @@
     {:status :success
      :version snapshot-version
      :outcome {:kind "pulled"
-               :count (+ (pulled-change-count imported-data) (count deletes))
-               :branch (settings/remote-sync-branch)}}))
+               :count (+ (pulled-change-count imported-data) (count deletes))}}))
 
 (defn- capture-dirty-objects
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
@@ -572,8 +571,7 @@
          :version       (source.p/version snapshot)
          :merge-summary summary
          :outcome       {:kind "pulled"
-                         :count (apply + (vals summary))
-                         :branch (settings/remote-sync-branch)}}))))
+                         :count (apply + (vals summary))}}))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -661,8 +659,7 @@
                   {:status :success
                    :version snapshot-version
                    :outcome {:kind "pulled"
-                             :count (pulled-change-count imported-data)
-                             :branch (settings/remote-sync-branch)}}))
+                             :count (pulled-change-count imported-data)}}))
 
               ;; --- Normal pull ---
               ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
@@ -699,8 +696,7 @@
                 {:status :success
                  :version snapshot-version
                  :outcome {:kind "pulled"
-                           :count (pulled-change-count imported-data)
-                           :branch (settings/remote-sync-branch)}}))]
+                           :count (pulled-change-count imported-data)}}))]
         ;; Data apps ride the pull: re-materialize from the real source snapshot
         ;; (the repo file tree under `data_apps/`), not the synthetic merged
         ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
@@ -803,9 +799,8 @@
              ;; An empty merge pushed nothing: it's a pull when remote changes were folded in, or a no-op
              ;; when nothing changed on either side.
              :outcome (cond
-                        (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
-                                      :branch (settings/remote-sync-branch)}
-                        (pos? pulled) {:kind "pulled" :count pulled :branch (settings/remote-sync-branch)}
+                        (not empty?)  {:kind "merged" :pulled pulled :pushed pushed-count}
+                        (pos? pulled) {:kind "pulled" :count pulled}
                         :else         {:kind "push-skipped"})})
           ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
           ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
@@ -1175,7 +1170,7 @@
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
           {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
+           :outcome {:kind "pushed" :count (count synced)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1210,8 +1205,7 @@
           (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
           {:status :success
            :outcome {:kind "pushed"
-                     :count (+ (count writes) (count delete-paths))
-                     :branch (settings/remote-sync-branch)}})))))
+                     :count (+ (count writes) (count delete-paths))}})))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
@@ -1454,7 +1448,10 @@
                   :success (do
                              (when (and branch (nil? worktree-id))
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
+                             (remote-sync.task/complete-sync-task!
+                              task-id
+                              (cond-> (:outcome result)
+                                (and branch (:outcome result)) (assoc :branch branch))))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))

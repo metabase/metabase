@@ -168,7 +168,8 @@
   "Records that this worktree's copy of a `model-name` entity is `local-entity-id`, known to the branch as `source`,
   and returns `source`. When `source` is nil -- content created inside the worktree, which the branch has never
   seen -- a fresh id is minted for it, so what the worktree pushes can never collide with the row the main app
-  holds. A no-op outside a worktree, and when the pair is already recorded."
+  holds. A no-op outside a worktree, when the pair is already recorded, and when handed an id that is already a
+  source id for this worktree, so calling it twice on the way out never mints a second id."
   ([model-name local-entity-id]
    (ensure-remapping! model-name local-entity-id nil))
   ([model-name local-entity-id source]
@@ -178,6 +179,11 @@
                            :worktree_id     *worktree-id*
                            :type            (name model-name)
                            :local_entity_id local-entity-id)
+         (when (t2/exists? :model/RemoteSyncWorktreeRemapping
+                           :worktree_id      *worktree-id*
+                           :type             (name model-name)
+                           :source_entity_id local-entity-id)
+           local-entity-id)
          (let [source (or source (u/generate-nano-id))]
            (t2/insert! :model/RemoteSyncWorktreeRemapping
                        {:worktree_id      *worktree-id*
@@ -309,11 +315,13 @@
   "Returns `{:model \"ModelName\" :id \"id-string\"}`.
 
   Inside a worktree the id is the entity's *source* id -- what the branch calls it -- so what gets written, and
-  every reference to it, matches the rest of the branch rather than naming the worktree's private copy."
+  every reference to it, matches the rest of the branch rather than naming the worktree's private copy. The
+  mapping is recorded if it does not exist yet: a reference can be serialized before the entity it points at, and
+  both have to name it the same way."
   [model-name entity]
   (let [eid (entity-id model-name entity)]
     {:model model-name
-     :id    (if (worktree-scoped? model-name) (source-entity-id model-name eid) eid)}))
+     :id    (if (worktree-scoped? model-name) (ensure-remapping! model-name eid) eid)}))
 
 (defn maybe-labeled
   "Common helper for defining [[generate-path]] for an entity that is

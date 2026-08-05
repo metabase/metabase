@@ -56,9 +56,9 @@
 
 ;;; ------------------------------------------- entity_id remapping -------------------------------------------
 
-(def ^:private branch-eid "branchSideEntityId000")
-(def ^:private local-eid "localSideEntityId0000")
-(def ^:private fresh-eid "createdInWorktree0000")
+(def ^:private branch-eid "branch-side-entity-id")
+(def ^:private local-eid "worktree-local-entity")
+(def ^:private fresh-eid "created-in-a-worktree")
 
 (deftest entity-id-remapping-test
   (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "feature-remap"}]
@@ -81,8 +81,8 @@
           (is (some? source))
           (is (not= fresh-eid source))))
       (testing "batch resolution passes ids the worktree hasn't checked out through unchanged"
-        (is (= #{local-eid "notCheckedOutId000000"}
-               (serdes/local-entity-ids "Transform" [branch-eid "notCheckedOutId000000"])))))))
+        (is (= #{local-eid "not-checked-out-in-wt"}
+               (serdes/local-entity-ids "Transform" [branch-eid "not-checked-out-in-wt"])))))))
 
 (deftest worktree-scoped-models-test
   (testing "only transform content and collections are checked out into a worktree"
