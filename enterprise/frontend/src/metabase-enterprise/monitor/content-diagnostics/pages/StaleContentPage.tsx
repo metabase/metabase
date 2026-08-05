@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch } from "metabase/redux";
-import { replace, useRouter } from "metabase/router";
+import { useNavigate, useSearchParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { StaleContent } from "../components";
@@ -17,9 +16,9 @@ import {
 } from "./utils";
 
 export function StaleContentPage() {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isInitializingRef = useRef(false);
-  const dispatch = useDispatch();
 
   const {
     value: rawLastUsedParams,
@@ -31,10 +30,10 @@ export function StaleContentPage() {
   });
 
   const params = useMemo(() => {
-    return isEmptyStaleParams(location)
+    return isEmptyStaleParams(searchParams)
       ? parseStaleUserParams(rawLastUsedParams)
-      : parseStaleUrlParams(location);
-  }, [location, rawLastUsedParams]);
+      : parseStaleUrlParams(searchParams);
+  }, [searchParams, rawLastUsedParams]);
 
   const handleParamsChange = (
     params: Urls.StaleContentParams,
@@ -45,17 +44,17 @@ export function StaleContentPage() {
     if (withSetLastUsedParams) {
       setLastUsedParams(getStaleUserParams(paramsWithoutDefaults));
     }
-    dispatch(replace(Urls.staleContent(paramsWithoutDefaults)));
+    navigate(Urls.staleContent(paramsWithoutDefaults), { replace: true });
   };
 
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
-      dispatch(
-        replace(Urls.staleContent(getStaleParamsWithoutDefaults(params))),
-      );
+      navigate(Urls.staleContent(getStaleParamsWithoutDefaults(params)), {
+        replace: true,
+      });
     }
-  }, [params, isLoadingParams, dispatch]);
+  }, [params, isLoadingParams, navigate]);
 
   return (
     <StaleContent

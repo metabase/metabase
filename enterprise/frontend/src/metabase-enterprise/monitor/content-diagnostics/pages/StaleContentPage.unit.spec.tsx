@@ -6,6 +6,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
+  type TestRouter,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -15,6 +16,7 @@ import {
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import type {
   ContentDiagnosticsStaleFinding,
   ContentDiagnosticsStaleUserParams,
@@ -86,7 +88,7 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={Urls.staleContent()}
       element={
@@ -104,7 +106,11 @@ function setup({
     },
   );
 
-  return { history };
+  return { router };
+}
+
+function getUrlQuery(router: TestRouter | undefined) {
+  return parseSearchQuery(router?.location.search ?? "");
 }
 
 function getLastRequestUrl() {
@@ -194,16 +200,16 @@ describe("StaleContentPage", () => {
   });
 
   it("sets the page parameter when navigating to the next page", async () => {
-    const { history } = setup({ findings: FINDINGS, total: 50 });
+    const { router } = setup({ findings: FINDINGS, total: 50 });
     await waitForListToLoad();
 
     await userEvent.click(screen.getByLabelText("Next page"));
 
-    expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+    expect(getUrlQuery(router)).toEqual({ page: "1" });
   });
 
   it("clears the page parameter when navigating back to the first page", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       total: 50,
       urlParams: { page: 1 },
@@ -212,7 +218,7 @@ describe("StaleContentPage", () => {
 
     await userEvent.click(screen.getByLabelText("Previous page"));
 
-    expect(history?.getCurrentLocation().query).toEqual({});
+    expect(getUrlQuery(router)).toEqual({});
   });
 
   it("refetches the stale endpoint with the next offset and renders the next page", async () => {
@@ -244,7 +250,7 @@ describe("StaleContentPage", () => {
   });
 
   it("sends table sort changes to the server and URL", async () => {
-    const { history } = setup({ findings: FINDINGS });
+    const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
     await userEvent.click(screen.getByRole("columnheader", { name: /^Name/ }));
@@ -253,7 +259,7 @@ describe("StaleContentPage", () => {
       expect(getLastRequestUrl().searchParams.get("sort-column")).toBe("name");
     });
     expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "sort-column": "name",
       "sort-direction": "asc",
     });
@@ -265,14 +271,14 @@ describe("StaleContentPage", () => {
         "desc",
       );
     });
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "sort-column": "name",
       "sort-direction": "desc",
     });
   });
 
   it("resets pagination when table sorting changes", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       total: 50,
       urlParams: { page: 1 },
@@ -290,7 +296,7 @@ describe("StaleContentPage", () => {
     });
     expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
     expect(getLastRequestUrl().searchParams.get("offset")).toBe("0");
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "sort-column": "entity-type",
       "sort-direction": "asc",
     });
@@ -325,7 +331,7 @@ describe("StaleContentPage", () => {
   });
 
   it("sends the selected entity types to the server via the Filter popover", async () => {
-    const { history } = setup({ findings: FINDINGS });
+    const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
     await userEvent.click(
@@ -337,7 +343,7 @@ describe("StaleContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(getUrlQuery(router)).toEqual({
         "entity-types": [
           "question",
           "model",
@@ -357,7 +363,7 @@ describe("StaleContentPage", () => {
   });
 
   it("filters by personal collections server-side via the Location toggle", async () => {
-    const { history } = setup({ findings: FINDINGS });
+    const { router } = setup({ findings: FINDINGS });
     await waitForListToLoad();
 
     expect(
@@ -375,7 +381,7 @@ describe("StaleContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().query).toEqual({
+      expect(getUrlQuery(router)).toEqual({
         "include-personal-collections": "false",
       });
     });
@@ -385,7 +391,7 @@ describe("StaleContentPage", () => {
   });
 
   it("restores the last-used filter when the URL has no params", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: {},
       lastUsedParams: { entity_types: ["model"] },
@@ -393,7 +399,7 @@ describe("StaleContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "entity-types": "model",
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
@@ -402,7 +408,7 @@ describe("StaleContentPage", () => {
   });
 
   it("prefers URL params over the last-used filter", async () => {
-    const { history } = setup({
+    const { router } = setup({
       findings: FINDINGS,
       urlParams: { entityTypes: ["dashboard"] },
       lastUsedParams: { entity_types: ["model"] },
@@ -410,7 +416,7 @@ describe("StaleContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(history?.getCurrentLocation().query).toEqual({
+    expect(getUrlQuery(router)).toEqual({
       "entity-types": "dashboard",
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([

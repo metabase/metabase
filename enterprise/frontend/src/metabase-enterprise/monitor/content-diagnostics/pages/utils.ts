@@ -1,4 +1,3 @@
-import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
@@ -10,31 +9,26 @@ import {
 import { getStaleParamsWithoutDefaults } from "../components/stale-utils";
 
 export function parseStaleUrlParams(
-  location: Location,
+  searchParams: URLSearchParams,
 ): Urls.StaleContentParams {
-  const {
-    page,
-    query,
-    "entity-types": entityTypes,
-    "include-personal-collections": includePersonalCollections,
-    "sort-column": sortColumn,
-    "sort-direction": sortDirection,
-  } = location.query;
-
   return {
-    page: Urls.parseNumberParam(page),
-    query: Urls.parseStringParam(query),
-    entityTypes: Urls.parseListParam(entityTypes, (item) =>
-      Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    query: Urls.parseStringParam(searchParams.get("query")),
+    entityTypes: Urls.parseListParam(
+      searchParams.getAll("entity-types"),
+      (item) => Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
     ),
     includePersonalCollections: Urls.parseBooleanParam(
-      includePersonalCollections,
+      searchParams.get("include-personal-collections"),
     ),
     sortColumn: Urls.parseEnumParam(
-      sortColumn,
+      searchParams.get("sort-column"),
       CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
     ),
-    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
+    sortDirection: Urls.parseEnumParam(
+      searchParams.get("sort-direction"),
+      SORT_DIRECTIONS,
+    ),
   };
 }
 
@@ -64,8 +58,8 @@ export function parseStaleUserParams(
   };
 }
 
-export function isEmptyStaleParams(location: Location): boolean {
+export function isEmptyStaleParams(searchParams: URLSearchParams): boolean {
   return Object.values(
-    getStaleParamsWithoutDefaults(parseStaleUrlParams(location)),
+    getStaleParamsWithoutDefaults(parseStaleUrlParams(searchParams)),
   ).every((value) => value == null);
 }
