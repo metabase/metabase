@@ -1,19 +1,25 @@
 (ns metabase.queries.core
   (:require
+   [metabase.queries.cached-result]
    [metabase.queries.card]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.models.stored-result]
+   [metabase.queries.models.stored-result-use]
    [potemkin :as p]))
 
-(comment metabase.queries.card/keep-me
+(comment metabase.queries.cached-result/keep-me
+         metabase.queries.card/keep-me
          metabase.queries.metadata/keep-me
          metabase.queries.models.card/keep-me
          metabase.queries.models.card.metadata/keep-me
          metabase.queries.models.parameter-card/keep-me
-         metabase.queries.models.query/keep-me)
+         metabase.queries.models.query/keep-me
+         metabase.queries.models.stored-result/keep-me
+         metabase.queries.models.stored-result-use/keep-me)
 
 (p/import-vars
  [metabase.queries.card
@@ -33,6 +39,7 @@
   sole-dashboard-id
   starting-card-schema-version
   update-card!
+  visible-metric-cards-where-clause
   ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
@@ -44,7 +51,10 @@
  [metabase.queries.models.query
   average-execution-time-ms
   query->database-and-table-ids
-  save-queries-and-update-average-execution-times!])
+  save-queries-and-update-average-execution-times!]
+ [metabase.queries.cached-result
+  assert-can-view-cached-result!
+  viewer-can-view-cached-result?])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

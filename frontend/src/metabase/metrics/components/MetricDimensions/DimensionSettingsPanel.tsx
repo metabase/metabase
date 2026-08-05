@@ -5,7 +5,7 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   trackMetricDimensionRemoveDefault,

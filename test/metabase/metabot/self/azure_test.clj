@@ -105,6 +105,7 @@
    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key      "azure-key"
                                       llm.settings/llm-azure-api-base-url base-url]
      (with-redefs [self.core/sse-reducible identity
+                   self.core/reducible-with-api-errors (fn [r _ _] r)
                    debug/capture-stream    (fn [r _] r)
                    http/request            (fn [req] {:body req})]
        (azure/azure-raw opts)))))
