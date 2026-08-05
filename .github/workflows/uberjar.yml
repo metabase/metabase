@@ -144,6 +144,20 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 25 }}"
+      # Lets the build append its classes onto a prebuilt deps-only jar rather than re-deflating every dependency.
+      # Restore-only and best-effort: the build re-checks the resolved dependency set against the hash stored beside
+      # the jar and falls back to a full `b/uber` on a miss, a stale hit, or no cache at all.
+      - name: Get cache keys
+        uses: ./.github/actions/get-cache-keys
+        id: get-cache-keys
+      - name: Restore deps base jar cache
+        uses: actions/cache/restore@v5
+        continue-on-error: true
+        with:
+          path: target/deps-base
+          key: ${{ steps.get-cache-keys.outputs.deps-base-jar-cache-key }}
+          restore-keys: |
+            ${{ steps.get-cache-keys.outputs.deps-base-jar-restore-key }}
       - name: Build
         run: ./bin/build.sh
       - name: Upload bundle stats
