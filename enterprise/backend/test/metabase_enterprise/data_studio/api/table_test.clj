@@ -367,6 +367,18 @@
                  :model/Dimension  _            {:field_id y-fk :human_readable_field_id x-name :type :external}]
     (f {:coll-a coll-a :coll-b coll-b :x-id x-id :y-id y-id})))
 
+(deftest unpublish-on-collection-archive-emits-events-test
+  (mt/with-premium-features #{:library :audit-app}
+    (testing "archiving a Library collection emits table-unpublish events for its own tables, not just FK-linked ones"
+      (with-fk-linked-published-tables
+        (fn [{:keys [coll-a x-id y-id]}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+          (doseq [table-id [x-id y-id]]
+            (is (=? {:topic :table-unpublish :model "Table" :model_id table-id}
+                    (mt/latest-audit-log-entry "table-unpublish" table-id)))))))))
+
 (deftest unpublish-fk-linked-tables-on-collection-delete-test
   (mt/with-premium-features #{:library}
     (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
