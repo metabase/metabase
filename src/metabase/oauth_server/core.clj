@@ -27,21 +27,21 @@
 
 (defn all-agent-scopes
   "All agent OAuth scopes derived from defendpoint metadata on the agent API,
-   plus scopes from MCP UI resources (e.g. visualize_query). These are the scopes a
-   dynamically-registered MCP client is granted by default at registration time."
+   plus scopes from MCP UI resources (e.g. visualize_query) and the v2 tool registry."
   []
   (mcp/all-scopes))
 
 (defn supported-scopes
   "All OAuth scopes advertised in the server's discovery metadata (`scopes-supported`):
-   the agent/MCP scopes, the opt-in MCP scopes (e.g. `agent:snippets:read`), plus the top-level
-   first-party scopes (e.g. `mb:full`). This is a superset of [[all-agent-scopes]] — the extra
-   scopes are not part of the default grant a client receives at registration, so a client must
-   explicitly request them."
+   the agent/MCP scopes plus the opt-in MCP scopes (e.g. `agent:snippets:read`).
+
+   `mb:full` is deliberately absent. Advertising it here put a full-access grant in front of every
+   client that reads discovery metadata, and clients that request everything advertised would have
+   been rejected for it anyway — it is not in [[default-grant-scopes]], and a client may only
+   request scopes it registered with. A first-party client that needs it still registers with it
+   explicitly; registration does not consult this list."
   []
-  (-> (vec (all-agent-scopes))
-      (into (mcp/opt-in-scopes))
-      (conj full-access-scope)))
+  (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
 
 (defn protected-resource-scopes
   "The scopes advertised in the MCP resource's RFC 9728 protected-resource metadata: the agent/MCP
@@ -67,6 +67,27 @@
    what makes a client's consent screen list per-entity v1 scopes the v2 tools no longer use."
   []
   (into (vec (mcp/v2-scopes)) (mcp/opt-in-scopes)))
+
+(defn default-grant-scopes
+  "The scope set a dynamically-registered client is registered with when it sends no `scope` of its
+   own (RFC 7591 makes the parameter optional, and the major MCP clients omit it).
+
+   This is a *ceiling*, not a grant: a client may later request any subset of it, and the token
+   carries only what was requested and consented to. Because it is a ceiling it must cover
+   everything any surface advertises — a client derives what to ask for from discovery metadata,
+   never from what it registered with, so a scope we advertise but do not register is one the
+   authorization request is rejected for outright. Hence the union of every advertised set rather
+   than a hand-maintained list.
+
+   Narrowing this does not produce least privilege, it produces failed authorizations. The levers
+   that shrink an issued token are what each resource advertises, [[narrow-scope-to-resource]], and
+   the consent screen."
+  []
+  ;; sorted so the `scope` echoed back in the registration response is stable across restarts
+  (-> (sorted-set)
+      (into (supported-scopes))
+      (into (protected-resource-scopes))
+      (into (v2-resource-scopes))))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -109,16 +130,22 @@
    and nil when nothing survives (callers should drop the parameter entirely rather than send an
    empty one).
 
-   Only ever removes scopes. `mb:full` survives: it is a first-party full-access grant deliberately
-   absent from the v2 resource metadata, and dropping it would break a first-party client that
-   legitimately asked for it alongside the MCP scopes."
+   Only ever removes scopes, and runs after the provider has validated the request, so it can never
+   turn a valid authorization into a rejected one.
+
+   `mb:full` does not survive. The v2 resource metadata never advertised it, and a client naming v2
+   as its resource is asking for a token to use against the MCP surface — which accepts none of the
+   REST API that scope unlocks. A first-party client that genuinely wants full access should not be
+   naming the v2 MCP resource. Note this only reaches clients that send a resource indicator: one
+   that omits it is not narrowed at all, so a register-time rule is still the only way to keep
+   `mb:full` off a dynamically-registered client entirely."
   [resources scope]
   (let [scope (some-> scope str str/trim not-empty)]
     (if-not (and scope
                  (contains? (into #{} (keep canonical-resource-uri) resources)
                             (canonical-resource-uri (str (system/site-url) v2-resource-path))))
       scope
-      (let [accepted (conj (set (v2-resource-scopes)) full-access-scope)]
+      (let [accepted (set (v2-resource-scopes))]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
 (defn- build-provider-config

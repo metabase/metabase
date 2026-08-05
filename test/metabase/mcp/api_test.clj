@@ -1231,7 +1231,12 @@
       (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize"))]
         (is (=? {:status  401
                  :headers {"WWW-Authenticate" #(str/includes? % "oauth-protected-resource")}}
-                response))))))
+                response)))))
+  (testing "GHY-4226: v1's challenge carries no `scope` — narrowing the default ask is a v2 change,
+            and emitting one here would change which scopes existing v1 clients request"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize"))]
+        (is (not (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "scope=")))))))
 
 ;;; ----------------------------------------- Canonical and legacy endpoints ---------------------------------------
 

@@ -371,13 +371,23 @@
 (defn- www-authenticate-discovery
   "Build the `WWW-Authenticate` header advertising OAuth discovery for the path the client hit.
    A client connecting via an alias is pointed at that same alias as the protected resource;
-   any other path falls back to `default-path` (the surface's canonical URL)."
-  [endpoint-paths default-path request]
+   any other path falls back to `default-path` (the surface's canonical URL).
+
+   `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter."
+  [endpoint-paths default-path default-ask-scopes request]
   ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
   ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
   (let [uri  (str/replace (:uri request) #"/+$" "")
         path (if (contains? endpoint-paths uri) uri default-path)]
-    (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
+    ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
+    ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
+    ;; uses commas and the stricter parsers proposed upstream would not.
+    (str "Bearer realm=\"mcp\", resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\""
+         ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
+         ;; which is what lets a surface ask for less than it accepts: the wider set stays
+         ;; advertised and requestable, this is only what an uninstructed client asks for.
+         (when (seq default-ask-scopes)
+           (str ", scope=\"" (str/join " " default-ask-scopes) "\"")))))
 
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
@@ -396,8 +406,11 @@
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
    - `:endpoint-paths` — the URL paths (relative to site-url) this surface is served at.
    - `:default-path` — the canonical path advertised when the request URI matches no entry in
-     `:endpoint-paths`."
-  [{:keys [tools-hash-fn endpoint-paths default-path] :as opts}]
+     `:endpoint-paths`.
+   - `:default-ask-scopes` — optional scopes emitted as the `scope` parameter of the 401
+     `WWW-Authenticate` challenge, i.e. what a client that has not been told otherwise asks for.
+     Omit to let clients ask for everything the resource metadata advertises."
+  [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (let [origin-error (validate-origin request)
@@ -443,5 +456,6 @@
            ;; No auth at all — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
-                                   {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path request)}))))))
+                                   {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
+                                                                                   default-ask-scopes request)}))))))
    (constantly nil)))
