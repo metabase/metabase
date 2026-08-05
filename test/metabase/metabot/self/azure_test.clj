@@ -125,7 +125,9 @@
                :stream   true
                :system   [{:type "text" :text "be brief" :cache_control {:type "ephemeral"}}]
                :messages [{:role "user" :content [{:type "text" :text "hi"}]}]}
-              body)))))
+              body)))
+    (testing "a deployment name matches no model, so max_tokens falls back rather than being omitted"
+      (is (= 64000 (:max_tokens body))))))
 
 (deftest openai-family-dispatches-to-responses-api-test
   (let [req  (captured-raw-request! {:model       "openai/gpt-5-deployment"
