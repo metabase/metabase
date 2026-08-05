@@ -115,12 +115,16 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     root_scope = optimizer.build_scope(ast)
 
     tables = set()
-    for scope in root_scope.traverse():
-        for source in scope.sources.values():
-            if isinstance(source, exp.Table):
-                parts = table_parts(source)
-                if parts is not None:
-                    tables.add(parts)
+    # build_scope returns None for statements outside Query/DDL/DML (e.g. SHOW TIMEZONE, SET
+    # search_path, CALL my_proc(), EXPLAIN SELECT 1, TRUNCATE TABLE foo) -- those parse fine but
+    # simply reference no tables, so there's nothing to traverse.
+    if root_scope is not None:
+        for scope in root_scope.traverse():
+            for source in scope.sources.values():
+                if isinstance(source, exp.Table):
+                    parts = table_parts(source)
+                    if parts is not None:
+                        tables.add(parts)
 
     # Sort for deterministic output (nulls sort first via empty string)
     return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1] or "", x[2])))
@@ -168,8 +172,10 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
     # Track scopes with unqualified wildcards
     unqualified_wildcard_scopes = []
 
-    # Traverse all scopes to find column references
-    for scope in root_scope.traverse():
+    # Traverse all scopes to find column references. build_scope returns None for statements
+    # outside Query/DDL/DML (e.g. SHOW TIMEZONE, SET search_path, EXPLAIN SELECT 1) -- those
+    # parse fine but simply reference no fields, so there's nothing to traverse.
+    for scope in (root_scope.traverse() if root_scope is not None else []):
         # Build a mapping of table aliases to table_parts tuples (catalog, schema, table)
         # Only include actual tables, not CTEs or subqueries
         alias_to_table_parts = {}
