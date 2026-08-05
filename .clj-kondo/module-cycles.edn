@@ -2,123 +2,254 @@
 ;; metabase.core.module-cycles-test fails when the tree drifts past it; `./bin/mage
 ;; fix-module-cycles` tightens it to match, and local test runs do that automatically.
 ;;
-;; :sccs -- each strongly connected component of the module graph, i.e. a set of modules
-;; that can all reach each other. :edges is how many dependencies run between members.
+;; Two graphs are recorded:
+;;   :uses               -- the `require` graph, from the :uses sets in the modules config.
+;;   :uses+model-imports -- the same, plus an edge to whichever module exports each
+;;                          :model/X a module imports. Those resolve through Toucan's
+;;                          registry rather than a `require`, so :uses cannot see them --
+;;                          but the model's namespace still has to load first, which makes
+;;                          them real dependencies for loading a module on its own.
+;;
+;; Within each graph, :sccs holds every strongly connected component -- a set of modules
+;; that can all reach each other -- and :edges is how many dependencies run between members.
 ;; A module may not join an SCC, two SCCs may not merge, and a new SCC may not appear.
 ;; Splitting an SCC or dropping out of one is the whole point and always passes.
 ;;
-;; :unconstrained-modules -- modules declaring `:uses :any`, whose real dependencies the
-;; modules config does not record. Cycles routed through them are invisible to this check,
-;; so the set may not grow.
-{:sccs
- #{{:edges   2
-    :modules #{segments
-               xrays}}
+;; :unconstrained-modules -- modules whose dependencies the config does not record:
+;; `:uses :any` hides requires, `:model-imports :bypass` hides model references. Cycles
+;; routed through them are invisible here, so neither set may grow.
+{:uses
+ {:sccs
+  #{{:edges   2
+     :modules #{segments
+                xrays}}
 
-   {:edges   949
-    :modules #{actions
-               activity-feed
-               agent-api
-               agent-lib
-               ai-tracing
-               analytics
-               analyze
-               api
-               api-keys
-               app-db
-               appearance
-               audit-app
-               auth-identity
-               auth-provider
-               batch-processing
-               cache
-               channel
-               classloader
-               collections
-               content-verification
-               dashboards
-               database-routing
-               documents
-               driver
-               driver-api
-               eid-translation
-               embedding
-               entity-retrieval
-               events
-               formatter
-               geojson
-               graph
-               health-inspector
-               indexes
-               interestingness
-               internal-stats
-               legacy-mbql
-               lib
-               lib-be
-               lib-metric
-               llm
-               logger
-               login-history
-               mcp
-               metabot
-               metrics
-               model-persistence
-               models
-               native-query-snippets
-               notification
-               oauth-server
-               parameters
-               permissions
-               pivot
-               premium-features
-               public-sharing
-               pulse
-               queries
-               query-permissions
-               query-processor
-               remote-sync
-               request
-               revisions
-               run-tracking
-               search
-               secrets
-               server
-               session
-               settings
-               setup
-               slackbot
-               sql-parsing
-               sql-tools
-               sso
-               startup
-               sync
-               system
-               task
-               task-history
-               tenants
-               tiles
-               timeline
-               tracing
-               transforms
-               transforms-base
-               types
-               upload
-               users
-               util
-               version
-               view-log
-               warehouse-schema
-               warehouses
-               enterprise/advanced-permissions
-               enterprise/api
-               enterprise/custom-viz-plugin
-               enterprise/impersonation
-               enterprise/sandbox
-               enterprise/scim
-               enterprise/sso}}}
+    {:edges   949
+     :modules #{actions
+                activity-feed
+                agent-api
+                agent-lib
+                ai-tracing
+                analytics
+                analyze
+                api
+                api-keys
+                app-db
+                appearance
+                audit-app
+                auth-identity
+                auth-provider
+                batch-processing
+                cache
+                channel
+                classloader
+                collections
+                content-verification
+                dashboards
+                database-routing
+                documents
+                driver
+                driver-api
+                eid-translation
+                embedding
+                entity-retrieval
+                events
+                formatter
+                geojson
+                graph
+                health-inspector
+                indexes
+                interestingness
+                internal-stats
+                legacy-mbql
+                lib
+                lib-be
+                lib-metric
+                llm
+                logger
+                login-history
+                mcp
+                metabot
+                metrics
+                model-persistence
+                models
+                native-query-snippets
+                notification
+                oauth-server
+                parameters
+                permissions
+                pivot
+                premium-features
+                public-sharing
+                pulse
+                queries
+                query-permissions
+                query-processor
+                remote-sync
+                request
+                revisions
+                run-tracking
+                search
+                secrets
+                server
+                session
+                settings
+                setup
+                slackbot
+                sql-parsing
+                sql-tools
+                sso
+                startup
+                sync
+                system
+                task
+                task-history
+                tenants
+                tiles
+                timeline
+                tracing
+                transforms
+                transforms-base
+                types
+                upload
+                users
+                util
+                version
+                view-log
+                warehouse-schema
+                warehouses
+                enterprise/advanced-permissions
+                enterprise/api
+                enterprise/custom-viz-plugin
+                enterprise/impersonation
+                enterprise/sandbox
+                enterprise/scim
+                enterprise/sso}}}}
+
+ :uses+model-imports
+ {:sccs
+  #{{:edges   1359
+     :modules #{actions
+                activity-feed
+                agent-api
+                agent-lib
+                ai-tracing
+                analytics
+                analyze
+                api
+                api-keys
+                app-db
+                appearance
+                audit-app
+                auth-identity
+                auth-provider
+                batch-processing
+                bookmarks
+                cache
+                channel
+                classloader
+                collections
+                comments
+                content-verification
+                dashboards
+                database-routing
+                documents
+                driver
+                driver-api
+                eid-translation
+                embedding
+                entity-retrieval
+                events
+                formatter
+                geojson
+                glossary
+                graph
+                health-inspector
+                indexed-entities
+                indexes
+                interestingness
+                internal-stats
+                legacy-mbql
+                lib
+                lib-be
+                lib-metric
+                llm
+                logger
+                login-history
+                mcp
+                measures
+                metabot
+                metrics
+                model-persistence
+                models
+                native-query-snippets
+                notification
+                oauth-server
+                osi
+                parameters
+                permissions
+                pivot
+                plugins
+                premium-features
+                public-sharing
+                pulse
+                queries
+                query-permissions
+                query-processor
+                remote-sync
+                request
+                revisions
+                run-tracking
+                search
+                secrets
+                segments
+                server
+                session
+                settings
+                setup
+                slackbot
+                sql-parsing
+                sql-tools
+                sso
+                startup
+                sync
+                system
+                task
+                task-history
+                tenants
+                tiles
+                timeline
+                tracing
+                transforms
+                transforms-base
+                types
+                upload
+                users
+                util
+                version
+                view-log
+                warehouse-schema
+                warehouses
+                xrays
+                enterprise/advanced-permissions
+                enterprise/api
+                enterprise/custom-viz-plugin
+                enterprise/data-apps
+                enterprise/database-routing
+                enterprise/impersonation
+                enterprise/remote-sync
+                enterprise/sandbox
+                enterprise/scim
+                enterprise/serialization
+                enterprise/sso
+                enterprise/tenants
+                enterprise/transforms-python}}}}
 
  :unconstrained-modules
- #{api-routes
-   core
-   enterprise/api-routes
-   enterprise/core}}
+ {:uses #{api-routes
+          core
+          enterprise/api-routes
+          enterprise/core}
+
+  :model-imports #{cmd
+                   enterprise/serialization}}}
