@@ -15,8 +15,8 @@ import type { MetricUrls } from "metabase/common/metrics/types";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import { goBack, push, useLocation } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -55,7 +55,7 @@ export function NewMetricPage({
     new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
   const defaultCollectionId = useGetDefaultCollectionId();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const query = useMemo(
     () => getQuery(datasetQuery, metadata),
@@ -82,7 +82,7 @@ export function NewMetricPage({
   );
 
   const handleCreate = (card: CardApiType) => {
-    dispatch(push(urls.about(card.id)));
+    navigate(urls.about(card.id));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
@@ -93,7 +93,7 @@ export function NewMetricPage({
   };
 
   const handleCancel = () => {
-    dispatch(goBack());
+    navigate(-1);
   };
 
   return (

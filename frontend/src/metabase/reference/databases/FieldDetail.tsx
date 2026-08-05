@@ -13,7 +13,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { push } from "metabase/router";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { FieldId, User } from "metabase-types/api";
 
@@ -113,7 +112,6 @@ const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
   onSubmit: actions.rUpdateFieldDetail,
-  onChangeLocation: push,
 };
 
 interface FieldDetailProps {

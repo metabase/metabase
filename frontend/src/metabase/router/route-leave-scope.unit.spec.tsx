@@ -2,7 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
-  push,
+  navigate,
   useLocation,
   useRouteLeaveBlocker,
 } from "metabase/router";
@@ -40,26 +40,26 @@ const tree = (
 // under the guarded layout is allowed, and only leaving the layout is blocked.
 describe("route-scoped leave hook", () => {
   it("allows navigation that stays within the guarded route", async () => {
-    const { store } = renderWithProviders(tree, {
+    renderWithProviders(tree, {
       withRouter: true,
       initialRoute: "/section/a",
     });
     expect(await screen.findByTestId("a")).toBeInTheDocument();
 
-    store.dispatch(push("/section/b"));
+    navigate("/section/b");
 
     expect(await screen.findByTestId("b")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/section/b");
   });
 
   it("blocks navigation that leaves the guarded route", async () => {
-    const { store } = renderWithProviders(tree, {
+    renderWithProviders(tree, {
       withRouter: true,
       initialRoute: "/section/a",
     });
     expect(await screen.findByTestId("a")).toBeInTheDocument();
 
-    store.dispatch(push("/other"));
+    navigate("/other");
 
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(screen.queryByTestId("other")).not.toBeInTheDocument();

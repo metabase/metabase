@@ -4,10 +4,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -17,6 +13,10 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/settings";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";

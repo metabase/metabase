@@ -17,16 +17,16 @@ const DataLayout = () => (
 const GroupPage = () => <div>group page</div>;
 
 function mountRoutes(tree: JSX.Element, initialRoute: string) {
-  const { history } = renderWithProviders(tree, {
+  const { router } = renderWithProviders(tree, {
     withRouter: true,
     initialRoute,
   });
-  return history;
+  return router;
 }
 
 describe("router/redirect", () => {
   it("resolves a chained two-level index redirect (permissions repro)", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="/admin">
         <Route path="permissions" element={<Parent />}>
           <Route>
@@ -42,27 +42,25 @@ describe("router/redirect", () => {
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/admin/permissions/data/group",
-      ),
+      expect(router?.location.pathname).toBe("/admin/permissions/data/group"),
     );
     expect(await screen.findByTestId("perm-side")).toBeInTheDocument();
     expect(await screen.findByText("group page")).toBeInTheDocument();
   });
 
   it("redirects to an absolute target", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="start" element={redirect("/browse/models")} />,
       "/start",
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/browse/models"),
+      expect(router?.location.pathname).toBe("/browse/models"),
     );
   });
 
   it("resolves a `..` target against the parent route", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="collection" element={<Parent />}>
         <Route path="archive" element={redirect("../trash")} />
       </Route>,
@@ -70,12 +68,12 @@ describe("router/redirect", () => {
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/collection/trash"),
+      expect(router?.location.pathname).toBe("/collection/trash"),
     );
   });
 
   it("interpolates params into a relative target", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="browse" element={<Parent />}>
         <Route
           path=":dbId/:slug"
@@ -86,16 +84,14 @@ describe("router/redirect", () => {
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/5/orders",
-      ),
+      expect(router?.location.pathname).toBe("/browse/databases/5/orders"),
     );
   });
 
   it("steps a whole route per `..`, not a single segment", async () => {
     const from = "table/:tableId/field/:fieldId/:section";
     const to = "../table/:tableId/field/:fieldId";
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="model" element={<Parent />}>
         <Route path={from} element={redirect(to)} />
       </Route>,
@@ -103,16 +99,14 @@ describe("router/redirect", () => {
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/model/table/9/field/3",
-      ),
+      expect(router?.location.pathname).toBe("/model/table/9/field/3"),
     );
   });
 
   it("re-encodes an interpolated param", async () => {
     const from = "database/:databaseId/schema/:schemaId/table/:tableId";
     const to = `../${from}/details`;
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="data-studio/data" element={<Parent />}>
         <Route path={from} element={redirect(to)} />
       </Route>,
@@ -123,14 +117,14 @@ describe("router/redirect", () => {
     // `useParams` hands back a decoded param, so `generatePath` re-encodes it and
     // the target keeps the encoded schema segment rather than doubling the path.
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         "/data-studio/data/database/1/schema/1%3APUBLIC/table/2/details",
       ),
     );
   });
 
   it("carries the splat into an absolute target", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route
         path="admin/transforms/*"
         element={redirect("/data-studio/transforms/*")}
@@ -139,33 +133,29 @@ describe("router/redirect", () => {
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/transforms/jobs/7",
-      ),
+      expect(router?.location.pathname).toBe("/data-studio/transforms/jobs/7"),
     );
   });
 
   it("redirects from an index route to a relative sibling of the parent", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="tools" element={<Parent />}>
         <Route index element={redirect("list")} />
       </Route>,
       "/tools",
     );
 
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/tools/list"),
-    );
+    await waitFor(() => expect(router?.location.pathname).toBe("/tools/list"));
   });
 
   it("preserves the query string and drops the hash, like v3", async () => {
-    const history = mountRoutes(
+    const router = mountRoutes(
       <Route path="start" element={redirect("/dest")} />,
       "/start?foo=bar#frag",
     );
 
     await waitFor(() => {
-      const location = history?.getCurrentLocation();
+      const location = router?.location;
       expect(location?.pathname).toBe("/dest");
       expect(location?.search).toBe("?foo=bar");
       expect(location?.hash).toBe("");

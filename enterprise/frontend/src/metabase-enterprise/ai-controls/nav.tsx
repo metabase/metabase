@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { AdminNavItem } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 export function getAiControlsNavItems() {
   return <AiControlsNavItems />;

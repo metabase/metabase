@@ -15,12 +15,13 @@ import {
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
+import { useDocsUrl, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";

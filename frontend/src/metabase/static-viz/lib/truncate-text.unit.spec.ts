@@ -1,10 +1,10 @@
-import { measureTextWidth as measureStatic } from "metabase/static-viz/lib/text";
 import {
   type TextWidthMeasurer,
   measureTextWidth as measureDynamic,
 } from "metabase/utils/measure-text";
+import { truncateText } from "metabase/visualizations/lib/text";
 
-import { truncateText } from "./text";
+import { measureTextWidth as measureStatic } from "./text";
 
 const fontStyle = {
   size: 11,

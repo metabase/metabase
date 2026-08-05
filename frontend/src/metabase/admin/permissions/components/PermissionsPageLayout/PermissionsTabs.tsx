@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
 } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Tabs } from "metabase/ui";
 
 import type { PermissionsPageTab } from "./PermissionsPageLayout";

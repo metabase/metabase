@@ -198,7 +198,8 @@
       (listener/batch-listen! queue (fn [_msgs] (throw (ex-info "handler boom" {}))))
       (try
         ;; simulate the scheduler being momentarily unavailable so the retry can't be written
-        (with-redefs-fn {#'q.quartz/schedule-message-trigger! (fn [& _] (throw (ex-info "scheduler down" {})))}
+        (with-redefs-fn {#'q.quartz/schedule-message-trigger! (fn [& _] (throw (ex-info "scheduler down" {})))
+                         #'q.quartz/backoff-before-refire! (fn [] (Thread/sleep 500))}
           (fn []
             (let [ex (try (#'q.quartz/deliver-batch! ctx) nil
                           (catch JobExecutionException e e))]

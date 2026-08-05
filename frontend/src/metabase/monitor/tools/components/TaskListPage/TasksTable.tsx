@@ -8,8 +8,7 @@ import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
   LoadingOverlay,
@@ -53,7 +52,7 @@ export const TasksTable = ({
   tasks,
   onSortingOptionsChange,
 }: Props) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const databaseByID: Record<number, Database> = useMemo(
     () => _.indexBy(databases, "id"),
@@ -70,9 +69,9 @@ export const TasksTable = ({
 
   const handleRowActivate = useCallback(
     (row: Row<Task>) => {
-      dispatch(push(Urls.monitorTaskDetails(row.original.id)));
+      navigate(Urls.monitorTaskDetails(row.original.id));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<Task>({

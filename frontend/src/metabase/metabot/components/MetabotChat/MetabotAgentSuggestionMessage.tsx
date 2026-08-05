@@ -1,6 +1,5 @@
 import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useContext, useMemo, useState } from "react";
 import { useLocation, useMount } from "react-use";
@@ -20,7 +19,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
@@ -119,6 +118,7 @@ export const AgentSuggestionMessage = ({
   readonly?: boolean;
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadata);
   const { suggestionActions } = useContext(MetabotContext);
   const { sendErrorToast } = useMetadataToasts();
@@ -190,8 +190,7 @@ export const AgentSuggestionMessage = ({
       return;
     }
 
-    // Unjustified type cast. FIXME
-    dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
+    navigate(getTransformUrl(suggestedTransform));
   };
 
   return (

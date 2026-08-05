@@ -10,8 +10,9 @@ import type {
   EmbeddingDisplayOptions,
 } from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
-import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
+import { getUpgradeUrl } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import {
   Divider,
   SegmentedControl,

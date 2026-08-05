@@ -7,8 +7,8 @@
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test :as mt]
    [metabase.util.malli :as mu]))
 
 (defn- only-missing-column-errors
@@ -36,9 +36,9 @@
   "A `MetadataProvider` with a chain of MBQL cards and transforms for testing."
   []
   (let [mp            (deps.tu/default-metadata-provider)
-        query1        (-> (lib/query mp (meta/table-metadata :orders))
-                          (lib/expression "Tax Rate" (lib// (meta/field-metadata :orders :tax)
-                                                            (meta/field-metadata :orders :subtotal))))
+        query1        (-> (lib/query mp (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                          (lib/expression "Tax Rate" (lib// (lib.metadata/field (mt/metadata-provider) (mt/id :orders :tax))
+                                                            (lib.metadata/field (mt/metadata-provider) (mt/id :orders :subtotal)))))
         mp            (lib.tu/metadata-provider-with-card-from-query mp 101 query1)
         card1         (lib.metadata/card mp 101)
         card1-query   (lib/query mp card1)
@@ -55,7 +55,7 @@
                        :source {:query tf1-query}
                        :target {:schema "Transformed"
                                 :name   "output_tf30"}}
-        tf1-output    (-> (meta/table-metadata :orders)
+        tf1-output    (-> (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
                           (assoc :id           1234567
                                  :schema       "Transformed"
                                  :name         "output_tf30"
@@ -86,7 +86,7 @@
                        :source {:query (lib/->legacy-MBQL tf2-query)}
                        :target {:schema "Transformed"
                                 :name   "output_tf31"}}
-        tf2-output    (-> (meta/table-metadata :orders)
+        tf2-output    (-> (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
                           (assoc :id           1234568
                                  :schema       "Transformed"
                                  :name         "output_tf31"
@@ -159,10 +159,10 @@
       (testing "a column that no longer exists will cause errors when referenced"
         (let [card'  (-> mbql-base
                          (assoc :dataset-query
-                                (-> (lib/query provider (meta/table-metadata :orders))
+                                (-> (lib/query provider (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                                     ;; ridiculous
-                                    (lib/expression "Sales Taxes" (lib// (meta/field-metadata :orders :tax)
-                                                                         (meta/field-metadata :orders :subtotal)))))
+                                    (lib/expression "Sales Taxes" (lib// (lib.metadata/field (mt/metadata-provider) (mt/id :orders :tax))
+                                                                         (lib.metadata/field (mt/metadata-provider) (mt/id :orders :subtotal))))))
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits {:card [card']}
                                                               :base-provider provider
@@ -180,7 +180,7 @@
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
       (testing "changing something unrelated will cause no errors"
         (let [card' (-> mbql-base
-                        (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity)
+                        (update :dataset-query lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity))
                                                                  100))
                         (dissoc :result-metadata))]
           (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
@@ -238,7 +238,7 @@
             ;; Graph where card 101 -> card 999 (broken card depends on the base card)
             graph       (graph/in-memory {[:card 101] #{[:card 999]}})
             card'       (-> mbql-base
-                            (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                            (update :dataset-query lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)) 100))
                             (dissoc :result-metadata))
             errors      (dependencies/errors-from-proposed-edits {:card [card']}
                                                                  :base-provider provider
@@ -256,7 +256,7 @@
           graph (graph/in-memory {[:card 101]       #{[:dashboard 999]}
                                   [:dashboard 999]  #{[:dashboard 999]}})
           card' (-> mbql-base
-                    (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                    (update :dataset-query lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)) 100))
                     (dissoc :result-metadata))
           fut   (future (dependencies/errors-from-proposed-edits {:card [card']}
                                                                  :base-provider provider

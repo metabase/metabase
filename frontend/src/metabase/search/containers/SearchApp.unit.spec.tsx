@@ -96,7 +96,7 @@ const setup = async ({
 
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="search" element={<SearchApp />} />,
     {
       withRouter: true,
@@ -107,7 +107,7 @@ const setup = async ({
   await waitForLoaderToBeRemoved();
 
   return {
-    history: checkNotNull(history),
+    router: checkNotNull(router),
   };
 };
 
@@ -171,7 +171,7 @@ describe("SearchApp", () => {
     it.each(TEST_SEARCH_RESULTS)(
       "should reload with filtered searches when type=$model is changed in the dropdown sidebar filter",
       async ({ model }) => {
-        const { history } = await setup({
+        const { router } = await setup({
           searchText: "Test",
         });
 
@@ -195,7 +195,7 @@ describe("SearchApp", () => {
         );
         await userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
-        const url = history.getCurrentLocation();
+        const url = router.location;
         expect(new URLSearchParams(url.search).get("type")).toEqual(model);
       },
     );
