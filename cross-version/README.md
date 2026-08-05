@@ -30,16 +30,14 @@ Starts a single Metabase version in Docker (same Compose stack as `test.sh`) and
 
 ## Test data
 
-The Postgres container runs [`metabase/qa-databases:postgres-sample-15`](https://github.com/metabase/metabase-qa) — the same image the regular e2e suite uses. It serves two databases:
+The Postgres container runs [`metabase/qa-databases:postgres-sample-15`](https://github.com/metabase/metabase-qa). It serves two databases:
 
 | Database | Contents |
 |----------|----------|
 | `metabase` | Metabase's application db (created by `init/00-create-app-db.sql`) |
 | `sample` | The QA sample data, loaded by the image's own `sample_data.sql.gz` |
 
-The specs connect `sample` as a data source named **XV Data** (`XV_DATABASE_NAME`). It holds `orders`, `people`, `products` and `reviews` — the same rows as the Sample Database, though the timestamps sit a few years earlier — plus `accounts`, `invoices`, `analytic_events` and `feedback`. Identifiers are unquoted lower-case, so native queries don't need to quote them.
-
-Both databases are created on first boot only, so `docker compose down -v` (what `test.sh` does before and after every run) is what resets them.
+Both databases are created on first boot only and the data is persisted as a volume, so `docker compose down -v` is required to reset them.
 
 ## E2E test specs
 
