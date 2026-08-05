@@ -255,9 +255,9 @@
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance.
 
-  Inside a worktree ([[serdes/*worktree-id*]]) every model whose table carries no `worktree_id` is skipped: a
-  worktree only checks out transform content, and loading anything else would write the branch's cards, snippets
-  or Python libraries straight into the main app's rows."
+  Inside a worktree ([[serdes/*worktree-id*]]) every model whose table carries no `worktree_id` is skipped by
+  [[load-one!]]: a worktree only checks out transform content, and loading anything else would write the
+  branch's cards, snippets or Python libraries straight into the main app's rows."
   [ingestion & {:keys [continue-on-error reindex?]
                 :or   {continue-on-error false
                        reindex?          true}}]
@@ -266,9 +266,7 @@
     ;; failure on one entity doesn't abort the entire import. See #74412.
     ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
     ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
-    (let [contents      (cond->> (serdes.ingest/ingest-list ingestion)
-                          serdes/*worktree-id*
-                          (filterv (comp serdes/worktree-scoped? :model last)))
+    (let [contents      (serdes.ingest/ingest-list ingestion)
           ingest-errors (serdes.ingest/ingest-errors ingestion)
           ctx           (cond-> (new-context ingestion)
                           (seq ingest-errors) (update :errors into ingest-errors))]

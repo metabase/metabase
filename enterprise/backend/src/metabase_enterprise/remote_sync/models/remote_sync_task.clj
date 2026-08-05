@@ -199,6 +199,10 @@
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks, within `worktree-id` (nil is the main app).
 
+  Note that only the *reporting* functions are worktree-scoped. `current-task` and `supersede-stale-tasks!` stay
+  global on purpose: a sync is a git operation against one working copy of the repo, so one runs at a time across
+  the whole instance, worktrees included.
+
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
   ([] (most-recent-task nil))
   ([worktree-id]

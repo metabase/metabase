@@ -996,7 +996,7 @@ serdes/meta:
                     "Local transform should be removed because it's not on the remote")))))))))
 
 (deftest export-includes-builtin-transform-tags-test
-  (testing "Export excludes built-in transform tags based on :conditions"
+  (testing "Export includes built-in transform tags: their entity_ids are stable across instances"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]

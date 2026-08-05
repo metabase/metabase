@@ -430,11 +430,17 @@
    _query
    {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
   (api/create-check :model/RemoteSyncWorktree {:branch branch})
-  (api/check-400 (not (t2/exists? :model/RemoteSyncWorktree :branch branch))
-                 (format "A worktree for branch '%s' already exists." branch))
-  (-> (t2/insert-returning-instance! :model/RemoteSyncWorktree
-                                     {:branch branch :creator_id api/*current-user-id*})
-      (t2/hydrate :creator)))
+  (let [taken (format "A worktree for branch '%s' already exists." branch)]
+    (api/check-400 (not (t2/exists? :model/RemoteSyncWorktree :branch branch)) taken)
+    ;; the unique index is the real arbiter: two requests can both pass the check above
+    (-> (try
+          (t2/insert-returning-instance! :model/RemoteSyncWorktree
+                                         {:branch branch :creator_id api/*current-user-id*})
+          (catch Exception e
+            (if (t2/exists? :model/RemoteSyncWorktree :branch branch)
+              (throw (ex-info taken {:status-code 400} e))
+              (throw e))))
+        (t2/hydrate :creator))))
 
 (api.macros/defendpoint :delete "/worktree/:id" :- :nil
   "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser
