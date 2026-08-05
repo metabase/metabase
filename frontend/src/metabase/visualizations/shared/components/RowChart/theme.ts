@@ -1,5 +1,6 @@
 import type { ColorGetter } from "metabase/ui/colors/types";
-import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
+
+import type { RowChartTheme } from "./types";
 
 export const getStaticChartTheme = (
   getColor: ColorGetter,
