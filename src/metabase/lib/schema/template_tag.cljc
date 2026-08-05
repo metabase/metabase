@@ -214,7 +214,16 @@
                (= tag-name (:name tag-definition)))
              m))])
 
+(defn- normalize-v63-template-tag-list-to-map [x]
+  (if (sequential? x)
+    (into {}
+          (map (juxt :name identity))
+          x)
+    x))
+
 (mr/def ::template-tag-map
   [:and
-   [:map-of ::name ::template-tag]
+   [:map-of {:decode/normalize normalize-v63-template-tag-list-to-map}
+    ::name
+    ::template-tag]
    [:ref ::template-tag-map.validate-names]])
