@@ -173,10 +173,6 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
   } = useWorktreeSyncActions(worktree, {
     // Only check statuses while the menu is open, so a long sidebar doesn't query per worktree.
     enabled: isMenuOpened,
-    // With the banner's WorktreeSyncControls disabled, this menu is the worktree's only sync UI, so
-    // it owns the progress modal and conflict feedback everywhere. If the banner comes back inside
-    // the worktree, scope this back to !isInsideWorktree or the two double up.
-    ownsTaskFeedback: true,
   });
 
   const handleDelete = async () => {

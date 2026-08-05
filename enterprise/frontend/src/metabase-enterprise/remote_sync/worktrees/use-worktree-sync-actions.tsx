@@ -39,26 +39,19 @@ type UseWorktreeSyncActionsOptions = {
    * hidden — e.g. a closed nav menu — so every worktree in the sidebar doesn't query on mount.
    */
   enabled?: boolean;
-  /**
-   * Render the task progress modal and surface conflict-task feedback from this instance. Exactly
-   * one mounted instance per worktree should own this, or modals and toasts double up: the banner
-   * owns it inside the worktree, the nav menu outside.
-   */
-  ownsTaskFeedback?: boolean;
 };
 
 /**
  * Pull/push flow for a worktree: sync status, the preflight-first pull/push handlers, and the modals
- * they open. The equivalent of GitSyncControls' logic for the main app, minus branch management: a
- * worktree is pinned to its branch for its whole life, so there is no branch switching and no
- * branch-mismatch handling. Render `modals` next to whatever triggers the actions.
+ * they open (including the task progress modal and conflict feedback). The equivalent of
+ * GitSyncControls' logic for the main app, minus branch management: a worktree is pinned to its
+ * branch for its whole life, so there is no branch switching and no branch-mismatch handling.
+ * Render `modals` next to whatever triggers the actions. Mount at most one instance per worktree,
+ * or the task modals and conflict toasts double up.
  */
 export function useWorktreeSyncActions(
   worktree: Worktree,
-  {
-    enabled = true,
-    ownsTaskFeedback = true,
-  }: UseWorktreeSyncActionsOptions = {},
+  { enabled = true }: UseWorktreeSyncActionsOptions = {},
 ) {
   const worktreeId = worktree.id;
   const branch = worktree.branch;
@@ -109,7 +102,6 @@ export function useWorktreeSyncActions(
   const currentTask = useSelector(getCurrentTask);
   useEffect(() => {
     if (
-      !ownsTaskFeedback ||
       currentTask?.status !== "conflict" ||
       currentTask.worktree_id !== worktreeId
     ) {
@@ -125,7 +117,7 @@ export function useWorktreeSyncActions(
       setConflictVariant("pull");
     }
     dispatch(taskCleared());
-  }, [ownsTaskFeedback, currentTask, worktreeId, sendToast, dispatch]);
+  }, [currentTask, worktreeId, sendToast, dispatch]);
 
   const push = useCallback(async () => {
     // Find out up front whether the remote has advanced, so we open the right modal directly instead
@@ -236,7 +228,7 @@ export function useWorktreeSyncActions(
         />
       )}
 
-      {ownsTaskFeedback && progressModal}
+      {progressModal}
     </>
   );
 

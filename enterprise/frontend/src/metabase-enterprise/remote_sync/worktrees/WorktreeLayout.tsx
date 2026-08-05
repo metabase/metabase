@@ -33,44 +33,8 @@ export function WorktreeLayout() {
   return (
     <WorktreeProvider worktreeId={worktreeId}>
       <Flex direction="column" h="100%" mih={0}>
-        {/* <WorktreeBanner worktree={worktree} /> */}
         <Outlet />
       </Flex>
     </WorktreeProvider>
   );
 }
-
-/* Branch banner with sync status, currently disabled — the worktree's sidebar menu
-   (WorktreesNavSection) carries the sync actions and owns the task feedback. If this comes back,
-   move task-feedback ownership back here (see ownsTaskFeedback in WorktreeMenu).
-
-import { jt } from "ttag";
-import { Group, Icon, Text } from "metabase/ui";
-import type { Worktree } from "metabase-types/api";
-import S from "./WorktreeLayout.module.css";
-import { WorktreeSyncControls } from "./WorktreeSyncControls";
-
-type WorktreeBannerProps = {
-  worktree: Worktree;
-};
-
-function WorktreeBanner({ worktree }: WorktreeBannerProps) {
-  return (
-    <Group
-      justify="space-between"
-      px="xl"
-      py="sm"
-      className={S.banner}
-      bg="background_surface-secondary"
-    >
-      <Group gap="sm">
-        <Icon name="git_branch" c="text-secondary" />
-        <Text>
-          {jt`Working in ${<strong key="branch">{worktree.branch}</strong>}`}
-        </Text>
-      </Group>
-      <WorktreeSyncControls worktree={worktree} />
-    </Group>
-  );
-}
-*/
