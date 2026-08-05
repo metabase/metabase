@@ -116,7 +116,12 @@ export const UpsellCardContent = ({
             maw="50%"
           >
             {variant === "image-panel" ? (
-              <Image src={image} radius={6} w="100%" />
+              // The design centres the illustration at its own size inside a
+              // roughly 350x320 panel rather than stretching it edge to edge,
+              // so it keeps its padding and never scales past its artwork.
+              <Center w="100%" mih={rem(320)} p="xl">
+                <Image src={image} w="100%" maw={rem(290)} h="auto" />
+              </Center>
             ) : (
               <Card radius={6} p={0} shadow="none" withBorder>
                 <Image src={image} radius={6} w="100%" />
