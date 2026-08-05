@@ -723,3 +723,20 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+      # MySQL keeps an index on every foreign key column and refuses to drop the last one, so the constraint has
+      # to come off first and go back on after -- re-added here rather than left to the changeset that created
+      # it, which rolls back later and would find it already gone.
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: worktree
+            constraintName: fk_worktree_creator_id
+        - dropIndex:
+            tableName: worktree
+            indexName: idx_worktree_creator_id
+        - addForeignKeyConstraint:
+            baseTableName: worktree
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_worktree_creator_id
+            onDelete: SET NULL
