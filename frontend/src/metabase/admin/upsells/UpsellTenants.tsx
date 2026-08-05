@@ -32,8 +32,8 @@ export const UpsellTenants = () => {
           <UpsellCardContent
             campaign={campaign}
             location={location}
-            title={t`Manage customer-facing analytics at scale`}
-            description={t`Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated.`}
+            title={t`Use a multi-tenant user strategy`}
+            description={t`Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
             variant="image-panel"
