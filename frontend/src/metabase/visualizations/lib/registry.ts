@@ -1,8 +1,14 @@
 import type { ComponentType } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
-import type { IconName, VisualizationDisplay } from "metabase-types/api";
+import type {
+  IconName,
+  RawSeries,
+  TransformedSeries,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 import type {
   Visualization,
@@ -137,6 +143,48 @@ export function canSavePng(display: VisualizationDisplay) {
 export function getDefaultSize(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   return visualization?.defaultSize;
+}
+
+export function getVisualizationTransformed(
+  series: RawSeries | TransformedSeries,
+) {
+  // don't transform if we don't have the data
+  if (
+    _.any(series, (s) => s.data == null) ||
+    _.any(series, (s) => s.error != null)
+  ) {
+    return {
+      series,
+      visualization: getVisualizationRaw(series),
+    };
+  }
+
+  // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
+  let visualization, lastSeries;
+  do {
+    visualization = visualizations.get(series[0].card.display);
+    if (!visualization) {
+      throw new Error(t`No visualization for ${series[0].card.display}`);
+    }
+    lastSeries = series;
+    if (typeof visualization.transformSeries === "function") {
+      series = visualization.transformSeries(series);
+    }
+    if (series !== lastSeries) {
+      series = Object.assign([...series], { _raw: lastSeries });
+    }
+  } while (series !== lastSeries);
+
+  return { series, visualization };
+}
+
+export function isCartesianChart(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settingNames = Object.keys(visualization?.settings ?? {});
+  return (
+    settingNames.includes("graph.dimensions") &&
+    settingNames.includes("graph.metrics")
+  );
 }
 
 // eslint-disable-next-line import/no-default-export
