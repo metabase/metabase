@@ -1,24 +1,22 @@
 import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
-import { Button, Center, Flex, Icon } from "metabase/ui";
+import { Center, Flex } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
-import {
-  useListSlowFindingsQuery,
-  useRunContentDiagnosticsScanMutation,
-} from "metabase-enterprise/api";
+import { useListSlowFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
-import type { ContentDiagnosticsSlowSortColumn } from "metabase-types/api";
+import type {
+  ContentDiagnosticsSlowFinding,
+  ContentDiagnosticsSlowSortColumn,
+} from "metabase-types/api";
 
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
+import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
 import { SlowContentFilterBar } from "./SlowContentFilterBar";
 import { SlowContentSidebar } from "./SlowContentSidebar";
 import { SlowContentTable } from "./SlowContentTable";
@@ -32,6 +30,8 @@ import type {
   ContentDiagnosticsParamsOptions,
   SlowContentFilterOptions,
 } from "./types";
+
+const NO_FINDINGS: ContentDiagnosticsSlowFinding[] = [];
 
 type SlowContentProps = {
   params: Urls.SlowContentParams;
@@ -47,7 +47,6 @@ export function SlowContent({
   isLoadingParams,
   onParamsChange,
 }: SlowContentProps) {
-  const dispatch = useDispatch();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
 
@@ -79,23 +78,7 @@ export function SlowContent({
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
 
-  const [runScan, { isLoading: isScanning }] =
-    useRunContentDiagnosticsScanMutation();
-
-  const handleScan = async () => {
-    try {
-      const result = await runScan().unwrap();
-      dispatch(
-        addUndo({
-          message: t`Scan complete — ${result.finding_count} findings`,
-        }),
-      );
-    } catch {
-      dispatch(addUndo({ message: t`Scan failed`, icon: "warning" }));
-    }
-  };
-
-  const findings = data?.data ?? [];
+  const findings = data?.data ?? NO_FINDINGS;
   const totalCount = data?.total ?? 0;
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
@@ -152,17 +135,7 @@ export function SlowContent({
           isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
-          actions={
-            <Button
-              variant="default"
-              leftSection={<Icon name="refresh" />}
-              loading={isScanning}
-              data-testid="content-diagnostics-scan-button"
-              onClick={handleScan}
-            >
-              {t`Rescan`}
-            </Button>
-          }
+          actions={<DiagnosticsScanButton />}
         />
         {error != null ? (
           <Center flex={1}>
