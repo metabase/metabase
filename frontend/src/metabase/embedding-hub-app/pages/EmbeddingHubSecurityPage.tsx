@@ -1,30 +1,58 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
-  EmbeddingMethodSettings,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import {
+  EmbeddingMethodsCard,
   EmbeddingSecurityWidgets,
-  SharedCombinedEmbeddingSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
+import { EmbeddingSecretKeyWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget";
+import { EmbeddedResources } from "metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
+import { Box, Title } from "metabase/ui";
 
 /**
- * Security absorbs the standalone Guest embeds page: the design has no
- * separate "Enable guest embeds" screen.
+ * Card order comes from the design: embedding methods, CORS, SameSite, secret
+ * key, then the two conditional cards.
  *
- * The three embedding-method toggles ship unmerged. Merging them into one
- * switch is the design, but it carries two unanswered questions -- what a
- * merged switch reads on an instance already in a mixed state, and which of
- * two consent moments survives -- and neither is a property of relocating the
- * settings. Merging is a follow-up on this tab.
+ * Security absorbs the standalone Guest embeds page -- the design has no
+ * separate "Enable guest embeds" screen.
  */
 export function EmbeddingHubSecurityPage() {
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
+
   return (
     <SettingsPageWrapper title={t`Security`}>
-      <EmbeddingMethodSettings />
+      <EmbeddingMethodsCard />
 
       <EmbeddingSecurityWidgets />
 
-      <SharedCombinedEmbeddingSettings />
+      <SettingsSection>
+        <EmbeddingSecretKeyWidget />
+      </SettingsSection>
+
+      {/* Per the design's annotation: only when published guest embeds exist. */}
+      {isGuestEmbedsEnabled && (
+        <SettingsSection>
+          <Box data-testid="embedded-resources">
+            <Title order={4} mb="md">{t`Published guest embeds`}</Title>
+
+            <EmbeddedResources />
+          </Box>
+        </SettingsSection>
+      )}
+
+      {/* Per the design's annotation: only when full-app embedding is on. */}
+      {isFullAppEmbeddingEnabled &&
+        PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingAuthorizedOriginsWidget && (
+          <SettingsSection>
+            <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingAuthorizedOriginsWidget />
+          </SettingsSection>
+        )}
     </SettingsPageWrapper>
   );
 }

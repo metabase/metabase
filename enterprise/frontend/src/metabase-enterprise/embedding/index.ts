@@ -4,6 +4,7 @@ import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { InteractiveEmbeddingAuthorizedOriginsWidget } from "./components/InteractiveEmbeddingAuthorizedOriginsWidget";
 import { InteractiveEmbeddingSettingsCard } from "./components/InteractiveEmbeddingSettingsCard";
 
 /**
@@ -23,5 +24,7 @@ export function initializePlugin() {
       isInteractiveEmbeddingEnabled;
     PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettingsCard =
       InteractiveEmbeddingSettingsCard;
+    PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingAuthorizedOriginsWidget =
+      InteractiveEmbeddingAuthorizedOriginsWidget;
   }
 }

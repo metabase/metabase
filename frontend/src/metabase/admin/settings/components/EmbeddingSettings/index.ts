@@ -1,4 +1,4 @@
-export { EmbeddingMethodSettings } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings";
+export { EmbeddingMethodsCard } from "./EmbeddingMethodsCard";
 export { EmbeddingSecurityWidgets } from "./EmbeddingSecuritySettings";
 export { SharedCombinedEmbeddingSettings } from "./SharedCombinedEmbeddingSettings";
 export { EmbeddingSettingsCard } from "./EmbeddingSettingsCard";
