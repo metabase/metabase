@@ -32,6 +32,7 @@ import {
   question as getQuestionUrl,
 } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { QuestionPublicLinkPopover } from "../../../../sidebars/QuestionInfoSidebar/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 
@@ -95,6 +96,7 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
   // reads. Embedding stays available; its Publish button is disabled instead.
   const canWrite = question.canWrite();
   const hasPublicLink = Boolean(question.publicUUID?.());
+  const containsCustomViz = isCustomVizDisplay(question.display());
   const shareUrl = useQuestionAppUrl(question);
 
   return (
@@ -113,6 +115,11 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
         {isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
+            disabledReason={
+              !hasPublicLink && containsCustomViz
+                ? t`This chart uses a custom visualization, which isn't supported in public links.`
+                : undefined
+            }
             onClick={() => setModalType("question-public-link")}
           />
         )}

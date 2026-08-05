@@ -26,6 +26,7 @@ import {
   dashboard as getDashboardUrl,
   publicDashboard as getPublicDashboardUrl,
 } from "metabase/urls";
+import { dashboardContainsCustomViz } from "metabase/visualizations/custom-visualizations/contains-custom-viz";
 import type { Dashboard, InviteTarget } from "metabase-types/api";
 
 import { DashboardPublicLinkPopover } from "../../../DashboardInfoSidebar/DashboardPublicLinkPopover/DashboardPublicLinkPopover";
@@ -79,6 +80,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   // reads. Embedding stays available; its Publish button is disabled instead.
   const canWrite = canShare && dashboard.can_write;
   const hasPublicLink = Boolean(dashboard.public_uuid);
+  const containsCustomViz = dashboardContainsCustomViz(dashboard);
   // x-ray dashboards have string ids and can't be invite targets.
   const inviteTarget: InviteTarget | undefined =
     typeof dashboard.id === "number"
@@ -104,6 +106,11 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
+            disabledReason={
+              !hasPublicLink && containsCustomViz
+                ? t`This dashboard contains custom visualizations, which aren't supported in public links. Remove them to create a public link.`
+                : undefined
+            }
             onClick={() => setModalType("dashboard-public-link")}
           />
         )}

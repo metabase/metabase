@@ -299,4 +299,38 @@ describe("QuestionSharingMenu", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("custom visualization block", () => {
+    it("disables the create-public-link item when the question uses a custom viz and has no link", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        hasPublicLink: false,
+        question: { display: "custom:calendar" },
+      });
+      await openMenu();
+      const item = screen.getByTestId("public-link-menu-item");
+      expect(item).toHaveAttribute("aria-disabled", "true");
+      await userEvent.hover(item);
+      expect(
+        await screen.findByText(
+          "This chart uses a custom visualization, which isn't supported in public links.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the item enabled when a public link already exists (grandfathered)", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+        question: { display: "custom:calendar" },
+      });
+      await openMenu();
+      expect(screen.getByTestId("public-link-menu-item")).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+  });
 });

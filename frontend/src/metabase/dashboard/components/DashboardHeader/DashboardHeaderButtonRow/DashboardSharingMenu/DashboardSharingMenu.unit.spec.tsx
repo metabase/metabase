@@ -4,6 +4,8 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 import {
+  createMockCard,
+  createMockDashboardCard,
   createMockDashboardTab,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -426,6 +428,52 @@ describe("DashboardSharingMenu", () => {
         name: "An x-ray",
       });
       expect(body.invite_target).toBeUndefined();
+    });
+  });
+
+  describe("custom visualization block", () => {
+    it("disables the create-public-link item when the dashboard contains a custom viz and has no link", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        hasPublicLink: false,
+        dashboard: {
+          dashcards: [
+            createMockDashboardCard({
+              card: createMockCard({ display: "custom:calendar" }),
+            }),
+          ],
+        },
+      });
+      await openMenu();
+      const item = screen.getByTestId("public-link-menu-item");
+      expect(item).toHaveAttribute("aria-disabled", "true");
+      await userEvent.hover(item);
+      expect(
+        await screen.findByText(
+          "This dashboard contains custom visualizations, which aren't supported in public links. Remove them to create a public link.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the item enabled when a public link already exists (grandfathered)", async () => {
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+        dashboard: {
+          dashcards: [
+            createMockDashboardCard({
+              card: createMockCard({ display: "custom:calendar" }),
+            }),
+          ],
+        },
+      });
+      await openMenu();
+      expect(screen.getByTestId("public-link-menu-item")).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
   });
 });
