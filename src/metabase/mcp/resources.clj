@@ -38,7 +38,9 @@
        "window.metabaseConfig = {"
        "instanceUrl: {{{instanceUrl}}},"
        "uiCredential: {{{uiCredential}}}"
-       "};</script></body></html>"))
+       "};</script>"
+       "<script src=\"{{{instanceUrlRaw}}}/app/dist/test-asset.js\"></script>"
+       "</body></html>"))
 
 ;; An atom rather than a dynamic var because `resources/read` is invoked from the
 ;; HTTP handler thread, which doesn't inherit thread-local bindings from the test

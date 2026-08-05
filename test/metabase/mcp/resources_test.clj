@@ -1,5 +1,6 @@
 (ns metabase.mcp.resources-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
@@ -167,3 +168,17 @@
                      :uiCredential   nil
                      :mcpSessionId   nil})]
       (is (not (str/includes? html "<base"))))))
+
+;; Keep this placeholder in the fallback so backend-only tests catch broken production asset URLs.
+(deftest fallback-embed-mcp-template-renders-instance-url-raw-test
+  (testing "the fallback template substitutes instanceUrlRaw into asset URLs"
+    (let [site-url "https://metabase.example.com/sub/path"
+          html     (with-redefs [io/resource    (constantly nil)
+                                 system/site-url (constantly site-url)]
+                     (mcp.resources/with-fallback-template
+                       (-> (mcp.resources/read-resource "ui://metabase/visualize-query.html"
+                                                        #{"agent:viz:mcp-ui:query"}
+                                                        {})
+                           :contents first :text)))]
+      (is (str/includes? html
+                         "<script src=\"https://metabase.example.com/sub/path/app/dist/test-asset.js\">")))))
