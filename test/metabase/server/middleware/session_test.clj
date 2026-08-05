@@ -713,11 +713,11 @@
                                                         :provider (name provider)}]
            (let [session-key (generate-session! user-id auth-identity-id)]
              (is (session-valid? session-key))
-             (mt/with-temporary-setting-values
-               [mfa-enforcement          :required
-                mfa-requirement-deadline nil]
-               (mt/with-premium-features
-                #{:multi-factor-auth}
+             (mt/with-premium-features
+              #{:multi-factor-auth}
+               (mt/with-temporary-setting-values
+                 [mfa-enforcement          :required
+                  mfa-requirement-deadline nil]
                  (is (not (session-valid? session-key))))))))))
     (testing "If you had a session before MFA was required, but it was MFA'd, it is still valid")
     (testing "If you had a session before the MFA requirement deadline, but it was MFA'd, it is still valid")))
