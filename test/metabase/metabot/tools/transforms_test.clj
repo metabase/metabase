@@ -12,6 +12,29 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
+;;; ----------------------------------- read tool integration tests ---------------------------------------------------
+
+(deftest get-transform-details-tool-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "query source renders as SQL text"
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Gadget Products"
+                        :source {:type  "query"
+                                 :query (lib/native-query (mt/metadata-provider)
+                                                          "SELECT * FROM products WHERE category = 'Gadget'")}}]
+          (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+            (is (str/includes? output "name=\"Gadget Products\""))
+            (is (str/includes? output "<query>SELECT * FROM products WHERE category = 'Gadget'</query>")))))
+      (testing "python source renders its source database"
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Gadget Metrics"
+                        :source {:type            "python"
+                                 :source-database (mt/id)
+                                 :body            "import pandas as pd"}}]
+          (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+            (is (str/includes? output (str "<database>" (mt/id) "</database>")))))))))
+
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 
 (deftest write-transform-sql-tool-test

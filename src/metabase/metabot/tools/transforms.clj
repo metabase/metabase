@@ -27,7 +27,8 @@
     (when description [:description description])
     (when source
       [:source {:type (:type source)}
-       (when (:query source) [:query (:query source)])
+       (when-let [query (:query source)]
+         [:query (or (metabot.u/extract-sql-content query) (pr-str query))])
        (when (:source-database source) [:database (:source-database source)])])
     (when target [:target (pr-str target)])]))
 
