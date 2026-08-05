@@ -7,6 +7,8 @@ import {
 } from "metabase/nav/components/AreaLayout";
 import { Box } from "metabase/ui";
 
+const CONTENT_MAX_WIDTH = "50rem";
+
 type EmbeddingHubContentProps = {
   children?: ReactNode;
   fullWidth?: boolean;
@@ -34,7 +36,17 @@ export function EmbeddingHubContent({
       >
         <AppSwitcher />
       </Box>
-      <AreaContent fullWidth={fullWidth}>{children}</AreaContent>
+      <AreaContent fullWidth={fullWidth}>
+        {fullWidth ? (
+          children
+        ) : (
+          // The design caps hub pages at 800px; only Permissions and the theme
+          // editor use the whole area.
+          <Box maw={CONTENT_MAX_WIDTH} mx="auto" w="100%">
+            {children}
+          </Box>
+        )}
+      </AreaContent>
     </Box>
   );
 }

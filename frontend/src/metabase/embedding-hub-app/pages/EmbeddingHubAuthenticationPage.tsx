@@ -19,7 +19,11 @@ export function EmbeddingHubAuthenticationPage() {
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
 
   if (!hasSsoJwt) {
-    return <UpsellSSO location="embedding-hub-authentication" />;
+    return (
+      <SettingsPageWrapper title={t`Authentication`}>
+        <UpsellSSO location="embedding-hub-authentication" />
+      </SettingsPageWrapper>
+    );
   }
 
   return (

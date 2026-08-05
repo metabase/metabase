@@ -18,9 +18,14 @@ type EmbeddingHubTab = {
   isGated?: boolean;
 };
 
-// The theme editor puts its editor panel and live preview side by side, so it
-// needs the whole area. The trailing slash keeps the theme *list* padded.
-const FULL_WIDTH_PATH_PREFIXES = [`${Urls.embeddingHubAppearance()}/`];
+// Two things need the whole area: the theme editor, which puts its editor panel
+// and live preview side by side (the trailing slash keeps the theme *list*
+// capped), and the permissions editor, which is a full-width app of its own.
+// Every other page is capped at 800px, per the design.
+const FULL_WIDTH_PATH_PREFIXES = [
+  `${Urls.embeddingHubAppearance()}/`,
+  Urls.embeddingHubPermissions(),
+];
 
 function isFullWidthPath(pathname: string) {
   return FULL_WIDTH_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));

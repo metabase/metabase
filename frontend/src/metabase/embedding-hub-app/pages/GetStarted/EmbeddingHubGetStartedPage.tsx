@@ -104,7 +104,7 @@ export function EmbeddingHubGetStartedPage() {
   }
 
   return (
-    <Stack mx="auto" py="xl" gap="2.5rem" maw={880}>
+    <Stack gap="2.5rem">
       <Title order={1} c="text-primary">
         {t`Get started with Metabase Embedding`}
       </Title>

@@ -27,21 +27,13 @@ export function EmbeddingMethodsCard() {
       <Stack gap="lg">
         <Title order={4}>{t`Availability of embedding methods`}</Title>
 
-        {hasSimpleEmbedding && (
-          <>
-            <EmbeddingMethodRow
-              title={t`Modular embedding`}
-              description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming.`}
-              settingKey="enable-embedding-simple"
-            />
-
-            <EmbeddingMethodRow
-              title={t`SDK for React`}
-              description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
-              settingKey="enable-embedding-sdk"
-            />
-          </>
-        )}
+        {/* Modular and guest embeds are free; the OSS design shows both and
+            paywalls only the SDK and full-app. */}
+        <EmbeddingMethodRow
+          title={t`Modular embedding`}
+          description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components.`}
+          settingKey="enable-embedding-simple"
+        />
 
         <EmbeddingMethodRow
           title={t`Guest embeds`}
@@ -49,11 +41,21 @@ export function EmbeddingMethodsCard() {
           settingKey="enable-embedding-static"
         />
 
-        <EmbeddingMethodRow
-          title={t`Full-app embedding`}
-          description={t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`}
-          settingKey="enable-embedding-interactive"
-        />
+        {hasSimpleEmbedding && (
+          <>
+            <EmbeddingMethodRow
+              title={t`SDK for React`}
+              description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+              settingKey="enable-embedding-sdk"
+            />
+
+            <EmbeddingMethodRow
+              title={t`Full-app embedding`}
+              description={t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`}
+              settingKey="enable-embedding-interactive"
+            />
+          </>
+        )}
       </Stack>
     </SettingsSection>
   );

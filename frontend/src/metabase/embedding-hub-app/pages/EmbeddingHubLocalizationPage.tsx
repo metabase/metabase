@@ -17,7 +17,11 @@ export function EmbeddingHubLocalizationPage() {
   const hasContentTranslation = useHasTokenFeature("content_translation");
 
   if (!hasContentTranslation) {
-    return <UpsellContentTranslation source="embedding-hub-localization" />;
+    return (
+      <SettingsPageWrapper title={t`Localization`}>
+        <UpsellContentTranslation source="embedding-hub-localization" />
+      </SettingsPageWrapper>
+    );
   }
 
   return (

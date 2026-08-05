@@ -10,7 +10,11 @@ import {
 } from "metabase/admin/settings/components/EmbeddingSettings";
 import { EmbeddingSecretKeyWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget";
 import { EmbeddedResources } from "metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
 import { Box, Title } from "metabase/ui";
 
@@ -22,12 +26,15 @@ import { Box, Title } from "metabase/ui";
  * separate "Enable guest embeds" screen.
  */
 export function EmbeddingHubSecurityPage() {
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
   const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
 
   return (
     <SettingsPageWrapper title={t`Security`}>
       <EmbeddingMethodsCard />
+
+      {!hasSimpleEmbedding && <SdkUpsellBanner />}
 
       <EmbeddingSecurityWidgets />
 
@@ -54,5 +61,32 @@ export function EmbeddingHubSecurityPage() {
           </SettingsSection>
         )}
     </SettingsPageWrapper>
+  );
+}
+
+/** The OSS design puts this directly under the methods card. */
+function SdkUpsellBanner() {
+  const campaign = "embedding-methods";
+  const location = "embedding-hub-security";
+
+  const upgradeUrl = useSelector((state) =>
+    getUpgradeUrl(state, { utm_campaign: campaign, utm_content: location }),
+  );
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
+
+  return (
+    <UpsellBanner
+      title={t`Upgrade to Metabase Pro to access the SDK for React and more advanced options.`}
+      campaign={campaign}
+      location={location}
+      buttonText={t`Try Metabase Pro`}
+      buttonLink={upgradeUrl}
+      onClick={triggerUpsellFlow}
+    >
+      {null}
+    </UpsellBanner>
   );
 }
