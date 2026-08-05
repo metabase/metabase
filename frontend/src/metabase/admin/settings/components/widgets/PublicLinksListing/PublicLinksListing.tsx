@@ -65,19 +65,20 @@ export const PublicLinksListing = <
           {data.map((item) => {
             const internalUrl = getUrl(item);
             const publicUrl = getPublicUrl?.(item);
+            const warning = getWarning?.(item);
 
             return (
               <tr key={item.id}>
                 <Link to={internalUrl} className={cx(CS.flex, CS.fullWidth)}>
                   <td>
                     {item.name}
-                    {getWarning?.(item) && (
-                      <Tooltip label={getWarning(item)} maw="20rem" multiline>
+                    {warning && (
+                      <Tooltip label={warning} maw="20rem" multiline>
                         <Icon
                           name="warning"
                           c="warning"
                           ml="sm"
-                          aria-label={getWarning(item)}
+                          aria-label={warning}
                         />
                       </Tooltip>
                     )}

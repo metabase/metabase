@@ -551,6 +551,7 @@ export const CardEmbedComponent = memo(
           "display" in item &&
           isCustomVizDisplay(item.display)
         ) {
+          setIsReplaceModalOpen(false);
           return;
         }
         updateAttributes({

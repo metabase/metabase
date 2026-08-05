@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
@@ -91,7 +91,8 @@ function refuseCustomVizCardOnPublicDashboard(
       addUndo({
         icon: "warning",
         toastColor: "error",
-        message: t`"${card.name}" uses a custom visualization, which isn't supported in public links, so it can't be added.`,
+        message: c("{0} is a card name")
+          .t`"${card.name}" uses a custom visualization, which isn't supported in public links, so it can't be added.`,
       }),
     );
   }
