@@ -1,13 +1,14 @@
 import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type {
   Visualization,
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import type {
-  CustomVizPluginId,
+  CustomVizPluginRuntime,
   DatasetData,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -56,19 +57,18 @@ export function applyDefaultVisualizationProps(
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
     identifier: VisualizationDisplay;
-    pluginId: CustomVizPluginId;
+    plugin: CustomVizPluginRuntime;
     getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
 ): Visualization {
+  const { plugin, ...componentSettings } = settings;
   return Object.assign(Component, {
-    settings:
-      sanitizePluginSettings(
-        vizDef.settings,
-        vizDef.mount,
-        settings.pluginId,
-      ) ?? {},
+    settings: {
+      ...columnSettings({ getHidden: () => true }),
+      ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
+    },
     checkRenderable: vizDef.checkRenderable,
     isSensible: getIsSensible(vizDef.isSensible),
     noHeader: vizDef.noHeader ?? false,
@@ -77,6 +77,7 @@ export function applyDefaultVisualizationProps(
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
-    ...settings,
+    pluginId: plugin.id,
+    ...componentSettings,
   });
 }

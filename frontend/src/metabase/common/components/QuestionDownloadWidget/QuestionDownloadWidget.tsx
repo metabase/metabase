@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
   ExportFormat,
@@ -12,6 +12,7 @@ import type {
 import { exportFormatPng, exportFormats } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useUserSetting } from "metabase/settings";
 import {
   Box,
   Button,

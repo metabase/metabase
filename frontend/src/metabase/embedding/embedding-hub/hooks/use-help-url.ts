@@ -1,6 +1,6 @@
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 
 export const useHelpUrl = () => {
   const isPaidPlan = useSelector(getIsPaidPlan);

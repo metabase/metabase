@@ -10,7 +10,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Outlet, Route, type RouteComponent, redirect } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";

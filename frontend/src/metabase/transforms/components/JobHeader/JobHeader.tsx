@@ -7,7 +7,7 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

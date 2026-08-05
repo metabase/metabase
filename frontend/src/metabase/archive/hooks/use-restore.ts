@@ -14,7 +14,7 @@ import { listTag } from "metabase/api/tags";
 import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type {
   Card,
   CardId,
@@ -64,6 +64,7 @@ export type RestoreResult = {
 
 export function useRestore() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const [updateCard] = useUpdateCardMutation();
   const [updateDashboard] = useUpdateDashboardMutation();
@@ -118,7 +119,7 @@ export function useRestore() {
       sendToast({
         message: t`${name} has been restored.`,
         actionLabel: t`View`,
-        action: () => dispatch(push(redirect)),
+        action: () => navigate(redirect),
       });
 
       return result;
@@ -130,6 +131,7 @@ export function useRestore() {
       updateDashboard,
       updateCollection,
       updateDocument,
+      navigate,
     ],
   );
 }

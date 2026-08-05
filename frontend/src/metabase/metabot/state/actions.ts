@@ -21,9 +21,9 @@ import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { navigate } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
@@ -599,8 +599,7 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                // Unjustified type cast. FIXME
-                dispatchToConvo(push(path) as UnknownAction);
+                navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
@@ -965,7 +964,7 @@ export const forkConversation = createAsyncThunk(
     );
 
     if (agentId === "ask") {
-      dispatch(push(Urls.metabotConversation(conversation.conversation_id)));
+      navigate(Urls.metabotConversation(conversation.conversation_id));
     }
 
     return conversation;

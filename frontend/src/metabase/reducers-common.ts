@@ -16,7 +16,6 @@ import entities from "metabase/redux/entities";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
-import { currentUser } from "metabase/redux/user";
 
 import { metabotReducer as metabot } from "./metabot/state";
 
@@ -25,7 +24,6 @@ export const commonReducers = {
   app,
   embed,
   embeddingDataPicker,
-  currentUser,
   undo,
   entities,
   documents,

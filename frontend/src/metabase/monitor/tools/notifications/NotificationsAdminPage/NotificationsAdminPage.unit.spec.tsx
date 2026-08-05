@@ -139,6 +139,7 @@ type SetupOpts = {
   detailErrorId?: NotificationId;
   failingCountError?: boolean;
   allCountError?: boolean;
+  refetchDelay?: number;
 };
 
 const setup = ({
@@ -154,7 +155,10 @@ const setup = ({
   detailErrorId,
   failingCountError = false,
   allCountError = false,
+  refetchDelay,
 }: SetupOpts = {}) => {
+  let listCallCount = 0;
+
   fetchMock.get("path:/api/notification/admin", (call) => {
     const params = new URL(call.url).searchParams;
     if (
@@ -177,7 +181,13 @@ const setup = ({
         ? { status: 500, body: { message: "All count failed" } }
         : { data: [], total: allCount, limit: 1, offset: 0 };
     }
-    return { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
+    const page = { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
+    listCallCount += 1;
+    // Keep every refetch except the initial load in flight, so tests can
+    // observe the loading state the grid.
+    return refetchDelay !== undefined && listCallCount > 1
+      ? new Promise((resolve) => setTimeout(() => resolve(page), refetchDelay))
+      : page;
   });
 
   setupBulkNotificationActionEndpoint();
@@ -412,7 +422,7 @@ describe("NotificationsAdminPage", () => {
     });
 
     it("pushes the selected tab to the URL", async () => {
-      const { history } = setup({ failingCount: 2 });
+      const { router } = setup({ failingCount: 2 });
       await waitForTableToLoad();
 
       await userEvent.click(
@@ -423,18 +433,18 @@ describe("NotificationsAdminPage", () => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().search).toContain("tab=failing");
+        expect(router?.location.search).toContain("tab=failing");
       });
     });
 
     it("does not redirect away from a failing tab with no alerts", async () => {
-      const { history } = setup({
+      const { router } = setup({
         failingCount: 0,
         initialRoute: `${PATHNAME}?tab=failing`,
       });
       await waitForTableToLoad();
 
-      expect(history?.getCurrentLocation().search).toContain("tab=failing");
+      expect(router?.location.search).toContain("tab=failing");
       expect(
         within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
           "0",
@@ -443,13 +453,13 @@ describe("NotificationsAdminPage", () => {
     });
 
     it("does not redirect away from an ownerless tab with no alerts", async () => {
-      const { history } = setup({
+      const { router } = setup({
         ownerlessCount: 0,
         initialRoute: `${PATHNAME}?tab=ownerless`,
       });
       await waitForTableToLoad();
 
-      expect(history?.getCurrentLocation().search).toContain("tab=ownerless");
+      expect(router?.location.search).toContain("tab=ownerless");
       expect(
         within(
           screen.getByTestId("notifications-admin-tab-ownerless"),
@@ -499,7 +509,7 @@ describe("NotificationsAdminPage", () => {
 
   describe("search, sorting and pagination", () => {
     it("pushes the search query to the URL", async () => {
-      const { history } = setup();
+      const { router } = setup();
       await waitForTableToLoad();
 
       await userEvent.type(
@@ -520,12 +530,12 @@ describe("NotificationsAdminPage", () => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().search).toContain("query=sales");
+        expect(router?.location.search).toContain("query=sales");
       });
     });
 
     it("pushes sorting changes to the URL and refetches", async () => {
-      const { history } = setup();
+      const { router } = setup();
       await waitForTableToLoad();
 
       await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
@@ -540,14 +550,12 @@ describe("NotificationsAdminPage", () => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().search).toContain(
-          "sort_column=id",
-        );
+        expect(router?.location.search).toContain("sort_column=id");
       });
     });
 
     it("paginates and refetches with the next offset", async () => {
-      const { history } = setup({
+      const { router } = setup({
         notifications: [notification1, notification2],
         total: 120,
       });
@@ -572,7 +580,78 @@ describe("NotificationsAdminPage", () => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().search).toContain("page=1");
+        expect(router?.location.search).toContain("page=1");
+      });
+    });
+
+    it("covers the grid with a loading overlay while a refetch is in flight", async () => {
+      setup({
+        notifications: [notification1, notification2],
+        refetchDelay: 10_000,
+      });
+      await waitForTableToLoad();
+
+      const table = screen.getByTestId("notifications-admin-table");
+      expect(
+        within(table).queryByTestId("loading-overlay"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
+
+      expect(
+        await within(table).findByTestId("loading-overlay"),
+      ).toBeInTheDocument();
+      expect(table).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      await waitFor(() => {
+        expect(
+          within(table).queryByTestId("loading-overlay"),
+        ).not.toBeInTheDocument();
+      });
+      expect(table).toHaveAttribute("aria-busy", "false");
+    });
+
+    it("keeps search loading feedback in the grid instead of the search box", async () => {
+      setup({ refetchDelay: 10_000 });
+      await waitForTableToLoad();
+
+      const searchInput = screen.getByPlaceholderText(
+        /Search by question or owner/,
+      );
+
+      await userEvent.type(searchInput, "sales");
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
+      });
+
+      const table = screen.getByTestId("notifications-admin-table");
+      expect(
+        await within(table).findByTestId("loading-overlay"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          getListCalls().some((call) => call.url.includes("query=sales")),
+        ).toBe(true);
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      await waitFor(() => {
+        expect(
+          within(table).queryByTestId("loading-overlay"),
+        ).not.toBeInTheDocument();
       });
     });
   });
@@ -738,12 +817,12 @@ describe("NotificationsAdminPage", () => {
 
   describe("detail sidebar", () => {
     it("opens the sidebar on row click and closes it again", async () => {
-      const { history } = setup({ notifications: [notification1] });
+      const { router } = setup({ notifications: [notification1] });
       await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
 
-      expect(history?.getCurrentLocation().pathname).toBe(`${PATHNAME}/1`);
+      expect(router?.location.pathname).toBe(`${PATHNAME}/1`);
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
       const sidebarRegion = screen.getByTestId("monitor-sidebar-region");
@@ -757,7 +836,7 @@ describe("NotificationsAdminPage", () => {
       await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe(PATHNAME);
+        expect(router?.location.pathname).toBe(PATHNAME);
       });
       await waitFor(() => {
         expect(screen.queryByText("Alert 1")).not.toBeInTheDocument();
@@ -765,13 +844,13 @@ describe("NotificationsAdminPage", () => {
     });
 
     it("clears the alert id from the URL when the open alert is deleted", async () => {
-      const { history } = setup({
+      const { router } = setup({
         notifications: [notification1, notification2],
       });
       await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${PATHNAME}/1`);
+      expect(router?.location.pathname).toBe(`${PATHNAME}/1`);
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
       const row1 = await screen.findByTestId("notification-row-1");
@@ -788,7 +867,7 @@ describe("NotificationsAdminPage", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe(PATHNAME);
+        expect(router?.location.pathname).toBe(PATHNAME);
       });
       await waitFor(() => {
         expect(screen.queryByText("Alert 1")).not.toBeInTheDocument();
@@ -796,7 +875,7 @@ describe("NotificationsAdminPage", () => {
     });
 
     it("deletes the open alert from the sidebar menu", async () => {
-      const { history } = setup({ notifications: [notification1] });
+      const { router } = setup({ notifications: [notification1] });
       await waitForTableToLoad();
 
       await userEvent.click(await screen.findByTestId("notification-row-1"));
@@ -824,7 +903,7 @@ describe("NotificationsAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe(PATHNAME);
+        expect(router?.location.pathname).toBe(PATHNAME);
       });
     });
 

@@ -16,6 +16,7 @@ import { isEqual, noop } from "underscore";
 import { isAbortError } from "metabase/api/client";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
+import { type NavigateFunction, navigate } from "metabase/router";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
@@ -111,6 +112,7 @@ export type DashboardContextReturned = DashboardContextOwnResult &
   DashboardContextErrorState &
   DashboardFullscreenControls & {
     fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
+    onChangeLocation: NavigateFunction;
   } & DashboardRefreshPeriodControls &
   EmbedThemeControls;
 
@@ -468,6 +470,10 @@ const DashboardContextProviderInner = forwardRef(
           toggleSidebar,
           reset,
           closeDashboard,
+
+          // `navigate` needs no dispatch, so it cannot ride in the
+          // action-creator map that `connect` binds.
+          onChangeLocation: navigate,
           ...reduxProps,
         }}
       >

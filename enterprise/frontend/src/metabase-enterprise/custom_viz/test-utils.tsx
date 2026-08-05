@@ -7,6 +7,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import type { CustomVizDisplayType } from "metabase-types/api";
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 
@@ -38,7 +39,11 @@ export function registerMockCustomViz({
       mount: () => ({ update: () => undefined, unmount: () => undefined }),
       VisualizationComponent: () => null,
     },
-    { identifier: display, pluginId: 1, getUiName: () => uiName },
+    {
+      identifier: display,
+      plugin: createMockCustomVizPluginRuntime(),
+      getUiName: () => uiName,
+    },
   );
 
   registerVisualization(visualization);

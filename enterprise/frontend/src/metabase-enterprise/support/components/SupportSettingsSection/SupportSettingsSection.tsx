@@ -3,8 +3,7 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 import { adminHelpGrantAccess } from "metabase/urls";
 
@@ -13,7 +12,7 @@ import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
 import { AccessGrantList } from "./AccessGrantList";
 
 export function SupportSettingsSection() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const {
     accessGrants,
     accessGrantsError,
@@ -50,7 +49,7 @@ export function SupportSettingsSection() {
         <Box pb="lg">
           <Button
             disabled={!!currentAccessGrant}
-            onClick={() => dispatch(push(adminHelpGrantAccess()))}
+            onClick={() => navigate(adminHelpGrantAccess())}
             variant="filled"
             title={
               currentAccessGrant

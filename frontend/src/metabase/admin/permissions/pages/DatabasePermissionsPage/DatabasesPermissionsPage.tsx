@@ -6,8 +6,8 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Outlet, push, useParams } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { Outlet, useNavigate, useParams } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 
 import {
@@ -43,6 +43,7 @@ import {
 
 export function DatabasesPermissionsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // These selectors resolve the focused database/schema/table from the route,
   // so they take the route params rather than reading them from the store.
@@ -64,17 +65,15 @@ export function DatabasesPermissionsPage() {
   );
 
   const navigateToItem = (item: ITreeNodeItem) =>
-    dispatch(
-      push(
-        getDatabaseFocusPermissionsUrl(
-          // The sidebar types `onSelect` with the base tree item, but every node
-          // it renders here comes from `getDataFocusSidebar`, which builds
-          // `DataTreeNodeItem`s carrying an `entityId`.
-          (item as DataTreeNodeItem).entityId,
-        ),
+    navigate(
+      getDatabaseFocusPermissionsUrl(
+        // The sidebar types `onSelect` with the base tree item, but every node
+        // it renders here comes from `getDataFocusSidebar`, which builds
+        // `DataTreeNodeItem`s carrying an `entityId`.
+        (item as DataTreeNodeItem).entityId,
       ),
     );
-  const navigateToDatabaseList = () => dispatch(push(DATABASES_BASE_PATH));
+  const navigateToDatabaseList = () => navigate(DATABASES_BASE_PATH);
 
   const showSplitPermsMessage = useSelector((state) =>
     getSetting(state, "show-updated-permission-banner"),
@@ -88,9 +87,9 @@ export function DatabasesPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      dispatch(push(`/admin/permissions/data/${entityType}`));
+      navigate(`/admin/permissions/data/${entityType}`);
     },
-    [dispatch],
+    [navigate],
   );
 
   const handlePermissionChange = useCallback(
@@ -119,14 +118,12 @@ export function DatabasesPermissionsPage() {
     action: PermissionAction,
     item: PermissionEditorEntity,
   ) => {
-    dispatch(
-      action.actionCreator(item.entityId, assertNumericId(item.id), "database"),
-    );
+    action.onSelect(item.entityId, assertNumericId(item.id), "database");
   };
 
   const handleBreadcrumbsItemSelect = (item: PermissionEditorBreadcrumb) => {
     if (item.url) {
-      dispatch(push(item.url));
+      navigate(item.url);
     }
   };
 

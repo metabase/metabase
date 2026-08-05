@@ -24,7 +24,7 @@ import {
   MAX_GROUP_SIZE,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -36,7 +36,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -57,6 +56,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
+import { DocumentMode } from "./DocumentMode";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
@@ -177,6 +177,7 @@ export const CardEmbedComponent = memo(
       : "";
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const canWrite = editor.options.editable;
 
     const {
@@ -575,7 +576,7 @@ export const CardEmbedComponent = memo(
                           variant={isOpen ? "filled" : "default"}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
-                            dispatch(push(commentsPath));
+                            navigate(commentsPath);
                           }}
                         />
                       </Box>

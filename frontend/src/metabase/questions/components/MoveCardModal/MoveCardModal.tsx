@@ -17,7 +17,7 @@ import { MoveModal } from "metabase/common/components/Pickers";
 import { useDispatch } from "metabase/redux";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
@@ -36,6 +36,7 @@ type ConfirmationTypes =
 
 export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [updateCard] = useUpdateCardMutation();
 
@@ -101,7 +102,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
             { id: destination.id, name: "", ...dashboard },
             { editMode: true, scrollToDashcard: dashcard?.id },
           );
-          dispatch(push(url));
+          navigate(url);
         }
 
         onClose();
