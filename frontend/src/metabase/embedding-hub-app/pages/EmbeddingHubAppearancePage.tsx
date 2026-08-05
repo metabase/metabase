@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { UpsellEmbeddingTheme } from "metabase/admin/upsells";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
@@ -62,12 +62,12 @@ function FullAppAppearanceBanner() {
           {t`Colors and branding of Full-app embedding are based on the appearance settings defined in the`}
         </Text>
 
-        <ExternalLink href="/admin/settings/whitelabel">
+        <Link to="/admin/settings/whitelabel">
           <Group gap={4} wrap="nowrap">
             <Text c="brand" fw="bold">{t`Admin`}</Text>
             <Icon name="external" size={12} c="brand" />
           </Group>
-        </ExternalLink>
+        </Link>
       </Group>
     </Card>
   );

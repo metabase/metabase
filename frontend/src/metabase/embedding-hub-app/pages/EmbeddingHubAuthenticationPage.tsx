@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellEmbeddingSso } from "metabase/admin/upsells";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { Card, Group, Icon, Text } from "metabase/ui";
@@ -43,18 +43,18 @@ export function EmbeddingHubAuthenticationPage() {
  */
 function OtherAuthMethodsBanner() {
   return (
-    <Card p="md" withBorder bg="background-info">
+    <Card p="md" withBorder bg="background-brand">
       <Group gap="xs" wrap="nowrap">
         <Text c="text-secondary">
           {t`View more authentication options, such as SAML, in the`}
         </Text>
 
-        <ExternalLink href="/admin/settings/authentication">
+        <Link to="/admin/settings/authentication">
           <Group gap={4} wrap="nowrap">
             <Text c="brand" fw="bold">{t`Admin settings`}</Text>
             <Icon name="external" size={12} c="brand" />
           </Group>
-        </ExternalLink>
+        </Link>
       </Group>
     </Card>
   );
