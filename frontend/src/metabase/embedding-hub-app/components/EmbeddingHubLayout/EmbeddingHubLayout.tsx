@@ -26,12 +26,23 @@ function isFullWidthPath(pathname: string) {
   return FULL_WIDTH_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+// The setup wizard's two sub-pages belong to Get started, so they keep that
+// tab selected rather than leaving the nav with nothing lit.
+const GET_STARTED_PATHS = [
+  `${Urls.embeddingHub()}/permissions-setup`,
+  `${Urls.embeddingHub()}/sso-setup`,
+];
+
 function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
-  // The Get started tab is the index route, so it only matches exactly —
-  // every other path would otherwise match its prefix too.
-  return tab.to === Urls.embeddingHub()
-    ? pathname === tab.to
-    : pathname.startsWith(tab.to);
+  // Get started is the index route, so a prefix match would claim every other
+  // tab's path.
+  if (tab.to === Urls.embeddingHub()) {
+    return pathname === tab.to || GET_STARTED_PATHS.includes(pathname);
+  }
+
+  // Match whole path segments, not a string prefix: /embedding/permissions-setup
+  // starts with the Permissions tab's path and would otherwise light it up.
+  return pathname === tab.to || pathname.startsWith(`${tab.to}/`);
 }
 
 export function EmbeddingHubLayout() {

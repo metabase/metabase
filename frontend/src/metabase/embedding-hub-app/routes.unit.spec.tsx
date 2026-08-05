@@ -37,7 +37,7 @@ jest.mock("./components/EmbeddingHubLayout", () => {
 // Every tab is stubbed: this spec is about which page each path resolves to,
 // not about what a page renders. The tabs gate on token features and mount
 // whole route subtrees, so rendering them for real would test those instead.
-jest.mock("./pages/EmbeddingHubGetStartedPage", () => ({
+jest.mock("./pages/GetStarted", () => ({
   EmbeddingHubGetStartedPage: () => (
     <div data-testid="get-started-page">{"Get started"}</div>
   ),

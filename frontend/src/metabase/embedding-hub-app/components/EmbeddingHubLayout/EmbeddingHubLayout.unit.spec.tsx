@@ -61,6 +61,10 @@ function setup({
       <Route index element={<div>{"Get started body"}</div>} />
       <Route path="security" element={<div>{"Security body"}</div>} />
       <Route path="appearance" element={<div>{"Appearance body"}</div>} />
+      <Route
+        path="permissions-setup"
+        element={<div>{"Permissions wizard body"}</div>}
+      />
     </Route>,
     {
       withRouter: true,
@@ -128,6 +132,28 @@ describe("EmbeddingHubLayout", () => {
     ).toHaveAttribute("aria-current", "page");
     expect(
       within(nav).getByRole("link", { name: "Get started" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("keeps Get started current on the setup wizard sub-pages", async () => {
+    setup({ initialRoute: "/embedding/permissions-setup" });
+
+    const nav = await findNav();
+
+    // The wizard belongs to Get started, so the nav must not go blank there.
+    expect(
+      await within(nav).findByRole("link", { name: "Get started" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("does not light up Permissions on the permissions-setup wizard", async () => {
+    setup({ initialRoute: "/embedding/permissions-setup" });
+
+    const nav = await findNav();
+
+    // A prefix match would claim this path for the Permissions tab.
+    expect(
+      await within(nav).findByRole("link", { name: "Permissions" }),
     ).not.toHaveAttribute("aria-current");
   });
 

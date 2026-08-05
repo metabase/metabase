@@ -4,4 +4,5 @@ export {
   type SetupGuideUrls,
   useGetEmbeddingHubSteps,
 } from "./use-get-embedding-hub-steps";
+export { useEmbeddingHubModals } from "./use-embedding-hub-modals";
 export { useHelpUrl } from "./use-help-url";

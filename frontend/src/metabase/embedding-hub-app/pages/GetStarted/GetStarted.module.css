@@ -1,0 +1,19 @@
+/* The numbered circle in the bottom-right of a checklist card. */
+.badge {
+  width: 2.625rem;
+  height: 2.625rem;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mb-color-border);
+}
+
+.interactiveCard {
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+
+.interactiveCard:hover {
+  border-color: var(--mb-color-brand);
+}

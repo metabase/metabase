@@ -37,6 +37,12 @@ export const getIsMonitorApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/monitor");
 });
 
+const EMBEDDING_HUB_PATH_PREFIX = "/embedding";
+
+export const getIsEmbeddingHubApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith(EMBEDDING_HUB_PATH_PREFIX);
+});
+
 export const getIsDataApp = createSelector([getRouterPath], (path) => {
   return path.startsWith(`${Urls.DATA_APP_ROOT_URL}/`);
 });
@@ -76,6 +82,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/auth/,
   /^\/data-studio/,
   /^\/monitor/,
+  /^\/embedding/,
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.
   new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
@@ -219,6 +226,10 @@ export const getIsAppBarVisible = createSelector(
       isAdminApp ||
       isDataStudioApp ||
       isMonitorApp ||
+      // Derived from `path` rather than taken as another input selector:
+      // createSelector's type inference blows past TypeScript's instantiation
+      // depth limit at ten inputs, and the error lands in unrelated files.
+      path.startsWith(EMBEDDING_HUB_PATH_PREFIX) ||
       isEditingDashboard ||
       isFullscreen
     ) {
