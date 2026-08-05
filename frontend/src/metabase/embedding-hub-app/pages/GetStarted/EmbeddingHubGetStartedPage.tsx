@@ -15,7 +15,15 @@ import type {
 } from "metabase/embedding/embedding-hub/types/embedding-checklist";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { useSetting } from "metabase/settings";
-import { Box, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Card,
+  FixedSizeIcon,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
@@ -296,8 +304,8 @@ function UsefulLink({
       className={S.interactiveCard}
     >
       <Group gap="sm" wrap="nowrap">
-        <Icon name={icon} size={16} c="brand" />
-        <Text fz="sm" c="text-primary">
+        <FixedSizeIcon name={icon} size={16} c="brand" />
+        <Text fz="md" c="text-primary">
           {label}
         </Text>
       </Group>

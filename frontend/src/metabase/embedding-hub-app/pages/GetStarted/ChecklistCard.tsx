@@ -1,7 +1,15 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { Card, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Card,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./GetStarted.module.css";
@@ -47,7 +55,9 @@ export function ChecklistCard({
         {/* The description sits in the same column as the title, indented past
             the icon, rather than starting back at the icon's edge. */}
         <Group gap="sm" align="flex-start" wrap="nowrap">
-          <Icon
+          {/* FixedSizeIcon, not Icon: as a flex child next to the text the
+              plain icon shrinks below its declared size. */}
+          <FixedSizeIcon
             name={icon}
             size={16}
             c={isLocked ? "text-tertiary" : "brand"}
@@ -59,8 +69,9 @@ export function ChecklistCard({
               {title}
             </Text>
 
+            {/* md is the theme's 14px, which is the design's body size. */}
             <Text
-              fz="sm"
+              fz="md"
               lh="1.25rem"
               c={isLocked ? "text-tertiary" : "text-secondary"}
             >
@@ -100,7 +111,7 @@ function StepBadge({
 
   return (
     <Flex className={S.badge}>
-      <Text fw="bold" fz="sm" c={isLocked ? "text-tertiary" : "brand"}>
+      <Text fw="bold" fz="md" c={isLocked ? "text-tertiary" : "brand"}>
         {step}
       </Text>
     </Flex>
