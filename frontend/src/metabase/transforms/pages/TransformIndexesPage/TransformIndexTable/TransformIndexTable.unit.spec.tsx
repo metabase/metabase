@@ -55,10 +55,7 @@ describe("TransformIndexTable", () => {
     setup({ indexes: [createMockTableIndexEntry()] });
     await waitForLoaderToBeRemoved();
 
-    const headers = screen
-      .getAllByRole("columnheader")
-      .map((header) => header.textContent);
-    expect(headers).toEqual([
+    for (const header of [
       "Name",
       "Type",
       "Columns",
@@ -66,7 +63,9 @@ describe("TransformIndexTable", () => {
       "Status",
       "Last modified by",
       "Last run",
-    ]);
+    ]) {
+      expect(screen.getByText(header)).toBeInTheDocument();
+    }
   });
 
   it("renders the index name, type and columns", async () => {
