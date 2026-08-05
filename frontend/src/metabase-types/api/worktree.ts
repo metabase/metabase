@@ -14,7 +14,3 @@ export type Worktree = {
 export type CreateWorktreeRequest = {
   branch: string;
 };
-
-export type WorktreeScope = {
-  worktree_id?: WorktreeId | null;
-};

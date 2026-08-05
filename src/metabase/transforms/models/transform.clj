@@ -599,8 +599,8 @@
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :source_type]}
                   :database-id   :source_database_id
+                  :worktree-id   true
                   :source-type   true}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
-                  :transform-id   :id}
-   :where        [:= :this.worktree_id nil]})
+                  :transform-id   :id}})

@@ -84,7 +84,7 @@ export interface Collection {
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
 
-  worktree_id?: WorktreeId | null;
+  worktree_id: WorktreeId | null;
 
   // Assigned on FE
   originalName?: string;
@@ -203,6 +203,7 @@ export interface CreateCollectionRequest {
   namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
   is_shared_tenant_collection?: boolean;
+  worktree_id?: WorktreeId | null;
 }
 
 export type ListCollectionsRequest = {
@@ -211,6 +212,7 @@ export type ListCollectionsRequest = {
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
+  "worktree-id"?: WorktreeId | null;
 };
 export type ListCollectionsTreeRequest = {
   "exclude-archived"?: boolean;
@@ -222,6 +224,7 @@ export type ListCollectionsTreeRequest = {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export interface DeleteCollectionRequest {

@@ -88,7 +88,9 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
+  ;; `:worktree_id` scopes the search rather than describing the result: every row a request can see already
+  ;; shares the worktree it asked for, so echoing it back tells the client nothing it didn't send.
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :worktree_id})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -118,6 +120,7 @@
    :root-collection-type    :text
    :data-layer              :text
    :data-authority          :text
+   :worktree-id             :pk
    ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
    ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
    :curated                 :boolean})
@@ -148,7 +151,8 @@
          :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
          :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
-         :data-authority])                                  ;;  input to the precomputed :curated flag (authoritative tables)
+         :data-authority                                    ;;  input to the precomputed :curated flag (authoritative tables)
+         :worktree-id])                                     ;;  remote-sync worktree the row belongs to; NULL is the main app
        distinct
        vec))
 

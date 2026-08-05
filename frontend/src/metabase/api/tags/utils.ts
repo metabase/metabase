@@ -249,7 +249,12 @@ export function provideCollectionListTags(
 export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
-  return [idTag("collection", collection.id)];
+  return [
+    idTag("collection", collection.id),
+    ...(collection.worktree_id != null
+      ? [idTag("worktree", collection.worktree_id)]
+      : []),
+  ];
 }
 
 export function provideLoggerPresetListTags(
@@ -835,6 +840,9 @@ export function provideTransformTags(
   return [
     idTag("transform", transform.id),
     ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
+    ...(transform.worktree_id != null
+      ? [idTag("worktree", transform.worktree_id)]
+      : []),
   ];
 }
 
@@ -862,7 +870,10 @@ export function provideTransformRunListTags(
 export function provideTransformTagTags(
   tag: TransformTag,
 ): TagDescription<TagType>[] {
-  return [idTag("transform-tag", tag.id)];
+  return [
+    idTag("transform-tag", tag.id),
+    ...(tag.worktree_id != null ? [idTag("worktree", tag.worktree_id)] : []),
+  ];
 }
 
 export function provideTransformTagListTags(

@@ -300,6 +300,7 @@ export type CreateTransformRequest = {
   collection_id?: number | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
+  worktree_id?: WorktreeId | null;
 };
 
 export type UpdateTransformRequest = {
@@ -334,6 +335,11 @@ export type UpdateTransformJobRequest = {
 
 export type CreateTransformTagRequest = {
   name: string;
+  worktree_id?: WorktreeId | null;
+};
+
+export type ListTransformTagsRequest = {
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type UpdateTransformTagRequest = {
@@ -351,6 +357,7 @@ export type ListTransformsRequest = {
   "last-run-statuses"?: TransformRunStatus[];
   "tag-ids"?: TransformTagId[];
   "database-id"?: DatabaseId;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type ListTransformJobsRequest = {

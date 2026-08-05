@@ -31,12 +31,13 @@
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."
-  [{:keys [archived current-user-id is-superuser?]} :- SearchContext collection-id-col :- :keyword]
+  [{:keys [archived current-user-id is-superuser? worktree-id]} :- SearchContext collection-id-col :- :keyword]
   [:and
    (collection/visible-collection-filter-clause
     collection-id-col
     {:include-archived-items    :all
      :include-trash-collection? true
+     :worktree-id               worktree-id
      :permission-level          (if archived :write :read)}
     {:current-user-id current-user-id
      :is-superuser?   is-superuser?})

@@ -58,6 +58,7 @@
      [:model :text :not-null]
      [:model_id :text :not-null]
      [:collection_id :int]
+     [:worktree_id :int]
      [:personal_owner_id :int]
      [:creator_id :int]
      [:database_id :int]
@@ -160,10 +161,11 @@
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
-                     data_layer data_authority curated] :as doc}]
+                     data_layer data_authority curated worktree_id] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
+   :worktree_id         worktree_id
    :personal_owner_id   (get owner-ids collection_id)
    :creator_id          creator_id
    :database_id         database_id
@@ -326,7 +328,7 @@
      ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
      ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
      ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
-     :version 5}))
+     :version 6}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -628,7 +630,7 @@
   search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
   which specific filter excludes a given row."
   [{:keys [archived? verified curated? models created-at created-by last-edited-at last-edited-by
-           table-db-id ids display-type] :as search-context}]
+           table-db-id ids display-type worktree-id] :as search-context}]
   (keep
    (fn [[k clause]] (when clause [k clause]))
    [[:personal-collection (personal-collection-filter search-context)]
@@ -645,6 +647,8 @@
     [:created-by          (when (seq created-by) [:in :creator_id created-by])]
     [:last-edited-by      (when (seq last-edited-by) [:in :last_editor_id last-edited-by])]
     [:table-db-id         (when table-db-id [:= :database_id table-db-id])]
+    ;; unconditional: a search without an explicit worktree only ever sees the main app
+    [:worktree            [:= :worktree_id worktree-id]]
     [:ids                 (when (seq ids) [:in :model_id (map str ids)])]
     [:display-type        (when (seq display-type) [:in :display_type display-type])]
     [:created-at          (when (and created-at (:start created-at) (:end created-at))
@@ -667,6 +671,7 @@
    [:model :model]
    [:model_id :model_id]
    [:collection_id :collection_id]
+   [:worktree_id :worktree_id]
    [:personal_owner_id :personal_owner_id]
    [:creator_id :creator_id]
    [:database_id :database_id]

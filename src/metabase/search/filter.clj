@@ -201,6 +201,8 @@
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
+    ;; Unconditional: a search without an explicit worktree only ever sees the main app.
+    [[:worktree [:= :search_index.worktree_id (:worktree-id search-context)]]]
     [[:dashboard-questions [:or
                             ;; leverage the fact that only card-related models populate this attribute
                             [:= nil :search_index.dashboard_id]

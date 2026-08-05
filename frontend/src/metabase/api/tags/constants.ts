@@ -63,6 +63,7 @@ export const TAG_TYPES = [
   "transform-run",
   "transform-dag-run",
   "transform-inspector-lens",
+  "worktree",
   "user",
   "current-user",
   "public-dashboard",
