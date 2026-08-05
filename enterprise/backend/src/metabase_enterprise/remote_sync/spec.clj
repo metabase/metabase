@@ -297,7 +297,10 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
-    :conditions     {:built_in_type nil}  ; exclude built-in tags from sync
+    ;; built-in tags are exported like any other tag -- their entity_ids are seeded identically on every
+    ;; instance, so an import matches them -- but a reconcile never deletes them: they are instance-seeded, and
+    ;; the built-in jobs' tag assignments cascade off them
+    :removal-conditions {:built_in_type nil}
     :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances

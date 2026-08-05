@@ -473,16 +473,14 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
-(deftest transform-tag-spec-uses-conditions-test
-  (testing "TransformTag spec still uses :conditions (not split)"
+(deftest transform-tag-spec-conditions-test
+  (testing "TransformTag exports built-in tags but never deletes them"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
-      (is (= {:built_in_type nil} (:conditions spec)))
-      (is (nil? (:export-conditions spec)))
-      (is (nil? (:removal-conditions spec)))
-      (is (= {:built_in_type nil} (spec/export-conditions spec))
-          "export-conditions falls back to :conditions for TransformTag")
+      (is (nil? (:conditions spec)))
+      (is (nil? (spec/export-conditions spec))
+          "built-in tags are exported like any other tag -- their entity_ids are stable across instances")
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
-          "removal-conditions falls back to :conditions for TransformTag"))))
+          "but a reconcile never deletes them: they are instance-seeded and built-in jobs depend on them"))))
 
 (deftest check-deletion-conflicts-test
   (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"
