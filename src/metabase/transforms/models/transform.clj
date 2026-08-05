@@ -29,14 +29,18 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
-  (derive :model/Transform trait))
+(doto :model/Transform
+  (derive :metabase/model)
+  (derive :hook/entity-id)
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defn- transform-readable?
   "Whether the current user can read `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to `transforms.u/source-tables-readable?`."
   [instance & args]
   (and (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
@@ -54,6 +58,7 @@
   [instance & args]
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
@@ -87,6 +92,7 @@
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
@@ -144,7 +150,9 @@
   [{:keys [source collection_id source_database_id] :as transform}]
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
-    (collection/check-allowed-content :model/Transform collection_id))
+    (collection/check-allowed-content :model/Transform collection_id)
+    (remote-sync/check-same-worktree transform
+                                     (t2/select-one-fn :worktree_id :model/Collection :id collection_id)))
   (let [target-db-id (transforms-base.i/target-db-id transform)
         valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
     ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
@@ -180,7 +188,9 @@
   [{:keys [source source_database_id] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
-    (collection/check-allowed-content :model/Transform new-collection))
+    (collection/check-allowed-content :model/Transform new-collection)
+    (remote-sync/check-same-worktree transform
+                                     (t2/select-one-fn :worktree_id :model/Collection :id new-collection)))
   ;; The target db is recomputed when source changes because for MBQL transforms,
   ;; the source query's :database is the source of truth for the target database.
   (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))
@@ -470,7 +480,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -582,4 +592,5 @@
                   :source-type   true}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
-                  :transform-id   :id}})
+                  :transform-id   :id}
+   :where        [:= :this.worktree_id nil]})

@@ -1,7 +1,33 @@
 (ns metabase.remote-sync.core
   (:require
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
+
+(defn worktree-accessible?
+  "Whether the current user may see or edit `instance`: content checked out into a remote-sync worktree is
+  admin-only, always. Main-app content (`:worktree_id` `nil`) is not restricted here. AND this into a
+  worktree-scoped model's `can-read?` / `can-write?` / `can-create?`."
+  [instance]
+  (or (nil? (:worktree_id instance))
+      api/*is-superuser?*))
+
+(defn check-same-worktree
+  "Guard throwing a 400 when a row's `worktree_id` and its container's disagree -- content never moves into, out
+  of, or between worktrees. `container-worktree-id` is the worktree of whatever contains the row (its collection,
+  its transform).
+
+  Call this only when the row actually has a container: content at the root -- a null `collection_id`, a
+  collection at `/` -- is left to whichever worktree it already belongs to, so a worktree's own root content is
+  legal and moving to the root is always allowed. Returns nil; call for side effect."
+  [instance container-worktree-id]
+  (when (not= (:worktree_id instance) container-worktree-id)
+    (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+                    {:status-code        400
+                     :worktree-id        (:worktree_id instance)
+                     :target-worktree-id container-worktree-id})))
+  nil)
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

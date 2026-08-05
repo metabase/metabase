@@ -3590,3 +3590,38 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+
+(deftest collection-worktree-id-is-admin-only-test
+  (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "collection-api-perms"}]
+    (testing "a non-admin cannot create a collection in a worktree"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "collection" {:name "nope" :worktree_id wt-id}))))
+    (mt/with-model-cleanup [:model/Collection]
+      (testing "an admin can, and a worktree collection is remote-synced by definition"
+        (is (=? {:worktree_id wt-id :is_remote_synced true}
+                (mt/user-http-request :crowberto :post 200 "collection"
+                                      {:name "in worktree" :worktree_id wt-id})))))))
+
+(deftest worktree-collections-are-excluded-from-listings-test
+  (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "collection-api-list"}
+                 :model/Collection {wt-coll :id} {:name "worktree collection" :worktree_id wt-id}
+                 :model/Collection {main-coll :id} {:name "main collection"}]
+    (testing "worktree collections are absent from the main-app listing and tree"
+      (doseq [route ["collection" "collection/tree"]]
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route))]
+          (is (contains? ids main-coll) (str route " should include main-app collections"))
+          (is (not (contains? ids wt-coll)) (str route " should not include worktree collections")))))
+    (testing "worktree-id selects that worktree's collections instead"
+      (doseq [route ["collection" "collection/tree"]]
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route :worktree-id wt-id))]
+          (is (contains? ids wt-coll) (str route " should include the worktree's collections"))
+          (is (not (contains? ids main-coll)) (str route " should not mix in main-app collections")))))
+    (testing "worktree-id is admin-only"
+      (doseq [route ["collection" "collection/tree"]]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 route :worktree-id wt-id)))))
+    (testing "a non-admin cannot read a worktree collection directly"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 (str "collection/" wt-coll)))))))

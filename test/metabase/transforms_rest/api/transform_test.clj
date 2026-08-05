@@ -2238,3 +2238,46 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+
+(deftest worktree-transforms-are-excluded-from-the-list-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-api-list"}
+                     :model/Transform {main-id :id} {:name "main transform"}
+                     :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+        (testing "the main-app list leaves worktree transforms out"
+          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "transform"))]
+            (is (contains? ids main-id))
+            (is (not (contains? ids wt-tf-id)))))
+        (testing "worktree-id returns only that worktree's transforms"
+          (is (= [wt-tf-id]
+                 (mapv :id (mt/user-http-request :crowberto :get 200 "transform" :worktree-id wt-id)))))
+        (testing "worktree-id is admin-only"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "transform" :worktree-id wt-id))))))))
+
+(deftest worktree-transform-cannot-be-run-test
+  (testing "running a transform checked out into a worktree is refused"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [transforms-enabled true]
+        (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-api-run"}
+                       :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+          (is (= "Transforms in a remote sync worktree cannot be run."
+                 (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" tf-id)))))))))
+
+(deftest worktree-transform-is-admin-only-over-the-api-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-temp [:model/RemoteSyncWorktree {wt-id :id} {:branch "transform-api-perms"}
+                     :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+        (testing "a non-admin cannot read a worktree transform"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "transform/%d" tf-id)))))
+        (testing "a non-admin cannot write one"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (format "transform/%d" tf-id) {:name "renamed"}))))
+        (testing "an admin can read it"
+          (is (=? {:id tf-id :worktree_id wt-id}
+                  (mt/user-http-request :crowberto :get 200 (format "transform/%d" tf-id)))))))))

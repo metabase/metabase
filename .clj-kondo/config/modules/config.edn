@@ -1444,6 +1444,7 @@
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/RemoteSyncWorktreeRemapping
                     :model/Segment
                     :model/Table
                     :model/User}}
@@ -1943,7 +1944,8 @@
    :uses #{api
            events
            models
-           premium-features}
+           premium-features
+           util}
    :model-imports #{:model/Collection}}
 
   request
@@ -2456,7 +2458,8 @@
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag}
+                    :model/TransformTag
+                    :model/TransformTransformTag}
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
@@ -3461,7 +3464,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask}
+   :model-exports #{:model/RemoteSyncTask :model/RemoteSyncWorktreeRemapping}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3476,6 +3479,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTransformTag
                     :model/User}}
 
   enterprise/replacement

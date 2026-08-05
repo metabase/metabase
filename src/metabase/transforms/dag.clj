@@ -51,9 +51,11 @@
 
 (defn- lean-transforms
   "Transforms with only the columns the ordering walk needs — avoids loading every transform's full
-  row just to compute the dependency graph (full rows are fetched only for the resulting closure)."
+  row just to compute the dependency graph (full rows are fetched only for the resulting closure).
+  Transforms checked out into a remote-sync worktree are left out: a DAG run never runs them."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
+  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]
+             :worktree_id nil))
 
 (defn- full-transforms [ids]
   (if (seq ids)

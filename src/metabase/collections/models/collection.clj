@@ -311,6 +311,7 @@
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
+  (derive :hook/worktree-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -321,7 +322,8 @@
 
 (defmethod mi/can-write? :model/Collection
   ([instance]
-   (and (not (default-audit-collection? instance))
+   (and (remote-sync/worktree-accessible? instance)
+        (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
@@ -330,8 +332,9 @@
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (or (is-trash? instance)
-       (perms/can-read-audit-helper :model/Collection instance)))
+   (and (remote-sync/worktree-accessible? instance)
+        (or (is-trash? instance)
+            (perms/can-read-audit-helper :model/Collection instance))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
        (mi/can-read? (t2/select-one :model/Collection :id pk)))))
@@ -772,6 +775,7 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
+   [:worktree-id {:optional true} [:maybe :int]]
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
 (def ^:private UserScope
@@ -783,6 +787,7 @@
   {:cte-name nil
    :include-archived-items :exclude
    :include-trash-collection? false
+   :worktree-id nil
    :effective-child-of nil
    :archive-operation-id nil
    :permission-level :read})
@@ -835,7 +840,8 @@
    :c.archive_operation_id
    :c.archived_directly
    :c.type
-   :c.namespace])
+   :c.namespace
+   :c.worktree_id])
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
@@ -897,6 +903,9 @@
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
+            (if-some [worktree-id (:worktree-id visibility-config)]
+              [:= :c.worktree_id [:inline worktree-id]]
+              [:= :c.worktree_id nil])
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
@@ -1769,6 +1778,9 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  (when-let [parent-id (some-> (:location collection) location-path->parent-id)]
+    (remote-sync/check-same-worktree collection
+                                     (t2/select-one-fn :worktree_id :model/Collection :id parent-id)))
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
@@ -1964,6 +1976,9 @@
       (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
+    (when-let [parent-id (some-> (:location collection-updates) location-path->parent-id)]
+      (remote-sync/check-same-worktree collection
+                                       (t2/select-one-fn :worktree_id :model/Collection :id parent-id)))
     ;; (3) make sure Collection namespace is valid
     (when (contains? collection-updates :namespace)
       (when-not (namespace-equals? (:namespace collection-before-updates) (:namespace collection-updates))
@@ -2065,7 +2080,8 @@
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
-                          [:not= :type trash-collection-type]]]
+                          [:not= :type trash-collection-type]]
+        worktree-clause  (serdes/worktree-scope-clause "Collection")]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
                            {:where
@@ -2075,6 +2091,7 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
+                             worktree-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order})
@@ -2084,6 +2101,7 @@
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
+                             worktree-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
@@ -2179,7 +2197,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2465,10 +2483,12 @@
                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
-   :where [:or [:= :namespace nil]
-           [:= :namespace "analytics"]
-           [:= :namespace "shared-tenant-collection"]
-           [:= :namespace "tenant-specific"]]
+   :where [:and
+           [:or [:= :namespace nil]
+            [:= :namespace "analytics"]
+            [:= :namespace "shared-tenant-collection"]
+            [:= :namespace "tenant-specific"]]
+           [:= :this.worktree_id nil]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and

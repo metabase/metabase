@@ -84,11 +84,16 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  `worktree-id` selects a remote-sync worktree's collections instead of the main app's; nil (the default) is the
+  main app. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           worktree-id]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
+                       [:= :worktree_id worktree-id]
                        (case archived
                          nil nil
                          false [:and
@@ -120,6 +125,7 @@
                                                       :exclude)
                          :include-trash-collection? true
                          :permission-level          :read
+                         :worktree-id               worktree-id
                          :archive-operation-id      nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
@@ -147,13 +153,17 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
-                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]} :- [:map
+                                                                                             [:archived                       {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                                                             [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   (as->
    (select-collections {:archived                       (boolean archived)
+                        :worktree-id                    worktree-id
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespaces                     (cond
                                                           namespace [namespace]
@@ -247,7 +257,7 @@
   the root, if `collection-id` is `nil`)."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace namespaces shallow collection-id]}
+           namespace namespaces shallow collection-id worktree-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -255,9 +265,12 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
+       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
+  (when worktree-id
+    (api/check-superuser))
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
@@ -269,6 +282,7 @@
                                              :namespaces                     namespaces
                                              :shallow                        shallow
                                              :collection-id                  collection-id
+                                             :worktree-id                    worktree-id
                                              :include-library?               include-library})
                         (t2/hydrate :can_write))]
     (if shallow
@@ -1402,7 +1416,8 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new Collection."
+  "Create a new Collection. Pass `worktree_id` to create it at the root of a remote-sync worktree, which is
+  admin-only; with a `parent_id` the parent's worktree wins, so pass one or the other."
   [_route-params
    _query-params
    body :- [:map
@@ -1410,7 +1425,8 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+            [:worktree_id     {:optional true} [:maybe ms/PositiveInt]]]]
   (collections/create-collection! body))
 
 (defn- maybe-send-archived-notifications!
