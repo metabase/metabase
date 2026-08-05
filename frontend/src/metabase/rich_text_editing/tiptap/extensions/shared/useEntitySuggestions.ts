@@ -24,6 +24,7 @@ interface UseEntitySuggestionsOptions {
     id: number | string;
     model: string;
     label?: string;
+    display?: string | null;
     href: string | null;
   }) => void;
   enabled?: boolean;
@@ -97,6 +98,7 @@ export function useEntitySuggestions({
         id: item.id,
         model: item.model,
         label: "display_name" in item ? item.display_name : item.name,
+        display: "display" in item ? (item.display ?? undefined) : undefined,
         href: modelToUrl(entityToUrlableModel(item, item.model)),
       });
     },
@@ -109,6 +111,7 @@ export function useEntitySuggestions({
         id: item.id,
         model: item.model,
         label: item.name,
+        display: item.display ?? undefined,
         href: modelToUrl(entityToUrlableModel(item, item.model)),
       });
     },
@@ -301,6 +304,7 @@ export function useEntitySuggestions({
         id: item.id,
         model: item.model,
         label: item.name,
+        display: "display" in item ? (item.display ?? undefined) : undefined,
         href: modelToUrl(entityToUrlableModel(item, item.model)),
       });
       setModal(null);
