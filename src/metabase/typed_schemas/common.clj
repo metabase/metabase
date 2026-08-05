@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.common
+(ns metabase.typed-schemas.common
   "Shared helpers for typed-schema generation."
   (:require
    [clojure.string :as str]

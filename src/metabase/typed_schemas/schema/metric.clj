@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.schema.metric
+(ns metabase.typed-schemas.schema.metric
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
@@ -6,9 +6,9 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.schema.table :as schema.table]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -273,10 +273,8 @@
 
 (defn metric-schemas
   "Returns metric schemas, with optional database and collection scopes."
-  ([database-ids]
-   (metric-schemas database-ids nil))
-  ([database-ids collection-ids]
-   (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
-         :let [details (metric-details card)]
-         :when details]
-     (metric-schema details card))))
+  [database-ids collection-ids]
+  (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
+        :let [details (metric-details card)]
+        :when details]
+    (metric-schema details card)))

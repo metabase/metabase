@@ -1,11 +1,11 @@
-(ns metabase.typed-schemas.api.schema.table-test
+(ns metabase.typed-schemas.schema.table-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (def ^:private created-at-field
@@ -91,10 +91,10 @@
 
 (deftest measure-schema-uses-result-column-test
   (testing "measure result columns come from the measure definition when available"
-    (with-redefs [schema.table/measure-result-column
-                  (constantly {:name         "sum"
-                               :display_name "Sum of Total"
-                               :base_type    "type/Decimal"})]
+    (mt/with-dynamic-fn-redefs [schema.table/measure-result-column
+                                (constantly {:name         "sum"
+                                             :display_name "Sum of Total"
+                                             :base_type    "type/Decimal"})]
       (is (= (assoc total-revenue-schema
                     :columns [{:type        "column"
                                :name        "sum"
@@ -103,7 +103,7 @@
                                :jsType      "number"}])
              (schema.table/measure-schema 10 2 total-revenue-measure)))))
   (testing "measure result columns fall back to the measure name"
-    (with-redefs [schema.table/measure-result-column (constantly nil)]
+    (mt/with-dynamic-fn-redefs [schema.table/measure-result-column (constantly nil)]
       (is (= (assoc total-revenue-schema
                     :columns [{:type "column", :name "Total Revenue", :displayName "Total Revenue", :jsType "unknown"}])
              (schema.table/measure-schema 10 2 total-revenue-measure))))))
@@ -112,16 +112,13 @@
   (mt/with-dynamic-fn-redefs [metabot/get-table-details
                               (constantly {:output "Not found."
                                            :status-code 404})]
-    (let [exception (try
-                      (doall (schema.table/table-schemas [{:id 10 :name "Orders"}]))
-                      (catch clojure.lang.ExceptionInfo exception
-                        exception))]
-      (is (instance? clojure.lang.ExceptionInfo exception))
-      (is (= {:table-id      10
-              :table-name    "Orders"
-              :status-code   404
-              :error-message "Not found."}
-             (ex-data exception))))))
+    (let [exception (is (thrown? clojure.lang.ExceptionInfo
+                                 (doall (schema.table/table-schemas [{:id 10 :name "Orders"}]))))]
+      (is (=? {:table-id      10
+               :table-name    "Orders"
+               :status-code   404
+               :error-message "Not found."}
+              (ex-data exception))))))
 
 ;; Batch measure definitions to avoid N+1 queries.
 (deftest table-schema-bulk-loads-measure-definitions-test

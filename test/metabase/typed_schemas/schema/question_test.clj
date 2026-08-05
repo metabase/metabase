@@ -1,10 +1,10 @@
-(ns metabase.typed-schemas.api.schema.question-test
+(ns metabase.typed-schemas.schema.question-test
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.test :as mt]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.schema.question :as schema.question]))
+   [metabase.typed-schemas.schema.common :as schema.common]
+   [metabase.typed-schemas.schema.question :as schema.question]))
 
 (deftest question-schema-uses-card-source-discriminator-test
   (is (= {:type    "card"
@@ -33,7 +33,7 @@
                                                    (swap! bulk-details-calls conj [card-type database-id selected-cards])
                                                    (map #(assoc % :fields []) selected-cards))]
         (is (= [41 42]
-               (mapv :id (schema.question/question-schemas nil))))
+               (mapv :id (schema.question/question-schemas nil nil))))
         (is (= [[:question 1 cards]]
                @bulk-details-calls))
         (is (empty? @report-details-calls))))))

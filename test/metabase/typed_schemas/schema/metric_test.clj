@@ -1,11 +1,11 @@
-(ns metabase.typed-schemas.api.schema.metric-test
+(ns metabase.typed-schemas.schema.metric-test
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
-   [metabase.typed-schemas.api.schema.metric :as schema.metric]
-   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [metabase.typed-schemas.schema.metric :as schema.metric]
+   [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel metric-dimension-schema-uses-dimension-id-test
@@ -51,30 +51,30 @@
                {:dataset_query {:stages [{:source-card 42}]}})))))
 
 (deftest metric-details-skips-default-temporal-breakout-test
-  (mt/with-dynamic-fn-redefs [metabot/get-metric-details
-                              (fn [options]
-                                (is (false? (:with-default-temporal-breakout? options)))
-                                {:structured-output {:id 247}})]
-    (is (= {:id 247}
-           (#'schema.metric/metric-details {:id 247})))))
+  (let [requested (atom nil)]
+    (mt/with-dynamic-fn-redefs [metabot/get-metric-details
+                                (fn [options]
+                                  (reset! requested options)
+                                  {:structured-output {:id 247}})]
+      (is (= {:id 247}
+             (#'schema.metric/metric-details {:id 247})))
+      (is (=? {:with-default-temporal-breakout? false}
+              @requested)))))
 
 (deftest metric-details-surfaces-error-responses-test
   (mt/with-dynamic-fn-redefs [metabot/get-metric-details
                               (constantly {:output "Not found."
                                            :status-code 404})]
-    (let [exception (try
-                      (#'schema.metric/metric-details {:id 247
-                                                       :name "Customer Lifetime Value"
-                                                       :type :metric})
-                      (catch clojure.lang.ExceptionInfo exception
-                        exception))]
-      (is (instance? clojure.lang.ExceptionInfo exception))
-      (is (= {:card-id     247
-              :card-name   "Customer Lifetime Value"
-              :card-type   :metric
-              :status-code 404
-              :error-message "Not found."}
-             (ex-data exception))))))
+    (let [exception (is (thrown? clojure.lang.ExceptionInfo
+                                 (#'schema.metric/metric-details {:id 247
+                                                                  :name "Customer Lifetime Value"
+                                                                  :type :metric})))]
+      (is (=? {:card-id       247
+               :card-name     "Customer Lifetime Value"
+               :card-type     :metric
+               :status-code   404
+               :error-message "Not found."}
+              (ex-data exception))))))
 
 (deftest table-source-names-filters-unreadable-tables-test
   (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
@@ -86,16 +86,16 @@
            (#'schema.metric/table-key-disambiguators [10 20])))))
 
 (deftest metric-schema-keys-dimensions-test
-  (with-redefs [schema.metric/metric-result-column (constantly nil)
-                schema.metric/readable-table-source-rows
-                (constantly [{:id 10 :name "orders" :display_name "Orders"}])
-                schema.metric/sync-and-fetch-metric-dimensions!
-                (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
-                              :name           "orders"
-                              :display-name   "Orders"
-                              :effective-type :type/Integer
-                              :table-id       10
-                              :sources        [{:type :field, :field-id 42}]}])]
+  (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
+                              schema.metric/readable-table-source-rows
+                              (constantly [{:id 10 :name "orders" :display_name "Orders"}])
+                              schema.metric/sync-and-fetch-metric-dimensions!
+                              (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
+                                            :name           "orders"
+                                            :display-name   "Orders"
+                                            :effective-type :type/Integer
+                                            :table-id       10
+                                            :sources        [{:type :field, :field-id 42}]}])]
     (is (= {:type           "metric"
             :key            "customerLifetimeValue"
             :id             247
@@ -161,13 +161,13 @@
       (is (empty? @field-lookup-attempts)))))
 
 (deftest source-card-metric-schema-omits-mapped-table-dimensions-test
-  (with-redefs [schema.metric/metric-result-column (constantly nil)
-                schema.metric/sync-and-fetch-metric-dimensions!
-                (constantly [{:id   "count-dimension-uuid"
-                              :name "count"}
-                             {:id             "store-name-dimension-uuid"
-                              :name           "store_name"
-                              :table-id       10}])]
+  (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
+                              schema.metric/sync-and-fetch-metric-dimensions!
+                              (constantly [{:id   "count-dimension-uuid"
+                                            :name "count"}
+                                           {:id             "store-name-dimension-uuid"
+                                            :name           "store_name"
+                                            :table-id       10}])]
     (is (= {:type         "metric"
             :key          "storesWithOver5Employees"
             :id           259

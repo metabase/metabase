@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.api.schema.table
+(ns metabase.typed-schemas.schema.table
   "Typed schema generation for tables, fields, segments and measures."
   (:require
    [medley.core :as m]
@@ -6,9 +6,8 @@
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.schema.common :as schema.common]
-   [metabase.typed-schemas.api.scope :as scope]
+   [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.schema.common :as schema.common]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -50,15 +49,13 @@
 
   Library and database endpoint paths both need the same active/readable table
   rules; only their id filters differ."
-  ([database-ids]
-   (select-tables database-ids nil))
-  ([database-ids table-ids]
-   (->> (t2/select :model/Table
-                   {:where    (cond-> [:and [:= :active true]]
-                                database-ids (conj (scope/database-id-filter-clause database-ids :db_id))
-                                table-ids (conj (scope/id-filter-clause table-ids :id)))
-                    :order-by [[:name :asc] [:id :asc]]})
-        (filter-readable-tables))))
+  [database-ids table-ids]
+  (->> (t2/select :model/Table
+                  {:where    (cond-> [:and [:= :active true]]
+                               database-ids (conj (schema.common/scope-filter-clause database-ids :db_id))
+                               table-ids (conj (schema.common/scope-filter-clause table-ids :id)))
+                   :order-by [[:name :asc] [:id :asc]]})
+       (filter-readable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
@@ -67,7 +64,7 @@
                   {:where    [:and
                               [:= :active true]
                               [:= :is_published true]
-                              (scope/id-filter-clause data-collection-ids :collection_id)]
+                              (schema.common/scope-filter-clause data-collection-ids :collection_id)]
                    :order-by [[:name :asc] [:id :asc]]})
        (filter-readable-tables)))
 
