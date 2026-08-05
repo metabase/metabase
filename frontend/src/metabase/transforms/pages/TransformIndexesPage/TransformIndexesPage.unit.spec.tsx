@@ -60,9 +60,6 @@ function setup({
   setupGetTransformEndpoint(transform);
   setupListTableIndexesEndpoint(transform.id, indexes);
 
-  if (remoteSyncReadOnly) {
-    setupEnterpriseOnlyPlugin("remote_sync");
-  }
   const storeInitialState = createMockState({
     settings: mockSettings({
       "remote-sync-type": remoteSyncReadOnly ? "read-only" : undefined,
@@ -72,6 +69,9 @@ function setup({
       }),
     }),
   });
+  if (remoteSyncReadOnly) {
+    setupEnterpriseOnlyPlugin("remote_sync");
+  }
 
   const initialRoute = Urls.transformIndexes(transform.id);
   const path = initialRoute.replace(`/${transform.id}/`, "/:transformId/");
