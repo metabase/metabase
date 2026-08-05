@@ -113,7 +113,7 @@ export function RunSection({
           <RunStatusSection transform={transform} isScheduled={isScheduled} />
           <RunButtonSection
             transform={transform}
-            readOnly={permissionsReadOnly}
+            permissionsReadOnly={permissionsReadOnly}
             onScheduled={schedule}
           />
         </Group>
@@ -198,13 +198,13 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
 
 type RunButtonSectionProps = {
   transform: Transform;
-  readOnly?: boolean;
+  permissionsReadOnly?: boolean;
   onScheduled: (dagRunId: TransformDagRunId) => void;
 };
 
 function RunButtonSection({
   transform,
-  readOnly,
+  permissionsReadOnly,
   onScheduled,
 }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
@@ -266,9 +266,9 @@ function RunButtonSection({
         allowCancellation
         onRun={handleRun}
         onCancel={openConfirmModal}
-        isDisabled={readOnly}
+        isDisabled={permissionsReadOnly}
         menuItems={
-          readOnly ? undefined : (
+          permissionsReadOnly ? undefined : (
             <>
               <Menu.Item onClick={() => setDagDirection("upstream")}>
                 {t`Run this and all upstream transforms`}
