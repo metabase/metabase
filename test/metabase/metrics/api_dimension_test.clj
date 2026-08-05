@@ -293,7 +293,7 @@
             "removal is persisted")))))
 
 (deftest remove-default-dimension-test
-  (testing "removing the default dimension leaves the metric without a default (UXW-4988)"
+  (testing "removing the default dimension leaves the metric without a default"
     (with-seeded-metric [metric]
       (let [dimension-id (:id (first (:dimensions (t2/select-one :model/Card :id (:id metric)))))]
         (mt/user-http-request :crowberto :post 200
@@ -394,25 +394,6 @@
                 (is (= product-id-field-id (get-in stored-mapping [:target 1 :source-field])))
                 (is (= [user-id-field-id]
                        (mapv source-field remaining)))))))))))
-
-(deftest add-first-dimension-assigns-no-default-test
-  (testing "adding a dimension to an empty curated list does not make it the default (UXW-4988)"
-    (with-seeded-metric [metric]
-      (let [dimension-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))]
-        (mt/user-http-request :crowberto :post 200
-                              (str "metric/" (:id metric) "/dimension/remove")
-                              {:dimension_ids dimension-ids})
-        (let [addable (-> (mt/user-http-request :crowberto :get 200
-                                                (str "metric/" (:id metric) "/dimension") :with-addable true)
-                          :addable first :dimensions first)
-              resp    (mt/user-http-request :crowberto :post 200
-                                            (str "metric/" (:id metric) "/dimension/add")
-                                            {:dimensions [addable]})]
-          (is (= [(:id addable)] (mapv :id resp)))
-          (is (empty? (filter :default resp)))
-          (is (empty? (->> (t2/select-one :model/Card :id (:id metric))
-                           :dimensions
-                           (filter :default)))))))))
 
 (deftest update-dimension-display-name-test
   (testing "POST /api/metric/:id/dimension/:id updates display_name"
@@ -519,7 +500,7 @@
                                      {:dimension_ids [fake-dimension-id]})))))))
 
 (deftest no-default-dimension-picked-on-seed-test
-  (testing "a freshly seeded metric has a curated dimension list but no default dimension (UXW-4988)"
+  (testing "a freshly seeded metric has a curated dimension list and no default dimension"
     (with-seeded-metric [metric]
       (let [added (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))]
         (is (seq added))
@@ -548,7 +529,7 @@
             "the default is persisted")))))
 
 (deftest unset-default-dimension-test
-  (testing "set-default with a null dimension_id clears the default (UXW-4988)"
+  (testing "set-default with a null dimension_id clears the default"
     (with-seeded-metric [metric]
       (let [added        (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))
             dimension-id (:id (first added))

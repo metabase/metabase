@@ -514,7 +514,7 @@ describe("MetricAbout", () => {
       );
     });
 
-    it("shows a scalar when curated dimensions exist but none is the default (UXW-4988)", async () => {
+    it("shows a scalar when curated dimensions exist but none is the default", async () => {
       const dimensionId = "created-at";
       const metric = createMockMetric({
         id: 42,

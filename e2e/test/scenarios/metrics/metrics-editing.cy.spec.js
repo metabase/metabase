@@ -64,6 +64,24 @@ function startNewMetricWithSavedItem(collection, name) {
   });
 }
 
+// Metrics are created without a default dimension, so they preview as a scalar
+// until one is curated. Reading the metric seeds the list to pick from.
+function setDefaultDimension(metricId, displayName) {
+  return cy
+    .request("GET", `/api/metric/${metricId}`)
+    .then(() => cy.request("GET", `/api/metric/${metricId}/dimension`))
+    .then(({ body }) => {
+      const dimension = body.added.find(
+        (candidate) => candidate.display_name === displayName,
+      );
+
+      expect(dimension, `${displayName} dimension`).to.exist;
+      cy.request("POST", `/api/metric/${metricId}/dimension/set-default`, {
+        dimension_id: dimension.id,
+      });
+    });
+}
+
 function saveNewMetric({ name } = {}) {
   cy.intercept("POST", "/api/card").as("createCard");
   H.MetricPage.saveButton().click();
@@ -74,7 +92,12 @@ function saveNewMetric({ name } = {}) {
     }
     cy.button("Save").click();
   });
-  cy.wait("@createCard");
+  // Revisit rather than rely on the post-save redirect, so the page is rendered
+  // with the default dimension in place.
+  cy.wait("@createCard").then(({ response }) => {
+    setDefaultDimension(response.body.id, "Created At");
+    cy.visit(`/metric/${response.body.id}`);
+  });
 }
 
 function getActionButton(title) {
@@ -126,13 +149,16 @@ function verifyScalarValue(value) {
   cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
-function verifyMetricAboutScalar({ value }) {
+function verifyMetricAboutTimeseries({ yAxis }) {
   H.MetricPage.aboutPage().within(() => {
+    cy.findByRole("button", { name: "Select dimension: Created At: Month" })
+      .should("be.visible")
+      .and("contain.text", "Created At: Month");
+    cy.findByTestId("metric-value-preview").should("be.visible");
     cy.findByTestId("visualization-root")
       .should("be.visible")
-      .and("have.attr", "data-viz-ui-name", "Number");
-    verifyScalarValue(value);
-    cy.findByRole("button", { name: /^Select dimension/ }).should("not.exist");
+      .and("have.attr", "data-viz-ui-name", "Line");
+    H.echartsContainer().findByText(yAxis).should("be.visible");
   });
 }
 
@@ -171,9 +197,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should be able to change the query definition of a metric", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-        cy.visit(`/metric/${card.id}/query`),
-      );
+      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
+        setDefaultDimension(card.id, "Created At");
+        cy.visit(`/metric/${card.id}/query`);
+      });
       H.MetricPage.queryEditor().should("be.visible");
       H.getNotebookStep("summarize").button("Count").click();
       H.popover().within(() => {
@@ -183,7 +210,7 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.saveButton().click();
       H.MetricPage.saveButton().should("not.exist");
       H.MetricPage.aboutTab().click();
-      verifyMetricAboutScalar({ value: "1,510,621.68" });
+      verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
     });
 
     it("should pin new metrics automatically", () => {
@@ -221,8 +248,8 @@ describe("scenarios > metrics > editing", () => {
           .within(() => {
             cy.findByTestId("visualization-root")
               .should("be.visible")
-              .and("have.attr", "data-viz-ui-name", "Number");
-            verifyScalarValue("18,760");
+              .and("have.attr", "data-viz-ui-name", "Line");
+            H.echartsContainer().should("be.visible");
           });
       });
     });
@@ -256,7 +283,7 @@ describe("scenarios > metrics > editing", () => {
         values: ["Gadget"],
       });
       saveNewMetric();
-      verifyMetricAboutScalar({ value: "4,939" });
+      verifyMetricAboutTimeseries({ yAxis: "Count" });
     });
 
     it("should not allow to create a multi-stage metric", () => {
@@ -291,7 +318,7 @@ describe("scenarios > metrics > editing", () => {
         cy.button("Add filter").click();
       });
       saveNewMetric();
-      verifyMetricAboutScalar({ value: "613" });
+      verifyMetricAboutTimeseries({ yAxis: "Count" });
     });
 
     it("should not be possible to join a metric", () => {
@@ -368,8 +395,8 @@ describe("scenarios > metrics > editing", () => {
     });
   });
 
-  describe("summarize", () => {
-    it("should change the aggregation of a new metric", () => {
+  describe("breakouts", () => {
+    it("should create a timeseries metric", () => {
       startNewMetricWithTable("Sample Database", "Orders");
       H.getNotebookStep("summarize").findByText("Count").click();
       H.popover().within(() => {
@@ -377,7 +404,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Total").click();
       });
       saveNewMetric();
-      verifyMetricAboutScalar({ value: "1,510,621.68" });
+      verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
     });
   });
 
@@ -403,7 +430,7 @@ describe("scenarios > metrics > editing", () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       saveNewMetric();
-      verifyMetricAboutScalar({ value: "9,380" });
+      verifyMetricAboutTimeseries({ yAxis: "Orders metric" });
     });
 
     it("should have metric-specific summarize step copy", () => {

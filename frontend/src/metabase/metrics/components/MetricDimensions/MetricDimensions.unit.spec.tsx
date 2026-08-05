@@ -545,7 +545,7 @@ describe("MetricDimensions", () => {
     });
   });
 
-  it("removes the default from the current default dimension (UXW-4988)", async () => {
+  it("removes the default from the current default dimension", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 

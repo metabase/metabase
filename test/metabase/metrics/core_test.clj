@@ -100,7 +100,7 @@
         (is (= first-ids next-ids))))))
 
 (deftest metric-sync-dimensions-picks-no-default-test
-  (testing "new metrics are seeded with a curated dimension list but no default dimension (UXW-4988)"
+  (testing "new metrics are seeded with a curated dimension list and no default dimension"
     (let [mp (mt/metadata-provider)
           orders-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/count)))]
