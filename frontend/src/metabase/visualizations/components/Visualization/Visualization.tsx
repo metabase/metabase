@@ -53,6 +53,7 @@ import {
   type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
+  type HighlightedObject,
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
@@ -132,6 +133,7 @@ type VisualizationOwnProps = {
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
+  highlighted?: HighlightedObject | null;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -683,6 +685,7 @@ class Visualization extends PureComponent<
       getHref,
       hasDevWatermark,
       headerIcon,
+      highlighted,
       isAction,
       isDashboard,
       isDocument,
@@ -733,6 +736,7 @@ class Visualization extends PureComponent<
       onOpenChartSettings,
       onOpenTimelines,
       onSelectTimelineEvents,
+      onSeeAllEvents,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -949,6 +953,7 @@ class Visualization extends PureComponent<
                     headerIcon={hasHeader ? null : headerIcon}
                     height={height}
                     hovered={hovered}
+                    highlighted={highlighted}
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
                     isEditing={!!isEditing}
@@ -1001,6 +1006,7 @@ class Visualization extends PureComponent<
                     onRender={this.onRender}
                     onRenderError={this.onRenderError}
                     onSelectTimelineEvents={onSelectTimelineEvents}
+                    onSeeAllEvents={onSeeAllEvents}
                     onTogglePreviewing={onTogglePreviewing}
                     onUpdateVisualizationSettings={
                       onUpdateVisualizationSettings
