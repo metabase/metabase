@@ -340,7 +340,10 @@
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
+  (first (schema.table/batch-fetch-card-query-metadatas
+          [id]
+          {:include-database? true
+           :worktree-id       (t2/select-one-fn :worktree_id :model/Card :id id)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

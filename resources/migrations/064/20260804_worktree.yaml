@@ -391,3 +391,43 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_worktree_remapping_worktree_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:25
+      author: ranquild
+      comment: Add report_card.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this card was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:26
+      author: ranquild
+      comment: Index on report_card.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v64.2026-08-04T10:00:27
+      author: ranquild
+      comment: FK report_card.worktree_id -> worktree; CASCADE so deleting a worktree drops what it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_report_card_worktree_id
+            onDelete: CASCADE

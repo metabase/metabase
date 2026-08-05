@@ -199,6 +199,7 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
   return [
     idTag("card", card.id),
     ...(card.collection ? provideCollectionTags(card.collection) : []),
+    ...(card.worktree_id != null ? [idTag("worktree", card.worktree_id)] : []),
   ];
 }
 

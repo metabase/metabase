@@ -16,6 +16,7 @@ export function buildDraftCard(card: {
   database_id?: DatabaseId;
 }): Card {
   return {
+    worktree_id: null,
     // BaseEntityId is branded; drafts use a placeholder that never reaches the API
     entity_id: "" as Card["entity_id"],
     created_at: "",

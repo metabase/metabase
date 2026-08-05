@@ -40,6 +40,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -134,12 +135,14 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
    (and
+    (remote-sync/worktree-accessible? instance)
     (not (and
           ;; We want to make sure there's an existing audit collection before doing the equality check below.
           ;; If there is no audit collection, this will be nil:
@@ -846,7 +849,10 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields)
-    (collection/check-allowed-content (:type <>) (:collection_id <>))))
+    (collection/check-allowed-content (:type <>) (:collection_id <>))
+    (when-let [collection-id (:collection_id <>)]
+      (remote-sync/check-same-worktree
+       <> (t2/select-one-fn :worktree_id :model/Collection :id collection-id)))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -894,6 +900,11 @@
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
+    (when (contains? changes :collection_id)
+      (remote-sync/check-same-worktree
+       card
+       (when-let [collection-id (:collection_id changes)]
+         (t2/select-one-fn :worktree_id :model/Collection :id collection-id))))
     (-> card
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
@@ -1047,7 +1058,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :document_id]
+                                             :cache_ttl :type :dashboard_id :document_id :worktree_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1554,6 +1565,7 @@
                   :display-type         :this.display
                   :collection-type      :collection.type
                   :collection-location  :collection.location
+                  :worktree-id          true
                   :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true

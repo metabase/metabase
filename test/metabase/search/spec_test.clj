@@ -69,6 +69,7 @@
                                                       :query_type
                                                       :type
                                                       :view_count
+                                                      :worktree_id
                                                       :created_at
                                                       :updated_at},
                                       :where        [:= :updated.id :this.id]}},

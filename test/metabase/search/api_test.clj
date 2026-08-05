@@ -2280,9 +2280,18 @@
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Worktree {wt-id :id} {}
                        :model/Collection {main-id :id} {:name (str term " main")}
-                       :model/Collection {wt-coll-id :id} {:name (str term " worktree") :worktree_id wt-id}]
+                       :model/Collection {wt-coll-id :id} {:name (str term " worktree") :worktree_id wt-id}
+                       :model/Card {main-card-id :id} {:name (str term " main card")}
+                       :model/Card {wt-card-id :id} {:name          (str term " worktree card")
+                                                     :collection_id wt-coll-id
+                                                     :worktree_id   wt-id}]
           (search/reindex! {:async? false :in-place? true})
-          (letfn [(collection-ids [user & params]
+          (letfn [(card-ids [& params]
+                    (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term :models "card"
+                                :search_engine "appdb" params)
+                         :data
+                         (into #{} (map :id))))
+                  (collection-ids [user & params]
                     (->> (apply mt/user-http-request user :get 200 "search" :q term :models "collection"
                                 :search_engine "appdb" params)
                          :data
@@ -2298,6 +2307,9 @@
             (testing "worktree-id is admin-only"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 "search" :q term :worktree-id wt-id))))
+            (testing "cards are scoped the same way"
+              (is (= #{main-card-id} (card-ids)))
+              (is (= #{wt-card-id} (card-ids :worktree-id wt-id))))
             (testing "the in-place engine scopes the same way"
               (let [ids (fn [& params]
                           (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term

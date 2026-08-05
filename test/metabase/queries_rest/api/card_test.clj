@@ -5327,3 +5327,60 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The endpoints they
+;;; cover are OSS.
+
+(deftest worktree-cards-are-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}
+                   :model/Card {main-id :id} {:name "main card"}
+                   :model/Card {wt-card-id :id} {:name          "worktree card"
+                                                 :collection_id (:id wt-coll)
+                                                 :worktree_id   wt-id}]
+      (testing "the main-app list leaves worktree cards out"
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "card"))]
+          (is (contains? ids main-id))
+          (is (not (contains? ids wt-card-id)))))
+      (testing "worktree-id returns only that worktree's cards"
+        (is (= [wt-card-id]
+               (mapv :id (mt/user-http-request :crowberto :get 200 "card" :worktree-id wt-id)))))
+      (testing "worktree-id is admin-only"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "card" :worktree-id wt-id)))))))
+
+(deftest worktree-card-query-metadata-stays-in-its-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}
+                   :model/Card {main-source-id :id} {:name          "main source"
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card {wt-source-id :id} {:name          "worktree source"
+                                                   :collection_id (:id wt-coll)
+                                                   :worktree_id   wt-id
+                                                   :dataset_query (mt/mbql-query venues)}]
+      (letfn [(source-table-ids [card-id]
+                (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id))
+                     :tables
+                     (into #{} (map :id))))]
+        (testing "a worktree card resolves a source card from its own worktree"
+          (mt/with-temp [:model/Card {consumer-id :id} {:name          "worktree consumer"
+                                                        :collection_id (:id wt-coll)
+                                                        :worktree_id   wt-id
+                                                        :dataset_query (mt/mbql-query nil
+                                                                         {:source-table (str "card__" wt-source-id)})}]
+            (is (contains? (source-table-ids consumer-id) (str "card__" wt-source-id)))))
+        (testing "but not one from the main app"
+          (mt/with-temp [:model/Card {consumer-id :id} {:name          "worktree consumer"
+                                                        :collection_id (:id wt-coll)
+                                                        :worktree_id   wt-id
+                                                        :dataset_query (mt/mbql-query nil
+                                                                         {:source-table (str "card__" main-source-id)})}]
+            (is (not (contains? (source-table-ids consumer-id) (str "card__" main-source-id))))))
+        (testing "and a main-app card still resolves its own source"
+          (mt/with-temp [:model/Card {consumer-id :id} {:name          "main consumer"
+                                                        :dataset_query (mt/mbql-query nil
+                                                                         {:source-table (str "card__" main-source-id)})}]
+            (is (contains? (source-table-ids consumer-id) (str "card__" main-source-id)))))))))

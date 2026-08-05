@@ -98,7 +98,9 @@
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
-   opts    :- [:maybe [:map [:include-sensitive-fields? {:optional true} :boolean]]]]
+   opts    :- [:maybe [:map
+                       [:include-sensitive-fields? {:optional true} :boolean]
+                       [:worktree-id {:optional true} [:maybe :int]]]]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)
@@ -106,8 +108,10 @@
                                      (mapcat lib/all-source-card-ids)
                                      queries)
         source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
-                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                      {:include-database? false}))
+                                       (schema.table/batch-fetch-card-query-metadatas
+                                        source-card-ids
+                                        {:include-database? false
+                                         :worktree-id       (:worktree-id opts)}))
         fk-target-field-ids    (into #{} (comp (mapcat :fields)
                                                (keep :fk_target_field_id))
                                      source-tables)
@@ -171,7 +175,9 @@
                                    (let [mp (lib-be/application-database-metadata-provider database-id)]
                                      (lib/query mp (lib.metadata/card mp card-id))))))
                       cards)]
-    (batch-fetch-query-metadata (concat card-queries queries))))
+    (batch-fetch-query-metadata (concat card-queries queries)
+                                ;; a card only ever resolves source cards from its own worktree
+                                {:worktree-id (some :worktree_id cards)})))
 
 (defn- click-behavior->link-details
   [{:keys [linkType type targetId] :as _click-behavior}]

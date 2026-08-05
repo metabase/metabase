@@ -450,18 +450,24 @@
      [:= namespace-keyword "tenant-specific"])])
 
 (defn can-read-via-parent-collection?
-  "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.
+  "Read permission for rows whose read policy is a pure function of `:collection_id`, `:worktree_id` and
+  current user perms.
   Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
   and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
-  Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields."
-  [coll-id]
-  (and (or (premium-features/enable-audit-app?)
-           (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
-       (mi/current-user-has-full-permissions?
-        #{(permissions.path/collection-read-path
-           (or coll-id
-               {:metabase.collections.models.collection.root/is-root? true
-                :namespace                                            nil}))})))
+  Takes the two ids (not an instance) so the logic cannot grow a dependency on other instance fields.
+
+  `worktree-id` is denormalized from the row's collection, so a row checked out into a remote-sync worktree
+  is admin-only without a second lookup. Rows on models with no such column pass nil and are unaffected."
+  ([coll-id] (can-read-via-parent-collection? coll-id nil))
+  ([coll-id worktree-id]
+   (and (or (nil? worktree-id) api/*is-superuser?*)
+        (or (premium-features/enable-audit-app?)
+            (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
+        (mi/current-user-has-full-permissions?
+         #{(permissions.path/collection-read-path
+            (or coll-id
+                {:metabase.collections.models.collection.root/is-root? true
+                 :namespace                                            nil}))}))))
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
@@ -531,7 +537,7 @@
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+         ([instance#] (can-read-via-parent-collection? (:collection_id instance#) (:worktree_id instance#)))
          ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 

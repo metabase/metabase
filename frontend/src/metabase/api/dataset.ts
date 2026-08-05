@@ -1,6 +1,7 @@
 import { updateMetadata } from "metabase/redux/metadata";
 import { QueryMetadataSchema } from "metabase/schema";
 import type {
+  AdhocQueryMetadataRequest,
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
@@ -90,7 +91,10 @@ export const datasetApi = Api.injectEndpoints({
       providesTags: () => provideAdhocDatasetTags(),
       keepUnusedDataFor: 0,
     }),
-    getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
+    getAdhocQueryMetadata: builder.query<
+      CardQueryMetadata,
+      AdhocQueryMetadataRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/dataset/query_metadata",

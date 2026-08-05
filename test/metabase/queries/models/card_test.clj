@@ -1776,3 +1776,39 @@
       (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
              (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                             :id card-id))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The model they
+;;; cover is OSS.
+
+(deftest card-must-match-its-collection-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection main-coll {:name "main"}
+                   :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}]
+      (testing "a card cannot be created in a collection from another worktree"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
+                              (mt/with-temp [:model/Card _ {:collection_id (:id wt-coll)}]))))
+      (testing "a card in the same worktree as its collection is fine"
+        (mt/with-temp [:model/Card card {:collection_id (:id wt-coll) :worktree_id wt-id}]
+          (is (= wt-id (:worktree_id card)))))
+      (testing "a card cannot be moved into another worktree's collection"
+        (mt/with-temp [:model/Card {card-id :id} {:collection_id (:id main-coll)}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
+                                (t2/update! :model/Card card-id {:collection_id (:id wt-coll)}))))))))
+
+(deftest worktree-cards-are-admin-only-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}
+                   :model/Card wt-card {:collection_id (:id wt-coll) :worktree_id wt-id}
+                   :model/Collection main-coll {:name "main"}
+                   :model/Card main-card {:collection_id (:id main-coll)}]
+      (testing "an admin sees both"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (mi/can-read? wt-card))
+          (is (mi/can-read? main-card))))
+      (testing "everyone else only sees the main app's card, even with permission on the collection"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (not (mi/can-read? wt-card)))
+          (is (mi/can-read? main-card)))))))

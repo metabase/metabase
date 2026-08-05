@@ -233,13 +233,18 @@
                                        field))))
 
 (defn batch-fetch-card-query-metadatas
-  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids {:keys [include-database?]}]
+  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped.
+
+  `worktree-id` scopes the lookup to one remote-sync worktree (nil, the default, is the main app): a query
+  being described only ever resolves source cards from its own worktree. `:c.worktree_id` is selected because
+  `mi/can-read?` reads it -- a projection without it would read as main-app content and skip the admin gate."
+  [ids {:keys [include-database? worktree-id]}]
   (when (seq ids)
     (let [cards (t2/select :model/Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                                         :c.description :c.collection_id :c.database_id :c.type
                                         :c.source_card_id :c.created_at :c.entity_id :c.card_schema
+                                        :c.worktree_id
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
                             :left-join [[{:select   [:moderated_item_id :status]
@@ -250,7 +255,9 @@
                                           :order-by [[:id :desc]]
                                           :limit    1} :r]
                                         [:= :r.moderated_item_id :c.id]]
-                            :where      [:in :c.id ids]})
+                            :where      [:and
+                                         [:in :c.id ids]
+                                         [:= :c.worktree_id worktree-id]]})
           dbs (if (seq cards)
                 (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
                 {})
