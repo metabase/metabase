@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -68,6 +69,31 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       expect(
         screen.getByRole("treeitem", { name: /Wide collection 1/ }),
       ).toBeInTheDocument();
+    });
+
+    describe("scrolling to the end of a level", () => {
+      const { setIntersecting } = setupMockIntersectionObserver();
+
+      it("should load the next page without a click", async () => {
+        await setup({
+          simulateLargeInstance: true,
+          collections: MANY_COLLECTIONS,
+          lazyPageSize: 2,
+        });
+
+        expect(
+          await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("treeitem", { name: /Wide collection 3/ }),
+        ).not.toBeInTheDocument();
+
+        setIntersecting(true);
+
+        expect(
+          await screen.findByRole("treeitem", { name: /Wide collection 3/ }),
+        ).toBeInTheDocument();
+      });
     });
 
     it("should stop offering Show more once the level is exhausted", async () => {
