@@ -808,13 +808,13 @@
               first))))))
 
 (deftest collection-items-returns-collections-with-correct-collection-id-test
-  (testing "GET /api/collection/:id/items?model=collection"
+  (testing "GET /api/collection/:id/items?models=collection"
     (testing "check that the ID and collection_id don't match"
       (mt/with-temp [:model/Collection parent {}
                      :model/Collection child {:location (collection/children-location parent)}]
         (is (= {:id (:id child)
                 :collection_id (:id parent)}
-               (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?model=collection"))))
+               (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?models=collection"))))
                             [:id :collection_id])))))))
 
 (deftest collection-items-entity-id-test
@@ -2648,10 +2648,11 @@
             (is (= ["Archived Snippet"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
                                                                       "collection/root/items?namespace=snippets&archived=true"))))))
-          (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-            (is (= ["My Snippet", "My Snippet 2"]
-                   (only-test-item-names (:data (mt/user-http-request :rasta :get 200
-                                                                      "collection/root/items?namespace=snippets&model=snippet")))))))))))
+          (testing "\nA query param the endpoint doesn't declare is rejected"
+            (is (= {:errors {:model "unexpected parameter"}
+                    :specific-errors {:model ["should be spelled :models, received: \"snippet\""]}}
+                   (mt/user-http-request :rasta :get 400
+                                         "collection/root/items?namespace=snippets&model=snippet")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              POST /api/collection                                              |

@@ -33,6 +33,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
@@ -366,13 +367,20 @@
 
 (defn- invalid-params-errors [{:keys [schema], :as explanation}]
   (reduce
-   (fn [m {:keys [path in], :as _explanation}]
+   (fn [m {:keys [path in type], :as _explanation}]
      (let [error-path (remove integer? in)]
        ;; if there is already an error here keep the existing one, this is usually something like an `[:and x y]`
        ;; where `x` has already failed so it's preferable to return the error for that than the `y` one, which
        ;; probably won't make any sense (for some weird reason Malli `:and` schemas don't short-circut)
-       (if (get-in m error-path)
+       (cond
+         (get-in m error-path)
          m
+
+         ;; a key rejected by a closed `:map` has no schema of its own to describe
+         (= type ::mc/extra-key)
+         (assoc-in m error-path (deferred-tru "unexpected parameter"))
+
+         :else
          (let [nice-path     (loop [path (vec path)]
                                (if (integer? (last path))
                                  (recur (pop path))
@@ -485,6 +493,21 @@
           ~@(if response-schema
               `[(validate-and-encode-response ~response-schema (do ~@body))]
               body))))))
+
+(defn closed-params-schema
+  "Return `schema` with its top-level `:map` closed, so that a request carrying params the endpoint does not declare is
+  rejected rather than silently ignored. A schema that specifies `:closed` itself keeps that value, which is how an
+  endpoint that really does accept arbitrary params opts out:
+
+    [:map {:closed false} [:name :string]]
+
+  Schemas that are not a `:map` at the top level (`:merge`, `:multi`, refs, ...) are returned unchanged and stay open."
+  [schema]
+  (let [schema (mc/schema schema)]
+    (if (and (= (mc/type schema) :map)
+             (not (contains? (mc/properties schema) :closed)))
+      (malli.util/update-properties schema assoc :closed true)
+      schema)))
 
 (defn validate-schema
   "Impl for [[endpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
@@ -814,6 +837,19 @@
         (update :body quote-form)
         (update :params quote-param-bindings))))
 
+(defn- close-param-schemas
+  "Wrap the route, query, and body param schemas of `parsed` args in [[closed-params-schema]] calls, so that a request
+  carrying params the endpoint does not declare is rejected. The `:request` params are the whole Ring request map, so
+  they are left open."
+  [parsed]
+  (reduce
+   (fn [parsed param-type]
+     (cond-> parsed
+       (get-in parsed [:params param-type :schema])
+       (update-in [:params param-type :schema] #(list `closed-params-schema %))))
+   parsed
+   [:route :query :body]))
+
 (defmacro defendpoint
   "NEW macro for defining REST API endpoints. See
   [Cam's tech design doc](https://www.notion.so/metabase/defendpoint-2-0-16169354c901806ca10cf45be6d91891) for
@@ -827,7 +863,7 @@
                                  [route-params? query-params? body-params? request? respond? raise?]
                                  & body])}
   [& args]
-  (let [parsed (parse-args args)]
+  (let [parsed (close-param-schemas (parse-args args))]
     `(let [core-fn#  (endpoint-core-fn ~parsed)
            handler#  (endpoint-handler ~parsed core-fn#)
            info#     {:core-fn core-fn#
