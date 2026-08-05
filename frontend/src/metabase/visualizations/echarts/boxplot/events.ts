@@ -4,7 +4,7 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
+import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,

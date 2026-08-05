@@ -12,7 +12,7 @@ import {
   getSortedRows,
   getTotalValue,
   groupExcessiveTooltipRows,
-} from "./utils";
+} from "metabase/visualizations/echarts/tooltip/utils";
 
 const MAX_BODY_ROWS = 8;
 
