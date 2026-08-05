@@ -58,6 +58,8 @@ const setup = ({
   onSelectVisualization = jest.fn(),
   visualizationType = "bar",
   onOpenSettings = jest.fn(),
+  isDisabled,
+  disabledReason,
 }: Partial<ChartTypeOptionProps> = {}) => {
   renderWithProviders(
     <ChartTypeOption
@@ -65,6 +67,8 @@ const setup = ({
       onSelectVisualization={onSelectVisualization}
       visualizationType={visualizationType}
       onOpenSettings={onOpenSettings}
+      isDisabled={isDisabled}
+      disabledReason={disabledReason}
     />,
   );
 
@@ -165,5 +169,23 @@ describe("ChartTypeOption", () => {
     await userEvent.hover(screen.getByTestId("Bar-button"));
 
     expect(queryIcon("gear")).not.toBeInTheDocument();
+  });
+
+  it("does not select a disabled option and shows the reason on hover", async () => {
+    const { onSelectVisualization } = setup({
+      visualizationType: "bar",
+      isDisabled: true,
+      disabledReason: "Not available while this question is shared publicly.",
+    });
+
+    await userEvent.click(screen.getByTestId("Bar-button"));
+    expect(onSelectVisualization).not.toHaveBeenCalled();
+
+    await userEvent.hover(screen.getByTestId("Bar-button"));
+    expect(
+      await screen.findByText(
+        "Not available while this question is shared publicly.",
+      ),
+    ).toBeInTheDocument();
   });
 });
