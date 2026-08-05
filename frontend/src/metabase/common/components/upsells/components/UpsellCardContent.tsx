@@ -37,6 +37,8 @@ export type UpsellCardContentProps = UpsellCardLeftColumnContentProps & {
    * inner framing or none at all.
    */
   variant?: "image-full-height" | "image-card" | "image-panel";
+  /** Overrides the card width. Defaults to 700 with an image, 450 without. */
+  cardWidth?: number;
 };
 
 export const UpsellCardContent = ({
@@ -49,6 +51,7 @@ export const UpsellCardContent = ({
   upgradeOnClick,
   upgradeUrl,
   variant = "image-card",
+  cardWidth,
 }: UpsellCardContentProps) => {
   const isHosted = useSelector(getIsHosted);
   const { data: trialData } = useCheckTrialAvailableQuery(undefined, {
@@ -57,7 +60,7 @@ export const UpsellCardContent = ({
   const isTrialAvailable = trialData?.available ?? false;
 
   const leftSideSize = rem(280);
-  const maxWidth = image ? 700 : 450;
+  const maxWidth = cardWidth ?? (image ? 700 : 450);
   const contentPadding = rem(48);
 
   useEffect(() => {
@@ -116,11 +119,11 @@ export const UpsellCardContent = ({
             maw="50%"
           >
             {variant === "image-panel" ? (
-              // The design centres the illustration at its own size inside a
-              // roughly 350x320 panel rather than stretching it edge to edge,
-              // so it keeps its padding and never scales past its artwork.
-              <Center w="100%" mih={rem(320)} p="xl">
-                <Image src={image} w="100%" maw={rem(290)} h="auto" />
+              // Padded and centred rather than stretched, with no height of
+              // its own: the illustration's aspect ratio sets the panel height,
+              // so artwork of different proportions is not letterboxed.
+              <Center w="100%" p="xl">
+                <Image src={image} w="100%" h="auto" />
               </Center>
             ) : (
               <Card radius={6} p={0} shadow="none" withBorder>

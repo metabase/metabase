@@ -69,14 +69,14 @@ export function ChecklistCard({
           />
 
           <Stack gap="sm">
-            <Text fw="bold" fz="lg" lh="1.25rem" c={textColor}>
+            <Text fw="bold" fz="lg" lh="md" c={textColor}>
               {title}
             </Text>
 
             {/* md is the theme's 14px, which is the design's body size. */}
             <Text
               fz="md"
-              lh="1.25rem"
+              lh="lg"
               c={isLocked ? "text-tertiary" : "text-secondary"}
             >
               {description}

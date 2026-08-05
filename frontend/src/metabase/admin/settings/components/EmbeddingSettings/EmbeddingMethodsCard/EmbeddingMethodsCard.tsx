@@ -76,7 +76,7 @@ function EmbeddingMethodRow({
         <Text fw="bold" c="text-primary" mb="xs">
           {title}
         </Text>
-        <Text c="text-secondary" lh="1.35rem">
+        <Text c="text-secondary" lh="lg">
           {description}
         </Text>
       </Box>

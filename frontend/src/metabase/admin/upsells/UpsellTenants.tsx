@@ -36,6 +36,8 @@ export const UpsellTenants = () => {
             description={t`Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
+            // 800 per the design; the shared default is 700.
+            cardWidth={800}
             variant="image-panel"
             image="app/assets/img/upsell-embedding-tenants.svg"
           />

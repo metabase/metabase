@@ -94,7 +94,7 @@ function EnableTenancyCard() {
       <Stack gap="md" maw="30rem">
         <Title order={4}>{t`Enable multi-tenant user strategy`}</Title>
 
-        <Text c="text-secondary" lh="1.35rem">
+        <Text c="text-secondary" lh="lg">
           {t`A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer.`}
         </Text>
 

@@ -23,7 +23,13 @@ export function EmbeddingHubAppearancePage() {
   const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
 
   if (!hasSimpleEmbedding) {
-    return <UpsellEmbeddingTheme source="embedding-hub-appearance" />;
+    return (
+      <Stack gap="2.5rem">
+        <Title order={1} c="text-primary">{t`Appearance`}</Title>
+
+        <UpsellEmbeddingTheme source="embedding-hub-appearance" />
+      </Stack>
+    );
   }
 
   return (

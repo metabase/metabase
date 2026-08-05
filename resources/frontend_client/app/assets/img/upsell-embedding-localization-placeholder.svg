@@ -1,23 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Placeholder illustration, pending design">
-  <rect width="600" height="600" rx="16" fill="#F9FBFC"/>
-  <rect x="8" y="8" width="584" height="584" rx="12" fill="none" stroke="#C7D0D6" stroke-width="3" stroke-dasharray="14 12"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 282 256" width="282" height="256" role="img" aria-label="Placeholder illustration, pending design">
+  <rect width="282" height="256" rx="10" fill="#F9FBFC"/>
+  <rect x="5" y="5" width="272" height="246" rx="8" fill="none" stroke="#C7D0D6" stroke-width="2" stroke-dasharray="9 8"/>
 
-  <g fill="none" stroke="#A5B3BC" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="300" cy="242" r="74"/>
-    <path d="M226 242h148"/>
-    <path d="M300 168c34 42 34 106 0 148-34-42-34-106 0-148Z"/>
+  <g fill="none" stroke="#A5B3BC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="141" cy="104" r="42"/>
+    <path d="M99 104h84"/>
+    <path d="M141 62c19 24 19 60 0 84-19-24-19-60 0-84Z"/>
   </g>
 
-  <text x="300" y="392" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#5A6C78">
+  <text x="141" y="184" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#5A6C78">
     Placeholder
   </text>
-  <text x="300" y="430" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="22" fill="#8A99A4">
-    600 × 600
-  </text>
-  <text x="300" y="470" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="20" fill="#8A99A4">
+  <text x="141" y="206" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="12" fill="#8A99A4">
     Localization upsell illustration
   </text>
-  <text x="300" y="500" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="20" fill="#8A99A4">
+  <text x="141" y="224" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif" font-size="12" fill="#8A99A4">
     pending design
   </text>
 </svg>

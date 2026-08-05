@@ -35,6 +35,8 @@ export const UpsellEmbeddingTheme = ({ source }: { source: string }) => {
             description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
+            // 800 per the design; the shared default is 700.
+            cardWidth={800}
             image="app/assets/img/upsell-themes.png"
           />
         </LineDecorator>

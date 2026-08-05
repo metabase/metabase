@@ -44,6 +44,8 @@ export const UpsellContentTranslation = ({ source }: { source: string }) => {
             description={t`Upload a dictionary so dashboard, question and column names appear in each viewer's own language.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
+            // 800 per the design; the shared default is 700.
+            cardWidth={800}
             variant="image-panel"
             // A generated placeholder, sized to match the real upsell
             // illustrations, rather than another upsell's artwork -- borrowing
