@@ -14,7 +14,7 @@ Keep the semantic layer and presentation layer separate.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
-- Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
+- Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
@@ -255,7 +255,26 @@ const { data } = useMetabaseQuery({
 });
 ```
 
-Saved question queries only support `source` and `enabled` today. Do not add `fields`, `filters`, helper aggregations, breakouts, orderBys, or limits to `source: schema.questions.<question>` queries yet; use table-source queries, including metric aggregations, when the app needs post-source query clauses.
+A saved question source also accepts `filters`, `aggregations`, `breakouts`, `orderBys`, and `limit`, applied on top of the question's results:
+
+```ts
+const ordersQuestion = schema.questions.ordersQuestion;
+const [status, amount, createdAt] = ordersQuestion.columns;
+
+const { data } = useMetabaseQuery({
+  source: ordersQuestion,
+  filters: [filter(status, "=", "paid")],
+  aggregations: [aggregations.sum(amount)],
+  breakouts: [breakout(createdAt, { unit: "month" })],
+  limit: 12,
+});
+```
+
+Take every dimension in those clauses from `schema.questions.<question>.columns` — the columns the question returns, in the order it returns them. That array is positional, so read the generated schema for the order rather than guessing it.
+
+A question stage sees only its own result columns, not the tables underneath it, so Segments, Measures, and Metrics are rejected — they are scoped to a table source. A generated table field still resolves when its name matches one of the question's result columns, but prefer the question's `columns`: they are the reference the types and validation actually check, and a renamed or computed column has no matching field. `fields` is not supported at all — a question query returns the question's columns. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersQuestion>`.
+
+Adding `aggregations` or `breakouts` replaces the question's result columns with the query's own, so `data.rows` is keyed by the breakout and aggregation column names rather than by the question's columns.
 
 SQL parameters stay on the existing `questionId` query path. Do not pass SQL parameter values through `source: schema.questions.<question>`.
 
@@ -268,7 +287,7 @@ When table queries use `fields`, `segments`, `aggregations`, `breakouts`, or `or
 
 Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
 
-`useMetabaseQueryObject` supports generated table queries, including metric aggregations. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
+`useMetabaseQueryObject` supports generated table queries, including metric aggregations, and generated saved question queries. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
 The examples below use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
 

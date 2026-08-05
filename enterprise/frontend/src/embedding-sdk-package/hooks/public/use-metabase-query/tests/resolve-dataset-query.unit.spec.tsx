@@ -306,6 +306,99 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("applies query clauses on top of a saved question source", async () => {
+    const totalAmount = sum(TEST_SCHEMA.questions.ordersQuestion.columns[1]);
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+      filters: [
+        filter(TEST_SCHEMA.questions.ordersQuestion.columns[0], "=", "paid"),
+      ],
+      aggregations: [count(), totalAmount],
+      breakouts: [
+        breakout(TEST_SCHEMA.questions.ordersQuestion.columns[2], {
+          unit: "month",
+        }),
+      ],
+      orderBys: [orderBy(totalAmount, "desc")],
+      limit: 10,
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [
+        {
+          "source-card": 41,
+          // A card stage resolves its columns by name, not by field id.
+          filters: [
+            [
+              "=",
+              expect.anything(),
+              ["field", expect.anything(), "STATUS"],
+              "paid",
+            ],
+          ],
+          aggregation: [
+            ["count", expect.anything()],
+            ["sum", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
+          ],
+          breakout: [
+            [
+              "field",
+              expect.objectContaining({ "temporal-unit": "month" }),
+              "CREATED_AT",
+            ],
+          ],
+          "order-by": [
+            [
+              "desc",
+              expect.anything(),
+              ["aggregation", expect.anything(), expect.anything()],
+            ],
+          ],
+          limit: 10,
+        },
+      ],
+    });
+  });
+
+  it("resolves saved question filters that reuse a generated table field", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+      filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    });
+
+    // The generated field's `tableId`/`sourceName` scope it to the orders table;
+    // keeping them would stop it matching the question's own STATUS column.
+    expect(stagesOf(datasetQuery)[0].filters).toEqual([
+      ["=", expect.anything(), ["field", expect.anything(), "STATUS"], "paid"],
+    ]);
+  });
+
+  it("applies filters to id-only saved question sources", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: { type: "card", id: 41 },
+      filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")],
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [
+        {
+          "source-card": 41,
+          filters: [
+            [
+              "=",
+              expect.anything(),
+              ["field", expect.anything(), "STATUS"],
+              "paid",
+            ],
+          ],
+        },
+      ],
+    });
+  });
+
   it("passes aggregation result orderBys through Lib.createTestQuery", async () => {
     const avgAmount = avg(TEST_SCHEMA.tables.orders.fields.amount);
 
