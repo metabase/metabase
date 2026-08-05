@@ -27,7 +27,6 @@
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
-  current-schema-version
   fully-parameterized?
   model-supports-implicit-actions?
   model?

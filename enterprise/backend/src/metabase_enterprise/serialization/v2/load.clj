@@ -13,7 +13,6 @@
    [metabase.app-db.transient-error :as transient-error]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
-   [metabase.queries.core :as queries]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -164,84 +163,53 @@
         (when (not (nil? *warned-version-mismatch*))
           (reset! *warned-version-mismatch* true))))))
 
-(defn- preflight-facts
-  "Reads `ingestion` once and returns the facts needed to judge whether it can be imported safely:
+(defn- export-version
+  "The `:metabase_version` of the first entity in `ingestion` that records one, or nil if none does.
 
-  - `:metabase-version` - the first `:metabase_version` found, or nil if no entity records one. Settings never
-    carried a version stamp, and neither does anything exported by Metabase v63+.
-  - `:max-card-schema`  - the highest `:card_schema` of any Card, or nil if the export contains none."
+  Every stamped entity in an export carries the same value, so the first one found settles it. Stops reading as soon
+  as it finds one; only an entirely unstamped export costs a full pass."
   [ingestion]
-  (reduce (fn [acc path]
-            (let [entity (serdes.ingest/ingest-one ingestion path)]
-              (cond-> acc
-                (and (not (:metabase-version acc)) (:metabase_version entity))
-                (assoc :metabase-version (:metabase_version entity))
-
-                (:card_schema entity)
-                (update :max-card-schema (fnil max 0) (:card_schema entity)))))
-          {}
+  (reduce (fn [_ path]
+            (when-let [version (:metabase_version (serdes.ingest/ingest-one ingestion path))]
+              (reduced version)))
+          nil
           (serdes.ingest/ingest-list ingestion)))
 
 (defn- check-major-version!
-  "Throws unless `source` names the same major version as this instance.
+  "Throws when `source` names a different major version than this instance.
 
-  No-ops when this instance cannot determine its own major version, which is the case for dev builds with no
+  No-ops when `source` is nil - an export that records no version is not evidence of anything, since remote-sync
+  snapshots, settings-only exports and hand-edited files are all legitimately unstamped. Content that this version
+  genuinely cannot represent is caught on its own merits by [[metabase.models.serialization/import-mbql]].
+
+  Also no-ops when this instance cannot determine its own major version, which is the case for dev builds with no
   `version.properties`."
   [source]
-  (when-let [current-major (config/current-major-version)]
-    (let [source-major (some-> source config/major-version)]
+  (when-let [current-major (and source (config/current-major-version))]
+    (let [source-major (config/major-version source)]
       (when-not (= current-major source-major)
-        (throw (ex-info (if source
-                          (format (str "Refusing to import: this export was produced by Metabase %s (major version %s), "
-                                       "but this instance is major version %s. Importing content between major "
-                                       "versions is not supported and can corrupt existing content. Export from a "
-                                       "Metabase %s instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true "
-                                       "to import anyway.")
-                                  source source-major current-major current-major)
-                          (format (str "Refusing to import: this export does not record which Metabase version "
-                                       "produced it, so it cannot be confirmed compatible with this instance "
-                                       "(major version %s). Importing content from an incompatible version is not "
-                                       "supported and can corrupt existing content. Export from a Metabase %s "
-                                       "instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true to import "
-                                       "anyway.")
-                                  current-major current-major))
+        (throw (ex-info (format (str "Refusing to import: this export was produced by Metabase %s (major version %s), "
+                                     "but this instance is major version %s. Importing content between major "
+                                     "versions is not supported and can corrupt existing content. Export from a "
+                                     "Metabase %s instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true "
+                                     "to import anyway.")
+                                source source-major current-major current-major)
                         {:source-version source
                          :source-major   source-major
                          :current-major  current-major
                          :status         400}))))))
 
-(defn- check-card-schema!
-  "Throws when `max-card-schema` exceeds the Card representation this instance knows how to read.
-
-  A Card carries its representation version in `:card_schema`, and [[metabase.queries.core/current-schema-version]]
-  is the newest one this instance has upgrade paths for. Anything higher was written by a newer Metabase against a
-  shape we cannot interpret. On read such a Card short-circuits the upgrade loop and is used verbatim, so refusing
-  it here is the only thing standing between an unreadable representation and the appdb."
-  [max-card-schema]
-  (when (and max-card-schema (> max-card-schema queries/current-schema-version))
-    (throw (ex-info (format (str "Refusing to import: this export contains a Card whose schema version is %s, but "
-                                 "this instance understands at most %s. The export was produced by a newer Metabase "
-                                 "and its cards cannot be read safely. Export from a Metabase that matches this "
-                                 "instance, or set MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true to import anyway.")
-                            max-card-schema queries/current-schema-version)
-                    {:max-card-schema     max-card-schema
-                     :current-card-schema queries/current-schema-version
-                     :status              400}))))
-
 (defn check-import-compatibility!
-  "Throws unless `ingestion` can be safely imported into this instance.
+  "Throws when `ingestion` records a major version this instance cannot import from.
 
-  Refuses an export from a different major version, and one whose Cards declare a representation newer than this
-  instance can read. Both are unsupported and silently corrupt content rather than failing, so they are caught here
-  before any entity is written - [[load-metabase!]] commits each entity in its own transaction, so a failure
-  partway through would leave the appdb half-imported.
+  Cross-major imports are unsupported and corrupt content silently rather than failing, so they are caught here
+  before any entity is written - [[load-metabase!]] commits each entity in its own transaction, so a failure partway
+  through would leave the appdb half-imported.
 
-  Reads every entity in the export. Set `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH` to skip the check entirely."
+  Set `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH` to skip the check."
   [ingestion]
   (when-not (serialization.settings/serialization-allow-version-mismatch)
-    (let [{:keys [metabase-version max-card-schema]} (preflight-facts ingestion)]
-      (check-major-version! metabase-version)
-      (check-card-schema! max-card-schema))))
+    (check-major-version! (export-version ingestion))))
 
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to

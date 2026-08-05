@@ -531,7 +531,7 @@ Currently, serialization only works if source and target Metabase have the same 
 
 Metabase refuses to import an export that came from a different major version. Importing across major versions can quietly break the content you already have — questions can lose their variables, or stop loading at all — so Metabase blocks the import instead of warning you and continuing.
 
-Some exports don't record which version created them at all — Metabase 63 and later omit it, as do Remote Sync snapshots and hand-edited files that have had the field removed. Metabase can't confirm those are compatible, so it refuses them too.
+Some exports don't record which version created them at all — Metabase 63 and later omit it, as do Remote Sync snapshots and hand-edited files that have had the field removed. Metabase imports those, and relies on the question check below to catch anything it can't read.
 
 If you need to import across major versions anyway, set `MB_SERIALIZATION_ALLOW_VERSION_MISMATCH=true`. Try that import on a non-production instance first — skipping the version check is what let broken content into people's instances in the first place.
 

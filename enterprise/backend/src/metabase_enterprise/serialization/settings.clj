@@ -3,18 +3,17 @@
    [metabase.settings.core :refer [defsetting]]))
 
 (defsetting serialization-allow-version-mismatch
-  "Whether to import a serialization export that this Metabase cannot confirm is compatible. Defaults to false."
+  "Whether to import a serialization export produced by a different major version. Defaults to false."
   :type       :boolean
   :default    false
   :visibility :internal
   :setter     :none
   :audit      :never
   :export?    false
-  :doc        (str "Metabase refuses to import an export produced by a different major version, and one whose cards "
-                   "declare a representation newer than it can read, because importing across major versions can "
-                   "silently corrupt existing content. Set this to true to import anyway. Test such an import on a "
-                   "non-production instance first — skipping this check is what allowed content to be corrupted in "
-                   "the first place."))
+  :doc        (str "Metabase refuses to import an export that records a different major version than the running "
+                   "instance, because importing across major versions can silently corrupt existing content. Set "
+                   "this to true to import anyway. Test such an import on a non-production instance first — skipping "
+                   "this check is what allowed content to be corrupted in the first place."))
 
 (defsetting serialization-skip-schema-validation
   "Whether to import questions whose queries this Metabase's query schema rejects. Defaults to false."

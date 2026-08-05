@@ -1960,9 +1960,9 @@ Should new email notifications be sent to admins, for all new SSO users?
 - Type: boolean
 - Default: `false`
 
-Whether to import a serialization export that this Metabase cannot confirm is compatible. Defaults to false.
+Whether to import a serialization export produced by a different major version. Defaults to false.
 
-Metabase refuses to import an export produced by a different major version, and one whose cards declare a representation newer than it can read, because importing across major versions can silently corrupt existing content. Set this to true to import anyway. Test such an import on a non-production instance first — skipping this check is what allowed content to be corrupted in the first place.
+Metabase refuses to import an export that records a different major version than the running instance, because importing across major versions can silently corrupt existing content. Set this to true to import anyway. Test such an import on a non-production instance first — skipping this check is what allowed content to be corrupted in the first place.
 
 ### `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION`
 
