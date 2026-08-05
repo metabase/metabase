@@ -100,7 +100,6 @@ export function DevToolbar({ subscribe }: DevToolbarProps = {}) {
             problem={feed.problem}
             loaded={feed.loaded}
             clients={feed.clients}
-            staleEntries={feed.staleEntries}
           />
           {tab === "errors" && (
             <EntryList

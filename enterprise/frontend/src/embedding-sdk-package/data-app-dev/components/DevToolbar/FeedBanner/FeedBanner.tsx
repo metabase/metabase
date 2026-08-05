@@ -6,15 +6,9 @@ interface Props {
   problem: DiagnosticsFeedProblem | null;
   loaded: boolean;
   clients: number;
-  staleEntries: number;
 }
 
-export const FeedBanner = ({
-  problem,
-  loaded,
-  clients,
-  staleEntries,
-}: Props) => {
+export const FeedBanner = ({ problem, loaded, clients }: Props) => {
   if (problem?.kind === "unreachable") {
     return (
       <div className={S.Problem}>
@@ -37,15 +31,6 @@ export const FeedBanner = ({
     return (
       <div className={S.Note}>
         No preview tab is connected, so nothing has been captured yet.
-      </div>
-    );
-  }
-
-  if (staleEntries > 0) {
-    return (
-      <div className={S.Note}>
-        {staleEntries} {staleEntries === 1 ? "entry" : "entries"} from earlier
-        builds are hidden — this shows what the current one reported.
       </div>
     );
   }

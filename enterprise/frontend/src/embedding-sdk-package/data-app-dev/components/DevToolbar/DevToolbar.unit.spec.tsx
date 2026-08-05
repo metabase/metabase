@@ -315,20 +315,6 @@ describe("DevToolbar open", () => {
     expect(screen.getByText(/No preview tab is connected/)).toBeInTheDocument();
   });
 
-  it("accounts for entries the server withheld as an earlier build's", async () => {
-    serve([entry({ eventId: 5, summary: "still broken" })], {
-      staleEntries: 164,
-    });
-    await setup();
-    await open();
-
-    // The panel silently losing what a mid-edit rebuild made irrelevant reads
-    // as a lost report; saying how many were dropped reads as a filter.
-    expect(
-      screen.getByText(/164 entries from earlier builds are hidden/),
-    ).toBeInTheDocument();
-  });
-
   it("clears through the endpoint so every reader is cleared", async () => {
     serve([entry({ eventId: 1, summary: "boom" })]);
     await setup();

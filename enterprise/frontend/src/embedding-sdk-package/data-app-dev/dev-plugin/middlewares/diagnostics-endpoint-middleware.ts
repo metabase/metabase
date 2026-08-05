@@ -39,8 +39,20 @@ const readJsonBody = async (req: Connect.IncomingMessage): Promise<unknown> => {
 
 /**
  * Whether a later build has replaced the code this entry came from.
+ *
+ * Every save rebuilds, and a multi-step edit passes through builds that don't
+ * compile or don't run, so the buffer fills with failures of code the preview
+ * no longer runs. Withholding those is safe because a rebuild re-evaluates the
+ * bundle and remounts the app from scratch: anything still broken is reported
+ * again under the current build, and anything not reported again was fixed by
+ * the edit.
+ *
+ * Only *older* generations count. An entry stamped ahead of the server's
+ * counter comes from a page still running a bundle from before a dev-server
+ * restart — nothing has replaced it, and dropping it would blind the reader to
+ * a preview that is failing right now.
  */
-const isSuperseded = (
+const isSupersededByBuild = (
   entry: DataAppDiagnosticPayload,
   buildId: number,
 ): boolean => entry.buildId != null && entry.buildId < buildId;
@@ -122,7 +134,7 @@ export const getDiagnosticsEndpointMiddleware =
     const stored = store.getReport(startEventId);
     const entries = includeStale
       ? stored.entries
-      : stored.entries.filter((entry) => !isSuperseded(entry, buildId));
+      : stored.entries.filter((entry) => !isSupersededByBuild(entry, buildId));
 
     const report: DataAppDiagnosticsReport = {
       ...stored,
