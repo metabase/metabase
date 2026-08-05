@@ -127,6 +127,30 @@
   [model]
   (str/starts-with? (str model) "anthropic/"))
 
+(defn- anthropic-current-gen?
+  "Current-generation Claude on OpenRouter: Fable, Opus >= 4.7, Sonnet >= 5."
+  [model]
+  (or (str/starts-with? model "anthropic/claude-fable")
+      (when-let [[_ family major minor] (re-find #"^anthropic/claude-(opus|sonnet)-(\d+)(?:\.(\d+))?" model)]
+        (let [major (parse-long major)
+              minor (or (some-> minor parse-long) 0)]
+          (case family
+            "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
+            "sonnet" (>= major 5))))))
+
+(defn- model-supports-temperature?
+  "Whether an OpenRouter model id accepts an explicit `temperature`.
+
+  Two families reject it: OpenAI's GPT-5 and o-series, and current-generation Claude. Neither
+  `openai.clj`'s nor `claude.clj`'s predicate can be reused — both are keyed to their own provider's
+  id shape, and OpenRouter prefixes the vendor with a slash and writes version numbers with dots
+  (`claude-opus-4.8`), so both would silently return true here."
+  [model]
+  (let [model (str model)]
+    (not (or (str/starts-with? model "openai/gpt-5")
+             (re-find #"^openai/o\d" model)
+             (anthropic-current-gen? model)))))
+
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
 
@@ -135,12 +159,19 @@
   unlike claude.clj we don't put a separate breakpoint there.
 
   Other models (OpenAI) keep the generic plain string system message: OpenAI prompt caching is automatic server-side
-  and takes no request markup."
+  and takes no request markup.
+
+  `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). The shared builder assocs
+  it unconditionally, and gating it there would apply these provider-specific rules to every Chat Completions adapter
+  — including vLLM, whose model names are customer-chosen free text."
   [{:keys [model system] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (cond-> (chat-completions/request-body (assoc opts :model model))
     (and system (anthropic-model? model))
-    (update-in [:messages 0 :content] claude/system->cached-content-blocks)))
+    (update-in [:messages 0 :content] claude/system->cached-content-blocks)
+
+    (not (model-supports-temperature? model))
+    (dissoc :temperature)))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
