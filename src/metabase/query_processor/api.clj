@@ -223,7 +223,16 @@
    {:keys [database] :as query} :- [:and
                                     ::qp.schema/any-query
                                     [:map
-                                     [:database ms/PositiveInt]]]]
+                                     [:database ms/PositiveInt]
+                                     ;; pivot options ride along at the top level of the query. They are snake_case
+                                     ;; here and get kebab-cased by query normalization further down the QP, so it is
+                                     ;; the snake_case spelling that has to be declared -- normalization happens long
+                                     ;; after the params are decoded.
+                                     [:pivot_rows         {:optional true} [:maybe [:sequential :int]]]
+                                     [:pivot_cols         {:optional true} [:maybe [:sequential :int]]]
+                                     [:pivot_measures     {:optional true} [:maybe [:sequential :int]]]
+                                     [:show_row_totals    {:optional true} [:maybe :boolean]]
+                                     [:show_column_totals {:optional true} [:maybe :boolean]]]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]

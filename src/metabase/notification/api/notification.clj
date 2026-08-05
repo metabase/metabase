@@ -25,8 +25,14 @@
 
 (mr/def ::NotificationApiInput
   "Notification schema for API input. Like FullyHydratedNotification but restricts templates
-  to user-provided types only (no handlebars-resource)."
+  to user-provided types only (no handlebars-resource).
+
+  `:closed false` keeps `defendpoint` from stripping params this schema doesn't name: callers round-trip a fully
+  hydrated notification back into `PUT /api/notification/:id`, and the schema names only a handful of its keys, so
+  closing it drops the rest. Enumerating what the endpoint really accepts would let this close -- see
+  `closed-schema-followups/`."
   [:merge
+   {:closed false}
    ::models.notification/FullyHydratedNotification
    [:map
     [:handlers {:optional true}

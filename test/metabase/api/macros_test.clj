@@ -154,6 +154,81 @@
       (is (= {:b 3, :sneaky 1}
              (call-with-params endpoint nil nil {:b 3, :sneaky 1}))))))
 
+(mr/def ::body [:map [:b :int]])
+
+(deftest ^:parallel permitted-param-keys-test
+  (testing "the params a schema names are the union of the params the schemas inside it name"
+    (are [schema expected] (= expected
+                              (#'api.macros/permitted-param-keys schema))
+      [:map [:a :int]]                                    #{:a}
+      ::body                                              #{:b}
+      [:maybe ::body]                                     #{:b}
+      [:merge [:map [:a :int]] [:map [:b :int]]]          #{:a :b}
+      [:and [:map [:a :int]] [:map [:b :int]]]            #{:a :b}
+      ;; a request only matches one branch of an `:or`/`:multi`, so the union never drops a key some branch wanted
+      [:or [:map [:a :int]] [:map [:b :int]]]             #{:a :b}
+      [:multi {:dispatch :t}
+       [1 [:map [:t :int] [:a :int]]]
+       [2 [:map [:t :int] [:b :int]]]]                    #{:t :a :b}
+      ;; a `[:fn ...]` names nothing and is skipped, so the `:map` alongside it is taken to name every param the
+      ;; schema accepts
+      [:and [:map [:a :int]] [:fn map?]]                  #{:a}
+      ;; ...which is wrong for a schema whose `[:fn ...]` allows more than the `:map` spells out, so those name the
+      ;; params directly instead
+      [:and {:api/allowed-keys #{:a :b}} [:map [:a :int]] [:fn map?]] #{:a :b}
+      ;; nothing names a key here
+      [:map-of :keyword :any]                             nil
+      [:fn map?]                                          nil))
+  (testing "a `:closed` anywhere in the schema hands the decision back to its author"
+    (are [schema] (= ::api.macros/hand-closed
+                     (#'api.macros/permitted-param-keys schema))
+      [:map {:closed true} [:a :int]]
+      [:map {:closed false} [:a :int]]
+      ;; a hand-closed branch must not be turned into stripping for the whole schema
+      [:or [:map {:closed true} [:a :int]] [:map [:b :int]]]
+      [:and [:map [:a :int]] [:map {:closed true} [:b :int]]]
+      ::hand-closed-body)))
+
+(mr/def ::hand-closed-body [:map {:closed true} [:b :int]])
+
+(deftest ^:parallel closed-params-derived-keys-test
+  (testing "params are stripped against the keys named anywhere in the schema, not just a top-level :map"
+    (let [endpoint (api.macros/defendpoint :post "/derived-keys-params-test"
+                     "Echoes back its body."
+                     [_route-params
+                      _query-params
+                      body :- [:merge ::body [:map [:c {:optional true} :int]]]]
+                     body)]
+      (is (= {:b 3, :c 4}
+             (call-with-params endpoint nil nil {:b 3, :c 4, :sneaky 1})))))
+  (testing "a `[:fn ...]` alongside a `:map` does not stop the `:map` naming the params"
+    (let [endpoint (api.macros/defendpoint :post "/and-fn-params-test"
+                     "Echoes back its body."
+                     [_route-params
+                      _query-params
+                      body :- [:and ::body [:fn map?]]]
+                     body)]
+      (is (= {:b 3}
+             (call-with-params endpoint nil nil {:b 3, :sneaky 1})))))
+  (testing "a schema whose `[:fn ...]` accepts more than its `:map` spells out names the params directly"
+    (let [endpoint (api.macros/defendpoint :post "/allowed-keys-params-test"
+                     "Echoes back its body."
+                     [_route-params
+                      _query-params
+                      body :- [:and {:api/allowed-keys #{:b :extra}} ::body [:fn map?]]]
+                     body)]
+      (is (= {:b 3, :extra 4}
+             (call-with-params endpoint nil nil {:b 3, :extra 4, :sneaky 1})))))
+  (testing "a schema that names no params at all is left open"
+    (let [endpoint (api.macros/defendpoint :post "/open-derived-keys-params-test"
+                     "Echoes back its body."
+                     [_route-params
+                      _query-params
+                      body :- [:map-of :keyword :any]]
+                     body)]
+      (is (= {:b 3, :sneaky 1}
+             (call-with-params endpoint nil nil {:b 3, :sneaky 1}))))))
+
 (deftest ^:parallel multipart-tempfile-cleanup-on-throw-test
   (testing "tempfiles are deleted when the handler throws, e.g. on a param validation 400"
     (let [file-1  (java.io.File/createTempFile "cleanup-test" nil)

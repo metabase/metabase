@@ -304,12 +304,12 @@
        (str/replace #":" ""))))
 
 (def ^:private strip-extra-keys-transformer
-  "Dissoc keys a `:map` does not declare, so that a request carrying undeclared params is served as if it had not sent
-  them instead of being rejected with a 400.
+  "Dissoc keys a param schema does not declare, so that a request carrying undeclared params is served as if it had not
+  sent them instead of being rejected with a 400.
 
-  Unlike [[malli.transform/strip-extra-keys-transformer]] this only touches the maps
-  that [[closed-params-schema]] closed on the endpoint's behalf, marked with `::strip-extra-keys`. Two kinds of map are
-  deliberately left alone:
+  Unlike [[malli.transform/strip-extra-keys-transformer]] this only touches the schemas
+  that [[closed-params-schema]] closed on the endpoint's behalf, which carry the permitted keys under
+  `::strip-extra-keys`. Two kinds of map are deliberately left alone:
 
   * maps nested inside a param schema, since stripping those would silently discard the contents of things like a
     query or `visualization_settings`;
@@ -317,13 +317,16 @@
   * maps an endpoint author closed by hand, where `:closed true` is a rejection the endpoint wants -- see the
     multipart schema on `POST /api/table/:id/append-csv`, which is closed so that a file part smuggled under another
     part name is a 400 rather than something we quietly drop."
-  (mtx/transformer
-   {:decoders {:map {:compile (fn [schema _options]
-                                (when (::strip-extra-keys (mc/properties schema))
-                                  (let [declared (into #{} (map first) (mc/children schema))]
-                                    (fn [x]
-                                      (cond-> x
-                                        (map? x) (select-keys declared))))))}}}))
+  (let [strip {:compile (fn [schema _options]
+                          (when-let [permitted (::strip-extra-keys (mc/properties schema))]
+                            (fn [x]
+                              (cond-> x
+                                (map? x) (select-keys permitted)))))}]
+    (mtx/transformer
+     ;; the marker only ever lands on the top-level node of a param schema, so these are the types it can sit on.
+     ;; `::mc/schema` is what a registry keyword like `::MySchema` resolves to; `:schema` and `:ref` are the explicit
+     ;; forms of the same thing
+     {:decoders (zipmap [:map :and :merge :maybe ::mc/schema :schema :ref] (repeat strip))})))
 
 (def ^:private decode-transformer
   (mtx/transformer
@@ -517,25 +520,67 @@
               `[(validate-and-encode-response ~response-schema (do ~@body))]
               body))))))
 
-(defn closed-params-schema
-  "Return `schema` with its top-level `:map` closed, so that params the endpoint does not declare never reach the
-  handler. Undeclared params are dissoc'd by [[strip-extra-keys-transformer]], which is what the `::strip-extra-keys`
-  marker asks for; `:closed` then catches anything that reaches validation with the stripping skipped.
+(defn- permitted-param-keys
+  "The set of param keys `schema` names; `nil` when it names none, and `::hand-closed` when its author is managing
+  undeclared params themselves.
 
-  A schema that specifies `:closed` itself keeps that value and is not marked, so an endpoint author stays in control:
+  A `:map` names its entries, and `:and`, `:merge`, `:maybe`, `:or`, `:multi` and registry refs name the union of
+  whatever the schemas inside them name. Unioning is safe for the branching ones (`:or`, `:multi`) because a request
+  only ever matches one branch, so the union never drops a key some branch wanted.
+
+  Parts that name nothing -- a `[:fn ...]` constraint, say -- are skipped, so the map parts of a schema are taken to
+  be the whole story about which params it accepts. **That means a schema combining a `:map` with a `[:fn ...]` has to
+  enumerate every param it accepts**, since anything it leaves out is now dropped from the request rather than passed
+  through. Where the params can't be enumerated in the schema itself, name them with `:api/allowed-keys` (see
+  `::qp.schema/any-query` for an example).
+
+  A `:closed` written anywhere in the schema means the author is deciding what happens to undeclared params, so we
+  keep out of it entirely -- `::hand-closed` propagates up through the branches so that a hand-closed part of an
+  `:or` isn't quietly turned into stripping for the whole schema."
+  [schema]
+  (let [schema     (mc/schema schema)
+        properties (mc/properties schema)]
+    (cond
+      (:api/allowed-keys properties) (:api/allowed-keys properties)
+      (contains? properties :closed) ::hand-closed
+      :else
+      (letfn [(union [schemas]
+                (let [child-keys (map permitted-param-keys schemas)]
+                  (cond
+                    (some #{::hand-closed} child-keys)      ::hand-closed
+                    (not-empty (keep identity child-keys))  (reduce into #{} (keep identity child-keys)))))]
+        (case (mc/type schema)
+          :map                (into #{} (map first) (mc/children schema))
+          (:and :merge :or)   (union (mc/children schema))
+          ;; `:multi` children are `[dispatch-value properties schema]`
+          :multi              (union (map last (mc/children schema)))
+          :maybe              (permitted-param-keys (first (mc/children schema)))
+          (when (mc/-ref-schema? schema)
+            (permitted-param-keys (mc/deref schema))))))))
+
+(defn closed-params-schema
+  "Return `schema` closed, so that params the endpoint does not declare never reach the handler. The permitted keys
+  are recorded under `::strip-extra-keys` for [[strip-extra-keys-transformer]] to dissoc against, and a top-level
+  `:map` is additionally marked `:closed` so validation catches anything that reaches it with the stripping skipped.
+
+  A schema that specifies `:closed` itself is left alone, so an endpoint author stays in control:
 
     [:map {:closed false} [:name :string]]    ; accept any param
     [:map {:closed true}  [:name :string]]    ; reject an undeclared param with a 400 instead of dropping it
 
-  Schemas that are not a `:map` at the top level (`:merge`, `:multi`, refs, ...) are returned unchanged and stay open,
+  That holds however the schema reaches the endpoint -- a registry ref to a hand-closed map, or an `:or` with a
+  hand-closed branch, is still hand-closed.
+
+  A schema that doesn't name a fixed set of keys (see [[permitted-param-keys]]) is returned unchanged and stays open,
   as is a `:map` with no entries -- that is how an endpoint says it has no schema for these params at all, so there is
   nothing to close it against."
   [schema]
-  (let [schema (mc/schema schema)]
-    (if (and (= (mc/type schema) :map)
-             (seq (mc/children schema))
-             (not (contains? (mc/properties schema) :closed)))
-      (malli.util/update-properties schema assoc :closed true ::strip-extra-keys true)
+  (let [schema    (mc/schema schema)
+        permitted (permitted-param-keys schema)]
+    (if-let [permitted (when (set? permitted)
+                         (not-empty permitted))]
+      (cond-> (malli.util/update-properties schema assoc ::strip-extra-keys permitted)
+        (= (mc/type schema) :map) (malli.util/update-properties assoc :closed true))
       schema)))
 
 (defn validate-schema

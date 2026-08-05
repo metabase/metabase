@@ -9,6 +9,27 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.regex :as u.regex]))
 
+(def query-top-level-keys
+  "Every key a query may have at the top level. The schema below is too loose to say this structurally, but an API
+  endpoint taking a query as its body needs to know which params to accept -- see
+  [[metabase.api.macros/permitted-param-keys]]. `metabase.query-processor.schema-test/query-top-level-keys-test`
+  checks this against the schemas the first two groups come from, so adding a key there is not enough on its own.
+
+  A key missing from here is dropped from the request before the handler sees it, so err on the side of including
+  one."
+  #{;; legacy MBQL, from [[metabase.legacy-mbql.schema/Query]]
+    :database :type :native :query :parameters :settings :constraints :middleware :info :create-row :update-row
+    ;; MBQL 5, from [[metabase.lib.schema/query]]
+    :lib/type :lib/metadata :stages
+    ;; internal audit app queries, from
+    ;; [[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries/InternalQuery]]. That
+    ;; middleware also binds every *other* top-level key to `*additional-query-params*`, which is how audit app does
+    ;; its paging -- `:limit` and `:offset` are the keys it uses today, so a new one has to be added here too.
+    :fn :args :limit :offset
+    ;; set by the QP itself rather than by a client, but permitted so that a query that has been through the QP once
+    ;; can be sent back
+    :cache-strategy :viz-settings})
+
 (mr/def ::any-query
   "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized
   yet!
@@ -16,6 +37,7 @@
   This schema is not very strict because we need to handle different types of queries (legacy MBQL, MBQL 5,
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
   [:and
+   {:api/allowed-keys query-top-level-keys}
    [:map
     [:database {:optional true} [:or
                                  ::lib.schema.id/database
