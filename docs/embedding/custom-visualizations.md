@@ -20,6 +20,17 @@ Embeds don't load custom visualizations by default. You have to list each visual
 Add `allowedCustomVisualizations` to `defineMetabaseConfig()`:
 
 ```html
+<!-- Load embedding library -->
+<!-- REPLACE WITH YOUR METABASE URL HERE -->
+<script defer src="https://your-metabase-url/app/embed.js"></script>
+
+<!-- Embedding configuration -->
+<script>
+  function defineMetabaseConfig(config) {
+    window.metabaseConfig = config;
+  }
+</script>
+
 <script>
   defineMetabaseConfig({
     instanceUrl: "https://your-metabase-url",
@@ -54,7 +65,9 @@ Any question that uses a custom visualization that isn't on the allowlist will f
 
 ## Custom visualizations don't work in guest embeds
 
-Custom visualizations only work when Metabase knows who's viewing the embed, so the embed needs [SSO authentication](./authentication.md). [Guest embeds](./guest-embedding.md) ignore `allowedCustomVisualizations` (and log a warning to the console), and fall back to the default visualization.
+Custom visualizations only work when Metabase knows who's viewing the embed. [Guest embeds](./guest-embedding.md) ignore `allowedCustomVisualizations` (and log a warning to the console), and fall back to the default visualization.
+
+Any embed with a signed-in person can load custom visualizations, including embeds you're previewing locally with an API key or your existing Metabase session. See [Authentication](./authentication.md).
 
 Custom visualizations also don't render in [public links](./public-links.md) or [dashboard subscriptions and alerts](../questions/alerts.md).
 

@@ -440,7 +440,7 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### Custom visualizations only work in SSO embeds
+### Custom visualizations only work in authenticated embeds
 
 [Modular embeds](../embedding/modular-embedding.md) can render custom visualizations when you allowlist them with the `allowedCustomVisualizations` setting, both with web components and with the [React SDK](../embedding/sdk/introduction.md). See [Custom visualizations in embeds](../embedding/custom-visualizations.md).
 
