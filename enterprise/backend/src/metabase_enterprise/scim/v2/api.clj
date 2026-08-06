@@ -33,12 +33,11 @@
   as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
   in the latter.
 
-  The remaining keys are typed by the `::mc/default` entry rather than enumerated: RFC 7643 lets a client send core
-  attributes we ignore (`externalId`, `title`, `phoneNumbers`, ...) plus, per §3, arbitrary extension schemas keyed by
-  URN (e.g. `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`), whose payloads are arbitrary JSON — so the
-  key type is pinned and the value type can't be. The complex sub-attributes below *are* closed, listing the full set
-  RFC 7643 defines for them."
-  [:map
+  Not closed: RFC 7643 lets a client send core attributes we ignore (`externalId`, `title`, `phoneNumbers`, ...) plus,
+  per §3, arbitrary extension schemas keyed by URN (e.g. `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`)
+  whose payloads are arbitrary JSON. The complex sub-attributes below *are* closed, listing the full set RFC 7643
+  defines for them."
+  [:map {:closed false}
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:userName ms/NonBlankString]
@@ -93,10 +92,9 @@
                            ms/NonBlankString ms/BooleanValue]]]]]])
 
 (def SCIMGroup
-  "Malli schema for a SCIM group. The `::mc/default` entry types the non-enumerated keys for the same reason as
-  [[SCIMUser]] — clients may send `externalId`, `meta` or extension schemas keyed by URN. `members` is closed to the
-  RFC 7643 §2.4 sub-attribute set."
-  [:map
+  "Malli schema for a SCIM group. Not closed for the same reason as [[SCIMUser]] — clients may send `externalId`,
+  `meta` or extension schemas keyed by URN. `members` is closed to the RFC 7643 §2.4 sub-attribute set."
+  [:map {:closed false}
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:displayName ms/NonBlankString]

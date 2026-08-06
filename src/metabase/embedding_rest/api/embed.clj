@@ -133,11 +133,9 @@
                                      [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot? :pivot_results
-    :as query-params} :- [:map
+    :as query-params} :- [:map {:closed false}
                           [:format_rows {:default false} :boolean]
                           [:pivot_results {:default false} :boolean]
-                          ;; the remaining query params are dashboard/card parameter slugs, which are `dissoc`ed off
-                          ;; and handed to [[api.embed.common/parse-query-params]] below.
                           [::mc/default api.embed.common/QueryParams]]]
   (run-query-for-unsigned-token-async
    (unsign-and-translate-ids token)
@@ -242,11 +240,9 @@
                                                          [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot? :pivot_results
-    :as query-params} :- [:map
+    :as query-params} :- [:map {:closed false}
                           [:format_rows {:default false} :boolean]
                           [:pivot_results {:default false} :boolean]
-                          ;; the remaining query params are dashboard/card parameter slugs, which are `dissoc`ed off
-                          ;; and handed to [[api.embed.common/parse-query-params]] below.
                           [::mc/default api.embed.common/QueryParams]]]
   (process-query-for-dashcard-with-signed-token token
                                                 dashcard-id

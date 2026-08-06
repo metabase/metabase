@@ -70,16 +70,11 @@
   [_route_params
    _query-params
    _body
-   ;; The multipart maps are typed exhaustively via `::mc/default`, which types the keys we don't
-   ;; enumerate instead of waving them through: `multipart-params` is keyed by Ring form-field name
-   ;; (a string), and a part map is keyed by Ring's own part keywords. `:size` is declared because
-   ;; the handler reads it to enforce the dictionary size limit. Part values stay `:any` because
-   ;; Ring renders a part as a string, a part map, or a vector of either for a repeated field name.
-   {:keys [multipart-params], :as _request} :- [:map
+   {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed false}
                                                   ["file"
-                                                   [:map
+                                                   [:map {:closed false}
                                                     [:filename     :string]
                                                     [:size         :int]
                                                     [:tempfile     (ms/InstanceOfClass java.io.File)]
