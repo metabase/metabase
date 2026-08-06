@@ -30,6 +30,7 @@
   @#'candidates/non-closed-segment-candidate-ids)
 (def ^:private non-closed-measure-candidate-ids
   @#'candidates/non-closed-measure-candidate-ids)
+(def ^:private candidate-family-parent-index @#'candidates/candidate-family-parent-index)
 (def ^:private candidate-families @#'candidates/candidate-families)
 (def ^:private prune-old-candidate-snapshots! @#'candidates/prune-old-candidate-snapshots!)
 (def ^:private reconcile-candidate! @#'candidates/reconcile-candidate!)
@@ -113,6 +114,18 @@
              (mapv :display-name (get-in child-row [:semantic-details :display-atoms])))))
     (testing "each candidate appears exactly once"
       (is (= [1 3 2] (mapv :candidate-id families))))))
+
+(deftest ^:parallel candidate-family-parent-index-prefers-the-largest-subset-test
+  (let [small-parent   (family-candidate 1 [["a" "A"]]
+                                         {:verified_source_count 1})
+        largest-parent (family-candidate 2 [["a" "A"] ["b" "B"]] {})
+        child          (family-candidate 3 [["a" "A"] ["b" "B"] ["c" "C"]] {})
+        unrelated      (mapv #(family-candidate (+ 10 %) [[(str "unrelated-" %) "Unrelated"]] {})
+                             (range 100))
+        parent-index   (candidate-family-parent-index
+                        (into [small-parent largest-parent child] unrelated))]
+    (is (= {2 1, 3 2}
+           (select-keys parent-index [2 3])))))
 
 (deftest recommendation-family-priority-comes-from-its-strongest-member-test
   (let [weak-root    (family-candidate 1 [["a" "A"]] {})
