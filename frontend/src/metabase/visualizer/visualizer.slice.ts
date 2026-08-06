@@ -50,6 +50,7 @@ import {
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
   addColumnToCartesianChart,
+  attachRemappedDisplayColumn,
   cartesianDropHandler,
   combineWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
@@ -411,6 +412,17 @@ const visualizerSlice = createSlice({
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
+
+        if (isDimension) {
+          // Re-attach display column so remapping survives remove + re-add.
+          attachRemappedDisplayColumn(
+            state,
+            columnRef,
+            originalColumn,
+            dataset as Dataset,
+            dataSource,
+          );
+        }
 
         if (isDimension && column.id) {
           const datasetMap = _.omit(state.datasets, dataSource.id) as Record<

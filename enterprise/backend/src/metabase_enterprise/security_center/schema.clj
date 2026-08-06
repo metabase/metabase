@@ -7,7 +7,7 @@
   [:string {:min 1}])
 
 (mr/def ::semver
-  [:re #"^\d+\.\d+\.\d+$"])
+  [:re #"^\d+(?:\.\d+)*$"])
 
 (mr/def ::severity
   [:enum :critical :high :medium :low])
