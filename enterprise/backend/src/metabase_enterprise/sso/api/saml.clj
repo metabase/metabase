@@ -32,6 +32,7 @@
                 [:saml-attribute-group-mappings      {:optional true}
                  [:maybe [:map-of [:or :keyword :string] [:sequential pos-int?]]]]
                 [:saml-attribute-lastname            {:optional true} [:maybe :string]]
+                [:saml-attribute-tenant              {:optional true} [:maybe :string]]
                 [:saml-enabled                       {:optional true} [:maybe :boolean]]
                 [:saml-group-sync                    {:optional true} [:maybe :boolean]]
                 [:saml-keystore-alias                {:optional true} [:maybe :string]]
