@@ -426,8 +426,11 @@
        (defmethod spec* ~search-model [~'_] spec#))))
 
 (def ^:private model-hooks*
-  ;; Specs are immutable in production. Keying on the methods map also does the useful thing after a REPL/test reload.
-  ;; Model resolution can register more methods during the first computation; in that case the next call recomputes.
+  ;; Specs are immutable in production, and keying on the methods map also does the useful thing after a
+  ;; REPL/test reload.
+  ;; The key is only an invalidation token: the value comes from the static search-models list, so the first
+  ;; call builds a complete map even though resolving those models registers more methods while it runs.
+  ;; Its key is stale by then, which costs one recompute and nothing else.
   (memoize/fifo
    (fn [_spec-methods]
      (->> (specifications)
