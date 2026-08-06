@@ -97,6 +97,7 @@
    {:keys [table_id card_id]} :- [:map {:closed true}
                                   [:table_id                              ms/PositiveInt]
                                   [:card_id              {:optional true} [:maybe ms/PositiveInt]]
+                                  ;; TODO: accepted but unused by this endpoint; untyped. Give them real schemas.
                                   [:group_id             {:optional true} :any]
                                   [:attribute_remappings {:optional true} :any]]]
   (when card_id

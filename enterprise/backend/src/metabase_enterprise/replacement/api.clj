@@ -97,7 +97,7 @@
    :- [:map {:closed true}
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
-       ;; TODO: type as `metabase.transforms.schema/transform-target`, which this module cannot require yet.
+       ;; TODO: `transform_target` is a transform target typed loosely; give it a real schema.
        [:transform_target     [:map {:closed false}]]
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]

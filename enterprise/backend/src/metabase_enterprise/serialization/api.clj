@@ -297,8 +297,6 @@
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
    _body
-   ;; not closed, at either level: the outer value is the whole Ring request map, and `multipart-params` holds whatever
-   ;; parts the uploading client sent -- `curl -F` and friends routinely add extra form fields. Only `file` is used.
    {{:strs [file]} :multipart-params, :as _request} :- [:map {:closed false}
                                                         [:multipart-params
                                                          [:map {:closed false}

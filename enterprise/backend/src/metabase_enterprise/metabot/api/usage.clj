@@ -25,7 +25,6 @@
   "Set or update the instance-wide metabot usage limit. Pass `max_usage: null` to remove the limit (unlimited)."
   [_route-params
    _query-params
-   ;; Closed: `max_usage` is the entire payload (FE type `MetabotInstanceLimit`).
    body :- [:map {:closed true} [:max_usage [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-superuser)
   (let [result (or (some-> (instance-limit/set-instance-limit! nil (:max_usage body)) (dissoc :id :tenant_id))
@@ -53,7 +52,6 @@
   "Set or update the metabot usage limit for a specific tenant. Pass `max_usage: null` to remove the limit."
   [{:keys [tenant-id]} :- [:map {:closed true} [:tenant-id ms/PositiveInt]]
    _query-params
-   ;; Closed: `max_usage` is the entire payload; the tenant is named by the route.
    body :- [:map {:closed true} [:max_usage [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-superuser)
   (let [result (or (without-id (instance-limit/set-instance-limit! tenant-id (:max_usage body)))
@@ -81,7 +79,6 @@
   "Set or update the metabot usage limit for a specific group. Pass `max_usage: null` to remove the limit."
   [{:keys [group-id]} :- [:map {:closed true} [:group-id ms/PositiveInt]]
    _query-params
-   ;; Closed: `max_usage` is the entire payload; the group is named by the route.
    body :- [:map {:closed true} [:max_usage [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-superuser)
   (let [result (or (without-id (group-limit/set-group-limit! group-id (:max_usage body)))

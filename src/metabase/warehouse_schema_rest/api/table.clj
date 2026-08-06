@@ -508,9 +508,6 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; The outer map is the raw Ring request, so it stays open. Multipart-params is closed so a file part smuggled
-   ;; under another part name is rejected; collection_id is the text field the frontend sends alongside the file.
-   ;; The part itself stays open: Ring's multipart middleware attaches `:content-type` and `:size` to each part.
    {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
                                                  [:map {:closed true}
@@ -539,9 +536,6 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; The outer map is the raw Ring request, so it stays open. Multipart-params is closed so a file part smuggled
-   ;; under another part name is rejected; collection_id is the text field the frontend sends alongside the file.
-   ;; The part itself stays open: Ring's multipart middleware attaches `:content-type` and `:size` to each part.
    {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
                                                  [:map {:closed true}

@@ -190,10 +190,8 @@
   :- [:map [:status [:enum 201 400 403 404 429]] [:body :any]]
   "Handles dynamic client registration (RFC 7591)."
   [_route-params
-   ;; RFC 7591 defines no query parameters for the registration endpoint and this handler reads none, but the
-   ;; endpoint is advertised via discovery and called by third-party OAuth clients, so a stray query param must not
-   ;; turn a registration into a 400.
-   _query-params :- [:map {:closed false}]
+   ;; declared but not read: OAuth clients may append their own params
+   _query-params
    ;; RFC 7591 client metadata, supplied by third-party OAuth clients and extensible by spec. The whole map is
    ;; handed to `oidc-provider`, which validates it and may accept metadata fields we know nothing about, so this
    ;; stays open and only declares the fields this handler itself reads. `:maybe` plus the decoder because when
@@ -256,9 +254,8 @@
   "Handles client configuration read (RFC 7592)."
   [{:keys [client-id]} :- [:map {:closed true}
                            [:client-id ms/NonBlankString]]
-   ;; RFC 7592 puts the credential in the `Authorization` header and defines no query parameters, but the client
-   ;; calls the `registration_client_uri` we handed it, so leave room for a caller-appended param rather than 400.
-   _query-params :- [:map {:closed false}]
+   ;; declared but not read: OAuth clients may append their own params
+   _query-params
    _body
    request]
   (or (when-let [provider (oauth-server/get-provider)]
@@ -327,8 +324,6 @@
   :- [:map [:status [:enum 302 400 401 403 404 429]] [:body [:or :string :map]]]
   "Handles the authorization decision (POST /oauth/authorize/decision)."
   [_route-params
-   ;; Closed: this is not a spec endpoint but the target of our own consent form, whose action URL carries no query
-   ;; string.
    _query-params
    ;; Form POST from the consent page: our own `csrf_token`/`params_sig`/`approved` fields plus the OAuth
    ;; authorization parameters echoed back as hidden inputs (see [[oauth-param-keys]]). Those are re-parsed by
@@ -394,10 +389,8 @@
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
   [_route-params
-   ;; RFC 6749 §3.2 puts the token request in the body and this handler reads no query params, but the endpoint is
-   ;; advertised via discovery and called by third-party OAuth clients, so a stray query param must not break a
-   ;; token exchange.
-   _query-params :- [:map {:closed false}]
+   ;; declared but not read: OAuth clients may append their own params
+   _query-params
    ;; RFC 6749 §4.1.3/§6 token request, form-encoded by third-party OAuth clients and extended by PKCE (RFC 7636
    ;; `code_verifier`) and resource indicators (RFC 8707 `resource`). The whole map is handed to
    ;; `oidc/token-request`, which validates it and answers with RFC-shaped OAuth errors, so the map stays open and
@@ -448,9 +441,8 @@
   :- [:map [:status [:enum 200 404]]]
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
   [_route-params
-   ;; Open for the same reason as POST /token: RFC 7009 puts everything in the body, but this endpoint is advertised
-   ;; via discovery and called by third-party OAuth clients.
-   _query-params :- [:map {:closed false}]
+   ;; declared but not read: OAuth clients may append their own params
+   _query-params
    ;; RFC 7009 §2.1 revocation request, plus the client credentials RFC 6749 §2.3.1 allows in the body. Declared for
    ;; documentation only: the library's revocation handler reads the raw Ring `:params` off the request rather than
    ;; this binding. Open for the same reason as the other OAuth endpoints — third-party clients may send extension

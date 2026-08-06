@@ -84,8 +84,6 @@ export const SearchResults = ({
     [searchText],
   );
 
-  // `type` is a client-side filter key, not an API param -- it is spelled `models` on the wire, so it has to be
-  // pulled out of the spread rather than forwarded (the search endpoint rejects unknown query params).
   const { type: filterTypes, ...apiSearchFilters } = searchFilters;
 
   const query: {

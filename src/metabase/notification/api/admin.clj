@@ -544,8 +544,6 @@
   [_route
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            last_check_status query sort_column sort_direction]} :-
-   ;; closed: `limit`/`offset` are stripped from the query params by the offset-paging middleware
-   ;; before validation, so the admin UI's full param set is exactly what is listed here.
    [:map {:closed true}
     [:active            {:optional true} [:maybe ms/BooleanValue]]
     [:creator_id        {:optional true} ms/PositiveInt]

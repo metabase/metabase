@@ -236,7 +236,6 @@
                                           [:channels      {:optional true} [:maybe [:+ :map]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                          ;; read below via `select-keys` and `maybe-reconcile-collection-position!`
                                           [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
                                           [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]

@@ -27,8 +27,7 @@
    [:type [:enum :nocache :ttl :duration :schedule]]])
 
 (mr/def ::cache-strategy.nocache
-  ;; open: callers tag a nocache config with extra keys (e.g. `:name`) and `cache-config/store!` round-trips them.
-  [:map
+  [:map {:closed false}
    [:type [:= :nocache]]])
 
 (mr/def ::cache-strategy.ttl

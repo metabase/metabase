@@ -476,15 +476,15 @@
     pivot-results? :pivot_results
     format-rows?   :format_rows
     :as            _body}
-   ;; not closed: the download widget posts the same body it posts to the other `/query/:export-format` endpoints,
-   ;; which includes `csv_include_bom` -- a flag this endpoint does not (yet) honour.
-   :- [:map {:closed false}
+   :- [:map {:closed true}
        ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
        [:parameters    {:optional true} [:maybe [:or
                                                  [:sequential ms/Map]
                                                  ms/JSONString]]]
        [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+       [:pivot_results {:default false} ms/BooleanValue]
+       ;; accepted for parity with the other `/query/:export-format` endpoints; not honoured yet
+       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format

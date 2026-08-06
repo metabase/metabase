@@ -18,8 +18,6 @@
   for analysis."
   [_route-params
    _query-params
-   ;; Closed: the whole payload is built by the FE `analyzeChart` mutation, which sends exactly these keys
-   ;; (and timeline events shaped like `TimelineEventInfo`).
    {:keys [image_base64 name description timeline_events]}
    :- [:map {:closed true}
        [:image_base64    :string]

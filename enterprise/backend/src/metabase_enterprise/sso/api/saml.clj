@@ -27,8 +27,6 @@
                 [:saml-attribute-email               {:optional true} [:maybe :string]]
                 [:saml-attribute-firstname           {:optional true} [:maybe :string]]
                 [:saml-attribute-group               {:optional true} [:maybe :string]]
-                ;; SAML group name -> Metabase group IDs, mirroring the `GroupMappings` schema that the
-                ;; `saml-group-mappings` setting validates against.
                 [:saml-attribute-group-mappings      {:optional true}
                  [:maybe [:map-of [:or :keyword :string] [:sequential pos-int?]]]]
                 [:saml-attribute-lastname            {:optional true} [:maybe :string]]

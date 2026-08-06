@@ -2973,8 +2973,18 @@ const createDashboardWithTabsLocal = ({
       cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
     }
     cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      dashcards,
-      tabs,
+      dashcards: dashcards.map((dashcard) => ({
+        id: dashcard.id,
+        card_id: dashcard.card_id,
+        dashboard_tab_id: dashcard.dashboard_tab_id,
+        row: dashcard.row,
+        col: dashcard.col,
+        size_x: dashcard.size_x,
+        size_y: dashcard.size_y,
+        visualization_settings: dashcard.visualization_settings,
+        parameter_mappings: dashcard.parameter_mappings,
+      })),
+      tabs: tabs.map(({ id, name }) => ({ id, name })),
     }).then(({ body: dashboard }) => {
       dashboard.tabs.forEach((tab) => {
         cy.wrap(tab.id).as(`${tab.name}-id`);

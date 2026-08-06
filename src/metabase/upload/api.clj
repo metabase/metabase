@@ -46,7 +46,6 @@
    _query-params
    _body
    {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
-   ;; not closed: this is the raw Ring request map, which carries dozens of keys we don't name here.
    :- [:map {:closed false}
        [:multipart-params
         [:map {:closed true}
@@ -55,8 +54,6 @@
                                           (when-not (= collection-id "root")
                                             collection-id))}
                            pos-int?]]
-         ;; not closed: Ring's multipart middleware builds this part map and attaches `:content-type`/`:size`
-         ;; alongside the two keys we read.
          ["file" [:map {:closed false}
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]

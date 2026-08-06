@@ -110,8 +110,6 @@
   upsert keep two concurrent writers from racing in a duplicate row."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   ;; Closed: `ai_context` is the whole write payload. Forward-compat with the OSI spec lives inside
-   ;; [[AiContext]], which stays open, not in this wrapper.
    {:keys [ai_context]} :- [:map {:closed true} [:ai_context AiContextInput]]]
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)

@@ -167,8 +167,6 @@
                      [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   ;; Closed: the body is the MCP `search` tool's argument map, which the client builds from the
-   ;; published input schema — an undeclared key is a hallucination and is better rejected than ignored.
    :- [:map {:closed true}
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
@@ -474,11 +472,7 @@
                          (:continuation_token m) :continuation
                          (string? (:query m))    :handle
                          :else                   :fresh))}
-   ;; TODO: `:continuation_token` is a base64-encoded JSON envelope carrying a serialized MBQL query
-   ;; plus pagination state, typed loosely as a string; give it a real schema.
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
-   ;; TODO: `:query` here is a base64-encoded serialized MBQL payload typed loosely as a string;
-   ;; give it a real schema.
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
@@ -628,7 +622,6 @@
   Closed: `:query` is the only argument the MCP `execute_query` tool sends (it swaps its
   `query_handle` for this key before dispatch)."
   [:map {:closed true}
-   ;; TODO: `:query` is a base64-encoded MBQL payload typed loosely as a string; give it a real schema.
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
 
@@ -695,8 +688,6 @@
   Closed: these are the only arguments the MCP `execute_sql` tool publishes."
   [:map {:closed true}
    [:database_id ms/PositiveInt]
-   ;; `:sql` is raw query text: a non-blank string is the tightest schema it can have. The QP and
-   ;; the native-query permission check do the real validation.
    [:sql         ms/NonBlankString]])
 
 (api.macros/defendpoint :post "/v1/execute-sql"
@@ -945,8 +936,6 @@
   key means the caller invented one."
   [:map {:closed true}
    [:name                   ms/NonBlankString]
-   ;; TODO: `:query` is a base64-encoded MBQL (or native) payload typed loosely as a string;
-   ;; give it a real schema.
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -997,7 +986,6 @@
 (mr/def ::create-metric-request
   [:map {:closed true}
    [:name                   ms/NonBlankString]
-   ;; TODO: `query` is a base64-encoded MBQL payload typed as a string; give it a real schema.
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -1070,7 +1058,6 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:archived               {:optional true} [:maybe :boolean]]
-   ;; TODO: `query` is a base64-encoded MBQL payload typed as a string; give it a real schema.
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
 (mr/def ::update-metric-response
@@ -1131,8 +1118,6 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:archived               {:optional true} [:maybe :boolean]]
-   ;; TODO: `:query` is a base64-encoded MBQL (or native) replacement payload typed loosely as a
-   ;; string; give it a real schema.
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
 (mr/def ::update-question-response

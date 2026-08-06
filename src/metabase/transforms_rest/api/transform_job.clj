@@ -315,8 +315,6 @@
   "Get paginated run history for a transform job."
   [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]
-   ;; `limit`/`offset` are stripped from :query-params by the offset-paging middleware before we see
-   ;; them, so they don't need to be declared here even though callers send them.
    query-params :- [:map {:closed true}
                     [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
                     [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]

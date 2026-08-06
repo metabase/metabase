@@ -1,7 +1,7 @@
 import type {
   CreateDashboardRequest,
   Dashboard,
-  DashboardCard,
+  UpdateDashboardCardRequest,
 } from "metabase-types/api";
 
 export interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
@@ -10,7 +10,7 @@ export interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
   enable_embedding?: Dashboard["enable_embedding"];
   embedding_type?: Dashboard["embedding_type"];
   embedding_params?: Dashboard["embedding_params"];
-  dashcards?: Partial<DashboardCard>[];
+  dashcards?: Partial<UpdateDashboardCardRequest>[];
 }
 
 interface Options {
@@ -63,7 +63,20 @@ export const createDashboard = (
           enable_embedding,
           embedding_type,
           embedding_params,
-          dashcards,
+          dashcards: dashcards?.map((dashcard) => ({
+            id: dashcard.id,
+            card_id: dashcard.card_id,
+            action_id: dashcard.action_id,
+            dashboard_tab_id: dashcard.dashboard_tab_id,
+            row: dashcard.row,
+            col: dashcard.col,
+            size_x: dashcard.size_x,
+            size_y: dashcard.size_y,
+            visualization_settings: dashcard.visualization_settings,
+            parameter_mappings: dashcard.parameter_mappings,
+            inline_parameters: dashcard.inline_parameters,
+            series: dashcard.series,
+          })),
         });
       }
     });

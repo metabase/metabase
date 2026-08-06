@@ -26,7 +26,6 @@
                       task-history/FilterParams
                       task-history/SortParams
                       ;; the empty closed map contributes only `{:closed true}` to the merged result;
-                      ;; `limit`/`offset` never reach here, the offset-paging middleware strips them
                       [:map {:closed true}]]]]
   (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)

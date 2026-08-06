@@ -73,7 +73,6 @@
    [:Operations
     [:sequential [:map {:closed false}
                   [:op ms/NonBlankString]
-                  ;; read by [[patch->user-updates]] but previously undeclared; absent for whole-resource patches
                   [:path {:optional true} [:maybe ms/NonBlankString]]
                   [:value [:or [:map-of [:or :keyword :string]
                                 [:or ms/NonBlankString ms/BooleanValue]]

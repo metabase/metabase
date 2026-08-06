@@ -2004,7 +2004,14 @@ const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
       dashcards: body.dashcards.map((card) => ({
-        ...card,
+        id: card.id,
+        card_id: card.card_id,
+        dashboard_tab_id: card.dashboard_tab_id,
+        row: card.row,
+        col: card.col,
+        size_x: card.size_x,
+        size_y: card.size_y,
+        parameter_mappings: card.parameter_mappings,
         visualization_settings: {
           click_behavior: {
             type: "link",

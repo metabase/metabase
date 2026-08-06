@@ -32,7 +32,6 @@
    _query-params
    _body
    {{config "config"} :multipart-params, :as _request}
-   ;; Ring populates all three maps: the request, the parts the uploading client sent, and the part itself.
    :- [:map {:closed false}
        [:multipart-params
         [:map {:closed false}

@@ -100,7 +100,6 @@
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
   "Return the prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   ;; `model_id` stays snake_case: renaming it would break `getSuggestedMetabotPrompts`.
    {:keys [sample model model_id]} :- [:map {:closed true}
                                        [:sample   {:optional true} [:maybe ms/BooleanValue]]
                                        [:model    {:optional true} [:maybe [:enum "metric" "model"]]]

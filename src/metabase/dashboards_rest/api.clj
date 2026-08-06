@@ -897,22 +897,27 @@
                           (create-dashcards! dashboard to-create))}))
 
 (def ^:private UpdatedDashboardCard
-  ;; Not closed: callers round-trip whole dashcards back from `GET /api/dashboard/:id`.
-  [:map {:closed false}
+  [:map {:closed true}
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id                                  int?]
-   [:size_x                              ms/PositiveInt]
-   [:size_y                              ms/PositiveInt]
-   [:row                                 ms/IntGreaterThanOrEqualToZero]
-   [:col                                 ms/IntGreaterThanOrEqualToZero]
-   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series             {:optional true} [:maybe [:sequential map?]]]])
+   [:id                                      int?]
+   [:size_x                                  ms/PositiveInt]
+   [:size_y                                  ms/PositiveInt]
+   [:row                                     ms/IntGreaterThanOrEqualToZero]
+   [:col                                     ms/IntGreaterThanOrEqualToZero]
+   [:card_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   ;; like :id, a negative :dashboard_tab_id refers to a tab being created in the same request
+   [:dashboard_tab_id       {:optional true} [:maybe int?]]
+   [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:visualization_settings {:optional true} [:maybe :map]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+   ;; only the :id of each series entry is persisted, the rest of the card is ignored
+   [:series                 {:optional true} [:maybe [:sequential [:map
+                                                                   [:id ms/PositiveInt]]]]]])
 
 (def ^:private UpdatedDashboardTab
-  ;; Not closed: callers round-trip whole tabs back from `GET /api/dashboard/:id`.
-  [:map {:closed false}
-   ;; id can be negative, it indicates a new card and BE should create them
+  [:map {:closed true}
+   ;; id can be negative, it indicates a new tab and BE should create them
    [:id   ms/Int]
    [:name ms/NonBlankString]])
 

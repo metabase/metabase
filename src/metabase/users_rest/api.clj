@@ -423,7 +423,6 @@
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
-            ;; read by `users/invite-user!` to set the new user's initial password
             [:password               {:optional true} [:maybe ms/NonBlankString]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
@@ -601,7 +600,6 @@
    _query-params
    {:keys [password old_password]} :- [:map {:closed true}
                                        [:password ms/ValidPassword]
-                                       ;; only required for non-superusers; verified against the stored hash below
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)

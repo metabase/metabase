@@ -385,8 +385,6 @@
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
-  ;; `limit` is sent by the frontend too, but the offset-paging middleware strips it out of the query params before
-  ;; we get here and exposes it as [[request/limit]]
   [{:keys [id search-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]

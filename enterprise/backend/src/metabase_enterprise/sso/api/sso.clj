@@ -108,7 +108,6 @@
 (api.macros/defendpoint :post "/logout"
   "Logout."
   [_route-params
-   ;; closed: only ever called by our own frontend, which sends no params and no body.
    _query-params
    _body
    {cookies :cookies, :as _request}]

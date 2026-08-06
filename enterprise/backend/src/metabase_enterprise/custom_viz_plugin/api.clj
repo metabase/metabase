@@ -132,8 +132,6 @@
    _query-params
    _body
    {{file "file"} :multipart-params, :as _request}
-   ;; open at every level: this is the raw Ring request map, and Ring's multipart middleware attaches
-   ;; `:content-type` and `:size` to each part alongside the keys we read.
    :- [:map {:closed false}
        [:multipart-params
         [:map {:closed false}
@@ -250,7 +248,6 @@
    _query-params
    _body
    {{file "file"} :multipart-params, :as _request}
-   ;; open at every level: raw Ring request map, and each multipart part also carries `:content-type`/`:size`.
    :- [:map {:closed false}
        [:multipart-params
         [:map {:closed false}
