@@ -216,8 +216,6 @@
 
 (defsetting llm-moonshot-api-key
   (deferred-tru "The Moonshot AI API Key.")
-  ;; Moonshot keys start with `sk-`, which is also OpenAI's prefix and so discriminates nothing. The Connect
-  ;; round-trip against `GET /models` — which 401s on a bad key — is what catches a wrong key.
   :sensitive? true
   :visibility :settings-manager
   :export?    false

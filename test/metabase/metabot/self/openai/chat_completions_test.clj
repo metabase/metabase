@@ -155,7 +155,7 @@
 ;;; Streaming chunk conversion tests
 ;;;
 ;;; The chunk shapes below are transcribed from real Moonshot (Kimi)
-;;; streams captured on 2026-08-05 — see notes/bot-1929-moonshot/fixtures/.
+;;; streams captured on 2026-08-05.
 ;;; The behaviour they pin is provider-agnostic, but Moonshot is the
 ;;; provider that exercises every edge at once: usage reported in two
 ;;; places, cache reads reported both flat and nested, parallel tool

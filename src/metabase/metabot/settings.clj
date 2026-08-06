@@ -121,12 +121,7 @@
   "mistral-medium-3-5")
 
 (def ^:private default-moonshot-llm-metabot-model
-  "Default Moonshot model used for Metabot when no explicit model is selected.
-
-  k3 is the flagship. Caveat: this is resolved before the model picker is ever populated (a Connect with an api-key
-  and no model persists it), and k3's catalog entry reports its permission group as `staff` where every other
-  Moonshot model reports `moonshot`. If that reflects real gating, an account without k3 access persists a model
-  that 404s on its first turn and has to pick k2.6, which `list-models` still offers."
+  "Default Moonshot model used for Metabot when no explicit model is selected."
   "kimi-k3")
 
 (def ^:private default-openai-llm-metabot-model
@@ -277,7 +272,7 @@
     (validate-direct-provider! value)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k2.6`, `openrouter/anthropic/claude-haiku-4.5`.")
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
