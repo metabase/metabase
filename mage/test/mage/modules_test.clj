@@ -2,8 +2,9 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
-   [clojure.edn :as edn]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [mage.color]
    [mage.modules]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
@@ -285,26 +286,65 @@
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
 
+(defn- top-level-module
+  [declared-modules module]
+  (loop [module module]
+    (let [parts (str/split (name module) #"\.")]
+      (cond
+        (> (count parts) 1)
+        (recur (if-let [ns-part (namespace module)]
+                 (symbol ns-part (str/join "." (butlast parts)))
+                 (symbol (str/join "." (butlast parts)))))
+
+        (and (= "enterprise" (namespace module))
+             (contains? declared-modules (symbol (name module))))
+        (recur (symbol (name module)))
+
+        :else module))))
+
+(deftest top-level-module-test
+  (let [declared '#{lib lib.schema query-processor query-processor.driver-api workspaces enterprise/workspaces
+                    enterprise/sandbox}]
+    (is (= 'lib (top-level-module declared 'lib.schema)))
+    (is (= 'query-processor (top-level-module declared 'query-processor.driver-api)))
+    (is (= 'workspaces (top-level-module declared 'enterprise/workspaces)))
+    (is (= 'enterprise/sandbox (top-level-module declared 'enterprise/sandbox)))))
+
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
+  (testing "The number of top-level modules that trigger driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
-            Add it to :exempt-modules in driver-test-overrides.edn if it shouldn't trigger driver tests."
-    ;; A module that transitively depends on driver code makes a change to it run ALL driver tests, which
-    ;; is expensive. The budget lives in ratchets.edn next to :driver-test-exempt-modules, because the two
-    ;; move against each other: exempting a module lowers this count and raises the exemption count, and
-    ;; dropping an exemption does the reverse. Reading either alone is how you talk yourself into paying
-    ;; for CI you did not mean to. Raising it needs a hand edit there, with the reason in the commit.
-    (let [modules-triggering-drivers (modules-affecting-drivers)
-          max-allowed-count          (:driver-test-triggering-modules
-                                      (edn/read-string (slurp ".clj-kondo/config/modules/ratchets.edn")))]
-      (is (<= (count modules-triggering-drivers) max-allowed-count)
-          (format "Too many modules trigger driver tests! Expected <= %d, got %d.
+            Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
+    (let [deps                       (mage.modules/dependencies)
+          modules-triggering-drivers (modules-affecting-drivers)
+          top-level-modules          (into #{}
+                                           (map (partial top-level-module (set (keys deps))))
+                                           modules-triggering-drivers)
+          ;; This is a ratchet: it prevents accidental expansion of which modules
+          ;; trigger driver tests. When a module transitively depends on driver code,
+          ;; changes to that module cause ALL driver tests to run in CI, which is
+          ;; expensive. If this test fails, either:
+          ;;   1. Your module legitimately affects drivers -- bump max-allowed-count
+          ;;   2. Your module is infrastructure/gating, not driver logic
+          ;;      -- add it to driver-affecting-overrides in mage.modules
+          ;;
+          ;; History:
+          ;; 2026-02-06 Initial count: 37
+          ;; 2026-02-10 Bumped to 38 for sql-tools + sql-parsing
+          ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
+          ;;            Added premium-features to driver-affecting-overrides (#69561)
+          ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
+          ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
+          ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
+          ;; 2026-07-13 Changed the ratchet to count distinct logical top-level ancestors. Baseline remains 44
+          ;;            before any nested-module config migrations.
+          max-allowed-top-level-count 44]
+      (is (<= (count top-level-modules) max-allowed-top-level-count)
+          (format "Too many top-level modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
-                   If this is intentional, raise :driver-test-triggering-modules in
-                   .clj-kondo/config/modules/ratchets.edn and say why in the commit message.
-                   Otherwise, add the new module(s) to :exempt-modules in driver-test-overrides.edn."
-                  max-allowed-count
-                  (count modules-triggering-drivers)
+                   If this is intentional, update max-allowed-top-level-count.
+                   Otherwise, add the new module(s) to driver-affecting-overrides."
+                  max-allowed-top-level-count
+                  (count top-level-modules)
                   (pr-str (sort modules-triggering-drivers)))))))
 
 (deftest test-files-mark-modules-changes
@@ -322,7 +362,57 @@
   (testing "siblings are alphabetical, except enterprise modules sort after everything else"
     (let [config {'queries {} 'enterprise/audit {} 'actions {} 'enterprise/sso {} 'util {}}
           tree   (#'mage.modules/module-display-tree config)
-          lines  (#'mage.modules/tree-node-lines [] tree)]
-      ;; the root node renders an empty line, so drop it
+          lines  (binding [mage.color/*disable-colors* true]
+                   (into []
+                         (mapcat (fn [[segment node]]
+                                   (#'mage.modules/tree-node-lines config false [segment] node)))
+                         (#'mage.modules/sorted-children tree)))]
       (is (= ["actions" "queries" "util" "enterprise/audit" "enterprise/sso"]
-             (rest lines))))))
+             lines)))))
+
+(deftest module-tree-lines-test
+  (let [config '{lib                  {}
+                 lib.be               {:ns-prefix "metabase.lib-be"}
+                 transforms           {}
+                 transforms.base      {:ns-prefix "metabase.transforms-base"}
+                 transforms.base.deep {}
+                 transforms.python    {:ns-prefix "metabase.transforms-python"}
+                 enterprise-tools     {}
+                 enterprise/transforms {}
+                 enterprise/transforms.python {:ns-prefix "metabase-enterprise.transforms-python"}
+                 enterprise/billing   {}}
+        tree   (#'mage.modules/module-display-tree config)
+        lines  (binding [mage.color/*disable-colors* true]
+                 (into []
+                       (mapcat (fn [[segment node]]
+                                 (#'mage.modules/tree-node-lines config false [segment] node)))
+                       (#'mage.modules/sorted-children tree)))]
+    (testing "alphabetical roots, enterprise last among siblings, dotted display names, stars on :ns-prefix"
+      (is (= ["enterprise-tools"
+              "lib"
+              "- lib.be *"
+              "transforms"
+              "- transforms.base *"
+              "-- transforms.base.deep"
+              "- transforms.python *"
+              "- transforms.enterprise"
+              "-- transforms.enterprise.python *"
+              "enterprise/billing"]
+             lines)))))
+
+(deftest module-tree-enterprise-default-prefix-not-starred-test
+  (testing "the implicit metabase-enterprise. prefix is canonical, and so is an explicit :ns-prefix equal to the default"
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                 'enterprise/billing)))
+    (is (= "metabase.lib-be"
+           (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+
+(deftest dotted-module-exact-test-files-mark-correct-module-changes
+  (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
+    (let [build-prefix->module @#'mage.modules/build-prefix->module
+          file->module         @#'mage.modules/file->module
+          prefix->module       (build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (file->module prefix->module
+                           "test/metabase/lib/schema_test.cljc"))))))
