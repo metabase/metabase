@@ -987,7 +987,7 @@
 
   embeddings
   {:team "Metabot"
-   :api  #{metabase.embeddings.provider}
+   :api  #{}
    :uses #{plugins
             util}}
 
