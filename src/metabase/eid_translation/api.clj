@@ -12,6 +12,8 @@
   "Translate entity IDs to model IDs."
   [_route-params
    _query-params
-   {:keys [entity_ids]} :- [:map
+   {:keys [entity_ids]} :- [:map {:closed true}
+                            ;; deliberately left as a plain map: the shape is validated by
+                            ;; [[eid-translation/model->entity-ids->ids]], which reports the allowed models.
                             [:entity_ids :map]]]
   {:entity_ids (eid-translation/model->entity-ids->ids entity_ids)})

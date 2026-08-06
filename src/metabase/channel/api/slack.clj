@@ -94,7 +94,7 @@
   [_route-params
    _query-params
    {:keys [slack-app-token slack-bug-report-channel] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
@@ -251,7 +251,7 @@
   "Send diagnostic information to the configured Slack channels."
   [_route-params
    _query-params
-   {diagnostic-info :diagnosticInfo} :- [:map
+   {diagnostic-info :diagnosticInfo} :- [:map {:closed true}
                                          ;; TODO FIXME -- this should not use `camelCase` keys
                                          [:diagnosticInfo map?]]]
   (try

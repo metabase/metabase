@@ -20,7 +20,7 @@
   (stats/legacy-anonymous-usage-stats))
 
 (def ^:private InternalAnalyticsEvent
-  [:map
+  [:map {:closed true}
    [:op     [:enum :inc :dec :set :observe :clear]]
    [:metric :keyword]
    [:labels {:optional true} [:maybe [:map-of :keyword :string]]]
@@ -30,7 +30,8 @@
   "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics."
   [_route-params
    _query-params
-   {:keys [events]} :- [:map [:events [:sequential InternalAnalyticsEvent]]]]
+   {:keys [events]} :- [:map {:closed true}
+                        [:events [:sequential InternalAnalyticsEvent]]]]
   (doseq [{:keys [op metric labels amount]} events]
     (try
       (case op

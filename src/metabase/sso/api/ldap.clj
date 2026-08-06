@@ -27,16 +27,33 @@
   "Update LDAP related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings :- [:map
-                [:ldap-port    {:optional true} [:maybe
-                                                 ;; treat empty string as nil
-                                                 {:decode/api (fn [x]
-                                                                (when-not (= x "")
-                                                                  x))}
-                                                 pos-int?]]
-                [:ldap-password {:optional true} [:maybe :string]]
-                [:ldap-host {:optional true} [:maybe :string]]
-                [:ldap-enabled {:optional true} [:maybe :boolean]]]]
+   settings :- [:map {:closed true}
+                [:ldap-port                          {:optional true} [:maybe
+                                                                       ;; treat empty string as nil
+                                                                       {:decode/api (fn [x]
+                                                                                      (when-not (= x "")
+                                                                                        x))}
+                                                                       pos-int?]]
+                [:ldap-password                      {:optional true} [:maybe :string]]
+                [:ldap-host                          {:optional true} [:maybe :string]]
+                [:ldap-enabled                       {:optional true} [:maybe :boolean]]
+                [:ldap-security                      {:optional true} [:maybe [:enum "none" "ssl" "starttls"]]]
+                [:ldap-bind-dn                       {:optional true} [:maybe :string]]
+                [:ldap-user-base                     {:optional true} [:maybe :string]]
+                [:ldap-user-filter                   {:optional true} [:maybe :string]]
+                [:ldap-attribute-email               {:optional true} [:maybe :string]]
+                [:ldap-attribute-firstname           {:optional true} [:maybe :string]]
+                [:ldap-attribute-lastname            {:optional true} [:maybe :string]]
+                [:ldap-group-sync                    {:optional true} [:maybe :boolean]]
+                [:ldap-group-base                    {:optional true} [:maybe :string]]
+                ;; LDAP group DN -> Metabase group IDs, mirroring what the `ldap-group-mappings` setter accepts.
+                [:ldap-group-mappings                {:optional true} [:maybe [:map-of [:or :keyword :string]
+                                                                               [:sequential pos-int?]]]]
+                ;; EE-only settings; the admin LDAP form submits `ldap-group-membership-filter` with the rest.
+                [:ldap-group-membership-filter       {:optional true} [:maybe :string]]
+                [:ldap-user-provisioning-enabled?    {:optional true} [:maybe :boolean]]
+                [:ldap-sync-user-attributes          {:optional true} [:maybe :boolean]]
+                [:ldap-sync-user-attributes-blacklist {:optional true} [:maybe [:or :string [:sequential :string]]]]]]
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (update :ldap-password update-password-if-needed)

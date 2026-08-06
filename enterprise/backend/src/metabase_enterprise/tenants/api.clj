@@ -63,7 +63,9 @@
 (api.macros/defendpoint :get "/" :- [:map {:closed true} [:data [:sequential Tenant]]]
   "Get all tenants"
   [_
-   {:keys [status]} :- [:map
+   ;; `limit`/`offset` are consumed (and removed from `:query-params`) by the offset-paging middleware, so they do not
+   ;; need to be declared here even though this endpoint pages.
+   {:keys [status]} :- [:map {:closed true}
                         [:status {:default "all"} [:enum "all" "deactivated" "active"]]]
    _]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))

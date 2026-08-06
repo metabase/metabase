@@ -221,7 +221,7 @@
     continue-on-error?        :continue_on_error
     full-stacktrace?          :full_stacktrace
     :as                       _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:dirname           {:optional true} [:maybe
                                              {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
                                              string?]]
@@ -289,7 +289,7 @@
     full-stacktrace?   :full_stacktrace
     reindex-search?    :reindex
     :as                _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]
        ;; TODO this parameter is a kludge to fix https://linear.app/metabase/issue/GDGT-573
@@ -297,9 +297,11 @@
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
    _body
-   {{:strs [file]} :multipart-params, :as _request} :- [:map
+   ;; not closed, at either level: the outer value is the whole Ring request map, and `multipart-params` holds whatever
+   ;; parts the uploading client sent -- `curl -F` and friends routinely add extra form fields. Only `file` is used.
+   {{:strs [file]} :multipart-params, :as _request} :- [:map {:closed false}
                                                         [:multipart-params
-                                                         [:map
+                                                         [:map {:closed false}
                                                           ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
   (api/check-superuser)
   (try

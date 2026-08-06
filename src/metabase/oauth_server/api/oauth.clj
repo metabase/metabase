@@ -188,7 +188,18 @@
 (api.macros/defendpoint :post "/register"
   :- [:map [:status [:enum 201 400 403 404 429]] [:body :any]]
   "Handles dynamic client registration (RFC 7591)."
-  [_route-params _query-params body :- :any
+  [_route-params
+   _query-params
+   ;; RFC 7591 client metadata, supplied by third-party OAuth clients and extensible by spec. The whole map is
+   ;; handed to `oidc-provider`, which validates it and may accept metadata fields we know nothing about, so this
+   ;; stays open and only declares the fields this handler itself reads. `:maybe` because a missing body has to
+   ;; reach the handler, which answers it with an RFC-shaped `invalid_client_metadata` error.
+   body :- [:maybe [:map {:closed false}
+                    [:application_type {:optional true} [:maybe :string]]
+                    [:client_name      {:optional true} [:maybe :string]]
+                    [:grant_types      {:optional true} [:maybe [:sequential :string]]]
+                    [:redirect_uris    {:optional true} [:maybe [:sequential :string]]]
+                    [:scope            {:optional true} [:maybe :string]]]]
    request]
   (if-not (oauth-settings/oauth-server-dynamic-registration-enabled)
     {:status  403
@@ -236,7 +247,8 @@
 (api.macros/defendpoint :get "/register/:client-id"
   :- [:map [:status [:enum 200 401 404]] [:body :map]]
   "Handles client configuration read (RFC 7592)."
-  [{:keys [client-id]}
+  [{:keys [client-id]} :- [:map {:closed true}
+                           [:client-id ms/NonBlankString]]
    _query-params _body
    request]
   (or (when-let [provider (oauth-server/get-provider)]
@@ -251,10 +263,26 @@
                :body    body}))))
       {:status 404 :body {:error "not_found"}}))
 
+;; OAuth 2.0 authorization request parameters are snake_case by RFC 6749/7636, not by our choice
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/authorize"
   :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
   "Handles the authorization endpoint (GET /oauth/authorize)."
-  [_route-params query-params _body
+  [_route-params
+   ;; Supplied by third-party OAuth clients and extensible by spec (PKCE, OIDC, resource indicators, ...). The whole
+   ;; map goes to `oidc/parse-authorization-request`, which does the real validation and returns proper OAuth errors,
+   ;; so everything here is optional and the map stays open.
+   query-params :- [:map {:closed false}
+                    [:client_id             {:optional true} [:maybe :string]]
+                    [:response_type         {:optional true} [:maybe :string]]
+                    [:redirect_uri          {:optional true} [:maybe :string]]
+                    [:scope                 {:optional true} [:maybe :string]]
+                    [:state                 {:optional true} [:maybe :string]]
+                    [:code_challenge        {:optional true} [:maybe :string]]
+                    [:code_challenge_method {:optional true} [:maybe :string]]
+                    [:nonce                 {:optional true} [:maybe :string]]
+                    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
+   _body
    request]
   (if-not (:metabase-user-id request)
     {:status  302

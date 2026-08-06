@@ -32,7 +32,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
   [_route-params
-   {:keys [archived]} :- [:map
+   {:keys [archived]} :- [:map {:closed true}
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]
   (list-native-query-snippets (boolean archived)))
 
@@ -48,7 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
 

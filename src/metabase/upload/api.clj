@@ -46,7 +46,8 @@
    _query-params
    _body
    {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
-   :- [:map
+   ;; not closed: this is the raw Ring request map, which carries dozens of keys we don't name here.
+   :- [:map {:closed false}
        [:multipart-params
         [:map {:closed true}
          ["collection_id" [:maybe

@@ -6,7 +6,8 @@
    [metabase-enterprise.metabot.usage :as usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]))
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.malli.schema :as ms]))
 
 (defn- without-id [row]
   (some-> row (dissoc :id)))
@@ -24,7 +25,8 @@
   "Set or update the instance-wide metabot usage limit. Pass `max_usage: null` to remove the limit (unlimited)."
   [_route-params
    _query-params
-   body :- [:map [:max_usage [:maybe nat-int?]]]]
+   ;; Closed: `max_usage` is the entire payload (FE type `MetabotInstanceLimit`).
+   body :- [:map {:closed true} [:max_usage [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-superuser)
   (let [result (or (some-> (instance-limit/set-instance-limit! nil (:max_usage body)) (dissoc :id :tenant_id))
                    {:max_usage nil})]
@@ -41,7 +43,7 @@
 (api.macros/defendpoint :get "/tenant/:tenant-id"
   :- [:map [:tenant_id pos-int?] [:max_usage [:maybe nat-int?]]]
   "Get the metabot usage limit for a specific tenant. Returns `max_usage: null` if no limit is set."
-  [{:keys [tenant-id]} :- [:map [:tenant-id pos-int?]]]
+  [{:keys [tenant-id]} :- [:map {:closed true} [:tenant-id ms/PositiveInt]]]
   (api/check-superuser)
   (or (without-id (instance-limit/instance-limit tenant-id))
       {:tenant_id tenant-id :max_usage nil}))
@@ -49,9 +51,10 @@
 (api.macros/defendpoint :put "/tenant/:tenant-id"
   :- [:map [:tenant_id pos-int?] [:max_usage [:maybe nat-int?]]]
   "Set or update the metabot usage limit for a specific tenant. Pass `max_usage: null` to remove the limit."
-  [{:keys [tenant-id]} :- [:map [:tenant-id pos-int?]]
+  [{:keys [tenant-id]} :- [:map {:closed true} [:tenant-id ms/PositiveInt]]
    _query-params
-   body :- [:map [:max_usage [:maybe nat-int?]]]]
+   ;; Closed: `max_usage` is the entire payload; the tenant is named by the route.
+   body :- [:map {:closed true} [:max_usage [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-superuser)
   (let [result (or (without-id (instance-limit/set-instance-limit! tenant-id (:max_usage body)))
                    {:tenant_id tenant-id :max_usage nil})]
@@ -68,7 +71,7 @@
 (api.macros/defendpoint :get "/group/:group-id"
   :- [:map [:group_id pos-int?] [:max_usage [:maybe nat-int?]]]
   "Get the metabot usage limit for a specific group. Returns `max_usage: null` if no limit is set."
-  [{:keys [group-id]} :- [:map [:group-id pos-int?]]]
+  [{:keys [group-id]} :- [:map {:closed true} [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (or (without-id (group-limit/group-limit group-id))
       {:group_id group-id :max_usage nil}))
@@ -76,9 +79,10 @@
 (api.macros/defendpoint :put "/group/:group-id"
   :- [:map [:group_id pos-int?] [:max_usage [:maybe nat-int?]]]
   "Set or update the metabot usage limit for a specific group. Pass `max_usage: null` to remove the limit."
-  [{:keys [group-id]} :- [:map [:group-id pos-int?]]
+  [{:keys [group-id]} :- [:map {:closed true} [:group-id ms/PositiveInt]]
    _query-params
-   body :- [:map [:max_usage [:maybe nat-int?]]]]
+   ;; Closed: `max_usage` is the entire payload; the group is named by the route.
+   body :- [:map {:closed true} [:max_usage [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-superuser)
   (let [result (or (without-id (group-limit/set-group-limit! group-id (:max_usage body)))
                    {:group_id group-id :max_usage nil})]

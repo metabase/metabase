@@ -103,7 +103,7 @@
    {:keys                [archived]
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
-   :- [:map
+   :- [:map {:closed true}
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
@@ -158,7 +158,9 @@
     collection-id       :collection_id
     collection-position :collection_position
     dashboard-id        :dashboard_id}
-   :- [:map
+   ;; open: the FE posts the whole `editingPulse` object, which also carries read-only fields it got back from
+   ;; the server (`can_write`, `creator`, `creator_id`, `entity_id`, `disable_links`, `created_at`, `updated_at`).
+   :- [:map {:closed false}
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
        [:channels            [:+ :map]]
@@ -187,7 +189,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
@@ -227,15 +229,19 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [cards], :as pulse-updates} :- [:map
+   ;; open: the FE PUTs the whole `editingPulse` object back, including read-only fields it got from the server
+   ;; (`can_write`, `creator`, `creator_id`, `entity_id`, `disable_links`, `created_at`, `updated_at`).
+   {:keys [cards], :as pulse-updates} :- [:map {:closed false}
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
                                           [:channels      {:optional true} [:maybe [:+ :map]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                          ;; read below via `select-keys` and `maybe-reconcile-collection-position!`
+                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
                                           [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
   ;; do various perms checks
@@ -320,7 +326,9 @@
   "Test send an unsaved pulse."
   [_route-params
    _query-params
-   {:keys [cards channels] :as body} :- [:map
+   ;; open: the FE sends the whole in-progress `editingPulse` object, which also carries the read-only fields it
+   ;; got back from the server (`can_write`, `creator`, `creator_id`, `entity_id`, `created_at`, `updated_at`).
+   {:keys [cards channels] :as body} :- [:map {:closed false}
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
@@ -353,7 +361,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
                 pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")
