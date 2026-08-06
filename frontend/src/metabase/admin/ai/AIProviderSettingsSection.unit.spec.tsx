@@ -177,6 +177,7 @@ type SetupOpts = {
   models?: LlmConnectionModels[];
   modelRef?: string | null;
   modelRefEnvVar?: string;
+  providerTypesFail?: boolean;
   createdConnection?: LlmProviderConnection;
   updatedConnection?: LlmProviderConnection;
 };
@@ -187,6 +188,7 @@ async function setup({
   models = [],
   modelRef = null,
   modelRefEnvVar,
+  providerTypesFail = false,
   createdConnection = ANTHROPIC_CONNECTION,
   updatedConnection = ANTHROPIC_CONNECTION,
 }: SetupOpts = {}) {
@@ -207,7 +209,14 @@ async function setup({
     }),
   ]);
   setupUpdateSettingEndpoint();
-  setupLlmProviderTypesEndpoint(providerTypes);
+  if (providerTypesFail) {
+    fetchMock.get("path:/api/llm/provider-types", {
+      status: 500,
+      body: { message: "Provider types are unavailable" },
+    });
+  } else {
+    setupLlmProviderTypesEndpoint(providerTypes);
+  }
   setupLlmProvidersEndpoint(connections);
   setupLlmModelsEndpoint(models);
   setupCreateLlmProviderEndpoint(createdConnection);
@@ -227,7 +236,9 @@ async function setup({
     },
   );
 
-  if (connections.length > 0) {
+  if (providerTypesFail) {
+    await screen.findByText(/Provider types are unavailable/);
+  } else if (connections.length > 0) {
     await screen.findByText(connections[0].name);
   } else {
     await screen.findByRole("button", { name: /Add a provider/ });
@@ -265,6 +276,17 @@ async function openModelPicker() {
 describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
+  });
+
+  it("reports a failure to load the providers instead of an empty list", async () => {
+    await setup({ providerTypesFail: true });
+
+    expect(
+      screen.getByText("Provider types are unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Add a provider/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the empty state when nothing is connected", async () => {

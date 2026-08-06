@@ -5,7 +5,8 @@ import {
   useListLlmProviderTypesQuery,
   useListLlmProvidersQuery,
 } from "metabase/api";
-import { Button, Flex, Stack } from "metabase/ui";
+import { getErrorMessage } from "metabase/api/utils";
+import { Button, Flex, Stack, Text } from "metabase/ui";
 
 import { ProviderListSkeleton } from "./AIProviderList";
 import { LlmModelPicker } from "./LlmModelPicker";
@@ -21,15 +22,30 @@ export function AIProviderSetup({
   // managed connection exists and the point is to bring your own key alongside it.
   startOnConnectionForm?: boolean;
 }) {
-  const { data: connections = [], isLoading: isLoadingConnections } =
-    useListLlmProvidersQuery();
-  const { data: providerTypes = [], isLoading: isLoadingProviderTypes } =
-    useListLlmProviderTypesQuery();
+  const {
+    data: connections = [],
+    isLoading: isLoadingConnections,
+    error: connectionsError,
+  } = useListLlmProvidersQuery();
+  const {
+    data: providerTypes = [],
+    isLoading: isLoadingProviderTypes,
+    error: providerTypesError,
+  } = useListLlmProviderTypesQuery();
 
   const [hasJustConnected, { open: markConnected }] = useDisclosure(false);
 
   if (isLoadingConnections || isLoadingProviderTypes) {
     return <ProviderListSkeleton />;
+  }
+
+  const loadError = connectionsError ?? providerTypesError;
+  if (loadError) {
+    return (
+      <Text c="error">
+        {getErrorMessage(loadError, t`Unable to load your AI providers.`)}
+      </Text>
+    );
   }
 
   const hasUsableConnection = connections.some(
