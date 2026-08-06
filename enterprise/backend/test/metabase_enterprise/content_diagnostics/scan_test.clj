@@ -408,24 +408,55 @@
                   card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :card :entity_id card-id
                                                              :entity_name (str prefix "-" card-id)
+                                                             :entity_kind :question
                                                              :finding_type :stale :details {}
                                                              :detected_at (t/offset-date-time 2025 6 1)}))
                   dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :dashboard :entity_id dash-id
                                                              :entity_name (str prefix "-" dash-id)
+                                                             :entity_kind :dashboard
                                                              :finding_type :stale :details {}
                                                              :detected_at (t/offset-date-time 2025 1 1)}))
                   order    (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
                                                                "ee/content-diagnostics/stale"
                                                                :query prefix kvs))))]
-              (testing "sort-column=entity-type - lexical card < dashboard"
-                (is (= [card-fid dash-fid] (order :sort-column "entity-type" :sort-direction "asc")))
-                (is (= [dash-fid card-fid] (order :sort-column "entity-type" :sort-direction "desc"))))
+              (testing "sort-column=entity-type - flat kind lexical: dashboard < question"
+                (is (= [dash-fid card-fid] (order :sort-column "entity-type" :sort-direction "asc")))
+                (is (= [card-fid dash-fid] (order :sort-column "entity-type" :sort-direction "desc"))))
               (testing "sort-column=detected-at - dashboard (Jan) before card (Jun)"
                 (is (= [dash-fid card-fid] (order :sort-column "detected-at" :sort-direction "asc")))
                 (is (= [card-fid dash-fid] (order :sort-column "detected-at" :sort-direction "desc"))))
               (testing "default sort = detected-at asc"
                 (is (= [dash-fid card-fid] (order)))))))))))
+
+(deftest api-sort-by-flat-entity-type-test
+  (testing "GET /stale sort-column=entity-type orders card sub-kinds as peers (dashboard < model < question)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {q-id :id}    {:collection_id coll-id}
+                         :model/Card {m-id :id}    {:collection_id coll-id}
+                         :model/Dashboard {d-id :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix (scope-prefix)
+                  insert (fn [row]
+                           (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            (merge {:scan_id "s" :finding_type :stale
+                                                                    :details {}}
+                                                                   row))))
+                  ;; ids inserted in an order that differs from the expected sort, to isolate the column
+                  q-fid (insert {:entity_type :card :entity_id q-id :card_type :question
+                                 :entity_kind :question :entity_name (str prefix " q")})
+                  d-fid (insert {:entity_type :dashboard :entity_id d-id
+                                 :entity_kind :dashboard :entity_name (str prefix " d")})
+                  m-fid (insert {:entity_type :card :entity_id m-id :card_type :model
+                                 :entity_kind :model :entity_name (str prefix " m")})
+                  order (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                            "ee/content-diagnostics/stale"
+                                                            :query prefix kvs))))]
+              (is (= [d-fid m-fid q-fid] (order :sort-column "entity-type" :sort-direction "asc")))
+              (is (= [q-fid m-fid d-fid] (order :sort-column "entity-type" :sort-direction "desc"))))))))))
 
 (deftest api-sort-by-entity-attrs-test
   (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-active-at)"
@@ -522,6 +553,7 @@
                                   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                                    {:scan_id "e" :entity_type etype :entity_id eid
                                                                     :entity_name (str prefix "-" eid)
+                                                                    :entity_kind etype
                                                                     :finding_type :stale :details {}})))
                   card-fid      (insert :card card-id)
                   dash-fid      (insert :dashboard dash-id)
@@ -605,6 +637,7 @@
                                                                  :entity_id   eid
                                                                  :entity_name (str prefix "-" eid)
                                                                  :card_type   card-type
+                                                                 :entity_kind (or card-type etype)
                                                                  :finding_type :stale :details {}})))
                 question-fid (insert! :card question-id :question)
                 model-fid    (insert! :card model-id :model)

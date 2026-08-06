@@ -8,7 +8,6 @@
   at scan time; description, the collection breadcrumb, the transform owner, and slow roll-up culprits
   hydrate live."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -92,22 +91,15 @@
 
 (defn entity-types-clause
   "WHERE fragment for the flat `entity-types` vocabulary (see [[filter-types]]); nil when nothing was
-  requested. `card` means any card type, so it subsumes the sub-kinds. The arms are kept positive `=`/`IN`
-  so `idx_cd_finding_ftype_etype_card_type` can serve them - a negated `entity_type` arm would force a
-  scan."
+  requested. One positive IN on the denormalized `entity_kind`, served by
+  `idx_cd_finding_ftype_entity_kind`. `card` means any card type, so it expands to itself (the
+  deleted-entity fallback) plus the card sub-kinds."
   [entity-types]
   (when-let [types (not-empty (set (u/one-or-many entity-types)))]
-    (let [sub-kinds (set/intersection types queries.schema/card-types)
-          non-card  (set/difference types (conj queries.schema/card-types :card))
-          card-arm  (cond
-                      (contains? types :card) [:= :entity_type "card"]
-                      (seq sub-kinds)         [:and
-                                               [:= :entity_type "card"]
-                                               [:in :card_type (mapv name sub-kinds)]])
-          other-arm (when (seq non-card) [:in :entity_type (mapv name non-card)])]
-      (if (and card-arm other-arm)
-        [:or card-arm other-arm]
-        (or card-arm other-arm)))))
+    (let [kinds (into #{}
+                      (mapcat #(if (= % :card) (cons :card queries.schema/card-types) [%]))
+                      types)]
+      [:in :entity_kind (mapv name kinds)])))
 
 (defn excluded-personal-collection-ids
   "The live personal-collection id set (roots + descendants) to exclude for this request - nil when
@@ -480,13 +472,15 @@
   "Sortable params common to every finding list → their native `content_diagnostics_finding` column.
   Entity attributes are denormalized at scan time, so sorting is a plain `ORDER BY` with no join. Each
   endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`).
-  Name-ish sorts (name, collection-name) are case-insensitive per house convention (cf. collection items,
-  stale enterprise); lower() also makes ordering deterministic across app-db collations.
+  `entity-type` sorts by the flat `entity_kind` - card sub-kinds order as peers of the other entity types,
+  not clustered under `card`. Name-ish sorts (name, collection-name) are case-insensitive per house
+  convention (cf. collection items, stale enterprise); lower() also makes ordering deterministic across
+  app-db collations.
   Note: collection-name sorts by the scan-time stored parent name even when the viewer cannot read that
   parent (whose breadcrumb serves as null) — the ordering position is the accepted, marginal information
   exposure (OQ3)."
   {:detected-at      :detected_at
-   :entity-type      :entity_type
+   :entity-type      :entity_kind
    :name             [:lower :entity_name]
    :created-at       :entity_created_at
    :created-by       :entity_creator_name

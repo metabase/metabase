@@ -112,13 +112,15 @@
           (mt/user-http-request :rasta :get 402 "ee/content-diagnostics/imbalanced"))))))
 
 (defn- insert-imbalanced!
-  "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker)."
-  [{:keys [entity-type entity-id name finding-type content-count details]
+  "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker).
+  `:entity-kind` is only needed by fixtures an `entity-types` filter/sort assertion touches."
+  [{:keys [entity-type entity-id entity-kind name finding-type content-count details]
     :or   {details {:threshold 5 :unit "items"}}}]
   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                    {:scan_id       "imb-api"
                                     :entity_type   entity-type
                                     :entity_id     entity-id
+                                    :entity_kind   entity-kind
                                     :entity_name   name
                                     :finding_type  finding-type
                                     :content_count content-count
@@ -186,10 +188,10 @@
                          :model/Card {card-id :id} {:collection_id coll}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
             (let [prefix   (scope-prefix)
-                  card-fid (insert-imbalanced! {:entity-type :card :entity-id card-id
+                  card-fid (insert-imbalanced! {:entity-type :card :entity-id card-id :entity-kind :card
                                                 :name (str prefix " Card") :finding-type :empty
                                                 :content-count 0})
-                  coll-fid (insert-imbalanced! {:entity-type :collection :entity-id coll
+                  coll-fid (insert-imbalanced! {:entity-type :collection :entity-id coll :entity-kind :collection
                                                 :name (str prefix " Coll") :finding-type :sparse
                                                 :content-count 1})
                   ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
