@@ -49,10 +49,8 @@
    :suggested_name         "Recent orders"
    :display_name           "Recent orders"
    :suggested_description  "Recent orders on Orders"
-   :family_key             (apply str (repeat 64 "a"))
    :family_order           0
    :family_position        0
-   :family_depth           0
    :modeling_status        :missing
    :verified_source_count  1
    :official_source_count  0
@@ -102,10 +100,7 @@
         families     (candidate-families [other-parent child parent])
         child-row    (first (filter #(= 3 (:candidate-id %)) families))
         display-name (:display-name child-row)]
-    (testing "the strongest equally-sized subset is the one primary parent"
-      (is (= (:signature_hash parent) (:family-key child-row)))
-      (is (= 1 (:family-depth child-row))))
-    (testing "the parent atoms remain a prefix and the additional atom is appended"
+    (testing "the strongest equally-sized subset controls the inherited atom order"
       (is (< (str/index-of display-name "Trial")
              (str/index-of display-name "Deployment")
              (str/index-of display-name "Email")
@@ -114,7 +109,9 @@
       (is (= ["Trial complete" "Deployment is cloud" "Email is present" "Created recently"]
              (mapv :display-name (get-in child-row [:semantic-details :display-atoms])))))
     (testing "each candidate appears exactly once"
-      (is (= [1 3 2] (mapv :candidate-id families))))))
+      (is (= [1 3 2] (mapv :candidate-id families)))
+      (is (= [0 0 1] (mapv :family-order families)))
+      (is (= [0 1 0] (mapv :family-position families))))))
 
 (deftest ^:parallel candidate-family-parent-index-prefers-the-largest-subset-test
   (let [small-parent   (family-candidate 1 [["a" "A"]]

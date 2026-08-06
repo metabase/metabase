@@ -258,10 +258,8 @@
      :distinct_source_count  distinct-source-count
      :total_view_count       total-view-count
      :complexity             complexity
-     :family_key             signature-hash
      :family_order           0
-     :family_position        0
-     :family_depth           0}))
+     :family_position        0}))
 
 (defn- source-row
   [candidate-id source]
@@ -692,7 +690,7 @@
 
 (defn- ordered-family
   [root children-index candidates-by-id]
-  (letfn [(walk [candidate depth parent-order]
+  (letfn [(walk [candidate parent-order]
             (let [atom-order (ordered-candidate-atoms candidate parent-order)
                   children   (sort-by
                               (fn [child]
@@ -702,10 +700,10 @@
                                       sort
                                       vec)])
                               (map candidates-by-id (children-index (:id candidate))))]
-              (into [{:candidate candidate, :depth depth, :atom-order atom-order}]
-                    (mapcat #(walk % (inc depth) atom-order))
+              (into [{:candidate candidate, :atom-order atom-order}]
+                    (mapcat #(walk % atom-order))
                     children)))]
-    (walk root 0 [])))
+    (walk root [])))
 
 (defn- candidate-families
   [candidates]
@@ -726,16 +724,14 @@
          (map-indexed
           (fn [family-order {:keys [root]}]
             (map-indexed
-             (fn [family-position {:keys [candidate depth atom-order]}]
+             (fn [family-position {:keys [candidate atom-order]}]
                {:candidate-id    (:id candidate)
                 :display-name    (family-display-name candidate atom-order)
                 :semantic-details (assoc (:semantic_details candidate)
                                          :display-atoms
                                          (ordered-atom-details candidate atom-order))
-                :family-key      (:signature_hash root)
                 :family-order    family-order
-                :family-position family-position
-                :family-depth    depth})
+                :family-position family-position})
              (ordered-family root children-index candidates-by-id))))
          (into [] cat))))
 
@@ -753,10 +749,8 @@
                       (dissoc :candidate-id)
                       (set/rename-keys {:display-name    :display_name
                                         :semantic-details :semantic_details
-                                        :family-key      :family_key
                                         :family-order    :family_order
-                                        :family-position :family_position
-                                        :family-depth    :family_depth}))))))
+                                        :family-position :family_position}))))))
 
 (defn- run-summary
   [run-id]
