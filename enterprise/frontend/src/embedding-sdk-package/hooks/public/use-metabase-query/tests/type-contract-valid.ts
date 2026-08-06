@@ -8,8 +8,18 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, orderBy, sum, useMetabaseQuery } from "..";
+import { defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
+
+const revenueQuery = defineQuery({
+  savedQuestionSourceId: 54,
+  source: TEST_SCHEMA.tables.orders,
+  limit: 10,
+});
+
+const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
+const _queryLimit: 10 = revenueQuery.limit;
 
 // --------
 // Compile-time contracts that must pass type-checking.

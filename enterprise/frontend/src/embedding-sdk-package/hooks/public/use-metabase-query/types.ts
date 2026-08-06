@@ -394,7 +394,7 @@ export type QuestionQuery<TQuestion = unknown> = {
   enabled?: boolean;
 };
 
-type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
+export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];
 }
   ? TQuery extends { aggregations: readonly [unknown, ...unknown[]] }
