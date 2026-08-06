@@ -1,8 +1,7 @@
 (ns metabase.embeddings.provider-test
   (:require
    [clojure.test :refer :all]
-   [metabase.embeddings.provider :as embedding.provider]
-   [metabase.plugins.core :as plugins]))
+   [metabase.embeddings.provider :as embedding.provider]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,17 +21,6 @@
            :resolve-model         resolve-model
            :embed-texts           embed-texts}
     prepare! (assoc :prepare! prepare!)))
-
-(deftest in-process-provider-activation-test
-  (let [model       {:provider "in-process"}
-        activations (atom [])]
-    (with-redefs [plugins/load-plugin! #(swap! activations conj %)]
-      (embedding.provider/activate-provider! model)
-      (embedding.provider/activate-provider! {:provider "another-plugin"})
-      (is (= ["Metabase In-Process Embedder"] @activations)))
-    (testing "a missing optional plugin leaves provider availability to the registry"
-      (with-redefs [plugins/load-plugin! #(throw (ex-info "plugin not registered" {}))]
-        (is (nil? (embedding.provider/activate-provider! model)))))))
 
 (deftest registration-version-gate-test
   (let [name (provider-name)]

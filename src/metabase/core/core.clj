@@ -178,6 +178,12 @@
   (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
+  ;; The bundled in-process embedder registers its provider during plugin initialization. Its model runtime remains
+  ;; lazy, so activating the lightweight registration namespace here does not load DJL or a model at startup.
+  (try
+    (plugins/load-plugin! "Metabase In-Process Embedder")
+    (catch Exception e
+      (log/warnf "Unable to activate the in-process embedder plugin: %s" (ex-message e))))
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
