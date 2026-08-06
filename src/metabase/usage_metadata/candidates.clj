@@ -172,12 +172,9 @@
                               (t2/select [:model/Database :id :name :is_audit :is_sample :router_database_id]
                                          :id [:in db-ids])))]
     (into {}
-          (keep (fn [{:keys [id db_id active visibility_type data_layer] :as table}]
+          (keep (fn [{:keys [id db_id] :as table}]
                   (let [database (dbs db_id)]
-                    (when (and active
-                               (nil? visibility_type)
-                               (not= :hidden data_layer)
-                               database
+                    (when (and database
                                (not (:is_audit database))
                                (not (:is_sample database))
                                (nil? (:router_database_id database)))
@@ -538,15 +535,17 @@
                         (sort-by :card_id)
                         vec)))))
 
-(defn- non-closed-segment-candidate-ids
-  [candidates provenance-index]
+(defn- non-closed-candidate-ids
+  [candidates provenance-index candidate-details]
   (->> candidates
-       (map (fn [candidate]
-              (assoc candidate
-                     ::atoms (segment-atoms (:definition candidate))
-                     ::provenance (get provenance-index (:id candidate)))))
-       (group-by (juxt :table_id ::provenance))
-       (keep (fn [[[_table-id provenance] candidates]]
+       (keep (fn [candidate]
+               (when-let [{:keys [atoms domain]} (candidate-details candidate)]
+                 (assoc candidate
+                        ::atoms atoms
+                        ::domain domain
+                        ::provenance (get provenance-index (:id candidate))))))
+       (group-by (juxt :table_id ::domain ::provenance))
+       (keep (fn [[[_table-id _domain provenance] candidates]]
                (when (seq provenance)
                  (for [{candidate-id :id, candidate-atoms ::atoms} candidates
                        :when (some (fn [{other-id :id, other-atoms ::atoms}]
@@ -557,49 +556,45 @@
                    candidate-id))))
        (into #{} cat)))
 
+(defn- non-closed-segment-candidate-ids
+  [candidates provenance-index]
+  (non-closed-candidate-ids
+   candidates
+   provenance-index
+   (fn [candidate]
+     {:atoms  (segment-atoms (:definition candidate))
+      :domain nil})))
+
 (defn- non-closed-measure-candidate-ids
   [candidates provenance-index]
-  (->> candidates
-       (keep (fn [candidate]
-               (when-let [atoms (not-empty (measure-condition-atoms (:definition candidate)))]
-                 (assoc candidate
-                        ::atoms atoms
-                        ::base (measure-base (:definition candidate))
-                        ::provenance (get provenance-index (:id candidate))))))
-       (group-by (juxt :table_id ::base ::provenance))
-       (keep (fn [[[_table-id _base provenance] candidates]]
-               (when (seq provenance)
-                 (for [{candidate-id :id, candidate-atoms ::atoms} candidates
-                       :when (some (fn [{other-id :id, other-atoms ::atoms}]
-                                     (and (not= candidate-id other-id)
-                                          (< (count candidate-atoms) (count other-atoms))
-                                          (set/subset? candidate-atoms other-atoms)))
-                                   candidates)]
-                   candidate-id))))
-       (into #{} cat)))
+  (non-closed-candidate-ids
+   candidates
+   provenance-index
+   (fn [candidate]
+     (when-let [atoms (not-empty (measure-condition-atoms (:definition candidate)))]
+       {:atoms  atoms
+        :domain (measure-base (:definition candidate))}))))
+
+(defn- prune-non-closed-candidates!
+  [run-id candidate-type candidate-ids-fn]
+  (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
+                                    :run_id run-id
+                                    :candidate_type candidate-type)
+        provenance-index (source-provenance-index (map :id candidates))
+        candidate-ids    (candidate-ids-fn candidates provenance-index)]
+    (when (seq candidate-ids)
+      (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))))
 
 (defn- prune-non-closed-segment-candidates!
   "Remove Segment subsets that carry no provenance beyond a stricter Segment on the same table."
   [run-id]
-  (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
-                                    :run_id run-id
-                                    :candidate_type :segment)
-        provenance-index (source-provenance-index (map :id candidates))
-        candidate-ids    (non-closed-segment-candidate-ids candidates provenance-index)]
-    (when (seq candidate-ids)
-      (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))))
+  (prune-non-closed-candidates! run-id :segment non-closed-segment-candidate-ids))
 
 (defn- prune-non-closed-measure-candidates!
   "Remove conditional Measure subsets that carry no provenance beyond a stricter condition on the
   same base aggregation and table."
   [run-id]
-  (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
-                                    :run_id run-id
-                                    :candidate_type :measure)
-        provenance-index (source-provenance-index (map :id candidates))
-        candidate-ids    (non-closed-measure-candidate-ids candidates provenance-index)]
-    (when (seq candidate-ids)
-      (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))))
+  (prune-non-closed-candidates! run-id :measure non-closed-measure-candidate-ids))
 
 (defn- candidate-atom-details
   [{:keys [candidate_type semantic_details]}]
