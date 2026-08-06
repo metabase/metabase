@@ -12,8 +12,10 @@ import { EmbeddingThemeListingApp } from "./EmbeddingThemeListingApp";
 
 const setup = ({
   hasSimpleEmbedding = false,
+  showHeading = true,
 }: {
   hasSimpleEmbedding?: boolean;
+  showHeading?: boolean;
 } = {}) => {
   fetchMock.get("path:/api/embed-theme", []);
 
@@ -23,7 +25,7 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<EmbeddingThemeListingApp />, {
+  renderWithProviders(<EmbeddingThemeListingApp showHeading={showHeading} />, {
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: true }),
       settings: createMockSettingsState(settings),
@@ -54,6 +56,17 @@ describe("EmbeddingThemeListingApp", () => {
       screen.getByRole("button", { name: /New theme/ }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Create custom themes")).not.toBeInTheDocument();
+  });
+
+  it("leaves the heading out for a host that titles the page itself", async () => {
+    setup({ hasSimpleEmbedding: true, showHeading: false });
+
+    expect(
+      await screen.findByRole("button", { name: /New theme/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Themes" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not request themes from the API when showing the upsell", async () => {

@@ -1,3 +1,4 @@
+import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Navigate, Route } from "metabase/router";
@@ -37,6 +38,11 @@ const embeddingHubPermissionsPage = () =>
 const embeddingHubTenancyPage = () =>
   import("./pages").then(({ EmbeddingHubTenancyPage }) => ({
     Component: EmbeddingHubTenancyPage,
+  }));
+
+const embeddingHubAppearancePage = () =>
+  import("./pages").then(({ EmbeddingHubAppearancePage }) => ({
+    Component: EmbeddingHubAppearancePage,
   }));
 
 const setupPermissionsAndTenantsPage = () =>
@@ -89,6 +95,17 @@ export function getEmbeddingHubRoutes() {
             routes the page still renders its own upsell. */}
         <Route path="tenancy" lazy={embeddingHubTenancyPage}>
           {PLUGIN_TENANTS.tenantsRoutes}
+        </Route>
+        <Route path="appearance">
+          <Route index lazy={embeddingHubAppearancePage} />
+          <Route
+            path=":themeId"
+            element={
+              <EmbeddingThemeEditorApp
+                basePath={Urls.embeddingHubAppearance()}
+              />
+            }
+          />
         </Route>
       </Route>
     </Route>
