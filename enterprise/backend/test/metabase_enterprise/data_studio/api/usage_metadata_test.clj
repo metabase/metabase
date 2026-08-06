@@ -163,6 +163,32 @@
                 (mt/user-http-request :crowberto :delete 200
                                       (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))))))
 
+(deftest candidate-detail-uses-snapshot-match-metadata-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate candidate
+                   (candidate-row (:id run) {:candidate_type  :measure
+                                             :modeling_status :modeled})]
+      (t2/insert! :model/UsageMetadataCandidateMatch
+                  {:candidate_id       (:id candidate)
+                   :relation           :exact
+                   :measure_id         123456789
+                   :entity_name        "Deleted revenue"
+                   :entity_description "Snapshot description"
+                   :entity_archived    false})
+      (is (=? {:matches [{:relation "exact"
+                          :entity_type "measure"
+                          :entity {:id          123456789
+                                   :name        "Deleted revenue"
+                                   :description "Snapshot description"
+                                   :archived    false}}]}
+              (mt/user-http-request :crowberto :get 200
+                                    (str "ee/data-studio/usage-metadata/candidates/" (:id candidate))))))))
+
 (deftest candidate-list-filtering-and-priority-pagination-test
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded

@@ -349,9 +349,19 @@
   (let [model (case type :measure :model/Measure :segment :model/Segment)]
     (mapv (fn [{:keys [definition] :as entity}]
             (assoc entity :signature (existing-signature type table-id definition)))
-          (t2/select [model :id :table_id :name :definition]
+          (t2/select [model :id :table_id :name :description :archived :definition]
                      :table_id table-id
                      :archived false))))
+
+(defn- candidate-match-row
+  [candidate entity relation]
+  (cond-> {:candidate_id       (:id candidate)
+           :relation           relation
+           :entity_name        (:name entity)
+           :entity_description (:description entity)
+           :entity_archived    (boolean (:archived entity))}
+    (= (:candidate_type candidate) :measure) (assoc :measure_id (:id entity))
+    (= (:candidate_type candidate) :segment) (assoc :segment_id (:id entity))))
 
 (defn- reconcile-candidate!
   [{:keys [id candidate_type table_id] :as candidate} published?]
@@ -373,9 +383,7 @@
                     :else                                    :missing)]
       (doseq [{:keys [relation entity]} matches]
         (t2/insert! :model/UsageMetadataCandidateMatch
-                    (cond-> {:candidate_id id, :relation relation}
-                      (= candidate_type :measure) (assoc :measure_id (:id entity))
-                      (= candidate_type :segment) (assoc :segment_id (:id entity)))))
+                    (candidate-match-row candidate entity relation)))
       (t2/update! :model/UsageMetadataCandidate id {:modeling_status status})
       status)
     :missing))
@@ -882,10 +890,11 @@
                      :segment :segment_id)
         match-keys {:candidate_id (:id candidate)
                     :relation     :exact
-                    entity-key    (:id entity)}]
+                    entity-key    (:id entity)}
+        match-row  (candidate-match-row candidate entity :exact)]
     (app-db/select-or-insert! :model/UsageMetadataCandidateMatch
                               match-keys
-                              (constantly match-keys))
+                              (constantly match-row))
     (t2/update! :model/UsageMetadataCandidate (:id candidate) {:modeling_status :modeled})
     entity))
 
