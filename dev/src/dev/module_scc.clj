@@ -246,10 +246,14 @@
   "Churn-weighted blast radius under (possibly modified) `graph`: for each commit, map its changed files to
   modules and count the union of test files those modules and their transitive dependents own — i.e. the
   selective-CI bill for that commit. Weighting by real commits is what closure metrics miss: a module
-  nobody touches contributes nothing to CI spend no matter how upstream it is. Commits touching no
-  module-owned file (frontend, docs) are excluded from the distribution but reported in
-  `:num-commits-skipped`. `file->module` maps source filename → module; `module->tests` maps module → set
-  of its test files."
+  nobody touches contributes nothing to CI spend no matter how upstream it is. `file->module` maps
+  source filename → module; `module->tests` maps module → set of its test files.
+
+  Commits touching no module-owned file are excluded from the distribution and reported in
+  `:num-commits-skipped`. That covers frontend and docs commits, and also **test-only commits**:
+  `file->module` is built from a source-file scan, so a commit that changes only tests maps to no
+  module and is counted as costing nothing, even though selective CI would rerun those tests. The
+  result is therefore the bill for source-changing commits, and it understates total spend."
   [graph module->tests file->module commits]
   (let [dependents (transitive-dependents-graph graph)
         counts     (->> commits
