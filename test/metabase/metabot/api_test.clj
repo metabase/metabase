@@ -252,6 +252,7 @@
                 (with-redefs [llm.settings/llm-openrouter-api-key            (constantly "fake-key")
                               llm.settings/llm-openrouter-api-base-url       (constantly llm-url)
                               scope/resolve-user-permissions                 (constantly scope/all-yes-permissions)
+                              conversation-title/ensure-title!               (constantly {:status :missing})
                               ;; The fake LLM server doesn't gzip, but clj-http wraps with
                               ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
                               http/post                                      (fn [url opts]
