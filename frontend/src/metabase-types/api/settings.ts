@@ -573,7 +573,9 @@ interface PublicSettings {
   "application-name": string;
   "application-favicon-url": string;
   "available-fonts": string[];
-  "available-locales": LocaleData[] | null;
+  // Non-null: :public visibility and a total getter (computed from the jar's
+  // bundled translation resources), so every viewer always receives a list.
+  "available-locales": LocaleData[];
   "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
@@ -632,7 +634,7 @@ interface PublicSettings {
   "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
-  "session-cookies": boolean | null;
+  "session-cookies": boolean;
   "setup-token": string | null;
   "metabot-enabled?": boolean;
   "metabot-name": string;
