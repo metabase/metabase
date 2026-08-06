@@ -279,7 +279,7 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
+(defn- modules-affecting-drivers []
   (let [deps (mage.modules/dependencies)
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
