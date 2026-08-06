@@ -6,7 +6,10 @@
   card, never the main query.
 
   Referenced queries must run before the main query's QP store is bound: a store holds one database, so a nested run
-  against a different one would be rejected."
+  against a different one would be rejected.
+
+  The runner takes `{:card_id, :columns}` specs and knows nothing about what they're for. Deriving those specs from
+  dynamic-goal viz settings is the second section below, and is the only goal-aware code here."
   (:require
    [clojure.core.async :as a]
    [metabase.api.common :as api]
@@ -16,6 +19,10 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]))
+
+;;; ---------------------------------------------------------------------------------------------------------
+;;; Running the specs. Generic: a spec is `{:card_id, :columns}`, whatever produced it.
+;;; ---------------------------------------------------------------------------------------------------------
 
 (def ^:const max-specs
   "Maximum number of referenced cards honored per request."
@@ -75,8 +82,10 @@
                    (qp/process-query (referenced-query card)))
           data   (:data result)]
       (if (next (:rows data))
-        {:status "failed"
-         :error  (tru "Referenced card {0} returned more than one row." card_id)}
+        (do
+          (log/warnf "Referenced card %s returned more than one row" card_id)
+          {:status "failed"
+           :error  (tru "Referenced card {0} returned more than one row." card_id)})
         {:status "completed"
          :data   (-> data
                      (perf/select-keys [:cols :rows])
@@ -114,10 +123,6 @@
     (inject-referenced-cards rff result)
     rff))
 
-;;; ---------------------------------------------------------------------------------------------------------
-;;; Saved-card path: derive specs from a card's viz settings.
-;;; ---------------------------------------------------------------------------------------------------------
-
 (defn- maybe-wrap-qp
   "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`."
   [qp specs]
@@ -125,6 +130,11 @@
     (fn [query rff]
       (qp query (inject-referenced-cards rff result)))
     qp))
+
+;;; ---------------------------------------------------------------------------------------------------------
+;;; Producing the specs. The only dynamic-goals-aware code here: reads goal sources out of a saved card's viz
+;;; settings. Gets productionized in GDGT-2826.
+;;; ---------------------------------------------------------------------------------------------------------
 
 (defn- ->goal-source
   [goal-value]
