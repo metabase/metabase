@@ -1,11 +1,15 @@
 (ns metabase.usage-metadata.frequent-itemsets
   "Closed frequent-itemset mining over weighted baskets.")
 
-(def absolute-support-floor 2)
-(def relative-support-floor 0.2)
-(def minimum-itemset-size 2)
-(def maximum-itemset-size 5)
-(def default-limit 20)
+(def ^:private absolute-support-floor 2)
+(def ^:private relative-support-floor 0.2)
+(def minimum-itemset-size
+  "Smallest number of atoms that can form a mined itemset."
+  2)
+(def ^:private maximum-itemset-size 5)
+(def default-limit
+  "Default maximum number of itemset candidates to return."
+  20)
 
 (defn rows->baskets
   "Project rollup rows to `{:atoms #{...} :count n}` baskets."
@@ -116,6 +120,7 @@
   (closed-only (mine-itemsets baskets)))
 
 (defn relative-support-ok?
+  "Whether `itemset` occurs in a sufficient share of baskets containing any of its atoms."
   [baskets itemset support]
   (let [denominator (any-atom-support baskets itemset)]
     (or (zero? denominator)
