@@ -1,0 +1,24 @@
+name: Debug push event payload
+
+# Throwaway workflow that prints the `push` webhook payload.
+#
+# Push a branch named `debug-push-event*` to see the payload for a branch
+# creation; push again to that branch to see the payload for a normal commit.
+#
+# Delete this file once you're done.
+
+on:
+  push:
+    branches:
+      - debug-push-event**
+
+jobs:
+  dump-event:
+    name: Print push event payload
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Print push event payload
+        run: |
+          jq '.' "$GITHUB_EVENT_PATH"
+          echo "${{github.repository}}"
