@@ -78,7 +78,7 @@ result_metadata:
   lib/source-column-alias: count
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: dShCrdMnthlyCumul0004
   label: monthly_cumulative_orders

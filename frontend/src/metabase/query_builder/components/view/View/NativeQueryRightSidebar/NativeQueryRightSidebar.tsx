@@ -121,7 +121,11 @@ export const NativeQueryRightSidebar = (
       ) : null;
     })
     .with({ isShowingDataReference: true }, () => (
-      <DataReference {...props} onClose={toggleDataReference} />
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
     ))
     .with({ isShowingSnippetSidebar: true }, () => (
       <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />

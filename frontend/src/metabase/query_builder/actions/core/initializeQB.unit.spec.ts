@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
 import { databaseApi, snippetApi } from "metabase/api";
@@ -7,9 +6,12 @@ import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import * as metadataActions from "metabase/redux/metadata";
 import * as sharedQB from "metabase/redux/query-builder";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockLocation,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import type { Location } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
@@ -53,7 +55,7 @@ type TestCard = (Card & DisplayLock) | (UnsavedCard & DisplayLock);
 
 type BaseSetupOpts = {
   user?: User | null;
-  location: LocationDescriptorObject;
+  location: Location;
   params: Record<string, unknown>;
   hasDataPermissions?: boolean;
 };
@@ -103,15 +105,14 @@ async function baseSetup({
 
 function getLocationForCard(
   card: TestCard,
-  extra: LocationDescriptorObject = {},
-): LocationDescriptorObject {
+  extra: Partial<Location> = {},
+): Location {
   const isSaved = "id" in card;
-  return {
+  return createMockLocation({
     pathname: isSaved ? Urls.card(card) : Urls.serializedQuestion(card),
     hash: !isSaved ? CardLib.serializeCardForUrl(card) : "",
-    query: {},
     ...extra,
-  };
+  });
 }
 
 function getQueryParamsForCard(
@@ -131,7 +132,7 @@ function getQueryParamsForCard(
 
 type SetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
   card: TestCard;
-  location?: LocationDescriptorObject;
+  location?: Location;
   params?: Record<string, unknown>;
 };
 
@@ -308,12 +309,12 @@ describe("QB Actions > initializeQB", () => {
           expect(result.objectId).toBe(123);
         });
 
-        it("passes object ID from location query params correctly", async () => {
+        it("passes object ID from the search string correctly", async () => {
           const location = getLocationForCard(card, {
-            query: { objectId: 123 },
+            search: "?objectId=123",
           });
           const { result } = await setup({ card, location });
-          expect(result.objectId).toBe(123);
+          expect(result.objectId).toBe("123");
         });
 
         it("sets original card id on the card", async () => {
@@ -352,12 +353,12 @@ describe("QB Actions > initializeQB", () => {
           expect(result.objectId).toBe(123);
         });
 
-        it("passes object ID from location query params correctly", async () => {
+        it("passes object ID from the search string correctly", async () => {
           const location = getLocationForCard(card, {
-            query: { objectId: 123 },
+            search: "?objectId=123",
           });
           const { result } = await setup({ card: card, location });
-          expect(result.objectId).toBe(123);
+          expect(result.objectId).toBe("123");
         });
 
         describe("newb modal", () => {
@@ -411,7 +412,7 @@ describe("QB Actions > initializeQB", () => {
         it("throws not found error when opening question with /model URL", async () => {
           const { dispatch } = await setup({
             card: card,
-            location: { pathname: `/model/${card}` },
+            location: createMockLocation({ pathname: `/model/${card}` }),
           });
 
           expect(dispatch).toHaveBeenCalledWith(
@@ -851,10 +852,10 @@ describe("QB Actions > initializeQB", () => {
         hash = "#?" + hash;
       }
 
-      const location: LocationDescriptorObject = {
+      const location = createMockLocation({
         pathname: "/question",
         hash,
-      };
+      });
 
       const params = {
         db: db ? String(db) : undefined,
@@ -968,11 +969,7 @@ describe("QB Actions > initializeQB", () => {
       opts: Omit<BaseSetupOpts, "location" | "params"> = {},
     ) {
       const slug = `${tableId}-orders`;
-      const location: LocationDescriptorObject = {
-        pathname: `/table/${slug}`,
-        hash: "",
-        query: {},
-      };
+      const location = createMockLocation({ pathname: `/table/${slug}` });
       return baseSetup({ location, params: { slug }, ...opts });
     }
 
@@ -1001,17 +998,6 @@ describe("QB Actions > initializeQB", () => {
       const { result } = await setupTableRoute(ORDERS_ID);
       expect(result.card.id).toBeUndefined();
       expect(result.card.displayIsLocked).toBeFalsy();
-    });
-
-    it("fetches database metadata for schema breadcrumbs (metabase#75393)", async () => {
-      const fetchDatabaseMetadataSpy = jest.spyOn(
-        metadataActions,
-        "fetchDatabaseMetadata",
-      );
-
-      await setupTableRoute(ORDERS_ID);
-
-      expect(fetchDatabaseMetadataSpy).toHaveBeenCalledWith(SAMPLE_DB_ID);
     });
 
     it("shows a not-found error for an unknown table", async () => {

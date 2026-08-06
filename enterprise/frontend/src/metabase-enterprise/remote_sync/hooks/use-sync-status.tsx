@@ -1,5 +1,7 @@
-import { useSetting } from "metabase/common/hooks";
+import dayjs from "dayjs";
+
 import { useDispatch, useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
 
 import { SyncProgressModal } from "../components/SyncProgressModal";
@@ -9,7 +11,9 @@ import {
   getHasPendingMutation,
   getIsError,
   getIsRunning,
+  getIsStalled,
   getIsSuccess,
+  getLastProgressReportAt,
   getProgress,
   getShowModal,
   getTaskOutcome,
@@ -28,10 +32,16 @@ export const useSyncStatus = () => {
   const taskType = useSelector(getTaskType);
   const progress = useSelector(getProgress);
   const isError = useSelector(getIsError);
+  const isStalled = useSelector(getIsStalled);
+  const lastProgressReportAt = useSelector(getLastProgressReportAt);
   const errorMessage = useSelector(getErrorMessage);
   const isSuccess = useSelector(getIsSuccess);
   const outcome = useSelector(getTaskOutcome);
   const hasPendingMutation = useSelector(getHasPendingMutation);
+
+  const minutesSinceLastUpdate = lastProgressReportAt
+    ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
+    : null;
 
   const shouldPoll = isRunning && showModal && !hasPendingMutation;
 
@@ -46,6 +56,8 @@ export const useSyncStatus = () => {
       <SyncProgressModal
         taskType={taskType}
         progress={progress}
+        isStalled={isStalled}
+        minutesSinceLastUpdate={minutesSinceLastUpdate}
         isError={isError}
         errorMessage={errorMessage}
         isSuccess={isSuccess}

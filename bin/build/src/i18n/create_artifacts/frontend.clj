@@ -22,20 +22,34 @@
   [message-id]
   (str/replace message-id #"\{\s*(\d+)\s*\}" "\\${ $1 }"))
 
-(defn- ->translations-map [messages drop-msgids]
-  {"" (into {}
-            (comp
-             ;; filter out i18n messages that aren't used on the FE client
-             (filter frontend-message?)
-             (remove (fn [{:keys [id]}] (contains? drop-msgids id)))
-             i18n/print-message-count-xform
-             (map (fn [message]
-                    [(->ttag-reference (:id message))
-                     (if (:plural? message)
-                       {:msgid_plural (:id-plural message)
-                        :msgstr       (map ->ttag-reference (:str-plural message))}
-                       {:msgstr [(->ttag-reference (:str message))]})])))
-            messages)})
+(defn- ->translation-entry [message]
+  [(->ttag-reference (:id message))
+   (if (:plural? message)
+     {:msgid_plural (:id-plural message)
+      :msgstr       (map ->ttag-reference (:str-plural message))}
+     {:msgstr [(->ttag-reference (:str message))]})])
+
+(defn- ->translations-map
+  "ttag looks a translation up by (context, msgid), so the top level of the map is keyed by the
+  message's `msgctxt` — `\"\"` for the messages that declare none.
+
+  Two messages may share a `msgid` as long as their contexts differ, e.g. `Year` exists both as a
+  pluralized unit (`ngettext(\"Year\", \"Years\", n)`) and as a granularity option
+  (``c(\"Date granularity option\").t`Year` ``). Keying by `msgid` alone collapsed them onto one
+  entry, so the last one won and the other's translation was lost — including, for the pair above,
+  the plural form that `ngettext` then failed to find."
+  [messages drop-msgids]
+  (let [frontend-messages (into []
+                                (comp
+                                 ;; filter out i18n messages that aren't used on the FE client
+                                 (filter frontend-message?)
+                                 (remove (fn [{:keys [id]}] (contains? drop-msgids id)))
+                                 i18n/print-message-count-xform)
+                                messages)]
+    (into {}
+          (map (fn [[context messages]]
+                 [context (into {} (map ->translation-entry) messages)]))
+          (group-by #(or (:context %) "") frontend-messages))))
 
 (defn- ->i18n-map
   "Convert the contents of a `.po` file to map format used in the frontend client."

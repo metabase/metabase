@@ -23,7 +23,7 @@ jest.mock("@mantine/hooks", () => ({
 // Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
-const PATHNAME = `${Urls.adminToolsTasksRuns()}/:runId`;
+const PATHNAME = `${Urls.monitorTasksRuns()}/:runId`;
 
 interface SetupOpts {
   taskRun?: TaskRunExtended;
@@ -33,9 +33,9 @@ const setup = ({ taskRun = createMockTaskRunExtended() }: SetupOpts = {}) => {
   setupTaskRunEndpoint(taskRun);
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskRunDetailsPage} />,
+    <Route path={PATHNAME} element={<TaskRunDetailsPage />} />,
     {
-      initialRoute: Urls.adminToolsTaskRunDetails(taskRun.id),
+      initialRoute: Urls.monitorTaskRunDetails(taskRun.id),
       withRouter: true,
     },
   );
@@ -49,6 +49,17 @@ describe("TaskRunDetailsPage", () => {
       reset: jest.fn(),
       error: null,
     });
+  });
+
+  it("should show a link back to the runs list", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByRole("link", { name: /Back to Runs/ })).toHaveAttribute(
+      "href",
+      Urls.monitorTasksRuns(),
+    );
   });
 
   it("should display formatted datetime for started_at and ended_at", async () => {

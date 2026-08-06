@@ -25,13 +25,13 @@ function setup() {
   return renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <CollectionBreadcrumbs
           baseCollectionId={null}
           collection={COLLECTION}
           dashboard={DASHBOARD}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

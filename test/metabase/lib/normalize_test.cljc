@@ -1,5 +1,6 @@
 (ns metabase.lib.normalize-test
   (:require
+   #?@(:clj ([metabase.lib.normalize :as lib.normalize]))
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
@@ -219,3 +220,16 @@
                         :lib/type     :mbql.stage/mbql}]
             :lib/type :mbql/query}
            (lib/normalize query)))))
+
+#?(:clj
+   (deftest ^:synchronized normalize-error-containment-test
+     (testing "an AssertionError from the coercer is contained (wrapped), not propagated"
+       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (AssertionError. "boom"))))}
+         (fn []
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uncaught normalization error"
+                                 (lib/normalize {:lib/type :mbql/query}))))))
+     (testing "a fatal Error from the coercer propagates unwrapped"
+       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (Error. "boom"))))}
+         (fn []
+           (is (thrown? Error
+                        (lib/normalize {:lib/type :mbql/query}))))))))

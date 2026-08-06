@@ -20,16 +20,15 @@ function setup({ database, isAttachedDWH = false }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={(routerProps) => (
+      element={
         <DatabaseEditConnectionForm
-          {...routerProps}
           database={database}
           isAttachedDWH={isAttachedDWH}
           onSubmitted={jest.fn()}
           onCancel={jest.fn()}
           formLocation="admin"
         />
-      )}
+      }
     />,
     { withRouter: true, storeInitialState },
   );

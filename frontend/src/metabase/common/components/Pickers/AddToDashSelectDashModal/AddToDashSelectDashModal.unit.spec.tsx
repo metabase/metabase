@@ -293,13 +293,13 @@ const setup = async ({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <AddToDashSelectDashModal
           card={card}
           onChangeLocation={onChangeLocation}
           onClose={() => undefined}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

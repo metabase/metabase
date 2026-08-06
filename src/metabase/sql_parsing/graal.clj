@@ -16,7 +16,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.util.files :as u.files]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
    (java.net URI)
@@ -189,8 +190,8 @@
   three sqlglot calls run at once — one per context, on the shared engine. When idle for up to 10
   minutes the pool shrinks to 0 and the generator's `destroy` closes the context (and, on the last one,
   the shared engine); the first call after an idle gap rebuilds them. See
-  [[metabase.sql-parsing.common/create-pool]]."
-  (common/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
+  [[metabase.util.pool/create-pool]]."
+  (u.pool/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
 
 ;;; ---------------------------------------------- timeout handling ---------------------------------------
 

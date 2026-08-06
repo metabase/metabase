@@ -11733,6 +11733,7 @@ databaseChangeLog:
         - not:
             - indexExists:
                 indexName: idx_security_advisory_acknowledged_by
+                tableName: security_advisory
       changes:
         - createIndex:
             tableName: security_advisory
@@ -11750,6 +11751,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_security_advisory_acknowledged_by
+                foreignKeyTableName: security_advisory
       changes:
         - addForeignKeyConstraint:
             baseTableName: security_advisory
@@ -11768,6 +11770,7 @@ databaseChangeLog:
         - not:
             - indexExists:
                 indexName: idx_security_advisory_match_status
+                tableName: security_advisory
       changes:
         - createIndex:
             tableName: security_advisory
@@ -11775,6 +11778,27 @@ databaseChangeLog:
             columns:
               - column:
                   name: match_status
+
+  - changeSet:
+      id: v55.2026-03-30T00:00:05
+      author: egorgrushin
+      comment: Add security_advisory.download_jar_urls for per-version download links
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: security_advisory
+                columnName: download_jar_urls
+      changes:
+        - addColumn:
+            tableName: security_advisory
+            columns:
+              - column:
+                  name: download_jar_urls
+                  type: ${text.type}
+                  remarks: "JSON array of {version, url} downloadable JARs"
+                  constraints:
+                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

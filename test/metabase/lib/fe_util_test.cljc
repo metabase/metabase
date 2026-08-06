@@ -1080,23 +1080,23 @@
 
 (deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
-    (let [;; lib/native-query would try to look up the snippets:
+    (let [ ;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query
                  :database 1
-                 :stages [{:lib/type :mbql.stage/native
-                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
-                           :template-tags {"snippet: filter1" {:type :snippet
-                                                               :snippet-id 10
-                                                               :snippet-name "filter1"
-                                                               :name "snippet: filter1"
-                                                               :display-name "Filter 1"
-                                                               :id "def456"}
-                                           "snippet: filter2" {:type :snippet
-                                                               :snippet-id 20
-                                                               :snippet-name "filter2"
-                                                               :name "snippet: filter2"
-                                                               :display-name "Filter 2"
-                                                               :id "ghi789"}}}]}]
+                 :stages   [{:lib/type      :mbql.stage/native
+                             :native        "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                             :template-tags [{:type         :snippet
+                                              :snippet-id   10
+                                              :snippet-name "filter1"
+                                              :name         "snippet: filter1"
+                                              :display-name "Filter 1"
+                                              :id           "def456"}
+                                             {:type         :snippet
+                                              :snippet-id   20
+                                              :snippet-name "filter2"
+                                              :name         "snippet: filter2"
+                                              :display-name "Filter 2"
+                                              :id           "ghi789"}]}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}

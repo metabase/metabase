@@ -23,10 +23,7 @@ const setup = ({ isAdmin = false, isPaidPlan = false }) => {
   });
 
   return renderWithProviders(
-    <Route
-      path="/"
-      component={() => <AdminNavbar path="/admin" adminPaths={[]} />}
-    />,
+    <Route path="/" element={<AdminNavbar path="/admin" adminPaths={[]} />} />,
     {
       storeInitialState: state,
       withRouter: true,

@@ -1,8 +1,12 @@
 import { t } from "ttag";
 
+import { formatStatus, isErrorStatus } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified, Flex, Icon } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { Transform } from "metabase-types/api";
+
+import type { TransformRunByTransformId } from "./types";
 
 function isUnscheduledDependency(transform: Transform) {
   return transform.dependency === true && transform.scheduled === false;
@@ -73,6 +77,39 @@ function getFreshnessNoteColumn(): TreeTableColumnDef<Transform> {
   };
 }
 
-export function getColumns(): TreeTableColumnDef<Transform>[] {
-  return [getTransformColumn(), getTargetColumn(), getFreshnessNoteColumn()];
+const getRunStatusColumn = (
+  transformRunByTransformId: TransformRunByTransformId,
+): TreeTableColumnDef<Transform> => ({
+  id: "run-status",
+  header: t`Status`,
+  width: "auto",
+  enableSorting: true,
+  accessorFn: ({ id }) => {
+    const transformRun = transformRunByTransformId.get(id);
+    return transformRun ? formatStatus(transformRun.status) : null;
+  },
+  cell: ({ row }) => {
+    const transformRun = transformRunByTransformId.get(row.original.id);
+    if (!transformRun) {
+      return EMPTY_CELL_PLACEHOLDER;
+    }
+    return (
+      <Box
+        c={isErrorStatus(transformRun.status) ? "feedback-negative" : undefined}
+      >
+        {formatStatus(transformRun.status)}
+      </Box>
+    );
+  },
+});
+
+export function getColumns(
+  transformRunByTransformId: TransformRunByTransformId,
+): TreeTableColumnDef<Transform>[] {
+  return [
+    getTransformColumn(),
+    getTargetColumn(),
+    getRunStatusColumn(transformRunByTransformId),
+    getFreshnessNoteColumn(),
+  ];
 }

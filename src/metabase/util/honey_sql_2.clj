@@ -569,10 +569,6 @@
   ;; Postgres timestamp subtraction returns an interval that orders correctly.
   [:- end-form start-form])
 
-(defmethod calculate-interval-honeysql-form :postgres-mbql5
-  [db-type end-form start-form]
-  ((get-method calculate-interval-honeysql-form :postgres) db-type end-form start-form))
-
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
   [:timestampdiff [:raw "MICROSECOND"] start-form end-form])
@@ -580,10 +576,6 @@
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]
   [:datediff (literal "MILLISECOND") start-form end-form])
-
-(defmethod calculate-interval-honeysql-form :h2-mbql5
-  [db-type end-form start-form]
-  ((get-method calculate-interval-honeysql-form :h2) db-type end-form start-form))
 
 (defmethod calculate-interval-honeysql-form :default
   [db-type end-form start-form]

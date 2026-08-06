@@ -417,9 +417,6 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Action [_action]
-  [:name (serdes/hydrated-hash :model) :created_at])
-
 (defmethod serdes/generate-path "QueryAction" [_ _] nil)
 (defmethod serdes/make-spec "QueryAction" [_model-name _opts]
   {:copy      []

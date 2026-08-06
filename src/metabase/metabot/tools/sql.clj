@@ -96,22 +96,19 @@
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)
-              results-url (streaming/query->question-url query)]
+              instr       (instructions/query-created-instructions-for query-id)]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr
-           :data-parts [(streaming/viz-part {:inline?   (shared/inline-viz-capable?)
-                                             :entity-id (str (random-uuid))
+           :data-parts [(streaming/viz-part {:entity-id (str (random-uuid))
                                              :query-id  query-id
                                              :query     (links/->legacy-mbql query)
-                                             :title     title
-                                             :link      results-url})]})
+                                             :title     title})]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/error e "Error creating SQL query")
+      (log/errorf "Error creating SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
@@ -175,24 +172,21 @@
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
               instr       (instructions/edit-sql-query-instructions-for query-id)
-              results-url (streaming/query->question-url query)
               buffer-id  (first-code-editor-buffer-id)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
            :data-parts [(if buffer-id
                           (code-edit-part buffer-id query-content)
-                          (streaming/viz-part {:inline?   (shared/inline-viz-capable?)
-                                               :entity-id (str (random-uuid))
+                          (streaming/viz-part {:entity-id (str (random-uuid))
                                                :query-id  query-id
                                                :query     (links/->legacy-mbql query)
-                                               :title     title
-                                               :link      results-url}))]})
+                                               :title     title}))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/error e "Error editing SQL query")
+      (log/errorf "Error editing SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
@@ -227,24 +221,21 @@
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
               instr       (instructions/replace-sql-query-instructions-for query-id)
-              results-url (streaming/query->question-url query)
               buffer-id  (first-code-editor-buffer-id)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
            :data-parts [(if buffer-id
                           (code-edit-part buffer-id query-content)
-                          (streaming/viz-part {:inline?   (shared/inline-viz-capable?)
-                                               :entity-id (str (random-uuid))
+                          (streaming/viz-part {:entity-id (str (random-uuid))
                                                :query-id  query-id
                                                :query     (links/->legacy-mbql query)
-                                               :title     title
-                                               :link      results-url}))]})
+                                               :title     title}))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/error e "Error replacing SQL query")
+      (log/errorf "Error replacing SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))

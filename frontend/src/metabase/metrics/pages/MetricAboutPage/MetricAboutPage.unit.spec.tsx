@@ -58,10 +58,7 @@ function setupBaseEndpoints(card: Card) {
 
 function renderPage() {
   renderWithProviders(
-    <Route
-      path="/metric/:cardId"
-      component={(props: any) => <MetricAboutPage params={props.params} />}
-    />,
+    <Route path="/metric/:cardId" element={<MetricAboutPage />} />,
     {
       withRouter: true,
       initialRoute: `/metric/${CARD_ID}`,

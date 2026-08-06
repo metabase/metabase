@@ -1,36 +1,25 @@
 import cx from "classnames";
-import type { Location } from "history";
-import { Component } from "react";
+import { useEffect, useRef } from "react";
+import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import SegmentRevisions from "metabase/reference/segments/SegmentRevisions";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
-import type { User } from "metabase-types/api";
+import { useLocation, useParams } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
+import {
+  type ReferenceRouteParams,
+  getIsEditing,
+  getSegment,
+  getSegmentId,
+  getUser,
 } from "../selectors";
-import { getIsEditing, getSegment, getSegmentId, getUser } from "../selectors";
-import type { StubbedSegment } from "../types";
 
 import SegmentSidebar from "./SegmentSidebar";
-
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  user: getUser(state),
-  segment: getSegment(state, props),
-  segmentId: getSegmentId(state, props),
-  isEditing: getIsEditing(state),
-});
 
 const mapDispatchToProps = {
   ...metadataActions,
@@ -38,65 +27,55 @@ const mapDispatchToProps = {
 };
 
 interface SegmentRevisionsContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  params: ReferenceRouteParams;
-  location: Location;
-
-  // From route definition / parent
-  style: React.CSSProperties;
-
-  // From mapStateToProps
-  user: User | null;
-  segment: StubbedSegment;
-  segmentId: number;
-  isEditing?: boolean;
-
-  // From mapDispatchToProps
   fetchSegments: (id?: number) => Promise<unknown>;
   fetchSegmentRevisions: (id: number) => Promise<unknown>;
   fetchSegmentTable: (id: number) => Promise<unknown>;
 }
 
-class SegmentRevisionsContainer extends Component<SegmentRevisionsContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchSegmentRevisions(this.props, this.props.segmentId);
+function SegmentRevisionsContainer(props: SegmentRevisionsContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
+  const params = useParams<ReferenceRouteParams>();
+
+  const user = useSelector(getUser);
+  const segment = useSelector((state) => getSegment(state, { params }));
+  const segmentId = useSelector((state) => getSegmentId(state, { params }));
+  const isEditing = useSelector(getIsEditing);
+
+  // Dispatched during render, not from an effect, to reproduce the
+  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
+  // the store, so it has to be true before the child's first render. From an
+  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
+  // reference header lays out wrong — see DEV-2430.
+  const didFetch = useRef(false);
+  if (!didFetch.current) {
+    didFetch.current = true;
+    actions.wrappedFetchSegmentRevisions(props, segmentId);
   }
 
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: SegmentRevisionsContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    const { user, segment, isEditing } = this.props;
-
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={<SegmentSidebar segment={segment} user={user} />}
-      >
-        <SegmentRevisions {...this.props} />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      style={isEditing ? { paddingTop: "43px" } : {}}
+      sidebar={<SegmentSidebar segment={segment} user={user} />}
+    >
+      <SegmentRevisions params={params} />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouteProps(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  )(
-    // Unjustified type cast. FIXME
-    SegmentRevisionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
-  ),
-);
+export default connect(
+  null,
+  mapDispatchToProps,
+  // Unjustified type cast. FIXME
+)(SegmentRevisionsContainer as unknown as React.ComponentType);

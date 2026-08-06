@@ -17,7 +17,7 @@ describe("SegmentItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <SegmentItem segment={segment} href={segmentUrl} />}
+        element={<SegmentItem segment={segment} href={segmentUrl} />}
       />,
       { withRouter: true },
     );
@@ -40,7 +40,7 @@ describe("SegmentItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <SegmentItem segment={segment} href="/test" />}
+        element={<SegmentItem segment={segment} href="/test" />}
       />,
       { withRouter: true },
     );

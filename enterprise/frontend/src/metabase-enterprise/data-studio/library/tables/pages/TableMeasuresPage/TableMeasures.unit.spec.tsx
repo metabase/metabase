@@ -49,7 +49,7 @@ const setup = ({ isAdmin = true, remoteSyncType, table }: SetupOpts = {}) => {
   enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
 
   renderWithProviders(
-    <Route path="/" component={() => <TableMeasures table={mockTable} />} />,
+    <Route path="/" element={<TableMeasures table={mockTable} />} />,
     {
       withRouter: true,
       storeInitialState: state,

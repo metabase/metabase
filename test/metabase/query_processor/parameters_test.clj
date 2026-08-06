@@ -787,7 +787,8 @@
   [mp ids template-tag-overrides]
   (let [sql (mt/native-query-with-card-template-tag driver/*driver* "table")
         base-query (lib/native-query mp sql)
-        template-tag (get (lib/template-tags base-query) "table")
+        template-tag (m/find-first #(= (:name %) "table")
+                                   (lib/template-tags base-query))
         query (lib/with-template-tags base-query
                 {"table" (merge template-tag {:type :table} template-tag-overrides)})]
     (is (= (set ids) (query-result-ids query)))))

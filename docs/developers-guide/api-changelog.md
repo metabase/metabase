@@ -8,6 +8,16 @@ title: API changelog
 
 - Self-hosted environments must now explicitly enable transforms before beginning to use them via the API. Admins can enable transforms in Data Studio or by setting the MB_TRANSFORMS_ENABLED environment variable to true.
 
+- The endpoints that fetch prefill values for action forms have been converted from GET to POST so that parameter values are sent in the JSON request body instead of the URL query string. `parameters` is now a JSON object in the request body rather than a JSON-encoded query-string parameter:
+
+  - `GET /api/action/:action-id/execute` has been replaced by `POST /api/action/:action-id/execute/values`.
+  - `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute` has been replaced by
+    `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/values`.
+  - `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute` has been replaced by
+    `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute/values`.
+
+  The GET variants have been removed without a deprecation period.
+
 ## Metabase 0.61.0
 
 - `POST /api/metabot/describe/card` and `POST /api/metabot/describe/dashboard/:id` have been removed. These endpoints

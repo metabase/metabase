@@ -10,7 +10,7 @@ const database = createMockDatabase({ id: 1, name: "Test Database" });
 function setup() {
   setupDatabasesEndpoints([database]);
   return renderWithProviders(
-    <Route path="/" component={DatabaseListContainer} />,
+    <Route path="/" element={<DatabaseListContainer />} />,
     { withRouter: true, initialRoute: "/" },
   );
 }

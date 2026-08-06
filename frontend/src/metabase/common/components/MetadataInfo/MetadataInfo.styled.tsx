@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { LoadingSpinner as LoadingSpinnerBase } from "metabase/common/components/LoadingSpinner";
 import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
@@ -64,14 +63,6 @@ export const Fade = styled.div<FadeProps>`
   &:empty {
     display: none;
   }
-`;
-
-export const LoadingSpinner = styled(LoadingSpinnerBase)`
-  display: flex;
-  flex-grow: 1;
-  align-self: center;
-  justify-content: center;
-  color: var(--mb-color-core-brand);
 `;
 
 export const Table = styled.table`

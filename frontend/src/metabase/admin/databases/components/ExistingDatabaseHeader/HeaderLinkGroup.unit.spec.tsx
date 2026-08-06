@@ -8,10 +8,7 @@ import { HeaderLinkGroup } from "./HeaderLinkGroup";
 
 const setup = (mockDatabase: Database) => {
   renderWithProviders(
-    <Route
-      path="*"
-      component={() => <HeaderLinkGroup database={mockDatabase} />}
-    />,
+    <Route path="*" element={<HeaderLinkGroup database={mockDatabase} />} />,
     { withRouter: true },
   );
 };

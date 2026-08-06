@@ -12,6 +12,7 @@
    [mage.bot.prompt-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
+   [mage.kondo-ratchet-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.modules-test]
    [mage.token-scan-test]
@@ -22,6 +23,7 @@
   ;; Load test namespaces to ensure code coverage
   mage.doctor-test/keep-me
   mage.fix-unused-requires-test/keep-me
+  mage.kondo-ratchet-test/keep-me
   mage.util-test/keep-me
   mage.modules-test/keep-me
   merge-yaml-migrations-test/keep-me

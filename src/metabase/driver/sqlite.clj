@@ -31,7 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlite, :parent :sql-jdbc)
+(driver/register! :sqlite, :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :sqlite
   [_driver]
@@ -203,7 +203,17 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
-(defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] expr)
+;; SQLite stores datetimes as text and the QP wraps datetime literals in `DATETIME(...)` (space-separated),
+;; so raw column reads (T-separated) don't compare equal to those literals. Wrap only when we can
+;; confirm the expr is a table-level datetime column (via its `:database-type`) so both sides
+;; normalize to the same canonical form. Nested-query outer refs lose `:database-type`; leaving them
+;; alone avoids widening `DATE(...)`-typed inner projections to datetime, and keeps value-side date/time
+;; literals from being wrapped in `DATETIME(DATE(...))` or `DATETIME(TIME(...))`.
+(defmethod sql.qp/date [:sqlite :default]
+  [_driver _unit expr]
+  (if (#{"datetime" "timestamp"} (some-> (h2x/database-type expr) u/lower-case-en))
+    (->datetime expr)
+    expr))
 
 (defmethod sql.qp/date [:sqlite :second]
   [_driver _unit expr]
@@ -402,28 +412,29 @@
   (if bool 1 0))
 
 (defmethod sql.qp/->honeysql [:sqlite :substring]
-  [driver [_ arg start length]]
+  [driver [_ _opts arg start length]]
   (if length
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length)]
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start)]))
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (into
    [:||]
    (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
-  [_driver [_ arg]]
-  [:round (h2x/- arg 0.5)])
+  [driver [_ _opts arg]]
+  [:round (h2x/- (sql.qp/->honeysql driver arg) 0.5)])
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
-  [_driver [_ arg]]
-  [:case
-   ;; if we're ceiling a whole number, just cast it to an integer
-   ;; [:ceil 1.0] should returns 1
-   [:= [:round arg] arg] (h2x/->integer arg)
-   :else                 [:round (h2x/+ arg 0.5)]])
+  [driver [_ _opts arg]]
+  (let [arg (sql.qp/->honeysql driver arg)]
+    [:case
+     ;; if we're ceiling a whole number, just cast it to an integer
+     ;; [:ceil 1.0] should returns 1
+     [:= [:round arg] arg] (h2x/->integer arg)
+     :else                 [:round (h2x/+ arg 0.5)]]))
 
 ;; See https://sqlite.org/lang_datefunc.html
 

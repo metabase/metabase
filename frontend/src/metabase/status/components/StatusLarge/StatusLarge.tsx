@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { Ellipsified, Icon } from "metabase/ui";
+import { Ellipsified, Icon, Loader } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
@@ -14,7 +14,6 @@ import {
   StatusCardIcon,
   StatusCardIconContainer,
   StatusCardRoot,
-  StatusCardSpinner,
   StatusCardTitle,
   StatusHeader,
   StatusRoot,
@@ -118,7 +117,7 @@ const StatusCard = ({
           </StatusCardTitle>
           <StatusCardDescription>{description}</StatusCardDescription>
         </StatusCardBody>
-        {isInProgress && <StatusCardSpinner size={24} borderWidth={3} />}
+        {isInProgress && <Loader size="md" color="core-brand" />}
         {isCompleted && (
           <StatusCardIconContainer>
             <Icon name="check" size={12} />

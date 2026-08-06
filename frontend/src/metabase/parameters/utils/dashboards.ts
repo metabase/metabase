@@ -34,7 +34,8 @@ type ExtendedMapping = DashboardParameterMapping & {
   card: Card;
 };
 
-export type NewParameterOpts = Pick<Parameter, "name" | "type" | "sectionId">;
+export type NewParameterOpts = Pick<Parameter, "name" | "type"> &
+  Partial<Omit<Parameter, "name" | "type">>;
 
 export function createParameter(
   opts: NewParameterOpts,
@@ -58,11 +59,10 @@ export function createParameter(
   }
 
   const parameter: Parameter = {
+    ...opts,
     name: "",
     slug: "",
     id: generateParameterId(),
-    type: opts.type,
-    sectionId: opts.sectionId,
   };
 
   return setParameterName(parameter, name);

@@ -30,40 +30,60 @@
 (deftest ^:parallel re-exported-from-core-test
   (testing "chart-interestingness is re-exported from interestingness.core"
     (is (some? (resolve 'metabase.interestingness.core/chart-interestingness)))
-    (is (number? (interestingness/chart-interestingness (time-series-config (range 20)))))))
+    (is (number? (:score (interestingness/chart-interestingness (time-series-config (range 20))))))))
 
 (deftest ^:parallel score-in-unit-interval-test
-  (testing "chart-interestingness always returns a value in [0, 1]"
+  (testing "chart-interestingness :score is always in [0, 1]"
     (doseq [cfg [(time-series-config (range 30))
                  (time-series-config (repeat 30 5))
                  (categorical-config ["a" "b" "c"] [10 20 30])
                  (categorical-config ["only"] [42])]]
-      (let [score (chart/chart-interestingness cfg)]
+      (let [score (:score (chart/chart-interestingness cfg))]
         (is (<= 0.0 score 1.0) (str "score out of range: " score))))))
 
 (deftest ^:parallel flat-measure-is-uninteresting-test
   (testing "a chart with zero-variance y_values scores 0"
     (let [cfg (time-series-config (repeat 30 7))]
-      (is (zero? (chart/chart-interestingness cfg))))))
+      (is (zero? (:score (chart/chart-interestingness cfg)))))))
 
 (deftest ^:parallel single-valued-dimension-is-uninteresting-test
   (testing "a chart with a single x value scores 0"
     (let [cfg (categorical-config ["only"] [42])]
-      (is (zero? (chart/chart-interestingness cfg))))))
+      (is (zero? (:score (chart/chart-interestingness cfg)))))))
 
 (deftest ^:parallel trend-beats-flat-test
   (testing "a strongly-increasing time series scores higher than a nearly-flat one"
     (let [trend   (time-series-config (range 30))
           noisy   (time-series-config (map #(+ 100 (rem % 3)) (range 30)))]
-      (is (> (chart/chart-interestingness trend)
-             (chart/chart-interestingness noisy))))))
+      (is (> (:score (chart/chart-interestingness trend))
+             (:score (chart/chart-interestingness noisy)))))))
 
 (deftest ^:parallel outlier-elevates-score-test
   (testing "injecting a large outlier raises the score vs. a near-constant series"
     (let [boring   (vec (repeat 29 10))
           with-out (conj (vec (repeat 29 10)) 10000)]
-      (is (> (chart/chart-interestingness (time-series-config with-out))
-             (chart/chart-interestingness (time-series-config boring)))))))
+      (is (> (:score (chart/chart-interestingness (time-series-config with-out)))
+             (:score (chart/chart-interestingness (time-series-config boring))))))))
+
+(deftest ^:parallel breakdown-exposes-components-test
+  (testing "chart-interestingness returns the component sub-scores alongside the blended :score"
+    (let [{:keys [score non-degeneracy signal structure chart-type] :as bd}
+          (chart/chart-interestingness (time-series-config (range 30)))]
+      (is (<= 0.0 score 1.0))
+      (is (<= 0.0 non-degeneracy 1.0))
+      (is (<= 0.0 signal 1.0))
+      (is (<= 0.0 structure 1.0))
+      (is (= :time-series chart-type))
+      (is (= #{:score :non-degeneracy :signal :structure :chart-type}
+             (set (keys bd)))))))
+
+(deftest ^:parallel breakdown-degenerate-short-circuits-test
+  (testing "a flat measure short-circuits: score 0, non-degeneracy 0, signal/structure nil (never computed)"
+    (let [bd (chart/chart-interestingness (time-series-config (repeat 30 7)))]
+      (is (zero? (:score bd)))
+      (is (zero? (:non-degeneracy bd)))
+      (is (nil? (:signal bd)))
+      (is (nil? (:structure bd))))))
 
 (deftest ^:parallel caller-supplied-stats-test
   (testing "2-arity form accepts pre-computed stats (no recomputation)"
@@ -71,5 +91,5 @@
           stats {:chart-type :time-series
                  :series-count 0
                  :series {}}
-          score (chart/chart-interestingness cfg stats)]
+          score (:score (chart/chart-interestingness cfg stats))]
       (is (<= 0.0 score 1.0)))))

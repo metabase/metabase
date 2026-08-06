@@ -3,6 +3,7 @@ import { normalize } from "normalizr";
 
 import type { State } from "metabase/redux/store";
 import { FieldSchema } from "metabase/schema";
+import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -30,8 +31,6 @@ import type {
   NormalizedTable,
   Segment,
 } from "metabase-types/api";
-
-import { getSettings } from "./settings";
 
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;

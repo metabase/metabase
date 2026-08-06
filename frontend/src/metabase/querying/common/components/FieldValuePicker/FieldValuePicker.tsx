@@ -59,7 +59,7 @@ export function FieldValuePicker({
   if (isLoading) {
     return (
       <Center h="2.5rem">
-        <Loader data-testid="loading-indicator" />
+        <Loader />
       </Center>
     );
   }

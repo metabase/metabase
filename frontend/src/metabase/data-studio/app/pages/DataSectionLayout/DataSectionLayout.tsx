@@ -1,16 +1,16 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { Outlet } from "metabase/router";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
-type DataSectionLayoutProps = {
-  children?: ReactNode;
-};
-
-export function DataSectionLayout({ children }: DataSectionLayoutProps) {
+export function DataSectionLayout() {
   usePageTitle(t`Tables`);
 
-  return <SectionLayout>{children}</SectionLayout>;
+  return (
+    <SectionLayout>
+      <Outlet />
+    </SectionLayout>
+  );
 }

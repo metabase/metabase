@@ -2,7 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms.query-test-util :as query-test-util]
@@ -100,6 +104,46 @@
           (mt/with-current-user (mt/user->id :rasta)
             (is (not (mi/can-read? reloaded)))
             (is (not (mi/can-write? reloaded)))))))))
+
+(deftest native-transform-requires-query-builder-and-native-test
+  (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
+            group was misconfigured with transforms permission but only query-builder access (no native)."
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                     :model/Transform native-transform
+                     {:name   "Native Transform"
+                      :source {:type  "query"
+                               :query {:database (mt/id)
+                                       :type     "native"
+                                       :native   {:query "SELECT 1"}}}}
+                     :model/Transform mbql-transform
+                     {:name   "MBQL Transform"
+                      :source {:type  "query"
+                               :query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+        (let [native (t2/select-one :model/Transform (:id native-transform))
+              mbql   (t2/select-one :model/Transform (:id mbql-transform))]
+          (mt/with-data-analyst-role! (mt/user->id :rasta)
+            (mt/with-restored-data-perms!
+              ;; Remove native access granted to All Users by default so the user's only path to native would be
+              ;; the (mis)configured transforms group.
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+              (testing "transforms granted, but create-queries only query-builder (no native) — preexisting misconfiguration"
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                (mt/with-current-user (mt/user->id :rasta)
+                  (testing "native transform cannot be written"
+                    (is (not (mi/can-write? native))))
+                  (testing "non-native (MBQL) transform is unaffected"
+                    (is (mi/can-write? mbql)))))
+              (testing "with query-builder-and-native, native transform can be written"
+                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                (mt/with-current-user (mt/user->id :rasta)
+                  (is (mi/can-write? native)))))))))))
 
 (deftest execute-fails-clearly-when-source-db-deleted-test
   (testing "running a query transform whose source database has been deleted fails with a clear error"

@@ -172,7 +172,7 @@
          :error :invalid-token
          :message "Invalid token format"})
       (catch Exception e
-        (log/error e "Unexpected error during reset token verification")
+        (log/errorf "Unexpected error during reset token verification: %s" (ex-message e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during token verification"}))))

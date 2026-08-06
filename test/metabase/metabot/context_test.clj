@@ -228,6 +228,24 @@
       (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]} {})
                           :user_recently_viewed))))))
 
+(deftest recent-views-excluded-for-nlq-profile-test
+  (testing "The :nlq profile never gets recent views, and caller-supplied ones are stripped"
+    (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]}
+                                                    {:profile-id :nlq})
+                        :user_recently_viewed)))))
+
+(deftest recent-views-excluded-for-slackbot-profile-test
+  (testing "The :slackbot profile never gets recent views, and caller-supplied ones are stripped"
+    (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]}
+                                                    {:profile-id :slackbot})
+                        :user_recently_viewed)))))
+
+(deftest recent-views-excluded-for-document-generate-content-profile-test
+  (testing "The :document-generate-content profile never gets recent views, and caller-supplied ones are stripped"
+    (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]}
+                                                    {:profile-id :document-generate-content})
+                        :user_recently_viewed)))))
+
 (deftest recent-views-verified-content-filter-test
   (testing "Recent views filtering by curated content (verified is one curation signal)"
     (mt/with-test-user :rasta

@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
@@ -18,28 +17,36 @@ import type {
   SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import type { ModalState } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import type { WithRouterProps } from "metabase/router";
-import { push, withRouter } from "metabase/router";
-import { getCurrentOpenModalState } from "metabase/selectors/ui";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
-export const NewModals = withRouter((props: WithRouterProps) => {
-  const { pathname } = useLocation();
+const getCurrentOpenModalState = <TProps,>(state: State) =>
+  // Unjustified type cast. FIXME
+  state.modal as ModalState<TProps>;
+
+export const NewModals = () => {
+  const location = useLocation();
+  const params = useParams();
+  const { pathname } = location;
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
-  const collectionId = useInitialCollectionId(props) ?? undefined;
+  const navigate = useNavigate();
+  const collectionId =
+    useInitialCollectionId({ location, params }) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
       const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
-      dispatch(push(nextLocation));
+      navigate(nextLocation);
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleModalClose = useCallback(() => {
@@ -139,4 +146,4 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         />
       );
   }
-});
+};

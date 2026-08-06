@@ -26,7 +26,6 @@
             temp-unmasked-key  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
                                    :unmasked_key)]
         (try
-          (#'scim/backfill-required-entity-ids!)
           (binding [*scim-api-key* temp-unmasked-key]
             (thunk))
           (finally

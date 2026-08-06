@@ -13,14 +13,12 @@
 
 (def ^:dynamic *user-ctx* nil)
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-sync-search-indexing
   "Perform all search indexing synchronously."
   [& body]
   `(binding [metabase.search.ingestion/*force-sync* true]
      ~@body))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body."
   [& body]
@@ -30,7 +28,6 @@
        (with-sync-search-indexing
          ~@body))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-appdb-search-if-available*
   "Create a temporary index table for the duration of the body."
   [& body]
@@ -45,7 +42,6 @@
        (search/reindex! {:async? false :in-place? true})
        ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-appdb-search-if-available-otherwise-legacy
   "Create a temporary index table for the duration of the body."
   [& body]

@@ -9,6 +9,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.slack :as slack]
+   [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
@@ -62,7 +63,6 @@
                 :content "<svg width=\"300\" height=\"130\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect width=\"200\" height=\"100\" x=\"10\" y=\"10\" rx=\"20\" ry=\"20\" fill=\"blue\" />\n</svg>"})]
      ~@body))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
   (with-javascript-visualization-stub
@@ -94,12 +94,12 @@
   `(let [topics# ~topics]
      (try
        (doseq [topic# topics#]
-         (derive topic# :metabase/event))
+         (events/derive! topic# :metabase/event))
        (with-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
          ~@body)
        (finally
          (doseq [topic# topics#]
-           (underive topic# :metabase/event))))))
+           (events/underive! topic# :metabase/event))))))
 
 (defmacro with-notification-cleanup!
   "Macro that clean ups notification related models"

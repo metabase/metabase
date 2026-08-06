@@ -77,6 +77,36 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
+## Kondo Ignore Ratchets
+
+`.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
+tree may contain. `metabase.core.kondo-ratchet-test` fails when the budgets drift from the actual counts,
+in either direction. Prefer fixing the underlying warning over adding an ignore.
+
+Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
+change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
+To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
+
+```bash
+./bin/mage fix-kondo-ratchets
+```
+
+Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
+genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
+PR.
+
+Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
+flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup.
+To burn debt down, `./bin/mage kondo-redundant-ignores` lists ignores that are no longer needed (slow:
+full kondo run). Kondo's redundancy report can't see hook-linter warnings, so `--fix` re-lints after
+removing, puts any still-working ignore back exactly as it was, and stamps it with a `[kondo-keep]`
+comment; marked sites are skipped on later runs. That verification needs a clean starting point, so
+files with pre-existing lint findings are excluded from the sweep and reported. `--fix --audit` rechecks the
+marked sites too, removing any that have become truly redundant along with their stamped marker
+comments (a marker trailing on a code line is left for a hand fix). `[kondo-keep]` can also be added
+by hand to protect an ignore whose exact form matters — it only counts on the line directly above the
+ignore, or trailing on the ignore's own line.
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.

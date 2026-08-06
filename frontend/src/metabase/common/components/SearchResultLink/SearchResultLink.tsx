@@ -1,9 +1,9 @@
 import type { MouseEvent } from "react";
 
-import { Anchor, Text, Tooltip } from "metabase/ui";
+import { Anchor, Group, Text, Tooltip } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 
-import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
+import S from "./SearchResultLink.module.css";
 
 export const SearchResultLink = ({
   children,
@@ -17,37 +17,40 @@ export const SearchResultLink = ({
   const { isTruncated, ref: truncatedRef } =
     useIsTruncated<HTMLAnchorElement>();
 
-  const componentProps = href
-    ? {
-        as: Anchor,
-        href,
-        td: "underline",
-        onClick: (e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation(),
-      }
-    : {
-        as: Text,
-        td: "none",
-      };
-
   return (
     <Tooltip disabled={!isTruncated || !children} label={children}>
-      <ResultLinkWrapper
+      <Group
+        className={S.resultLinkWrapper}
         data-testid="result-link-wrapper"
         gap="xs"
         wrap="nowrap"
       >
         {leftIcon}
-        <ResultLink
-          {...componentProps}
-          span
-          c="text-secondary"
-          size="sm"
-          truncate
-          ref={truncatedRef}
-        >
-          {children}
-        </ResultLink>
-      </ResultLinkWrapper>
+        {href ? (
+          <Anchor
+            href={href}
+            td="underline"
+            onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
+            className={S.resultLink}
+            size="sm"
+            truncate
+            ref={truncatedRef}
+          >
+            {children}
+          </Anchor>
+        ) : (
+          <Text
+            td="none"
+            component="span"
+            className={S.resultLink}
+            size="sm"
+            truncate
+            ref={truncatedRef}
+          >
+            {children}
+          </Text>
+        )}
+      </Group>
     </Tooltip>
   );
 };

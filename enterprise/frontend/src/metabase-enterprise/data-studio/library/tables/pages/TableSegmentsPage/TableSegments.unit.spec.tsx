@@ -53,7 +53,7 @@ const setup = ({
   enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
 
   renderWithProviders(
-    <Route path="/" component={() => <TableSegments table={mockTable} />} />,
+    <Route path="/" element={<TableSegments table={mockTable} />} />,
     {
       storeInitialState: state,
       withRouter: true,

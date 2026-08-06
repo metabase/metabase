@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.internal-stats.metabot :as sut]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.example-question-generator :as eqg]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai :as openai]
@@ -35,13 +36,13 @@
                         :id    message-id}]))]
     (with-redefs [openrouter/openrouter mock-fn
                   claude/claude         mock-fn
-                  openai/openai         mock-fn]
+                  openai/openai         mock-fn
+                  ;; skip title generation to avoid second llm call + ai_usage_log row
+                  conversation-title/ensure-title! (constantly {:status :missing})]
       (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                             {:message         message
                              :context         {}
-                             :conversation_id conversation-id
-                             :history         []
-                             :state           {}}))))
+                             :conversation_id conversation-id}))))
 
 (defn- backdate-messages!
   "Update created_at on all messages and usage log rows for a conversation to the given timestamp."

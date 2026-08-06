@@ -7,6 +7,8 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import {
@@ -22,15 +24,11 @@ import type {
   State,
   StoreDashboard,
 } from "metabase/redux/store";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { getIsWebApp } from "metabase/selectors/web-app";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
@@ -547,7 +545,7 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
@@ -555,7 +553,7 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );
@@ -638,21 +636,6 @@ function getSdkInitialDashboardTabId(
   return dashboard.tabs?.[0]?.id ?? null;
 }
 
-export const getCurrentTabDashcards = createSelector(
-  [getDashboardComplete, getSelectedTabId],
-  (dashboard, selectedTabId) => {
-    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
-      return [];
-    }
-    if (!selectedTabId) {
-      return dashboard.dashcards;
-    }
-    return dashboard.dashcards.filter(
-      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
-    );
-  },
-);
-
 export const getHiddenParameterSlugs = createSelector(
   [getDashboardComplete, getParameters, getIsEditing],
   (dashboard, parameters, isEditing) => {
@@ -667,23 +650,6 @@ export const getHiddenParameterSlugs = createSelector(
     );
 
     return hiddenParameters.map((parameter) => parameter.slug).join(",");
-  },
-);
-
-export const getTabHiddenParameterSlugs = createSelector(
-  [getParameters, getCurrentTabDashcards, getIsEditing],
-  (parameters, currentTabDashcards, isEditing) => {
-    if (isEditing) {
-      // All filters should be visible in edit mode
-      return undefined;
-    }
-
-    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
-    const hiddenParameters = parameters.filter(
-      (parameter) => !currentTabParameterIds.includes(parameter.id),
-    );
-
-    return hiddenParameters.map((p) => p.slug).join(",");
   },
 );
 

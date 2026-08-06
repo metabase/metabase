@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
@@ -37,28 +38,34 @@
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
   Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
 
   Optional:
-    :system      - System prompt string
-    :input       - Sequence of AISDK parts and user messages
-    :tools       - Sequence of tool definition maps
-    :tool_choice - \"auto\" or \"required\"
-    :temperature - Sampling temperature
-    :max-tokens  - Maximum tokens in the response
-    :schema      - JSON Schema map for structured output; each provider forces a
-                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
+    :system           - System prompt string
+    :input            - Sequence of AISDK parts and user messages
+    :tools            - Sequence of tool definition maps
+    :tool_choice      - \"auto\" or \"required\"
+    :temperature      - Sampling temperature
+    :max-tokens       - Maximum tokens in the response
+    :schema           - JSON Schema map for structured output; each provider forces a
+                        tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
+    :reasoning?       - When false, don't request thinking/reasoning and strip
+                        :reasoning parts from the replayed input (defaults true)
+    :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
+                        provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
-   [:model       {:optional true} :string]
-   [:system      {:optional true} [:maybe :string]]
-   [:input       {:optional true} [:sequential :map]]
-   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
-   [:temperature {:optional true} [:maybe number?]]
-   [:max-tokens  {:optional true} [:maybe :int]]
-   [:schema      {:optional true} :any]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
+   [:model            {:optional true} :string]
+   [:system           {:optional true} [:maybe :string]]
+   [:input            {:optional true} [:sequential :map]]
+   [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
+   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:temperature      {:optional true} [:maybe number?]]
+   [:max-tokens       {:optional true} [:maybe :int]]
+   [:schema           {:optional true} :any]
+   [:ai-proxy?        {:optional true} [:maybe :boolean]]
+   [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
   "Generate a random id"
@@ -109,7 +116,7 @@
 
                 :else
                 (do
-                  (log/warn "SSE unexpected line" {:line line})
+                  (log/warn "SSE unexpected line" {:line-len (count line)})
                   (recur acc)))
               acc)))))
 
@@ -153,6 +160,12 @@
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
+    :reasoning-start       (let [pm (some :providerMetadata chunks)]
+                             (cond-> {:type :reasoning
+                                      :id   (:id chunk)
+                                      :text (->> (map :delta chunks)
+                                                 (str/join ""))}
+                               pm (assoc :provider-metadata pm)))
     :tool-input-start      {:type      :tool-input
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
@@ -203,6 +216,15 @@
                   ;; TODO: check if I can just pass through text-delta?
                   (rf {:type :text :id (:id chunk) :text (:delta chunk)}))
 
+              (and stream-text? (#{:reasoning-start :reasoning-end} (:type chunk)))
+              (cond-> (flush! result)
+                (:providerMetadata chunk)
+                (rf {:type :reasoning :id (:id chunk) :text "" :provider-metadata (:providerMetadata chunk)}))
+
+              (and stream-text? (= :reasoning-delta (:type chunk)))
+              (-> (flush! result)
+                  (rf {:type :reasoning :id (:id chunk) :text (:delta chunk)}))
+
               (not= chunk-id @current-id)
               (u/prog1 (flush! result)
                 (vreset! current-id chunk-id)
@@ -217,11 +239,31 @@
   []
   (aisdk-xf {:stream-text? true}))
 
+(defn stamp-tool-titles-xf
+  "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
+  optional `:title-fn`. A throwing title-fn leaves the part untitled."
+  [tools]
+  (map (fn [part]
+         (if-let [title-fn (and (= :tool-input (:type part))
+                                (:title-fn (get tools (:function part))))]
+           (let [title (try
+                         (title-fn (:arguments part))
+                         (catch Throwable e
+                           (log/debug e "tool title-fn failed" {:tool (:function part)})
+                           nil))]
+             (cond-> part
+               (string? title) (assoc :title title)))
+           part))))
+
 ;;; AI SDK SSE Output
 ;;
 ;; Converts internal parts to the AI SDK v5+ SSE protocol: typed `UIMessageChunk`
 ;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
 ;; `data: {json}` line, terminated by `data: [DONE]`.
+
+(def done-sse-line
+  "AI SDK stream terminator line."
+  "data: [DONE]\n")
 
 (defn format-sse-event
   "Format a payload map as an SSE event line: data: {JSON}\\n. The streaming
@@ -243,7 +285,7 @@
   [error-part]
   (str (format-error-line error-part) "\n"
        (format-sse-event {:type "finish" :finishReason "error"}) "\n"
-       "data: [DONE]\n\n"))
+       done-sse-line "\n"))
 
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
@@ -304,13 +346,15 @@
   non-text part (or end of stream) closes the open block first.
 
   Options:
-    :message-id - When set, force this id into the `start` event so the client
-                  sees the same id we persist as `metabot_message.external_id`.
+    :message-id       - When set, force this id into the `start` event so the client
+                        sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata - When set, emitted as the `start` event's `messageMetadata`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
     :start (Nth)      -> finish-step + start-step
     :text             -> [text-end]? [text-start]? text-delta
+    :reasoning        -> [reasoning-end]? [reasoning-start]? reasoning-delta (empty text -> nothing)
     :tool-input-start -> tool-input-start
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
@@ -320,7 +364,7 @@
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id]}]
+  ([{:keys [message-id message-metadata]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -329,18 +373,32 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           ;; providers' native reasoning ids are long; emit short sequential wire
+           ;; ids, keeping the provider id only to detect block boundaries
+           current-reasoning-id (volatile! nil)
+           reasoning-n          (volatile! 0)
+           reasoning-wire-id    (volatile! nil)
+           start-event       (fn [id]
+                               (format-sse-event
+                                (cond-> {:type "start" :messageId id}
+                                  message-metadata (assoc :messageMetadata message-metadata))))
            close-text-block  (fn [result]
                                (if-let [id @current-text-id]
                                  (do (vreset! current-text-id nil)
                                      (rf result (format-sse-event {:type "text-end" :id id})))
                                  result))
+           close-reasoning-block (fn [result]
+                                   (if @current-reasoning-id
+                                     (let [wid @reasoning-wire-id]
+                                       (vreset! current-reasoning-id nil)
+                                       (rf result (format-sse-event {:type "reasoning-end" :id wid})))
+                                     result))
            ensure-started    (fn [result]
                                (if @started?
                                  result
                                  (do (vreset! started? true)
                                      (-> result
-                                         (rf (format-sse-event {:type      "start"
-                                                                :messageId (or message-id (mkid))}))
+                                         (rf (start-event (or message-id (mkid))))
                                          (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
@@ -349,20 +407,21 @@
                                 (when @finish-error-code {:errorCode @finish-error-code}))]
             (-> result
                 close-text-block
+                close-reasoning-block
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
                               :finishReason (if @error? "error" "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
-                (rf "data: [DONE]\n")
+                (rf done-sse-line)
                 (rf))))
          ([result part]
-          ;; Any non-text part implicitly closes the current text block before
-          ;; its own events are emitted; the :text branch handles its own
-          ;; closing semantics (only closes when the id changes).
-          (let [result (if (= :text (:type part))
-                         result
-                         (close-text-block result))]
+          ;; Any part of a different kind implicitly closes the open text or
+          ;; reasoning block before its own events are emitted; the :text and
+          ;; :reasoning branches handle their own closing (only on id change).
+          (let [result (cond-> result
+                         (not= :text (:type part))      close-text-block
+                         (not= :reasoning (:type part)) close-reasoning-block)]
             (case (:type part)
               :start
               (if @started?
@@ -372,8 +431,7 @@
                 (do
                   (vreset! started? true)
                   (-> result
-                      (rf (format-sse-event {:type      "start"
-                                             :messageId (or message-id (:id part) (mkid))}))
+                      (rf (start-event (or message-id (:id part) (mkid))))
                       (rf (format-sse-event {:type "start-step"})))))
 
               :text
@@ -386,16 +444,32 @@
                         (rf (format-sse-event {:type "text-start" :id id}))
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
+              ;; empty-text parts (signature/metadata carriers, redacted blocks) open
+              ;; no reasoning block; whitespace-only deltas (paragraph separators) flow
+              :reasoning
+              (if (empty? (:text part))
+                result
+                (let [id (or (:id part) (mkid))]
+                  (if (= id @current-reasoning-id)
+                    (rf result (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)}))
+                    (let [result (close-reasoning-block result)]
+                      (vreset! current-reasoning-id id)
+                      (vreset! reasoning-wire-id (str (vswap! reasoning-n inc)))
+                      (-> result
+                          (rf (format-sse-event {:type "reasoning-start" :id @reasoning-wire-id}))
+                          (rf (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)})))))))
+
               :tool-input-start
               (rf result (format-sse-event {:type       "tool-input-start"
                                             :toolCallId (:id part)
                                             :toolName   (:function part)}))
 
               :tool-input
-              (rf result (format-sse-event {:type       "tool-input-available"
-                                            :toolCallId (:id part)
-                                            :toolName   (:function part)
-                                            :input      (:arguments part)}))
+              (rf result (format-sse-event (cond-> {:type       "tool-input-available"
+                                                    :toolCallId (:id part)
+                                                    :toolName   (:function part)
+                                                    :input      (:arguments part)}
+                                             (:title part) (assoc :title (:title part)))))
 
               :tool-output
               (rf result
@@ -521,35 +595,41 @@
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
-  (with-span :info {:name         :metabot.agent/run-tool
-                    :tool-name    tool-name
-                    :tool-call-id tool-call-id}
-    (let [start-ms (u/start-timer)
-          assoc-ms (fn [duration-ms]
-                     (fn [chunk]
-                       (cond-> chunk
-                         (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-          results  (try
-                     (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (or (coerce-stringified-json arguments) {})
-                           decode    (tool-decode-fn tool)
-                           arguments (cond-> arguments decode decode)]
-                       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-                       (let [tool-fn (tool-call-fn tool)
-                             result  (tool-fn arguments)]
-                         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                         (collect-tool-result tool-call-id tool-name result)))
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                         (log/warn e "Tool execution failed" {:tool-name tool-name}))
-                       [{:type         :tool-output-available
-                         :toolCallId   tool-call-id
-                         :toolName     tool-name
-                         :error        {:message (concise-tool-error e)
-                                        :type    (str (type e))}}]))]
-      (mapv (assoc-ms (u/since-ms start-ms))
-            results))))
+  (ait/with-tool-call {:ai/tool-name    tool-name
+                       :ai/tool-call-id tool-call-id}
+    (with-span :info {:name         :metabot.agent/run-tool
+                      :tool-name    tool-name
+                      :tool-call-id tool-call-id}
+      (let [start-ms (u/start-timer)
+            assoc-ms (fn [duration-ms]
+                       (fn [chunk]
+                         (cond-> chunk
+                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+            results  (try
+                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             arguments (or (coerce-stringified-json arguments) {})
+                             decode    (tool-decode-fn tool)
+                             arguments (cond-> arguments decode decode)]
+                         (log/debug "Executing tool" {:tool-name tool-name})
+                         (when (ait/capture-active?)
+                           (ait/record! {:ai/tool-args arguments}))
+                         (let [tool-fn (tool-call-fn tool)
+                               result  (tool-fn arguments)]
+                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+                           (collect-tool-result tool-call-id tool-name result)))
+                       (catch Exception e
+                         (if (:agent-error? (ex-data e))
+                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
+                         [{:type         :tool-output-available
+                           :toolCallId   tool-call-id
+                           :toolName     tool-name
+                           :error        {:message (concise-tool-error e)
+                                          :type    (str (type e))}}]))]
+        (when (ait/capture-active?)
+          (ait/record! {:ai/tool-output results}))
+        (mapv (assoc-ms (u/since-ms start-ms))
+              results)))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
@@ -721,15 +801,16 @@
 
 (def ^:private auth-error-statuses
   "Statuses whose upstream body may carry provider-side auth/account detail
-  (raw API keys, org/account names, tenant IDs). The full body still hits the
-  warn log; we just don't splice it into the message the caller sees."
+  (raw API keys, org/account names, tenant IDs). For these we don't splice a
+  body preview into the message the caller sees."
   #{401 403})
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message except on 401/403 (see [[auth-error-statuses]]),
-  where the body may carry sensitive auth/account detail; the full body is still logged.
+  where the body may carry sensitive auth/account detail. The warn log carries provider and
+  status only — response bodies are never logged; the full body travels on the thrown ex-data.
   ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
@@ -745,11 +826,8 @@
                       (body-preview (:body res)))
             msg     (cond-> base
                       preview (str " — " preview))]
-        ;; warnf (not warn) so the body renders into the message string, not as MDC.
-        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
-        ;; the full body still survives in ex-data below.
-        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
-                   provider (:status res) (body-for-log (:body res)))
+        (log/warnf "Provider API request failed: provider=%s status=%s"
+                   provider (:status res))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header
@@ -777,6 +855,24 @@
                          :exception-class exception-class}
                         e))))))
 
+(defn reducible-with-api-errors
+  "Wrap a reducible stream so exceptions thrown during its (lazy) consumption are
+  routed through [[rethrow-api-error!]], the same translation applied to
+  request-time failures. Provider adapters consume their SSE body outside the
+  request `try` (the reduction happens later, in the agent loop), so a
+  mid-stream failure — e.g. a `SocketTimeoutException` between chunks — would
+  otherwise surface raw instead of in the provider-friendly error shape.
+
+  Takes the reducible first so adapters can thread it straight off
+  [[sse-reducible]]/`capture-stream` with `->`."
+  [reducible provider res->message]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (reduce rf init reducible)
+        (catch Exception e
+          (rethrow-api-error! provider res->message e))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]
@@ -802,8 +898,17 @@
           (throw (missing-api-key-ex llm-type))))))
 
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
+  Forces a connection + socket timeout on every request so a hung upstream can
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
-  (http/request (-> req
+  (llm/assert-llm-host-allowed! url)
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
+                    (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

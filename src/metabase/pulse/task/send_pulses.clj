@@ -66,7 +66,7 @@
             :done))
         (log/debugf "Pulse %d not found, Skipping." pulse-id))
       (catch Throwable e
-        (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids))))))
+        (log/errorf "Error sending Pulse %d to channel ids: %s: %s" pulse-id (str/join ", " channel-ids) (ex-message e))))))
 
 (defn- send-trigger-timezone
   []
@@ -110,11 +110,12 @@
   (tracing/with-span :tasks "task.pulse.clear-orphan-channels" {:pulse/id pulse-id}
     (when-let [ids-to-delete (seq
                               (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
-                                                       :pulse_id pulse-id
-                                                       :id [:not-in {:select   [[:pulse_channel_id :id]]
-                                                                     :from     :pulse_channel_recipient
-                                                                     :group-by [:pulse_channel_id]
-                                                                     :having   [:>= :%count.* [:raw 1]]}])
+                                                       {:where [:and
+                                                                [:= :pulse_id pulse-id]
+                                                                [:not [:exists {:select [1]
+                                                                                :from   [:pulse_channel_recipient]
+                                                                                :where  [:= :pulse_channel_recipient.pulse_channel_id
+                                                                                         :pulse_channel.id]}]]]})
                                     :when  (case (:channel_type channel)
                                              :email
                                              (empty? (get-in channel [:details :emails]))

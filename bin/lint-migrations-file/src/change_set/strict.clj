@@ -47,7 +47,12 @@
 
 (s/def ::changes
   (s/or
-   ;; only one change allowed per change set for the strict schema.
+   ;; only one change allowed per change set for the strict schema:
+   ;; "Dumb DBs like MySQL can't do DDL in transactions and auto commit each
+   ;; change, so if you do multiple changes in one changeset it can commit the
+   ;; first few changes and then fail. The changes that succeeded don't get
+   ;; rolled back. Then you're in a state where the change set was partially
+   ;; applied but failed and rerunning it is going to be ultra-busted"
    :one-change
    (s/alt :change :change.strict/change)
 

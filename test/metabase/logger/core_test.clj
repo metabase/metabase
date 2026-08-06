@@ -92,7 +92,6 @@
                 (line-seq (io/reader f))))))))
 
 (deftest level-enabled?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [set-level check-level expected-value] (= expected-value
                                                  (mt/with-log-level [metabase.logger.core-test set-level]
                                                    (logger/level-enabled? 'metabase.logger.core-test check-level)))

@@ -16,6 +16,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def transform-run-timeout-seconds
+  "How long tests wait for a transform run to finish execution and sync."
+  ;; BigQuery runs routinely take 50-70s in CI.
+  120)
+
 (defn seconds-from-now-ns
   "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
   We use nanoTime rather than currentTimeMillis because it is monotonic and not affected by
@@ -30,11 +35,27 @@
     {:alias alias :table_id table-id :database_id db_id :schema schema}))
 
 (defn default-source-table-entry
-  "Build a source-table-entry for the first active table in the current test database."
+  "Build a source-table-entry for an active, field-synced table in the current test database.
+  Deterministic: orders by id and requires a synced field."
   ([]
    (default-source-table-entry "test"))
   ([alias]
-   (source-table-entry alias (t2/select-one-pk :model/Table :db_id (mt/id) :active true))))
+   ;; Requiring a field skips field-less leftovers (un-synced transform targets, or Snowflake tables whose
+   ;; columns haven't propagated yet) that would make the QP throw "Table has no Fields associated with it".
+   (source-table-entry alias
+                       (t2/select-one-pk :model/Table
+                                         :db_id  (mt/id)
+                                         :active true
+                                         :id     [:in {:select [:table_id]
+                                                       :from   [(t2/table-name :model/Field)]
+                                                       ;; Mirror the QP's queryable-column filter (active-column-pred):
+                                                       ;; active, and visibility not sensitive/retired, else the picked
+                                                       ;; table still yields no implicit fields.
+                                                       :where  [:and
+                                                                [:= :active true]
+                                                                [:or [:= :visibility_type nil]
+                                                                 [:not-in :visibility_type ["sensitive" "retired"]]]]}]
+                                         {:order-by [[:id :asc]]}))))
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
@@ -158,7 +179,7 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
-        timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+        timeout-s transform-run-timeout-seconds
         deadline  (seconds-from-now-ns timeout-s)]
     (is (=? {:message "Transform run started"}
             resp))
