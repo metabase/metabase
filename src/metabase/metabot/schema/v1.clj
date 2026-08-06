@@ -67,6 +67,7 @@
                    [:function {:optional true} [:maybe :string]]
                    [:result [:maybe [:map
                                      [:output {:optional true} :any]
+                                     [:model-output {:optional true} :any]
                                      [:structured-output {:optional true} :map]
                                      [:structured_output {:optional true} :map]]]]
                    [:error {:optional true} [:maybe [:or :map :string]]]

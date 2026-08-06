@@ -21,7 +21,8 @@
   [{:type "text" :id "t1" :text "Hello"}
    {:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}
    {:type "tool-output" :id "tc1" :function "search"
-    :result {:output "rows" :structured-output {:type "table"}}
+    :result {:output "all rows" :model-output "bounded rows"
+             :structured-output {:type "table"}}
     :error nil :duration-ms 12.5}
    {:type "tool-output" :id "tc1"
     :result {:output "rows" :instructions "..." :resources [] :data-parts []}}

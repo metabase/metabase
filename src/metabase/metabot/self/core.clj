@@ -322,9 +322,10 @@
        :usageByModel by-model})))
 
 (defn- tool-output->wire-output
-  "The `tool-output-available` event's `:output` value: the LLM-facing output
-  string. The full result map (`:resources`, `:data-parts`, …) stays off the
-  wire — anything the client renders arrives as its own `:data` part."
+  "The client-facing `tool-output-available` event's `:output` value.
+  Deliberately uses the full `:output`, never `:model-output`. The full result
+  map (`:resources`, `:data-parts`, …) stays off the wire — anything else the
+  client renders arrives as its own `:data` part."
   [result]
   (cond
     (string? result) result

@@ -652,6 +652,20 @@
       (is (= {:type "tool-output-available" :toolCallId "call-i" :output ""}
              output-event)
           "no :output key -> empty wire output; internal :instructions/:data-parts never leak")))
+  (testing "client output remains full when a compact model output is present"
+    (let [result {:output            "<result><rows>all rows</rows></result>"
+                  :model-output      "<result><summary>bounded rows</summary></result>"
+                  :structured-output {:query-id "q-1"}}
+          [output-event] (sse-events [{:type :tool-output :id "call-c" :function "query"
+                                       :result result}])]
+      (is (= {:type "tool-output-available"
+              :toolCallId "call-c"
+              :output "<result><rows>all rows</rows></result>"}
+             output-event))
+      (is (= {:output            "<result><rows>all rows</rows></result>"
+              :model-output      "<result><summary>bounded rows</summary></result>"
+              :structured-output {:query-id "q-1"}}
+             result))))
   (testing "tool error becomes tool-output-error"
     (is (= {:type "tool-output-error" :toolCallId "call-2" :errorText "Tool failed"}
            (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))

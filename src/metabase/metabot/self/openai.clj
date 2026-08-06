@@ -6,6 +6,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
+   [metabase.metabot.tool-result :as tool-result]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -209,7 +210,7 @@
                                              (if (string? args) args (json/encode args)))}
                   :tool-output {:type    "function_call_output"
                                 :call_id (:id part)
-                                :output  (or (get-in part [:result :output])
+                                :output  (or (tool-result/model-output (:result part))
                                              (when-let [err (:error part)]
                                                (str "Error: " (:message err)))
                                              (pr-str (:result part)))}

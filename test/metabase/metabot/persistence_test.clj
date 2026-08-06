@@ -323,6 +323,17 @@
             [{:type :tool-input :id "c1" :function "search" :arguments {}}
              {:type   :tool-output :id "c1"
               :result {:output "rows" :structured-output {:query-id "q" :resources [:drop-me]}}}]))))
+  (testing "full and model-facing outputs are both stored without replacing structured audit fields"
+    (is (= [{:type "tool-search" :toolCallId "c1" :state "output-available"
+             :input {} :output {:output "all rows"
+                                :model-output "bounded rows"
+                                :structured_output {:query-id "q"}}}]
+           (metabot-persistence/parts->storable-content
+            [{:type :tool-input :id "c1" :function "search" :arguments {}}
+             {:type   :tool-output :id "c1"
+              :result {:output            "all rows"
+                       :model-output      "bounded rows"
+                       :structured-output {:query-id "q" :resources [:drop-me]}}}]))))
   (testing "a nil result passes through as nil :output"
     (is (= [{:type "tool-search" :toolCallId "c1" :state "output-available"
              :input {} :output nil}]
@@ -1336,6 +1347,13 @@
           (is (= "just a string"
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
                                 {:type :tool-output :id "c1" :result "just a string"}]))))
+        (testing "persisted history replays compact model output while retaining the full stored result"
+          (is (= "bounded rows"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1"
+                                 :result {:output            "all rows"
+                                          :model-output      "bounded rows"
+                                          :structured-output {:query-id "q"}}}]))))
         (testing "nil output becomes an empty string"
           (is (= ""
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}

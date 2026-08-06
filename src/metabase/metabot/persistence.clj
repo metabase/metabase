@@ -12,6 +12,7 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tool-result :as tool-result]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -45,7 +46,7 @@
 
 (defn- tool-result->storable-output
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
-  `:output` (the LLM-facing text adapters read on history replay) plus the
+  the full client/audit `:output`, optional compact `:model-output`, plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
   to `:structured_output`; everything else (`:resources`, `:data-parts`,
   `:reactions`, …) is dropped — that's where the bulk of the bloat lives. A
@@ -56,7 +57,7 @@
   (if (map? result)
     (let [structured (trim-structured-output (or (:structured-output result)
                                                  (:structured_output result)))]
-      (cond-> (select-keys result [:output])
+      (cond-> (select-keys result [:output :model-output])
         structured (assoc :structured_output structured)))
     result))
 
@@ -448,7 +449,9 @@
    (when (schema.v2/tool-part? part)
      (let [{:keys [state input output errorText toolCallId]} part
            content (case state
-                     "output-available" (str (if (map? output) (:output output) output))
+                     "output-available" (str (if (map? output)
+                                               (tool-result/model-output output)
+                                               output))
                      "output-error"     (or errorText "Tool execution failed")
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")

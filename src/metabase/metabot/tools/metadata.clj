@@ -16,6 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-input-ids 5)
+(def ^:private model-field-value-limit 20)
 
 (defn- validate-id-count
   [ids label]
@@ -126,16 +127,45 @@
 
 (defn- format-field-metadata-output
   ;; NOTE: keep in sync with read_resource.clj/format-content :field-metadata branch
-  [{:keys [field_id value_metadata portable_fk table_reference]}]
-  (format-with-instructions
-   (llm-shape/field-metadata->xml {:field_id field_id :value_metadata value_metadata
-                                   :portable_fk portable_fk :table_reference table_reference})
-   instructions/field-metadata-instructions))
+  ([structured]
+   (format-field-metadata-output structured nil))
+  ([{:keys [field_id value_metadata portable_fk table_reference]}
+    {:keys [returned-value-count shown-value-count]}]
+   (let [field-xml  (llm-shape/field-metadata->xml {:field_id field_id :value_metadata value_metadata
+                                                    :portable_fk portable_fk :table_reference table_reference})
+         result-xml (if returned-value-count
+                      (format (str "<field-metadata-result>\n%s\n"
+                                   "<sample-values-summary returned-count=\"%d\" shown-count=\"%d\" "
+                                   "truncated=\"true\" />\n</field-metadata-result>")
+                              field-xml returned-value-count shown-value-count)
+                      field-xml)]
+     (format-with-instructions result-xml instructions/field-metadata-instructions))))
 
 (defn- add-output
   "Add :output to a tool result that has :structured-output, using the given format-fn."
   [result format-fn]
   (m/assoc-some result :output (some-> result :structured-output format-fn)))
+
+(defn- add-field-metadata-outputs
+  "Add the full client/audit output and, for a high-cardinality field, a bounded
+  model-facing output. Only the sample values are bounded: field identity,
+  portable column reference, source table, statistics, and instructions remain
+  in the compact XML. The original structured result is never changed."
+  [result]
+  (let [result      (add-output result format-field-metadata-output)
+        structured  (:structured-output result)
+        values      (get-in structured [:value_metadata :field_values])
+        value-count (when (sequential? values) (count values))]
+    (if (and value-count (> value-count model-field-value-limit))
+      (let [compact (assoc-in structured
+                              [:value_metadata :field_values]
+                              (into [] (take model-field-value-limit) values))]
+        (assoc result :model-output
+               (format-field-metadata-output
+                compact
+                {:returned-value-count value-count
+                 :shown-value-count    model-field-value-limit})))
+      result)))
 
 (mu/defn ^{:tool-name "list_available_data_sources"
            :scope     scope/agent-metadata-read}
@@ -177,9 +207,8 @@
   get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- get-field-values-schema]
-  (add-output
+  (add-field-metadata-outputs
    (field-stats-tools/field-values {:entity-type data_source
                                     :entity-id source_id
                                     :field-id field_id
-                                    :limit nil})
-   format-field-metadata-output))
+                                    :limit nil})))
