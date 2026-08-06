@@ -243,7 +243,7 @@
           ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
           ;; changed set before computing what is affected, so it suppresses self-triggering.
           triggers  '[driver transforms query-processor
-                      enterprise/transforms enterprise/transforms-python enterprise/workspaces]
+                      enterprise/transforms enterprise/transforms-python]
           upstream  (into (set triggers) (mapcat #(get full %)) triggers)
           overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
       (doseq [m (sort overrides)]
@@ -310,11 +310,18 @@
   (and (.isFile f)
        (some #(str/ends-with? (.getName f) %) clojure-source-extensions)))
 
-(defn- source-files-under [^String dir]
-  (let [f (io/file dir)]
-    (when (.exists f)
-      (->> (file-seq f)
-           (filter clojure-source-file?)))))
+(defn- source-files-under
+  "Clojure source files under `dir`, which is resolved relative to the working directory.
+  Throws when the scan finds nothing: these roots always contain sources, so an empty
+  result means the tests are running from the wrong directory, and returning `nil` there
+  would let the classpath checks pass with zero assertions."
+  [^String dir]
+  (let [files (->> (io/file dir) file-seq (filter clojure-source-file?))]
+    (when (empty? files)
+      (throw (ex-info (str "No Clojure source files found under " dir
+                           ". Run these tests from the repository root.")
+                      {:dir dir, :working-directory (System/getProperty "user.dir")})))
+    files))
 
 (defn- file->namespace-symbol
   "Read `file` and extract its namespace symbol from the `ns` form.
