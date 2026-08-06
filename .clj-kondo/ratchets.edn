@@ -51,7 +51,8 @@
                   :unused-namespace                                                    2
                   :unused-private-var                                                  8
                   :unused-value                                                        1}
- :config-counts  {:deprecated-namespace                    7
+ :config-counts  {:constant-condition                      1
+                  :deprecated-namespace                    7
                   :deprecated-var                          16
                   :discouraged-namespace                   13
                   :discouraged-var                         14
@@ -65,6 +66,7 @@
                   :redundant-ignore                        1
                   :redundant-primitive-coercion            1
                   :refer-all                               1
+                  :type-mismatch                           1
                   :unexpected-recur                        1
                   :unresolved-symbol                       19
                   :unresolved-var                          1
