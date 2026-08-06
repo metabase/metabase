@@ -8,22 +8,31 @@ import {
 } from "metabase/api/embedding-theme";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import { Loader, SimpleGrid, Stack } from "metabase/ui";
 
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 import { NewThemeCard } from "./NewThemeCard";
 
-export function EmbeddingThemeListingApp() {
+const ADMIN_THEMES_BASE_PATH = "/admin/embedding/themes";
+
+type EmbeddingThemeListingAppProps = {
+  /** Where the theme editor lives, so the same listing works under the embedding hub. */
+  basePath?: string;
+};
+
+export function EmbeddingThemeListingApp({
+  basePath = ADMIN_THEMES_BASE_PATH,
+}: EmbeddingThemeListingAppProps = {}) {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   if (!hasSimpleEmbedding) {
     return <UpsellEmbeddingTheme source="embedding-themes" />;
   }
 
-  return <EmbeddingThemeListingAppInner />;
+  return <EmbeddingThemeListingAppInner basePath={basePath} />;
 }
 
-function EmbeddingThemeListingAppInner() {
+function EmbeddingThemeListingAppInner({ basePath }: { basePath: string }) {
   const navigate = useNavigate();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [duplicateTheme] = useCopyEmbeddingThemeMutation();
@@ -31,7 +40,7 @@ function EmbeddingThemeListingAppInner() {
   const { requestDelete, modal: deleteModal } = useDeleteThemeFlow();
 
   const handleCreateTheme = () => {
-    navigate(`/admin/embedding/themes/new`);
+    navigate(`${basePath}/new`);
   };
 
   const handleDuplicateTheme = async (themeId: number) => {
@@ -52,21 +61,18 @@ function EmbeddingThemeListingAppInner() {
     );
   }
 
+  // The heading belongs to the page, which titles itself "Appearance" and puts
+  // the grid under a "Themes" section. No `mx="auto"` here either: as a flex
+  // child, auto side margins override `align-items: stretch` and shrink the
+  // grid to its content, which squashes the fixed-height cards into columns.
   return (
-    <Stack mx="auto" gap="xl" maw={1200}>
-      <Stack gap="xs">
-        <Title order={1}>{t`Themes`}</Title>
-        <Text c="text-secondary">
-          {t`Create and edit themes to reuse across multiple embeds.`}
-        </Text>
-      </Stack>
-
+    <Stack gap="xl" w="100%">
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
         {themes?.map((theme) => (
           <EmbeddingThemeCard
             key={theme.id}
             theme={theme}
-            onEdit={() => navigate(`/admin/embedding/themes/${theme.id}`)}
+            onEdit={() => navigate(`${basePath}/${theme.id}`)}
             onDuplicate={() => handleDuplicateTheme(theme.id)}
             onDelete={() => requestDelete(theme.id)}
           />

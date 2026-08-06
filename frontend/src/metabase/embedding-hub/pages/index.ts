@@ -1,3 +1,4 @@
+export * from "./EmbeddingHubAppearancePage";
 export * from "./EmbeddingHubAuthenticationPage";
 export * from "./EmbeddingHubPermissionsPage";
 export * from "./EmbeddingHubSecurityPage";

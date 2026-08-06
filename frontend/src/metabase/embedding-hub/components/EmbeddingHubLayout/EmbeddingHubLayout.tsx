@@ -37,6 +37,7 @@ export function EmbeddingHubLayout() {
 
   const { pathname } = useLocation();
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const hasTenants = useHasTokenFeature("tenants");
 
   useEnsureDefaultEmbeddingThemes();
@@ -61,6 +62,12 @@ export function EmbeddingHubLayout() {
       icon: "group",
       to: Urls.embeddingHubTenancy(),
       isGated: !hasTenants,
+    },
+    {
+      label: t`Appearance`,
+      icon: "palette",
+      to: Urls.embeddingHubAppearance(),
+      isGated: !hasSimpleEmbedding,
     },
   ];
 
