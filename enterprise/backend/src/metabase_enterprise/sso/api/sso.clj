@@ -38,7 +38,7 @@
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [_route-params
-   _query-params :- [:map {:closed false}
+   _query-params :- [:map
                      [:jwt              {:optional true} [:maybe :string]]
                      [:preferred_method {:optional true} [:maybe :string]]
                      [:redirect         {:optional true} [:maybe :string]]
@@ -71,10 +71,10 @@
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
   [_route-params
-   _query-params :- [:map {:closed false}
+   _query-params :- [:map
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body :- [:maybe [:map {:closed false}
+   _body :- [:maybe [:map
                      [:jwt          {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]]
@@ -157,11 +157,11 @@
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [_route-params
-   _query-params :- [:map {:closed false}
+   _query-params :- [:map
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body :- [:maybe [:map {:closed false}
+   _body :- [:maybe [:map
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]]
@@ -186,7 +186,7 @@
   "Initiate OIDC SSO for a specific provider."
   [{provider-key :key} :- [:map
                            [:key ProviderKey]]
-   _query-params :- [:map {:closed false}
+   _query-params :- [:map
                      [:redirect {:optional true} [:maybe :string]]]
    _body request]
   (try
@@ -202,7 +202,7 @@
   "OIDC callback for a specific provider."
   [{provider-key :key} :- [:map
                            [:key ProviderKey]]
-   _query-params :- [:map {:closed false}
+   _query-params :- [:map
                      [:code  {:optional true} [:maybe :string]]
                      [:state {:optional true} [:maybe :string]]]
    _body request]

@@ -415,8 +415,7 @@
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
   [_route-params
    _query-params
-   _body :- [:map {:closed false
-                   :decode/api {:enter (fn [body] (if (map? body) body {}))}}
+   _body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
              [:token           {:optional true} [:maybe :string]]
              [:token_type_hint {:optional true} [:maybe :string]]
              [:client_id       {:optional true} [:maybe :string]]
