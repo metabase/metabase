@@ -24,7 +24,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.referenced-cards :as qp.referenced-cards]
+   [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
@@ -55,7 +55,7 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format was-pivot referenced-cards-specs]
+   & {:keys [context export-format was-pivot referenced-entities-specs]
       :or   {context       :ad-hoc
              export-format :api}}]
   (span/with-span!
@@ -81,7 +81,7 @@
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
         ;; must run before `process-query` sets up the QP store
-        (let [rff (qp.referenced-cards/maybe-wrap-rff-for-goals rff referenced-cards-specs)]
+        (let [rff (qp.referenced-entities/maybe-wrap-rff-for-goals rff referenced-entities-specs)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
@@ -99,19 +99,19 @@
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache.
-  `referenced_cards` also runs the given cards' queries and returns their single-row values under
-  `data.referenced_cards`."
+  `referenced_entities` also runs the given cards' and measures' queries and returns their values under
+  `data.referenced_entities`."
   [_route-params
    _query-params
-   {:keys [referenced_cards] :as query} :- [:map
-                                            [:database {:optional true} [:maybe :int]]
-                                            [:referenced_cards {:optional true} qp.referenced-cards/specs-schema]]]
+   {:keys [referenced_entities] :as query} :- [:map
+                                               [:database {:optional true} [:maybe :int]]
+                                               [:referenced_entities {:optional true} qp.referenced-entities/specs-schema]]]
   (run-streaming-query
    (-> query
-       (dissoc :referenced_cards)
+       (dissoc :referenced_entities)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   :referenced-cards-specs referenced_cards))
+   :referenced-entities-specs referenced_entities))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
