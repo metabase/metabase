@@ -778,7 +778,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const handled = handleResponseError(
         error,
-        getSetting(getState(), "metabot-name") || "Metabot",
+        getSetting(getState(), "metabot-name"),
       );
       return rejectWithValue({
         type: "error" as const,

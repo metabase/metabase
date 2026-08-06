@@ -39241,7 +39241,7 @@
       "post" : {
         "operationId" : "post-api-metric-id-dimension-set-default",
         "summary" : "POST /api/metric/{id}/dimension/set-default",
-        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. Returns the\n  updated list of added dimensions. (It is legal for a metric to have no default; this always leaves\n  exactly one.)",
+        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. A null\n  `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.\n  Returns the updated list of added dimensions.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39281,8 +39281,12 @@
                 "type" : "object",
                 "properties" : {
                   "dimension_id" : {
-                    "type" : "string",
-                    "minLength" : 1
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "dimension_id" ]
@@ -53822,31 +53826,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "database-name",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "library",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Scopes the schema to a database by numeric id or name."
         }, {
           "in" : "query",
           "name" : "library-collections",
@@ -53858,19 +53839,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "collections",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Comma-separated library collection ids or entity ids. Limits tables and metrics to those library collections."
         }, {
           "in" : "query",
           "name" : "question-collections",
@@ -53882,7 +53852,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Comma-separated collection ids or entity ids. Includes saved questions from those collections."
         }, {
           "in" : "query",
           "name" : "include-data-library",
@@ -53893,7 +53864,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Whether to include the entire data library."
         }, {
           "in" : "query",
           "name" : "include-metric-library",
@@ -53904,7 +53876,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Whether to include the entire metric library."
         }, {
           "in" : "query",
           "name" : "include-models",
@@ -53915,18 +53888,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "questions",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Whether to include all readable models with executable actions. Database scope applies when provided."
         } ],
         "responses" : {
           "2XX" : {

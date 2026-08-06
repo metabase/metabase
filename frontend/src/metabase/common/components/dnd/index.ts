@@ -30,6 +30,7 @@ export const DragTypes = {
   DATASET: "dataset",
   METRIC: "metric",
   DOCUMENT: "document",
+  EXPLORATION: "exploration",
 };
 
 export const PinnableDragTypes = [
@@ -39,6 +40,7 @@ export const PinnableDragTypes = [
   DragTypes.DATASET,
   DragTypes.METRIC,
   DragTypes.DOCUMENT,
+  DragTypes.EXPLORATION,
 ];
 
 export const MoveableDragTypes = [
@@ -49,4 +51,5 @@ export const MoveableDragTypes = [
   DragTypes.DATASET,
   DragTypes.METRIC,
   DragTypes.DOCUMENT,
+  DragTypes.EXPLORATION,
 ];

@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
 import type { State } from "metabase/redux/store";
-import { getIsHosted } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting, getTokenFeature } from "metabase/settings";
 
@@ -15,7 +14,7 @@ export const canAccessTransforms = (state: State): boolean => {
 };
 
 export const getShouldShowTransformsUpsell = createSelector(
-  getIsHosted,
+  (state: State) => getSetting(state, "is-hosted?"),
   (state: State) => getTokenFeature(state, "transforms-basic"),
   (isHosted, hasTransformsFeature) => isHosted && !hasTransformsFeature,
 );

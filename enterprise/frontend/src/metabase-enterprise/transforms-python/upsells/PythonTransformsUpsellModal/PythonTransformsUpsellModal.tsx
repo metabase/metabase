@@ -5,9 +5,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Center,
@@ -44,7 +44,7 @@ export function PythonTransformsUpsell({
     t`Add a separate database connection for write operations`,
   ];
 
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
   const isAdmin = useSelector(getUserIsAdmin);
   const canPurchaseTransforms = isStoreUser || isAdmin;
@@ -143,7 +143,7 @@ export function PythonTransformsUpsell({
 export function PythonTransformsUpsellModal({
   onClose,
 }: PythonTransformsUpsellModalProps) {
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const { isStoreUser } = useSelector(getStoreUsers);
   const isAdmin = useSelector(getUserIsAdmin);
   const canPurchaseTransforms = isStoreUser || isAdmin;
