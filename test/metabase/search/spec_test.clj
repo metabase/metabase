@@ -156,9 +156,13 @@
     ;; Registering a throwaway spec would derive a fake model into :hook/search-index and break
     ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.
     (let [spec-multifn search.spec/spec*
-          ;; Model resolution registers more spec methods, so settle those before capturing the original.
+          ;; The first call resolves lazily loaded models, registering spec methods as it goes, so it caches
+          ;; under a key that is stale by the time it returns. The second call warms the settled method table.
           _            (search.spec/model-hooks)
+          warm         (search.spec/model-hooks)
           original     (get-method spec-multifn "card")]
+      ;; Without a hit here the probe below would miss whatever the cache key did, proving nothing.
+      (is (identical? warm (search.spec/model-hooks)))
       (try
         (.addMethod ^clojure.lang.MultiFn spec-multifn
                     "card"
