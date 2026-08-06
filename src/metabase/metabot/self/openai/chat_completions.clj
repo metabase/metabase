@@ -28,13 +28,18 @@
       cache_write_tokens — input tokens written to the provider cache;
                            undocumented but reported by both OpenRouter
                            (Anthropic models) and newer OpenAI models.
-                           Providers without it (e.g. Z.AI) omit it."
+                           Providers without it (e.g. Z.AI) omit it.
+
+  Reasoning tokens are included only when the provider reports the field; they
+  are a subset of completion tokens."
   [u]
-  (let [details (:prompt_tokens_details u)]
-    {:promptTokens        (:prompt_tokens u 0)
-     :completionTokens    (:completion_tokens u 0)
-     :cacheCreationTokens (or (:cache_write_tokens details) 0)
-     :cacheReadTokens     (or (:cached_tokens details) 0)}))
+  (let [details          (:prompt_tokens_details u)
+        reasoning-tokens (get-in u [:completion_tokens_details :reasoning_tokens])]
+    (cond-> {:promptTokens        (:prompt_tokens u 0)
+             :completionTokens    (:completion_tokens u 0)
+             :cacheCreationTokens (or (:cache_write_tokens details) 0)
+             :cacheReadTokens     (or (:cached_tokens details) 0)}
+      (some? reasoning-tokens) (assoc :reasoningTokens reasoning-tokens))))
 
 ;;; AISDK parts → Chat Completions messages
 

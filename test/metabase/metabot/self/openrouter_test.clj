@@ -174,9 +174,10 @@
                    :usage   {:prompt_tokens         5000
                              :completion_tokens     7
                              :total_tokens          5007
-                             :prompt_tokens_details {:cached_tokens      4200
-                                                     :cache_write_tokens 250
-                                                     :audio_tokens       0}}}]
+                             :prompt_tokens_details     {:cached_tokens      4200
+                                                         :cache_write_tokens 250
+                                                         :audio_tokens       0}
+                             :completion_tokens_details {:reasoning_tokens 2}}}]
           usage  (->> (into [] (openrouter/openrouter->aisdk-chunks-xf) chunks)
                       (filter #(= :usage (:type %)))
                       first)]
@@ -186,7 +187,8 @@
                :usage {:promptTokens        5000
                        :completionTokens    7
                        :cacheCreationTokens 250
-                       :cacheReadTokens     4200}}
+                       :cacheReadTokens     4200
+                       :reasoningTokens     2}}
               usage)))))
 
 (deftest ^:parallel openrouter-usage-missing-cache-details-test

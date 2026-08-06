@@ -225,7 +225,8 @@
     (is (= {:promptTokens        2006
             :completionTokens    300
             :cacheCreationTokens 0
-            :cacheReadTokens     1920}
+            :cacheReadTokens     1920
+            :reasoningTokens     0}
            (usage-from-patched-fixture
             {:input_tokens          2006
              :output_tokens         300
@@ -238,7 +239,8 @@
     (is (= {:promptTokens        20
             :completionTokens    8
             :cacheCreationTokens 0
-            :cacheReadTokens     0}
+            :cacheReadTokens     0
+            :reasoningTokens     3}
            (usage-from-patched-fixture
             {:input_tokens          20
              :output_tokens         8
@@ -253,13 +255,21 @@
     (is (= {:promptTokens        20
             :completionTokens    8
             :cacheCreationTokens 7
-            :cacheReadTokens     0}
+            :cacheReadTokens     0
+            :reasoningTokens     3}
            (usage-from-patched-fixture
             {:input_tokens          20
              :output_tokens         8
              :total_tokens          28
              :input_tokens_details  {:cached_tokens 0 :cache_write_tokens 7}
              :output_tokens_details {:reasoning_tokens 3}})))))
+
+(deftest ^:parallel openai-usage-omits-missing-reasoning-tokens-test
+  (testing "reasoning tokens are absent when the provider did not return the field"
+    (is (not (contains?
+              (usage-from-patched-fixture
+               {:input_tokens 20 :output_tokens 8 :total_tokens 28})
+              :reasoningTokens)))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->openai-input tests

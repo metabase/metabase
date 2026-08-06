@@ -32,12 +32,15 @@
   as :cacheCreationTokens so a count would surface in usage tracking if OpenAI ever starts populating it.
 
   Nested *_details maps are otherwise dropped: the result must stay flat so downstream `merge-with +` usage
-  accumulation is safe."
+  accumulation is safe. Reasoning tokens are included only when the provider reports the field; they are a subset
+  of output tokens."
   [u]
-  {:promptTokens        (:input_tokens u 0)
-   :completionTokens    (:output_tokens u 0)
-   :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
-   :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
+  (let [reasoning-tokens (get-in u [:output_tokens_details :reasoning_tokens])]
+    (cond-> {:promptTokens        (:input_tokens u 0)
+             :completionTokens    (:output_tokens u 0)
+             :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
+             :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)}
+      (some? reasoning-tokens) (assoc :reasoningTokens reasoning-tokens))))
 
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.

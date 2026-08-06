@@ -22,6 +22,7 @@
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.telemetry :as telemetry]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
@@ -194,8 +195,8 @@
     - `:session-id` — conversation UUID string
     - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
-  (let [start-ms      (u/start-timer)]
+  [{:keys [model profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
+  (let [start-ms (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
              (let [usage           (:usage part)
@@ -203,7 +204,9 @@
                    prompt          (:promptTokens usage 0)
                    completion      (:completionTokens usage 0)
                    cache-creation  (:cacheCreationTokens usage 0)
-                   cache-read      (:cacheReadTokens usage 0)]
+                   cache-read      (:cacheReadTokens usage 0)
+                   duration-ms     (long (u/since-ms start-ms))]
+               (telemetry/report-iteration! tracking-opts usage duration-ms)
                (analytics.core/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
                 {:prometheus            true
@@ -216,7 +219,7 @@
                  :cache-read-tokens     cache-read
                  :total-tokens          (+ prompt completion)
                  :estimated-costs-usd   0.0
-                 :duration-ms           (long (u/since-ms start-ms))
+                 :duration-ms           duration-ms
                  :user-id               api/*current-user-id*
                  :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
                  :session-id            session-id
@@ -406,7 +409,15 @@
        (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
          (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
-         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+         (let [tracking-opts  (cond-> (assoc tracking-opts
+                                             :model provider-and-model
+                                             :provider provider
+                                             :provider-model model
+                                             :ai-proxy? ai-proxy?)
+                                (:iteration tracking-opts)
+                                (assoc :request-size-estimates
+                                       (telemetry/request-size-estimates
+                                        system-msg parts (vals tools))))
                streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
                                 system-msg                    (assoc :system system-msg)
                                 (and (seq tools)
