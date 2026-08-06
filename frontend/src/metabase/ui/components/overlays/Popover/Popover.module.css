@@ -10,3 +10,14 @@
   padding: 0.75rem;
   overflow: visible;
 }
+
+.dropdown[data-composed="true"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dropdown[data-composed="true"] > [role="listbox"] {
+  min-height: 0;
+  overflow: auto;
+}
