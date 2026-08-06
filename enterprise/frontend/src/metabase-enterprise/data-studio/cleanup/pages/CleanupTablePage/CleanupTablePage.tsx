@@ -242,8 +242,9 @@ export function CleanupTablePage() {
         >
           <PageContainer
             data-testid="cleanup-table-page"
-            flex={params.candidateId != null ? "0 0 50rem" : "1 0 48rem"}
-            miw="48rem"
+            flex="6 1 0"
+            miw={800}
+            maw="100%"
             px="xl"
             pb="md"
             gap="md"
