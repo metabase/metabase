@@ -438,7 +438,6 @@
      :enterprise           (= (namespace module) "enterprise")
      :team                 team
      :path                 (module->tree-path modules-config module)
-     :ns-prefix            (explicit-ns-prefix modules-config module)
      :api-any              (= api :any)
      :api                  (set-field->strings api)
      :uses-any             (= uses :any)
@@ -467,12 +466,12 @@
 
 (defn- metric-file->module
   "Resolve a source/test file to its module. Everything under `modules/drivers/*` is driver-plugin code —
-  including test-data helpers whose namespaces (`metabase.test.data.*`) wouldn't otherwise resolve — so
-  it all belongs to the `driver` module; other files resolve by namespace as usual."
-  [prefix->module filename]
+  including test-data helpers whose paths (`metabase/test/data/...`) wouldn't otherwise resolve — so
+  it all belongs to the `driver` module; other files resolve by their path as usual."
+  [filename]
   (if (str/starts-with? filename "modules/drivers/")
     'driver
-    (file->module prefix->module filename)))
+    (file->module filename)))
 
 (defn- count-lines [filename]
   (try
@@ -512,9 +511,8 @@
   "`module -> {:namespaces :loc :test-files :tests :commits}`, from tracked backend source/test files
   (including driver plugins) plus one git-log pass for commit attribution."
   [modules-config]
-  (let [prefix->module (build-prefix->module modules-config)
-        files          (filter clj-source? (git-tracked-files metric-dirs))
-        file->module*  (into {} (keep (fn [f] (when-let [m (metric-file->module prefix->module f)] [f m])) files))
+  (let [files          (filter clj-source? (git-tracked-files metric-dirs))
+        file->module*  (into {} (keep (fn [f] (when-let [m (metric-file->module f)] [f m])) files))
         add            (fn [acc f loc?] (let [m (get file->module* f)]
                                           (cond-> acc
                                             (and m loc?)       (-> (update-in [m :namespaces] (fnil inc 0))
