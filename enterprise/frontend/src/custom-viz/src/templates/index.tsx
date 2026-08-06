@@ -69,8 +69,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 
     const meetsThreshold = value >= threshold;
 
-    // width/height are the pixel box to fill when provided (e.g. a dashboard
-    // grid cell in a PDF export); fall back to a fixed size otherwise.
     const finalWidth = width ?? 540;
     const finalHeight = height ?? 360;
 

@@ -121,7 +121,13 @@ export interface RenderingContext {
 export type CustomVisualizationProps<
   TSettings extends BaseVisualizationSettings,
 > = {
+  /**
+   * Container width in pixels. `null` until the container is first measured
+   */
   width: number | null;
+  /**
+   * Container height in pixels. `null` until the container is first measured.
+   */
   height: number | null;
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
@@ -158,7 +164,16 @@ export type CustomStaticVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
+  /**
+   * Pixel width of the box to render into, present when the host controls the
+   * layout (e.g. a dashboard grid cell in a PDF export). Undefined for
+   * natural-size rendering (email, Slack).
+   */
   width?: number;
+  /**
+   * Pixel height of the box to render into. Undefined for natural-size
+   * rendering (email, Slack).
+   */
   height?: number;
 };
 export type ClickObject<TSettings extends BaseVisualizationSettings> = {
