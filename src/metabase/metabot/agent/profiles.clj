@@ -32,6 +32,11 @@
   "Map of profile-id to profile configuration"
   (atom {}))
 
+(def ^:private default-loop-guards
+  {:max-identical-tool-batches 3
+   :max-stale-cycles           3
+   :max-input-tokens           200000})
+
 (defn- validate-tool-var!
   "Validate that a var has the required tool metadata."
   [tool-var]
@@ -62,6 +67,8 @@
     turn for this profile. Lets a `:required-tool-call?` profile stop as soon as it produces its
     answer (e.g. `:sql` after `edit_sql_query`) instead of being forced to keep calling tools.
     Terminality is per-profile: the same tool is non-terminal in profiles that don't list it.
+  - :loop-guards - Optional per-profile overrides for identical tool-batch, stale-cycle, and
+    cumulative input-token limits. Missing values use conservative defaults.
   - :system-prompt-context - Optional fn of the request context returning a map of extra,
     feature-specific system-prompt template vars (e.g. the explorations profile's formatted draft
     Research plan). Keeps feature context out of the generic agent — only the profiles that need it
@@ -77,8 +84,14 @@
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:terminal-tools {:optional true} [:set :string]]
+               [:loop-guards {:optional true}
+                [:map
+                 [:max-identical-tool-batches {:optional true} pos-int?]
+                 [:max-stale-cycles {:optional true} pos-int?]
+                 [:max-input-tokens {:optional true} pos-int?]]]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
-  (let [tool-vars     (:tools profile)
+  (let [profile       (update profile :loop-guards #(merge default-loop-guards %))
+        tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
         tool-names    (set tool-name-seq)]
     (doseq [tool-var tool-vars]
@@ -92,8 +105,8 @@
                       {:profile (:name profile) :unknown-skill-ids unknown})))
     (when-let [unknown (seq (remove tool-names (:terminal-tools profile)))]
       (throw (ex-info "Profile lists terminal tools it does not expose"
-                      {:profile (:name profile) :unknown-terminal-tools unknown}))))
-  (swap! *profiles assoc (:name profile) profile))
+                      {:profile (:name profile) :unknown-terminal-tools unknown})))
+    (swap! *profiles assoc (:name profile) profile)))
 
 (register-profile!
  {:name            :embedding_next

@@ -89,6 +89,149 @@
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
+(def ^:private permissive-loop-guards
+  {:max-identical-tool-batches 99
+   :max-stale-cycles           99
+   :max-input-tokens           1000000})
+
+(defn- tool-cycle
+  [function arguments result]
+  [{:type :tool-input, :id "call", :function function, :arguments arguments}
+   {:type :tool-output, :id "call", :function function, :result result}])
+
+(deftest ^:parallel tool-call-batch-fingerprint-test
+  (let [arguments-a (array-map :query "birds"
+                               :filters (array-map :active true :limit 10))
+        arguments-b (array-map :filters (array-map :limit 10 :active true)
+                               :query "birds")
+        call         (fn [id function arguments]
+                       {:type :tool-input, :id id, :function function, :arguments arguments})]
+    (testing "canonical arguments ignore map key order"
+      (is (= (#'agent/tool-call-batch-fingerprint [(call "a" "search" arguments-a)])
+             (#'agent/tool-call-batch-fingerprint [(call "b" "search" arguments-b)]))))
+    (testing "changed arguments remain distinct"
+      (is (not= (#'agent/tool-call-batch-fingerprint [(call "a" "search" arguments-a)])
+                (#'agent/tool-call-batch-fingerprint
+                 [(call "b" "search" (assoc arguments-b :query "gulls"))]))))
+    (testing "parallel calls form one order-independent batch"
+      (let [search (call "search-1" "search" arguments-a)
+            read   (call "read-1" "read_resource" {:uri "metabase://table/1"})]
+        (is (= (#'agent/tool-call-batch-fingerprint [search read])
+               (#'agent/tool-call-batch-fingerprint [read search])))
+        (is (not= (#'agent/tool-call-batch-fingerprint [search read])
+                  (#'agent/tool-call-batch-fingerprint [search])))))))
+
+(deftest ^:parallel repeated-identical-tool-batch-guard-test
+  (let [options (assoc permissive-loop-guards :max-identical-tool-batches 2)
+        parts   (tool-cycle "search" {:query "birds"} {:output "same"})
+        first   (#'agent/loop-guard-decision {} parts {} {} options)
+        second  (#'agent/loop-guard-decision (:guard-state first) parts {} {} options)]
+    (is (nil? (:finish-reason first)))
+    (is (= :repeated-tool-call (:finish-reason second)))))
+
+(deftest ^:parallel changed-progress-resets-identical-tool-guard-test
+  (let [options        (assoc permissive-loop-guards :max-identical-tool-batches 2)
+        original       (tool-cycle "search" {:query "birds"} {:output "one"})
+        changed-result (tool-cycle "search" {:query "birds"} {:output "two"})
+        first          (#'agent/loop-guard-decision {} original {} {} options)
+        second         (#'agent/loop-guard-decision (:guard-state first) changed-result {} {} options)
+        third          (#'agent/loop-guard-decision (:guard-state second) changed-result
+                                                    {:queries {"q1" {:limit 10}}} {} options)]
+    (is (nil? (:finish-reason second)) "a new result is progress")
+    (is (= 1 (get-in second [:guard-state :identical-batches])))
+    (is (nil? (:finish-reason third)) "a changed agent state is progress")
+    (is (= 1 (get-in third [:guard-state :identical-batches])))))
+
+(deftest ^:parallel changed-arguments-and-results-are-progress-test
+  (let [page (fn [n]
+               (tool-cycle "search" {:query "birds" :page n} {:output (str "page-" n)}))
+        first  (#'agent/loop-guard-decision {} (page 1) {} {} permissive-loop-guards)
+        second (#'agent/loop-guard-decision (:guard-state first) (page 2) {} {} permissive-loop-guards)
+        third  (#'agent/loop-guard-decision (:guard-state second) (page 3) {} {} permissive-loop-guards)]
+    (is (nil? (:finish-reason first)))
+    (is (nil? (:finish-reason second)))
+    (is (nil? (:finish-reason third)))
+    (is (zero? (get-in third [:guard-state :stale-cycles])))))
+
+(deftest ^:parallel stale-tool-cycle-guard-test
+  (let [options (assoc permissive-loop-guards :max-stale-cycles 2)
+        cycle   (fn [query] (tool-cycle "search" {:query query} {:output "no results"}))
+        first   (#'agent/loop-guard-decision {} (cycle "birds") {} {} options)
+        second  (#'agent/loop-guard-decision (:guard-state first) (cycle "gulls") {} {} options)
+        third   (#'agent/loop-guard-decision (:guard-state second) (cycle "terns") {} {} options)]
+    (is (nil? (:finish-reason second)))
+    (is (= 1 (get-in second [:guard-state :stale-cycles])))
+    (is (= :stale-tool-cycle (:finish-reason third)))))
+
+(deftest ^:parallel cumulative-input-token-budget-guard-test
+  (let [options (assoc permissive-loop-guards :max-input-tokens 100)
+        parts   (tool-cycle "search" {:query "birds"} {:output "result"})
+        under   (#'agent/loop-guard-decision
+                 {} parts {} {"model-a" {:promptTokens 60 :completionTokens 100}
+                              "model-b" {:promptTokens 39}} options)
+        at-max  (#'agent/loop-guard-decision
+                 {} parts {} {"model-a" {:promptTokens 60 :completionTokens 100}
+                              "model-b" {:promptTokens 40}} options)]
+    (is (nil? (:finish-reason under)))
+    (is (= 99 (:input-tokens under)))
+    (is (= :input-token-budget (:finish-reason at-max)))
+    (is (= 100 (:input-tokens at-max)))))
+
+(deftest run-agent-loop-stops-repeated-tool-batches-test
+  (mt/as-admin
+    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (let [call-count (atom 0)]
+        (mt/with-dynamic-fn-redefs
+          [self/call-llm
+           (fn [& _]
+             (let [n  (swap! call-count inc)
+                   id (str "call-" n)]
+               [{:type :start, :id (str "message-" n)}
+                {:type :tool-input, :id id, :function "search", :arguments {:query "birds"}}
+                {:type :usage, :usage {:promptTokens 1 :completionTokens 1}}
+                {:type :tool-output, :id id, :function "search", :result {:output "same"}}]))]
+          (let [result (into [] (agent/run-agent-loop
+                                 {:messages   [{:role :user :content "Find birds"}]
+                                  :state      {}
+                                  :profile-id :embedding_next
+                                  :context    {}}))]
+            (is (= 3 @call-count))
+            (is (some #(and (= :text (:type %))
+                            (re-find #"same tool request" (:text %)))
+                      result))
+            (is (= "state" (:data-type (last result))))))))))
+
+(deftest run-agent-loop-terminal-tool-precedes-guards-test
+  (mt/as-admin
+    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (let [call-count (atom 0)]
+        (mt/with-dynamic-fn-redefs
+          [self/call-llm
+           (fn [& _]
+             (swap! call-count inc)
+             [{:type :start, :id "message-1"}
+              {:type :tool-input
+               :id "clarify-1"
+               :function "ask_for_sql_clarification"
+               :arguments {:question "Which table?"}}
+              {:type :usage, :usage {:promptTokens 250000 :completionTokens 1}}
+              {:type :tool-output
+               :id "clarify-1"
+               :function "ask_for_sql_clarification"
+               :result {:output "Which table?"
+                        :structured-output {:result-type :clarification
+                                            :question "Which table?"}}}])]
+          (let [result (into [] (agent/run-agent-loop
+                                 {:messages   [{:role :user :content "Write a query"}]
+                                  :state      {}
+                                  :profile-id :sql
+                                  :context    {}}))]
+            (is (= 1 @call-count))
+            (is (not-any? #(and (= :text (:type %))
+                                (re-find #"context budget|same tool request" (:text %)))
+                          result))
+            (is (= "state" (:data-type (last result))))))))))
+
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]

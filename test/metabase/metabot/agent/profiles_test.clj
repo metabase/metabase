@@ -86,6 +86,10 @@
           (is (= profile-id (:name profile)))
           (is (contains? profile :model))
           (is (contains? profile :max-iterations))
+          (is (= {:max-identical-tool-batches 3
+                  :max-stale-cycles           3
+                  :max-input-tokens           200000}
+                 (:loop-guards profile)))
           (is (contains? profile :tools))
           (is (every? var? (:tools profile))))))))
 
@@ -254,3 +258,20 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"terminal tools it does not expose"
                             (#'profiles/register-profile!
                              (assoc base :terminal-tools #{"nonexistent_tool"})))))))
+
+(deftest register-profile-merges-loop-guard-overrides-test
+  (let [profile-id    :loop-guard-override-test
+        profiles-atom @#'profiles/*profiles]
+    (try
+      (#'profiles/register-profile!
+       {:name            profile-id
+        :prompt-template "internal.selmer"
+        :max-iterations  10
+        :loop-guards     {:max-input-tokens 42}
+        :tools           [#'tools/read-resource-tool]})
+      (is (= {:max-identical-tool-batches 3
+              :max-stale-cycles           3
+              :max-input-tokens           42}
+             (:loop-guards (get @profiles-atom profile-id))))
+      (finally
+        (swap! profiles-atom dissoc profile-id)))))

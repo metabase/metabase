@@ -1,6 +1,8 @@
 (ns metabase.metabot.agent.core
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.ai-tracing.core :as ait]
@@ -208,6 +210,98 @@
     (>= iteration max-iterations)              :max-iterations
     (terminal-tool-call? terminal-tools parts) :terminal-tool
     :else                                      :stop))
+
+(defn- canonical-value
+  "Represent nested data independently of map and set iteration order."
+  [x]
+  (cond
+    (map? x)        (into [::map]
+                          (sort-by first
+                                   (map (fn [[k v]]
+                                          [(pr-str (canonical-value k)) (canonical-value v)])
+                                        x)))
+    (set? x)        (into [::set] (sort (map (comp pr-str canonical-value) x)))
+    (sequential? x) (into [::seq] (map canonical-value) x)
+    :else           x))
+
+(defn- fingerprint
+  "SHA-256 hex of a canonical value."
+  ^String [x]
+  (-> (pr-str (canonical-value x))
+      (.getBytes "UTF-8")
+      buddy-hash/sha256
+      codecs/bytes->hex))
+
+(defn- tool-call-signature
+  [{:keys [function arguments]}]
+  (fingerprint [function arguments]))
+
+(defn- tool-call-batch-fingerprint
+  "Fingerprint all tool calls in a completed iteration as one order-independent batch."
+  [parts]
+  (->> parts
+       (filter #(= :tool-input (:type %)))
+       (map tool-call-signature)
+       sort
+       vec
+       fingerprint))
+
+(defn- tool-outcome-fingerprint
+  [parts]
+  (let [call-id->function (into {}
+                                (comp (filter #(= :tool-input (:type %)))
+                                      (map (juxt :id :function)))
+                                parts)]
+    (->> parts
+         (filter #(= :tool-output (:type %)))
+         (map (fn [{:keys [id function result error]}]
+                [(get call-id->function id function) result error]))
+         (sort-by (comp pr-str canonical-value))
+         vec
+         fingerprint)))
+
+(defn- cumulative-input-tokens
+  [usage]
+  (reduce + 0 (map #(get % :promptTokens 0) (vals usage))))
+
+(defn- loop-guard-decision
+  "Return the updated guard state and an optional reason to stop before another model call."
+  [guard-state parts state usage
+   {:keys [max-identical-tool-batches max-stale-cycles max-input-tokens]}]
+  (let [observation       {:tool-batch (tool-call-batch-fingerprint parts)
+                           :progress   (fingerprint [(tool-outcome-fingerprint parts) state])}
+        same-observation? (= observation (:last-observation guard-state))
+        progress-seen?    (contains? (:seen-progress guard-state #{}) (:progress observation))
+        identical-batches (if same-observation?
+                            (inc (:identical-batches guard-state 1))
+                            1)
+        stale-cycles      (if progress-seen?
+                            (inc (:stale-cycles guard-state 0))
+                            0)
+        input-tokens      (cumulative-input-tokens usage)
+        guard-state'      {:last-observation  observation
+                           :seen-progress     (conj (:seen-progress guard-state #{}) (:progress observation))
+                           :identical-batches identical-batches
+                           :stale-cycles      stale-cycles}
+        finish-reason     (cond
+                            (>= identical-batches max-identical-tool-batches) :repeated-tool-call
+                            (>= stale-cycles max-stale-cycles)                :stale-tool-cycle
+                            (>= input-tokens max-input-tokens)                :input-token-budget)]
+    {:guard-state   guard-state'
+     :finish-reason finish-reason
+     :input-tokens  input-tokens}))
+
+(def ^:private loop-guard-messages
+  {:repeated-tool-call
+   "I stopped because the same tool request kept returning the same result. Please clarify what should change."
+   :stale-tool-cycle
+   "I stopped because repeated tool calls were not producing new results. Please clarify or narrow the request."
+   :input-token-budget
+   "I stopped because this turn reached its context budget. Please continue with a more focused request."})
+
+(defn- loop-guard-part
+  [reason]
+  {:type :text, :text (get loop-guard-messages reason)})
 
 ;;; Call LLM
 (defn- part->invert-links-key
@@ -474,6 +568,7 @@
    :result     init
    :iteration  1
    :status     :continue
+   :guard-state {}
    :usage-atom usage-atom})
 
 (defn- final-state-part [memory]
@@ -481,6 +576,18 @@
 
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
+
+(defn- loop-guard-finished-state
+  [loop-state result reason]
+  (let [rf      (:rf loop-state)
+        memory  @(get-in loop-state [:agent :memory-atom])
+        result' (rf result (loop-guard-part reason))]
+    (if (reduced? result')
+      (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+      (assoc loop-state
+             :status :done
+             :finish-reason reason
+             :result (rf result' (final-state-part memory))))))
 
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
@@ -509,12 +616,13 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom guard-state] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
           max-iter           (:max-iterations profile 10)
           terminal-tools     (set (:terminal-tools profile))
+          guard-options      (:loop-guards profile)
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
           parts-atom         (atom [])
@@ -560,17 +668,28 @@
             ;; consumer signalled early termination (e.g. client disconnect / cancellation)
             (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
 
-            (should-continue? iteration max-iter terminal-tools parts)
-            (assoc loop-state :result result' :iteration (inc iteration))
-
-            :else
+            (not (should-continue? iteration max-iter terminal-tools parts))
             (let [reason (finish-reason iteration max-iter terminal-tools parts)]
               (log/info "Agent loop complete" {:iterations iteration :reason reason})
               (assoc loop-state
                      :status :done
                      ;; surfaced so run-agent-loop can record it on the turn span
                      :finish-reason reason
-                     :result (rf result' (final-state-part @memory-atom))))))))))
+                     :result (rf result' (final-state-part @memory-atom))))
+
+            :else
+            (let [{next-guard-state :guard-state
+                   guard-reason     :finish-reason
+                   input-tokens     :input-tokens}
+                  (loop-guard-decision guard-state parts (memory/get-state @memory-atom)
+                                       @usage-atom guard-options)
+                  loop-state' (assoc loop-state :guard-state next-guard-state)]
+              (if guard-reason
+                (do
+                  (log/info "Agent loop guard stopped turn"
+                            {:iterations iteration :reason guard-reason :input-tokens input-tokens})
+                  (loop-guard-finished-state loop-state' result' guard-reason))
+                (assoc loop-state' :result result' :iteration (inc iteration))))))))))
 
 ;;; Public API
 
