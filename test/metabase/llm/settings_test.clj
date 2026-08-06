@@ -197,6 +197,20 @@
         (llm.settings/llm-mistral-api-base-url! "   ")
         (is (= "https://api.mistral.ai/v1" (llm.settings/llm-mistral-api-base-url)))))))
 
+(deftest llm-moonshot-api-base-url-setter-test
+  (testing "trims whitespace and trailing slashes"
+    (mt/with-temp-env-var-value! [mb-llm-moonshot-api-base-url nil]
+      (mt/discard-setting-changes [llm-moonshot-api-base-url]
+        (llm.settings/llm-moonshot-api-base-url! "  https://api.moonshot.ai/v1/  ")
+        (is (= "https://api.moonshot.ai/v1" (llm.settings/llm-moonshot-api-base-url))))))
+  (testing "blank restores the default"
+    (mt/with-temp-env-var-value! [mb-llm-moonshot-api-base-url nil]
+      (mt/discard-setting-changes [llm-moonshot-api-base-url]
+        ;; The `.cn` platform is the reason this setting is repointable at all.
+        (llm.settings/llm-moonshot-api-base-url! "https://api.moonshot.cn/v1")
+        (llm.settings/llm-moonshot-api-base-url! "   ")
+        (is (= "https://api.moonshot.ai/v1" (llm.settings/llm-moonshot-api-base-url)))))))
+
 ;;; ------------------------------------------- llm-proxy-base-url Feature Guard Tests -------------------------------------------
 
 (deftest llm-proxy-base-url-feature-guard-test

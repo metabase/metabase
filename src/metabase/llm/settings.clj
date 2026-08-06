@@ -204,6 +204,25 @@
   :export?    false
   :setter     (partial set-trimmed-string! :llm-mistral-api-key))
 
+;;; ------------------------------------------------- Moonshot --------------------------------------------------
+
+(defsetting llm-moonshot-api-base-url
+  (deferred-tru "The Moonshot AI (Kimi) API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.moonshot.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-moonshot-api-base-url))
+
+(defsetting llm-moonshot-api-key
+  (deferred-tru "The Moonshot AI (Kimi) API Key.")
+  ;; Moonshot keys start with `sk-`, which is also OpenAI's prefix and so discriminates nothing. The Connect
+  ;; round-trip against `GET /models` — which 401s on a bad key — is what catches a wrong key.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id

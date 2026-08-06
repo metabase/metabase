@@ -596,6 +596,31 @@
         (is (= "mistral-key-fresh"
                (llm.settings/llm-mistral-api-key)))))))
 
+(deftest settings-put-connect-moonshot-defaults-model-test
+  (testing "connecting moonshot with only an api-key switches to the default moonshot model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-moonshot-api-key     nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "moonshot" provider))
+                                                              {:models [{:id "kimi-k2.6"
+                                                                         :display_name "Kimi K2.6"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "moonshot" provider))
+                                                              (is (= {:api-key "sk-moonshot-key-fresh"} credentials))
+                                                              {:models [{:id "kimi-k2.6"
+                                                                         :display_name "Kimi K2.6"}]}))]
+        (is (= {:value  "moonshot/kimi-k2.6"
+                :models [{:id "kimi-k2.6"
+                          :display_name "Kimi K2.6"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "moonshot"
+                                      :api-key  "sk-moonshot-key-fresh"})))
+        (is (= "moonshot/kimi-k2.6"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-moonshot-key-fresh"
+               (llm.settings/llm-moonshot-api-key)))))))
+
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
