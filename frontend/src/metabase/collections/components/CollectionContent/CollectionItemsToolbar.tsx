@@ -1,18 +1,30 @@
 import { t } from "ttag";
 
-import { Flex, Icon, Input, TextInput } from "metabase/ui";
+import { Flex, Icon, Input, Loader, TextInput } from "metabase/ui";
 
 type CollectionItemsToolbarProps = {
   searchText: string;
   onSearchTextChange: (searchText: string) => void;
   hasPinnedItems?: boolean;
+  isSearching: boolean;
 };
 
 export function CollectionItemsToolbar({
   searchText,
   onSearchTextChange,
   hasPinnedItems,
+  isSearching,
 }: CollectionItemsToolbarProps) {
+  const clearButton =
+    searchText.length > 0 ? (
+      <Input.ClearButton
+        aria-label={t`Clear search`}
+        onClick={() => onSearchTextChange("")}
+        c="text-secondary"
+      />
+    ) : undefined;
+  const rightSection = isSearching ? <Loader size="xs" /> : clearButton;
+
   return (
     <Flex
       mb="md"
@@ -27,15 +39,8 @@ export function CollectionItemsToolbar({
         onChange={(event) => onSearchTextChange(event.target.value)}
         placeholder={t`Search by name or editor...`}
         leftSection={<Icon name="search" aria-hidden />}
-        rightSectionPointerEvents="all"
-        rightSection={
-          searchText.length > 0 ? (
-            <Input.ClearButton
-              aria-label={t`Clear search`}
-              onClick={() => onSearchTextChange("")}
-            />
-          ) : undefined
-        }
+        rightSectionPointerEvents={isSearching ? "none" : "all"}
+        rightSection={rightSection}
         aria-label={t`Search items in this collection`}
       />
     </Flex>

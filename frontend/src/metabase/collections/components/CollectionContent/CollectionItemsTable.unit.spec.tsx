@@ -3,7 +3,13 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Api } from "metabase/api";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
@@ -158,8 +164,8 @@ describe("CollectionItemsTable", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the table mounted during background fetches without a filter bar", async () => {
-    setup({ pageSize: 1, showFilterBar: false });
+  it("keeps the table mounted without showing a loader during a refetch with no search", async () => {
+    const { store } = setup();
 
     expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
     let resolveRequest: (() => void) | undefined;
@@ -170,33 +176,44 @@ describe("CollectionItemsTable", () => {
       response: async () => {
         await requestGate;
         return {
-          data: [collectionItems[1]],
+          data: collectionItems,
           total: collectionItems.length,
           models: [],
-          limit: 1,
-          offset: 1,
+          limit: 25,
+          offset: 0,
         };
       },
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    act(() => {
+      store.dispatch(
+        Api.util.invalidateTags([
+          { type: "collection", id: `${collection.id}-items` },
+        ]),
+      );
+    });
+    await waitFor(() => {
+      expect(getItemsCalls()).toHaveLength(2);
+    });
 
     const tableWasMounted = screen.queryByTestId("collection-table") != null;
     const cachedItemWasVisible = screen.queryByText("Revenue overview") != null;
     const loadingWasVisible =
-      screen.queryByTestId("collection-items-loading") != null;
+      within(screen.getByTestId("collection-items-toolbar")).queryByTestId(
+        "loading-indicator",
+      ) != null;
     await act(async () => {
       resolveRequest?.();
       await fetchMock.callHistory.flush();
     });
 
-    expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
     expect(tableWasMounted).toBe(true);
     expect(cachedItemWasVisible).toBe(true);
     expect(loadingWasVisible).toBe(false);
   });
 
-  it("keeps an empty table mounted while refetching without a filter bar", async () => {
+  it("does not show the empty state while refetching an empty collection", async () => {
     const { store } = setup({ collectionItems: [], showFilterBar: false });
 
     expect(
@@ -233,8 +250,6 @@ describe("CollectionItemsTable", () => {
     const tableWasMounted = screen.queryByTestId("collection-table") != null;
     const emptyStateWasVisible =
       screen.queryByTestId("collection-empty-state") != null;
-    const loadingWasVisible =
-      screen.queryByTestId("collection-items-loading") != null;
     await act(async () => {
       resolveRequest?.();
       await fetchMock.callHistory.flush();
@@ -245,7 +260,6 @@ describe("CollectionItemsTable", () => {
     ).toBeInTheDocument();
     expect(tableWasMounted).toBe(true);
     expect(emptyStateWasVisible).toBe(false);
-    expect(loadingWasVisible).toBe(false);
   });
 
   it("sends search text and shows only matching items", async () => {
@@ -342,27 +356,61 @@ describe("CollectionItemsTable", () => {
     expect(await screen.findByText("Orders model")).toBeInTheDocument();
   });
 
-  it("shows a loading state while a search request is in flight", async () => {
+  it("shows a loader in the search input while keeping the table mounted during a search request", async () => {
     const user = setupUserWithFakeTimers();
     setup();
     const searchInput = await screen.findByPlaceholderText(
       "Search by name or editor...",
     );
     expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    let resolveRequest: (() => void) | undefined;
+    const requestGate = new Promise<void>((resolve) => {
+      resolveRequest = resolve;
+    });
+    fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+      response: async () => {
+        await requestGate;
+        return {
+          data: [collectionItems[1]],
+          total: 1,
+          models: [],
+          limit: 25,
+          offset: 0,
+        };
+      },
+    });
 
     await user.type(searchInput, "customer");
     advanceSearchDebounce();
+    await waitFor(() => {
+      expect(getSearchCalls()).toHaveLength(1);
+    });
 
-    expect(screen.getByTestId("collection-items-loading")).toBeInTheDocument();
-    expect(screen.queryByTestId("collection-table")).not.toBeInTheDocument();
-    expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
-    expect(screen.getByTestId("collection-items-toolbar")).toBeInTheDocument();
+    const toolbar = screen.getByTestId("collection-items-toolbar");
+    const loaderWasVisible =
+      within(toolbar).queryByTestId("loading-indicator") != null;
+    const clearButtonWasVisible =
+      within(toolbar).queryByRole("button", { name: "Clear search" }) != null;
+    const tableWasMounted = screen.queryByTestId("collection-table") != null;
+    const cachedItemWasVisible = screen.queryByText("Revenue overview") != null;
+
+    await act(async () => {
+      resolveRequest?.();
+      await fetchMock.callHistory.flush();
+    });
+
+    expect(loaderWasVisible).toBe(true);
+    expect(clearButtonWasVisible).toBe(false);
+    expect(tableWasMounted).toBe(true);
+    expect(cachedItemWasVisible).toBe(true);
     expect(searchInput).toHaveValue("customer");
-
     expect(await screen.findByText("Customer 360")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("collection-items-loading"),
+      within(toolbar).queryByTestId("loading-indicator"),
     ).not.toBeInTheDocument();
+    expect(
+      within(toolbar).getByRole("button", { name: "Clear search" }),
+    ).toBeInTheDocument();
   });
 
   it("does not show the filtered empty state while a search request is in flight", async () => {
@@ -375,7 +423,11 @@ describe("CollectionItemsTable", () => {
     );
     advanceSearchDebounce();
 
-    expect(screen.getByTestId("collection-items-loading")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("collection-items-toolbar")).getByTestId(
+        "loading-indicator",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByTestId("collection-filter-empty-state"),
     ).not.toBeInTheDocument();

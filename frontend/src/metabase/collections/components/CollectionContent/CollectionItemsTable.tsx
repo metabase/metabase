@@ -22,7 +22,6 @@ import type {
   DeleteBookmark,
 } from "metabase/common/collections/types";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
-import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
@@ -31,7 +30,7 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -109,12 +108,6 @@ const DefaultEmptyContentComponent = ({
     </CollectionEmptyContent>
   );
 };
-
-const CollectionItemsLoading = () => (
-  <Flex justify="center" p="xl" data-testid="collection-items-loading">
-    <DelayedLoadingSpinner />
-  </Flex>
-);
 
 const CollectionNoResults = () => (
   <Box my="4rem" data-testid="collection-filter-empty-state">
@@ -303,9 +296,10 @@ const CollectionItemsTableContent = ({
   };
 
   const loading = loadingPinnedItems || fetchingUnpinnedItems;
-  const hasActiveFilters =
-    searchText.trim().length > 0 ||
-    (unpinnedQuery !== skipToken && Boolean(unpinnedQuery.q));
+  const hasSearchQuery =
+    unpinnedQuery !== skipToken && Boolean(unpinnedQuery.q?.trim());
+  const hasActiveFilters = searchText.trim().length > 0 || hasSearchQuery;
+  const isSearching = fetchingUnpinnedItems && hasSearchQuery;
   const isEmpty =
     !loading &&
     !hasPinnedItems &&
@@ -318,8 +312,7 @@ const CollectionItemsTableContent = ({
 
   const showNoResults =
     !fetchingUnpinnedItems && hasActiveFilters && unpinnedItems.length === 0;
-  const showLoading = Boolean(showFilterBar) && fetchingUnpinnedItems;
-  const showTable = !showLoading && !showNoResults;
+  const showTable = !showNoResults;
 
   return (
     <>
@@ -328,9 +321,9 @@ const CollectionItemsTableContent = ({
           searchText={searchText}
           onSearchTextChange={onSearchTextChange}
           hasPinnedItems={hasPinnedItems}
+          isSearching={isSearching}
         />
       )}
-      {showLoading && <CollectionItemsLoading />}
       {showNoResults && <CollectionNoResults />}
       {showTable && (
         <CollectionTable data-testid="collection-table">
