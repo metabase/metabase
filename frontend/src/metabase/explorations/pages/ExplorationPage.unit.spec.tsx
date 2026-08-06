@@ -142,9 +142,10 @@ describe("ExplorationPage thread-ready toasts", () => {
     expect(sendToastMock).not.toHaveBeenCalled();
   });
 
-  it("waits for the first page before toasting about a new thread", async () => {
+  it("waits for the first page with queries before toasting about a new thread", async () => {
     renderExplorationPage();
 
+    // Thread arrives while query planning is still running — no pages yet.
     explorationData = makeExploration([
       getThreads(explorationData)[0],
       createThread({
@@ -153,6 +154,26 @@ describe("ExplorationPage thread-ready toasts", () => {
         blocks: [],
         queries: [],
       }),
+    ]);
+    rerenderExplorationPage();
+    expect(sendToastMock).not.toHaveBeenCalled();
+
+    // A page can land before it has queries. The sidebar hides pages without
+    // queries, so the toast must wait for the same readiness condition.
+    explorationData = makeExploration([
+      getThreads(explorationData)[0],
+      makeThread(
+        2,
+        "Revenue deep dive",
+        [
+          createPage({
+            id: 200,
+            name: "Follow-up page",
+            query_ids: [],
+          }),
+        ],
+        [],
+      ),
     ]);
     rerenderExplorationPage();
     expect(sendToastMock).not.toHaveBeenCalled();
