@@ -4,7 +4,6 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [malli.core :as mc]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.macros :as api.macros]
@@ -65,8 +64,7 @@
                   [:display ms/NonBlankString]
                   [:type {:optional true} ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
-   [:active {:optional true} boolean?]
-   [::mc/default [:map-of [:or :keyword :string] :any]]])
+   [:active {:optional true} boolean?]])
 
 (def SCIMUserList
   "Malli schema for a list of SCIM users"
@@ -104,8 +102,7 @@
                   [:value ms/NonBlankString]
                   [:$ref {:optional true} ms/NonBlankString]
                   [:display {:optional true} [:maybe :string]]
-                  [:type {:optional true} ms/NonBlankString]]]]
-   [::mc/default [:map-of [:or :keyword :string] :any]]])
+                  [:type {:optional true} ms/NonBlankString]]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
