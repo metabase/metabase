@@ -10,7 +10,25 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 
 import type { SetupGuideStep } from "../types";
 
-export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
+export type SetupGuideUrls = {
+  permissions: string;
+  sso: string;
+};
+
+export const ADMIN_SETUP_GUIDE_URLS: SetupGuideUrls = {
+  permissions: "/admin/embedding/setup-guide/permissions",
+  sso: "/admin/embedding/setup-guide/sso",
+};
+
+/**
+ * @param setupGuideUrls where the two wizard sub-pages live, so the checklist
+ * links inside whichever host rendered it. They are passed individually rather
+ * than derived from a base path -- the hub's slugs differ, because `permissions`
+ * there is already the Permissions tab.
+ */
+export const useGetSetupGuideSteps = (
+  setupGuideUrls: SetupGuideUrls = ADMIN_SETUP_GUIDE_URLS,
+): SetupGuideStep[] => {
   const dispatch = useDispatch();
 
   const openEmbedModal = useCallback(
@@ -76,7 +94,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure data permissions and enable tenants`,
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
-          to: "/admin/embedding/setup-guide/permissions",
+          to: setupGuideUrls.permissions,
           variant: "outline",
           stepId: "data-permissions-and-enable-tenants",
         },
@@ -90,7 +108,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
-          to: "/admin/embedding/setup-guide/sso",
+          to: setupGuideUrls.sso,
           variant: "outline",
           stepId: "sso-configured",
         },
@@ -127,5 +145,5 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
       SSO_CONFIGURED,
       EMBED_PRODUCTION,
     ];
-  }, [openEmbedModal]);
+  }, [openEmbedModal, setupGuideUrls]);
 };
