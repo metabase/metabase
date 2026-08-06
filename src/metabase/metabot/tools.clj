@@ -17,6 +17,7 @@
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
+   [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
@@ -28,6 +29,7 @@
    [metabase.metabot.tools.sql :as tools.sql]
    [metabase.metabot.tools.static-viz :as tools.static-viz]
    [metabase.metabot.tools.subscriptions :as tools.subscriptions]
+   [metabase.metabot.tools.timelines :as tools.timelines]
    [metabase.metabot.tools.todo :as tools.todo]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.util.log :as log]
@@ -50,6 +52,12 @@
   document-schema-collect-tool
   document-construct-sql-chart-tool
   document-construct-model-chart-tool]
+ [tools.explorations
+  get-research-candidates-tool
+  add-research-groups-tool
+  remove-from-research-plan-tool
+  set-exploration-name-tool
+  select-exploration-timelines-tool]
  [tools.metadata
   list-available-data-sources-tool
   list-available-fields-tool
@@ -77,6 +85,9 @@
  [tools.snippets
   list-snippets-tool
   get-snippet-details-tool]
+ [tools.timelines
+  list-timelines-tool
+  get-timeline-details-tool]
  [tools.clarification
   ask-for-sql-clarification-tool]
  [tools.autogen-dashboard

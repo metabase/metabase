@@ -10,9 +10,9 @@ import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -41,9 +41,7 @@ export const CreateTransformMenu = () => {
   });
   const shouldShowPythonScriptOption =
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const { remoteSyncReadOnly } = useTransformPermissions();
 
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useMetabotName();
@@ -63,7 +61,7 @@ export const CreateTransformMenu = () => {
     }
   };
 
-  if (isRemoteSyncReadOnly) {
+  if (remoteSyncReadOnly) {
     return (
       <Tooltip
         label={t`Transforms can't be created when Remote Sync is in read-only mode`}
