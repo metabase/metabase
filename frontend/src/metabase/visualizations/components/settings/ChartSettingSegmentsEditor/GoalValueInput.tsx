@@ -55,11 +55,10 @@ import S from "./GoalValueInput.module.css";
 const MENU_MIN_WIDTH = 225;
 
 // stable references - MiniPicker's onSearchResults loops otherwise
+// saved questions are reachable through Browse all only
 const ENTITY_PICKER_MODELS: MiniPickerPickableItem["model"][] = [
   "metric",
   "measure",
-  "card",
-  "dataset",
 ];
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "metric",
