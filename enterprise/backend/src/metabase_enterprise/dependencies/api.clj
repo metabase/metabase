@@ -197,7 +197,7 @@
   "Restricts a worktree-scoped table's rows to `worktree-id`. Worktree content is admin-only, so anyone but a
   superuser only ever sees the main app, whatever they asked for."
   [table-name worktree-id]
-  [:= (keyword (name table-name) "worktree_id") (when api/*is-superuser?* worktree-id)])
+  [:= (u/qualified-key table-name :worktree_id) (when api/*is-superuser?* worktree-id)])
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
