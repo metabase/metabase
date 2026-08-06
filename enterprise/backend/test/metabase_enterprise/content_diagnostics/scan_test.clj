@@ -813,6 +813,9 @@
                                                                         "ee/content-diagnostics/stale"
                                                                         :query prefix)))]
               (is (= "Scan Time Name" (get-in by-id [in-fid :collection_name])))
+              ;; presence first - `get-in` on a missing key is indistinguishable from a present nil value,
+              ;; so without this the nil assertion below would pass vacuously if the row were dropped
+              (is (some? (get by-id old-fid)))
               (is (nil? (get-in by-id [old-fid :collection_name]))))))))))
 
 (deftest api-endpoint-is-feature-gated-test
