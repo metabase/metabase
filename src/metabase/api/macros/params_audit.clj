@@ -8,7 +8,7 @@
   (:require
    [malli.core :as mc]))
 
-(defonce ^{:doc "endpoint location => seq of unmarked `:map` findings. See [[record!]]."}
+(defonce ^{:doc "endpoint location => param type => seq of findings. See [[record!]]."}
   findings
   (atom {}))
 
@@ -20,15 +20,19 @@
             (mc/form schema))]
     (when (qualified-keyword? k) k)))
 
-(defn unmarked-map-paths
-  "Paths of the `:map` schemas inside `schema` whose properties set no `:closed`, at every level of nesting.
+(defn unmarked-maps
+  "The `:map` schemas inside `schema` whose properties set no `:closed`, at every level of nesting. Each finding is
 
-  Registry refs are followed, since a map nested behind one is still a map the endpoint accepts -- but each name is
-  followed only once, because query schemas are recursive."
+    {:schema <registry name or nil>, :path <path within that schema>}
+
+  Registry refs are followed, since a map nested behind one is still a map the endpoint accepts. A finding behind a
+  ref is attributed to that ref and its path restarts there, so the same shared schema produces the same finding no
+  matter which endpoint reaches it -- that is what lets the report group by the schema that owns the map rather than
+  repeating it per endpoint. Each name is followed only once, because query schemas are recursive."
   [schema]
-  (let [paths (volatile! [])
+  (let [found (volatile! [])
         seen  (volatile! #{})]
-    (letfn [(walk [schema prefix]
+    (letfn [(walk [schema owner prefix]
               (mc/walk
                (mc/schema schema)
                (fn [schema path _children _options]
@@ -37,14 +41,15 @@
                    (when-let [k (ref-name schema)]
                      (when-not (contains? @seen k)
                        (vswap! seen conj k)
-                       (walk (mc/deref schema) (into (vec prefix) path))))
+                       ;; attribute what's inside to the ref, with a path relative to it
+                       (walk (mc/deref schema) k [])))
 
                    (and (= (mc/type schema) :map)
                         (not (contains? (mc/properties schema) :closed)))
-                   (vswap! paths conj (into (vec prefix) path)))
+                   (vswap! found conj {:schema owner, :path (into (vec prefix) path)}))
                  schema)))]
-      (walk schema []))
-    (distinct @paths)))
+      (walk schema nil []))
+    (distinct @found)))
 
 (defn record!
   "Record the unmarked `:map`s in the param schemas of one endpoint. `location` identifies the `defendpoint` for the
@@ -53,8 +58,8 @@
   (let [found (into {}
                     (keep (fn [param-type]
                             (when-let [schema (get-in params [param-type :schema])]
-                              (when-let [paths (seq (unmarked-map-paths schema))]
-                                [param-type (vec paths)]))))
+                              (when-let [ms (seq (unmarked-maps schema))]
+                                [param-type (vec ms)]))))
                     [:route :query :body :request])]
     (if (seq found)
       (swap! findings assoc location found)

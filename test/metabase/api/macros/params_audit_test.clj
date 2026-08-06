@@ -15,51 +15,90 @@
 (defn- ns-file
   "The source file for `nmspace`, looked up the way the classpath lays it out."
   [nmspace]
-  (let [path (-> (name nmspace) (str/replace "-" "_") (str/replace "." "/") (str ".clj"))]
-    (some (fn [root]
-            (let [f (io/file root path)]
-              (when (.exists f) (str root "/" path))))
-          ["src" "enterprise/backend/src" "dev/src" "test"])))
+  (let [stem (-> (name nmspace) (str/replace "-" "_") (str/replace "." "/"))]
+    (first (for [root ["src" "enterprise/backend/src" "dev/src" "test"]
+                 ext  [".clj" ".cljc"]
+                 :let [path (str stem ext)]
+                 :when (.exists (io/file root path))]
+             (str root "/" path)))))
 
-(defn- defendpoint-line
-  "Line of the `defendpoint` form for `method` and `route` in `file`, so the report points at the code."
-  [file method route]
+(defn- line-of
+  "Line in `file` of the first line matching one of `needles`, so the report points at the code."
+  [file needles]
   (when file
     (with-open [r (io/reader file)]
-      (let [needle (format "defendpoint %s %s" method (pr-str route))
-            ;; a route with regexes is written as a vector whose first element is the path
-            alt    (format "defendpoint %s [%s" method (pr-str route))]
-        (->> (line-seq r)
-             (keep-indexed (fn [i line]
-                             (when (or (str/includes? line needle)
-                                       (str/includes? line alt))
-                               (inc i))))
-             first)))))
+      (->> (line-seq r)
+           (keep-indexed (fn [i line]
+                           (when (some #(str/includes? line %) needles)
+                             (inc i))))
+           first))))
 
-(defn- describe-path
-  "Where inside a param schema an unmarked map sits: the schema itself, or the route through it to the nested one."
-  [path]
+(defn- at [file line]
+  (str (or file "?") (when line (str ":" line))))
+
+(defn- describe-path [path]
   (if (empty? path)
-    "the param schema itself"
+    "the schema itself"
     (str "at " (str/join " > " (map pr-str path)))))
 
-(defn- report-line [[{:keys [ns method route]} found]]
-  (let [file (ns-file ns)]
-    (str (format "  %-6s %-44s %s%s"
-                 (str/upper-case (name method))
-                 route
-                 (or file (str ns))
-                 (if-let [line (defendpoint-line file method route)] (str ":" line) ""))
-         (str/join (for [[param-type paths] found
-                         path               paths]
-                     (format "\n      %-7s %s" (name param-type) (describe-path path)))))))
+(defn- endpoint-report
+  "Findings for maps written inline in an endpoint, grouped by endpoint."
+  [own]
+  (str/join
+   "\n"
+   (for [[{:keys [ns method route]} findings] (sort-by (comp str :ns key) own)
+         :let [file (ns-file ns)]]
+     (str (format "  %-6s %-44s %s" (str/upper-case (name method)) route
+                  (at file (line-of file [(format "defendpoint %s %s" method (pr-str route))
+                                          (format "defendpoint %s [%s" method (pr-str route))])))
+          (str/join (for [[param-type ms] findings
+                          {:keys [path]}  ms]
+                      (format "\n      %-7s %s" (name param-type) (describe-path path))))))))
+
+(defn- shared-report
+  "Findings for maps inside a shared registry schema, grouped by the schema that owns them -- one entry however many
+  endpoints reach it."
+  [shared]
+  (str/join
+   "\n"
+   (for [[schema-name ms] (sort-by (comp str key) shared)
+         :let [file (ns-file (namespace schema-name))
+               line (line-of file [(str "mr/def ::" (name schema-name))
+                                   (str "mr/def " schema-name)])]]
+     (str (format "  %s\n      %s, reached by %d endpoint(s)"
+                  schema-name (at file line) (count (:endpoints ms)))
+          (str/join (for [path (sort-by str (:paths ms))]
+                      (format "\n      %s" (describe-path path))))))))
+
+(defn- split-findings
+  "Findings recorded by the audit, split into ones an endpoint owns and ones a shared schema owns."
+  [findings]
+  (reduce
+   (fn [acc [location by-param]]
+     (reduce
+      (fn [acc [param-type ms]]
+        (reduce
+         (fn [acc {:keys [schema path]}]
+           (if schema
+             (-> acc
+                 (update-in [:shared schema :paths] (fnil conj #{}) path)
+                 (update-in [:shared schema :endpoints] (fnil conj #{}) location))
+             (update-in acc [:own location param-type] (fnil conj []) {:path path})))
+         acc
+         ms))
+      acc
+      by-param))
+   {:own {} :shared {}}
+   findings))
 
 (deftest ^:parallel every-param-map-is-explicitly-closed-or-open-test
-  (testing (str "Every `:map` in a `defendpoint` param schema should say `{:closed true}`, so that a param the "
-                "endpoint doesn't declare is rejected, or `{:closed false}` where it genuinely accepts anything. "
-                "A path below is the malli path to the unmarked map inside that endpoint's schema; `[]` means the "
-                "param schema itself.")
-    (let [found @params-audit/findings]
-      (is (empty? found)
-          (str "defendpoint param schemas with an unmarked `:map` (" (count found) " endpoints):\n"
-               (str/join "\n" (map report-line (sort-by (juxt (comp str :ns key) (comp str :route key)) found))))))))
+  (testing (str "Every `:map` reachable from a `defendpoint` param schema should say `{:closed true}`, so that a "
+                "param the endpoint doesn't declare is rejected, or `{:closed false}` where it genuinely accepts "
+                "anything. A shared schema that has to stay open for internal callers wants an API-layer sibling "
+                "that is closed, the way `::qp.schema/api-query` sits alongside `::qp.schema/any-query`.")
+    (let [{:keys [own shared]} (split-findings @params-audit/findings)]
+      (is (and (empty? own) (empty? shared))
+          (str "\n" (count own) " endpoint(s) with an unmarked `:map` written inline:\n"
+               (endpoint-report own)
+               "\n\n" (count shared) " shared schema(s) with an unmarked `:map`, reached through a ref:\n"
+               (shared-report shared))))))
