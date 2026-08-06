@@ -6,8 +6,8 @@
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
    [metabase.formatter.core :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (set! *warn-on-reflection* true)
 

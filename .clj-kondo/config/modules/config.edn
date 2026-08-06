@@ -515,7 +515,8 @@
            tiles
            timeline
            types
-           util}
+           util
+           visualization-settings}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
                     :model/DashboardCard
@@ -996,10 +997,10 @@
   {:team "UX West"
    :api  #{metabase.formatter.core}
    :uses #{appearance
-           models
            query-processor
            types
-           util}}
+           util
+           visualization-settings}}
 
   frontend-errors
   {:team "UX West"
@@ -1414,15 +1415,15 @@
            metabase.models.serialization
            metabase.models.serialization.resolve
            metabase.models.serialization.resolve.mp
-           metabase.models.util.spec-update
-           metabase.models.visualization-settings}
+           metabase.models.util.spec-update}
    :uses #{api
            app-db
            classloader
            legacy-mbql
            lib
            settings
-           util}
+           util
+           visualization-settings}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1484,7 +1485,8 @@
            task-history
            tracing
            users
-           util}
+           util
+           visualization-settings}
    :model-exports #{:model/Notification :model/NotificationHandler :model/NotificationRecipient}
    :model-imports #{:model/Card
                     :model/Channel
@@ -1610,8 +1612,7 @@
   {:team "UX West"
    :api  #{metabase.pivot.core
            metabase.pivot.postprocess}
-   :uses #{models
-           util}}
+   :uses #{util visualization-settings}}
 
   plugins
   {:team "DevEx"
@@ -1899,6 +1900,7 @@
            tracing
            users
            util
+           visualization-settings
            workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
@@ -2630,6 +2632,14 @@
            util}
    :model-exports #{:model/ViewLog}
    :model-imports #{:model/Card :model/Dashboard :model/Table}}
+
+  visualization-settings
+  {:team "UX West"
+   :api  #{metabase.visualization-settings.core
+           metabase.visualization-settings.dynamic-goals
+           metabase.visualization-settings.ui-logic}
+   :uses #{lib
+           util}}
 
   warehouse-schema
   {:team "UX West"
@@ -3412,6 +3422,7 @@
            task
            transforms
            util
+           visualization-settings
            warehouse-schema
            enterprise/dependencies}
    :model-imports #{:model/Card

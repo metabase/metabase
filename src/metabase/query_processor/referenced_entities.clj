@@ -18,7 +18,8 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 ;;; ---------------------------------------------------------------------------------------------------------
 ;;; Running the specs. Generic: a spec is `{:type, :id, :columns, :max_rows}`, whatever produced it.
@@ -146,22 +147,14 @@
     (inject-referenced-entities rff result)
     rff))
 
-(defn- ->goal-source
-  "A `GoalSource` viz value is `{:id, :type, :column}`; anything else (a static number, a self-column name) isn't one."
-  [goal-value]
-  (when (and (map? goal-value)
-             (:id goal-value)
-             (:column goal-value)
-             (entity-types (:type goal-value)))
-    (perf/select-keys goal-value [:id :type :column])))
-
 (defn viz-settings->goal-specs
   "Extract referenced-entity specs from merged viz settings; nil when there are none."
   [viz]
-  (let [segments (concat (:gauge.segments viz) (:scalar.segments viz))
-        sources  (keep ->goal-source
-                       (cons (:graph.goal_value viz)
-                             (mapcat (juxt :min :max) segments)))]
+  (let [sources (into []
+                      (comp (keep dynamic-goals/goal-source)
+                            ;; a goal pointing at something we can't run is dropped rather than failing the request
+                            (filter (comp entity-types :type)))
+                      (dynamic-goals/goal-values viz))]
     (when (seq sources)
       (perf/mapv (fn [[[entity-type id] ss]]
                    {:type    entity-type

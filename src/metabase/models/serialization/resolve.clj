@@ -8,9 +8,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.malli :as mu]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (set! *warn-on-reflection* true)
 

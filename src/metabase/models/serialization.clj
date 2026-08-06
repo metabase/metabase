@@ -69,7 +69,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -77,6 +76,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.visualization-settings.core :as mb.viz]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))

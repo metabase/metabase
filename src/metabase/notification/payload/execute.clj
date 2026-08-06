@@ -7,7 +7,6 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor.card :as qp.card]
@@ -19,6 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.visualization-settings.core :as viz-settings]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
