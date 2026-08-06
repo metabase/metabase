@@ -49,6 +49,14 @@ function replaceLockEntry(
   }
 }
 
+function queryLocation(appRoot: string, query: DiscoveredQuery) {
+  return `${path.relative(appRoot, query.filePath)}:${query.exportName}`;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function checkQuerySync(appRoot: string) {
   const [queries, entries] = await Promise.all([
     discoverQueries(appRoot),
@@ -103,18 +111,61 @@ export async function syncQueries({
     throw new Error(`Data app ${slug} does not have a resource collection.`);
   }
 
+  const claimedIds = new Set(
+    queries.flatMap(({ savedQuestionSourceId }) =>
+      savedQuestionSourceId ? [savedQuestionSourceId] : [],
+    ),
+  );
+  const recoveredIds = new Map<DiscoveredQuery, number>();
+  for (const query of queries) {
+    if (query.savedQuestionSourceId) {
+      continue;
+    }
+    const candidates = previousEntries.filter(
+      (entry) =>
+        entry.tableId === query.tableId &&
+        entry.hash === query.hash &&
+        !claimedIds.has(entry.savedQuestionSourceId),
+    );
+    if (candidates.length > 1) {
+      throw new Error(
+        `${queryLocation(appRoot, query)} matches multiple lockfile entries. Restore its savedQuestionSourceId manually and run sync-queries again.`,
+      );
+    }
+    const [candidate] = candidates;
+    if (candidate) {
+      recoveredIds.set(query, candidate.savedQuestionSourceId);
+      claimedIds.add(candidate.savedQuestionSourceId);
+    }
+  }
+
+  const savedQuestionId = (query: DiscoveredQuery) =>
+    query.savedQuestionSourceId ?? recoveredIds.get(query);
+
   const resolvedQueries = await Promise.all(
-    queries.map(async (query) => ({
-      query,
-      resolved: await client.resolveQuery(slug, queryWithoutGeneratedId(query)),
-    })),
+    queries.map(async (query) => {
+      try {
+        return {
+          query,
+          resolved: await client.resolveQuery(
+            slug,
+            queryWithoutGeneratedId(query),
+          ),
+        };
+      } catch (error) {
+        throw new Error(
+          `Could not resolve ${queryLocation(appRoot, query)}: ${errorMessage(error)}`,
+        );
+      }
+    }),
   );
   const cardsById = new Map<
     number,
     Awaited<ReturnType<typeof client.getCard>> | null
   >();
   await Promise.all(
-    queries.map(async ({ savedQuestionSourceId: id }) => {
+    queries.map(async (query) => {
+      const id = savedQuestionId(query);
       if (!id) {
         return;
       }
@@ -130,7 +181,7 @@ export async function syncQueries({
   );
   const lockfileRepairs: Array<{ query: DiscoveredQuery; id: number }> = [];
   for (const query of queries) {
-    const id = query.savedQuestionSourceId;
+    const id = savedQuestionId(query);
     if (!id) {
       continue;
     }
@@ -160,10 +211,11 @@ export async function syncQueries({
     }
     lockfileRepairs.push({ query, id });
   }
+  const repairedLockfileIds = new Set<number>();
   for (const { query, id } of lockfileRepairs) {
     entries.push(lockEntry(query, id));
     writeQueryLockfile(appRoot, entries);
-    log(`repaired lockfile: ${query.exportName} -> card ${id}`);
+    repairedLockfileIds.add(id);
   }
 
   const liveIds = new Set<number>();
@@ -173,7 +225,8 @@ export async function syncQueries({
       collectionId: app.resource_collection_id,
       datasetQuery: resolved.dataset_query,
     };
-    const previousId = query.savedQuestionSourceId;
+    const recoveredId = recoveredIds.get(query);
+    const previousId = savedQuestionId(query);
     let id = previousId;
     const card = id ? cardsById.get(id) : null;
 
@@ -195,6 +248,9 @@ export async function syncQueries({
       );
     } else {
       id = card.id;
+      if (recoveredId) {
+        injectSavedQuestionId(query, recoveredId);
+      }
       const existingEntry = entries.find(
         ({ savedQuestionSourceId }) => savedQuestionSourceId === id,
       );
@@ -218,7 +274,20 @@ export async function syncQueries({
         const authoredChanged =
           existingEntry.tableId !== query.tableId ||
           existingEntry.hash !== query.hash;
-        log(`${authoredChanged ? "updated" : "restored"}: card ${id}`);
+        const action =
+          authoredChanged || card.name !== query.exportName
+            ? "updated"
+            : "restored";
+        const checkpoint = recoveredId
+          ? "restored source ID, "
+          : repairedLockfileIds.has(id)
+            ? "repaired lockfile, "
+            : "";
+        log(`${checkpoint}${action}: card ${id}`);
+      } else if (recoveredId) {
+        log(`restored source ID: ${query.exportName} -> card ${id}`);
+      } else if (repairedLockfileIds.has(id)) {
+        log(`repaired lockfile: ${query.exportName} -> card ${id}`);
       } else {
         log(`unchanged: card ${id}`);
       }
@@ -253,8 +322,12 @@ export async function syncQueries({
       card.type !== "question" ||
       card.collection_id !== app.resource_collection_id
     ) {
+      const recovery =
+        card.type === "question"
+          ? `Move card ${card.id} back to data app collection ${app.resource_collection_id} or delete it manually`
+          : `Change card ${card.id} back to a saved question in data app collection ${app.resource_collection_id} or delete it manually`;
       throw new Error(
-        `Card ${card.id} is no longer an owned question in the data app collection; it was left untouched.`,
+        `Card ${card.id} belongs to a removed query but is no longer an owned question in the data app collection, so it was left untouched. ${recovery}, then run sync-queries again.`,
       );
     }
     await client.deleteCard(card.id);
