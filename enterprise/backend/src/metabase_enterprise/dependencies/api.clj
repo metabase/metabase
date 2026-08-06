@@ -187,6 +187,18 @@
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]})
 
+(def ^:private worktree-scoped-models
+  "Dependency models whose table carries a `worktree_id`. Tables are shared warehouse metadata and sandboxes are
+  main-app only, so neither is ever checked out into a worktree."
+  #{:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Segment
+    :model/Transform})
+
+(defn- worktree-scope-clause
+  "Restricts a worktree-scoped table's rows to `worktree-id`. Worktree content is admin-only, so anyone but a
+  superuser only ever sees the main app, whatever they asked for."
+  [table-name worktree-id]
+  [:= (keyword (name table-name) "worktree_id") (when api/*is-superuser?* worktree-id)])
+
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
 
@@ -233,7 +245,7 @@
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id]
                                               :from   [table-name]
-                                              :where  [:= :worktree_id worktree-id]}]]
+                                              :where  (worktree-scope-clause table-name worktree-id)}]]
 
                        api/*is-data-analyst?*
                        [:and
@@ -242,7 +254,7 @@
                          {:select [:id]
                           :from   [table-name]
                           :where  [:and
-                                   [:= :worktree_id nil]
+                                   (worktree-scope-clause table-name worktree-id)
                                    [:in :source_database_id
                                     (perms/visible-database-filter-select
                                      {:user-id          api/*current-user-id*
@@ -272,7 +284,8 @@
                                                          (case include-archived-items
                                                            :exclude [:= archived-column false]
                                                            :only [:= archived-column true]
-                                                           :all nil)]}]]))
+                                                           :all nil)
+                                                         (worktree-scope-clause table-name worktree-id)]}]]))
 
                      ;; Table with visible-filter-clause; inactive/hidden tables are always included
                      ;; so that dependencies broken by dropped tables stay visible
@@ -316,7 +329,8 @@
                                                        (case include-archived-items
                                                          :exclude [:= archived-column false]
                                                          :only [:= archived-column true]
-                                                         :all nil)]}]])))))
+                                                         :all nil)
+                                                       (worktree-scope-clause table-name worktree-id)]}]])))))
          deps.dependency-types/dependency-type->model)))
 
 (defn- broken-entities-filter-clause
@@ -341,12 +355,14 @@
               deps.dependency-types/dependency-type->model)))
 
 (defn- entity-worktree-id
-  "The remote-sync worktree the request's starting entity lives in; nil for the main app. Only transforms are ever
-  checked out into one, and a dependency graph never spans two scopes, so the whole request follows the entity the
-  caller named. `api/read-check` on that entity is what keeps a worktree's graph admin-only."
+  "The remote-sync worktree the request's starting entity lives in; nil for the main app. A dependency graph never
+  spans two scopes, so the whole request follows the entity the caller named. `api/read-check` on that entity is
+  what keeps a worktree's graph admin-only."
   [entity-type id]
-  (when (and (= :transform entity-type) id)
-    (t2/select-one-fn :worktree_id :model/Transform :id id)))
+  (when id
+    (let [model (deps.dependency-types/dependency-type->model entity-type)]
+      (when (contains? worktree-scoped-models model)
+        (t2/select-one-fn :worktree_id model :id id)))))
 
 (defn- readable-graph-dependencies
   ([]
