@@ -16,14 +16,7 @@ export type UsageMetadataModelingStatus =
   | "missing"
   | "partially-modeled"
   | "modeled";
-export type UsageMetadataSignal = "verified" | "official" | "popular";
 export type UsageMetadataCleanupQueue = "suggested" | "used-raw" | "discarded";
-export type UsageMetadataCandidateSort =
-  | "priority"
-  | "name"
-  | "source-count"
-  | "view-count";
-export type UsageMetadataSortDirection = "asc" | "desc";
 export type UsageMetadataCreationBlocker =
   | "table-not-published"
   | "table-inactive"
@@ -217,14 +210,9 @@ export type UsageMetadataPage<T> = PaginationResponse & {
 export type ListUsageMetadataRequest = PaginationRequest & {
   "table-id"?: TableId;
   "database-id"?: DatabaseId;
-  schema?: string;
   "candidate-type"?: UsageMetadataCandidateType;
-  "modeling-status"?: UsageMetadataModelingStatus;
-  signal?: UsageMetadataSignal;
   queue?: UsageMetadataCleanupQueue;
   search?: string;
-  sort?: UsageMetadataCandidateSort;
-  direction?: UsageMetadataSortDirection;
 };
 
 export type DismissUsageMetadataCandidateRequest = {

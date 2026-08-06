@@ -17,7 +17,7 @@ import {
 import type { UsageMetadataCandidateType } from "metabase-types/api";
 
 import { useCandidateAction } from "../hooks/useCandidateAction";
-import { getErrorStatus } from "../utils";
+import { getErrorStatus, isCreationCandidate } from "../utils";
 
 import S from "./CandidatePanel.module.css";
 import { CandidatePanelBody } from "./CandidatePanelBody";
@@ -101,7 +101,7 @@ export function CandidatePanel({
     });
   };
 
-  const handleDismissed = () => {
+  const handleDismissSuccess = () => {
     if (!candidate) {
       return;
     }
@@ -170,8 +170,7 @@ export function CandidatePanel({
       </Stack>
       {candidate && (
         <>
-          {(candidate.candidate_type === "measure" ||
-            candidate.candidate_type === "segment") && (
+          {isCreationCandidate(candidate) && (
             <CreateCandidateModal
               key={`create-${candidate.id}`}
               candidate={candidate}
@@ -186,7 +185,7 @@ export function CandidatePanel({
             candidate={candidate}
             opened={showDismissModal}
             onClose={() => setShowDismissModal(false)}
-            onDismissed={handleDismissed}
+            onDismissSuccess={handleDismissSuccess}
             onStale={handleStale}
           />
           <PLUGIN_LIBRARY.PublishTablesModal

@@ -3,14 +3,15 @@ import { t } from "ttag";
 import { Flex, Pill, Text } from "metabase/ui";
 import type {
   UsageMetadataCandidatePresentation,
-  UsageMetadataCandidateType,
   UsageMetadataPredicateKind,
 } from "metabase-types/api";
+
+import type { UsageMetadataCreationCandidateType } from "../utils";
 
 import S from "./CandidatePills.module.css";
 
 type CandidatePillsProps = {
-  candidateType: UsageMetadataCandidateType;
+  candidateType: UsageMetadataCreationCandidateType;
   presentation: UsageMetadataCandidatePresentation;
 };
 

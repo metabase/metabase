@@ -13,6 +13,8 @@ import {
 } from "metabase/ui";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
+import { isCreationCandidate } from "../utils";
+
 import { getCandidateIcon } from "./CandidateDefinition";
 import { CandidatePills } from "./CandidatePills";
 import { EvidenceBadges } from "./EvidenceBadges";
@@ -53,8 +55,7 @@ export function CandidateTable({
                 c="text-secondary"
                 aria-label={getCandidateTypeLabel(candidate.candidate_type)}
               />
-              {candidate.candidate_type === "measure" ||
-              candidate.candidate_type === "segment" ? (
+              {isCreationCandidate(candidate) ? (
                 <CandidatePills
                   candidateType={candidate.candidate_type}
                   presentation={candidate.presentation}

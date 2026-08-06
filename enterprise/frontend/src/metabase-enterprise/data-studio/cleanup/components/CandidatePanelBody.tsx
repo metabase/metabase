@@ -23,7 +23,11 @@ import type {
   UsageMetadataCandidateType,
 } from "metabase-types/api";
 
-import { getCreationBlockerLabel, getMatchRelationLabel } from "../utils";
+import {
+  getCreationBlockerLabel,
+  getMatchRelationLabel,
+  isCreationCandidate,
+} from "../utils";
 
 import { CandidateDefinition, getCandidateIcon } from "./CandidateDefinition";
 import { EvidenceBadges } from "./EvidenceBadges";
@@ -47,9 +51,7 @@ export function CandidatePanelBody({
   onRestore,
   onPublish,
 }: CandidatePanelBodyProps) {
-  const isCreationCandidate =
-    candidate.candidate_type === "measure" ||
-    candidate.candidate_type === "segment";
+  const canCreateCandidate = isCreationCandidate(candidate);
   const hasPublishedBlocker = candidate.creation_blockers.includes(
     "table-not-published",
   );
@@ -160,9 +162,9 @@ export function CandidatePanelBody({
             {candidate.candidate_type === "table" &&
             !candidate.table.is_published ? (
               <Button onClick={onPublish}>{t`Publish table`}</Button>
-            ) : isCreationCandidate && hasPublishedBlocker ? (
+            ) : canCreateCandidate && hasPublishedBlocker ? (
               <Button onClick={onPublish}>{t`Publish table first`}</Button>
-            ) : isCreationCandidate ? (
+            ) : canCreateCandidate ? (
               <Tooltip
                 label={
                   hasHardBlocker
