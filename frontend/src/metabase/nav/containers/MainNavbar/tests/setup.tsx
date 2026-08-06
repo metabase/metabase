@@ -78,6 +78,7 @@ export type SetupOpts = {
   /** Extra root-level collections, on top of the default fixture. */
   collections?: Collection[];
   lazyPageSize?: number;
+  delayExpandTo?: boolean;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -98,6 +99,8 @@ export const TEST_COLLECTION = createMockCollection({
   name: "Test collection",
   children: [NESTED_COLLECTION],
 });
+
+const COLLECTION_ROUTE = "/collection/:slug";
 
 export async function setup({
   pathname = "/",
@@ -121,6 +124,7 @@ export async function setup({
   simulateLargeInstance = false,
   collections: extraCollections = [],
   lazyPageSize,
+  delayExpandTo,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -173,6 +177,7 @@ export async function setup({
     currentUserId: user?.id,
     simulateLargeInstance,
     lazyPageSize,
+    delayExpandTo,
   });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
@@ -243,11 +248,18 @@ export async function setup({
     });
   }
 
+  const navbar = <RoutedMainNavbar isOpen dashboard={storeDashboard} />;
+
   renderWithProviders(
-    <Route
-      path={route}
-      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
-    />,
+    // The collection route is registered alongside the requested one so a test can click a sidebar link and have
+    // `params.slug` resolve, which is what marks a collection as selected. Tests that never navigate only ever match
+    // the first route.
+    <>
+      <Route path={route} element={navbar} />
+      {route !== COLLECTION_ROUTE && (
+        <Route path={COLLECTION_ROUTE} element={navbar} />
+      )}
+    </>,
     {
       storeInitialState,
       initialRoute: pathname,

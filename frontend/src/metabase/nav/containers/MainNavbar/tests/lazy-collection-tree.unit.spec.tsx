@@ -93,6 +93,34 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
     });
   });
 
+  it("should keep the list on screen while opening a collection refetches it", async () => {
+    await setup({
+      simulateLargeInstance: true,
+      collections: [
+        createMockCollection({ id: 200, name: "Sibling collection" }),
+      ],
+      delayExpandTo: true,
+    });
+
+    const target = await screen.findByRole("treeitem", {
+      name: /Test collection/i,
+    });
+    expect(
+      screen.getByRole("treeitem", { name: /Sibling collection/ }),
+    ).toBeInTheDocument();
+
+    // Opening a collection changes `expand-to`, which re-keys the root request. The list must not blink out while
+    // the replacement is in flight.
+    await userEvent.click(within(target).getByRole("link"));
+
+    expect(
+      screen.getByRole("treeitem", { name: /Sibling collection/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("treeitem", { name: /Test collection/i }),
+    ).toBeInTheDocument();
+  });
+
   it("should not render children until their parent is expanded", async () => {
     await setup({ simulateLargeInstance: true });
 

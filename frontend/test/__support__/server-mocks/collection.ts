@@ -36,6 +36,11 @@ export interface CollectionEndpoints {
   simulateLargeInstance?: boolean;
   /** Page size the lazy tree mock applies to each level. Small by default so tests can reach a second page. */
   lazyPageSize?: number;
+  /**
+   * Holds back lazy responses that carry `expand-to`, so a test can look at the sidebar while a navigation's request
+   * is still in flight.
+   */
+  delayExpandTo?: boolean;
 }
 
 /** Mirrors what the tree endpoint does to a node whose children it has not read. */
@@ -73,6 +78,7 @@ export function setupCollectionsEndpoints({
   currentUserId,
   simulateLargeInstance = false,
   lazyPageSize = 50,
+  delayExpandTo = false,
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -178,7 +184,11 @@ export function setupCollectionsEndpoints({
     if (!isLazy) {
       return visible;
     }
-    return asPage(visible);
+    const page = asPage(visible);
+    if (delayExpandTo && url.searchParams.get("expand-to") != null) {
+      return new Promise((resolve) => setTimeout(() => resolve(page), 5000));
+    }
+    return page;
   });
 }
 

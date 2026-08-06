@@ -178,6 +178,11 @@ export function useLazyCollectionTree({
       ),
   );
 
+  // Navigating changes `expand-to`, which is part of the root request's cache key, so the root level is briefly
+  // absent while the new one is in flight. Holding the last one keeps the sidebar on screen instead of emptying it
+  // every time the user opens a collection.
+  const lastRootLevel = useRef<Level>();
+
   const levels = useMemo(() => {
     const byKey = new Map<LevelKey, Level>();
     pagesByLevel.forEach(({ key, pages }) => {
@@ -193,6 +198,13 @@ export function useLazyCollectionTree({
         isLoadingMore: loaded.length < pages.length,
       });
     });
+
+    const root = byKey.get(ROOT_LEVEL);
+    if (root) {
+      lastRootLevel.current = root;
+    } else if (lastRootLevel.current) {
+      byKey.set(ROOT_LEVEL, lastRootLevel.current);
+    }
     return byKey;
   }, [pagesByLevel]);
 

@@ -76,7 +76,7 @@ describe("Tree", () => {
       expect(screen.getByRole("button")).toBeInTheDocument();
     });
 
-    it("should show skeletons in place of children that are still loading", () => {
+    it("should show skeletons only once loading has taken a moment", async () => {
       render(<Tree data={lazyData} onSelect={jest.fn()} />);
 
       expect(
@@ -85,8 +85,13 @@ describe("Tree", () => {
 
       fireEvent.click(screen.getByRole("button"));
 
+      // Still nothing: a fetch that resolves quickly should never flash placeholder rows.
       expect(
-        screen.getAllByTestId("tree-node-skeleton").length,
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+
+      expect(
+        (await screen.findAllByTestId("tree-node-skeleton")).length,
       ).toBeGreaterThan(0);
       expect(screen.getAllByRole("menuitem")).toHaveLength(1);
     });
