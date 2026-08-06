@@ -32,6 +32,7 @@ export const useBuildSearchMenuItems = () => {
           id: result.id,
           model: result.model,
           href: href || undefined,
+          display: result.display ?? undefined,
           action: () => onSelect(result),
         };
       }),
@@ -58,6 +59,8 @@ export const useBuildRecentsMenuItems = () => {
           id: recent.id,
           model: recent.model,
           href: href || undefined,
+          display:
+            "display" in recent ? (recent.display ?? undefined) : undefined,
           action: () => onSelect(recent),
         };
       }),

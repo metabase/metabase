@@ -13,6 +13,7 @@ import type {
 } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Divider, Text } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { LinkedEntityPickerModal } from "./LinkedEntityPickerModal";
 import type { DocumentLinkedEntityPickerItemValue } from "./LinkedEntityPickerModal/types";
@@ -34,6 +35,13 @@ interface EntitySearchSectionProps {
   canCreateNewQuestion?: boolean;
   selectedSearchModelName?: string;
   onTriggerCreateNew?: () => void;
+  /**
+   * Whether the current document is publicly shared. Public documents
+   * silently degrade custom visualizations to a table, so embedding one is
+   * blocked (linking to it is unaffected). Consumers that don't apply, like
+   * the mention suggestion which is always in "linkTo" mode, can omit this.
+   */
+  isPublicDocument?: boolean;
 }
 
 export function EntitySearchSection({
@@ -52,9 +60,11 @@ export function EntitySearchSection({
   canBrowseAll,
   canCreateNewQuestion,
   onTriggerCreateNew,
+  isPublicDocument = false,
 }: EntitySearchSectionProps) {
   const hasNoItems = menuItems.length === 0 && searchResults.length === 0;
   const shouldShowNoResults = query.length > 0 && hasNoItems;
+  const isEmbedMode = viewMode !== "linkTo";
 
   const browseAllItemIndex = getBrowseAllItemIndex(
     menuItems.length,
@@ -70,23 +80,34 @@ export function EntitySearchSection({
           </Text>
         </Box>
       )}
-      {menuItems.map((item, index) => (
-        <MenuItemComponent
-          key={index}
-          item={item}
-          isSelected={selectedIndex === index}
-          onClick={(e) => {
-            // cmd/ctrl+click to open in new tab
-            if ((e.metaKey || e.ctrlKey) && item.href) {
-              e.preventDefault();
-              window.open(item.href, "_blank");
-            } else {
-              onItemSelect(index);
+      {menuItems.map((item, index) => {
+        const isBlockedCustomViz =
+          isEmbedMode && isPublicDocument && isCustomVizDisplay(item.display);
+
+        return (
+          <MenuItemComponent
+            key={index}
+            item={item}
+            isSelected={selectedIndex === index}
+            isDisabled={isBlockedCustomViz}
+            disabledReason={
+              isBlockedCustomViz
+                ? t`This chart uses a custom visualization, which isn't supported in public links.`
+                : undefined
             }
-          }}
-          onMouseEnter={() => onItemHover(index)}
-        />
-      ))}
+            onClick={(e) => {
+              // cmd/ctrl+click to open in new tab
+              if ((e.metaKey || e.ctrlKey) && item.href) {
+                e.preventDefault();
+                window.open(item.href, "_blank");
+              } else {
+                onItemSelect(index);
+              }
+            }}
+            onMouseEnter={() => onItemHover(index)}
+          />
+        );
+      })}
 
       {shouldShowNoResults ? (
         <Box p="sm" ta="center">
