@@ -6,29 +6,29 @@ import type { LlmProviderTypeName } from "metabase-types/api";
 
 import S from "./ProviderTypeIcon.module.css";
 import AnthropicMark from "./logos/anthropic.svg?component";
-import AzureLogo from "./logos/azure.svg";
+import AzureMark from "./logos/azure.svg?component";
 import BedrockMark from "./logos/bedrock.svg?component";
-import MistralLogo from "./logos/mistral.svg";
+import MistralMark from "./logos/mistral.svg?component";
 import OpenAiMark from "./logos/openai.svg?component";
 import OpenRouterMark from "./logos/openrouter.svg?component";
-import ZaiLogo from "./logos/zai.svg";
+import ZaiMark from "./logos/zai.svg?component";
 
 const GENERIC_PROVIDER_ICON = "ai";
 
-// A component is a single-colour mark, inlined so it takes the theme's text colour the way its brand
-// publishes it — dark on light, light on dark. A string is a full-colour mark used as it ships. Metabase
+// Every mark is inlined rather than loaded by URL: it lets the single-colour ones take the theme's text
+// colour the way their brands publish them, and it keeps them out of the emitted-asset pipeline. Metabase
 // is null because it is drawn from its own logo component.
 const PROVIDER_LOGOS: Record<
   LlmProviderTypeName,
-  ComponentType<SVGProps<SVGSVGElement>> | string | null
+  ComponentType<SVGProps<SVGSVGElement>> | null
 > = {
   anthropic: AnthropicMark,
   openai: OpenAiMark,
   openrouter: OpenRouterMark,
   bedrock: BedrockMark,
-  mistral: MistralLogo,
-  zai: ZaiLogo,
-  azure: AzureLogo,
+  mistral: MistralMark,
+  zai: ZaiMark,
+  azure: AzureMark,
   metabase: null,
 };
 
@@ -57,17 +57,12 @@ function ProviderTypeMark({
     return <DefaultLogoIcon height={size} />;
   }
 
-  const logo = PROVIDER_LOGOS[type];
+  const Mark = PROVIDER_LOGOS[type];
 
-  if (!logo) {
+  if (!Mark) {
     return <Icon name={GENERIC_PROVIDER_ICON} size={size} aria-hidden />;
   }
 
-  if (typeof logo === "string") {
-    return <img src={logo} alt="" width={size} height={size} />;
-  }
-
-  const Mark = logo;
   return (
     <Mark className={S.mark} width={size} height={size} role="presentation" />
   );
