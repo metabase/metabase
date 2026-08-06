@@ -355,16 +355,6 @@
   :export?     false
   :setter      set-bedrock-region!)
 
-(defsetting llm-bedrock-configured?
-  "Whether the required AWS Bedrock credentials are configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
-                             (trimmed-string (llm-bedrock-secret-access-key))))
-  :doc        false)
-
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
 (defsetting llm-azure-api-key

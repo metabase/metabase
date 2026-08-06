@@ -168,30 +168,6 @@
         (llm.settings/llm-google-api-base-url! "   ")
         (is (= "https://aiplatform.googleapis.com" (llm.settings/llm-google-api-base-url)))))))
 
-;;; ------------------------------------------- llm-bedrock-configured? Tests -------------------------------------------
-
-(deftest llm-bedrock-configured?-test
-  (testing "returns false when neither credential is set"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id nil
-                                       llm-bedrock-secret-access-key nil]
-      (is (false? (llm.settings/llm-bedrock-configured?)))))
-  (testing "returns false when only the access key id is set"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                       llm-bedrock-secret-access-key nil]
-      (is (false? (llm.settings/llm-bedrock-configured?)))))
-  (testing "returns false when only the secret access key is set"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id nil
-                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
-      (is (false? (llm.settings/llm-bedrock-configured?)))))
-  (testing "returns false when a credential is blank rather than absent"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "   "
-                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
-      (is (false? (llm.settings/llm-bedrock-configured?)))))
-  (testing "returns true when both credentials are set"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
-      (is (true? (llm.settings/llm-bedrock-configured?))))))
-
 ;;; ------------------------------------------- llm-bedrock credential Setter Tests -------------------------------------------
 
 (deftest llm-bedrock-access-key-id-setter-accepts-valid-key-test
