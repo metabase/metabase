@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { forwardRef } from "react";
 import _ from "underscore";
 
 import type { IconProps } from "metabase/ui";
@@ -27,47 +28,46 @@ const getIconProps = (icon?: string | IconProps): IconProps =>
   // Unjustified type cast. FIXME
   _.isObject(icon) ? icon : ({ name: icon } as IconProps);
 
-export function SelectListItem({
-  name,
-  icon,
-  rightIcon,
-  className,
-  classNames = {},
-  ...otherProps
-}: SelectListItemProps) {
-  const iconProps = getIconProps(icon);
-  const rightIconProps = getIconProps(rightIcon);
-  const iconUrl =
-    _.isObject(icon) && "iconUrl" in icon ? icon.iconUrl : undefined;
+export const SelectListItem = forwardRef<HTMLLIElement, SelectListItemProps>(
+  function SelectListItem(
+    { name, icon, rightIcon, className, classNames = {}, ...otherProps },
+    ref,
+  ) {
+    const iconProps = getIconProps(icon);
+    const rightIconProps = getIconProps(rightIcon);
+    const iconUrl =
+      _.isObject(icon) && "iconUrl" in icon ? icon.iconUrl : undefined;
 
-  return (
-    <BaseSelectListItem
-      as={ItemRoot}
-      className={cx(classNames.root, className)}
-      {...otherProps}
-      name={name}
-      aria-label={name}
-      hasLeftIcon={!!icon}
-      hasRightIcon={!!rightIcon}
-    >
-      {icon && (
-        <ItemIcon
-          iconUrl={iconUrl}
-          className={classNames.icon}
-          {...iconProps}
-        />
-      )}
-      <ItemTitle
-        className={classNames.label}
-        fw="bold"
-        lh="normal"
-        data-testid="option-text"
+    return (
+      <BaseSelectListItem
+        ref={ref}
+        as={ItemRoot}
+        className={cx(classNames.root, className)}
+        {...otherProps}
+        name={name}
+        aria-label={name}
+        hasLeftIcon={!!icon}
+        hasRightIcon={!!rightIcon}
       >
-        <Ellipsified>{name}</Ellipsified>
-      </ItemTitle>
-      {rightIconProps.name && (
-        <ItemIcon className={classNames.icon} {...rightIconProps} />
-      )}
-    </BaseSelectListItem>
-  );
-}
+        {icon && (
+          <ItemIcon
+            iconUrl={iconUrl}
+            className={classNames.icon}
+            {...iconProps}
+          />
+        )}
+        <ItemTitle
+          className={classNames.label}
+          fw="bold"
+          lh="normal"
+          data-testid="option-text"
+        >
+          <Ellipsified>{name}</Ellipsified>
+        </ItemTitle>
+        {rightIconProps.name && (
+          <ItemIcon className={classNames.icon} {...rightIconProps} />
+        )}
+      </BaseSelectListItem>
+    );
+  },
+);
