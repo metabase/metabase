@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]))
 
 (mr/def ::any-query
@@ -23,14 +24,19 @@
   The value schemas are deliberately shallow -- the shape of each key, not its contents. Referring to the real
   schemas would be wrong here: this runs before normalization, so `:type` may still be `\"query\"` rather than
   `:query`, and the deep schemas describe a query that has already been normalized. Whatever this misses is caught
-  when the query reaches the schema for its actual MBQL version."
+  when the query reaches the schema for its actual MBQL version.
+
+  They must also not *coerce*, for the same reason. An API param schema is decoded, not just validated, so a
+  `[:or :keyword :string]` here would quietly turn `\"internal\"` into `:internal` and hand the QP a half-normalized
+  query -- which breaks callers comparing against the string form, e.g. the `:type` check in [[run-streaming-query]].
+  [[ms/KeywordOrString]] leaves both forms alone."
   [:and
    [:map
     [:database {:optional true} [:or
                                  ::lib.schema.id/database
                                  ::lib.schema.id/saved-questions-virtual-database]]
     ;; legacy MBQL, from [[metabase.legacy-mbql.schema/Query]]
-    [:type        {:optional true} [:maybe [:or :keyword :string]]]
+    [:type        {:optional true} [:maybe ms/KeywordOrString]]
     [:native      {:optional true} [:maybe :map]]
     [:query       {:optional true} [:maybe :map]]
     [:parameters  {:optional true} [:maybe [:sequential :any]]]
@@ -41,7 +47,7 @@
     [:create-row  {:optional true} [:maybe :map]]
     [:update-row  {:optional true} [:maybe :map]]
     ;; MBQL 5, from [[metabase.lib.schema/query]]
-    [:lib/type     {:optional true} [:maybe [:or :keyword :string]]]
+    [:lib/type     {:optional true} [:maybe ms/KeywordOrString]]
     [:lib/metadata {:optional true} :any] ; a metadata provider object, not data
     [:stages       {:optional true} [:maybe [:sequential :any]]]
     ;; internal audit app queries, from
