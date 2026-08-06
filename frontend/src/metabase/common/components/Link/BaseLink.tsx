@@ -49,14 +49,20 @@ function hrefFor(target: To): string {
  * but react-router resolves it against the current route instead, which would
  * nest it. Anchor it so the target does not depend on where the link renders.
  *
- * Left alone: a leading `?` or `#`, which keeps the current path by design, and
+ * Left alone: a leading `?` or `#`, which keeps the current path by design;
  * anything carrying a scheme (`https:`, `mailto:`) or a protocol-relative `//`,
- * which is not a route at all.
+ * which is not a route at all; and an explicit `.` or `..`, which asks for
+ * route-relative resolution on purpose. Anchoring `..` would turn it into
+ * `/..`, which resolves to the app root — a silent navigation, not a nested
+ * one. Route fragments mounted at more than one path rely on that form.
  */
 function toRootRelative(pathname: string): string {
   const isAlreadyAnchored = pathname === "" || /^[/?#]/.test(pathname);
+  const isExplicitlyRelative = /^\.{1,2}(\/|$)/.test(pathname);
   const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(pathname);
-  return isAlreadyAnchored || hasScheme ? pathname : `/${pathname}`;
+  return isAlreadyAnchored || isExplicitlyRelative || hasScheme
+    ? pathname
+    : `/${pathname}`;
 }
 
 function anchorTarget(to: To): To {

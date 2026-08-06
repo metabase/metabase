@@ -376,6 +376,14 @@ const elements = [
       mode: "full",
     }),
   ),
+  // The embedding hub is a composition root for a top-level app section: its
+  // routes and layout mount admin-tier pages directly. Once those components
+  // are lifted out of admin it can drop to feature tier.
+  createElement({
+    type: "app",
+    name: "embedding-hub",
+    pattern: "frontend/src/metabase/embedding-hub/**",
+  }),
   createElement({
     type: "app",
     name: "nav",

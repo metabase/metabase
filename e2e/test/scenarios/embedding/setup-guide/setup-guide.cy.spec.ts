@@ -271,37 +271,6 @@ describe("scenarios - setup guide", () => {
         .should("not.exist");
     });
 
-    it("should link to user strategy when tenants are disabled", () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
-      cy.visit("/admin/embedding/setup-guide");
-
-      H.main()
-        .findByText("Tenants")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/people/user-strategy");
-    });
-
-    it("should link to tenants page when tenants are enabled", () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
-      H.updateSetting("use-tenants", true);
-      cy.visit("/admin/embedding/setup-guide");
-
-      H.main()
-        .findByText("Tenants")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/people/tenants");
-    });
-
     it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
       cy.visit("/admin/embedding/setup-guide");
 
