@@ -2,17 +2,11 @@
   --cleanup-pill-background-color: var(--mb-color-accent7-light);
 
   max-width: 24rem;
-  height: auto;
-  min-height: 1.25rem;
-  padding: 0.0625rem 0.4375rem;
   color: var(--mb-color-text-primary);
   background-color: var(--cleanup-pill-background-color);
   border: 0;
   border-radius: 999px;
   box-shadow: none;
-  font-size: var(--mantine-font-size-xs);
-  font-weight: 500;
-  line-height: 1rem;
   overflow-wrap: anywhere;
 
   &[data-kind="category"] {
@@ -30,6 +24,10 @@
   &[data-kind="temporal"] {
     --cleanup-pill-background-color: var(--mb-color-accent6-light);
   }
+}
+
+[data-mantine-color-scheme="dark"] .pill {
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .aggregation {
