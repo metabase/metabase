@@ -144,7 +144,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: usage_metadata_candidate_source
-            remarks: Original saved questions and models supporting each candidate
+            remarks: Snapshot of saved questions and models supporting each candidate
             columns:
               - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
               - column:
@@ -155,8 +155,9 @@ databaseChangeLog:
               - column:
                   name: card_id
                   type: int
-                  remarks: Original source Card
-                  constraints: {nullable: false, referencedTableName: report_card, referencedColumnNames: id, foreignKeyName: fk_um_candidate_source_card, deleteCascade: true}
+                  remarks: Original source Card ID retained as snapshot data after Card deletion
+                  # Intentionally no Card FK: completed analysis snapshots must not change when saved content is deleted.
+                  constraints: {nullable: false}
               - column: {name: card_name, type: varchar(254), remarks: Source Card name at refresh time}
               - column: {name: card_type, type: varchar(32), remarks: Question or model, constraints: {nullable: false}}
               - column: {name: verified, type: "${boolean.type}", remarks: Whether the source was verified, constraints: {nullable: false}}
@@ -186,24 +187,6 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-source-card-index
-      author: retro
-      comment: Index candidate source Card cascade deletes
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: usage_metadata_candidate_source
-                indexName: idx_um_candidate_source_card
-      changes:
-        - createIndex:
-            tableName: usage_metadata_candidate_source
-            indexName: idx_um_candidate_source_card
-            columns:
-              - column: {name: card_id}
-      rollback: []
-
-  - changeSet:
       id: v64.um-candidate-source-unique
       author: retro
       comment: Count each source Card once per semantic candidate
@@ -220,7 +203,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: usage_metadata_candidate_match
-            remarks: Exact and structural relationships to existing Library entities
+            remarks: Snapshot of exact and structural relationships to Library entities
             columns:
               - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
               - column:
@@ -232,13 +215,16 @@ databaseChangeLog:
               - column:
                   name: measure_id
                   type: int
-                  remarks: Related Measure when candidate type is Measure
-                  constraints: {referencedTableName: measure, referencedColumnNames: id, foreignKeyName: fk_um_candidate_match_measure, deleteCascade: true}
+                  remarks: Related Measure ID retained as snapshot data after Measure deletion
+                  # Intentionally no Measure FK: completed analysis snapshots must remain internally consistent.
               - column:
                   name: segment_id
                   type: int
-                  remarks: Related Segment when candidate type is Segment
-                  constraints: {referencedTableName: segment, referencedColumnNames: id, foreignKeyName: fk_um_candidate_match_segment, deleteCascade: true}
+                  remarks: Related Segment ID retained as snapshot data after Segment deletion
+                  # Intentionally no Segment FK: completed analysis snapshots must remain internally consistent.
+              - column: {name: entity_name, type: varchar(254), remarks: Related entity name at refresh time, constraints: {nullable: false}}
+              - column: {name: entity_description, type: "${text.type}", remarks: Related entity description at refresh time}
+              - column: {name: entity_archived, type: "${boolean.type}", remarks: Whether the related entity was archived at refresh time, constraints: {nullable: false}}
 
   - changeSet:
       id: v64.um-candidate-match-index
@@ -256,42 +242,6 @@ databaseChangeLog:
             indexName: idx_um_candidate_match_candidate
             columns:
               - column: {name: candidate_id}
-      rollback: []
-
-  - changeSet:
-      id: v64.um-candidate-match-measure-index
-      author: retro
-      comment: Index candidate match Measure cascade deletes
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: usage_metadata_candidate_match
-                indexName: idx_um_candidate_match_measure
-      changes:
-        - createIndex:
-            tableName: usage_metadata_candidate_match
-            indexName: idx_um_candidate_match_measure
-            columns:
-              - column: {name: measure_id}
-      rollback: []
-
-  - changeSet:
-      id: v64.um-candidate-match-segment-index
-      author: retro
-      comment: Index candidate match Segment cascade deletes
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: usage_metadata_candidate_match
-                indexName: idx_um_candidate_match_segment
-      changes:
-        - createIndex:
-            tableName: usage_metadata_candidate_match
-            indexName: idx_um_candidate_match_segment
-            columns:
-              - column: {name: segment_id}
       rollback: []
 
   - changeSet:

@@ -568,16 +568,6 @@
         matches     (t2/select :model/UsageMetadataCandidateMatch
                                :candidate_id (:id candidate)
                                {:order-by [[:id :asc]]})
-        measure-ids (into #{} (keep :measure_id) matches)
-        segment-ids (into #{} (keep :segment_id) matches)
-        measures    (if (seq measure-ids)
-                      (t2/select-pk->fn identity [:model/Measure :id :name :description :archived]
-                                        :id [:in measure-ids])
-                      {})
-        segments    (if (seq segment-ids)
-                      (t2/select-pk->fn identity [:model/Segment :id :name :description :archived]
-                                        :id [:in segment-ids])
-                      {})
         dismissal   (dismissals (dismissal-key candidate))
         dependency-paths (into {}
                                (map (juxt :card-id :dependency-paths))
@@ -592,10 +582,14 @@
                               (contains? dependency-paths (:card_id source))
                               (assoc :dependency_paths (dependency-paths (:card_id source)))))
                           sources)
-           :matches (mapv (fn [{:keys [relation measure_id segment_id]}]
+           :matches (mapv (fn [{:keys [relation measure_id segment_id entity_name entity_description
+                                       entity_archived]}]
                             {:relation relation
                              :entity_type (if measure_id :measure :segment)
-                             :entity (if measure_id (measures measure_id) (segments segment_id))})
+                             :entity {:id          (or measure_id segment_id)
+                                      :name        entity_name
+                                      :description entity_description
+                                      :archived    entity_archived}})
                           matches))))
 
 (api.macros/defendpoint :get "/candidates/:id" :- ::candidate-detail

@@ -208,8 +208,12 @@
                                                 :definition (:definition mined)
                                                 :signature (:signature mined))
                                          true)))
-            (is (= {:relation :exact, :measure_id (:id measure)}
-                   (t2/select-one [:model/UsageMetadataCandidateMatch :relation :measure_id]
+            (is (= {:relation        :exact
+                    :measure_id      (:id measure)
+                    :entity_name     "Revenue"
+                    :entity_archived false}
+                   (t2/select-one [:model/UsageMetadataCandidateMatch
+                                   :relation :measure_id :entity_name :entity_archived]
                                   :candidate_id (:id published-candidate)))))
           (testing "entities on an unpublished table are not treated as Library matches"
             (is (= :missing
@@ -653,3 +657,56 @@
     (testing "matching semantic signatures are exact"
       (is (= :exact (relation-for-measure measure (assoc measure :signature "candidate"))))
       (is (= :exact (relation-for-segment segment (assoc segment :signature "candidate")))))))
+
+(deftest completed-snapshot-survives-source-and-match-deletion-test
+  (let [metadata-provider (mt/metadata-provider)
+        table             (lib.metadata/table metadata-provider (mt/id :orders))
+        subtotal          (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+        definition        (lib/aggregate (lib/query metadata-provider table) (lib/sum subtotal))]
+    (mt/with-temp [:model/Card source-card {:name "Revenue by region"}
+                   :model/Measure measure {:name        "Revenue"
+                                           :description "Recognized revenue"
+                                           :creator_id  (mt/user->id :crowberto)
+                                           :definition  definition}
+                   :model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {}}
+                   :model/UsageMetadataCandidate candidate
+                   (merge (candidate-row (:id run) (mt/id :orders))
+                          {:candidate_type  :measure
+                           :modeling_status :modeled})]
+      (t2/insert! :model/UsageMetadataCandidateSource
+                  {:candidate_id  (:id candidate)
+                   :card_id       (:id source-card)
+                   :card_name     (:name source-card)
+                   :card_type     :question
+                   :verified      true
+                   :official      false
+                   :popular       true
+                   :view_count    42
+                   :joined        false
+                   :stage_numbers [0]
+                   :model_lineage nil})
+      (t2/insert! :model/UsageMetadataCandidateMatch
+                  {:candidate_id       (:id candidate)
+                   :relation           :exact
+                   :measure_id         (:id measure)
+                   :entity_name        (:name measure)
+                   :entity_description (:description measure)
+                   :entity_archived    false})
+      (t2/delete! :model/Card :id (:id source-card))
+      (t2/delete! :model/Measure :id (:id measure))
+      (is (= {:card_id (:id source-card), :card_name "Revenue by region", :view_count 42}
+             (t2/select-one [:model/UsageMetadataCandidateSource :card_id :card_name :view_count]
+                            :candidate_id (:id candidate))))
+      (is (= {:relation           :exact
+              :measure_id         (:id measure)
+              :entity_name        "Revenue"
+              :entity_description "Recognized revenue"
+              :entity_archived    false}
+             (t2/select-one [:model/UsageMetadataCandidateMatch
+                             :relation :measure_id :entity_name :entity_description :entity_archived]
+                            :candidate_id (:id candidate))))
+      (is (= :modeled
+             (t2/select-one-fn :modeling_status :model/UsageMetadataCandidate :id (:id candidate)))))))
