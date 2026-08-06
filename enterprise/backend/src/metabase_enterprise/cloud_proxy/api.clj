@@ -18,10 +18,12 @@
 
 (def ^:private OperationParams
   "Malli schema for the POST body: the parameter map of the Harbormaster Store operation named by
-  `:operation-id`, forwarded verbatim. Keys are that operation's kebab-case parameter names (the FE
-  sends e.g. `new-plan-alias`, `force-end-trial`, `plan-alias`); values are whatever the operation's
-  OpenAPI spec declares, so only the key shape is fixed here."
-  [:map-of :keyword :any])
+  `:operation-id`, forwarded verbatim (via [[m.util/deep-kebab-keys]]) to the Store client. Keys are that
+  operation's kebab-case parameter names. Every allowlisted operation takes a flat map of scalars: the FE
+  sends `new-plan-alias`/`plan-alias` (strings) and `force-end-trial` (boolean), or an empty body; see
+  `frontend/src/metabase/api/cloud-proxy.ts`. An operation taking a nested parameter would have to be added
+  to the allowlist above, so it would be caught here at the same time."
+  [:map-of :keyword [:maybe [:or :string :boolean number?]]])
 
 (def ^:private non-superuser-operation-allowlist
   #{"list-plans"

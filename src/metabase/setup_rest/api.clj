@@ -90,7 +90,8 @@
                 ;; legacy key still sent by existing clients; ignored -- anonymous tracking is always enabled here.
                 [:allow_tracking {:optional true} [:maybe [:or :boolean :string]]]]]
        ;; legacy key from the old setup flow that created a Database inline; still sent (often as `null`) and ignored.
-       [:database {:optional true} :any]]
+       ;; Nothing reads it, so its contents are only ever the old Database payload -- typed as an object to say so.
+       [:database {:optional true} [:maybe [:map-of :keyword :any]]]]
    request]
   (letfn [(create! []
             (try
