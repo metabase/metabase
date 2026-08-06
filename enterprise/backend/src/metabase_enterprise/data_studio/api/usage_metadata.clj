@@ -18,7 +18,9 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,6 +31,160 @@
 (def ^:private max-name-length 254)
 (def ^:private max-description-length 10000)
 (def ^:private max-dismissal-reason-length 1000)
+
+;;; ------------------------------------------------ Response schemas ------------------------------------------------
+
+(mr/def ::snapshot-summary
+  [:map
+   [:candidate-count     ms/IntGreaterThanOrEqualToZero]
+   [:measure-count       ms/IntGreaterThanOrEqualToZero]
+   [:segment-count       ms/IntGreaterThanOrEqualToZero]
+   [:metric-count        ms/IntGreaterThanOrEqualToZero]
+   [:publish-table-count ms/IntGreaterThanOrEqualToZero]
+   [:table-count         ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::snapshot
+  [:map
+   [:id                ms/PositiveInt]
+   [:finished_at       :any]
+   [:algorithm_version ms/IntGreaterThanOrEqualToZero]
+   [:summary           [:maybe ::snapshot-summary]]])
+
+(mr/def ::database
+  [:map
+   [:id   ms/PositiveInt]
+   [:name :string]])
+
+(mr/def ::creation-blocker
+  [:enum :table-not-published :table-inactive :table-uneditable])
+
+(mr/def ::table
+  [:map
+   [:id                ms/PositiveInt]
+   [:db_id             ms/PositiveInt]
+   [:schema            [:maybe :string]]
+   [:name              :string]
+   [:display_name      :string]
+   [:description       [:maybe :string]]
+   [:data_layer        [:maybe :keyword]]
+   [:data_authority    [:maybe :keyword]]
+   [:view_count        ms/IntGreaterThanOrEqualToZero]
+   [:is_published      :boolean]
+   [:collection_id     [:maybe ms/PositiveInt]]
+   [:database          ::database]
+   [:publication_ready {:optional true} :boolean]
+   [:creation_blockers {:optional true} [:sequential ::creation-blocker]]])
+
+(mr/def ::status-counts
+  [:map
+   [:missing           ms/IntGreaterThanOrEqualToZero]
+   [:partially-modeled ms/IntGreaterThanOrEqualToZero]
+   [:modeled           ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::candidate-counts
+  [:map
+   [:table   ::status-counts]
+   [:metric  ::status-counts]
+   [:measure ::status-counts]
+   [:segment ::status-counts]])
+
+(mr/def ::table-summary
+  [:map
+   [:table           ::table]
+   [:counts          ::candidate-counts]
+   [:candidate_count ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::table-detail
+  [:merge
+   ::table-summary
+   [:map
+    [:dismissed_count ms/IntGreaterThanOrEqualToZero]
+    [:snapshot        [:maybe ::snapshot]]]])
+
+(mr/def ::candidate-type [:enum :table :metric :measure :segment])
+(mr/def ::modeling-status [:enum :missing :partially-modeled :modeled])
+
+(mr/def ::candidate-summary
+  [:map
+   [:id                    ms/PositiveInt]
+   [:candidate_type        ::candidate-type]
+   [:table                 ::table]
+   [:display_name          :string]
+   [:suggested_name        :string]
+   [:suggested_description [:maybe :string]]
+   [:required_tables       [:sequential :map]]
+   [:presentation          :map]
+   [:family                :map]
+   [:definition            :map]
+   [:modeling_status       ::modeling-status]
+   [:dismissed             :boolean]
+   [:evidence              :map]
+   [:creation_blockers     [:sequential ::creation-blocker]]])
+
+(mr/def ::candidate-detail
+  [:merge
+   ::candidate-summary
+   [:map
+    [:semantic_details :map]
+    [:dismissal        [:maybe :map]]
+    [:sources          [:sequential :map]]
+    [:matches          [:sequential :map]]]])
+
+(mr/def ::candidate-page
+  [:map
+   [:data     [:sequential ::candidate-summary]]
+   [:total    ms/IntGreaterThanOrEqualToZero]
+   [:limit    ms/IntGreaterThanOrEqualToZero]
+   [:offset   ms/IntGreaterThanOrEqualToZero]
+   [:snapshot [:maybe ::snapshot]]])
+
+(mr/def ::table-page
+  [:map
+   [:data     [:sequential ::table-summary]]
+   [:total    ms/IntGreaterThanOrEqualToZero]
+   [:limit    ms/IntGreaterThanOrEqualToZero]
+   [:offset   ms/IntGreaterThanOrEqualToZero]
+   [:snapshot [:maybe ::snapshot]]])
+
+(mr/def ::created-entity
+  [:map
+   [:id          ms/PositiveInt]
+   [:name        ms/NonBlankString]
+   [:table_id    {:optional true} ms/PositiveInt]
+   [:definition  {:optional true} :map]
+   [:description {:optional true} [:maybe :string]]
+   [:archived    {:optional true} :boolean]])
+
+(mr/def ::create-response
+  [:map
+   [:candidate ::candidate-detail]
+   [:entity    ::created-entity]])
+
+(mr/def ::run
+  [:map
+   [:id                ms/PositiveInt]
+   [:status            [:enum :queued :running :succeeded :failed]]
+   [:trigger           [:enum :scheduled :manual]]
+   [:requested_by      [:maybe ms/PositiveInt]]
+   [:algorithm_version ms/IntGreaterThanOrEqualToZero]
+   [:source_config     :map]
+   [:summary           [:maybe ::snapshot-summary]]
+   [:error             [:maybe :string]]
+   [:created_at        :any]
+   [:started_at        [:maybe :any]]
+   [:finished_at       [:maybe :any]]])
+
+(mr/def ::refresh-status
+  [:map
+   [:snapshot [:maybe ::run]]
+   [:active   [:maybe ::run]]
+   [:failure  [:maybe ::run]]
+   [:fresh    :boolean]])
+
+(mr/def ::start-refresh-response
+  [:map
+   [:status [:= 202]]
+   [:body   [:map [:run_id ms/PositiveInt]]]])
 
 (defn- run-refresh-async!
   "TEMPORARY: run a manual refresh without Quartz so it works when the scheduler is disabled."
@@ -290,8 +446,7 @@
    :offset offset
    :snapshot (snapshot-response run)})
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/candidates"
+(api.macros/defendpoint :get "/candidates" :- ::candidate-page
   "List mined Library cleanup candidates."
   [_route
    {:keys [sort direction] :as opts} :- list-query-schema]
@@ -399,8 +554,7 @@
                         :modeled (or segment_modeled 0)}}
      :candidate_count (or candidate_count 0)}))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/tables"
+(api.macros/defendpoint :get "/tables" :- ::table-page
   "List physical tables with mined Library cleanup activity."
   [_route
    opts :- list-query-schema]
@@ -413,8 +567,7 @@
     (let [{:keys [limit offset]} (paging)]
       (page-response [] 0 limit offset nil))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/tables/:id"
+(api.macros/defendpoint :get "/tables/:id" :- ::table-detail
   "Return one table's cleanup summary and publication readiness."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
@@ -433,12 +586,15 @@
                :dismissed_count (or (:dismissed_count count-row) 0)
                :snapshot (snapshot-response run)))))
 
+(defn- conflict!
+  [message reason & [data]]
+  (throw (ex-info message (merge {:status-code 409, :reason reason} data))))
+
 (defn- require-current-candidate
   [id]
   (let [candidate (api/check-404 (candidates/candidate id))]
     (when-not (candidates/candidate-current? candidate)
-      (throw (ex-info "Candidate belongs to an obsolete snapshot"
-                      {:status-code 409, :reason :obsolete-snapshot})))
+      (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
     candidate))
 
 (defn- candidate-detail
@@ -481,15 +637,13 @@
                              :entity (if measure_id (measures measure_id) (segments segment_id))})
                           matches))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/candidates/:id"
+(api.macros/defendpoint :get "/candidates/:id" :- ::candidate-detail
   "Return full provenance and Library reconciliation for one candidate."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (candidate-detail (require-current-candidate id)))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/candidates/:id/dismiss"
+(api.macros/defendpoint :post "/candidates/:id/dismiss" :- ::candidate-detail
   "Globally dismiss a semantic candidate."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
@@ -501,8 +655,7 @@
     (candidates/dismiss! candidate api/*current-user-id* reason)
     (candidate-detail candidate)))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/candidates/:id/dismissal"
+(api.macros/defendpoint :delete "/candidates/:id/dismissal" :- ::candidate-detail
   "Restore a globally dismissed semantic candidate."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
@@ -513,18 +666,14 @@
 (defn- create-candidate!
   [candidate {:keys [name description] :as overrides}]
   (when-not (contains? #{:measure :segment} (:candidate_type candidate))
-    (throw (ex-info "This recommendation does not support direct creation"
-                    {:status-code 409, :reason :unsupported-candidate-action})))
+    (conflict! "This recommendation does not support direct creation" :unsupported-candidate-action))
   (let [table (api/check-404 (t2/select-one :model/Table :id (:table_id candidate)))]
     (when-not (:active table)
-      (throw (ex-info "Candidate table is inactive"
-                      {:status-code 409, :reason :table-inactive})))
+      (conflict! "Candidate table is inactive" :table-inactive))
     (when-not (:is_published table)
-      (throw (ex-info "Candidate table is not published in the Library"
-                      {:status-code 409, :reason :table-not-published})))
+      (conflict! "Candidate table is not published in the Library" :table-not-published))
     (when-not (table-editable-for-candidate? candidate table)
-      (throw (ex-info "Candidate table cannot be edited"
-                      {:status-code 409, :reason :table-uneditable})))
+      (conflict! "Candidate table cannot be edited" :table-uneditable))
     (if-let [existing (candidates/exact-existing-entity candidate)]
       (candidates/mark-modeled! candidate existing)
       (let [body   {:name        (or name (:suggested_name candidate))
@@ -543,8 +692,7 @@
          #(events/publish-event! topic {:object entity :user-id user-id}))
         (candidates/mark-modeled! candidate entity)))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/candidates/:id/create"
+(api.macros/defendpoint :post "/candidates/:id/create" :- ::create-response
   "Create a Measure or Segment from a persisted candidate definition."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
@@ -558,33 +706,30 @@
     (let [candidate (api/check-404
                      (t2/select-one :model/UsageMetadataCandidate :id id {:for :update}))
           _         (when-not (candidates/candidate-current? candidate)
-                      (throw (ex-info "Candidate belongs to an obsolete snapshot"
-                                      {:status-code 409, :reason :obsolete-snapshot})))
+                      (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
           entity    (create-candidate! candidate body)]
       {:candidate (candidate-detail (candidates/candidate id))
        :entity    entity})))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/refresh"
+(api.macros/defendpoint :get "/refresh" :- ::refresh-status
   "Return candidate refresh and snapshot status."
   []
   (api/check-superuser)
   (candidates/refresh-status))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/refresh"
+(api.macros/defendpoint :post "/refresh" :- ::start-refresh-response
   "Queue a candidate refresh."
   []
   (api/check-superuser)
   (if-let [run (candidates/queue-refresh! :manual api/*current-user-id*)]
     (do
       (run-refresh-async! run)
-      {:status 202
-       :headers {}
-       :body {:run_id (:id run)}})
+      (-> (response/response {:run_id (:id run)})
+          (response/status 202)))
     (let [run (candidates/active-run)]
-      (throw (ex-info "A usage-metadata candidate refresh is already running"
-                      {:status-code 409, :run-id (:id run)})))))
+      (conflict! "A usage-metadata candidate refresh is already running"
+                 :refresh-already-active
+                 {:run-id (:id run)}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-studio/usage-metadata` routes."
