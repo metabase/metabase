@@ -1,4 +1,4 @@
-import { setupMockIntersectionObserver } from "__support__/intersection-observer";
+import { setupTreeLayout } from "__support__/tree-layout";
 import { fireEvent, render, screen } from "__support__/ui";
 import { Tree } from "metabase/common/components/tree";
 
@@ -76,7 +76,8 @@ describe("Tree", () => {
   });
 
   describe("lazily loaded nodes", () => {
-    const { getObserverOptions } = setupMockIntersectionObserver();
+    const { scrollEndOfListTo, scrollAboveWindowTo, findScroller } =
+      setupTreeLayout();
     const ROW_HEIGHT = 32;
 
     const lazyData = [
@@ -140,42 +141,15 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    const renderInScrollBox = (pageSize: number) =>
-      render(
-        <div style={{ overflowY: "auto", height: 200 }} data-testid="scrollbox">
-          <Tree
-            data={data}
-            onSelect={jest.fn()}
-            hasMore
-            onLoadMore={jest.fn()}
-            loadingMoreIds={new Set()}
-            pageSize={pageSize}
-            remainingByLevel={new Map([[null, 100]])}
-          />
-        </div>,
-      );
+    const PAGE_SIZE = 5;
+    const START_OFFSET = 40;
 
-    /**
-     * Puts the end of the list `sentinelTop` pixels from the top of a 200px scroll box, so the component has a
-     * layout to measure. jsdom has none of its own, and the whole point of measuring is that it does not depend on
-     * the observer having reported anything.
-     */
-    const renderWithLayout = (sentinelTop: number) => {
-      jest
-        .spyOn(HTMLElement.prototype, "clientHeight", "get")
-        .mockReturnValue(200);
-      jest
-        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-        .mockImplementation(function (this: HTMLElement) {
-          const isSentinel = this.dataset.testid === "tree-load-more";
-          // Only the two edges the component reads, rather than a whole DOMRect of zeroes to no purpose.
-          return {
-            top: isSentinel ? sentinelTop : 0,
-            bottom: isSentinel ? sentinelTop : 200,
-          } as DOMRect;
-        });
-
-      const onLoadMore = jest.fn();
+    /** A level of 100 rows whose window starts at `startOffset`, inside a box that scrolls. */
+    const renderWindowedLevel = ({
+      startOffset = 0,
+      onLoadMore = jest.fn(),
+      onJumpTo = jest.fn(),
+    } = {}) => {
       render(
         <div style={{ overflowY: "auto" }}>
           <Tree
@@ -183,44 +157,50 @@ describe("Tree", () => {
             onSelect={jest.fn()}
             hasMore
             onLoadMore={onLoadMore}
+            onJumpTo={onJumpTo}
             loadingMoreIds={new Set()}
-            pageSize={5}
+            pageSize={PAGE_SIZE}
             remainingByLevel={new Map([[null, 100]])}
+            startOffsetByLevel={new Map([[null, startOffset]])}
           />
         </div>,
       );
-      return onLoadMore;
+      const [sentinel] = screen.getAllByTestId("tree-load-more");
+      const scroller = findScroller(sentinel);
+      if (!scroller) {
+        throw new Error("the tree rendered outside any scrolling box");
+      }
+      return { onLoadMore, onJumpTo, scroller };
     };
 
-    afterEach(() => {
-      jest.restoreAllMocks();
+    it("should grow the level when the reader reaches the end of it", () => {
+      const { onLoadMore, onJumpTo, scroller } = renderWindowedLevel();
+
+      scrollEndOfListTo(0, scroller);
+
+      expect(onLoadMore).toHaveBeenCalled();
+      expect(onJumpTo).not.toHaveBeenCalled();
     });
 
-    it("should load when the end of the list is already above the fold", () => {
-      // A fast scroll can leave the end of the list behind without the observer reporting a thing.
-      expect(renderWithLayout(-500)).toHaveBeenCalled();
+    it("should read the page covering wherever the reader landed, not walk there", () => {
+      const { onLoadMore, onJumpTo, scroller } = renderWindowedLevel();
+
+      // Well past the end, which is what a flick down a level of thousands of rows does.
+      scrollEndOfListTo(-60, scroller);
+
+      // `data` renders 2 rows, so row 60 of the unread part is row 62 of the level.
+      expect(onJumpTo).toHaveBeenCalledWith(null, 62);
+      expect(onLoadMore).not.toHaveBeenCalled();
     });
 
-    it("should not chase an end of list that is pages away", () => {
-      expect(renderWithLayout(-1_000_000)).not.toHaveBeenCalled();
-    });
+    it("should read back the rows above the window when the reader scrolls up into them", () => {
+      const { onJumpTo, scroller } = renderWindowedLevel({
+        startOffset: START_OFFSET,
+      });
 
-    it("should watch the box the tree scrolls in, not the viewport", () => {
-      renderInScrollBox(5);
+      scrollAboveWindowTo(10, scroller);
 
-      // A margin against the viewport buys nothing while a scrolling ancestor clips the sentinel away first.
-      expect(getObserverOptions()?.root).toBe(screen.getByTestId("scrollbox"));
-    });
-
-    it("should keep loading after the end of the list has scrolled past", () => {
-      const PAGE_SIZE = 5;
-      renderInScrollBox(PAGE_SIZE);
-
-      // Reaching well above the fold is what lets a list the reader has scrolled past catch up instead of stalling.
-      const { rootMargin } = getObserverOptions() ?? {};
-      const [top, , bottom] = String(rootMargin).split(" ");
-      expect(Number.parseInt(top, 10)).toBeGreaterThan(PAGE_SIZE * ROW_HEIGHT);
-      expect(Number.parseInt(bottom, 10)).toBeGreaterThan(0);
+      expect(onJumpTo).toHaveBeenCalledWith(null, 10);
     });
 
     it("should reserve the height of the rows it has not read", () => {

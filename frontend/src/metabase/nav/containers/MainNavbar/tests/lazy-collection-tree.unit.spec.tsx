@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupMockIntersectionObserver } from "__support__/intersection-observer";
+import { setupTreeLayout } from "__support__/tree-layout";
 import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -37,7 +37,18 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
   });
 
   describe("paged levels", () => {
-    const { setIntersecting } = setupMockIntersectionObserver();
+    const { scrollEndOfListTo, findScroller } = setupTreeLayout();
+
+    /** Puts the reader at the end of the loaded rows, which is what asks for the next page. */
+    const scrollToEndOfList = () => {
+      // Any of them: the fake layout puts every level's end in the same place, so they all measure alike.
+      const [sentinel] = screen.getAllByTestId("tree-load-more");
+      const scroller = findScroller(sentinel);
+      if (!scroller) {
+        throw new Error("the sidebar rendered outside any scrolling box");
+      }
+      scrollEndOfListTo(0, scroller);
+    };
 
     const MANY_COLLECTIONS = Array.from({ length: 5 }, (_, index) =>
       createMockCollection({
@@ -60,7 +71,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Wide collection 3/ }),
       ).not.toBeInTheDocument();
 
-      setIntersecting(true);
+      scrollToEndOfList();
 
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 3/ }),
@@ -102,7 +113,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Nested child 3/ }),
       ).not.toBeInTheDocument();
 
-      setIntersecting(true);
+      scrollToEndOfList();
 
       expect(
         await screen.findByRole("treeitem", { name: /Nested child 3/ }),
@@ -120,7 +131,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       const target = await screen.findByRole("treeitem", {
         name: /Test collection/i,
       });
-      setIntersecting(true);
+      scrollToEndOfList();
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 5/ }),
       ).toBeInTheDocument();
@@ -148,7 +159,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
       ).toBeInTheDocument();
 
-      setIntersecting(true);
+      scrollToEndOfList();
 
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 5/ }),

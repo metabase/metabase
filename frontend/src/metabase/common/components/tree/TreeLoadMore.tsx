@@ -1,4 +1,3 @@
-import { useIntersection } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest } from "react-use";
 
@@ -11,25 +10,14 @@ import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
 const PREFETCH_DISTANCE = 300;
 
 /** Height of one tree row, which the reserved space is a multiple of. Matches `TreeNode` and `TreeNodeSkeleton`. */
-const ROW_HEIGHT = 32;
-
-/**
- * How far the end of a level may sit *above* the fold and still load the next page, counted in pages.
- *
- * Reserving the whole level's height means the reader can scroll past the end of what is loaded. A fast scroll can
- * also carry that end clean through the viewport between two frames, so the observer only ever sees it leave. Either
- * way the list would sit there with nothing to bring it back. Reaching this far up instead lets it catch up, one
- * page per request, until the loaded end is back under the reader.
- */
-const CATCH_UP_PAGES = 10;
+export const ROW_HEIGHT = 32;
 
 /**
  * The scrolling box the tree sits in, or `null` when nothing between here and the viewport scrolls.
  *
- * An observer has to be told which box to watch. Left to default it watches the viewport, and a margin against the
- * viewport buys nothing: a scrolling ancestor clips the sentinel out of the picture first, and that clipping is not
- * widened by the margin. So the sentinel would only ever register while genuinely on screen, which is exactly when
- * it is too late to load ahead or to catch up.
+ * Everything here is measured against this box. Left to default, an observer watches the viewport instead, and a
+ * margin against the viewport buys nothing: this box clips the sentinel out of the picture first, and that clipping
+ * is not widened by the margin.
  */
 function findScrollingAncestor(element: Element): Element | null {
   for (
@@ -46,88 +34,99 @@ function findScrollingAncestor(element: Element): Element | null {
 }
 
 /**
- * Marks the end of a level the server cut short, and loads the next page once it is on screen.
+ * The end of a level, and the height of everything in it the reader has not read.
  *
- * There is no button: reaching the bottom of the list is the whole gesture. The rows the level still holds are given
- * their height straight away, so the list is as tall as it will ever be and its scrollbar does not move as pages
- * arrive. Each page swaps its share of that reserved height for real rows.
+ * Reserving that height makes the list as tall as it will ever be, so its scrollbar does not move as pages arrive.
+ * It also means the reader can scroll to a part of the level that was never fetched, which is most of it: a level
+ * the size of this instance reserves close to a million pixels, and the whole of that is reachable with a flick.
+ *
+ * So loading follows the scroll position rather than the end of the list. Reaching the end grows the level by a
+ * page, which is the ordinary case. Landing somewhere in the reserved space instead reads the page that covers it,
+ * which is one request wherever the reader ends up.
  */
 export function TreeLoadMore({
   depth,
   isLoading,
   pageSize = 0,
+  startOffset = 0,
+  loadedCount,
   remaining = 0,
   onLoadMore,
+  onJumpTo,
 }: {
   depth: number;
   isLoading: boolean;
   /** How many rows the next page brings, shown as placeholders inside the space already reserved for them. */
   pageSize?: number;
-  /** How many rows the level holds beyond the ones already rendered. */
+  /** Rows of this level sitting above the ones rendered. */
+  startOffset?: number;
+  /** How many rows of this level are rendered. */
+  loadedCount: number;
+  /** Rows of this level sitting below the ones rendered. */
   remaining?: number;
   onLoadMore: () => void;
+  /** Reads the page covering a row of this level, wherever in it the reader has scrolled to. */
+  onJumpTo?: (rowIndex: number) => void;
 }) {
   const [sentinel, setSentinel] = useState<HTMLLIElement | null>(null);
-  const [scrollingAncestor, setScrollingAncestor] = useState<Element | null>(
-    null,
-  );
-  const catchUpDistance = pageSize * ROW_HEIGHT * CATCH_UP_PAGES;
-  const { ref, entry } = useIntersection<HTMLLIElement>({
-    root: scrollingAncestor,
-    // Below the fold: start fetching early, so the next page is usually there by the time the reader arrives.
-    // Above it: keep fetching after the reader has gone past, so the list can catch up rather than stall.
-    rootMargin: `${catchUpDistance}px 0px ${PREFETCH_DISTANCE}px 0px`,
-    threshold: 0,
-  });
-  const isInView = entry?.isIntersecting ?? false;
-
-  // Resolved from the sentinel itself, which is the only way to know what it hangs under. Setting it re-runs this
-  // callback with the observer rebuilt around the right box.
-  const observeSentinel = useCallback(
-    (element: HTMLLIElement | null) => {
-      if (element) {
-        setSentinel(element);
-        setScrollingAncestor(findScrollingAncestor(element));
-      }
-      ref(element);
-    },
-    [ref],
-  );
-
-  useEffect(() => {
-    if (isInView && !isLoading) {
-      onLoadMore();
-    }
-  }, [isInView, isLoading, onLoadMore]);
-
   const loadMoreRef = useLatest(onLoadMore);
+  const jumpToRef = useLatest(onJumpTo);
 
-  // An observer only reports the moments the sentinel crosses in or out of view, and a fast scroll can carry it
-  // across between two frames with nothing reported at all. Measuring where the sentinel actually is cannot miss
-  // that way: whatever the scroll did, the answer afterwards is still "the end of the list is above the fold".
-  useEffect(() => {
-    const scroller = scrollingAncestor;
+  const measure = useCallback(() => {
+    const list = sentinel?.parentElement;
+    const scroller = sentinel && findScrollingAncestor(sentinel);
     // Without layout there is nothing to measure, which is also the case under jsdom.
-    if (!sentinel || !scroller || isLoading || scroller.clientHeight === 0) {
+    if (!sentinel || !list || !scroller || scroller.clientHeight === 0) {
       return;
     }
 
-    const check = () => {
-      const distanceBelowFold =
-        sentinel.getBoundingClientRect().top -
-        scroller.getBoundingClientRect().bottom;
-      const isCloseEnough =
-        distanceBelowFold < PREFETCH_DISTANCE &&
-        distanceBelowFold > -catchUpDistance;
-      if (isCloseEnough) {
-        loadMoreRef.current();
-      }
-    };
+    const fold = scroller.getBoundingClientRect().top;
+    const sentinelTop = sentinel.getBoundingClientRect().top;
 
-    check();
-    scroller.addEventListener("scroll", check, { passive: true });
-    return () => scroller.removeEventListener("scroll", check);
-  }, [sentinel, scrollingAncestor, isLoading, catchUpDistance, loadMoreRef]);
+    // The rows above the window are reserved as padding on the list itself, so the list starts that many rows before
+    // its first rendered row.
+    const windowTop = list.getBoundingClientRect().top;
+    const rowsAbove = (fold - windowTop) / ROW_HEIGHT;
+    if (startOffset > 0 && rowsAbove < startOffset) {
+      jumpToRef.current?.(Math.floor(rowsAbove));
+      return;
+    }
+
+    // Past the end by more than a page, so growing the level would be several requests to reach the reader. Under
+    // that, growing it is both cheaper and keeps the rows they scrolled through.
+    const rowsBelow = (fold - sentinelTop) / ROW_HEIGHT;
+    if (remaining > 0 && rowsBelow > pageSize) {
+      jumpToRef.current?.(startOffset + loadedCount + Math.floor(rowsBelow));
+      return;
+    }
+
+    if (
+      sentinelTop - scroller.getBoundingClientRect().bottom <
+      PREFETCH_DISTANCE
+    ) {
+      loadMoreRef.current();
+    }
+  }, [
+    sentinel,
+    pageSize,
+    startOffset,
+    loadedCount,
+    remaining,
+    jumpToRef,
+    loadMoreRef,
+  ]);
+
+  useEffect(() => {
+    const scroller = sentinel && findScrollingAncestor(sentinel);
+    if (!scroller || isLoading) {
+      return;
+    }
+    // Listening whatever the box measures right now: it may have no height yet, and `measure` is the one that
+    // decides whether there is anything to read from it.
+    measure();
+    scroller.addEventListener("scroll", measure, { passive: true });
+    return () => scroller.removeEventListener("scroll", measure);
+  }, [sentinel, isLoading, measure]);
 
   // The placeholder rows stand in the reserved space rather than adding to it, so showing them moves nothing.
   const placeholderRows = isLoading ? Math.min(pageSize, remaining) : 0;
@@ -137,7 +136,7 @@ export function TreeLoadMore({
     <>
       <Box
         component="li"
-        ref={observeSentinel}
+        ref={setSentinel}
         className={S.sentinel}
         role="presentation"
         data-testid="tree-load-more"

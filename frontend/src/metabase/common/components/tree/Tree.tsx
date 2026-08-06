@@ -29,6 +29,13 @@ export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   pageSize?: number;
   /** Per level, how many rows it holds beyond the ones rendered. Keyed by parent id, or `null` for the top level. */
   remainingByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
+  /** Per level, how many of its rows sit above the ones rendered. Keyed the same way. */
+  startOffsetByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
+  /** Reads the page covering a row of a level, wherever in it the reader has scrolled to. */
+  onJumpTo?: (
+    parentId: ITreeNodeItem<TData>["id"] | null,
+    rowIndex: number,
+  ) => void;
 }
 
 function BaseTree<TData = unknown>({
@@ -48,6 +55,8 @@ function BaseTree<TData = unknown>({
   loadingMoreIds,
   pageSize,
   remainingByLevel,
+  startOffsetByLevel,
+  onJumpTo,
   ...boxProps
 }: TreeProps<TData>) {
   const defaultController = useTree({
@@ -80,6 +89,8 @@ function BaseTree<TData = unknown>({
       loadingMoreIds={loadingMoreIds}
       pageSize={pageSize}
       remainingByLevel={remainingByLevel}
+      startOffsetByLevel={startOffsetByLevel}
+      onJumpTo={onJumpTo}
       rightSection={rightSection}
       wrapNodes={wrapNodesInListItem}
       {...boxProps}

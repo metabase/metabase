@@ -32,6 +32,8 @@ export type CollectionsNavTreeProps = {
   loadingMoreIds?: Set<number | string | null>;
   pageSize?: number;
   remainingByLevel?: Map<number | string | null, number>;
+  startOffsetByLevel?: Map<number | string | null, number>;
+  onJumpTo?: (parentId: number | string | null, rowIndex: number) => void;
 };
 
 export interface GitSettingsModalProps {

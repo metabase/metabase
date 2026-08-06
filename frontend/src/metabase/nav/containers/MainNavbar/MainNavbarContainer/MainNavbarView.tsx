@@ -71,6 +71,11 @@ type Props = {
   collectionsHaveMore: boolean;
   collectionPageSize?: number;
   remainingCollectionsByLevel?: Map<string | number | null, number>;
+  startOffsetCollectionsByLevel?: Map<string | number | null, number>;
+  onCollectionJumpTo?: (
+    parentId: string | number | null,
+    rowIndex: number,
+  ) => void;
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
   canAccessTenantSpecificCollections: boolean;
@@ -102,6 +107,8 @@ export function MainNavbarView({
   collectionsHaveMore,
   collectionPageSize,
   remainingCollectionsByLevel,
+  startOffsetCollectionsByLevel,
+  onCollectionJumpTo,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -329,6 +336,8 @@ export function MainNavbarView({
                     loadingMoreIds={loadingMoreCollectionIds}
                     pageSize={collectionPageSize}
                     remainingByLevel={remainingCollectionsByLevel}
+                    startOffsetByLevel={startOffsetCollectionsByLevel}
+                    onJumpTo={onCollectionJumpTo}
                   />
                 ) : (
                   <Tree
@@ -340,6 +349,8 @@ export function MainNavbarView({
                     loadingMoreIds={loadingMoreCollectionIds}
                     pageSize={collectionPageSize}
                     remainingByLevel={remainingCollectionsByLevel}
+                    startOffsetByLevel={startOffsetCollectionsByLevel}
+                    onJumpTo={onCollectionJumpTo}
                     TreeNode={SidebarCollectionLink}
                     role="tree"
                     aria-label="collection-tree"

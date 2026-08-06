@@ -4,7 +4,7 @@ import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
-import { TreeLoadMore } from "./TreeLoadMore";
+import { ROW_HEIGHT, TreeLoadMore } from "./TreeLoadMore";
 import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
@@ -29,6 +29,13 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   pageSize?: number;
   /** Per level, how many rows it holds beyond the ones rendered. Keyed by parent id, or `null` for the top level. */
   remainingByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
+  /** Per level, how many of its rows sit above the ones rendered. Keyed the same way. */
+  startOffsetByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
+  /** Reads the page covering a row of a level, wherever in it the reader has scrolled to. */
+  onJumpTo?: (
+    parentId: ITreeNodeItem<TData>["id"] | null,
+    rowIndex: number,
+  ) => void;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -49,6 +56,8 @@ function BaseTreeNodeList<TData = unknown>({
   loadingMoreIds,
   pageSize,
   remainingByLevel,
+  startOffsetByLevel,
+  onJumpTo,
   TreeNode,
   rightSection,
   role,
@@ -56,9 +65,17 @@ function BaseTreeNodeList<TData = unknown>({
   ...boxProps
 }: TreeNodeListProps<TData>) {
   const selectedRef = useScrollOnMount<HTMLLIElement>();
+  const startOffset = startOffsetByLevel?.get(loadMoreFor) ?? 0;
 
   return (
-    <Box component="ul" role={role} {...boxProps}>
+    <Box
+      component="ul"
+      role={role}
+      // The rows this level holds above the ones rendered, given their height so that reading a page in the middle
+      // of a wide level leaves everything before it where it was.
+      pt={startOffset > 0 ? `${startOffset * ROW_HEIGHT}px` : undefined}
+      {...boxProps}
+    >
       {items.map((item) => {
         const isSelected = selectedId === item.id;
         const hasChildren =
@@ -103,6 +120,8 @@ function BaseTreeNodeList<TData = unknown>({
                   loadingMoreIds={loadingMoreIds}
                   pageSize={pageSize}
                   remainingByLevel={remainingByLevel}
+                  startOffsetByLevel={startOffsetByLevel}
+                  onJumpTo={onJumpTo}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
                   wrapNodes={wrapNodes}
@@ -126,8 +145,13 @@ function BaseTreeNodeList<TData = unknown>({
           depth={depth}
           isLoading={loadingMoreIds?.has(loadMoreFor) ?? false}
           pageSize={pageSize}
+          startOffset={startOffset}
+          loadedCount={items.length}
           remaining={remainingByLevel?.get(loadMoreFor)}
           onLoadMore={() => onLoadMore(loadMoreFor)}
+          onJumpTo={
+            onJumpTo ? (rowIndex) => onJumpTo(loadMoreFor, rowIndex) : undefined
+          }
         />
       )}
     </Box>
