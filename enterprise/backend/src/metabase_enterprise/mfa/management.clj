@@ -166,7 +166,7 @@
   "The current user's MFA status, for the account-settings UI."
   [_route-params
    _query-params
-   _body         :- [:map {:closed true}]]
+   _body]
   (let [user-id api/*current-user-id*
         method  (enrollment/enrolled-method user-id)]
     {:mfa_enabled              (mfa.settings/mfa-enabled?)
@@ -234,7 +234,7 @@
   whether the instance encrypts secrets at rest."
   [_route-params
    _query-params
-   _body         :- [:map {:closed true}]]
+   _body]
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
    :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])

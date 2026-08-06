@@ -222,7 +222,7 @@
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [_route-params
    _query-params
-   _body         :- [:map {:closed true}]
+   _body
    {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)

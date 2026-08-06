@@ -123,7 +123,7 @@
   "Get plans information from the Metabase Store API."
   [_route-params
    _query-params
-   _body         :- [:map {:closed true}]]
+   _body]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
@@ -144,7 +144,7 @@
   "Get addons information from the Metabase Store API."
   [_route-params
    _query-params
-   _body         :- [:map {:closed true}]]
+   _body]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
@@ -223,7 +223,7 @@
   [{:keys [product-type]} :- [:map {:closed true}
                               [:product-type cloud-add-on-product-types]]
    _query-params
-   _body         :- [:map {:closed true}]]
+   _body]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
