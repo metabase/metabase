@@ -1,24 +1,23 @@
 (ns dev.module-cycles
-  "Ratchet on circular dependencies between modules.
+  "Ratchet on circular dependencies between modules. Reference doc for `.clj-kondo/module-cycles.edn`.
 
-  The recorded state lives in `.clj-kondo/module-cycles.edn`.
-  `metabase.core.module-cycles-test` fails when the tree drifts past it;
-  `./bin/mage fix-module-cycles` tightens the record, never loosens it.
-  Loaded by both the bb task and the JVM test, so keep it dependency-free.
+  `metabase.core.module-cycles-test` fails when the tree drifts past what that file records.
+  [[fix!]] narrows the record to match the tree; only `--seed` widens it, and a PR that widens it
+  is a PR accepting a new cycle. Loaded by both the bb task and the JVM test, so keep it
+  dependency-free.
 
   Two graphs are measured, because there are two ways one module can depend on another:
 
-  `:uses`               -- the `require` graph, read from the `:uses` sets in the modules config.
-  `:uses+model-imports` -- the same, plus an edge from a module to whichever module exports each
-                           `:model/X` it imports. A `:model/X` reference resolves through Toucan's
-                           global registry at runtime rather than via a `require`, so it is
-                           invisible to `:uses` -- but the model's namespace still has to be loaded
-                           first, which makes it a real dependency for loading or testing a module
-                           on its own.
+  `:uses`               -- the `require` graph, from the `:uses` sets in the modules config.
+  `:uses+model-imports` -- the same, plus an edge to whichever module exports each `:model/X` a
+                           module imports. Those resolve through Toucan's registry at runtime
+                           rather than via a `require`, so `:uses` cannot see them -- but the
+                           model's namespace still has to load first, which makes them real
+                           dependencies for loading or testing a module on its own.
 
-  Reading both from the modules config keeps this JVM-free.
-  `metabase.core.modules-test/modules-config-up-to-date-test` is what makes that equivalent to
-  parsing source: it fails if the config drifts from `src`."
+  Both come from the modules config rather than from parsing source, which is what keeps this
+  JVM-free. `metabase.core.modules-test/modules-config-up-to-date-test` is what makes that
+  equivalent: it fails if the config drifts from `src`."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
    [clojure.edn :as edn]
@@ -167,12 +166,9 @@
 ;;;; ---------------------------------------------------------------------------
 ;;;; Naming SCCs
 ;;;;
-;;;; Names exist so that a failure can say "amber-harbor gained 3 modules" instead of printing a
-;;;; hundred module names. They are minted at seed time and inherited across runs by module
-;;;; overlap, so an SCC keeps its name while it grows, shrinks, or sheds a piece.
-;;;;
-;;;; Naming is presentation only. Whether the tree has regressed is decided by whether a component
-;;;; is still wholly inside a recorded SCC, never by which name it ended up with.
+;;;; Names exist so a failure can say "amber-harbor gained 3 modules" instead of printing a hundred
+;;;; module names. Presentation only: whether the tree has regressed is decided by whether a
+;;;; component is still wholly inside a recorded SCC, never by which name it ended up with.
 ;;;; ---------------------------------------------------------------------------
 
 (def ^:private name-adjectives
@@ -187,8 +183,7 @@
 
 (defn generate-name
   "A random `adjective-noun` name not already in `taken`.
-  Random on purpose: a name must carry no meaning, so that nobody reads significance into an SCC
-  keeping or losing one. Only ever called when a genuinely new SCC appears, and then persisted."
+  Random on purpose: a name must carry no meaning, so nobody reads significance into one."
   [taken]
   (or (first (remove taken
                      (repeatedly 200 #(str (rand-nth name-adjectives) "-" (rand-nth name-nouns)))))
@@ -198,15 +193,12 @@
 (defn incumbent
   "The recorded SCC that `modules` is the continuation of, or nil.
 
-  A recorded SCC hands its name on when *more* than half of its modules are still together in the
-  new one -- so an SCC that grows or shrinks keeps its name, and when one splits, only a piece
-  holding a majority of the original inherits. Strictly more than half is what makes that
-  unambiguous: two disjoint components cannot both hold a majority of the same recorded SCC, so an
-  even split leaves both halves unnamed rather than needing a tie broken.
+  A name passes on when *more* than half of the recorded SCC's modules are still together. Strictly
+  more is what makes that unambiguous: two disjoint components cannot both hold a majority of the
+  same SCC, so an even split leaves both halves unnamed rather than needing a tie broken.
 
-  A merge is the one case with several candidates, since the merged component holds all of each
-  SCC it absorbed. It takes the name of the largest, by module count then alphabetically, so the
-  failure reads as that SCC having grown."
+  A merge is the one case with several candidates, since it holds all of each SCC it absorbed. It
+  takes the largest one's name, so the failure reads as that SCC having grown."
   [recorded-sccs modules]
   (->> recorded-sccs
        (keep (fn [{recorded-modules :modules :as scc}]
@@ -218,12 +210,10 @@
        second))
 
 (defn named-sccs
-  "`actual` with a `:name` on each: inherited from its [[incumbent]], or newly minted.
-  Minting is deterministic in which SCCs get a fresh name, random only in what that name is."
+  "`actual` with a `:name` on each: inherited from its [[incumbent]], or newly minted."
   [recorded-sccs actual]
-  ;; No two components can inherit the same name -- see [[incumbent]] -- so the only bookkeeping
-  ;; here is keeping minted names distinct. A fresh name also avoids every recorded name, so it can
-  ;; never look like a rename of an SCC that is actually gone.
+  ;; A fresh name avoids every recorded name, not just the ones still in use, so that it can never
+  ;; look like a rename of an SCC that is actually gone.
   (let [reserved (into #{} (keep :name) recorded-sccs)]
     (first
      (reduce (fn [[named taken] scc]
@@ -240,19 +230,16 @@
 (defn- containing-scc
   "The recorded SCC that `modules` sits wholly inside, or nil.
 
-  The correctness rule. Growth, merges and brand-new SCCs have no container; shrinking and
-  splitting produce subsets and do. Deliberately independent of [[incumbent]]: a minority piece of
-  a split inherits no name, but it is still a subset and still fine -- and its edge budget still
-  belongs to the SCC it broke off from."
+  This is the correctness rule: growth, merges and brand-new SCCs have no container, while
+  shrinking and splitting produce subsets and do. Deliberately separate from [[incumbent]] -- a
+  minority piece of a split inherits no name but is still a subset, and so still fine."
   [recorded-sccs modules]
   (first (filter #(every? (:modules %) modules) recorded-sccs)))
 
 (defn- pieces-of
-  "Every actual SCC that `recorded-scc`'s edge budget has to cover.
-
-  That is the components it split into (subsets of it) *and* the one that inherited its name,
-  which after growth is not a subset. Counting both means a split cannot let each half spend the
-  full budget, and growth is still measured against it rather than reading as zero."
+  "Every actual SCC that `recorded-scc`'s edge budget has to cover: the components it split into,
+  plus the one that inherited its name, which after growth is not a subset. Counting both stops a
+  split spending the budget twice and stops growth reading as zero edges."
   [recorded-sccs actual recorded-scc]
   (filter (fn [{:keys [modules]}]
             (or (every? (:modules recorded-scc) modules)
@@ -271,21 +258,17 @@
 (defn graph-drift
   "What one graph has regressed on, keyed by SCC name, or an empty map when it is within budget.
 
-  Each entry carries the whole story for that SCC -- which modules it gained and lost against its
-  incumbent, and what its edge count was and is -- so a reader never has to diff two hundred-module
-  sets by eye. An entry appears only when something got worse: modules appearing in a cycle that no
-  recorded SCC covers, or more edges than the recorded budget."
+  Each entry carries the whole story for that SCC -- what it gained, what it lost, and its edge
+  count then and now -- so that a reader never has to diff two hundred-module sets by eye."
   [recorded-sccs actual]
   (let [named (named-sccs recorded-sccs actual)]
     (into (sorted-map)
           (keep (fn [{:keys [modules edges] :as scc}]
-                  ;; Which recorded SCC this one is answerable to: the one it inherited its name
-                  ;; from, or -- for a piece that split off without a majority, so inherited no
-                  ;; name -- the one it broke off from. Only a component that is neither is new.
+                  ;; The recorded SCC this one answers to: the one it inherited its name from, or --
+                  ;; for a piece that split off without a majority -- the one it broke off from.
+                  ;; A component that is neither is a cycle that did not exist before.
                   (let [prev            (or (incumbent recorded-sccs modules)
                                             (containing-scc recorded-sccs modules))
-                        ;; an SCC that split shares its parent's budget, so measure every piece
-                        ;; together rather than letting each spend the whole thing again
                         edges-actual    (if prev
                                           (reduce + 0 (map :edges (pieces-of recorded-sccs actual prev)))
                                           edges)
@@ -336,11 +319,11 @@
 (defn tightened-sccs
   "`recorded-sccs` narrowed to match `actual`. Never widens: an SCC that grew or merged keeps its
   recorded shape so the test still fails; one that split becomes its pieces, each capped at the
-  budget it came from; one that is gone is dropped. Surviving SCCs keep their names."
+  budget it came from; one that is gone is dropped."
   [recorded-sccs actual]
-  (let [;; A recorded SCC that grew or merged has no pieces, but so does one that is simply gone.
-        ;; Only the second is an improvement, so tell them apart by whether any of its modules is
-        ;; still in a cycle that reaches outside it.
+  (let [;; A recorded SCC that grew or merged has no pieces, but neither does one that is simply
+        ;; gone. Only the second is an improvement, so tell them apart by whether any of its
+        ;; modules is still in a cycle that reaches outside it.
         regressed? (fn [{:keys [modules]}]
                      (some (fn [{actual-modules :modules}]
                              (and (some modules actual-modules)
@@ -354,7 +337,7 @@
                                        {:modules (:modules piece)
                                         :edges   (min edges (:edges piece))}))))
                          recorded-sccs)]
-    ;; re-name against the *old* record, so a surviving piece inherits and a split-off one is minted
+    ;; named against the *old* record, so a surviving piece inherits and a split-off one is minted
     (named-sccs recorded-sccs kept)))
 
 (defn tightened
@@ -372,9 +355,8 @@
         graph-keys))
 
 (defn seeded
-  "The tree's cycles recorded verbatim, names and all. Widens, so it is the explicit escape hatch:
-  initial adoption, or accepting a cycle you have argued for in your PR. SCCs that survive from the
-  previous record keep their names."
+  "The tree's cycles recorded verbatim. The only thing here that widens, and so the only way to
+  accept a new cycle: initial adoption, or a cycle you have argued for in your PR."
   [recorded {:keys [graphs unconstrained]}]
   (into {:unconstrained-modules unconstrained}
         (map (fn [graph-key]
@@ -383,31 +365,18 @@
         graph-keys))
 
 (def ^:private header
-  (str ";; Recorded circular dependencies between modules. This file only ever shrinks.\n"
-       ";; metabase.core.module-cycles-test fails when the tree drifts past it; `./bin/mage\n"
-       ";; fix-module-cycles` tightens it to match, and local test runs do that automatically.\n"
+  (str ";; GENERATED -- the circular dependencies between backend modules that we currently accept.\n"
+       ";; metabase.core.module-cycles-test fails when the tree drifts past this; `./bin/mage\n"
+       ";; fix-module-cycles` narrows it to match, and local test runs do that automatically.\n"
        ";;\n"
-       ";; Two graphs are recorded:\n"
-       ";;   :uses               -- the `require` graph, from the :uses sets in the modules config.\n"
-       ";;   :uses+model-imports -- the same, plus an edge to whichever module exports each\n"
-       ";;                          :model/X a module imports. Those resolve through Toucan's\n"
-       ";;                          registry rather than a `require`, so :uses cannot see them --\n"
-       ";;                          but the model's namespace still has to load first, which makes\n"
-       ";;                          them real dependencies for loading a module on its own.\n"
+       ";; Growing any number here means accepting a new cycle. That is a real decision and it does\n"
+       ";; happen -- `./bin/mage fix-module-cycles --seed` is how you record it -- but it belongs in\n"
+       ";; the PR description, not in a drive-by re-seed.\n"
        ";;\n"
-       ";; Within each graph, :sccs holds every strongly connected component -- a set of modules\n"
-       ";; that can all reach each other -- and :edges is how many dependencies run between members.\n"
-       ";; A module may not join an SCC, two SCCs may not merge, and a new SCC may not appear.\n"
-       ";; Splitting an SCC or dropping out of one is the whole point and always passes.\n"
+       ";; :name is a meaningless random label so that failures can say \"amber-harbor gained 3\n"
+       ";; modules\" instead of printing a hundred module names. Do not read anything into one.\n"
        ";;\n"
-       ";; :name is a meaningless random label, so that failures can say \"amber-harbor gained 3\n"
-       ";; modules\" rather than printing a hundred module names. An SCC keeps its name as long as\n"
-       ";; half its modules stay together; a piece that splits off with less than half gets a new\n"
-       ";; one. Do not read anything into a name.\n"
-       ";;\n"
-       ";; :unconstrained-modules -- modules whose dependencies the config does not record:\n"
-       ";; `:uses :any` hides requires, `:model-imports :bypass` hides model references. Cycles\n"
-       ";; routed through them are invisible here, so neither set may grow.\n"))
+       ";; What the graphs and keys mean: dev/src/dev/module_cycles.clj\n"))
 
 (defn- render-modules
   "One module per line, so that a module joining an SCC is a one-line diff.

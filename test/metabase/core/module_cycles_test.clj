@@ -1,6 +1,5 @@
 (ns metabase.core.module-cycles-test
-  "Ratchet on circular dependencies between modules: the recorded cycles live in
-  `.clj-kondo/module-cycles.edn` and only ever shrink."
+  "Ratchet on circular dependencies between modules. See [[dev.module-cycles]]."
   (:require
    [clojure.edn :as edn]
    [clojure.string :as str]
@@ -23,28 +22,20 @@
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel cycles-within-recorded-state-test
-  (testing (str "\nThe module dependency cycles in " module-cycles/modules-config-file " must stay within\n"
-                "what " module-cycles/cycles-file " records, in both graphs:\n"
-                "\n"
-                ":uses               -- the `require` graph.\n"
-                ":uses+model-imports -- plus `:model/X` references, which resolve through Toucan's\n"
-                "  registry rather than a `require`. Regressing this one and not the other means you\n"
-                "  added a model reference: no new require, but the module still cannot be loaded\n"
-                "  without the model's module now.\n"
-                "\n"
-                "Each entry is keyed by an SCC's name -- a meaningless random label, so a failure can\n"
-                "say what changed instead of printing a hundred module names -- and tells you:\n"
-                "  :modules-added   -- modules that just joined it. Usually what you want to look at.\n"
+  (testing (str "\nYou added a dependency cycle between modules. Each entry below is one SCC, keyed\n"
+                "by its (meaningless) name:\n"
+                "  :modules-added   -- modules that just joined it. Usually the thing to look at.\n"
                 "  :modules-removed -- modules that left, for context.\n"
-                "  :edges-recorded / :edges-actual -- dependencies between its members, then and now.\n"
-                "  :new-cycle?      -- there was no such SCC before at all.\n"
+                "  :edges-recorded / :edges-actual -- dependencies between members, then and now.\n"
+                "  :new-cycle?      -- no such SCC existed before.\n"
                 "\n"
-                "Break the cycle, or accept it with `./bin/mage fix-module-cycles --seed` and defend\n"
-                "the widening in your PR. If the widening came from master rather than your branch,\n"
-                "say so -- otherwise a reviewer sees the baseline grow and reasonably objects.\n"
+                "A regression under :uses+model-imports but not :uses means you added a `:model/X`\n"
+                "reference rather than a require -- no new require, but the module can no longer be\n"
+                "loaded without the model's module.\n"
                 "\n"
-                "Drift in the other direction (a cycle you broke) means `fix!` is broken, since the\n"
-                "test fixture just ran it — unless you are in CI, where it does not run.")
+                "Break the cycle, or accept it with `./bin/mage fix-module-cycles --seed` and say why\n"
+                "in your PR. If the widening came from master rather than your branch, say that too.\n"
+                "See dev/src/dev/module_cycles.clj for what the graphs measure.")
     (is (= {}
            (module-cycles/drift (module-cycles/read-cycles)
                                 (module-cycles/read-module-graphs))))))
