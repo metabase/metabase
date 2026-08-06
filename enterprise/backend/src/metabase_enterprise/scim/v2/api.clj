@@ -4,6 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
+   [malli.core :as mc]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.macros :as api.macros]
@@ -32,10 +33,11 @@
   as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
   in the latter.
 
-  Deliberately left open: RFC 7643 lets a client send core attributes we ignore (`externalId`, `title`,
-  `phoneNumbers`, ...) plus arbitrary extension schemas keyed by URN (e.g.
-  `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`), which can't be enumerated. The complex
-  sub-attributes below *are* closed, listing the full set RFC 7643 defines for them."
+  The remaining keys are typed by the `::mc/default` entry rather than enumerated: RFC 7643 lets a client send core
+  attributes we ignore (`externalId`, `title`, `phoneNumbers`, ...) plus, per §3, arbitrary extension schemas keyed by
+  URN (e.g. `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`), whose payloads are arbitrary JSON — so the
+  key type is pinned and the value type can't be. The complex sub-attributes below *are* closed, listing the full set
+  RFC 7643 defines for them."
   [:map
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
@@ -64,7 +66,8 @@
                   [:display ms/NonBlankString]
                   [:type {:optional true} ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
-   [:active {:optional true} boolean?]])
+   [:active {:optional true} boolean?]
+   [::mc/default [:map-of [:or :keyword :string] :any]]])
 
 (def SCIMUserList
   "Malli schema for a list of SCIM users"
@@ -90,8 +93,9 @@
                            ms/NonBlankString ms/BooleanValue]]]]]])
 
 (def SCIMGroup
-  "Malli schema for a SCIM group. Left open for the same reason as [[SCIMUser]] — clients may send `externalId`,
-  `meta` or extension schemas keyed by URN. `members` is closed to the RFC 7643 §2.4 sub-attribute set."
+  "Malli schema for a SCIM group. The `::mc/default` entry types the non-enumerated keys for the same reason as
+  [[SCIMUser]] — clients may send `externalId`, `meta` or extension schemas keyed by URN. `members` is closed to the
+  RFC 7643 §2.4 sub-attribute set."
   [:map
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
@@ -102,7 +106,8 @@
                   [:value ms/NonBlankString]
                   [:$ref {:optional true} ms/NonBlankString]
                   [:display {:optional true} [:maybe :string]]
-                  [:type {:optional true} ms/NonBlankString]]]]])
+                  [:type {:optional true} ms/NonBlankString]]]]
+   [::mc/default [:map-of [:or :keyword :string] :any]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
