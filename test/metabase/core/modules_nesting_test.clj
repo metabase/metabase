@@ -562,7 +562,11 @@
           (is (nil? (usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo)))
           (testing "but not to a module outside the `outer` subtree"
             (let [config (assoc-in config [:metabase/modules 'unrelated] {:uses :any, :api :any})]
-              (is (some? (usage-error config 'unrelated 'metabase.outer.a.leaf.foo))))))))))
+              (is (= (str "Module outer.a.leaf is nested and not exported by its ancestors; "
+                          "unrelated may not use it. Add outer.a to outer's :module-exports, "
+                          "or move the caller into the outer subtree. "
+                          "[:metabase/modules outer :module-exports]")
+                     (usage-error config 'unrelated 'metabase.outer.a.leaf.foo))))))))))
 
 (deftest ^:parallel usage-error-uses-any-rest-module-test
   (testing "`:uses :any` does not allow domain modules to depend on REST modules"
