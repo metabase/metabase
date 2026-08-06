@@ -22,6 +22,11 @@ const embeddingHubSecurityPage = () =>
     Component: EmbeddingHubSecurityPage,
   }));
 
+const embeddingHubAuthenticationPage = () =>
+  import("./pages").then(({ EmbeddingHubAuthenticationPage }) => ({
+    Component: EmbeddingHubAuthenticationPage,
+  }));
+
 const setupPermissionsAndTenantsPage = () =>
   import("metabase/embedding/setup-guide").then(
     ({ SetupPermissionsAndTenantsPage }) => ({
@@ -61,6 +66,7 @@ export function getEmbeddingHubRoutes() {
         </Route>
 
         <Route path="security" lazy={embeddingHubSecurityPage} />
+        <Route path="authentication" lazy={embeddingHubAuthenticationPage} />
       </Route>
     </Route>
   );
