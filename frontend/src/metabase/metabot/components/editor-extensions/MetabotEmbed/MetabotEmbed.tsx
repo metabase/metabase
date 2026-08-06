@@ -14,14 +14,12 @@ import { t } from "ttag";
 import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
-import {
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { buildDraftCard } from "metabase/rich_text_editing/tiptap/extensions/shared/draft-card";
 import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shared/layout";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -153,7 +151,7 @@ export const MetabotComponent = memo(
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotGenerateContentQuery();
     const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
-    const metabotName = useMetabotName();
+    const metabotName = useSetting("metabot-name");
 
     const handleRunMetabot = async () => {
       const serializePrompt =

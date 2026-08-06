@@ -108,6 +108,11 @@
                   {:user_id user-id
                    :document_id (u/the-id model)})
 
+      (mi/instance-of? :model/Exploration model)
+      (t2/insert! :model/ExplorationBookmark
+                  {:user_id user-id
+                   :exploration_id (u/the-id model)})
+
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))
 
@@ -196,4 +201,43 @@
       (bookmark-models (mt/user->id :rasta) archived-document)
       (testing "archived documents don't appear in bookmark list"
         (is (empty? (filter #(= (:type %) "document")
+                            (mt/user-http-request :rasta :get 200 "bookmark"))))))))
+
+(deftest exploration-bookmarks-test
+  (testing "Exploration bookmarks"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Exploration exploration {:name "Test Exploration" :collection_id coll-id}]
+      (testing "can bookmark an exploration"
+        (is (= (u/the-id exploration)
+               (->> (mt/user-http-request :rasta :post 200 (str "bookmark/exploration/" (u/the-id exploration)))
+                    :exploration_id))))
+      (testing "exploration appears in bookmark list"
+        (let [result (mt/user-http-request :rasta :get 200 "bookmark")
+              exploration-bookmark (first (filter #(= (:type %) "exploration") result))]
+          (is (some? exploration-bookmark))
+          (is (= "Test Exploration" (:name exploration-bookmark)))
+          (is (= (u/the-id exploration) (:item_id exploration-bookmark)))))
+      (testing "can delete exploration bookmark"
+        (mt/user-http-request :rasta :delete 204 (str "bookmark/exploration/" (u/the-id exploration)))
+        (is (empty? (filter #(= (:type %) "exploration")
+                            (mt/user-http-request :rasta :get 200 "bookmark")))))
+      (testing "exploration bookmarks are included in ordering"
+        (mt/with-temp [:model/Card card {:name "Test Card"}]
+          (mt/with-model-cleanup [:model/BookmarkOrdering]
+            (bookmark-models (mt/user->id :rasta) exploration card)
+            (mt/user-http-request :rasta :put 204 "bookmark/ordering"
+                                  {:orderings [{:type "exploration" :item_id (u/the-id exploration)}
+                                               {:type "card" :item_id (u/the-id card)}]})
+            (is (= ["exploration" "card"]
+                   (map :type (mt/user-http-request :rasta :get 200 "bookmark"))))))))))
+
+(deftest exploration-bookmarks-archived-test
+  (testing "Exploration bookmarks on archived explorations"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Exploration archived-exploration {:name "Archived Exploration"
+                                                            :collection_id coll-id
+                                                            :archived true}]
+      (bookmark-models (mt/user->id :rasta) archived-exploration)
+      (testing "archived explorations don't appear in bookmark list"
+        (is (empty? (filter #(= (:type %) "exploration")
                             (mt/user-http-request :rasta :get 200 "bookmark"))))))))

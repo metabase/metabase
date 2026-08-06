@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Markdown } from "metabase/common/components/Markdown";
-import { Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 
 interface CardRootProps {
@@ -24,16 +22,6 @@ export const CardRoot = styled.div<CardRootProps>`
   }
 `;
 
-export const CardIconAndDateContainer = styled.div`
-  display: flex;
-`;
-
-export const CardIcon = styled(Icon)`
-  margin: 0.25rem 0.25rem 0 0;
-  width: 1rem;
-  height: 1rem;
-`;
-
 export const CardCheckboxContainer = styled.div`
   display: flex;
   flex: 0 0 auto;
@@ -47,32 +35,6 @@ export const CardBody = styled.div`
   flex: 1 1 auto;
   padding: 0.125rem 0.75rem 0 0.125rem;
   min-width: 0;
-`;
-
-export const CardTitle = styled.div`
-  color: var(--mb-color-text-primary);
-  font-size: 1rem;
-  line-height: 1.25rem;
-  font-weight: bold;
-  word-wrap: break-word;
-`;
-
-export const CardDescription = styled(Markdown)`
-  color: var(--mb-color-text-primary);
-  margin-top: 0.25rem;
-  word-wrap: break-word;
-`;
-
-export const CardDateInfo = styled.div`
-  font-size: 0.75rem;
-  line-height: 1.5rem;
-  font-weight: bold;
-`;
-
-export const CardCreatorInfo = styled.div`
-  color: var(--mb-color-text-secondary);
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
 `;
 
 export const CardAside = styled.div`

@@ -9,7 +9,6 @@ import {
   isDefaultGroup,
 } from "metabase/common/utils/groups";
 import { getPlan } from "metabase/common/utils/plan";
-import { getIsHosted } from "metabase/databases/selectors";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -191,7 +190,7 @@ type EntityWithPermissions = {
 
 export const getShouldShowTransformPermissions = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
-  getIsHosted,
+  (state: State) => getSetting(state, "is-hosted?"),
   (state: State) => getSetting(state, "transforms-enabled"),
   (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, isHosted, transformsSettingEnabled, transformsFeatureEnabled) => {

@@ -11,11 +11,7 @@ import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotC
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
-import {
-  useMetabotAgent,
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "../../hooks";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -52,7 +48,7 @@ export const MetabotChat = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(config.agentId);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
   const supportsReasoning =
