@@ -87,8 +87,7 @@
 ;; GET /api/ee/sso/oidc
 (api.macros/defendpoint :get "/" :- [:sequential oidc-provider-response-schema]
   "List all OIDC providers (with client secrets masked)."
-  [_route-params
-   _query-params]
+  []
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (mapv sanitize-response (sso-settings/oidc-providers)))
 

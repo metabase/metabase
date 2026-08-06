@@ -99,10 +99,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/logout"
   "Logout."
-  [_route-params
-   _query-params
-   _body
-   {cookies :cookies, :as _request}]
+  [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
         {:keys [email sso_source]}

@@ -36,8 +36,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all bookmarks for the user"
-  [_route-params
-   _query-params]
+  []
   ;; already sorted by created_at in query. Can optionally use user sort preferences here and not in the function
   ;; below
   (bookmark/bookmarks-for-user api/*current-user-id*))

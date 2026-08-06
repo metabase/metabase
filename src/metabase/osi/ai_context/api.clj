@@ -82,8 +82,7 @@
       [:limit  :int]
       [:offset :int]]
   "Get all ai_context entries, paginated."
-  [_route-params
-   _query-params]
+  []
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
@@ -141,8 +140,7 @@
   share.
   Requires the library entity-retrieval feature; returns a 400 when the index is unavailable (the feature
   isn't licensed, or the pgvector store or embedding backend isn't configured)."
-  [_route-params
-   _query-params]
+  []
   (api/check-superuser)
   (api/check-400 (entity-retrieval/force-reconcile!)
                  (str "The library entity index is unavailable: it needs the library entity-retrieval "

@@ -458,8 +458,7 @@
    ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
    body :- [:or
             [:sequential ms/PositiveInt]
-            [:map
-             [:field_order [:sequential ms/PositiveInt]]]]]
+            [:map [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
     (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})

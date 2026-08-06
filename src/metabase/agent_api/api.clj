@@ -122,8 +122,7 @@
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
   {:scope :unchecked}
-  [_route-params
-   _query-params]
+  []
   {:message "pong"})
 
 (defn- coerce-query-list

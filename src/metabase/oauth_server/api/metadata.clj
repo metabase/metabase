@@ -34,8 +34,7 @@
        [:status [:= 404]]
        [:body [:map [:error [:= "not_found"]]]]]]
   "Returns the OAuth Authorization Server Metadata (RFC 8414)."
-  [_route-params
-   _query-params]
+  []
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
@@ -65,15 +64,13 @@
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
-  [_route-params
-   _query-params]
+  []
   (protected-resource-metadata "/api/metabase-mcp"))
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the legacy `/api/mcp` MCP alias."
-  [_route-params
-   _query-params]
+  []
   (protected-resource-metadata "/api/mcp"))
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
@@ -82,6 +79,5 @@
 (api.macros/defendpoint :get "/oauth-protected-resource"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
-  [_route-params
-   _query-params]
+  []
   (protected-resource-metadata "/api/metabase-mcp"))

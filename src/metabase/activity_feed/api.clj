@@ -121,8 +121,7 @@
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   {:deprecated true}
-  [_route-params
-   _query-params]
+  []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -172,8 +171,7 @@
 (api.macros/defendpoint :get "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
-  [_route-params
-   _query-params]
+  []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
     (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         api/check-404
@@ -276,6 +274,5 @@
 (api.macros/defendpoint :get "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "
-  [_route-params
-   _query-params]
+  []
   {:popular_items (get-popular-items-model-and-id)})

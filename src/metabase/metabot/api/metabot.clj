@@ -24,8 +24,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "List configured metabot instances"
-  [_route-params
-   _query-params]
+  []
   (api/check-superuser)
   {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
 

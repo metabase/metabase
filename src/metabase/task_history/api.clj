@@ -49,8 +49,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
-  [_route-params
-   _query-params]
+  []
   (perms/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
@@ -65,8 +64,7 @@
   "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
   reflect that."
-  [_route-params
-   _query-params] :- [:vector string?]
+  [] :- [:vector string?]
   (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
 

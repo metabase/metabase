@@ -166,8 +166,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
-  [_route-params
-   _query-params]
+  []
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
                                                           [:= :archived false]]})
@@ -426,8 +425,7 @@
   This endpoint is used to populate the public links listing in the Admin settings UI.
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
-  [_route-params
-   _query-params]
+  []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))

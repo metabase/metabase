@@ -121,9 +121,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/plans"
   "Get plans information from the Metabase Store API."
-  [_route-params
-   _query-params
-   _body]
+  []
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
@@ -142,9 +140,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/addons"
   "Get addons information from the Metabase Store API."
-  [_route-params
-   _query-params
-   _body]
+  []
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))

@@ -164,9 +164,7 @@
                                            [:method                   [:maybe :string]]
                                            [:recovery_codes_remaining :int]]
   "The current user's MFA status, for the account-settings UI."
-  [_route-params
-   _query-params
-   _body]
+  []
   (let [user-id api/*current-user-id*
         method  (enrollment/enrolled-method user-id)]
     {:mfa_enabled              (mfa.settings/mfa-enabled?)
@@ -232,9 +230,7 @@
                                                    [:unenrolled_count   :int]]
   "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and
   whether the instance encrypts secrets at rest."
-  [_route-params
-   _query-params
-   _body]
+  []
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
    :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])
