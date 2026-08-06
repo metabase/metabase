@@ -18,8 +18,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest ^:parallel request-body-default-model-test
-  (testing "the model defaults to kimi-k2.6"
-    (is (= "kimi-k2.6"
+  (testing "the model defaults to kimi-k3"
+    (is (= "kimi-k3"
            (:model (moonshot/moonshot-request-body {:input [{:role :user :content "hi"}]}))))))
 
 (deftest ^:parallel request-body-system-plain-string-test
@@ -57,15 +57,16 @@
     ;; discarded — we drop `reasoning_content`.
     (is (= {:type "disabled"}
            (:thinking (moonshot/moonshot-request-body {:model "kimi-k2.6"
-                                                       :input [{:role :user :content "hi"}]}))))
-    (is (= {:type "disabled"}
-           (:thinking (moonshot/moonshot-request-body {:input [{:role :user :content "hi"}]})))))
+                                                       :input [{:role :user :content "hi"}]})))))
   (testing "no thinking parameter is sent for a thinking-only model"
     ;; kimi-k3 reports `supports_thinking_type: "only"` and would reject `{:type "disabled"}`. It accepts
     ;; `tool_choice "required"` with thinking on, so it does not need it.
     (is (not (contains? (moonshot/moonshot-request-body {:model "kimi-k3"
                                                          :input [{:role :user :content "hi"}]})
-                        :thinking)))))
+                        :thinking)))
+    (testing "including when it is reached as the default model"
+      (is (not (contains? (moonshot/moonshot-request-body {:input [{:role :user :content "hi"}]})
+                          :thinking))))))
 
 (deftest ^:parallel request-body-prompt-cache-key-test
   (testing "a :prompt-cache-key is forwarded as prompt_cache_key, absent otherwise"

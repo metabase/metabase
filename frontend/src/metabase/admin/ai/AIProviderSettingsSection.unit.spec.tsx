@@ -94,7 +94,7 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     models: [{ id: "mistral-medium-3-5", display_name: "Mistral Medium 3.5" }],
   },
   moonshot: {
-    value: "moonshot/kimi-k2.6",
+    value: "moonshot/kimi-k3",
     models: [
       { id: "kimi-k2.6", display_name: "Kimi K2.6" },
       { id: "kimi-k3", display_name: "Kimi K3" },
@@ -644,7 +644,7 @@ describe("AIProviderSettingsSection", () => {
       /OpenAI/,
       /OpenRouter/,
       /Mistral/,
-      /Moonshot AI \(Kimi\)/,
+      /Moonshot AI/,
       /Z\.AI/,
       /Microsoft Azure/,
       /Amazon Bedrock/,
@@ -1825,12 +1825,12 @@ describe("AIProviderSettingsSection", () => {
       isConfigured: false,
       apiKeyValues: { moonshot: null },
       updateResponse: {
-        value: "moonshot/kimi-k2.6",
+        value: "moonshot/kimi-k3",
         models: DEFAULT_RESPONSES.moonshot.models,
       },
     });
 
-    await selectProvider("Moonshot AI (Kimi)");
+    await selectProvider("Moonshot AI");
     await userEvent.type(screen.getByLabelText("API key"), "sk-moonshot-test");
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
@@ -1842,12 +1842,12 @@ describe("AIProviderSettingsSection", () => {
 
     await screen.findByLabelText("Model");
     await openModelSelector();
-    await userEvent.click(await screen.findByText("Kimi K3"));
+    await userEvent.click(await screen.findByText("Kimi K2.6"));
 
     await waitFor(async () => {
       expect(await findMetabotSettingsUpdates()).toEqual([
         { provider: "moonshot", "api-key": "sk-moonshot-test" },
-        { provider: "moonshot", model: "kimi-k3" },
+        { provider: "moonshot", model: "kimi-k2.6" },
       ]);
     });
 
@@ -1863,7 +1863,7 @@ describe("AIProviderSettingsSection", () => {
       apiKeyValues: { moonshot: "**********st" },
     });
 
-    await screen.findByText("Connected to Moonshot AI (Kimi)");
+    await screen.findByText("Connected to Moonshot AI");
     await screen.findByLabelText("API key");
     await confirmDisconnectProvider();
 

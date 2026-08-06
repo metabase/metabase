@@ -603,20 +603,20 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
                                                              ([provider]
                                                               (is (= "moonshot" provider))
-                                                              {:models [{:id "kimi-k2.6"
-                                                                         :display_name "Kimi K2.6"}]})
+                                                              {:models [{:id "kimi-k3"
+                                                                         :display_name "Kimi K3"}]})
                                                              ([provider {:keys [credentials]}]
                                                               (is (= "moonshot" provider))
                                                               (is (= {:api-key "sk-moonshot-key-fresh"} credentials))
-                                                              {:models [{:id "kimi-k2.6"
-                                                                         :display_name "Kimi K2.6"}]}))]
-        (is (= {:value  "moonshot/kimi-k2.6"
-                :models [{:id "kimi-k2.6"
-                          :display_name "Kimi K2.6"}]}
+                                                              {:models [{:id "kimi-k3"
+                                                                         :display_name "Kimi K3"}]}))]
+        (is (= {:value  "moonshot/kimi-k3"
+                :models [{:id "kimi-k3"
+                          :display_name "Kimi K3"}]}
                (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                      {:provider "moonshot"
                                       :api-key  "sk-moonshot-key-fresh"})))
-        (is (= "moonshot/kimi-k2.6"
+        (is (= "moonshot/kimi-k3"
                (metabot.settings/llm-metabot-provider)))
         (is (= "sk-moonshot-key-fresh"
                (llm.settings/llm-moonshot-api-key)))))))

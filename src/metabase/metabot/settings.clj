@@ -123,12 +123,11 @@
 (def ^:private default-moonshot-llm-metabot-model
   "Default Moonshot model used for Metabot when no explicit model is selected.
 
-  k2.6 rather than k3: this is resolved before the model picker is ever populated (a Connect with an api-key and no
-  model persists it), so it has to be a model every account can reach. k3's catalog entry reports its permission
-  group as `staff` where every other Moonshot model reports `moonshot`, so an account without k3 access would
-  persist a model that 404s on its first turn. `list-models` filters the live per-key catalog, so an account with
-  k3 access can simply pick it."
-  "kimi-k2.6")
+  k3 is the flagship. Caveat: this is resolved before the model picker is ever populated (a Connect with an api-key
+  and no model persists it), and k3's catalog entry reports its permission group as `staff` where every other
+  Moonshot model reports `moonshot`. If that reflects real gating, an account without k3 access persists a model
+  that 404s on its first turn and has to pick k2.6, which `list-models` still offers."
+  "kimi-k3")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."

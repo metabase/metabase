@@ -72,7 +72,7 @@ export function getProviderOptions(
     },
     moonshot: {
       value: "moonshot",
-      label: "Moonshot AI (Kimi)",
+      label: "Moonshot AI",
       apiKey: {
         placeholder: "sk-...",
         addKeyUrl: "https://platform.kimi.ai/console/api-keys",

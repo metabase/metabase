@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-model "kimi-k2.6")
+(def ^:private default-model "kimi-k3")
 
 (defn- ai-proxy-unsupported-ex []
   (ex-info (tru "AI proxy is not supported for Moonshot")
