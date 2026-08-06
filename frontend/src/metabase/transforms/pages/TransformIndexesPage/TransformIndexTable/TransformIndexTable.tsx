@@ -4,6 +4,8 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { TreeTable, useTreeTableInstance } from "metabase/ui";
@@ -32,6 +34,7 @@ export function TransformIndexTable({
   onDelete,
 }: TransformIndexTableProps) {
   const systemTimezone = useSetting("system-timezone");
+  const applicationName = useSelector(getApplicationName);
   const { data: usersResponse } = useListUsersQuery();
   const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
 
@@ -64,9 +67,10 @@ export function TransformIndexTable({
       getColumns({
         systemTimezone,
         kindLabels,
+        applicationName,
         actions: readOnly ? undefined : { onEdit, onDelete },
       }),
-    [systemTimezone, kindLabels, readOnly, onEdit, onDelete],
+    [systemTimezone, kindLabels, applicationName, readOnly, onEdit, onDelete],
   );
 
   const handleRowClick = useCallback(
