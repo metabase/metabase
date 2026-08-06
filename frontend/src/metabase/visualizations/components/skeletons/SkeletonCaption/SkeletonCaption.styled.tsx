@@ -12,7 +12,7 @@ export const SkeletonCaptionRoot = styled.div`
   width: 100%;
 `;
 
-interface SkeletonTitleProps {
+export interface SkeletonTitleProps {
   size: SkeletonCaptionSize;
 }
 

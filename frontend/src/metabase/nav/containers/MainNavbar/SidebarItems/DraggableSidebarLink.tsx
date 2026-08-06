@@ -1,7 +1,7 @@
 import { DragIcon, StyledSidebarLink } from "./DraggableSidebarLink.styled";
 import type { SidebarLinkProps } from "./SidebarLink";
 
-interface Props extends Omit<SidebarLinkProps, "left"> {
+export interface Props extends Omit<SidebarLinkProps, "left"> {
   isDraggable?: boolean;
   isDragging: boolean;
 }

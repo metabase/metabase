@@ -10,7 +10,10 @@ import {
   PermissionsSelectOptionRoot,
 } from "./PermissionsSelectOption.styled";
 
-interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
+export interface PermissionsSelectOptionProps extends Omit<
+  PermissionOption,
+  "value"
+> {
   className?: string;
   hint?: string | null;
 }

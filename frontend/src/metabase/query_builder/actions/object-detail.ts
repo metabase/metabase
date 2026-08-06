@@ -97,7 +97,7 @@ export const followForeignKey = createThunkAction(
   },
 );
 
-interface FKInfo {
+export interface FKInfo {
   status: number;
   value: string | number | null;
 }

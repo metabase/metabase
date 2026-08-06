@@ -989,7 +989,7 @@ export const isHelpReferenceOpen = createReducer<boolean>(false, (builder) => {
   builder.addMatcher(isToggleHelpReferenceAction, (state) => !state);
 });
 
-interface RevisionChangedState {
+export interface RevisionChangedState {
   revision: number | null;
   hasChanged: boolean;
 }

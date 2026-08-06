@@ -54,7 +54,7 @@ export function useBlockMenus({
   const floatingOpen = rendered && isInViewport;
 
   const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
-    useFloating({
+    useFloating<HTMLElement>({
       placement: "right-start",
       whileElementsMounted: autoUpdate,
       strategy: "fixed",
@@ -62,7 +62,7 @@ export function useBlockMenus({
     });
 
   const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
-    useFloating({
+    useFloating<HTMLElement>({
       placement: "left",
       whileElementsMounted: autoUpdate,
       strategy: "fixed",

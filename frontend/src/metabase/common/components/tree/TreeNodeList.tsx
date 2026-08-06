@@ -6,7 +6,7 @@ import { Box } from "metabase/ui";
 
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
-interface TreeNodeListProps<TData = unknown> extends Omit<
+export interface TreeNodeListProps<TData = unknown> extends Omit<
   BoxProps,
   "children"
 > {

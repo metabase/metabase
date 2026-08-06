@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 
-interface FieldSetProps {
+export interface FieldSetProps {
   className?: string;
   legend?: string;
   required?: boolean;
