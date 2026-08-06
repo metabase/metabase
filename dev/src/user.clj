@@ -111,7 +111,7 @@
        rest ; First file in the enumeration will be this file, so skip it.
        (run! #(do
                 ;; bootstrap chatter on stdout; logging isn't configured this early
-                #_:clj-kondo/ignore
+                #_{:clj-kondo/ignore [:discouraged-var]}
                 (println "Loading" (str %))
                 (clojure.lang.Compiler/load (io/reader %))))))
 
@@ -169,7 +169,7 @@
   (let [{:keys [help hot port]} (:options (cli/parse-opts args cli-spec))]
     (when help
       ;; CLI help text belongs on stdout
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var :redundant-do]}
       (do
         (println "Usage: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev [options]")
         (println "Options:")
@@ -177,12 +177,12 @@
       (System/exit 0))
     (when hot
       ;; CLI startup message belongs on stdout
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Enabling hot reloading of code. Backend code will reload on every request.")
       (alter-var-root #'*enable-hot-reload* (constantly true)))
     (future
       ;; CLI startup message belongs on stdout
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Starting Metabase cider repl on port" port)
       (spit ".nrepl-port" port)
       (nrepl-server/start-server
