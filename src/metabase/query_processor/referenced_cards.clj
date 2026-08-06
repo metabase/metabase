@@ -127,7 +127,7 @@
   "A goal is a single value, so its card must produce one row."
   1)
 
-(defn maybe-wrap-rff
+(defn maybe-wrap-rff-for-goals
   "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_cards`."
   [rff specs]
   (if-let [result (referenced-cards-result specs goal-max-rows)]
@@ -139,7 +139,7 @@
   (when (and (map? goal-value) (:card_id goal-value) (:column goal-value))
     (perf/select-keys goal-value [:card_id :column])))
 
-(defn viz-settings->specs
+(defn viz-settings->goal-specs
   "Extract referenced-card specs from merged viz settings; nil when there are none."
   [viz]
   (let [segments (concat (:gauge.segments viz) (:scalar.segments viz))
@@ -152,7 +152,7 @@
                     :columns (vec (distinct (map :column ss)))})
                  (group-by :card_id sources)))))
 
-(defn maybe-wrap-qp-for-card
+(defn maybe-wrap-qp-for-goals
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
   [qp viz]
-  (maybe-wrap-qp qp (viz-settings->specs viz) goal-max-rows))
+  (maybe-wrap-qp qp (viz-settings->goal-specs viz) goal-max-rows))

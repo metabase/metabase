@@ -119,26 +119,26 @@
       (is (= "completed" (:status response)))
       (is (nil? (get-in response [:data :referenced_cards]))))))
 
-(deftest viz-settings->specs-test
+(deftest viz-settings->goal-specs-test
   (testing "GoalSource references are extracted from the 3 dynamic-goal viz settings and grouped by card"
     (testing "a :graph.goal_value GoalSource"
       (is (= [{:card_id 1 :columns ["total"]}]
-             (referenced-cards/viz-settings->specs {:graph.goal_value {:card_id 1 :column "total"}}))))
+             (referenced-cards/viz-settings->goal-specs {:graph.goal_value {:card_id 1 :column "total"}}))))
     (testing ":gauge.segments and :scalar.segments min/max, grouped + de-duped by card"
       (is (= {1 ["sum" "avg"]
               2 ["total"]}
              (into {} (map (juxt :card_id :columns))
-                   (referenced-cards/viz-settings->specs
+                   (referenced-cards/viz-settings->goal-specs
                     {:gauge.segments  [{:min 0 :max {:card_id 1 :column "sum"}}
                                        {:min {:card_id 1 :column "avg"} :max {:card_id 1 :column "sum"}}]
                      :scalar.segments [{:min {:card_id 2 :column "total"} :max nil :color "red"}]})))))
     (testing "static numbers and bare-string self-column references are ignored"
-      (is (nil? (referenced-cards/viz-settings->specs
+      (is (nil? (referenced-cards/viz-settings->goal-specs
                  {:graph.goal_value 100
                   :gauge.segments   [{:min 0 :max 50}
                                      {:min "self_col" :max 100}]})))))
   (testing "no goal settings at all -> nil"
-    (is (nil? (referenced-cards/viz-settings->specs {})))))
+    (is (nil? (referenced-cards/viz-settings->goal-specs {})))))
 
 (deftest card-endpoint-viz-settings-referenced-cards-test
   (testing "POST /api/card/:id/query derives referenced cards from a :graph.goal_value GoalSource"
