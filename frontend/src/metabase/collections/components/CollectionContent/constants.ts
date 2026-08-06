@@ -17,4 +17,5 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "collection",
   "document",
   "table",
+  "exploration",
 ];

@@ -625,10 +625,13 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :orders)
                                        :dataset_query orders-q}]
-      ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
-      ;; bypassing before-update so nothing bumps it back to the current version.
+      ;; Force the previous release's card_schema (23) and clear the dimensions the insert hook
+      ;; seeded, so the row looks like a metric created before curated dimensions shipped.
+      ;; Done with a raw UPDATE to bypass before-update, so nothing bumps the schema back up.
       (t2/query-one {:update :report_card
-                     :set    {:card_schema 23}
+                     :set    {:card_schema        23
+                              :dimensions         nil
+                              :dimension_mappings nil}
                      :where  [:= :id (:id metric)]})
       (f (:id metric)))))
 
@@ -649,7 +652,7 @@
                                        (map :field-id))
                              dims)
              field-names (into {}
-                               (map (juxt #(-> % :sources first :field-id) :display-name))
+                               (map (juxt #(-> % :sources first :field-id) :display_name))
                                dims)]
          (testing "the modernized set spans the own-table AND joined columns"
            (is (contains? groups "main")       "own-table (main) dimensions are present")
@@ -658,9 +661,9 @@
            (is (contains? fields cat-field)
                "implicitly-joined PRODUCTS.CATEGORY is a live dimension after modernization"))
          (testing "connected dimensions use table-prefixed display names (UXW-4896)"
-           (doseq [{:keys [display-name group]} dims
+           (doseq [{:keys [display_name group]} dims
                    :when (= "connection" (:type group))]
-             (is (str/starts-with? display-name (str (:display-name group) " - "))))
+             (is (str/starts-with? display_name (str (:display_name group) " - "))))
            (is (= "ID" (field-names (mt/id :orders :id))))
            (is (= "Product - ID" (field-names (mt/id :products :id))))
            (is (= "User - ID" (field-names (mt/id :people :id))))))))))

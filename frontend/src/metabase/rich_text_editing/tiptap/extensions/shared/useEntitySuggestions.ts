@@ -289,7 +289,11 @@ export function useEntitySuggestions({
 
   const handleModalSelect = useCallback(
     (item: OmniPickerItem) => {
-      if (item.model === "snippet" || item.model === "schema") {
+      if (
+        item.model === "snippet" ||
+        item.model === "schema" ||
+        item.model === "exploration"
+      ) {
         console.error(`Cannot select ${item.model}`);
         return;
       }

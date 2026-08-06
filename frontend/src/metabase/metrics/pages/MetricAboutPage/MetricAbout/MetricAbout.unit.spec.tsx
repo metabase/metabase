@@ -378,7 +378,7 @@ describe("MetricAbout", () => {
         name: /Product Category/,
       });
       expect(categoryOption).toContainElement(
-        within(categoryOption).getByLabelText("string icon"),
+        within(categoryOption).getByLabelText("label icon"),
       );
       await userEvent.click(categoryOption);
 

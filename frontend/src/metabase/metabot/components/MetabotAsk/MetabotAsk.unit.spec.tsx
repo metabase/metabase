@@ -104,7 +104,7 @@ describe("MetabotAsk", () => {
     });
 
     expect(
-      await screen.findByText("To use AI exploration, please", {
+      await screen.findByText("To use AI explorations, please", {
         exact: false,
       }),
     ).toBeInTheDocument();

@@ -10,7 +10,6 @@
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
