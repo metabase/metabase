@@ -7,6 +7,7 @@ import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Card, Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -18,6 +19,7 @@ export function TransformInspectorUpsellPage() {
   const { transformId: transformIdParam } = useParams();
   const transformId = Urls.extractEntityId(transformIdParam);
   const { transform, isLoading, error } = useTransformWithPolling(transformId);
+  const { readOnly } = useTransformPermissions({ transform });
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser } = useSelector(getStoreUsers);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -34,7 +36,7 @@ export function TransformInspectorUpsellPage() {
   return (
     <DottedBackground>
       <PageContainer>
-        <TransformHeader transform={transform} />
+        <TransformHeader transform={transform} readOnly={readOnly} />
         <Stack align="center" py="lg">
           <Card p={0} withBorder maw="48rem" w="100%">
             <PythonTransformsUpsell
