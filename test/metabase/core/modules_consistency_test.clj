@@ -259,7 +259,46 @@
               (is (= (hook-module config ns)
                      (dev-module dev-prefix->module ns)
                      (bb-mage-file->module modules-config file))))
-            (is true "Skipping mage.modules resolution assertions because `bb` is unavailable")))))))
+            (is false (str "Cannot cross-check the mage resolver mirror: no working babashka at "
+                           "./bin/bb or on PATH. Run any ./bin/mage task once to install it. "
+                           "Skipping silently would let the mage mirror drift out of sync "
+                           "unnoticed, which is what this test exists to prevent."))))))))
+
+(deftest ^:parallel visibility-behavior-agrees-test
+  (testing (str "The dev mirror of the namability rule agrees with the canonical hook. This file "
+                "otherwise cross-checks only namespace resolution, leaving "
+                "`dev.deps-graph/module-namable-from?` the one mirror of this rule with no coverage; "
+                "a desync there corrupts `:uses :any` expansion in `expanded-module-uses`.")
+    (let [hook-namable (private-fn 'hooks.common.modules 'namable-from?)
+          dev-namable  (private-fn 'dev.deps-graph 'module-namable-from?)
+          base         {'outer        {}
+                        'outer.a      {}
+                        'outer.a.leaf {}
+                        'outer.a.sib  {}
+                        'outer.b      {}
+                        'outer.b.deep {}
+                        'unrelated    {}}
+          pairs        [['unrelated 'outer]
+                        ['outer.a 'outer.a.leaf]
+                        ['outer.a.sib 'outer.a.leaf]
+                        ['outer 'outer.a.leaf]
+                        ['outer.b 'outer.a.leaf]
+                        ['outer.b.deep 'outer.a.leaf]
+                        ['unrelated 'outer.a.leaf]]]
+      (doseq [[label config] [["unopened" base]
+                              ["leaf exported by its parent"
+                               (assoc-in base ['outer.a :module-exports] #{'outer.a.leaf})]
+                              ["leaf exported all the way to the root"
+                               (-> base
+                                   (assoc-in ['outer.a :module-exports] #{'outer.a.leaf})
+                                   (assoc-in ['outer :module-exports] #{'outer.a}))]]]
+        (testing (str "\n" label)
+          (doseq [[caller target] pairs]
+            (testing (format "\n%s naming %s" caller target)
+              ;; the hook reads modules out of a `:metabase/modules` wrapper; the dev mirror takes
+              ;; the inner map directly.
+              (is (= (boolean (hook-namable {:metabase/modules config} caller target))
+                     (boolean (dev-namable config caller target)))))))))))
 
 (deftest ^:parallel dotted-module-test-paths-test
   (testing "Dotted modules resolve to the actual on-disk test paths for both default and explicit prefixes"
