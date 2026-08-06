@@ -1217,6 +1217,20 @@
   (is (= (set (map :id (candidate-source-cards {:min-view-count 10, :view-count-window-days 90})))
          (set (candidate-mining/qualified-card-ids 10 90)))))
 
+(deftest candidate-population-selects-only-the-required-card-columns-test
+  (let [selected-columns (atom [])]
+    (with-redefs-fn {#'candidate-mining/select-candidate-source-cards
+                     (fn [_source columns]
+                       (swap! selected-columns conj columns)
+                       [])}
+      #(do
+         (candidate-mining/qualified-card-ids 10 90)
+         (candidate-source-cards {:min-view-count 10, :view-count-window-days 90})))
+    (is (= [[:model/Card :id :collection_id :view_count]
+            [:model/Card :id :name :description :type :database_id :dataset_query :card_schema
+             :collection_id :view_count]]
+           @selected-columns))))
+
 (deftest qualified-card-ids-bounds-recent-view-log-scan-test
   (let [scanned-card-ids (atom ::not-called)]
     (with-redefs-fn {#'candidate-mining/recent-card-view-counts

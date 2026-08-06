@@ -169,6 +169,9 @@
 (def ^:private candidate-card-columns
   [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count])
 
+(def ^:private candidate-qualification-columns
+  [:model/Card :id :collection_id :view_count])
+
 (def ^:private candidate-query-batch-size 200)
 
 (defn- mapcat-id-batches
@@ -176,9 +179,9 @@
   (into [] (mapcat f) (partition-all candidate-query-batch-size ids)))
 
 (defn- select-candidate-cards-by-id
-  [card-ids]
+  [columns card-ids]
   (mapcat-id-batches
-   #(t2/select candidate-card-columns
+   #(t2/select columns
                :id [:in %]
                :archived false
                :type [:in [:question :model]])
@@ -231,20 +234,20 @@
           (partition-all candidate-query-batch-size card-ids))))
 
 (defn- select-candidate-source-cards
-  [source]
+  [source columns]
   (exclude-personal-collection-cards
    (if source
      (let [card-ids (set (query-source/card-ids source))]
        (mu/validate-throw [:set pos-int?] card-ids)
-       (select-candidate-cards-by-id card-ids))
-     (t2/select candidate-card-columns
+       (select-candidate-cards-by-id columns card-ids))
+     (t2/select columns
                 :archived false
                 :type [:in [:question :model]]))))
 
-(defn- candidate-source-cards*
-  [{:keys [min-view-count query-source view-count-window-days]}]
+(defn- candidate-card-population
+  [{:keys [card-columns min-view-count query-source view-count-window-days]}]
   (let [min-view-count     (or min-view-count candidate-default-min-view-count)
-        cards              (select-candidate-source-cards query-source)
+        cards              (select-candidate-source-cards query-source card-columns)
         card-ids           (into #{} (map :id) cards)
         collection-ids     (into #{} (keep :collection_id) cards)
         recent-view-counts (when view-count-window-days
@@ -274,6 +277,10 @@
       true
       vec)))
 
+(defn- candidate-source-cards*
+  [opts]
+  (candidate-card-population (assoc opts :card-columns candidate-card-columns)))
+
 (defn candidate-source-cards
   "Load selected Cards and attach deterministic curation and usage evidence."
   [{:keys [min-view-count query-source view-count-window-days] :as opts}]
@@ -286,27 +293,10 @@
   ([] (qualified-card-ids candidate-default-min-view-count nil))
   ([min-view-count] (qualified-card-ids min-view-count nil))
   ([min-view-count view-count-window-days]
-   (let [cards              (exclude-personal-collection-cards
-                             (t2/select [:model/Card :id :collection_id :view_count]
-                                        :archived false
-                                        :type [:in [:question :model]]))
-         card-ids           (into #{} (map :id) cards)
-         collection-ids     (into #{} (keep :collection_id) cards)
-         recent-view-counts (when view-count-window-days
-                              (recent-card-view-counts card-ids view-count-window-days))
-         verified-ids       (verified-card-ids card-ids)
-         official-ids       (official-collection-ids collection-ids)]
-     (->> cards
-          (keep (fn [{:keys [id collection_id view_count]}]
-                  (let [view-count (if view-count-window-days
-                                     (get recent-view-counts id 0)
-                                     (long (or view_count 0)))]
-                    (when (or (contains? verified-ids id)
-                              (contains? official-ids collection_id)
-                              (>= view-count min-view-count))
-                      id))))
-          sort
-          vec))))
+   (mapv :id
+         (candidate-card-population {:card-columns           candidate-qualification-columns
+                                     :min-view-count         min-view-count
+                                     :view-count-window-days view-count-window-days}))))
 
 (defn- referenced-card-ids
   [dataset-query]
