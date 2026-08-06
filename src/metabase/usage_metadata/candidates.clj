@@ -448,12 +448,11 @@
        (let [query-source (query-source/card-id-set card-ids)
              opts         {:query-source query-source
                            :min-view-count source-minimum-recent-view-count
-                           :view-count-window-days source-usage-window-days
-                           :limit 1000}
+                           :view-count-window-days source-usage-window-days}
              {:keys [measures segments]}
              (insights/cleanup-candidates (assoc opts :include-ineligible? true))
-             table-report (insights/candidate-tables opts)
-             metrics      (insights/candidate-metrics opts)
+             table-report (insights/candidate-table-observations opts)
+             metrics      (insights/candidate-metric-observations opts)
              observations (concat measures
                                   segments
                                   (map table-candidate-observation (:candidates table-report))

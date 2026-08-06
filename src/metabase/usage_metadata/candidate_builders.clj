@@ -206,27 +206,24 @@
 
 (defn- rank-candidate-tables
   [candidates limit]
-  (->> candidates
-       (sort-by candidate-table-sort-key)
-       (take limit)
-       vec))
+  (cond->> (sort-by candidate-table-sort-key candidates)
+    limit (take limit)
+    true  vec))
 
 (defn- unsupported-source-item-sort-key
   [{:keys [id reason model-lineage]}]
   [id (name reason) (mapv :id model-lineage)])
 
-(mu/defn candidate-tables :- ::usage-metadata.schema/candidate-table-report
-  "Rank unpublished physical tables reached by selected MBQL questions and models.
+(mu/defn candidate-table-observations :- ::usage-metadata.schema/candidate-table-report
+  "Return every unpublished physical table reached by selected MBQL questions and models.
 
-  Saved-model dependencies are followed without the stage lineage barriers used by Measure and
-  Segment extraction. The original selected Card remains the sole endorsement source, while every
-  distinct model path is retained as provenance. Native and unreadable branches are returned in
-  `:unsupported-source-items`. This is a read-only analysis and never publishes or updates a Table."
-  ([] (candidate-tables {}))
-  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
+  This unbounded producer is the persistence boundary. Call [[candidate-tables]] when a ranked,
+  presentation-sized result is required. `:limit` is deliberately ignored here so observations are
+  never discarded before evidence from separate persistence batches is combined."
+  ([] (candidate-table-observations {}))
+  ([opts :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
-     (let [limit        (or limit candidate-mining/candidate-default-limit)
-           cards        (candidate-mining/candidate-source-cards opts)
+     (let [cards        (candidate-mining/candidate-source-cards (dissoc opts :limit))
            models       (candidate-mining/candidate-model-index cards)
            analysis     (raw-table-candidate-analysis cards models)
            by-table     (group-by :table-id (:table-source-items analysis))
@@ -237,12 +234,25 @@
                                    {:table    table
                                     :evidence (table-candidate-evidence (map :source-item rows))}))
                                by-table)
-                         limit)
+                         nil)
            unsupported  (->> (:unsupported analysis)
                              distinct
                              (sort-by unsupported-source-item-sort-key)
                              vec)]
        {:candidates candidates, :unsupported-source-items unsupported}))))
+
+(mu/defn candidate-tables :- ::usage-metadata.schema/candidate-table-report
+  "Rank unpublished physical tables reached by selected MBQL questions and models.
+
+  Saved-model dependencies are followed without the stage lineage barriers used by Measure and
+  Segment extraction. The original selected Card remains the sole endorsement source, while every
+  distinct model path is retained as provenance. Native and unreadable branches are returned in
+  `:unsupported-source-items`. This is a read-only analysis and never publishes or updates a Table."
+  ([] (candidate-tables {}))
+  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
+   (let [limit  (or limit candidate-mining/candidate-default-limit)
+         report (candidate-table-observations opts)]
+     (update report :candidates #(vec (take limit %))))))
 
 (defn- resolve-transparent-card-source
   [database-id source-card-id card-index seen]
@@ -445,7 +455,7 @@
            :suggested-description description)))
 
 (defn- merge-metric-candidates
-  [raw-candidates existing-signatures table-index limit]
+  [raw-candidates existing-signatures table-index]
   (->> raw-candidates
        (remove #(contains? existing-signatures (::candidate-mining/signature %)))
        (group-by ::candidate-mining/signature)
@@ -462,8 +472,22 @@
                        (metric-suggestions naming-candidate)
                        (dissoc ::candidate-mining/source-item ::candidate-mining/query ::candidate-mining/table-ids))))))
        (sort-by metric-candidate-sort-key)
-       (take limit)
        (mapv #(dissoc % ::candidate-mining/signature))))
+
+(mu/defn candidate-metric-observations :- [:sequential ::usage-metadata.schema/candidate-metric]
+  "Return every creation-ready Metric Card observation from selected questions and models.
+
+  This unbounded producer is intended for persistence. Call [[candidate-metrics]] for a ranked,
+  presentation-sized result. `:limit` is deliberately ignored so cross-batch evidence remains complete."
+  ([] (candidate-metric-observations {}))
+  ([opts :- ::usage-metadata.schema/candidate-opts]
+   (lib-be/with-metadata-provider-cache
+     (let [cards               (candidate-mining/candidate-source-cards (dissoc opts :limit))
+           card-index          (candidate-mining/candidate-lineage-card-index cards)
+           raw-candidates      (raw-metric-candidates cards card-index)
+           existing-signatures (existing-metric-definition-signatures)
+           table-index         (metric-required-table-index (into #{} (mapcat ::candidate-mining/table-ids) raw-candidates))]
+       (merge-metric-candidates raw-candidates existing-signatures table-index)))))
 
 (mu/defn candidate-metrics :- [:sequential ::usage-metadata.schema/candidate-metric]
   "Creation-ready Metric Card candidates mined from selected questions and models.
@@ -474,14 +498,10 @@
   unpublishable physical table dependencies are rejected. Existing exact Metric definitions are excluded."
   ([] (candidate-metrics {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
-   (lib-be/with-metadata-provider-cache
-     (let [limit               (or limit candidate-mining/candidate-default-limit)
-           cards               (candidate-mining/candidate-source-cards opts)
-           card-index          (candidate-mining/candidate-lineage-card-index cards)
-           raw-candidates      (raw-metric-candidates cards card-index)
-           existing-signatures (existing-metric-definition-signatures)
-           table-index         (metric-required-table-index (into #{} (mapcat ::candidate-mining/table-ids) raw-candidates))]
-       (merge-metric-candidates raw-candidates existing-signatures table-index limit)))))
+   (let [limit (or limit candidate-mining/candidate-default-limit)]
+     (->> (candidate-metric-observations opts)
+          (take limit)
+          vec))))
 
 (defn- assemble-candidates
   [raw-candidates source-index existing-signatures candidate-type keep-candidate?]

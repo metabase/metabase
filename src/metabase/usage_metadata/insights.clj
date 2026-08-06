@@ -26,9 +26,15 @@
 (def candidate-tables
   "Rank unpublished physical tables reached by selected MBQL questions and models."
   candidate-builders/candidate-tables)
+(def candidate-table-observations
+  "Return unbounded physical-table observations for persisted candidate materialization."
+  candidate-builders/candidate-table-observations)
 (def candidate-metrics
   "Return creation-ready Metric Card candidates mined from selected questions and models."
   candidate-builders/candidate-metrics)
+(def candidate-metric-observations
+  "Return unbounded Metric Card observations for persisted candidate materialization."
+  candidate-builders/candidate-metric-observations)
 (def cleanup-candidates
   "Return reconciliation-ready Measure and Segment observations for persistence."
   candidate-builders/cleanup-candidates)
