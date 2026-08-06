@@ -148,6 +148,44 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       ).toBeInTheDocument();
     });
 
+    it("should page a nested level at the size the sidebar really uses", async () => {
+      const WIDE_PARENT = createMockCollection({
+        id: 500,
+        name: "Wide branch",
+        children: Array.from({ length: 400 }, (_, index) =>
+          createMockCollection({
+            id: 600 + index,
+            name: `Child ${String(index + 1).padStart(4, "0")}`,
+            location: "/500/",
+          }),
+        ),
+      });
+
+      await setup({
+        simulateLargeInstance: true,
+        collections: [WIDE_PARENT],
+        lazyPageSize: 100,
+      });
+
+      const node = await screen.findByRole("treeitem", {
+        name: /Wide branch/,
+      });
+      await userEvent.click(within(node).getByRole("button"));
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Child 0100/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("treeitem", { name: /Child 0101/ }),
+      ).not.toBeInTheDocument();
+
+      scrollToEndOfList();
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Child 0101/ }),
+      ).toBeInTheDocument();
+    });
+
     it("should stop watching once the level is exhausted", async () => {
       await setup({
         simulateLargeInstance: true,
