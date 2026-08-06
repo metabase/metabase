@@ -55,7 +55,9 @@
 (def ^:private merge-metric-candidates     @#'candidate-builders/merge-metric-candidates)
 (def ^:private raw-table-candidate-analysis @#'candidate-builders/raw-table-candidate-analysis)
 (def ^:private rank-candidate-tables       @#'candidate-builders/rank-candidate-tables)
-(def ^:private table-candidate-evidence    @#'candidate-builders/table-candidate-evidence)
+(def ^:private table-source-item-evidence  @#'candidate-builders/table-source-item-evidence)
+(defn- table-candidate-evidence [source-items]
+  (candidate-mining/aggregate-candidate-evidence source-items table-source-item-evidence))
 (def ^:private usable-table-dependency?    @#'candidate-builders/usable-table-dependency?)
 (def ^:private suggestions-or-fallback     candidate-suggestions/suggestions-or-fallback)
 
@@ -1598,24 +1600,24 @@
                    :source {:name "Orders"}}]
     (testing "long names are capped at the app-db name limit without shortening the description"
       (let [long-name (apply str (repeat 300 "x"))]
-        (with-redefs [lib/display-name (fn [& _] long-name)
-                      lib/describe-top-level-key (fn [& _] long-name)]
+        (mt/with-dynamic-fn-redefs [lib/display-name (fn [& _] long-name)
+                                    lib/describe-top-level-key (fn [& _] long-name)]
           (let [suggested (add-segment-suggestions candidate)]
             (is (= 254 (count (:suggested-name suggested))))
             (is (str/ends-with? (:suggested-name suggested) "..."))
             (is (= (str long-name " on Orders") (:suggested-description suggested)))))))
     (testing "display-name failures do not abort candidate mining"
-      (with-redefs [lib/display-name (fn [& _] (throw (ex-info "boom" {})))
-                    lib/describe-top-level-key (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [lib/display-name (fn [& _] (throw (ex-info "boom" {})))
+                                  lib/describe-top-level-key (fn [& _] (throw (ex-info "boom" {})))]
         (is (= {:suggested-name "Segment"
                 :suggested-description "Filtered by Segment on Orders"}
                (select-keys (add-segment-suggestions candidate)
                             [:suggested-name :suggested-description])))))
     (testing "Errors and thread interruption are not swallowed"
-      (with-redefs [lib/display-name (fn [& _] (throw (AssertionError. "boom")))]
+      (mt/with-dynamic-fn-redefs [lib/display-name (fn [& _] (throw (AssertionError. "boom")))]
         (is (thrown? AssertionError (add-segment-suggestions candidate))))
       (try
-        (with-redefs [lib/display-name (fn [& _] (throw (InterruptedException. "stop")))]
+        (mt/with-dynamic-fn-redefs [lib/display-name (fn [& _] (throw (InterruptedException. "stop")))]
           (let [rethrown?    (try
                                (add-segment-suggestions candidate)
                                false

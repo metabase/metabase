@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.candidate-mining
   "Shared normalization and internal data contracts used by deterministic candidate miners."
   (:require
+   [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -618,21 +619,10 @@
   [{:keys [predicate]}]
   (canonical-signature predicate))
 
-(defn- combinations
-  "Return all `k`-element combinations of `xs`, preserving input order inside each combination."
-  [k xs]
-  (cond
-    (zero? k)        [[]]
-    (empty? xs)      []
-    (> k (count xs)) []
-    :else
-    (concat (map #(into [(first xs)] %) (combinations (dec k) (rest xs)))
-            (combinations k (rest xs)))))
-
 (defn- segment-subsets
   "Return all atom subsets of size 2..n. Callers bound n to five, so exhaustive enumeration is small."
   [atoms]
-  (mapcat #(combinations % atoms) (range 2 (inc (count atoms)))))
+  (mapcat #(math.combo/combinations atoms %) (range 2 (inc (count atoms)))))
 
 (defn predicate-candidates
   "Expand ordered atoms into atomic and bounded composite predicate candidates."
@@ -687,13 +677,13 @@
              :joined?              (boolean (some :joined? source-items))}
       (seq model-lineage) (assoc :model-lineage model-lineage))))
 
-(defn candidate-evidence
-  "Aggregate source Cards into de-duplicated curation and usage evidence."
-  [source-items]
+(defn aggregate-candidate-evidence
+  "Aggregate de-duplicated source items after `source-item-projector` combines each source's observations."
+  [source-items source-item-projector]
   (let [items (->> source-items
                    (group-by :id)
                    vals
-                   (map source-item-evidence)
+                   (map source-item-projector)
                    (sort-by :id)
                    vec)]
     {:source-items          items
@@ -703,12 +693,43 @@
      :popular-source-count  (count (filter :popular? items))
      :total-view-count      (reduce + 0 (map :view-count items))}))
 
+(defn candidate-evidence
+  "Aggregate source Cards into de-duplicated curation and usage evidence."
+  [source-items]
+  (aggregate-candidate-evidence source-items source-item-evidence))
+
+(defn semantically-eligible-candidate?
+  "Whether a normalized candidate contains enough reusable semantics to be recommended.
+
+  Candidates use the mining shape: `:candidate-type`, `:aggregation`, `:atom-count`, and nested
+  `:evidence`. Persistence converts database rows to this shape once before calling this function."
+  [{:keys [candidate-type aggregation atom-count evidence]}]
+  (case candidate-type
+    :measure
+    (and (not (and (= :count (:type aggregation))
+                   (nil? (:field aggregation))))
+         (or (not (contains? conditional-aggregation-operators (:type aggregation)))
+             (pos? (:verified-source-count evidence))
+             (pos? (:official-source-count evidence))
+             (>= (:distinct-source-count evidence) 2)))
+
+    :segment
+    (or (= atom-count 1)
+        (pos? (:verified-source-count evidence))
+        (pos? (:official-source-count evidence))
+        (>= (:distinct-source-count evidence) 2))
+
+    (:table :metric)
+    true
+
+    false))
+
 (defn candidate-sort-key
-  "Return the deterministic priority key shared by Measure and Segment candidates."
-  [{:keys [atom-count aggregation evidence], signature ::signature}]
+  "Return the deterministic priority key for a normalized candidate observation."
+  [{:keys [atom-count aggregation evidence signature] namespaced-signature ::signature}]
   [(if (pos? (:verified-source-count evidence)) 0 1)
    (if (pos? (:official-source-count evidence)) 0 1)
    (- (:distinct-source-count evidence))
    (or atom-count (:condition-atom-count aggregation) 0)
    (- (:total-view-count evidence))
-   signature])
+   (or signature namespaced-signature)])

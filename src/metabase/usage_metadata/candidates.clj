@@ -9,7 +9,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.usage-metadata.insights :as insights]
+   [metabase.usage-metadata.candidate-builders :as candidate-builders]
+   [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.models.candidate]
    [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
@@ -191,7 +192,7 @@
   (let [table-id (:id table)]
     {:candidate-type        :table
      :source                {:id table-id}
-     :signature             (insights/canonical-signature [:publish-table table-id])
+     :signature             (candidate-mining/canonical-signature [:publish-table table-id])
      :definition            {:table-id table-id}
      :semantic-details      {:table table
                              :source-dependencies
@@ -215,7 +216,7 @@
   (when-let [table-id (metric-primary-table-id metric)]
     {:candidate-type        :metric
      :source                {:id table-id}
-     :signature             (insights/canonical-signature definition)
+     :signature             (candidate-mining/canonical-signature definition)
      :definition            definition
      :semantic-details      (cond-> {:aggregation aggregation
                                      :required-tables required-tables}
@@ -296,7 +297,7 @@
 
 (defn- segment-atoms
   [definition]
-  (into #{} (map insights/canonical-signature) (lib/atomic-filters (lib/normalize definition) 0)))
+  (into #{} (map candidate-mining/canonical-signature) (lib/atomic-filters (lib/normalize definition) 0)))
 
 (defn- measure-condition-atoms
   [definition]
@@ -310,7 +311,7 @@
                 (if (= clause-tag :and)
                   (mapcat flatten-and clause-args)
                   [clause]))]
-        (into #{} (map insights/canonical-signature) (flatten-and condition))))))
+        (into #{} (map candidate-mining/canonical-signature) (flatten-and condition))))))
 
 (defn- relation-for-segment
   [candidate existing]
@@ -337,12 +338,12 @@
   (case type
     :measure
     (when-let [aggregation (aggregation-clause definition)]
-      (insights/canonical-signature [table-id (insights/canonical-signature aggregation)]))
+      (candidate-mining/canonical-signature [table-id (candidate-mining/canonical-signature aggregation)]))
 
     :segment
     (let [atoms (segment-atoms definition)]
       (when (seq atoms)
-        (insights/canonical-signature [table-id (vec (sort atoms))])))))
+        (candidate-mining/canonical-signature [table-id (vec (sort atoms))])))))
 
 (defn- existing-entities
   [type table-id]
@@ -443,16 +444,16 @@
 
 (defn- persist-card-batch!
   [run-id card-ids]
-  (insights/with-candidate-batch-cache
+  (candidate-mining/with-candidate-batch-cache
     #(lib-be/with-metadata-provider-cache
        (let [query-source (query-source/card-id-set card-ids)
              opts         {:query-source query-source
                            :min-view-count source-minimum-recent-view-count
                            :view-count-window-days source-usage-window-days}
              {:keys [measures segments]}
-             (insights/cleanup-candidates (assoc opts :include-ineligible? true))
-             table-report (insights/candidate-table-observations opts)
-             metrics      (insights/candidate-metric-observations opts)
+             (candidate-builders/cleanup-candidates (assoc opts :include-ineligible? true))
+             table-report (candidate-builders/candidate-table-observations opts)
+             metrics      (candidate-builders/candidate-metric-observations opts)
              observations (concat measures
                                   segments
                                   (map table-candidate-observation (:candidates table-report))
@@ -463,29 +464,24 @@
                  :when table]
            (persist-observation! run-id observation table))))))
 
+(defn- candidate-row->observation
+  [{:keys [candidate_type semantic_details complexity verified_source_count official_source_count
+           popular_source_count distinct_source_count total_view_count signature]}]
+  {:candidate-type candidate_type
+   :aggregation    (when (= candidate_type :measure)
+                     (update semantic_details :type #(some-> % keyword)))
+   :atom-count     (when (= candidate_type :segment) complexity)
+   :evidence       {:verified-source-count verified_source_count
+                    :official-source-count official_source_count
+                    :popular-source-count  popular_source_count
+                    :distinct-source-count distinct_source_count
+                    :total-view-count      total_view_count}
+   :signature      signature})
+
 (defn- semantically-eligible?
-  [{:keys [candidate_type semantic_details complexity verified_source_count
-           official_source_count distinct_source_count]}]
-  (let [semantic-type (some-> (:type semantic_details) keyword)]
-    (case candidate_type
-      :measure
-      (and (not (and (= :count semantic-type)
-                     (nil? (:field semantic_details))))
-           (or (not (contains? insights/conditional-aggregation-operators semantic-type))
-               (pos? verified_source_count)
-               (pos? official_source_count)
-               (>= distinct_source_count 2)))
-
-      :segment
-      (or (= complexity 1)
-          (pos? verified_source_count)
-          (pos? official_source_count)
-          (>= distinct_source_count 2))
-
-      (:table :metric)
-      true
-
-      false)))
+  [candidate]
+  (candidate-mining/semantically-eligible-candidate?
+   (candidate-row->observation candidate)))
 
 (defn- evidence-eligible?
   [{:keys [verified_source_count official_source_count distinct_source_count total_view_count]}]
@@ -612,15 +608,9 @@
     nil))
 
 (defn- candidate-priority-key
-  [{:keys [verified_source_count official_source_count distinct_source_count
-           complexity total_view_count signature id]}]
-  [(if (pos? verified_source_count) 0 1)
-   (if (pos? official_source_count) 0 1)
-   (- distinct_source_count)
-   complexity
-   (- total_view_count)
-   signature
-   id])
+  [candidate]
+  (candidate-mining/candidate-sort-key
+   (candidate-row->observation candidate)))
 
 (defn- candidate-family-domain
   [{:keys [table_id candidate_type modeling_status definition]}]
@@ -820,9 +810,9 @@
   (t2/update! :model/UsageMetadataCandidateRun run-id
               {:status :running, :started_at (mi/now), :error nil})
   (try
-    (let [card-ids (insights/qualified-card-ids source-minimum-recent-view-count
-                                                source-usage-window-days)]
-      (insights/with-candidate-analysis-cache
+    (let [card-ids (candidate-mining/qualified-card-ids source-minimum-recent-view-count
+                                                        source-usage-window-days)]
+      (candidate-mining/with-candidate-analysis-cache
         #(doseq [batch (partition-all source-card-batch-size card-ids)]
            (persist-card-batch! run-id batch)))
       (prune-ineligible-candidates! run-id)

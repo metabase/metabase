@@ -1,12 +1,10 @@
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER, columnFinder } from "metabase-lib/test-helpers";
 import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
-import {
-  getDetailedTranslatedFilterDisplayName,
-  getTranslatedFilterDisplayName,
-} from "./display";
+import { getDetailedTranslatedFilterDisplayName } from "./candidate-filter-display";
 
 const tc: ContentTranslationFunction = (value) => value;
 

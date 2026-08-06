@@ -61,8 +61,8 @@
      :signature_hash        (apply str (repeat 64 "b"))
      :signature             "[\"segment-api\"]"
      :definition            {:database (mt/id)
-                             :lib/type "mbql/query"
-                             :stages   [{:lib/type     "mbql.stage/mbql"
+                             :lib/type :mbql/query
+                             :stages   [{:lib/type     :mbql.stage/mbql
                                          :source-table (mt/id :orders)}]}
      :semantic_details      {:atom-count 1
                              :base-name "Count"
@@ -223,6 +223,7 @@
                                                                     :display_name "Zulu"
                                                                     :signature_hash (apply str (repeat 64 "d"))
                                                                     :signature "[\"zulu\"]"
+                                                                    :family_position 1
                                                                     :verified_source_count 0
                                                                     :popular_source_count 0})]
       (testing "limit and offset are applied after deterministic priority ordering"

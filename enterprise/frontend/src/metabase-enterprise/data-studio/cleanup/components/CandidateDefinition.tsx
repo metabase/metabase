@@ -5,7 +5,6 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { getDetailedTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { MeasureAggregationPicker } from "metabase/querying/measures";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
 import { useSelector } from "metabase/redux";
@@ -17,6 +16,8 @@ import type {
   UsageMetadataCandidateDetail,
   UsageMetadataCandidateSummary,
 } from "metabase-types/api";
+
+import { getDetailedTranslatedFilterDisplayName } from "./candidate-filter-display";
 
 const CONDITIONAL_MEASURE_OPERATORS = new Set([
   "count-where",
