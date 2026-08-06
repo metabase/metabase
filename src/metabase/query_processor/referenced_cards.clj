@@ -13,6 +13,7 @@
    [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
@@ -29,8 +30,12 @@
            [:map
             [:card_id :int]
             [:columns {:optional true} [:maybe [:sequential :string]]]
-            ;; bounded because these rows ride along in someone else's response
-            [:max_rows {:optional true} [:maybe [:int {:min 1, :max 100}]]]]]])
+            ;; referencing a card shouldn't yield more rows than querying it directly would
+            [:max_rows {:optional true}
+             [:maybe [:and
+                      [:int {:min 1}]
+                      [:fn {:error/message "cannot exceed the unaggregated query row limit"}
+                       #(<= % (:max-results-bare-rows (qp.constraints/default-query-constraints)))]]]]]]])
 
 (defn- project-columns
   "Narrow `data` to the requested `columns`, matched by column `:name`."

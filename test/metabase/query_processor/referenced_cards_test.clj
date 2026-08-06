@@ -198,3 +198,11 @@
           (is (= "completed" (:status response)))
           (is (= "completed" (:status goal)))
           (is (= [[1000]] (get-in goal [:data :rows]))))))))
+
+(deftest dataset-endpoint-max-rows-ceiling-test
+  (testing "max_rows above the unaggregated query row limit is a 400"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (is (mt/user-http-request
+           :crowberto :post 400 "dataset"
+           (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                  :referenced_cards [{:card_id goal-id :max_rows 1000000}]))))))
