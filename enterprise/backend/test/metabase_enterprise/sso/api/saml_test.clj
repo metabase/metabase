@@ -1,10 +1,11 @@
 (ns metabase-enterprise.sso.api.saml-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once fixtures/initialize :db :test-users)
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest saml-settings-test
   (testing "PUT /api/saml/settings"
@@ -32,3 +33,28 @@
         (mt/user-http-request :crowberto :put 400 "saml/settings" {:saml-keystore-path "/path/to/keystore"
                                                                    :saml-keystore-password "password"
                                                                    :saml-keystore-alias "alias"})))))
+
+(deftest saml-settings-accepts-admin-form-payload-test
+  (testing "PUT /api/saml/settings accepts every setting the admin SAML form submits (SAMLFormSettings)"
+    (mt/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [saml-attribute-tenant nil
+                                         saml-attribute-group  nil
+                                         saml-application-name nil]
+        (mt/user-http-request :crowberto :put 200 "saml/settings"
+                              {:saml-enabled                       true
+                               :saml-identity-provider-uri         "https://example.test"
+                               :saml-identity-provider-issuer      "https://example.test/issuer"
+                               :saml-attribute-email               "email"
+                               :saml-attribute-firstname           "first"
+                               :saml-attribute-lastname            "last"
+                               :saml-attribute-group               "group"
+                               :saml-attribute-tenant              "tenant"
+                               :saml-group-sync                    true
+                               :saml-user-provisioning-enabled?    true
+                               :saml-application-name              "Metabase"
+                               :saml-keystore-path                 nil
+                               :saml-keystore-password             nil
+                               :saml-keystore-alias                nil})
+        (testing "and persists them rather than dropping them"
+          (is (= "tenant" (sso-settings/saml-attribute-tenant)))
+          (is (= "group" (sso-settings/saml-attribute-group))))))))
