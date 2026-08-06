@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
+   [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]
    [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.query-source :as query-source]
@@ -21,14 +22,14 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users-personal-collections))
 
-(def ^:private mine-itemsets               @#'insights/mine-itemsets)
-(def ^:private closed-only                 @#'insights/closed-only)
-(def ^:private itemset-support             @#'insights/itemset-support)
-(def ^:private any-atom-support            @#'insights/any-atom-support)
+(def ^:private mine-itemsets               @#'frequent-itemsets/mine-itemsets)
+(def ^:private closed-only                 @#'frequent-itemsets/closed-only)
+(def ^:private itemset-support             @#'frequent-itemsets/itemset-support)
+(def ^:private any-atom-support            frequent-itemsets/any-atom-support)
 (def ^:private rebuild-and-clause          @#'insights/rebuild-and-clause)
-(def ^:private relative-support-ok?        @#'insights/relative-support-ok?)
+(def ^:private relative-support-ok?        frequent-itemsets/relative-support-ok?)
 (def ^:private existing-composite-atomsets @#'insights/existing-composite-atomsets)
-(def ^:private composite-atomsets-memo     @#'insights/existing-composite-atomsets*-memo)
+(def ^:private composite-atomsets-memo     @#'insights/existing-segment-facts*-memo)
 (def ^:private candidate-source-cards      @#'insights/candidate-source-cards)
 (def ^:private candidate-lineage-card-index @#'insights/candidate-lineage-card-index)
 (def ^:private candidate-model-index       @#'insights/candidate-model-index)
@@ -166,7 +167,7 @@
     (let [segment-selects (atom 0)
           real-select     t2/select
           existing-fn     @#'insights/existing-segment-predicates
-          memo-var        @#'insights/existing-segment-predicates*-memo]
+          memo-var        @#'insights/existing-segment-facts*-memo]
       (memoize/memo-clear! memo-var)
       (with-redefs [t2/select (fn [& args]
                                 (when (and (sequential? (first args))

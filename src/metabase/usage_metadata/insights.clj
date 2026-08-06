@@ -16,6 +16,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
+   [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
@@ -251,37 +252,38 @@
   "Optional batch-scoped cache for selected Cards and their saved-Card lineage."
   nil)
 
+(defn- with-candidate-cache
+  [cache-var current-cache f]
+  (with-bindings {cache-var (or current-cache (atom {}))}
+    (f)))
+
 (defn with-candidate-analysis-cache
   "Run `f` with a cache shared by all candidate analyses it invokes."
   [f]
-  (binding [*candidate-analysis-cache* (or *candidate-analysis-cache* (atom {}))]
-    (f)))
+  (with-candidate-cache #'*candidate-analysis-cache* *candidate-analysis-cache* f))
 
 (defn with-candidate-batch-cache
   "Run `f` with reusable selected-Card and lineage inputs for one candidate batch."
   [f]
-  (binding [*candidate-batch-cache* (or *candidate-batch-cache* (atom {}))]
+  (with-candidate-cache #'*candidate-batch-cache* *candidate-batch-cache* f))
+
+(defn- cached-candidate
+  [cache cache-key f]
+  (if cache
+    (if (contains? @cache cache-key)
+      (get @cache cache-key)
+      (let [value (f)]
+        (swap! cache assoc cache-key value)
+        value))
     (f)))
 
 (defn- cached-candidate-analysis
   [cache-key f]
-  (if-let [cache *candidate-analysis-cache*]
-    (if (contains? @cache cache-key)
-      (get @cache cache-key)
-      (let [value (f)]
-        (swap! cache assoc cache-key value)
-        value))
-    (f)))
+  (cached-candidate *candidate-analysis-cache* cache-key f))
 
 (defn- cached-candidate-batch-analysis
   [cache-key f]
-  (if-let [cache *candidate-batch-cache*]
-    (if (contains? @cache cache-key)
-      (get @cache cache-key)
-      (let [value (f)]
-        (swap! cache assoc cache-key value)
-        value))
-    (f)))
+  (cached-candidate *candidate-batch-cache* cache-key f))
 (def ^:private categorical-filter-operators
   #{:= :!= :in :not-in :is-null :not-null :is-empty :not-empty})
 
@@ -629,18 +631,19 @@
                (or (:join-alias opts) (:source-field opts)))
              (mapcat (partial clauses-of-type :field) (vals stage))))))
 
-(defn- resolve-model-source
-  [database-id source-card-id model-index seen]
+(defn- resolve-transparent-source
+  [database-id source-card-id card-index eligible-card? seen]
   (when (and (pos-int? source-card-id)
              (not (contains? seen source-card-id)))
-    (when-let [{model-database-id :database_id
-                model-query-map   :dataset_query
-                :keys             [id name type]} (model-index source-card-id)]
-      (when (and (= type :model)
-                 (= database-id model-database-id))
-        (when-let [model-query (wrap-query database-id model-query-map)]
-          (let [stage (when (= 1 (lib/stage-count model-query))
-                        (lib/query-stage model-query 0))
+    (when-let [{card-database-id :database_id
+                card-query-map   :dataset_query
+                :keys            [id name]
+                :as              card} (card-index source-card-id)]
+      (when (and (eligible-card? card)
+                 (= database-id card-database-id))
+        (when-let [card-query (wrap-query database-id card-query-map)]
+          (let [stage (when (= 1 (lib/stage-count card-query))
+                        (lib/query-stage card-query 0))
                 source
                 (cond
                   (pos-int? (:source-table stage))
@@ -648,13 +651,22 @@
                    :model-lineage []}
 
                   (pos-int? (:source-card stage))
-                  (resolve-model-source database-id
-                                        (:source-card stage)
-                                        model-index
-                                        (conj seen source-card-id)))]
+                  (resolve-transparent-source database-id
+                                              (:source-card stage)
+                                              card-index
+                                              eligible-card?
+                                              (conj seen source-card-id)))]
             (when (and source
-                       (transparent-model-query? model-query (:table-id source)))
+                       (transparent-model-query? card-query (:table-id source)))
               (update source :model-lineage conj {:id id :name name}))))))))
+
+(defn- resolve-model-source
+  [database-id source-card-id model-index seen]
+  (resolve-transparent-source database-id
+                              source-card-id
+                              model-index
+                              #(= :model (:type %))
+                              seen))
 
 (defn- query-stage-contexts
   [database-id dataset-query model-index]
@@ -970,8 +982,8 @@
   (and (usable-table-dependency? table database)
        (not (:is_published table))))
 
-(defn- candidate-table-index
-  [table-ids]
+(defn- table-dependency-index
+  [table-ids eligible? include-published?]
   (let [table-ids (into #{} (filter pos-int?) table-ids)
         tables    (when (seq table-ids)
                     (t2/select [:model/Table :id :db_id :schema :name :display_name :description
@@ -989,51 +1001,27 @@
                              view_count]
                       :as table}]
                   (let [database (databases db_id)]
-                    (when (eligible-candidate-table? table database)
-                      [id {:id             id
-                           :database-id    db_id
-                           :database-name  (:name database)
-                           :schema         schema
-                           :name           name
-                           :display-name   (or display_name name)
-                           :description    description
-                           :data-layer     data_layer
-                           :data-authority data_authority
-                           :view-count     (long (or view_count 0))}]))))
+                    (when (eligible? table database)
+                      [id (cond-> {:id             id
+                                   :database-id    db_id
+                                   :database-name  (:name database)
+                                   :schema         schema
+                                   :name           name
+                                   :display-name   (or display_name name)
+                                   :description    description
+                                   :data-layer     data_layer
+                                   :data-authority data_authority
+                                   :view-count     (long (or view_count 0))}
+                            include-published? (assoc :published? (boolean (:is_published table))))]))))
           tables)))
+
+(defn- candidate-table-index
+  [table-ids]
+  (table-dependency-index table-ids eligible-candidate-table? false))
 
 (defn- metric-required-table-index
   [table-ids]
-  (let [table-ids (into #{} (filter pos-int?) table-ids)
-        tables    (when (seq table-ids)
-                    (t2/select [:model/Table :id :db_id :schema :name :display_name :description
-                                :data_layer :data_authority :view_count :active :visibility_type
-                                :is_published]
-                               :id [:in table-ids]))
-        db-ids    (into #{} (keep :db_id) tables)
-        databases (when (seq db-ids)
-                    (u/index-by :id
-                                (t2/select [:model/Database :id :name :is_audit :is_sample
-                                            :router_database_id]
-                                           :id [:in db-ids])))]
-    (into {}
-          (keep (fn [{:keys [id db_id schema name display_name description data_layer data_authority
-                             view_count is_published]
-                      :as table}]
-                  (let [database (databases db_id)]
-                    (when (usable-table-dependency? table database)
-                      [id {:id             id
-                           :database-id    db_id
-                           :database-name  (:name database)
-                           :schema         schema
-                           :name           name
-                           :display-name   (or display_name name)
-                           :description    description
-                           :data-layer     data_layer
-                           :data-authority data_authority
-                           :view-count     (long (or view_count 0))
-                           :published?     (boolean is_published)}]))))
-          tables)))
+  (table-dependency-index table-ids usable-table-dependency? true))
 
 (defn- candidate-table-sort-key
   [{:keys [table evidence]}]
@@ -1319,29 +1307,7 @@
 
 (defn- resolve-transparent-card-source
   [database-id source-card-id card-index seen]
-  (when (and (pos-int? source-card-id)
-             (not (contains? seen source-card-id)))
-    (when-let [{card-database-id :database_id
-                card-query-map   :dataset_query
-                :keys            [id name]} (card-index source-card-id)]
-      (when (= database-id card-database-id)
-        (when-let [card-query (wrap-query database-id card-query-map)]
-          (let [stage  (when (= 1 (lib/stage-count card-query))
-                         (lib/query-stage card-query 0))
-                source (cond
-                         (pos-int? (:source-table stage))
-                         {:table-id (:source-table stage), :model-lineage []}
-
-                         (pos-int? (:source-card stage))
-                         (resolve-transparent-card-source database-id
-                                                          (:source-card stage)
-                                                          card-index
-                                                          (conj seen source-card-id))
-
-                         :else nil)]
-            (when (and source
-                       (transparent-model-query? card-query (:table-id source)))
-              (update source :model-lineage conj {:id id, :name name}))))))))
+  (resolve-transparent-source database-id source-card-id card-index (constantly true) seen))
 
 (defn- metric-result-shaping-stage?
   [stage]
@@ -1577,43 +1543,38 @@
            table-index         (metric-required-table-index (into #{} (mapcat ::table-ids) raw-candidates))]
        (merge-metric-candidates raw-candidates existing-signatures table-index limit)))))
 
+(defn- assemble-candidates
+  [raw-candidates source-index existing-signatures candidate-type keep-candidate?]
+  (->> raw-candidates
+       (remove #(contains? existing-signatures (::signature %)))
+       (group-by ::signature)
+       (keep (fn [[signature candidates]]
+               (let [candidate (first candidates)]
+                 (when-let [source (source-index [:table (::table-id candidate)])]
+                   (let [candidate (cond-> (-> candidate
+                                               (assoc :source source
+                                                      :evidence (candidate-evidence
+                                                                 (map ::source-item candidates))
+                                                      ::signature signature)
+                                               (dissoc ::table-id ::source-item))
+                                     candidate-type
+                                     (assoc :candidate-type candidate-type
+                                            :signature (canonical-signature signature)))]
+                     (when (keep-candidate? candidate)
+                       candidate))))))))
+
 (defn- merge-candidates
   ([raw-candidates source-index existing-signatures limit]
    (merge-candidates raw-candidates source-index existing-signatures limit (constantly true)))
   ([raw-candidates source-index existing-signatures limit keep-candidate?]
-   (->> raw-candidates
-        (remove #(contains? existing-signatures (::signature %)))
-        (group-by ::signature)
-        (keep (fn [[signature candidates]]
-                (let [candidate (first candidates)]
-                  (when-let [source (source-index [:table (::table-id candidate)])]
-                    (let [candidate (-> candidate
-                                        (assoc :source source
-                                               :evidence (candidate-evidence (map ::source-item candidates))
-                                               ::signature signature)
-                                        (dissoc ::table-id ::source-item))]
-                      (when (keep-candidate? candidate)
-                        candidate))))))
+   (->> (assemble-candidates raw-candidates source-index existing-signatures nil keep-candidate?)
         (sort-by candidate-sort-key)
         (take limit)
         (mapv #(dissoc % ::signature)))))
 
 (defn- merge-cleanup-candidates
   [candidate-type raw-candidates source-index keep-candidate?]
-  (->> raw-candidates
-       (group-by ::signature)
-       (keep (fn [[signature candidates]]
-               (let [candidate (first candidates)]
-                 (when-let [source (source-index [:table (::table-id candidate)])]
-                   (let [candidate (-> candidate
-                                       (assoc :candidate-type candidate-type
-                                              :source source
-                                              :evidence (candidate-evidence (map ::source-item candidates))
-                                              :signature (canonical-signature signature)
-                                              ::signature signature)
-                                       (dissoc ::table-id ::source-item))]
-                     (when (keep-candidate? candidate)
-                       candidate))))))
+  (->> (assemble-candidates raw-candidates source-index #{} candidate-type keep-candidate?)
        (sort-by candidate-sort-key)
        (mapv #(dissoc % ::signature))
        vec))
@@ -1851,7 +1812,7 @@
 (def ^:private cache-ttl-ms
   (* 60 1000))
 
-(defn- existing-segment-predicates*
+(defn- existing-segment-facts*
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
@@ -1862,24 +1823,39 @@
                           (map (juxt :id :db_id))
                           (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
     (lib-be/with-metadata-provider-cache
-      (into #{}
-            (mapcat (fn [{:keys [table_id definition]}]
-                      (when (and (pos-int? table_id) (seq definition))
-                        (when-let [db-id (get table->db table_id)]
-                          (let [facts (:segments (extract-facts db-id definition))]
-                            (for [{:keys [predicate]} facts
-                                  :when predicate]
-                              [:table table_id predicate]))))))
-            segments))))
+      (reduce (fn [result {:keys [table_id definition]}]
+                (if-let [db-id (and (pos-int? table_id)
+                                    (seq definition)
+                                    (get table->db table_id))]
+                  (let [{:keys [segments composites]} (extract-facts db-id definition)]
+                    (-> result
+                        (update :predicates into
+                                (keep (fn [{:keys [predicate]}]
+                                        (when predicate
+                                          [:table table_id predicate])))
+                                segments)
+                        (update :composite-atomsets into
+                                (keep (fn [{:keys [atom-fingerprints]}]
+                                        (when (>= (count atom-fingerprints)
+                                                  frequent-itemsets/minimum-itemset-size)
+                                          [:table table_id (set atom-fingerprints)])))
+                                composites)))
+                  result))
+              {:predicates #{}, :composite-atomsets #{}}
+              segments))))
 
-(def ^:private existing-segment-predicates*-memo
-  (memoize/ttl existing-segment-predicates* :ttl/threshold cache-ttl-ms))
+(defn- ttl-memoized
+  [f]
+  (memoize/ttl f :ttl/threshold cache-ttl-ms))
+
+(def ^:private existing-segment-facts*-memo
+  (ttl-memoized existing-segment-facts*))
 
 (defn- existing-segment-predicates
   "Set of `[source-type source-id predicate-json]` tuples for non-archived Segments whose
   atomic filter clauses would collide with stored implicit segment predicates."
   [{:keys [source-type source-id]}]
-  (existing-segment-predicates*-memo [source-type source-id]))
+  (:predicates (existing-segment-facts*-memo [source-type source-id])))
 
 (defn- existing-metric-signatures*
   []
@@ -1899,7 +1875,7 @@
             cards))))
 
 (def ^:private existing-metric-signatures*-memo
-  (memoize/ttl (fn [_] (existing-metric-signatures*)) :ttl/threshold cache-ttl-ms))
+  (ttl-memoized (fn [_] (existing-metric-signatures*))))
 
 (defn- existing-metric-signatures
   "Set of `[source-type source-id agg-type agg-field-id temporal-field-id temporal-unit]`
@@ -1993,156 +1969,19 @@
             (take limit))
            rows))))
 
-(def ^:private fim-absolute-support-floor 2)
-(def ^:private fim-relative-support-floor 0.2)
-(def ^:private fim-k-min 2)
-(def ^:private fim-k-max 5)
-(def ^:private fim-default-limit 20)
-
-(defn- rows->baskets
-  "Project rollup rows to `{:atoms #{...} :count n}` baskets for mining.
-
-  Coerces `total_count` to `long` so downstream FIM math (and the `:support` field) stays
-  integer — MariaDB/MySQL return `SUM(int_col)` as `BigDecimal`."
-  [rows]
-  (into []
-        (keep (fn [{:keys [atom_fingerprints total_count]}]
-                (when (>= (count atom_fingerprints) fim-k-min)
-                  {:atoms (set atom_fingerprints)
-                   :count (long total_count)})))
-        rows))
-
-(defn- itemset-support
-  [baskets itemset]
-  (reduce (fn [acc {:keys [atoms count]}]
-            (if (every? atoms itemset)
-              (+ acc count)
-              acc))
-          0
-          baskets))
-
-(defn- any-atom-support
-  "Number of baskets containing at least one atom of `itemset` (denominator for the relative support check)."
-  [baskets itemset]
-  (reduce (fn [acc {:keys [atoms count]}]
-            (if (some atoms itemset)
-              (+ acc count)
-              acc))
-          0
-          baskets))
-
-(defn- frequent-singletons
-  [baskets absolute-floor]
-  (let [counts (reduce (fn [m {:keys [atoms count]}]
-                         (reduce (fn [m a] (update m a (fnil + 0) count)) m atoms))
-                       {}
-                       baskets)]
-    (into {}
-          (filter (fn [[_ n]] (>= n absolute-floor)))
-          counts)))
-
-(defn- apriori-join
-  "Generate k+1 candidate itemsets by joining k-itemsets sharing a k-1 prefix."
-  [lk-vecs]
-  (let [by-prefix (group-by (fn [is] (subvec is 0 (dec (count is)))) lk-vecs)]
-    (into #{}
-          (mapcat (fn [group]
-                    (for [a group
-                          b group
-                          :when (neg? (compare (peek a) (peek b)))]
-                      (conj a (peek b)))))
-          (vals by-prefix))))
-
-(defn- has-all-k-subsets?
-  [lk-set candidate]
-  (let [n (count candidate)]
-    (every? (fn [i]
-              (let [sub (into (subvec candidate 0 i) (subvec candidate (inc i)))]
-                (contains? lk-set sub)))
-            (range n))))
-
-(defn- mine-itemsets
-  "Apriori up to size `fim-k-max`. Returns `{itemset-vec support}` for itemsets of size ≥ `fim-k-min`."
-  [baskets]
-  (let [singletons (frequent-singletons baskets fim-absolute-support-floor)
-        l1-vecs    (vec (sort (map vector (keys singletons))))]
-    (loop [lk       l1-vecs
-           k        1
-           acc      {}]
-      (if (or (empty? lk) (>= k fim-k-max))
-        acc
-        (let [lk-set     (set lk)
-              candidates (apriori-join lk)
-              pruned     (into [] (filter (partial has-all-k-subsets? lk-set)) candidates)
-              counted    (into {}
-                               (keep (fn [c]
-                                       (let [s (itemset-support baskets (set c))]
-                                         (when (>= s fim-absolute-support-floor) [c s]))))
-                               pruned)
-              next-k     (inc k)
-              acc        (if (>= next-k fim-k-min)
-                           (merge acc counted)
-                           acc)]
-          (recur (vec (sort (keys counted))) next-k acc))))))
-
-(defn- closed-only
-  "Keep only itemsets that have no proper superset of equal support — the closed frequent itemsets."
-  [itemset->support]
-  (let [entries (vec itemset->support)]
-    (into {}
-          (remove (fn [[is sup]]
-                    (let [is-set (set is)
-                          is-n   (count is)]
-                      (some (fn [[other other-sup]]
-                              (and (= sup other-sup)
-                                   (> (count other) is-n)
-                                   (every? (set other) is-set)))
-                            entries))))
-          entries)))
-
-(defn- relative-support-ok?
-  [baskets itemset support]
-  (let [denom (any-atom-support baskets itemset)]
-    (or (zero? denom)
-        (>= (/ support (double denom)) fim-relative-support-floor))))
-
 (defn- rebuild-and-clause
   [fingerprints]
   (let [atoms (into []
                     (keep decode-predicate)
                     fingerprints)]
-    (when (>= (count atoms) fim-k-min)
+    (when (>= (count atoms) frequent-itemsets/minimum-itemset-size)
       (lib/simplify-compound-filter (apply lib/and atoms)))))
-
-(defn- existing-composite-atomsets*
-  [[source-type source-id]]
-  (let [where     (cond-> [:and [:= :archived false]]
-                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
-        table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
-        table->db (when (seq table-ids)
-                    (into {}
-                          (map (juxt :id :db_id))
-                          (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
-    (lib-be/with-metadata-provider-cache
-      (into #{}
-            (mapcat (fn [{:keys [table_id definition]}]
-                      (when (and (pos-int? table_id) (seq definition))
-                        (when-let [db-id (get table->db table_id)]
-                          (let [facts (:composites (extract-facts db-id definition))]
-                            (for [{:keys [atom-fingerprints]} facts
-                                  :when (>= (count atom-fingerprints) fim-k-min)]
-                              [:table table_id (set atom-fingerprints)]))))))
-            segments))))
-
-(def ^:private existing-composite-atomsets*-memo
-  (memoize/ttl existing-composite-atomsets* :ttl/threshold cache-ttl-ms))
 
 (defn- existing-composite-atomsets
   "Set of `[source-type source-id #{atom-fingerprint ...}]` tuples for non-archived Segments whose
   definitions are whole-:and baskets. Used to filter out suggestions that already exist as saved Segments."
   [{:keys [source-type source-id]}]
-  (existing-composite-atomsets*-memo [source-type source-id]))
+  (:composite-atomsets (existing-segment-facts*-memo [source-type source-id])))
 
 (mu/defn suggested-segments-for-owner :- [:sequential ::usage-metadata.schema/suggested-segment]
   "Suggest composite (`:and`) segment definitions that recur across a source's query history but
@@ -2150,30 +1989,31 @@
   each rollup row is a basket whose items are the atomic predicates of one stage's top-level `:and`.
   We mine closed frequent itemsets and reconstruct each surviving itemset as an `:and` MBQL clause.
 
-  `:itemset-size` is bounded by `fim-k-min`/`fim-k-max` (2..5). `:support` is the weighted count of
+  `:itemset-size` is bounded to 2..5. `:support` is the weighted count of
   baskets containing ALL of the itemset's atoms (basket weight = the rollup row's `:count`).
-  `:support-ratio` is `support / any-atom-support` and is floored by `fim-relative-support-floor`.
+  `:support-ratio` is `support / any-atom-support` and is floored by the miner's relative-support threshold.
 
   Results are sorted by `:support` desc, then by `:itemset-size` desc — at equal support, larger
   recurring `:and`s rank higher, since they encode more user intent. Truncated to `:limit`."
   ([] (suggested-segments-for-owner {}))
-  ([{:keys [limit] :or {limit fim-default-limit} :as opts} :- ::usage-metadata.schema/opts]
+  ([{:keys [limit] :or {limit frequent-itemsets/default-limit} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows          (grouped-composite-rows opts)
          by-source     (group-by (juxt :source_type :source_id) rows)
          source-idx    (build-source-index (keys by-source))
          candidates    (into []
                              (mapcat (fn [[[source-type source-id] source-rows]]
                                        (when-let [source (source-idx [source-type source-id])]
-                                         (let [baskets  (rows->baskets source-rows)
+                                         (let [baskets  (frequent-itemsets/rows->baskets source-rows)
                                                existing (existing-composite-atomsets {:source-type source-type
                                                                                       :source-id   source-id})
-                                               mined    (closed-only (mine-itemsets baskets))]
+                                               mined    (frequent-itemsets/mine-closed-itemsets baskets)]
                                            (for [[itemset-vec support] mined
                                                  :let  [itemset (set itemset-vec)]
-                                                 :when (and (relative-support-ok? baskets itemset-vec support)
+                                                 :when (and (frequent-itemsets/relative-support-ok?
+                                                             baskets itemset-vec support)
                                                             (not (contains? existing [source-type source-id itemset])))
                                                  :let  [clause (rebuild-and-clause itemset-vec)
-                                                        denom  (any-atom-support baskets itemset-vec)]
+                                                        denom  (frequent-itemsets/any-atom-support baskets itemset-vec)]
                                                  :when clause]
                                              {:clause        clause
                                               :itemset-size  (count itemset-vec)
