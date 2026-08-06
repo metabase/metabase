@@ -357,7 +357,7 @@ function ExplorationPageForId() {
 
   // Detect new threads (from "Explore further") and toast when their first
   // page lands. Threads arrive without pages while query planning is still
-  // running, so we wait for a page before marking a thread as seen.
+  // running, so we wait for a page with queries before marking a thread as seen.
   const seenThreadIdsRef = useRef<Set<number> | null>(null);
   useEffect(() => {
     const threads = exploration?.threads;
@@ -375,7 +375,9 @@ function ExplorationPageForId() {
       if (seen.has(thread.id)) {
         continue;
       }
-      const firstPage = thread.blocks?.flatMap((b) => b.pages ?? [])?.[0];
+      const firstPage = thread.blocks?.flatMap((b) =>
+        b.pages.filter((p) => p.query_ids.length > 0),
+      )?.[0];
       if (!firstPage) {
         continue;
       }
