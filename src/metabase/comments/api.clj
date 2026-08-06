@@ -58,7 +58,7 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    [:map]]
+    [:map {:closed false}]]
    (deferred-tru "Comment content must be valid JSON.")))
 
 (def CommentContext
@@ -67,7 +67,7 @@
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map]]
+    [:map {:closed false}]]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
