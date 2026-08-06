@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -26,6 +27,46 @@
   (let [multi-level? (tx/db-test-env-var :databricks :multi-level-schema false)
         catalog (get-in (mt/db) [:details :catalog])]
     (cond->> schema multi-level? (str catalog "."))))
+
+(deftest ^:parallel describe-fields-sql-avoids-composite-in-for-multi-level-schema-test
+  (testing "Multi-level schema filters use AND-ed equalities instead of row-constructor IN (#79504)"
+    (let [[sql & params] (sql-jdbc.sync/describe-fields-sql
+                          :databricks
+                          :schema-names ["my_catalog.my_schema"]
+                          :details {:catalog "unused" :multi-level-schema true})]
+      (is (str/includes? sql "`c`.`table_catalog` = ?"))
+      (is (str/includes? sql "`c`.`table_schema` = ?"))
+      (is (not (str/includes? sql "(`c`.`table_catalog`, `c`.`table_schema`) IN"))
+          "Composite IN is pathologically slow on Databricks information_schema")
+      (is (= ["my_catalog" "my_schema"] params))))
+  (testing "Multiple multi-level schemas are OR-ed equality pairs"
+    (let [[sql & params] (sql-jdbc.sync/describe-fields-sql
+                          :databricks
+                          :schema-names ["c1.s1" "c2.s2"]
+                          :details {:catalog "unused" :multi-level-schema true})]
+      (is (str/includes? sql " OR "))
+      (is (not (str/includes? sql "(`c`.`table_catalog`, `c`.`table_schema`) IN")))
+      (is (= ["c1" "s1" "c2" "s2"] params))))
+  (testing "Single-catalog mode still filters schemas with a simple IN"
+    (let [[sql & params] (sql-jdbc.sync/describe-fields-sql
+                          :databricks
+                          :schema-names ["my_schema"]
+                          :details {:catalog "my_catalog" :multi-level-schema false})]
+      (is (str/includes? sql "`c`.`table_schema` IN (?)"))
+      (is (str/includes? sql "`c`.`table_catalog` = ?"))
+      (is (= ["my_catalog" "my_schema"] params)))))
+
+(deftest ^:parallel describe-fks-sql-avoids-composite-in-for-multi-level-schema-test
+  (testing "describe-fks shares the multi-level schema filter and must also avoid composite IN (#79504)"
+    (let [[sql & params] (sql-jdbc.sync/describe-fks-sql
+                          :databricks
+                          :schema-names ["my_catalog.my_schema"]
+                          :details {:catalog "unused" :multi-level-schema true})]
+      (is (str/includes? sql "`fk_kcu`.`table_catalog` = ?"))
+      (is (str/includes? sql "`fk_kcu`.`table_schema` = ?"))
+      (is (not (str/includes? sql "(`fk_kcu`.`table_catalog`, `fk_kcu`.`table_schema`) IN")))
+      ;; `information_schema` is also a bind param earlier in the WHERE clause
+      (is (= ["my_catalog" "my_schema"] (take-last 2 params))))))
 
 ;; Because the datasets that are tested are preloaded, it is fine just to modify the database details to sync other schemas.
 (deftest ^:parallel sync-test
