@@ -1248,6 +1248,42 @@ describe("admin > custom visualizations", () => {
       });
     });
 
+    it("degrades to an error placeholder in the email when the plugin throws during static rendering", () => {
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+
+      H.createDashboardWithQuestions({
+        dashboardName: "Custom Viz Throwing Dashboard",
+        questions: [
+          // Throws because plugin's static component does not handle non-numeric values
+          {
+            name: "Custom Viz Throwing Question",
+            native: { query: "select 'not-a-number-throws'" },
+            display: H.CUSTOM_VIZ_DISPLAY,
+            visualization_settings: { threshold: 0 },
+          },
+          // A healthy card of the same plugin
+          subscriptionQuestionDetails,
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+
+      H.sendEmailAndAssert(({ html }: MaildevEmail) => {
+        // Throwing card produces an error
+        expect(html).to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Custom Viz Throwing Question");
+        // The healthy card still rasterizes to a PNG <img>.
+        expect(html).to.include("Custom Viz Subscription Question");
+        expect(html).to.include("<img");
+      });
+    });
+
     it("renders the custom viz server-side in an alert email for an individual question", () => {
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
       H.createQuestion(
