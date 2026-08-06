@@ -72,7 +72,7 @@ runs:
     # Workflow expressions have no arithmetic, so the shell computes it.
     #
     # run-tests.yml calls app-db.yml, backend.yml, drivers.yml and semantic-search.yml
-    # into ONE run, so all four share an artifact namespace. `junit-name` alone is not
+    # as part of ONE run, so all four share an artifact namespace. `junit-name` alone is not
     # unique there — app-db.yml and drivers.yml both derive `be-tests-postgres-ee` — so
     # `artifact-suffix` carries the rest of the discriminator.
     - name: Resolve rerun artifact names
