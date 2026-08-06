@@ -93,15 +93,15 @@ export function CandidatePanelBody({
                 <Group justify="space-between" wrap="nowrap">
                   <Stack gap={2} miw={0}>
                     <Text fw="bold" truncate>
-                      {table["display-name"] ?? table.name}
+                      {table.display_name}
                     </Text>
                     <Text size="sm" c="text-secondary" truncate>
-                      {[table["database-name"], table.schema]
+                      {[table.database_name, table.schema]
                         .filter(Boolean)
                         .join(" · ")}
                     </Text>
                   </Stack>
-                  <PublicationStatusBadge published={table["published?"]} />
+                  <PublicationStatusBadge published={table.is_published} />
                 </Group>
               </Card>
             ))}
@@ -364,7 +364,7 @@ function SourceRow({
         )}
         {source.dependency_paths?.map((path, pathIndex) => (
           <Text key={pathIndex} size="sm" c="text-secondary">
-            {path["direct?"] ? (
+            {path.direct ? (
               t`Direct table dependency`
             ) : path.models.length > 0 ? (
               <>

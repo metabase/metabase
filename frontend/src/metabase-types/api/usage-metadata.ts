@@ -29,12 +29,12 @@ export type UsageMetadataMatchRelation =
   | "overlap";
 
 export type UsageMetadataSnapshotSummary = {
-  "candidate-count": number;
-  "measure-count": number;
-  "segment-count": number;
-  "metric-count": number;
-  "publish-table-count": number;
-  "table-count": number;
+  candidate_count: number;
+  measure_count: number;
+  segment_count: number;
+  metric_count: number;
+  publish_table_count: number;
+  table_count: number;
 };
 
 export type UsageMetadataSnapshot = {
@@ -68,10 +68,11 @@ export type UsageMetadataTable = {
   creation_blockers?: UsageMetadataCreationBlocker[];
 };
 
-export type UsageMetadataStatusCounts = Record<
-  UsageMetadataModelingStatus,
-  number
->;
+export type UsageMetadataStatusCounts = {
+  missing: number;
+  partially_modeled: number;
+  modeled: number;
+};
 
 export type UsageMetadataCandidateCounts = Record<
   UsageMetadataCandidateType,
@@ -117,17 +118,21 @@ export type UsageMetadataCandidatePresentation = {
 
 export type UsageMetadataRequiredTable = {
   id: TableId;
-  "database-id": DatabaseId;
-  "database-name": string | null;
+  database_id: DatabaseId;
+  database_name: string;
   schema: string | null;
-  name: string | null;
-  "display-name": string | null;
+  name: string;
+  display_name: string;
   description: string | null;
-  "data-layer": TableDataLayer | null;
-  "data-authority": string | null;
-  "view-count": number;
-  "published?": boolean;
+  data_layer: TableDataLayer | null;
+  data_authority: string | null;
+  view_count: number;
+  is_published: boolean;
 };
+
+export type UsageMetadataCandidateDefinition =
+  | DatasetQuery
+  | { table_id: TableId };
 
 export type UsageMetadataCandidateSummary = {
   id: number;
@@ -143,7 +148,7 @@ export type UsageMetadataCandidateSummary = {
     position: number;
     depth: number;
   };
-  definition: DatasetQuery;
+  definition: UsageMetadataCandidateDefinition;
   modeling_status: UsageMetadataModelingStatus;
   dismissed: boolean;
   evidence: UsageMetadataEvidence;
@@ -156,7 +161,7 @@ export type UsageMetadataModelLineageItem = {
 };
 
 export type UsageMetadataTableDependencyPath = {
-  "direct?"?: boolean;
+  direct: boolean;
   models: UsageMetadataModelLineageItem[];
 };
 
@@ -196,7 +201,6 @@ export type UsageMetadataCandidateDismissal = {
 };
 
 export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
-  semantic_details: Record<string, unknown>;
   dismissal: UsageMetadataCandidateDismissal | null;
   sources: UsageMetadataCandidateSource[];
   matches: UsageMetadataCandidateMatch[];
@@ -250,7 +254,6 @@ export type UsageMetadataRun = {
   trigger: "scheduled" | "manual";
   requested_by: UserId | null;
   algorithm_version: number;
-  source_config: Record<string, unknown>;
   summary: UsageMetadataSnapshotSummary | null;
   error: string | null;
   created_at: string;

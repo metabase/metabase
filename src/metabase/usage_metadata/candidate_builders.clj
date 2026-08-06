@@ -19,30 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private wrap-query candidate-mining/wrap-query)
-(def ^:private build-source-index candidate-mining/build-source-index)
-(def ^:private candidate-default-limit candidate-mining/candidate-default-limit)
-(def ^:private candidate-source-cards candidate-mining/candidate-source-cards)
-(def ^:private candidate-model-index candidate-mining/candidate-model-index)
-(def ^:private resolve-transparent-source @#'candidate-mining/resolve-transparent-source)
-(def ^:private physical-clause @#'candidate-mining/physical-clause)
-(def ^:private joined-stage? @#'candidate-mining/joined-stage?)
-(def ^:private simple-aggregation candidate-mining/simple-aggregation)
-(def ^:private cached-candidate-analysis candidate-mining/cached-candidate-analysis)
-(def ^:private candidate-lineage-card-index @#'candidate-mining/candidate-lineage-card-index)
-(def ^:private candidate-evidence candidate-mining/candidate-evidence)
-(def ^:private candidate-sort-key candidate-mining/candidate-sort-key)
-(def ^:private query-stage-contexts candidate-mining/query-stage-contexts)
-(def ^:private predicate-candidates candidate-mining/predicate-candidates)
-(def ^:private filter-atoms candidate-mining/filter-atoms)
-(def ^:private conditional-aggregation candidate-mining/conditional-aggregation)
-(def ^:private minimal-definition candidate-mining/minimal-definition)
-(def ^:private segment-signature candidate-mining/segment-signature)
-(def ^:private minimal-segment-definition candidate-mining/minimal-segment-definition)
-(def ^:private field-summary candidate-mining/field-summary)
-(def ^:private canonical-signature candidate-mining/canonical-signature)
-(def ^:private conditional-aggregation-operators candidate-mining/conditional-aggregation-operators)
-
 (defn- table-dependency-path
   [model-lineage]
   {:direct? (empty? model-lineage)
@@ -61,7 +37,7 @@
   happen to reach the same table."
   [card model-index model-lineage visited]
   (try
-    (if-let [query (wrap-query (:database_id card) (:dataset_query card))]
+    (if-let [query (candidate-mining/wrap-query (:database_id card) (:dataset_query card))]
       (if (lib/any-native-stage? query)
         {:table-paths {}
          :unsupported [{:reason :native-query, :model-lineage model-lineage}]}
@@ -249,9 +225,9 @@
   ([] (candidate-tables {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
-     (let [limit        (or limit candidate-default-limit)
-           cards        (candidate-source-cards opts)
-           models       (candidate-model-index cards)
+     (let [limit        (or limit candidate-mining/candidate-default-limit)
+           cards        (candidate-mining/candidate-source-cards opts)
+           models       (candidate-mining/candidate-model-index cards)
            analysis     (raw-table-candidate-analysis cards models)
            by-table     (group-by :table-id (:table-source-items analysis))
            table-index  (candidate-table-index (keys by-table))
@@ -270,7 +246,7 @@
 
 (defn- resolve-transparent-card-source
   [database-id source-card-id card-index seen]
-  (resolve-transparent-source database-id source-card-id card-index (constantly true) seen))
+  (candidate-mining/resolve-transparent-source database-id source-card-id card-index (constantly true) seen))
 
 (defn- metric-result-shaping-stage?
   [stage]
@@ -284,7 +260,7 @@
   (reduce (fn [rewritten clause]
             (when rewritten
               (when-let [{physical :clause}
-                         (physical-clause query 0 clause table-id allow-no-fields?)]
+                         (candidate-mining/physical-clause query 0 clause table-id allow-no-fields?)]
                 (conj rewritten physical))))
           []
           clauses))
@@ -321,7 +297,7 @@
 (defn- prepare-metric-definition
   [card card-index]
   (try
-    (when-let [query (wrap-query (:database_id card) (:dataset_query card))]
+    (when-let [query (candidate-mining/wrap-query (:database_id card) (:dataset_query card))]
       (when (and (not (lib/any-native-stage? query))
                  (= 1 (lib/stage-count query)))
         (let [stage        (lib/query-stage query 0)
@@ -348,7 +324,7 @@
 
                          :else nil)]
               (let [definition (clean-metric-definition query stage)]
-                (when-let [validated (wrap-query (:database_id card) definition)]
+                (when-let [validated (candidate-mining/wrap-query (:database_id card) definition)]
                   (let [table-ids (metric-table-ids validated)]
                     (when (and (lib/can-save? validated :metric)
                                (seq table-ids)
@@ -374,9 +350,9 @@
         table-id    (:source-table stage)
         aggregation (first (lib/aggregations query 0))]
     (or (seq (:filters stage))
-        (joined-stage? stage)
+        (candidate-mining/joined-stage? stage)
         (seq (:expressions stage))
-        (nil? (simple-aggregation query 0 aggregation table-id)))))
+        (nil? (candidate-mining/simple-aggregation query 0 aggregation table-id)))))
 
 (defn- raw-metric-candidates
   [cards card-index]
@@ -386,11 +362,12 @@
                             :as prepared}
                            (prepare-metric-definition card card-index)]
                   (when (meaningful-metric-context? prepared)
-                    (cond-> {::candidate-mining/signature         (canonical-signature definition)
+                    (cond-> {::candidate-mining/signature         (candidate-mining/canonical-signature definition)
                              ::candidate-mining/source-item       (assoc card
                                                                          :model-lineage model-lineage
                                                                          :stage-number 0
-                                                                         :joined? (joined-stage? (lib/query-stage query 0)))
+                                                                         :joined? (candidate-mining/joined-stage?
+                                                                                   (lib/query-stage query 0)))
                              ::candidate-mining/query             query
                              ::candidate-mining/table-ids         table-ids
                              :definition         definition
@@ -400,18 +377,18 @@
 
 (defn- existing-metric-definition-signatures
   []
-  (cached-candidate-analysis
+  (candidate-mining/cached-candidate-analysis
    ::existing-metric-definition-signatures
    (fn []
      (let [metric-cards (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
                                    :type :metric
                                    :archived false)
-           card-index   (candidate-lineage-card-index metric-cards)]
+           card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
        (into #{}
              (keep (fn [card]
                      (some-> (prepare-metric-definition card card-index)
                              :definition
-                             canonical-signature)))
+                             candidate-mining/canonical-signature)))
              metric-cards)))))
 
 (defn- metric-source-sort-key
@@ -480,7 +457,7 @@
                  (when (= (count table-ids) (count required-tables))
                    (-> candidate
                        (assoc :required-tables required-tables
-                              :evidence (candidate-evidence (map ::candidate-mining/source-item candidates))
+                              :evidence (candidate-mining/candidate-evidence (map ::candidate-mining/source-item candidates))
                               ::candidate-mining/signature signature)
                        (metric-suggestions naming-candidate)
                        (dissoc ::candidate-mining/source-item ::candidate-mining/query ::candidate-mining/table-ids))))))
@@ -498,9 +475,9 @@
   ([] (candidate-metrics {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
-     (let [limit               (or limit candidate-default-limit)
-           cards               (candidate-source-cards opts)
-           card-index          (candidate-lineage-card-index cards)
+     (let [limit               (or limit candidate-mining/candidate-default-limit)
+           cards               (candidate-mining/candidate-source-cards opts)
+           card-index          (candidate-mining/candidate-lineage-card-index cards)
            raw-candidates      (raw-metric-candidates cards card-index)
            existing-signatures (existing-metric-definition-signatures)
            table-index         (metric-required-table-index (into #{} (mapcat ::candidate-mining/table-ids) raw-candidates))]
@@ -516,13 +493,13 @@
                  (when-let [source (source-index [:table (::candidate-mining/table-id candidate)])]
                    (let [candidate (cond-> (-> candidate
                                                (assoc :source source
-                                                      :evidence (candidate-evidence
+                                                      :evidence (candidate-mining/candidate-evidence
                                                                  (map ::candidate-mining/source-item candidates))
                                                       ::candidate-mining/signature signature)
                                                (dissoc ::candidate-mining/table-id ::candidate-mining/source-item))
                                      candidate-type
                                      (assoc :candidate-type candidate-type
-                                            :signature (canonical-signature signature)))]
+                                            :signature (candidate-mining/canonical-signature signature)))]
                      (when (keep-candidate? candidate)
                        candidate))))))))
 
@@ -531,14 +508,14 @@
    (merge-candidates raw-candidates source-index existing-signatures limit (constantly true)))
   ([raw-candidates source-index existing-signatures limit keep-candidate?]
    (->> (assemble-candidates raw-candidates source-index existing-signatures nil keep-candidate?)
-        (sort-by candidate-sort-key)
+        (sort-by candidate-mining/candidate-sort-key)
         (take limit)
         (mapv #(dissoc % ::candidate-mining/signature)))))
 
 (defn- merge-cleanup-candidates
   [candidate-type raw-candidates source-index keep-candidate?]
   (->> (assemble-candidates raw-candidates source-index #{} candidate-type keep-candidate?)
-       (sort-by candidate-sort-key)
+       (sort-by candidate-mining/candidate-sort-key)
        (mapv #(dissoc % ::candidate-mining/signature))
        vec))
 
@@ -548,26 +525,27 @@
         (mapcat
          (fn [{:keys [database_id dataset_query] :as card}]
            (for [{:keys [query table-id model-lineage stage-number joined? expressions?]}
-                 (query-stage-contexts database_id dataset_query model-index)
+                 (candidate-mining/query-stage-contexts database_id dataset_query model-index)
                  :when (and (not joined?) (not expressions?))
                  :let [source-item (assoc card
                                           :model-lineage model-lineage
                                           :stage-number stage-number
                                           :joined? joined?)
                        categorical-predicates
-                       (predicate-candidates (filter-atoms query stage-number table-id true))]
+                       (candidate-mining/predicate-candidates
+                        (candidate-mining/filter-atoms query stage-number table-id true))]
                  aggregation (lib/aggregations query stage-number)
                  :let [{aggregation-clause :clause
                         aggregation-info   :info}
-                       (simple-aggregation query stage-number aggregation table-id)]
+                       (candidate-mining/simple-aggregation query stage-number aggregation table-id)]
                  :when aggregation-info
                  {:keys [clause info]}
                  (into [{:clause aggregation-clause :info aggregation-info}]
-                       (keep #(conditional-aggregation aggregation-clause aggregation-info %))
+                       (keep #(candidate-mining/conditional-aggregation aggregation-clause aggregation-info %))
                        categorical-predicates)
-                 :let [definition (minimal-definition query table-id :aggregation clause)]
+                 :let [definition (candidate-mining/minimal-definition query table-id :aggregation clause)]
                  :when (mr/validate ::lib.schema.measure/definition definition)]
-             {::candidate-mining/signature   [table-id (canonical-signature clause)]
+             {::candidate-mining/signature   [table-id (candidate-mining/canonical-signature clause)]
               ::candidate-mining/table-id    table-id
               ::candidate-mining/source-item source-item
               ::candidate-suggestions/metadata-provider (:lib/metadata query)
@@ -591,7 +569,7 @@
                     (try
                       (let [aggregations (lib/aggregations definition 0)]
                         (when (= 1 (count aggregations))
-                          [table_id (canonical-signature (first aggregations))]))
+                          [table_id (candidate-mining/canonical-signature (first aggregations))]))
                       (catch InterruptedException e
                         (.interrupt (Thread/currentThread))
                         (throw e))
@@ -612,10 +590,10 @@
                     (try
                       (when-let [predicate (full-segment-predicate definition)]
                         (let [atoms (lib/atomic-filters
-                                     (minimal-definition definition table_id :filters predicate)
+                                     (candidate-mining/minimal-definition definition table_id :filters predicate)
                                      0)]
                           (when (seq atoms)
-                            (segment-signature table_id atoms))))
+                            (candidate-mining/segment-signature table_id atoms))))
                       (catch InterruptedException e
                         (.interrupt (Thread/currentThread))
                         (throw e))
@@ -633,24 +611,24 @@
         (mapcat
          (fn [{:keys [database_id dataset_query] :as card}]
            (for [{:keys [query model-lineage stage-number joined? expressions?]}
-                 (query-stage-contexts database_id dataset_query model-index)
+                 (candidate-mining/query-stage-contexts database_id dataset_query model-index)
                  :when (not expressions?)
                  [table-id atoms] (group-by :table-id
-                                            (filter-atoms query stage-number nil false))
+                                            (candidate-mining/filter-atoms query stage-number nil false))
                  :let [source-item (assoc card
                                           :model-lineage model-lineage
                                           :stage-number stage-number
                                           :joined? joined?)]
-                 {:keys [predicate predicates columns]} (predicate-candidates atoms)
-                 :let [definition (minimal-segment-definition query table-id predicates)]
+                 {:keys [predicate predicates columns]} (candidate-mining/predicate-candidates atoms)
+                 :let [definition (candidate-mining/minimal-segment-definition query table-id predicates)]
                  :when (mr/validate ::lib.schema/query definition)]
-             {::candidate-mining/signature   (segment-signature table-id predicates)
+             {::candidate-mining/signature   (candidate-mining/segment-signature table-id predicates)
               ::candidate-mining/table-id    table-id
               ::candidate-mining/source-item source-item
               ::candidate-suggestions/metadata-provider (:lib/metadata query)
               :definition   definition
               :predicate    predicate
-              :fields       (mapv field-summary columns)
+              :fields       (mapv candidate-mining/field-summary columns)
               :composite?   (> (count predicates) 1)
               :atom-count   (count predicates)})))
         cards))
@@ -670,7 +648,7 @@
    ;; count-where synthesized from this raw aggregation.
    (not (and (= :count (:type aggregation))
              (nil? (:field aggregation))))
-   (or (not (contains? conditional-aggregation-operators (:type aggregation)))
+   (or (not (contains? candidate-mining/conditional-aggregation-operators (:type aggregation)))
        (pos? (:verified-source-count evidence))
        (pos? (:official-source-count evidence))
        (>= (:distinct-source-count evidence) 2))))
@@ -685,11 +663,11 @@
   ([] (cleanup-candidates {}))
   ([{:keys [include-ineligible?] :as opts}]
    (lib-be/with-metadata-provider-cache
-     (let [cards        (candidate-source-cards opts)
-           models       (candidate-model-index cards)
+     (let [cards        (candidate-mining/candidate-source-cards opts)
+           models       (candidate-mining/candidate-model-index cards)
            raw-measures (raw-measure-candidates cards models)
            raw-segments (raw-segment-candidates cards models)
-           source-idx   (build-source-index
+           source-idx   (candidate-mining/build-source-index
                          (into #{}
                                (map (comp #(vector :table %) ::candidate-mining/table-id))
                                (concat raw-measures raw-segments)))
@@ -715,11 +693,12 @@
   ([] (candidate-measures {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
-     (let [limit      (or limit candidate-default-limit)
-           cards      (candidate-source-cards opts)
-           models     (candidate-model-index cards)
+     (let [limit      (or limit candidate-mining/candidate-default-limit)
+           cards      (candidate-mining/candidate-source-cards opts)
+           models     (candidate-mining/candidate-model-index cards)
            candidates (raw-measure-candidates cards models)
-           source-idx (build-source-index (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
+           source-idx (candidate-mining/build-source-index
+                       (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
        (mapv candidate-suggestions/add-measure-suggestions
              (merge-candidates candidates
                                source-idx
@@ -744,11 +723,12 @@
   ([] (candidate-segments {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
-     (let [limit       (or limit candidate-default-limit)
-           cards       (candidate-source-cards opts)
-           models      (candidate-model-index cards)
+     (let [limit       (or limit candidate-mining/candidate-default-limit)
+           cards       (candidate-mining/candidate-source-cards opts)
+           models      (candidate-mining/candidate-model-index cards)
            candidates  (raw-segment-candidates cards models)
-           source-idx  (build-source-index (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
+           source-idx  (candidate-mining/build-source-index
+                        (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
        (mapv candidate-suggestions/add-segment-suggestions
              (merge-candidates candidates
                                source-idx

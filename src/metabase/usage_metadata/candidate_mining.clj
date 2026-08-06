@@ -345,7 +345,8 @@
           (recur (into #{} (mapcat (comp referenced-card-ids :dataset_query)) rows)
                  (into index (map (juxt :id identity)) rows)))))))
 
-(defn- candidate-lineage-card-index
+(defn candidate-lineage-card-index
+  "Return Cards referenced by `cards`, indexed by Card ID for lineage traversal."
   [cards]
   (cached-candidate-batch-analysis
    [::candidate-lineage-card-index (mapv :id cards)]
@@ -386,7 +387,7 @@
       (log/debug e "Failed to resolve candidate fields")
       nil)))
 
-(defn- physical-clause
+(defn physical-clause
   "Rewrite every Field ref in `clause` to a direct physical Field-id ref.
 
   Returns the rewritten clause, its resolved columns, and their single owning table. If
@@ -455,7 +456,8 @@
   (and (= 1 (lib/stage-count query))
        (projection-only-stage? query 0 table-id)))
 
-(defn- joined-stage?
+(defn joined-stage?
+  "Whether `stage` contains an explicit or implicit join."
   [stage]
   (or (boolean (seq (:joins stage)))
       (boolean
@@ -463,7 +465,8 @@
                (or (:join-alias opts) (:source-field opts)))
              (mapcat (partial clauses-of-type :field) (vals stage))))))
 
-(defn- resolve-transparent-source
+(defn resolve-transparent-source
+  "Follow a projection-only saved-Card chain to its physical source table."
   [database-id source-card-id card-index eligible-card? seen]
   (when (and (pos-int? source-card-id)
              (not (contains? seen source-card-id)))
