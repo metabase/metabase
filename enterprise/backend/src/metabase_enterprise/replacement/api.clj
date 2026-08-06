@@ -146,12 +146,12 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
-  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
   (or (t2/select-one :model/ReplacementRun :id id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
-(api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
+(api.macros/defendpoint :post "/runs/:id/cancel" :- [:map {:closed true} [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)

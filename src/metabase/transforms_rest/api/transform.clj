@@ -191,13 +191,13 @@
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (transforms.core/get-transform id))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
@@ -215,7 +215,7 @@
   "Get transform runs based on a set of filter params."
   [_route-params
    query-params :-
-   [:map
+   [:map {:closed true}
     [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags" "duration"]]
     [:sort-direction {:optional true} [:enum "asc" "desc"]]
     [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -265,7 +265,7 @@
   any of the given transforms. The remaining filters work as in `GET /run`."
   [_route-params
    query-params :-
-   [:map
+   [:map {:closed true}
     [:types {:optional true} [:maybe (ms/QueryVectorOf [:enum "job" "dag" "transform"])]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout" "canceled" "canceling"])]]
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
@@ -283,7 +283,7 @@
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
-  [{:keys [run-id]} :- [:map
+  [{:keys [run-id]} :- [:map {:closed true}
                         [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)
   (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
@@ -311,13 +311,13 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (transforms.core/delete-transform! (api/write-check :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
   (transforms-base.u/delete-target-table-by-id! id)
@@ -325,7 +325,7 @@
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
@@ -339,7 +339,7 @@
 
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
   (t2/update! :model/Transform id {:last_checkpoint_value nil})
   nil)
@@ -366,7 +366,7 @@
                                           :run-method    :manual
                                           :user-id       api/*current-user-id*}))))
 
-(api.macros/defendpoint :post "/:id/run" :- [:map
+(api.macros/defendpoint :post "/:id/run" :- [:map {:closed true}
                                              [:status [:= 202]]
                                              [:body [:map {:closed true}
                                                      [:message :any]
@@ -407,8 +407,8 @@
                                                                     [:name :string]]]
   "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),
   in execution order."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [direction]} :- [:map {:closed true} [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (api/read-check :model/Transform id)
   (mapv (fn [{xform-id :id, xform-name :name}]
           {:id xform-id, :name xform-name})

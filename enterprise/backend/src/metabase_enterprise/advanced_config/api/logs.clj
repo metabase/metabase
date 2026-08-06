@@ -41,7 +41,7 @@
 (api.macros/defendpoint :get "/query_execution/:yyyy-mm"
   "Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser."
-  [{:keys [yyyy-mm]} :- [:map
+  [{:keys [yyyy-mm]} :- [:map {:closed true}
                          [:yyyy-mm (mu/with-api-error-message [:re #"\d{4}-\d{2}"]
                                                               (deferred-tru "Must be a string like 2020-04 or 2222-11."))]]]
   (let [[year month] (mc/coerce [:tuple

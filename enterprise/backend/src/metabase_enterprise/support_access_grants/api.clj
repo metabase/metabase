@@ -29,7 +29,7 @@
   "Revoke an existing support access grant.
 
   Requires superuser permissions. Any admin can revoke any grant."
-  [{id :id} :- [:map [:id ms/PositiveInt]]]
+  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/write-check :model/SupportAccessGrantLog id)
   (grants/revoke-grant! api/*current-user-id* id))

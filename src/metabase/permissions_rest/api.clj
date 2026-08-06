@@ -37,7 +37,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
-  [{:keys [db-id]} :- [:map
+  [{:keys [db-id]} :- [:map {:closed true}
                        [:db-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
@@ -48,7 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:group-id group-id}))
@@ -218,7 +218,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (perms/check-manager-of-group id)
   (api/check-404
@@ -293,7 +293,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
@@ -391,7 +391,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
@@ -405,7 +405,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)

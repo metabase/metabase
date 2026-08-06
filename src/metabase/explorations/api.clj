@@ -816,7 +816,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [expl (api/read-check (get-exploration-or-404 id))]
     (hydrate-exploration expl)))
 
@@ -848,7 +848,7 @@
 
   Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade
   FKs configured in the explorations migration."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
     (t2/delete! :model/Exploration :id id))
@@ -877,7 +877,7 @@
 
   No `:event/exploration-update` is published: nothing on the Exploration row changes, so there
   is no revision to record (the revision push skips unchanged objects)."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
   (let [thread      (get-thread-or-404 thread-id)
         exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
     (when-not (reset-thread-for-rerun! thread-id)
@@ -902,7 +902,7 @@
   Idempotent: a thread with `completed_at IS NOT NULL` (already terminal — natural completion or
   prior cancel) returns 200 with its existing state. Authorization is the same write check as
   other thread-mutating endpoints."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
   (write-check-thread thread-id)
   (let [now (t/offset-date-time)]
     (t2/with-transaction [_conn]
@@ -963,8 +963,8 @@
   "Stream the result of a single completed exploration query. The optional `format` query param
   is one of `api`, `json`, `csv`, `xlsx` (default `api`). When the underlying query is still
   pending or has errored, returns a 409 with status info instead of streaming."
-  [{:keys [id]}     :- [:map [:id ms/PositiveInt]]
-   {:keys [format]} :- [:map
+  [{:keys [id]}     :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [format]} :- [:map {:closed true}
                         [:format {:default :api}
                          [:enum {:decode/api keyword} :api :csv :json :xlsx]]]]
   (let [q (get-exploration-query-or-404 id)]

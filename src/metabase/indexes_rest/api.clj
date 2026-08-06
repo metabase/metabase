@@ -65,7 +65,7 @@
   "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged
   `:metabase_managed`; managed ones also carry `:request` (status + definition)."
   [_route-params
-   {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
+   {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
         database-id (transforms-base.i/target-db-id transform)
         {:keys [schema] table-name :name} (:target transform)

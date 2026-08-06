@@ -218,13 +218,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
-  [{:keys [zoom x y]} :- [:map
+  [{:keys [zoom x y]} :- [:map {:closed true}
                           [:zoom ms/Int]
                           [:x ms/Int]
                           [:y ms/Int]]
    {:keys     [query]
     lat-field :latField
-    lon-field :lonField} :- [:map
+    lon-field :lonField} :- [:map {:closed true}
                              [:query    ::query]
                              [:latField ::legacy-ref]
                              [:lonField ::legacy-ref]]]
@@ -295,13 +295,13 @@
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
   [{:keys [card-id zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:card-id ::lib.schema.id/card]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters], lat-field :latField lon-field :lonField}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
@@ -315,7 +315,7 @@
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
   [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}
-   :- [:map
+   :- [:map {:closed true}
        [:dashboard-id ::lib.schema.id/dashboard]
        [:dashcard-id ::lib.schema.id/dashcard]
        [:card-id ::lib.schema.id/card]
@@ -323,7 +323,7 @@
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters] lat-field :latField, lon-field :lonField, :as _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]

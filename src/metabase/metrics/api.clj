@@ -96,8 +96,8 @@
 
   Returns the metric with hydrated dimensions and dimension mappings; the `::MetricWithDimensions`
   schema encodes them to the snake_case wire shape at the `defendpoint` edge."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [include-orphaned]} :- [:map
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [include-orphaned]} :- [:map {:closed true}
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [metric (hydrated-metric id (boolean include-orphaned))]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
@@ -292,7 +292,7 @@
    - values: list of [value] or [value, display-name] tuples
    - field_id: the underlying field ID
    - has_more_values: boolean indicating if there are more values"
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [metric (hydrated-metric id false)]
@@ -306,10 +306,10 @@
   "Search for values of a dimension that contain the query string.
 
    Returns field values matching the search query in the same format as the field values API."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
+   {:keys [query]}            :- [:map {:closed true} [:query ms/NonBlankString]]]
   (let [metric (hydrated-metric id false)]
     (metrics/dimension-search-values
      (:dimensions metric)
@@ -322,10 +322,10 @@
   "Fetch remapped value for a specific dimension value.
 
    Returns a pair [value, display-name] if remapping exists, or [value] otherwise."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [value]}             :- [:map [:value :string]]]
+   {:keys [value]}             :- [:map {:closed true} [:value :string]]]
   (let [metric (hydrated-metric id false)]
     (metrics/dimension-remapped-value
      (:dimensions metric)
@@ -354,12 +354,12 @@
   (events/publish-event! :event/metric-dimensions-update {:object {:id id}}))
 
 (api.macros/defendpoint :get "/:id/dimension"
-  :- [:map
+  :- [:map {:closed true}
       [:added   [:sequential :map]]
       [:addable [:sequential :map]]]
   "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
   add, grouped by source table. Both can be filtered with a `query` name substring."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [query with-addable include-orphaned]} :- [:map
                                                      [:query            {:optional true} [:maybe :string]]
                                                      [:with-addable     {:optional true} [:maybe ms/BooleanValue]]
@@ -376,7 +376,7 @@
   are recomputed server-side.
 
   Returns the updated list of dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimensions]} :- [:map
                             [:dimensions [:sequential [:map
@@ -391,7 +391,7 @@
 (api.macros/defendpoint :post "/:id/dimension/remove"
   :- [:sequential :map]
   "Remove dimensions (by UUID) from a metric. Returns the updated list of added dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
   (write-check-metric! id)
@@ -403,7 +403,7 @@
   "Mark exactly one dimension as the metric's default, clearing any previous default. A null
   `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.
   Returns the updated list of added dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_id]} :- [:map [:dimension_id [:maybe ms/NonBlankString]]]]
   (write-check-metric! id)
@@ -414,7 +414,7 @@
   "Persist a new ordering for a metric's dimensions. `dimension_ids` is the desired order; dimensions
   not listed keep their relative order after the listed ones. Returns the updated list of added
   dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
   (write-check-metric! id)
@@ -426,7 +426,7 @@
   column.
 
   `source` is a `{type, field-id}`; the new column must have the same effective type."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    _query-params

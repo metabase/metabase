@@ -77,7 +77,7 @@
   `archived=true` to return all events on the timeline, both archived and unarchived."
   [{:keys [id]}                         :- [:map {:closed true}
                                             [:id ms/PositiveInt]]
-   {:keys [include archived start end]} :- [:map
+   {:keys [include archived start end]} :- [:map {:closed true}
                                             [:include  {:optional true}  ::include]
                                             [:archived {:default :false} ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
@@ -159,7 +159,7 @@
   "Fetch a specific Collection's timelines."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include archived]} :- [:map
+   {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check (t2/select-one :model/Collection :id id))

@@ -148,7 +148,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (-> (get-notification id)
       api/read-check))
 
@@ -248,7 +248,7 @@
   `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
   modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
   the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
   (check-no-resource-templates! (:handlers body))
@@ -324,6 +324,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)
