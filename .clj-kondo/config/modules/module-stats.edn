@@ -3,10 +3,10 @@
  :largest-ns-scc 504
  :largest-scc-modules 105
  :largest-scc-namespaces 1403
- :max-file-deftests 18601
+ :max-file-deftests 18604
  :max-file-test-namespaces 1468
  :module-count 205
- :module-exports 68
+ :module-exports 69
  :ns-prefix-overrides 78
  :parent-team-mismatches 26
  :total-api 577}

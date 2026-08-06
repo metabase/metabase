@@ -239,7 +239,6 @@
                     :model/QueryExecution
                     :model/User}}
 
-
   ;; TODO -- consolidate these into a `.core` API namespace.
   api
   {:team "DevEx"
@@ -404,7 +403,6 @@
                     :model/TransformRun
                     :model/User}}
 
-
   audit-app.view-log
   {:team "UX West"
    :ns-prefix "metabase.view-log"
@@ -427,7 +425,6 @@
   {:team "UX West"
    :api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
-
 
   batch-processing
   {:team "UX West"
@@ -602,7 +599,6 @@
                     :model/Transform
                     :model/User}}
 
-
   collections.rest
   {:team    "UX West"
    :ns-prefix "metabase.collections-rest"
@@ -677,7 +673,7 @@
    :model-imports #{:model/Card :model/Dashboard}}
 
   contextual-interestingness
-   {:team "UX West"
+  {:team "UX West"
    :api #{metabase.contextual-interestingness.core}
    :uses #{interestingness
            metabot
@@ -710,7 +706,6 @@
            util.classloader
            util.config}
    :model-imports :bypass}
-
 
   core.initialization-status
   {:team "UX West"
@@ -913,7 +908,6 @@
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
-
   embedding
   {:team "Embedding"
    :module-exports #{embedding.rest}
@@ -953,7 +947,6 @@
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
-
   events
   {:team "DevEx"
    :api  #{metabase.events.core metabase.events.impl metabase.events.init}
@@ -972,7 +965,7 @@
                     :model/User}}
 
   explorations
-   {:team "UX West"
+  {:team "UX West"
    :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init}
    :uses #{analytics
            analytics.interface
@@ -1079,13 +1072,10 @@
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
 
-
-
   interestingness
   {:team "UX West"
    :api  #{metabase.interestingness.core}
    :uses #{util}}
-
 
   lib
   {:team "Querying Platform"
@@ -2225,7 +2215,6 @@
    :uses #{premium-features}
    :model-imports #{:model/OsiAiContext}}
 
-
   segments
   {:team "Graphy"
    :api  #{metabase.segments.api
@@ -2726,8 +2715,9 @@
                     :model/TransformRun
                     :model/TransformTag}}
 
-    typed-schemas
+  typed-schemas
   {:team "Embedding"
+   :module-exports #{typed-schemas.rest}
    :api  #{}
    :uses #{actions
            collections
@@ -3134,7 +3124,6 @@
            util}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -3237,8 +3226,6 @@
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
-
-
 
   enterprise/cloud
   {:team "Cloud"
@@ -3344,7 +3331,7 @@
            util.config}
    :model-exports #{:model/CustomVizPlugin}}
 
-    enterprise/data-apps
+  enterprise/data-apps
   {:team "Gadget"
    :api  #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init metabase-enterprise.data-apps.sync}
    :uses #{api
@@ -3578,7 +3565,6 @@
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
-
 
   enterprise/metabot.data-complexity-score
   {:team "Metabot"
@@ -3876,7 +3862,6 @@
            util.config}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
-
 
   enterprise/serialization
   {:team "Graphy"
