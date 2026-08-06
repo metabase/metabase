@@ -7,7 +7,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { MfaStatus } from "metabase-types/api";
+import type { MfaEnforcement, MfaStatus } from "metabase-types/api";
 import {
   createMockMfaStatus,
   createMockTokenFeatures,
@@ -19,12 +19,14 @@ type SetupOpts = {
   status?: MfaStatus;
   hasStatusError?: boolean;
   hasFeature?: boolean;
+  enforcement?: MfaEnforcement;
 };
 
 function setup({
   status = createMockMfaStatus(),
   hasStatusError = false,
   hasFeature = true,
+  enforcement = "optional",
 }: SetupOpts = {}) {
   if (hasStatusError) {
     setupMfaStatusEndpointError();
@@ -35,6 +37,7 @@ function setup({
   renderWithProviders(<AccountSecurityPanel />, {
     storeInitialState: createMockState({
       settings: mockSettings({
+        "mfa-enforcement": enforcement,
         "token-features": createMockTokenFeatures({
           "multi-factor-auth": hasFeature,
         }),
@@ -101,6 +104,19 @@ describe("AccountSecurityPanel", () => {
         name: "Generate recovery codes",
       }),
     ).toBeInTheDocument();
+  });
+
+  describe("when two-factor authentication is required", () => {
+    it("should not let an enrolled user disable it", async () => {
+      setup({
+        status: createMockMfaStatus({ enrolled: true }),
+        enforcement: "required",
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Disable" }),
+      ).toBeDisabled();
+    });
   });
 
   it("should show an error message when the status cannot be loaded", async () => {

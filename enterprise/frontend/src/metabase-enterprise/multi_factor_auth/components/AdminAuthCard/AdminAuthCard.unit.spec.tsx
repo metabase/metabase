@@ -31,6 +31,8 @@ type SetupOpts = {
   hasFeature?: boolean;
   overview?: MfaAdminOverview;
   isAdmin?: boolean;
+  isPasswordLoginEnabled?: boolean;
+  isLdapEnabled?: boolean;
 };
 
 function setup({
@@ -39,10 +41,14 @@ function setup({
   hasFeature = true,
   overview = createMockMfaAdminOverview(),
   isAdmin = false,
+  isPasswordLoginEnabled = true,
+  isLdapEnabled = false,
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "mfa-enforcement": enforcement,
     "mfa-requirement-deadline": deadline,
+    "enable-password-login": isPasswordLoginEnabled,
+    "ldap-enabled": isLdapEnabled,
     "token-features": createMockTokenFeatures({
       "multi-factor-auth": hasFeature,
     }),
@@ -55,6 +61,11 @@ function setup({
       key: "mfa-requirement-deadline",
       value: deadline,
     }),
+    createMockSettingDefinition({
+      key: "enable-password-login",
+      value: isPasswordLoginEnabled,
+    }),
+    createMockSettingDefinition({ key: "ldap-enabled", value: isLdapEnabled }),
   ]);
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
@@ -133,6 +144,32 @@ describe("AdminAuthCard", () => {
 
     expect(await screen.findByText("1 enrolled user")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  describe("password authentication", () => {
+    it("should hide the card when password login and LDAP are both off", async () => {
+      setup({ isPasswordLoginEnabled: false, isLdapEnabled: false });
+
+      await waitFor(() => {
+        expect(screen.queryByLabelText("Enforcement")).not.toBeInTheDocument();
+      });
+      expect(
+        screen.queryByText("Two-factor authentication"),
+      ).not.toBeInTheDocument();
+    });
+
+    // LDAP users sign in through the password form, so the second factor still applies to them.
+    it("should keep the card when password login is off but LDAP is on", async () => {
+      setup({ isPasswordLoginEnabled: false, isLdapEnabled: true });
+
+      expect(await screen.findByLabelText("Enforcement")).toBeInTheDocument();
+    });
+
+    it("should keep the card when password login is on", async () => {
+      setup({ isPasswordLoginEnabled: true, isLdapEnabled: false });
+
+      expect(await screen.findByLabelText("Enforcement")).toBeInTheDocument();
+    });
   });
 
   it("should warn when the encryption key is not set", async () => {

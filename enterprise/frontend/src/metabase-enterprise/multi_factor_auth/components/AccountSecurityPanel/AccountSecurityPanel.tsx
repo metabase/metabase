@@ -4,7 +4,8 @@ import { t } from "ttag";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import { Box, Button, Group, Stack } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useGetMfaStatusQuery } from "metabase-enterprise/api";
 import type { MfaStatus } from "metabase-types/api";
@@ -67,6 +68,9 @@ type MfaSectionProps = {
 };
 
 function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
+  const mfaEnforcement = useSetting("mfa-enforcement");
+
+  const isMfaRequired = mfaEnforcement === "required";
   return (
     <Group justify="space-between" align="flex-start" wrap="nowrap">
       <Stack gap="xs">
@@ -80,9 +84,15 @@ function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
         <Box>
           {status.enrolled ? (
             <Group gap="sm" wrap="nowrap">
-              <Button
-                onClick={() => onOpenModal("disable")}
-              >{t`Disable`}</Button>
+              <Tooltip
+                label={t`Two-factor authentication can not be disabled when it is required on your instance`}
+                disabled={!isMfaRequired}
+              >
+                <Button
+                  onClick={() => onOpenModal("disable")}
+                  disabled={isMfaRequired}
+                >{t`Disable`}</Button>
+              </Tooltip>
               <Button onClick={() => onOpenModal("recovery-codes")}>
                 {t`Generate recovery codes`}
               </Button>

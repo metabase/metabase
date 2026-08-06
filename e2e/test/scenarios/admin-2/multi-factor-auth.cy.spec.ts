@@ -8,8 +8,13 @@ const { admin, nodata, normal } = USERS;
 
 const NEW_PASSWORD = "NewPassword2fa!123";
 
-/** Mirrors DEFAULT_GRACE_PERIOD_DAYS in AdminAuthCard. */
 const GRACE_PERIOD_DAYS = 14;
+
+/** Provisioned by the openldap service in e2e/test/scenarios/docker-compose.yml. */
+const LDAP_USER = { username: "user01@example.org", password: "123456" };
+
+/** mock-saml accepts any username and password, but only example.com/example.org domains. */
+const SAML_USER = { username: "samluser", domain: "example.com" };
 
 type MaildevEmail = { subject: string; html: string };
 
@@ -25,8 +30,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
   describe("optional", () => {
     describe("admin settings", () => {
-      //TODO
-      it("is not visible when email and password auth is disabled", () => {});
       it("admin can enable and disable 2FA in authentication settings", () => {
         cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView();
@@ -35,7 +38,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
           .should("be.visible");
         mfaSelect().should("have.value", "Off").click();
         H.popover().findByText("Optional").click();
-        //cy.wait("@updateEnforcement");
+        cy.wait("@updateEnforcement");
         mfaSetting()
           .should("contain", "0 enrolled users")
           .and("contain", "users without 2FA");
@@ -378,7 +381,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         mfaDeadline().should("have.value", deadline.format("MMMM D, YYYY"));
       });
 
-      it("should immediately invalidate current non-mfa sessions when enfrocement is required", () => {
+      it("should immediately invalidate current non-mfa sessions when enforcement is required", () => {
         cy.signInAsNormalUser();
         cy.visit("/");
         cy.findByTestId("greeting-message").should(
@@ -401,10 +404,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
           "be.visible",
         );
       });
-    });
-
-    describe("enrollment", () => {
-      it("does not allow you to disable mfa if you are enrolled and enforment is required", () => {});
     });
 
     describe("login", () => {
@@ -458,9 +457,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.findByTestId("greeting-message").should("be.visible");
         cy.url().should("not.contain", "/auth/login");
       });
-      it("requires a challenge when logging in via LDAP", () => {});
-
-      it("does not require MFA challenge if logging in via SAML", () => {});
 
       it("resetting a forgotten password does not bypass enrollment", () => {
         cy.intercept("POST", "/api/session").as("login");
@@ -475,8 +471,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
           .findByText(/If the email exists/)
           .should("be.visible");
 
-        // the reset email is sent asynchronously and lands next to the "2FA
-        // enabled" notification from enrollment — wait for both to be there
         H.getInbox(1).then(({ body: emails }: { body: MaildevEmail[] }) => {
           const resetEmail = emails.find((email) =>
             email.subject.includes("Password Reset"),
@@ -513,6 +507,77 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.button("Done").click();
         cy.findByTestId("greeting-message").should("be.visible");
       });
+    });
+
+    describe("sso", () => {
+      it(
+        "requires a challenge when logging in via LDAP",
+        { tags: "@external" },
+        () => {
+          cy.intercept("POST", "/api/session").as("login");
+          let secret = "";
+
+          H.setupLdap();
+          requireMfa({ deadline: daysFromNow(-1) });
+
+          cy.log(
+            "LDAP provisions the user on first sign-in, then enrolls them",
+          );
+          signInWithLdap();
+          cy.wait("@login").then(({ response }) => {
+            secret = response?.body.secret;
+          });
+          cy.then(() => {
+            cy.findByLabelText(
+              "Enter the 6-digit code from the authenticator app",
+            ).type(generateTotpCode(secret, Date.now() / 1000));
+          });
+          cy.button("Set up authentication").click();
+          cy.button("Done").click();
+          cy.findByTestId("greeting-message").should("be.visible");
+
+          cy.log("Signing in again is challenged for the second factor");
+          signInWithLdap();
+          cy.findByTestId("login-page")
+            .findByText("Enter the 6-digit code from your authenticator app.")
+            .should("be.visible");
+          // Enrollment consumed a time step, so take the next 30-second window
+          cy.then(() => {
+            cy.findByLabelText("Authenticator code").type(
+              generateTotpCode(secret, Date.now() / 1000 + 30),
+            );
+          });
+          cy.button("Verify").click();
+          cy.findByTestId("greeting-message").should("be.visible");
+        },
+      );
+
+      it(
+        "does not require MFA challenge if logging in via SAML",
+        { tags: "@external" },
+        () => {
+          H.setupSaml();
+
+          requireMfa({ deadline: daysFromNow(-1) });
+
+          cy.signOut();
+          cy.visit("/auth/login");
+          cy.button("Sign in with SSO").click();
+
+          cy.log(
+            "The IdP takes over — any password works, the domain is fixed",
+          );
+          cy.get("#username").type(SAML_USER.username);
+          cy.get("#domain").select(SAML_USER.domain);
+          cy.get("#password").type("anything");
+          cy.get("button").click();
+
+          cy.log("Straight in: SSO providers are exempt from the MFA gate");
+          cy.findByTestId("greeting-message").should("be.visible");
+          cy.url().should("not.contain", "/auth/login");
+          cy.findByTestId("login-page").should("not.exist");
+        },
+      );
     });
   });
 });
@@ -602,6 +667,14 @@ function signInWithPassword() {
   cy.visit("/auth/login");
   cy.findByLabelText("Email address").type(normal.email);
   cy.findByLabelText("Password").type(normal.password);
+  cy.button("Sign in").click();
+}
+
+function signInWithLdap() {
+  cy.signOut();
+  cy.visit("/auth/login");
+  cy.findByLabelText("Username or email address").type(LDAP_USER.username);
+  cy.findByLabelText("Password").type(LDAP_USER.password);
   cy.button("Sign in").click();
 }
 

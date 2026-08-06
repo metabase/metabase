@@ -50,6 +50,10 @@ export function AdminAuthCard() {
     updateSettings,
   } = useAdminSetting("mfa-enforcement");
   const { value: deadline } = useAdminSetting("mfa-requirement-deadline");
+  const { value: isPasswordLoginEnabled } = useAdminSetting(
+    "enable-password-login",
+  );
+  const { value: isLdapEnabled } = useAdminSetting("ldap-enabled");
 
   const enabled = enforcement != null && enforcement !== "off";
   const isRequired = enforcement === "required";
@@ -57,6 +61,15 @@ export function AdminAuthCard() {
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
   });
+
+  // MFA only gates the password form, which LDAP users sign in through too, so there is nothing
+  // to configure once both are off. Mirrors the provider filter in metabase-enterprise/auth.
+  const hasNoPasswordLogin =
+    isPasswordLoginEnabled === false && isLdapEnabled === false;
+
+  if (hasNoPasswordLogin) {
+    return null;
+  }
 
   if (!hasFeature && !enabled) {
     return null;
