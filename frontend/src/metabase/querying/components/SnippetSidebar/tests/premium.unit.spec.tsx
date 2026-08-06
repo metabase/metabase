@@ -53,6 +53,22 @@ describe("SnippetSidebar (EE with token feature)", () => {
         namespaces: ["snippets"],
         showAuthorityLevelPicker: false,
         shouldNavigateOnCreate: false,
+        worktreeId: undefined,
+      },
+    });
+  });
+
+  it("should scope the collection modal to the worktree when creating a new folder in a worktree", async () => {
+    const { store } = await setup({ worktreeId: 42 });
+
+    await userEvent.click(getIcon("add"));
+    await userEvent.click(await screen.findByText("New folder"));
+
+    expect(store.getState().modal).toMatchObject({
+      id: "collection",
+      props: {
+        namespaces: ["snippets"],
+        worktreeId: 42,
       },
     });
   });

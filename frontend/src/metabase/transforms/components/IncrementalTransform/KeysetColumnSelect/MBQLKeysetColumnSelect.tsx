@@ -1,4 +1,5 @@
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
@@ -26,11 +27,15 @@ export const MBQLKeysetColumnSelect = ({
   query,
   disabled,
 }: MBQLKeysetColumnSelectProps) => {
+  const worktreeId = useWorktreeId();
+
   /**
    * we need this metadata in order to get incremental fields to select
    */
   const { isLoading } = useGetAdhocQueryMetadataQuery(
-    source.type === "query" ? source.query : skipToken,
+    source.type === "query"
+      ? { ...source.query, worktree_id: worktreeId }
+      : skipToken,
   );
   return (
     <KeysetColumnSelect

@@ -6,6 +6,7 @@ import type {
   CollectionId,
   IconName,
   NativeQuerySnippet,
+  WorktreeId,
 } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
@@ -22,6 +23,7 @@ export type SnippetSidebarContext = {
   props: {
     snippetCollection: Collection;
     dispatch: Dispatch;
+    worktreeId?: WorktreeId;
   };
 };
 

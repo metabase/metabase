@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { mockSettings } from "__support__/settings";
 import { screen } from "__support__/ui";
+import { WorktreeProvider } from "metabase/common/worktrees";
 import { Metabot } from "metabase/metabot/components/Metabot";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
@@ -9,16 +10,27 @@ import {
   input as metabotInput,
   setup as setupMetabot,
 } from "metabase/metabot/tests/utils";
+import type { WorktreeId } from "metabase-types/api";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
 
 function setup({
   isMetabotEnabled = true,
-}: { isMetabotEnabled?: boolean } = {}) {
+  worktreeId,
+}: { isMetabotEnabled?: boolean; worktreeId?: WorktreeId } = {}) {
+  const menu =
+    worktreeId != null ? (
+      <WorktreeProvider worktreeId={worktreeId}>
+        <CreateTransformMenu />
+      </WorktreeProvider>
+    ) : (
+      <CreateTransformMenu />
+    );
+
   return setupMetabot({
     ui: (
       <>
-        <CreateTransformMenu />
+        {menu}
         <Metabot />
       </>
     ),
@@ -63,5 +75,24 @@ describe("CreateTransformMenu", () => {
 
     await assertMetabotVisible();
     expect(await metabotInput()).toHaveTextContent("Create a transform that");
+  });
+
+  it("shows the saved question item outside a worktree", async () => {
+    setup();
+    await openMenu();
+
+    expect(
+      await screen.findByText("Copy of a saved question"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the saved question item inside a worktree", async () => {
+    setup({ worktreeId: 7 });
+    await openMenu();
+
+    expect(await screen.findByText("SQL query")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Copy of a saved question"),
+    ).not.toBeInTheDocument();
   });
 });

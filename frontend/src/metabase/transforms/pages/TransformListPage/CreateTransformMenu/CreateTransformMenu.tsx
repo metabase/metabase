@@ -141,15 +141,17 @@ export const CreateTransformMenu = () => {
                   {t`Python script`}
                 </Menu.Item>
               )}
-              <Menu.Item
-                leftSection={<Icon name="insight" />}
-                onClick={() => {
-                  trackTransformCreate({ creationType: "saved-question" });
-                  openPicker();
-                }}
-              >
-                {t`Copy of a saved question`}
-              </Menu.Item>
+              {worktreeId == null && (
+                <Menu.Item
+                  leftSection={<Icon name="insight" />}
+                  onClick={() => {
+                    trackTransformCreate({ creationType: "saved-question" });
+                    openPicker();
+                  }}
+                >
+                  {t`Copy of a saved question`}
+                </Menu.Item>
+              )}
               <Menu.Divider />
               <Menu.Item
                 leftSection={<Icon name="folder" />}

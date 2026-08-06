@@ -218,3 +218,24 @@
               (is (true? (can-see-snippet?)))
               (perms/revoke-collection-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?))))))))))
+
+(deftest root-items-worktree-snippets-test
+  (testing "GET /api/collection/root/items?namespace=snippets"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-temp [:model/Worktree           {wt-id :id}        {}
+                     :model/NativeQuerySnippet {wt-snippet :id}   {:name        (mt/random-name)
+                                                                   :worktree_id wt-id}
+                     :model/NativeQuerySnippet {main-snippet :id} {:name (mt/random-name)}]
+        (letfn [(snippet-ids [& params]
+                  (->> (apply mt/user-http-request :crowberto :get 200 "collection/root/items"
+                              :namespace "snippets" params)
+                       :data
+                       (into #{} (comp (filter #(= "snippet" (:model %))) (map :id)))))]
+          (testing "\nthe main-app root listing excludes worktree snippets"
+            (let [ids (snippet-ids)]
+              (is (contains? ids main-snippet))
+              (is (not (contains? ids wt-snippet)))))
+          (testing "\nworktree-id selects only that worktree's snippets"
+            (let [ids (snippet-ids :worktree-id wt-id)]
+              (is (contains? ids wt-snippet))
+              (is (not (contains? ids main-snippet))))))))))

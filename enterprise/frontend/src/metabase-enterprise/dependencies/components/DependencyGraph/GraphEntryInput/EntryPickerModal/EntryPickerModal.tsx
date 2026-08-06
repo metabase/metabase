@@ -5,6 +5,7 @@ import {
   EntityPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import {
@@ -24,6 +25,7 @@ export function EntryPickerModal({
   onChange,
   onClose,
 }: EntryPickerModalProps) {
+  const worktreeId = useWorktreeId();
   const selectedItem = useMemo(() => {
     return value != null ? getEntryPickerItem(value) : undefined;
   }, [value]);
@@ -42,6 +44,7 @@ export function EntryPickerModal({
       value={selectedItem}
       options={ENTITY_PICKER_OPTIONS}
       recentsContext={RECENTS_CONTEXT}
+      worktreeId={worktreeId}
       onChange={handleItemSelect}
       onClose={onClose}
     />

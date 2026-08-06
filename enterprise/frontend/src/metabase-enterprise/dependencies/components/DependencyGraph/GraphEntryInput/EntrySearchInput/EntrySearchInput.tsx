@@ -7,6 +7,7 @@ import {
   useLogRecentItemMutation,
   useSearchQuery,
 } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { DefaultSelectItem, FixedSizeIcon, Loader, Select } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import {
@@ -40,13 +41,15 @@ export function EntrySearchInput({
     SEARCH_DEBOUNCE_DURATION,
   );
   const isSearchEnabled = searchQuery.length > 0;
+  const worktreeId = useWorktreeId();
 
+  // Recents always belong to the main app, so a worktree-scoped input never offers them.
   const { data: recentItems } = useListRecentsQuery(
     {
       context: ["selections"],
     },
     {
-      skip: isSearchEnabled,
+      skip: isSearchEnabled || worktreeId !== undefined,
     },
   );
 
@@ -55,6 +58,7 @@ export function EntrySearchInput({
       q: searchQuery,
       models: searchModels,
       context: "dependencies",
+      ...(worktreeId !== undefined && { "worktree-id": worktreeId }),
     },
     {
       skip: !isSearchEnabled,

@@ -14,6 +14,7 @@ import type {
   CollectionNamespace,
   TokenFeatures,
   User,
+  WorktreeId,
 } from "metabase-types/api";
 import {
   createMockCollection,
@@ -37,6 +38,7 @@ export interface SetupOpts {
   parentCollectionNamespace?: CollectionNamespace | null;
   initialCollectionId?: CollectionId;
   namespaces?: CollectionNamespace[];
+  worktreeId?: WorktreeId;
   onSubmit?: jest.Mock;
 }
 
@@ -48,6 +50,7 @@ export const setup = ({
   parentCollectionNamespace,
   initialCollectionId,
   namespaces,
+  worktreeId,
   onSubmit = jest.fn(),
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
@@ -105,6 +108,7 @@ export const setup = ({
           collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
           initialCollectionId={initialCollectionId}
           namespaces={namespaces}
+          worktreeId={worktreeId}
         />
       }
     />,

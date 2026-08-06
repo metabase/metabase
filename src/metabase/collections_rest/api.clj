@@ -577,13 +577,15 @@
             :collection_preview :dataset_query :table_id :query_type :is_upload :collection_namespace)))
 
 (defenterprise snippets-collection-children-query
-  "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
-  collections are an EE feature."
+  "Collection children query for snippets on OSS. Returns all snippets in the collection's worktree scope regardless
+  of collection, because snippet collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
-  [_collection {:keys [archived?]}]
+  [collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+   :where  [:and
+            [:= :archived (boolean archived?)]
+            [:= :worktree_id (:worktree_id collection)]]})
 
 (defmethod collection-children-query :snippet
   [_model collection options]

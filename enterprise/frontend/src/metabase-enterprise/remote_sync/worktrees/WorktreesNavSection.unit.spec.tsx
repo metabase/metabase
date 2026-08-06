@@ -33,6 +33,7 @@ type SetupOpts = {
   syncType?: "read-only" | "read-write";
   hasLibraryFeature?: boolean;
   worktreeHasLibrary?: boolean;
+  hasDependenciesFeature?: boolean;
 };
 
 function setup({
@@ -46,6 +47,7 @@ function setup({
   syncType = "read-write",
   hasLibraryFeature = false,
   worktreeHasLibrary = false,
+  hasDependenciesFeature = false,
 }: SetupOpts = {}) {
   setupRemoteSyncEndpoints({
     worktrees,
@@ -60,6 +62,7 @@ function setup({
     "remote-sync-type": syncType,
     "token-features": createMockTokenFeatures({
       library: hasLibraryFeature,
+      dependencies: hasDependenciesFeature,
     }),
   });
   setupPropertiesEndpoints(settings);
@@ -151,6 +154,34 @@ describe("WorktreesNavSection", () => {
     });
     expect(
       screen.queryByRole("link", { name: "Library" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a Dependency graph item linking into the worktree when the dependencies feature is present", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      hasDependenciesFeature: true,
+    });
+    await screen.findByText("feature-branch");
+
+    const dependenciesLink = await screen.findByRole("link", {
+      name: "Dependency graph",
+    });
+    expect(dependenciesLink).toHaveAttribute(
+      "href",
+      "/data-studio/worktrees/7/dependencies",
+    );
+  });
+
+  it("shows no Dependency graph item without the dependencies token feature", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      hasDependenciesFeature: false,
+    });
+    await screen.findByText("feature-branch");
+
+    expect(
+      screen.queryByRole("link", { name: "Dependency graph" }),
     ).not.toBeInTheDocument();
   });
 

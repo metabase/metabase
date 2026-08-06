@@ -7,6 +7,7 @@ import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, waitFor } from "__support__/ui";
+import { WorktreeProvider } from "metabase/common/worktrees";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { isNotNull } from "metabase/utils/types";
@@ -16,6 +17,7 @@ import type {
   Card,
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
+  WorktreeId,
 } from "metabase-types/api";
 import { createMockCard, createMockField } from "metabase-types/api/mocks";
 
@@ -31,6 +33,7 @@ import {
 function completer(
   useCompletion: () => CompletionSource,
   state?: Partial<State>,
+  worktreeId?: WorktreeId,
 ) {
   let completer: CompletionSource | null = null;
 
@@ -39,9 +42,18 @@ function completer(
     return null;
   }
 
-  renderWithProviders(<Wrapper />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    worktreeId !== undefined ? (
+      <WorktreeProvider worktreeId={worktreeId}>
+        <Wrapper />
+      </WorktreeProvider>
+    ) : (
+      <Wrapper />
+    ),
+    {
+      storeInitialState: state,
+    },
+  );
 
   return async (doc: string) => {
     const activeCompleter = completer;
@@ -279,12 +291,18 @@ describe("useSnippetCompletion", () => {
 
   async function setup({
     results = MOCK_RESULTS,
+    worktreeId,
   }: {
     results?: Partial<NativeQuerySnippet>[];
+    worktreeId?: WorktreeId;
   } = {}) {
     fetchMock.get(url, results);
 
-    const complete = completer(() => useSnippetCompletion());
+    const complete = completer(
+      () => useSnippetCompletion(),
+      undefined,
+      worktreeId,
+    );
 
     // the call gets made once before completing so it's always made
     await waitFor(() => {
@@ -385,6 +403,20 @@ describe("useSnippetCompletion", () => {
         ],
       });
     });
+  });
+
+  it("should list snippets scoped to the worktree", async () => {
+    await setup({ worktreeId: 7 });
+
+    const calls = fetchMock.callHistory.calls(url);
+    expect(new URL(calls[0].url).searchParams.get("worktree-id")).toBe("7");
+  });
+
+  it("should list unscoped snippets outside a worktree", async () => {
+    await setup();
+
+    const calls = fetchMock.callHistory.calls(url);
+    expect(new URL(calls[0].url).searchParams.get("worktree-id")).toBe(null);
   });
 });
 

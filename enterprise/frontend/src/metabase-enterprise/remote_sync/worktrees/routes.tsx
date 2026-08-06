@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { DependenciesSectionLayout } from "metabase/data-studio/app/pages/DependenciesSectionLayout";
 import { TransformsSectionLayout } from "metabase/data-studio/app/pages/TransformsSectionLayout";
 import {
   PLUGIN_DEPENDENCIES,
@@ -8,7 +9,6 @@ import {
 } from "metabase/plugins";
 import { Navigate, Route } from "metabase/router";
 import {
-  NewCardTransformPage,
   NewNativeTransformPage,
   NewQueryTransformPage,
 } from "metabase/transforms/pages/NewTransformPage";
@@ -25,11 +25,15 @@ export function getDataStudioWorktreeRoutes(IsAdmin: ComponentType) {
       <Route index element={<Navigate to="transforms" replace />} />
       {PLUGIN_LIBRARY.isEnabled &&
         PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)}
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route path="dependencies" element={<DependenciesSectionLayout />}>
+          {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
+        </Route>
+      )}
       <Route path="transforms" element={<TransformsSectionLayout />}>
         <Route index element={<TransformListPage />} />
         <Route path="new/query" element={<NewQueryTransformPage />} />
         <Route path="new/native" element={<NewNativeTransformPage />} />
-        <Route path="new/card/:cardId" element={<NewCardTransformPage />} />
         <Route path=":transformId" element={<TransformQueryPage />} />
         <Route path=":transformId/edit" element={<TransformQueryPage />} />
         <Route

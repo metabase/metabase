@@ -3,19 +3,28 @@ import type {
   DependencyGroupType,
   DependencySortColumn,
   SortDirection,
+  WorktreeId,
 } from "metabase-types/api";
 
 const GRAPH_URL = `/data-studio/dependencies`;
 const DIAGNOSTICS_URL = `/monitor/dependency-diagnostics`;
 
+function dependencyGraphRootUrl(worktreeId?: WorktreeId | null) {
+  return worktreeId != null
+    ? `/data-studio/worktrees/${worktreeId}/dependencies`
+    : GRAPH_URL;
+}
+
 export type DependencyGraphParams = {
   entry?: DependencyEntry;
   baseUrl?: string;
+  worktreeId?: WorktreeId | null;
 };
 
 export function dependencyGraph({
   entry,
-  baseUrl = GRAPH_URL,
+  worktreeId,
+  baseUrl = dependencyGraphRootUrl(worktreeId),
 }: DependencyGraphParams = {}) {
   const searchParams = new URLSearchParams();
   if (entry != null) {

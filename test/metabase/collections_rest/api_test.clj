@@ -3668,6 +3668,27 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id)))))))))
 
+(deftest root-items-worktree-snippets-test
+  (when config/ee-available?
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Worktree           {wt-id :id}        {}
+                     :model/NativeQuerySnippet {wt-snippet :id}   {:name        (mt/random-name)
+                                                                   :worktree_id wt-id}
+                     :model/NativeQuerySnippet {main-snippet :id} {:name (mt/random-name)}]
+        (letfn [(snippet-ids [& params]
+                  (->> (apply mt/user-http-request :crowberto :get 200 "collection/root/items"
+                              :namespace "snippets" params)
+                       :data
+                       (into #{} (comp (filter #(= "snippet" (:model %))) (map :id)))))]
+          (testing "the main-app root listing excludes worktree snippets"
+            (let [ids (snippet-ids)]
+              (is (contains? ids main-snippet))
+              (is (not (contains? ids wt-snippet)))))
+          (testing "worktree-id selects only that worktree's snippets"
+            (let [ids (snippet-ids :worktree-id wt-id)]
+              (is (contains? ids wt-snippet))
+              (is (not (contains? ids main-snippet))))))))))
+
 (deftest worktree-collection-items-test
   (when config/ee-available?
     (mt/with-premium-features #{:transforms-basic}

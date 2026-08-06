@@ -7,7 +7,8 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { NativeQuerySnippet } from "metabase-types/api";
+import { WorktreeProvider } from "metabase/common/worktrees";
+import type { NativeQuerySnippet, WorktreeId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockNativeQuerySnippet,
@@ -26,11 +27,13 @@ type SetupOpts = {
     | NativeQuerySnippet
     | (Omit<Partial<NativeQuerySnippet>, "id"> & { id?: undefined });
   withDefaultFoldersList?: boolean;
+  worktreeId?: WorktreeId;
 };
 
 async function setup({
   snippet = {},
   withDefaultFoldersList = true,
+  worktreeId,
 }: SetupOpts = {}) {
   fetchMock.get({
     url: "path:/api/collection/root",
@@ -71,13 +74,20 @@ async function setup({
   const onCreate = jest.fn();
   const onUpdate = jest.fn();
   const onClose = jest.fn();
-  renderWithProviders(
+  const modal = (
     <SnippetFormModal
       snippet={snippet}
       onCreate={onCreate}
       onUpdate={onUpdate}
       onClose={onClose}
-    />,
+    />
+  );
+  renderWithProviders(
+    worktreeId !== undefined ? (
+      <WorktreeProvider worktreeId={worktreeId}>{modal}</WorktreeProvider>
+    ) : (
+      modal
+    ),
   );
 
   await waitForLoaderToBeRemoved();
@@ -183,6 +193,54 @@ describe("SnippetFormModal", () => {
     it("doesn't show the archive button", async () => {
       await setup();
       expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+    });
+
+    it("sends worktree_id when created inside a worktree", async () => {
+      const { onClose } = await setup({ worktreeId: 7 });
+
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+      await userEvent.type(
+        screen.getByLabelText(LABEL.CONTENT),
+        "WHERE discount > 0",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
+
+      const apiCalls = fetchMock.callHistory.calls(
+        "path:/api/native-query-snippet",
+      );
+      expect(apiCalls).toHaveLength(1);
+      // the POST handler already consumed the Request stream, so parse the raw body
+      const body = JSON.parse(apiCalls[0].options?.body as string);
+      expect(body).toMatchObject({
+        name: "My snippet",
+        content: "WHERE discount > 0",
+        worktree_id: 7,
+      });
+    });
+
+    it("does not send worktree_id outside a worktree", async () => {
+      const { onClose } = await setup();
+
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+      await userEvent.type(
+        screen.getByLabelText(LABEL.CONTENT),
+        "WHERE discount > 0",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
+
+      const apiCalls = fetchMock.callHistory.calls(
+        "path:/api/native-query-snippet",
+      );
+      expect(apiCalls).toHaveLength(1);
+      // the POST handler already consumed the Request stream, so parse the raw body
+      const body = JSON.parse(apiCalls[0].options?.body as string);
+      expect(body).not.toHaveProperty("worktree_id");
     });
   });
 

@@ -5,6 +5,7 @@ import {
   useGetAdhocQueryMetadataQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
@@ -17,13 +18,16 @@ import { useNativeHasCheckpointFieldOptions } from "./useNativeCheckpointFieldOp
 
 export const useHasCheckpointOptions = (source: TransformSource) => {
   const metadata = useSelector(getMetadata);
+  const worktreeId = useWorktreeId();
   const libQuery = getLibQuery(source, metadata);
 
   // Trigger query metadata fetch for MBQL/native query sources so metadata is populated
   // before we compute hasCheckpointOptions. Without this, getSourceFieldOptions(libQuery)
   // can return [] when the query references a card or needs schema from the API.
   useGetAdhocQueryMetadataQuery(
-    source.type === "query" ? source.query : skipToken,
+    source.type === "query"
+      ? { ...source.query, worktree_id: worktreeId }
+      : skipToken,
   );
 
   const isPythonTransform = source.type === "python";

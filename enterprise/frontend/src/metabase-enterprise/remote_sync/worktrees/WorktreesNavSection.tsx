@@ -90,11 +90,13 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
   const { pathname } = useLocation();
   const transformsUrl = Urls.transformList({ worktreeId: worktree.id });
   const libraryUrl = Urls.dataStudioLibrary({ worktreeId: worktree.id });
+  const dependenciesUrl = Urls.dependencyGraph({ worktreeId: worktree.id });
   const isInsideWorktree = pathname.startsWith(
     `${Urls.dataStudioWorktrees()}/${worktree.id}`,
   );
   const [isExpanded, setIsExpanded] = useState(true);
 
+  const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection } = useGetLibraryCollectionQuery(
     { "worktree-id": worktree.id },
@@ -149,6 +151,15 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
             isSelected={pathname.startsWith(transformsUrl)}
             showLabel
           />
+          {hasDependenciesFeature && (
+            <AreaTab
+              label={t`Dependency graph`}
+              icon="dependencies"
+              to={dependenciesUrl}
+              isSelected={pathname.startsWith(dependenciesUrl)}
+              showLabel
+            />
+          )}
         </Box>
       </Collapse>
     </Box>

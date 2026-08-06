@@ -1,6 +1,7 @@
 import { useContext } from "react";
 
 import { skipToken } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSearchParams } from "metabase/router";
@@ -15,6 +16,7 @@ import S from "./DependencyGraphPage.module.css";
 import { parseDependencyEntry } from "./utils";
 
 export function DependencyGraphPage() {
+  const worktreeId = useWorktreeId();
   const [searchParams] = useSearchParams();
   const entry = parseDependencyEntry(
     searchParams.get("id") ?? undefined,
@@ -39,10 +41,12 @@ export function DependencyGraphPage() {
         graph={graph}
         isFetching={isFetching}
         error={error}
-        getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
+        getGraphUrl={(entry) =>
+          Urls.dependencyGraph({ entry, baseUrl, worktreeId })
+        }
         withEntryPicker={withEntryPicker}
         headerRightSide={
-          baseUrl === undefined ? (
+          baseUrl === undefined && worktreeId == null ? (
             <AppSwitcher className={S.appSwitcher} />
           ) : null
         }

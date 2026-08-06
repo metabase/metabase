@@ -4,6 +4,7 @@ import { useLayoutEffect, useState } from "react";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Center, Flex } from "metabase/ui";
@@ -58,6 +59,7 @@ export function DependencyDiagnostics({
   onParamsChange,
 }: DependencyDiagnosticsProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
+  const worktreeId = useWorktreeId();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useLazyListGraphNodesQuery =
@@ -90,6 +92,7 @@ export function DependencyDiagnostics({
       "sort-direction": sortDirection,
       offset: page * PAGE_SIZE,
       limit: PAGE_SIZE,
+      ...(worktreeId !== undefined && { "worktree-id": worktreeId }),
     },
     {
       skip: isLoadingParams,
