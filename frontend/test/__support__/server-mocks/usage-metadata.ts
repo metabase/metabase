@@ -22,7 +22,9 @@ export function setupUsageMetadataTableEndpoint(
   tableId: number,
   response: UsageMetadataTableDetail,
 ) {
-  fetchMock.get(`path:${BASE_URL}/tables/${tableId}`, response);
+  fetchMock.get(`path:${BASE_URL}/tables/${tableId}`, response, {
+    name: `usage-metadata-table-${tableId}`,
+  });
 }
 
 export function setupUsageMetadataCandidatesEndpoint(
@@ -35,7 +37,9 @@ export function setupUsageMetadataCandidateEndpoint(
   candidateId: number,
   response: UsageMetadataCandidateDetail,
 ) {
-  fetchMock.get(`path:${BASE_URL}/candidates/${candidateId}`, response);
+  fetchMock.get(`path:${BASE_URL}/candidates/${candidateId}`, response, {
+    name: `usage-metadata-candidate-${candidateId}`,
+  });
 }
 
 export function setupUsageMetadataRefreshEndpoint(

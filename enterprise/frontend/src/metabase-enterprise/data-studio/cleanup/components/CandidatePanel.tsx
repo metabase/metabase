@@ -144,15 +144,15 @@ export function CandidatePanel({
         aria-label={t`Candidate report`}
         data-testid="cleanup-candidate-panel"
       >
-        {candidateQuery.isFetching ? (
+        {candidateQuery.isFetching && candidate == null ? (
           <Flex h="100%" align="center" justify="center">
             <LoadingAndErrorWrapper loading />
           </Flex>
-        ) : candidateQuery.error || !candidate ? (
+        ) : candidateQuery.error && candidate == null ? (
           <Flex h="100%" align="center" justify="center">
             <LoadingAndErrorWrapper error={candidateQuery.error} />
           </Flex>
-        ) : (
+        ) : candidate != null ? (
           <CandidatePanelBody
             candidate={candidate}
             onClose={onClose}
@@ -166,6 +166,10 @@ export function CandidatePanel({
               setShowPublishModal(true);
             }}
           />
+        ) : (
+          <Flex h="100%" align="center" justify="center">
+            <LoadingAndErrorWrapper loading />
+          </Flex>
         )}
       </Stack>
       {candidate && (
