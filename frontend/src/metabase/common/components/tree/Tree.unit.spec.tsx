@@ -76,7 +76,8 @@ describe("Tree", () => {
   });
 
   describe("lazily loaded nodes", () => {
-    setupMockIntersectionObserver();
+    const { getObserverOptions } = setupMockIntersectionObserver();
+    const ROW_HEIGHT = 32;
 
     const lazyData = [
       {
@@ -139,7 +140,26 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    const ROW_HEIGHT = 32;
+    it("should keep loading after the end of the list has scrolled past", () => {
+      const PAGE_SIZE = 5;
+      render(
+        <Tree
+          data={data}
+          onSelect={jest.fn()}
+          hasMore
+          onLoadMore={jest.fn()}
+          loadingMoreIds={new Set()}
+          pageSize={PAGE_SIZE}
+          remainingByLevel={new Map([[null, 100]])}
+        />,
+      );
+
+      // Reaching well above the fold is what lets a list the reader has scrolled past catch up instead of stalling.
+      const { rootMargin } = getObserverOptions() ?? {};
+      const [top, , bottom] = String(rootMargin).split(" ");
+      expect(Number.parseInt(top, 10)).toBeGreaterThan(PAGE_SIZE * ROW_HEIGHT);
+      expect(Number.parseInt(bottom, 10)).toBeGreaterThan(0);
+    });
 
     it("should reserve the height of the rows it has not read", () => {
       render(

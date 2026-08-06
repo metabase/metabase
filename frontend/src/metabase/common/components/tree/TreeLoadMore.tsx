@@ -13,6 +13,16 @@ const PREFETCH_DISTANCE = 300;
 const ROW_HEIGHT = 32;
 
 /**
+ * How far the end of a level may sit *above* the fold and still load the next page, counted in pages.
+ *
+ * Reserving the whole level's height means the reader can scroll past the end of what is loaded. A fast scroll can
+ * also carry that end clean through the viewport between two frames, so the observer only ever sees it leave. Either
+ * way the list would sit there with nothing to bring it back. Reaching this far up instead lets it catch up, one
+ * page per request, until the loaded end is back under the reader.
+ */
+const CATCH_UP_PAGES = 10;
+
+/**
  * Marks the end of a level the server cut short, and loads the next page once it is on screen.
  *
  * There is no button: reaching the bottom of the list is the whole gesture. The rows the level still holds are given
@@ -34,10 +44,11 @@ export function TreeLoadMore({
   remaining?: number;
   onLoadMore: () => void;
 }) {
+  const catchUpDistance = pageSize * ROW_HEIGHT * CATCH_UP_PAGES;
   const { ref, entry } = useIntersection<HTMLLIElement>({
-    // Start fetching while the end of the list is still below the fold, so the next page is usually there by the
-    // time the user scrolls to it.
-    rootMargin: `${PREFETCH_DISTANCE}px`,
+    // Below the fold: start fetching early, so the next page is usually there by the time the reader arrives.
+    // Above it: keep fetching after the reader has gone past, so the list can catch up rather than stall.
+    rootMargin: `${catchUpDistance}px 0px ${PREFETCH_DISTANCE}px 0px`,
     threshold: 0,
   });
   const isInView = entry?.isIntersecting ?? false;
