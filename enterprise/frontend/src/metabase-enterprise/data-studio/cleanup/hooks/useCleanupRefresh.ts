@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { trackDataStudioCleanupRefresh } from "metabase/common/data-studio/analytics";
+import { trackDataStudioCleanupRefreshStarted } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import {
@@ -54,13 +54,13 @@ export function useCleanupRefresh() {
     setIsPolling(true);
     try {
       await startRefresh().unwrap();
-      trackDataStudioCleanupRefresh("success");
+      trackDataStudioCleanupRefreshStarted("success");
       sendSuccessToast(t`Cleanup analysis started`);
     } catch (error) {
       if (getErrorStatus(error) === 409) {
-        trackDataStudioCleanupRefresh("already_running");
+        trackDataStudioCleanupRefreshStarted("already_running");
       } else {
-        trackDataStudioCleanupRefresh("failure");
+        trackDataStudioCleanupRefreshStarted("failure");
         setIsPolling(false);
         sendErrorToast(t`Cleanup analysis could not be started`);
       }

@@ -162,7 +162,7 @@ export const trackDataStudioCleanupOpened = () => {
   });
 };
 
-export const trackDataStudioCleanupRefresh = (
+export const trackDataStudioCleanupRefreshStarted = (
   result: "success" | "failure" | "already_running",
 ) => {
   trackSimpleEvent({
@@ -201,9 +201,9 @@ export const trackDataStudioCleanupCandidateAction = ({
   result: "success" | "failure";
 }) => {
   trackSimpleEvent({
-    event: "data_studio_cleanup_candidate_action",
+    event: `data_studio_cleanup_candidate_${action}`,
     target_id: candidateId,
-    event_detail: `${action}:${candidateType}`,
+    event_detail: candidateType,
     result,
   });
 };
