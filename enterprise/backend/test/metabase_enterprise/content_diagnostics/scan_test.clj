@@ -170,7 +170,7 @@
                   (is (nil? (:card_type row))))))))))))
 
 (deftest scan-denormalizes-collection-name-test
-  (testing "scan stamps entity_collection_name from scope_collection_id (nil at root)"
+  (testing "scan stamps entity_collection_name from scope_collection_id (root rows get the site-locale root label)"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix    (scope-prefix)
@@ -179,7 +179,7 @@
                          ;; same name in one collection → duplicated findings with a collection parent
                          :model/Card {in-a :id} {:collection_id coll-id :name (str prefix " twin")}
                          :model/Card {in-b :id} {:collection_id coll-id :name (str prefix " twin")}
-                         ;; same name at root → duplicated findings with nil collection
+                         ;; same name at root → duplicated findings stamped with the root label
                          :model/Card {root-a :id} {:collection_id nil :name (str prefix " rootless")}
                          :model/Card {root-b :id} {:collection_id nil :name (str prefix " rootless")}]
             (scan/scan!)
@@ -189,8 +189,8 @@
                                               :entity_id [:in [in-a in-b root-a root-b]])]
               (is (= coll-name (get by-entity in-a)))
               (is (= coll-name (get by-entity in-b)))
-              (is (nil? (get by-entity root-a)))
-              (is (nil? (get by-entity root-b))))))))))
+              (is (= "Our analytics" (get by-entity root-a)))
+              (is (= "Our analytics" (get by-entity root-b))))))))))
 
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"

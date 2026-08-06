@@ -13,7 +13,7 @@ databaseChangeLog:
               - column:
                   name: entity_collection_name
                   type: varchar(254)
-                  remarks: Name of the scope_collection_id collection at scan time; null for root-resident entities. Denormalized sort key for the collection sort column (mutable upstream - drift until the next scan, like entity_name).
+                  remarks: Name of the scope_collection_id collection at scan time; root-resident rows store the namespace-scoped root label, frozen in the site locale (decision 8). Denormalized sort key + display value for the collection sort column (mutable upstream - drift until the next scan, like entity_name). Null only on pre-migration rows.
 
   - changeSet:
       id: v64.rt255f

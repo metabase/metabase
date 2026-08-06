@@ -82,12 +82,22 @@
 
 (defn- attach-collection-names
   "Stamp each finding with `:entity-collection-name` - the scan-time name of its `:scope-collection-id`
-  collection; nil for root-resident entities."
+  collection. Root-resident entities store the namespace-scoped root label (\"Our analytics\";
+  \"Transforms\" for a transform) - `root-breadcrumb`'s served vocabulary, stored so the sort places
+  root rows under their displayed label. Frozen in the site locale: no user locale is bound in the
+  scan job (decision 8)."
   [findings]
-  (let [ids      (into #{} (keep :scope-collection-id) findings)
-        id->name (when (seq ids)
-                   (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in ids]))]
-    (mapv #(assoc % :entity-collection-name (get id->name (:scope-collection-id %))) findings)))
+  (let [ids            (into #{} (keep :scope-collection-id) findings)
+        id->name       (when (seq ids)
+                         (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in ids]))
+        default-root   (:name (collection/root-collection-with-ui-details nil))
+        transform-root (:name (collection/root-collection-with-ui-details :transforms))]
+    (mapv (fn [{:keys [scope-collection-id entity-type] :as finding}]
+            (assoc finding :entity-collection-name
+                   (if scope-collection-id
+                     (get id->name scope-collection-id)
+                     (if (= entity-type :transform) transform-root default-root))))
+          findings)))
 
 (def ^:private insert-batch-size
   "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~17 columns/row a
