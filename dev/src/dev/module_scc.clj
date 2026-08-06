@@ -289,10 +289,10 @@
         deps))
 
 (defn- default-test-roots
-  "The OSS and EE test trees plus every driver's `test/` root — the same roots the test aliases put on
-  the classpath."
+  "The OSS, EE and dev test trees plus every driver's `test/` root — the same roots the test aliases put
+  on the classpath."
   []
-  (into [(io/file "test") (io/file "enterprise/backend/test")]
+  (into [(io/file "test") (io/file "enterprise/backend/test") (io/file "dev/test")]
         (keep (fn [^java.io.File driver-dir]
                 (let [test-dir (io/file driver-dir "test")]
                   (when (.isDirectory test-dir)
@@ -300,7 +300,8 @@
         (.listFiles (io/file "modules/drivers"))))
 
 (defn test-ns-info
-  "Parse the test `roots` (default: `test/`, `enterprise/backend/test/`, `modules/drivers/*/test/`)
+  "Parse the test `roots` (default: `test/`, `enterprise/backend/test/`, `dev/test/`,
+  `modules/drivers/*/test/`)
   and return a map of `test-ns -> {:files #{path}, :requires #{ns-sym}}`. A namespace defined in more
   than one root (the OSS and EE trees share a few test-ns names) keeps the union of files and
   requires, so a change reaching either definition selects both files. Files without an `ns`
