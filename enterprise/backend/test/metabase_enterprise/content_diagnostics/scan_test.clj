@@ -472,6 +472,37 @@
               (testing "last-active-at - Jan before Jun"
                 (is (= [b-fid a-fid] (order :sort-column "last-active-at" :sort-direction "asc")))))))))))
 
+(deftest api-sort-by-collection-name-test
+  (testing "GET /stale sorts by the denormalized entity_collection_name"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id}
+                         :model/Card {card-b :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix (scope-prefix)
+                  insert (fn [row]
+                           (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            (merge {:scan_id "s" :entity_type :card
+                                                                    :finding_type :stale :details {}}
+                                                                   row))))
+                  ;; collection order (alpha < Beta) inverts entity-name order so the column under test is
+                  ;; isolated. Lowercase-first fixture pins CASE-INSENSITIVE ordering (OQ5): a bytewise
+                  ;; sort would put "Beta" (B = 0x42) before "alpha" (a = 0x61).
+                  a-fid  (insert {:entity_id card-b
+                                  :entity_name (str prefix " b")
+                                  :entity_collection_name "alpha collection"})
+                  b-fid  (insert {:entity_id card-a
+                                  :entity_name (str prefix " a")
+                                  :entity_collection_name "Beta Collection"})
+                  order  (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                             "ee/content-diagnostics/stale"
+                                                             :query prefix kvs))))]
+              (is (= [a-fid b-fid] (order :sort-column "collection-name" :sort-direction "asc")))
+              (is (= [b-fid a-fid] (order :sort-column "collection-name"
+                                          :sort-direction "desc"))))))))))
+
 (deftest api-entity-types-filter-test
   (testing "GET /stale filters by entity-types (repeatable; omitted = all)"
     (mt/with-premium-features #{:content-diagnostics}

@@ -479,9 +479,15 @@
 (def base-sort-column->field
   "Sortable params common to every finding list → their native `content_diagnostics_finding` column.
   Entity attributes are denormalized at scan time, so sorting is a plain `ORDER BY` with no join. Each
-  endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`)."
-  {:detected-at :detected_at
-   :entity-type :entity_type
-   :name        :entity_name
-   :created-at  :entity_created_at
-   :created-by  :entity_creator_name})
+  endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`).
+  Name-ish sorts (name, collection-name) are case-insensitive per house convention (cf. collection items,
+  stale enterprise); lower() also makes ordering deterministic across app-db collations.
+  Note: collection-name sorts by the scan-time stored parent name even when the viewer cannot read that
+  parent (whose breadcrumb serves as null) — the ordering position is the accepted, marginal information
+  exposure (OQ3)."
+  {:detected-at      :detected_at
+   :entity-type      :entity_type
+   :name             [:lower :entity_name]
+   :created-at       :entity_created_at
+   :created-by       :entity_creator_name
+   :collection-name  [:lower :entity_collection_name]})

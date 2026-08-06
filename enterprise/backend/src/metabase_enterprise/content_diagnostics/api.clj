@@ -321,8 +321,9 @@
   are valid values, and `card` means any card type.
   `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -
   threshold-days` (never-used always pass). `query` case-insensitively substring-matches the entity name.
-  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-active-at`, default
-  `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
+  `last-active-at`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is
+  the stable tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days query]
     :or   {include-personal-collections false
@@ -364,8 +365,9 @@
   their own type.
   `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers
   filter on their representative duration). `query` case-insensitively substring-matches the entity name.
-  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duration-ms`, default
-  `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
+  `duration-ms`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the
+  stable tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types min-duration-ms query]
     :or   {include-personal-collections false
@@ -404,7 +406,9 @@
   Params: `include-personal-collections` (default false) excludes entities in personal collections.
   `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid
   `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.
-  `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
+  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
+  `content-count`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` breaks
+  ties."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false
@@ -448,8 +452,9 @@
   be questions.
   `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`
   case-insensitively substring-matches the entity name. `sort-column`
-  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duplicate-count`, default `detected-at`)
-  + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|`duplicate-count`,
+  default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable
+  tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types
            min-duplicate-count query]
