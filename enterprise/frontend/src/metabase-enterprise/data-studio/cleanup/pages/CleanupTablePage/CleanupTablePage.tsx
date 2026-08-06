@@ -51,7 +51,7 @@ import {
 import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
 import { useCandidateAction } from "../../hooks/useCandidateAction";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
-import { useAllUsageMetadataCandidates } from "../../hooks/useUsageMetadataList";
+import { useUsageMetadataCandidates } from "../../hooks/useUsageMetadataList";
 import { parseCleanupParams } from "../../utils";
 
 import S from "./CleanupTablePage.module.css";
@@ -81,7 +81,7 @@ export function CleanupTablePage() {
     skip: tableId == null,
   });
   useLoadTableWithMetadata(tableId);
-  const candidatesQuery = useAllUsageMetadataCandidates(
+  const candidatesQuery = useUsageMetadataCandidates(
     {
       "table-id": tableId,
       "candidate-type": params.candidateType,
@@ -314,11 +314,11 @@ export function CleanupTablePage() {
               </Tabs>
             </Flex>
 
-            {candidatesQuery.isFetching ? (
+            {candidatesQuery.isFetching && candidatesQuery.data == null ? (
               <Card withBorder p={0} flex={1} mih={0}>
                 <TreeTableSkeleton columnWidths={[0.65, 0.2, 0.1, 0.05]} />
               </Card>
-            ) : candidatesQuery.error ? (
+            ) : candidatesQuery.error && candidatesQuery.data == null ? (
               <Center mih="16rem" flex={1}>
                 <LoadingAndErrorWrapper error={candidatesQuery.error} />
               </Center>
@@ -338,6 +338,7 @@ export function CleanupTablePage() {
                 mih={0}
                 style={{ overflow: "hidden" }}
                 data-testid="cleanup-candidate-list"
+                aria-busy={candidatesQuery.isFetchingNextPage}
               >
                 <CandidateTable
                   candidates={candidatesQuery.data?.data ?? []}
@@ -354,6 +355,7 @@ export function CleanupTablePage() {
                     });
                   }}
                   onDismiss={dismissSuggestion}
+                  onScrollEnd={candidatesQuery.fetchNextPage}
                 />
               </Card>
             )}

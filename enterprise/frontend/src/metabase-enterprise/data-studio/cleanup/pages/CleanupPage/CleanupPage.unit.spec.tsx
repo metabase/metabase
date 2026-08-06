@@ -8,6 +8,7 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -181,7 +182,7 @@ describe("CleanupPage", () => {
     expect(listCall?.url).toContain("limit=200");
   });
 
-  it("loads API pages into one continuous list", async () => {
+  it("loads one additional API page when the list approaches the scroll boundary", async () => {
     const tables = Array.from({ length: 201 }, (_, index) => ({
       ...tableSummary,
       table: {
@@ -193,18 +194,57 @@ describe("CleanupPage", () => {
     setup({ tables });
 
     expect(await screen.findByText("Table 1")).toBeInTheDocument();
-    await waitFor(() => {
-      const offsets = fetchMock.callHistory
+    expect(
+      fetchMock.callHistory
         .calls("path:/api/ee/data-studio/usage-metadata/tables")
-        .map((call) => new URL(call.url).searchParams.get("offset"));
-      expect(new Set(offsets)).toEqual(new Set(["0", "200"]));
-    });
+        .map((call) => new URL(call.url).searchParams.get("offset")),
+    ).toEqual(["0"]);
 
-    const lastCall = fetchMock.callHistory.lastCall(
-      "path:/api/ee/data-studio/usage-metadata/tables",
-    );
-    expect(lastCall?.url).toContain("offset=200");
-    expect(screen.queryByLabelText("Next page")).not.toBeInTheDocument();
+    const scrollContainer = screen.getByTestId("tree-table-scroll-container");
+    Object.defineProperties(scrollContainer, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1_500 },
+      scrollTop: { configurable: true, value: 800, writable: true },
+    });
+    fireEvent.scroll(scrollContainer);
+    fireEvent.scroll(scrollContainer);
+    fireEvent.scroll(scrollContainer);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/ee/data-studio/usage-metadata/tables")
+          .map((call) => new URL(call.url).searchParams.get("offset")),
+      ).toEqual(["0", "200"]);
+    });
+  });
+
+  it("debounces search before updating the URL and fetching", async () => {
+    setup();
+
+    const search = await screen.findByRole("textbox", {
+      name: "Search cleanup candidates",
+    });
+    await userEvent.type(search, "Orders");
+
+    expect(
+      fetchMock.callHistory
+        .calls("path:/api/ee/data-studio/usage-metadata/tables")
+        .filter((call) => new URL(call.url).searchParams.has("search")),
+    ).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/ee/data-studio/usage-metadata/tables")
+          .filter((call) => new URL(call.url).searchParams.has("search")),
+      ).toHaveLength(1);
+    });
+    expect(
+      fetchMock.callHistory
+        .calls("path:/api/ee/data-studio/usage-metadata/tables")
+        .filter((call) => new URL(call.url).searchParams.has("search")),
+    ).toHaveLength(1);
   });
 
   it("offers an explicit first analysis when no snapshot exists", async () => {

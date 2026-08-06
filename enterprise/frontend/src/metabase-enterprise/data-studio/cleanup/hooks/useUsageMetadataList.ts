@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import { useDispatch } from "metabase/redux";
@@ -20,6 +20,8 @@ type UsageMetadataListResult<T> = {
   data: UsageMetadataPage<T> | undefined;
   error: unknown;
   isFetching: boolean;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => Promise<void>;
   refetch: () => void;
 };
 
@@ -32,7 +34,7 @@ function pageParams(params: ListUsageMetadataRequest, offset: number) {
   };
 }
 
-function useAllUsageMetadataPages<T>(
+function useUsageMetadataPages<T>(
   params: ListUsageMetadataRequest,
   firstPage: UsageMetadataPage<T> | undefined,
   firstPageError: unknown,
@@ -43,83 +45,76 @@ function useAllUsageMetadataPages<T>(
   refetch: () => void,
 ): UsageMetadataListResult<T> {
   const [data, setData] = useState<UsageMetadataPage<T>>();
-  const [remainingPagesError, setRemainingPagesError] = useState<unknown>();
-  const [areRemainingPagesFetching, setAreRemainingPagesFetching] =
-    useState(false);
+  const [nextPageError, setNextPageError] = useState<unknown>();
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const isNextPagePending = useRef(false);
+  const generation = useRef(0);
 
   useDeepCompareEffect(() => {
-    let cancelled = false;
+    generation.current += 1;
+    isNextPagePending.current = false;
+    setNextPageError(undefined);
+    setIsFetchingNextPage(false);
+    setData(firstPage);
+  }, [firstPage, params]);
 
-    if (!firstPage) {
-      setData(undefined);
-      setRemainingPagesError(undefined);
-      setAreRemainingPagesFetching(false);
+  const fetchNextPage = useCallback(async () => {
+    const isComplete = data == null || data.data.length >= data.total;
+    if (isComplete || isNextPagePending.current) {
       return;
     }
 
-    const remainingPageCount = Math.max(
-      0,
-      Math.ceil(firstPage.total / LIST_PAGE_SIZE) - 1,
-    );
-    if (remainingPageCount === 0) {
-      setData({ ...firstPage, limit: null, offset: null });
-      setRemainingPagesError(undefined);
-      setAreRemainingPagesFetching(false);
-      return;
-    }
+    const requestGeneration = generation.current;
+    isNextPagePending.current = true;
+    setIsFetchingNextPage(true);
+    setNextPageError(undefined);
 
-    setAreRemainingPagesFetching(true);
-    setRemainingPagesError(undefined);
-    Promise.all(
-      Array.from({ length: remainingPageCount }, (_, index) =>
-        fetchPage(pageParams(params, (index + 1) * LIST_PAGE_SIZE)),
-      ),
-    )
-      .then((remainingPages) => {
-        if (cancelled) {
-          return;
-        }
+    try {
+      const nextPage = await fetchPage(pageParams(params, data.data.length));
+      if (requestGeneration !== generation.current) {
+        return;
+      }
+      if (nextPage.snapshot?.id !== data.snapshot?.id) {
+        throw new Error(
+          "The usage metadata snapshot changed while loading the list",
+        );
+      }
+      setData((currentData) => {
         if (
-          remainingPages.some(
-            (page) => page.snapshot?.id !== firstPage.snapshot?.id,
-          )
+          currentData == null ||
+          currentData.snapshot?.id !== nextPage.snapshot?.id
         ) {
-          throw new Error(
-            "The usage metadata snapshot changed while loading the list",
-          );
+          return currentData;
         }
-        setData({
-          ...firstPage,
-          data: [firstPage, ...remainingPages].flatMap((page) => page.data),
-          limit: null,
-          offset: null,
-        });
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setRemainingPagesError(error);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setAreRemainingPagesFetching(false);
-        }
+        return {
+          ...currentData,
+          data: [...currentData.data, ...nextPage.data],
+          total: nextPage.total,
+        };
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchPage, firstPage, params]);
+    } catch (error) {
+      if (requestGeneration === generation.current) {
+        setNextPageError(error);
+      }
+    } finally {
+      if (requestGeneration === generation.current) {
+        isNextPagePending.current = false;
+        setIsFetchingNextPage(false);
+      }
+    }
+  }, [data, fetchPage, params]);
 
   return {
     data,
-    error: firstPageError ?? remainingPagesError,
-    isFetching: isFirstPageFetching || areRemainingPagesFetching,
+    error: firstPageError ?? nextPageError,
+    isFetching: isFirstPageFetching,
+    isFetchingNextPage,
+    fetchNextPage,
     refetch,
   };
 }
 
-export function useAllUsageMetadataTables(
+export function useUsageMetadataTables(
   params: ListUsageMetadataRequest,
 ): UsageMetadataListResult<UsageMetadataTableSummary> {
   const dispatch = useDispatch();
@@ -135,9 +130,9 @@ export function useAllUsageMetadataTables(
     [dispatch],
   );
 
-  return useAllUsageMetadataPages(
+  return useUsageMetadataPages(
     params,
-    firstPageQuery.data,
+    firstPageQuery.currentData,
     firstPageQuery.error,
     firstPageQuery.isFetching,
     fetchPage,
@@ -145,7 +140,7 @@ export function useAllUsageMetadataTables(
   );
 }
 
-export function useAllUsageMetadataCandidates(
+export function useUsageMetadataCandidates(
   params: ListUsageMetadataRequest,
   { skip = false } = {},
 ): UsageMetadataListResult<UsageMetadataCandidateSummary> {
@@ -165,9 +160,9 @@ export function useAllUsageMetadataCandidates(
     [dispatch],
   );
 
-  return useAllUsageMetadataPages(
+  return useUsageMetadataPages(
     params,
-    firstPageQuery.data,
+    firstPageQuery.currentData,
     firstPageQuery.error,
     firstPageQuery.isFetching,
     fetchPage,
