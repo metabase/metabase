@@ -3,10 +3,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  trackDataStudioCleanupCandidateAction,
-  trackDataStudioCleanupPublicationStarted,
-} from "metabase/common/data-studio/analytics";
+import { trackDataStudioCleanupPublicationStarted } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
@@ -39,6 +36,7 @@ import type {
   UsageMetadataCandidateType,
 } from "metabase-types/api";
 
+import { useCandidateAction } from "../hooks/useCandidateAction";
 import {
   getCreationBlockerLabel,
   getErrorStatus,
@@ -49,7 +47,9 @@ import { CandidateDefinition, getCandidateIcon } from "./CandidateDefinition";
 import S from "./CandidatePanel.module.css";
 import { CreateCandidateModal } from "./CreateCandidateModal";
 import { DismissCandidateModal } from "./DismissCandidateModal";
+import { EvidenceBadges } from "./EvidenceBadges";
 import { ModelingStatusBadge } from "./ModelingStatusBadge";
+import { PublicationStatusBadge } from "./PublicationStatusBadge";
 
 type CandidatePanelProps = {
   panelRef?: Ref<HTMLDivElement>;
@@ -71,9 +71,10 @@ export function CandidatePanel({
   const [showDismissModal, setShowDismissModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const staleCandidateId = useRef<number | undefined>(undefined);
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast } = useMetadataToasts();
   const candidateQuery = useGetUsageMetadataCandidateQuery(candidateId);
   const [restoreCandidate] = useRestoreUsageMetadataCandidateMutation();
+  const runCandidateAction = useCandidateAction();
   const candidate = candidateQuery.data;
 
   useEffect(() => {
@@ -113,30 +114,18 @@ export function CandidatePanel({
     if (!candidate) {
       return;
     }
-    try {
-      await restoreCandidate(candidate.id).unwrap();
-      trackDataStudioCleanupCandidateAction({
-        action: "restore",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "success",
-      });
-      if (showToast) {
-        sendSuccessToast(t`Candidate restored`);
-      }
-    } catch (error) {
-      trackDataStudioCleanupCandidateAction({
-        action: "restore",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "failure",
-      });
-      if (getErrorStatus(error) === 409) {
-        handleStale();
-      } else {
-        sendErrorToast(t`The candidate could not be restored`);
-      }
-    }
+    await runCandidateAction({
+      action: "restore",
+      candidate,
+      request: () => restoreCandidate(candidate.id).unwrap(),
+      errorMessage: t`The candidate could not be restored`,
+      onStale: handleStale,
+      onSuccess: () => {
+        if (showToast) {
+          sendSuccessToast(t`Candidate restored`);
+        }
+      },
+    });
   };
 
   const handleDismissed = () => {
@@ -308,9 +297,7 @@ function CandidatePanelBody({
                         .join(" · ")}
                     </Text>
                   </Stack>
-                  <Badge color={table["published?"] ? "positive" : "neutral"}>
-                    {table["published?"] ? t`Published` : t`Unpublished`}
-                  </Badge>
+                  <PublicationStatusBadge published={table["published?"]} />
                 </Group>
               </Card>
             ))}
@@ -475,15 +462,11 @@ function EvidenceSection({
     <Stack gap="sm">
       <Text fw="bold">{t`Evidence`}</Text>
       <Group gap="xs">
-        {evidence.verified_source_count > 0 && (
-          <Badge variant="light">{t`Verified`}</Badge>
-        )}
-        {evidence.official_source_count > 0 && (
-          <Badge variant="light">{t`Official`}</Badge>
-        )}
-        {evidence.popular_source_count > 0 && (
-          <Badge variant="light">{t`Popular`}</Badge>
-        )}
+        <EvidenceBadges
+          verified={evidence.verified_source_count > 0}
+          official={evidence.official_source_count > 0}
+          popular={evidence.popular_source_count > 0}
+        />
         <Text size="sm" c="text-secondary">
           {t`${evidence.distinct_source_count} sources · ${evidence.total_view_count} views`}
         </Text>
@@ -551,9 +534,12 @@ function SourceRow({
           <Badge variant="light">
             {source.card_type === "model" ? t`Model` : t`Question`}
           </Badge>
-          {source.verified && <Badge>{t`Verified`}</Badge>}
-          {source.official && <Badge>{t`Official`}</Badge>}
-          {source.popular && <Badge>{t`Popular`}</Badge>}
+          <EvidenceBadges
+            verified={source.verified}
+            official={source.official}
+            popular={source.popular}
+            variant="filled"
+          />
           {candidateType !== "table" && (
             <>
               {source.joined && <Badge variant="light">{t`Joined`}</Badge>}

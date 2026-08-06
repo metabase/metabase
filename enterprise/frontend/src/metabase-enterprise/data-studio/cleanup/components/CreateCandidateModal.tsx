@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { trackDataStudioCleanupCandidateAction } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
   Group,
@@ -18,7 +16,7 @@ import type {
   UsageMetadataCandidateType,
 } from "metabase-types/api";
 
-import { getErrorStatus } from "../utils";
+import { useCandidateAction } from "../hooks/useCandidateAction";
 
 import { CandidateDefinition } from "./CandidateDefinition";
 
@@ -43,35 +41,24 @@ export function CreateCandidateModal({
   );
   const [createCandidate, { isLoading }] =
     useCreateUsageMetadataCandidateMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const runCandidateAction = useCandidateAction();
 
   const handleCreate = async () => {
-    try {
-      const response = await createCandidate({
-        id: candidate.id,
-        name,
-        description,
-      }).unwrap();
-      trackDataStudioCleanupCandidateAction({
-        action: "create",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "success",
-      });
-      onCreated(candidate.candidate_type, response.entity.id);
-    } catch (error) {
-      trackDataStudioCleanupCandidateAction({
-        action: "create",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "failure",
-      });
-      if (getErrorStatus(error) === 409) {
-        onStale();
-      } else {
-        sendErrorToast(t`The Library entity could not be created`);
-      }
-    }
+    await runCandidateAction({
+      action: "create",
+      candidate,
+      request: () =>
+        createCandidate({
+          id: candidate.id,
+          name,
+          description,
+        }).unwrap(),
+      errorMessage: t`The Library entity could not be created`,
+      onStale,
+      onSuccess: (response) => {
+        onCreated(candidate.candidate_type, response.entity.id);
+      },
+    });
   };
 
   return (
