@@ -360,6 +360,61 @@ describe("CleanupTablePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("resets candidate action drafts when their modals are reopened", async () => {
+    setupUsageMetadataCandidateEndpoint(candidate.id, candidate);
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("row", { name: "Total revenue" }),
+    );
+    const panel = await screen.findByRole("complementary", {
+      name: "Candidate report",
+    });
+
+    await userEvent.click(
+      await within(panel).findByRole("button", { name: "Create Measure" }),
+    );
+    const nameInput = screen.getByRole("textbox", { name: /Name/ });
+    const descriptionInput = screen.getByRole("textbox", {
+      name: "Description",
+    });
+    expect(nameInput).toHaveAttribute("maxlength", "254");
+    expect(descriptionInput).toHaveAttribute("maxlength", "10000");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Abandoned name");
+    await userEvent.clear(descriptionInput);
+    await userEvent.type(descriptionInput, "Abandoned description");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Create Measure" }),
+    );
+    expect(screen.getByRole("textbox", { name: /Name/ })).toHaveValue(
+      "Total revenue",
+    );
+    expect(screen.getByRole("textbox", { name: "Description" })).toHaveValue(
+      "Sum of order totals",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Dismiss" }),
+    );
+    const reasonInput = screen.getByRole("textbox", {
+      name: "Reason (optional)",
+    });
+    expect(reasonInput).toHaveAttribute("maxlength", "1000");
+    await userEvent.type(reasonInput, "Abandoned reason");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Dismiss" }),
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Reason (optional)" }),
+    ).toHaveValue("");
+  });
+
   it("keeps loaded candidate details visible during background refetches", async () => {
     setupUsageMetadataCandidateEndpoint(candidate.id, candidate);
     const { store } = setup();

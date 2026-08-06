@@ -1,21 +1,24 @@
-import { useState } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import {
-  Button,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-} from "metabase/ui";
+  Form,
+  FormProvider,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import { useCreateUsageMetadataCandidateMutation } from "metabase-enterprise/api";
 import type {
   UsageMetadataCandidateDetail,
   UsageMetadataCandidateType,
 } from "metabase-types/api";
 
+import {
+  CANDIDATE_DESCRIPTION_MAX_LENGTH,
+  CANDIDATE_NAME_MAX_LENGTH,
+} from "../constants";
 import { useCandidateAction } from "../hooks/useCandidateAction";
 
 import { CandidateDefinition } from "./CandidateDefinition";
@@ -28,6 +31,21 @@ type CreateCandidateModalProps = {
   onStale: () => void;
 };
 
+type CreateCandidateFormValues = {
+  name: string;
+  description: string;
+};
+
+const CREATE_CANDIDATE_SCHEMA = Yup.object({
+  name: Yup.string()
+    .required(Errors.required)
+    .max(CANDIDATE_NAME_MAX_LENGTH, Errors.maxLength),
+  description: Yup.string().max(
+    CANDIDATE_DESCRIPTION_MAX_LENGTH,
+    Errors.maxLength,
+  ),
+});
+
 export function CreateCandidateModal({
   candidate,
   opened,
@@ -35,15 +53,14 @@ export function CreateCandidateModal({
   onCreated,
   onStale,
 }: CreateCandidateModalProps) {
-  const [name, setName] = useState(candidate.suggested_name);
-  const [description, setDescription] = useState(
-    candidate.suggested_description ?? "",
-  );
   const [createCandidate, { isLoading }] =
     useCreateUsageMetadataCandidateMutation();
   const runCandidateAction = useCandidateAction();
 
-  const handleCreate = async () => {
+  const handleCreate = async ({
+    name,
+    description,
+  }: CreateCandidateFormValues) => {
     await runCandidateAction({
       action: "create",
       candidate,
@@ -71,40 +88,49 @@ export function CreateCandidateModal({
           : t`Create Segment`
       }
     >
-      <Stack>
-        <Text size="sm" c="text-secondary">
-          {t`The mined definition is read-only. You can review it and customize its name and description.`}
-        </Text>
-        <TextInput
-          label={t`Name`}
-          required
-          value={name}
-          onChange={(event) => setName(event.currentTarget.value)}
-        />
-        <Textarea
-          label={t`Description`}
-          value={description}
-          autosize
-          minRows={3}
-          onChange={(event) => setDescription(event.currentTarget.value)}
-        />
-        <Stack gap="xs">
-          <Text fw="bold">{t`Definition`}</Text>
-          <CandidateDefinition candidate={candidate} />
-        </Stack>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            loading={isLoading}
-            disabled={!name.trim()}
-            onClick={handleCreate}
-          >
-            {candidate.candidate_type === "measure"
-              ? t`Create Measure`
-              : t`Create Segment`}
-          </Button>
-        </Group>
-      </Stack>
+      <FormProvider<CreateCandidateFormValues, unknown>
+        initialValues={{
+          name: candidate.suggested_name,
+          description: candidate.suggested_description ?? "",
+        }}
+        validationSchema={CREATE_CANDIDATE_SCHEMA}
+        onSubmit={handleCreate}
+      >
+        <Form>
+          <Stack>
+            <Text size="sm" c="text-secondary">
+              {t`The mined definition is read-only. You can review it and customize its name and description.`}
+            </Text>
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              required
+              maxLength={CANDIDATE_NAME_MAX_LENGTH}
+            />
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              autosize
+              minRows={3}
+              maxLength={CANDIDATE_DESCRIPTION_MAX_LENGTH}
+            />
+            <Stack gap="xs">
+              <Text fw="bold">{t`Definition`}</Text>
+              <CandidateDefinition candidate={candidate} />
+            </Stack>
+            <Group justify="flex-end">
+              <Button type="button" variant="subtle" onClick={onClose}>
+                {t`Cancel`}
+              </Button>
+              <Button type="submit" loading={isLoading}>
+                {candidate.candidate_type === "measure"
+                  ? t`Create Measure`
+                  : t`Create Segment`}
+              </Button>
+            </Group>
+          </Stack>
+        </Form>
+      </FormProvider>
     </Modal>
   );
 }
