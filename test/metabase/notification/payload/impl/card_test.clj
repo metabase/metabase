@@ -293,11 +293,11 @@
                    :rows [["2021-01-01T00:00:00Z" val]]}}})
 
 (defn- referenced-timeseries-result
-  "Like [[timeseries-result]] but with the goal referencing another card's value."
+  "Like [[timeseries-result]] but with the goal referencing another entity's value."
   [val goal-part]
   (-> (timeseries-result val)
-      (assoc-in [:card :visualization_settings :graph.goal_value] {:card_id 42 :column "target"})
-      (assoc-in [:result :data :referenced_cards] {"42" goal-part})))
+      (assoc-in [:card :visualization_settings :graph.goal_value] {:id 42 :type "card" :column "target"})
+      (assoc-in [:result :data :referenced_entities] {"card" {"42" goal-part}})))
 
 (deftest ^:parallel goal-met-referenced-goal-test
   (testing "Timeseries whose goal is another card's value"

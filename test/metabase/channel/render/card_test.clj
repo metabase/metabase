@@ -556,15 +556,15 @@
                       {:channel.render/include-title? true}))))))))
 
 (def ^:private goal-ref
-  {:card_id 42 :column "target"})
+  {:id 42 :type "card" :column "target"})
 
-(def ^:private goal-referenced-cards
-  {"42" {:status "completed"
-         :data   {:cols [{:name "target"}]
-                  :rows [[80]]}}})
+(def ^:private goal-referenced-entities
+  {"card" {"42" {:status "completed"
+                 :data   {:cols [{:name "target"}]
+                          :rows [[80]]}}}})
 
 (deftest ^:parallel render-resolves-dynamic-goal-line-test
-  (testing "a graph.goal_value card ref is substituted before the settings reach the JS renderer"
+  (testing "a graph.goal_value entity ref is substituted before the settings reach the JS renderer"
     (let [captured (atom nil)
           card     {:id                     1
                     :name                   "bar with dynamic goal"
@@ -576,7 +576,7 @@
           data     {:cols             [{:name "x" :base_type :type/Text}
                                        {:name "y" :base_type :type/Integer :source :aggregation}]
                     :rows             [["a" 1] ["b" 2]]
-                    :referenced_cards goal-referenced-cards}]
+                    :referenced_entities goal-referenced-entities}]
       (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                     (reset! captured viz-settings)
                                                     {:type :svg :content "<svg></svg>"})]
@@ -584,7 +584,7 @@
       (is (= 80 (:graph.goal_value @captured))))))
 
 (deftest render-resolves-dynamic-gauge-segments-test
-  (testing "gauge segment card refs are substituted before the card reaches the JS renderer"
+  (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"
     (let [captured (atom nil)
           card     {:id                     1
                     :name                   "gauge with dynamic segment"
@@ -592,7 +592,7 @@
                     :visualization_settings {:gauge.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
           data     {:cols             [{:name "count" :base_type :type/Integer}]
                     :rows             [[42]]
-                    :referenced_cards goal-referenced-cards}]
+                    :referenced_entities goal-referenced-entities}]
       (with-redefs [js.svg/gauge (fn [card _data]
                                    (reset! captured (:visualization_settings card))
                                    (byte-array 0))]
@@ -608,7 +608,7 @@
           data     {:cols             [{:name "x" :base_type :type/Text}
                                        {:name "y" :base_type :type/Integer :source :aggregation}]
                     :rows             [["a" 1]]
-                    :referenced_cards {"42" {:status "failed" :error "boom"}}}
+                    :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
           rendered (channel.render/render-pulse-card-for-display nil card {:data data})]
       ;; render-pulse-card-for-display returns the content hiccup directly
       (is (str/includes? (hiccup/html rendered)

@@ -3,17 +3,18 @@
    [clojure.test :refer :all]
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
-(def ^:private ref-a {:card_id 1 :column "total"})
-(def ^:private ref-b {:card_id 2 :column "avg"})
+(def ^:private ref-a {:id 1 :type "card" :column "total"})
+(def ^:private ref-b {:id 2 :type "measure" :column "avg"})
 
-(deftest ^:parallel card-ref-test
-  (is (= ref-a (dynamic-goals/card-ref ref-a)))
-  (is (= ref-a (dynamic-goals/card-ref (assoc ref-a :extra "ignored"))))
-  (are [goal] (nil? (dynamic-goals/card-ref goal))
+(deftest ^:parallel goal-source-test
+  (is (= ref-a (dynamic-goals/goal-source ref-a)))
+  (is (= ref-a (dynamic-goals/goal-source (assoc ref-a :extra "ignored"))))
+  (are [goal] (nil? (dynamic-goals/goal-source goal))
     5
     "column-name"
     nil
-    {:card_id 1}
+    {:id 1}
+    {:id 1 :type "card"}
     {:column "total"}))
 
 (deftest ^:parallel goal-values-test
@@ -41,12 +42,15 @@
     (testing "identity fn returns settings unchanged"
       (is (= viz (dynamic-goals/update-goal-values viz identity))))))
 
-(def ^:private referenced-cards
-  {"1" {:status "completed"
-        :data   {:cols [{:name "count"} {:name "total"}]
-                 :rows [[3 100]]}}
-   "2" {:status "failed"
-        :error  "boom"}})
+(def ^:private referenced-entities
+  {"card"    {"1" {:status "completed"
+                   :data   {:cols [{:name "count"} {:name "total"}]
+                            :rows [[3 100]]}}
+              "2" {:status "failed"
+                   :error  "boom"}}
+   "measure" {"1" {:status "completed"
+                   :data   {:cols [{:name "avg"}]
+                            :rows [[7]]}}}})
 
 (defn- unresolved-reason [goal refs]
   (try
@@ -56,7 +60,7 @@
       (:reason (ex-data e)))))
 
 (deftest ^:parallel resolve-goal-value-passthrough-test
-  (are [goal] (= goal (dynamic-goals/resolve-goal-value goal referenced-cards))
+  (are [goal] (= goal (dynamic-goals/resolve-goal-value goal referenced-entities))
     5
     2.5
     "self-column"
@@ -64,31 +68,38 @@
 
 (deftest ^:parallel resolve-goal-value-test
   (testing "card ref resolves to the referenced column's first-row value"
-    (is (= 100 (dynamic-goals/resolve-goal-value {:card_id 1 :column "total"} referenced-cards)))
-    (is (= 3 (dynamic-goals/resolve-goal-value {:card_id 1 :column "count"} referenced-cards))))
+    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
+    (is (= 3 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "count"} referenced-entities))))
+  (testing "a measure ref resolves out of the measure sub-map, not the card one"
+    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
+  (testing "same id, different type, different value"
+    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
+    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
+  (testing "a type with no results at all is :query-failed"
+    (is (= :query-failed (unresolved-reason {:id 1 :type "dashboard" :column "avg"} referenced-entities))))
   (testing "keyword statuses are accepted too"
     (is (= 100 (dynamic-goals/resolve-goal-value
-                {:card_id 1 :column "total"}
-                (update-in referenced-cards ["1" :status] keyword))))))
+                {:id 1 :type "card" :column "total"}
+                (update-in referenced-entities ["card" "1" :status] keyword))))))
 
 (deftest ^:parallel resolve-goal-value-unresolved-test
   (testing ":query-failed"
-    (are [refs] (= :query-failed (unresolved-reason {:card_id 1 :column "total"} refs))
+    (are [refs] (= :query-failed (unresolved-reason {:id 1 :type "card" :column "total"} refs))
       nil
-      (dissoc referenced-cards "1")
-      {"1" (get referenced-cards "2")}))
+      (dissoc referenced-entities "card")
+      {"card" {"1" (get-in referenced-entities ["card" "2"])}}))
   (testing ":column-not-found"
-    (is (= :column-not-found (unresolved-reason {:card_id 1 :column "nope"} referenced-cards))))
+    (is (= :column-not-found (unresolved-reason {:id 1 :type "card" :column "nope"} referenced-entities))))
   (testing ":not-a-number"
     (are [value] (= :not-a-number
-                    (unresolved-reason {:card_id 1 :column "total"}
-                                       (assoc-in referenced-cards ["1" :data :rows] [[3 value]])))
+                    (unresolved-reason {:id 1 :type "card" :column "total"}
+                                       (assoc-in referenced-entities ["card" "1" :data :rows] [[3 value]])))
       nil
       "a string"
       ##Inf))
   (testing ":not-a-number when the referenced result has no rows"
-    (is (= :not-a-number (unresolved-reason {:card_id 1 :column "total"}
-                                            (assoc-in referenced-cards ["1" :data :rows] []))))))
+    (is (= :not-a-number (unresolved-reason {:id 1 :type "card" :column "total"}
+                                            (assoc-in referenced-entities ["card" "1" :data :rows] []))))))
 
 (deftest ^:parallel resolve-dynamic-goals-test
   (testing "substitutes referenced values across all goal-bearing settings"
@@ -97,11 +108,11 @@
             :gauge.segments   [{:min 0 :max 100 :color "#fff"}]
             :scalar.segments  [{:min 3 :max "self-col"}]}
            (dynamic-goals/resolve-dynamic-goals
-            {:graph.goal_value {:card_id 1 :column "total"}
-             :progress.goal    {:card_id 1 :column "count"}
-             :gauge.segments   [{:min 0 :max {:card_id 1 :column "total"} :color "#fff"}]
-             :scalar.segments  [{:min {:card_id 1 :column "count"} :max "self-col"}]}
-            referenced-cards))))
+            {:graph.goal_value {:id 1 :type "card" :column "total"}
+             :progress.goal    {:id 1 :type "card" :column "count"}
+             :gauge.segments   [{:min 0 :max {:id 1 :type "card" :column "total"} :color "#fff"}]
+             :scalar.segments  [{:min {:id 1 :type "card" :column "count"} :max "self-col"}]}
+            referenced-entities))))
   (testing "no-op when settings hold no refs"
     (let [viz {:graph.goal_value 5 :gauge.segments [{:min 0 :max 10}]}]
       (is (= viz (dynamic-goals/resolve-dynamic-goals viz nil))))))

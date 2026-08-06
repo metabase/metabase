@@ -1,8 +1,8 @@
-(ns metabase.query-processor.referenced-cards
-  "Runs the queries a card references and injects their values into the response under `data.referenced_cards`,
-  keyed by card id.
+(ns metabase.query-processor.referenced-entities
+  "Runs the queries a card references and injects their values into the response under `data.referenced_entities`,
+  keyed by entity type and then by id.
 
-  A card that returns more rows than its caller asked for fails that card, never the main query.
+  An entity that returns more rows than its caller asked for fails that entity, never the main query.
 
   Referenced queries must run before the main query's QP store is bound: a store holds one database, so a nested run
   against a different one would be rejected.
@@ -22,16 +22,22 @@
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 ;;; ---------------------------------------------------------------------------------------------------------
-;;; Running the specs. Generic: a spec is `{:card_id, :columns, :max_rows}`, whatever produced it.
+;;; Running the specs. Generic: a spec is `{:type, :id, :columns, :max_rows}`, whatever produced it.
 ;;; ---------------------------------------------------------------------------------------------------------
 
+(def ^:private entity-types
+  "Model and the key its runnable query lives under, per referenced entity type."
+  {"card"    {:model :model/Card,    :query-key :dataset_query}
+   "measure" {:model :model/Measure, :query-key :definition}})
+
 (def specs-schema
-  "Schema for the `referenced_cards` request param."
+  "Schema for the `referenced_entities` request param."
   [:maybe [:sequential
            [:map
-            [:card_id :int]
+            [:type (into [:enum] (keys entity-types))]
+            [:id :int]
             [:columns {:optional true} [:maybe [:sequential :string]]]
-            ;; referencing a card shouldn't yield more rows than querying it directly would
+            ;; referencing an entity shouldn't yield more rows than querying it directly would
             [:max_rows {:optional true}
              [:maybe [:and
                       [:int {:min 1}]
@@ -51,10 +57,10 @@
     data))
 
 (defn- referenced-query
-  [{:keys [dataset_query id]} max-rows]
-  (assoc dataset_query
-         ;; one over the limit, so a card returning too much can be rejected instead of silently truncated. a card
-         ;; with its own `:limit` under this still comes back short, which is how you ask for "the first N rows".
+  [query id max-rows]
+  (assoc query
+         ;; one over the limit, so an entity returning too much can be rejected instead of silently truncated. a
+         ;; query with its own `:limit` under this still comes back short, which is how you ask for "the first N".
          :constraints {:max-results (inc max-rows), :max-results-bare-rows (inc max-rows)}
          ;; no :executed-by; it'd require a :query-hash for the query remark
          :info {:context :question
@@ -70,58 +76,59 @@
               (a/>! child v))))
     child))
 
-(defn- run-referenced-card
+(defn- run-referenced-entity
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
-  [{:keys [card_id columns max_rows]} default-max-rows]
-  (let [max-rows (or max_rows default-max-rows)]
+  [{entity-type :type, :keys [id columns max_rows]} default-max-rows]
+  (let [max-rows (or max_rows default-max-rows)
+        {:keys [model query-key]} (entity-types entity-type)]
     (try
-      (let [card   (api/read-check :model/Card card_id)
+      (let [entity (api/read-check model id)
             ;; a nested run inside the outer streaming response must return an in-memory map,
             ;; not write to the outer stream
             result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
                              qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
-                     (qp/process-query (referenced-query card max-rows)))
+                     (qp/process-query (referenced-query (query-key entity) id max-rows)))
             data   (:data result)]
         (if (> (count (:rows data)) max-rows)
           (do
-            (log/warnf "Referenced card %s returned more than the requested %s row(s)" card_id max-rows)
+            (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
             {:status "failed"
-             :error  (tru "Referenced card {0} returned more rows than the requested maximum of {1}." card_id max-rows)})
+             :error  (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
+                          entity-type id max-rows)})
           {:status "completed"
            :data   (-> data
                        (perf/select-keys [:cols :rows])
                        (project-columns columns))}))
       (catch Throwable e
-        (log/warnf e "Failed to run referenced card %s" card_id)
+        (log/warnf e "Failed to run referenced %s %s" entity-type id)
         {:status "failed"
          :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
 
-(defn- referenced-cards-result
-  "Run each spec and return `{card-id-string result}`, nil when there are none. Must run before the main
+(defn- referenced-entities-result
+  "Run each spec and return `{type-string {id-string result}}`, nil when there are none. Must run before the main
   query's QP store is bound."
   [specs max-rows]
   (when (seq specs)
     (perf/not-empty
-     (into {}
-           (comp ;; don't start the next one if the client already hung up
-            (take-while (fn [_] (not (qp.pipeline/canceled?))))
-            (map (fn [{:keys [card_id] :as spec}]
-                   ;; string keys so the map serializes to JSON as `{"1": {...}}`
-                   [(str card_id) (run-referenced-card spec max-rows)])))
-           specs))))
+     (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
+               ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
+               (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows)))
+             {}
+             ;; don't start the next one if the client already hung up
+             (take-while (fn [_] (not (qp.pipeline/canceled?))) specs)))))
 
-(defn- inject-referenced-cards
+(defn- inject-referenced-entities
   [rff result]
   (qp.streaming/transforming-query-response
    rff
-   (fn [response] (assoc-in response [:data :referenced_cards] result))))
+   (fn [response] (assoc-in response [:data :referenced_entities] result))))
 
 (defn- maybe-wrap-qp
-  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`."
+  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`."
   [qp specs max-rows]
-  (if-let [result (referenced-cards-result specs max-rows)]
+  (if-let [result (referenced-entities-result specs max-rows)]
     (fn [query rff]
-      (qp query (inject-referenced-cards rff result)))
+      (qp query (inject-referenced-entities rff result)))
     qp))
 
 ;;; ---------------------------------------------------------------------------------------------------------
@@ -130,25 +137,30 @@
 ;;; ---------------------------------------------------------------------------------------------------------
 
 (def ^:private goal-max-rows
-  "A goal is a single value, so its card must produce one row."
+  "A goal is a single value, so its entity must produce one row."
   1)
 
 (defn maybe-wrap-rff-for-goals
-  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_cards`."
+  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_entities`."
   [rff specs]
-  (if-let [result (referenced-cards-result specs goal-max-rows)]
-    (inject-referenced-cards rff result)
+  (if-let [result (referenced-entities-result specs goal-max-rows)]
+    (inject-referenced-entities rff result)
     rff))
 
 (defn viz-settings->goal-specs
-  "Extract referenced-card specs from merged viz settings; nil when there are none."
+  "Extract referenced-entity specs from merged viz settings; nil when there are none."
   [viz]
-  (let [sources (keep dynamic-goals/card-ref (dynamic-goals/goal-values viz))]
+  (let [sources (into []
+                      (comp (keep dynamic-goals/goal-source)
+                            ;; a goal pointing at something we can't run is dropped rather than failing the request
+                            (filter (comp entity-types :type)))
+                      (dynamic-goals/goal-values viz))]
     (when (seq sources)
-      (perf/mapv (fn [[card-id ss]]
-                   {:card_id card-id
+      (perf/mapv (fn [[[entity-type id] ss]]
+                   {:type    entity-type
+                    :id      id
                     :columns (vec (distinct (map :column ss)))})
-                 (group-by :card_id sources)))))
+                 (group-by (juxt :type :id) sources)))))
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."

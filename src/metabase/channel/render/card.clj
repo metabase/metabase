@@ -219,7 +219,7 @@
                           (cond-> m
                             (:visualization_settings m)
                             (update :visualization_settings
-                                    dynamic-goals/resolve-dynamic-goals (:referenced_cards data))))
+                                    dynamic-goals/resolve-dynamic-goals (:referenced_entities data))))
           card          (resolve-goals card)
           dashcard      (some-> dashcard resolve-goals)
           chart-type    (or (detect-pulse-chart-type card dashcard data)
