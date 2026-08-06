@@ -634,7 +634,7 @@
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (or (:count result) 0)))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn full-index
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."
