@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -20,7 +20,6 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { replace, useParams, useSearchParams } from "metabase/router";
 import {
-  ActionIcon,
   Box,
   Button,
   Card,
@@ -32,33 +31,27 @@ import {
   Tabs,
   Text,
   Title,
-  Tooltip,
-  TreeTable,
-  type TreeTableColumnDef,
   TreeTableSkeleton,
-  useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
   usageMetadataApi,
   useDismissUsageMetadataCandidateMutation,
   useGetUsageMetadataTableQuery,
-  useListUsageMetadataCandidatesQuery,
   useRestoreUsageMetadataCandidateMutation,
 } from "metabase-enterprise/api";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
-import { getCandidateIcon } from "../../components/CandidateDefinition";
 import { CandidatePanel } from "../../components/CandidatePanel";
-import { CandidatePills } from "../../components/CandidatePills";
+import { CandidateTable } from "../../components/CandidateTable";
 import {
   CleanupFilters,
   CleanupQueueTabs,
 } from "../../components/CleanupFilters";
-import { EvidenceBadges } from "../../components/EvidenceBadges";
 import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
 import { useCandidateAction } from "../../hooks/useCandidateAction";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
+import { useAllUsageMetadataCandidates } from "../../hooks/useUsageMetadataList";
 import { parseCleanupParams } from "../../utils";
 
 import S from "./CleanupTablePage.module.css";
@@ -88,7 +81,7 @@ export function CleanupTablePage() {
     skip: tableId == null,
   });
   useLoadTableWithMetadata(tableId);
-  const candidatesQuery = useListUsageMetadataCandidatesQuery(
+  const candidatesQuery = useAllUsageMetadataCandidates(
     {
       "table-id": tableId,
       "candidate-type": params.candidateType,
@@ -384,158 +377,5 @@ export function CleanupTablePage() {
         onClose={() => setShowPublishModal(false)}
       />
     </>
-  );
-}
-
-function CandidateTable({
-  candidates,
-  selectedCandidateId,
-  isMutating,
-  onOpen,
-  onDismiss,
-}: {
-  candidates: UsageMetadataCandidateSummary[];
-  selectedCandidateId?: number;
-  isMutating: boolean;
-  onOpen: (candidate: UsageMetadataCandidateSummary) => void;
-  onDismiss: (candidate: UsageMetadataCandidateSummary) => void;
-}) {
-  const columns = useMemo<TreeTableColumnDef<UsageMetadataCandidateSummary>[]>(
-    () => [
-      {
-        id: "recommendation",
-        header: t`Recommendation`,
-        minWidth: 460,
-        cell: ({ row }) => {
-          const candidate = row.original;
-          return (
-            <Group
-              gap="sm"
-              wrap="nowrap"
-              miw={0}
-              w="100%"
-              data-testid={`cleanup-candidate-content-${candidate.id}`}
-            >
-              <Icon
-                name={getCandidateIcon(candidate)}
-                c="text-secondary"
-                aria-label={getCandidateTypeLabel(candidate.candidate_type)}
-              />
-              {candidate.candidate_type === "measure" ||
-              candidate.candidate_type === "segment" ? (
-                <CandidatePills
-                  candidateType={candidate.candidate_type}
-                  presentation={candidate.presentation}
-                />
-              ) : (
-                <Text fw="bold" truncate>
-                  {candidate.display_name}
-                </Text>
-              )}
-            </Group>
-          );
-        },
-      },
-      {
-        id: "signals",
-        header: t`Signals`,
-        width: 210,
-        cell: ({ row }) => <CandidateSignals candidate={row.original} />,
-      },
-      {
-        id: "sources",
-        header: t`Used by`,
-        width: 100,
-        cell: ({ row }) => (
-          <Text c="text-secondary">
-            {t`${row.original.evidence.distinct_source_count} sources`}
-          </Text>
-        ),
-      },
-      {
-        id: "actions",
-        width: 48,
-        cell: ({ row }) => {
-          const candidate = row.original;
-          if (candidate.modeling_status === "modeled" || candidate.dismissed) {
-            return null;
-          }
-          return (
-            <Tooltip label={t`Dismiss suggestion`}>
-              <ActionIcon
-                variant="subtle"
-                aria-label={t`Dismiss suggestion`}
-                disabled={isMutating}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  event.preventDefault();
-                  onDismiss(candidate);
-                }}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Tooltip>
-          );
-        },
-      },
-    ],
-    [isMutating, onDismiss],
-  );
-  const treeTableInstance = useTreeTableInstance({
-    data: candidates,
-    columns,
-    getNodeId: (candidate) => String(candidate.id),
-    selectedRowId:
-      selectedCandidateId == null ? null : String(selectedCandidateId),
-    defaultRowHeight: 52,
-    onRowActivate: (row) => onOpen(row.original),
-  });
-
-  return (
-    <TreeTable
-      instance={treeTableInstance}
-      hierarchical={false}
-      ariaLabel={t`Cleanup recommendations`}
-      styles={{
-        row: { height: "auto", minHeight: "3.25rem" },
-        cell: { whiteSpace: "normal" },
-      }}
-      getRowProps={(row) => ({
-        "data-testid": `cleanup-candidate-${row.original.id}`,
-        "data-selected": row.original.id === selectedCandidateId || undefined,
-        "aria-label": row.original.display_name,
-      })}
-      onRowClick={(row) => onOpen(row.original)}
-    />
-  );
-}
-
-function getCandidateTypeLabel(
-  candidateType: UsageMetadataCandidateSummary["candidate_type"],
-) {
-  switch (candidateType) {
-    case "table":
-      return t`Table`;
-    case "metric":
-      return t`Metric`;
-    case "measure":
-      return t`Measure`;
-    case "segment":
-      return t`Segment`;
-  }
-}
-
-function CandidateSignals({
-  candidate,
-}: {
-  candidate: UsageMetadataCandidateSummary;
-}) {
-  const { evidence } = candidate;
-  return (
-    <EvidenceBadges
-      verified={evidence.verified_source_count > 0}
-      official={evidence.official_source_count > 0}
-      popular={evidence.popular_source_count > 0}
-    />
   );
 }

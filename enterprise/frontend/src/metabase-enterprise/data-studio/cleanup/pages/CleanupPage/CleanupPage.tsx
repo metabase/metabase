@@ -22,7 +22,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useListUsageMetadataTablesQuery } from "metabase-enterprise/api";
 import type { UsageMetadataTableSummary } from "metabase-types/api";
 
 import {
@@ -32,6 +31,7 @@ import {
 import { CleanupHeader } from "../../components/CleanupHeader";
 import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
+import { useAllUsageMetadataTables } from "../../hooks/useUsageMetadataList";
 import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
 type CleanupTableNode = UsageMetadataTableSummary & { id: number };
@@ -41,7 +41,7 @@ export function CleanupPage() {
   const [searchParams] = useSearchParams();
   const params = parseCleanupParams(searchParams);
   const refresh = useCleanupRefresh();
-  const query = useListUsageMetadataTablesQuery({
+  const query = useAllUsageMetadataTables({
     "database-id": params.databaseId,
     queue: params.queue,
     search: params.search,
