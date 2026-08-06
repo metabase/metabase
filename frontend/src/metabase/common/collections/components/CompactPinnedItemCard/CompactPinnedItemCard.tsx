@@ -18,6 +18,7 @@ import type {
   Bookmark,
   Collection,
   CollectionItem,
+  CollectionItemModel,
   RecentCollectionItem,
 } from "metabase-types/api";
 
@@ -25,7 +26,7 @@ import S from "./CompactPinnedItemCard.module.css";
 
 const TOOLTIP_MAX_WIDTH = 450;
 
-const DEFAULT_DESCRIPTION: Record<string, string> = {
+const DEFAULT_DESCRIPTION: Partial<Record<CollectionItemModel, string>> = {
   get card() {
     return t`A question`;
   },
@@ -85,7 +86,7 @@ export function CompactPinnedItemCard({
   );
 
   return (
-    <Link className={S.link} to={modelToUrl(item) ?? "/"} onClick={onClick}>
+    <Link className={S.link} to={modelToUrl(item)} onClick={onClick}>
       <Card className={S.card} h="5rem" p={0} pos="relative" withBorder>
         <div className={S.body}>
           <EntityIcon

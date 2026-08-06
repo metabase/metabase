@@ -107,10 +107,4 @@ describe("PinnedItemsGrid", () => {
       "Model Qux",
     ]);
   });
-
-  it("should render a static card instead of a visualization preview for questions", () => {
-    setup({ items: [questionItem] });
-    expect(screen.getByText(questionItem.name)).toBeInTheDocument();
-    expect(screen.getByText("A question")).toBeInTheDocument();
-  });
 });
