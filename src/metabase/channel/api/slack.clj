@@ -91,8 +91,8 @@
   1. falsy token           -> clear
   2. invalid token         -> clear
   3. truthy, valid token   -> refresh "
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [slack-app-token slack-bug-report-channel] :as body}
    :- [:map {:closed true}
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
@@ -249,8 +249,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/bug-report"
   "Send diagnostic information to the configured Slack channels."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {diagnostic-info :diagnosticInfo} :- [:map {:closed true}
                                          ;; TODO FIXME -- this should not use `camelCase` keys
                                          [:diagnosticInfo map?]]]

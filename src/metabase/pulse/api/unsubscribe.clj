@@ -37,8 +37,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [email hash pulse-id]} :- [:map {:closed true}
                                      [:pulse-id ms/PositiveInt]
                                      [:email    ms/NonBlankString]
@@ -62,8 +62,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [email hash pulse-id]} :- [:map {:closed true}
                                      [:pulse-id ms/PositiveInt]
                                      [:email    ms/NonBlankString]

@@ -99,7 +99,7 @@
   and a subset of the default items returned for admins. This is used to power the /account/notifications page.
   This may include subscriptions which the current user does not have collection permissions for, in which case
   some sensitive metadata (the list of cards and recipients) is stripped out."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys                [archived]
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
@@ -151,8 +151,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Pulse`."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys               [name cards channels parameters]
     skip-if-empty       :skip_if_empty
     collection-id       :collection_id
@@ -231,7 +231,7 @@
   "Update a Pulse with `id`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; open: the FE PUTs the whole `editingPulse` object back, including read-only fields it got from the server
    ;; (`can_write`, `creator`, `creator_id`, `entity_id`, `disable_links`, `created_at`, `updated_at`).
    {:keys [cards], :as pulse-updates} :- [:map {:closed false}
@@ -324,8 +324,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test"
   "Test send an unsaved pulse."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    ;; open: the FE sends the whole in-progress `editingPulse` object, which also carries the read-only fields it
    ;; got back from the server (`can_write`, `creator`, `creator_id`, `entity_id`, `created_at`, `updated_at`).
    {:keys [cards channels] :as body} :- [:map {:closed false}

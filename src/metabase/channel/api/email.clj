@@ -23,8 +23,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    settings :- [:map {:closed true}
                 [:email-smtp-host {:optional true} [:or string? nil?]]
                 [:email-smtp-password {:optional true} [:or string? nil?]]

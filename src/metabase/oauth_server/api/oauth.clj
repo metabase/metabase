@@ -189,7 +189,7 @@
 (api.macros/defendpoint :post "/register"
   :- [:map [:status [:enum 201 400 403 404 429]] [:body :any]]
   "Handles dynamic client registration (RFC 7591)."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; RFC 7591 defines no query parameters for the registration endpoint and this handler reads none, but the
    ;; endpoint is advertised via discovery and called by third-party OAuth clients, so a stray query param must not
    ;; turn a registration into a 400.
@@ -259,7 +259,7 @@
    ;; RFC 7592 puts the credential in the `Authorization` header and defines no query parameters, but the client
    ;; calls the `registration_client_uri` we handed it, so leave room for a caller-appended param rather than 400.
    _query-params :- [:map {:closed false}]
-   _body :- [:map {:closed true}]
+   _body
    request]
   (or (when-let [provider (oauth-server/get-provider)]
         (let [token (oauth-server/extract-bearer-token request)]
@@ -278,7 +278,7 @@
 (api.macros/defendpoint :get "/authorize"
   :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
   "Handles the authorization endpoint (GET /oauth/authorize)."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; Supplied by third-party OAuth clients and extensible by spec (PKCE, OIDC, resource indicators, ...). The whole
    ;; map goes to `oidc/parse-authorization-request`, which does the real validation and returns proper OAuth errors,
    ;; so everything here is optional and the map stays open.
@@ -292,7 +292,7 @@
                     [:code_challenge_method {:optional true} [:maybe :string]]
                     [:nonce                 {:optional true} [:maybe :string]]
                     [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
-   _body :- [:map {:closed true}]
+   _body
    request]
   (if-not (:metabase-user-id request)
     {:status  302
@@ -326,10 +326,10 @@
 (api.macros/defendpoint :post "/authorize/decision"
   :- [:map [:status [:enum 302 400 401 403 404 429]] [:body [:or :string :map]]]
   "Handles the authorization decision (POST /oauth/authorize/decision)."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; Closed: this is not a spec endpoint but the target of our own consent form, whose action URL carries no query
    ;; string.
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; Form POST from the consent page: our own `csrf_token`/`params_sig`/`approved` fields plus the OAuth
    ;; authorization parameters echoed back as hidden inputs (see [[oauth-param-keys]]). Those are re-parsed by
    ;; `oidc/parse-authorization-request`, which owns the validation, so this map stays open for the same reason
@@ -393,7 +393,7 @@
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; RFC 6749 §3.2 puts the token request in the body and this handler reads no query params, but the endpoint is
    ;; advertised via discovery and called by third-party OAuth clients, so a stray query param must not break a
    ;; token exchange.
@@ -447,7 +447,7 @@
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; Open for the same reason as POST /token: RFC 7009 puts everything in the body, but this endpoint is advertised
    ;; via discovery and called by third-party OAuth clients.
    _query-params :- [:map {:closed false}]

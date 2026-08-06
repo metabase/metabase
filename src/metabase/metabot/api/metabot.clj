@@ -24,8 +24,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "List configured metabot instances"
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]]
+  [_route-params
+   _query-params]
   (api/check-superuser)
   {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
 
@@ -36,7 +36,7 @@
 (api.macros/defendpoint :get "/:id"
   "Retrieve one metabot instance"
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Metabot :id id)))
 
@@ -47,7 +47,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update a metabot instance"
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    metabot-updates :- [:map {:closed true}
                        [:use_verified_content {:optional true} :boolean]
                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
@@ -80,10 +80,8 @@
    `:ai-produced-no-prompts` when generation produced nothing.
    Returns a 402 if the instance has reached its managed-AI usage limit."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   ;; The FE mutation posts no body; an absent body decodes to `{}`, so a closed empty map both
-   ;; accepts that and rejects anything a caller invents.
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
@@ -152,7 +150,7 @@
 (api.macros/defendpoint :delete "/:id/prompt-suggestions"
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/check-superuser)
   (metabot.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
@@ -166,7 +164,7 @@
   [{:keys [id prompt-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:prompt-id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/check-superuser)
   (t2/delete! :model/MetabotPrompt {:where [:and
                                             [:= :id prompt-id]

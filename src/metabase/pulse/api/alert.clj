@@ -86,7 +86,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [archived user_id]} :- [:map {:closed true}
                                   [:archived {:default false} [:maybe ms/BooleanValue]]
                                   [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]

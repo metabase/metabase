@@ -541,7 +541,7 @@
   tab). `creatorless=false` selects the inverse.
 
   `channel` accepts a single string or a repeated query param for multi-select (OR logic)."
-  [_route :- [:map {:closed true}]
+  [_route
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            last_check_status query sort_column sort_direction]} :-
    ;; closed: `limit`/`offset` are stripped from the query params by the offset-paging middleware
@@ -717,8 +717,8 @@
   triggers. Recipient emails and `:event/notification-update` audit events are
   published via the shared [[notification-api/publish-notification-update!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
-  [_route :- [:map {:closed true}]
-   _query :- [:map {:closed true}]
+  [_route
+   _query
    {:keys [notification_ids action creator_id]} :-
    [:map {:closed true}
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]

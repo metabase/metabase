@@ -56,9 +56,9 @@
   "Stash a base64-encoded MBQL query for the iframe's pending drill-through and
    return a handle UUID the iframe will thread into the agent message so the
    `render_drill_through` tool can fetch it."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; Closed: the iframe posts to a fixed URL with no query string.
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; Posted by the MCP UI iframe, which is a separately-loaded bundle running inside a third-party MCP host, so the
    ;; map is left open: a newer iframe may thread additional context alongside `encodedQuery` and must not 400
    ;; against an older backend. Only the key this handler reads is declared.
@@ -73,9 +73,9 @@
                                               [:status [:= 204]]
                                               [:body :nil]]
   "Persist MCP Apps visualization feedback."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; Closed: the iframe posts to a fixed URL with no query string.
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; Posted by the MCP UI iframe (see the note on `/drills`): open at every level so a newer iframe bundle can add
    ;; feedback or conversation context without 400ing against an older backend. The keys this handler persists are
    ;; declared and bounded.

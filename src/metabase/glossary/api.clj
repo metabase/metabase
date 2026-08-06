@@ -13,7 +13,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all glossary entries, optionally filtered by search term."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true}
                                 [:search {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [where (when search
@@ -30,8 +30,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new glossary entry."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [term definition]} :- [:map {:closed true}
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
@@ -52,7 +52,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {:keys [term definition]} :- [:map {:closed true}
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
@@ -73,7 +73,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/check-data-analyst)
   (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/delete! :model/Glossary :id id)

@@ -183,8 +183,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Login."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie.
    {:keys [username password]} :- [:map {:closed true}
@@ -220,8 +220,8 @@
 (api.macros/defendpoint :delete "/"
   "Logout."
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    _body         :- [:map {:closed true}]
    {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
@@ -305,8 +305,8 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [email]} :- [:map {:closed true}
                        [:email ms/Email]]
    request]
@@ -343,8 +343,8 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/reset_password"
   "Reset password with a reset token."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    request-body :- [:map {:closed true}
                     [:token    ms/NonBlankString]
                     [:password ms/ValidPassword]]
@@ -381,7 +381,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [token]} :- [:map {:closed true}
                        [:token ms/NonBlankString]]]
   (let [auth-result (auth-identity/with-fallback auth-identity/authenticate
@@ -397,8 +397,8 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    _body         :- [:map {:closed true}]]
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
@@ -411,8 +411,8 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/google_auth"
   "Login with Google Auth."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie.
    {:keys [token]} :- [:map {:closed true}
@@ -453,8 +453,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/password-check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    _body :- [:map {:closed true}
              [:password ms/ValidPassword]]]
   ;; if we pass the [[ms/ValidPassword]] test we're g2g
@@ -468,8 +468,8 @@
   "Complete a two-step login by verifying a one-time code. Takes the `challenge_token` returned by
   `POST /api/session` and either the 6-digit `code` from the user's authenticator app, one of
   their single-use recovery codes, or an emailed one-time code; on success sets the session cookie."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
    ;; `POST /api/session` — for MFA users THIS request is the one that creates the session.
@@ -511,8 +511,8 @@
   still has recovery codes disabled or unavailable). Requires a valid challenge token from
   `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by
   `POST /mfa/verify` like any other code."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {challenge-token :challenge_token} :- [:map {:closed true}
                                           [:challenge_token ms/NonBlankString]]
    request]

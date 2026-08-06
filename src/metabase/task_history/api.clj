@@ -21,7 +21,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
-  [_
+  [_route-params
    params :- [:maybe [:merge
                       task-history/FilterParams
                       task-history/SortParams
@@ -41,7 +41,8 @@
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params]
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -50,8 +51,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]]
+  [_route-params
+   _query-params]
   (perms/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
@@ -66,8 +67,8 @@
   "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
   reflect that."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]] :- [:vector string?]
+  [_route-params
+   _query-params] :- [:vector string?]
   (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
 
@@ -244,7 +245,7 @@
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
-  [_
+  [_route-params
    params :- [:maybe [:merge
                       ::RunFilterParams
                       ::RunSortParams
@@ -265,7 +266,8 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
         tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
@@ -277,7 +279,7 @@
 
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
-  [_
+  [_route-params
    params :- [:map {:closed true}
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]

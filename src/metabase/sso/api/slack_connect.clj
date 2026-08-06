@@ -10,7 +10,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Initiate Slack Connect SSO flow."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; not closed: read off the raw request `:params`, declared here for documentation and typing only.
    _query-params :- [:map {:closed false}
                      [:redirect {:optional true} [:maybe :string]]]
@@ -28,7 +28,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/callback"
   "Slack Connect OIDC callback."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; not closed: Slack controls this query string and may add params beyond these (e.g. `error`).
    ;; Read off the raw request `:params`.
    _query-params :- [:map {:closed false}

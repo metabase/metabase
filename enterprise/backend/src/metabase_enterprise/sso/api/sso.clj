@@ -37,7 +37,7 @@
                       :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; not closed: an IdP-initiated login may append its own params. The handlers read these off the raw
    ;; request `:params`, so they are declared here for documentation and typing only.
    _query-params :- [:map {:closed false}
@@ -74,7 +74,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; not closed: the SAML IdP POSTs these form-encoded and may add its own. The handlers read them off the
    ;; raw request `:params`/`:body`, so they are declared here for documentation and typing only.
    _query-params :- [:map {:closed false}
@@ -107,9 +107,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/logout"
   "Logout."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; closed: only ever called by our own frontend, which sends no params and no body.
-   _query-params :- [:map {:closed true}]
+   _query-params
    _body :- [:maybe [:map {:closed true}]]
    {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
@@ -147,8 +147,8 @@
 (api.macros/defendpoint :post "/to_session"
   "If a user wants to simply convert a JWT to a session token (which they'll manage)
   this provides a path for them to do so."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [jwt]} :- [:map {:closed true}
                      [:jwt ms/NonBlankString]]
    request]
@@ -168,7 +168,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; not closed: the IdP POSTs these form-encoded and may add its own. Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
                      [:SAMLRequest  {:optional true} [:maybe :string]]

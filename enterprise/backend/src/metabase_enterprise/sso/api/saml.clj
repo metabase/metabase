@@ -17,8 +17,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/settings"
   "Update SAML related settings. You must be a superuser to do this."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    settings :- [:map {:closed true}
                 [:saml-identity-provider-issuer      {:optional true} :string]
                 [:saml-identity-provider-uri         {:optional true} :string]

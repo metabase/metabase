@@ -122,7 +122,7 @@
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
   {:scope :unchecked}
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    ;; Left open: this is the unauthenticated-shaped connectivity probe external agent/MCP clients
    ;; hit directly, and a cache-busting or client-appended query param must not turn a health check
    ;; into a 400. Nothing here is read.
@@ -161,7 +161,7 @@
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    _query-params :- [:map {:closed true}
                      [:limit  {:optional true} [:maybe ms/PositiveInt]]
                      [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
@@ -756,8 +756,8 @@
                              "metabase://collection/{id}/items, metabase://question/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
                              "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    body :- ::read-resource-request]
   (try
     (metabot-resources/read-resource body)
@@ -1032,8 +1032,8 @@
                              "If you omit collection_id it's saved to the user's personal collection; "
                              "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`.")}}
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    body :- ::create-metric-request]
   (create-card-from-agent! body {:card-type        :metric
                                  :default-display  "scalar"
@@ -1087,7 +1087,7 @@
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
     ;; This is the metric endpoint: refuse to touch questions/models so an LLM can't silently force a
@@ -1258,8 +1258,8 @@
                              "update_dashboard. "
                              "Report the saved location from the response `collection_path`. "
                              "Returns the dashboard URL.")}}
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [description question_ids]
     dashboard-name :name
     :as body}
@@ -1574,7 +1574,7 @@
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
         updates      (cond-> {}
@@ -1676,8 +1676,8 @@
            :description (str "Create a new collection in Metabase. "
                              "Set parent_collection_id to nest under another collection; "
                              "omit it for a root-level collection.")}}
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [description parent_collection_id]
     collection-name :name}
    :- ::create-collection-request]

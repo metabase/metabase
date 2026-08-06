@@ -179,7 +179,7 @@
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map {:closed true}
                           [:table-id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (let [table (t2/select-one :model/Table :id table-id)
         db-id (:db_id table)]
     (api/query-check table)
@@ -270,7 +270,7 @@
   "Update `Table` with ID."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; Not closed: `update-table!*` picks the columns it writes with `select-keys-when`, and tolerating a redundant
    ;; read-only column alongside a real change is part of this endpoint's contract -- see
    ;; [[metabase.warehouse-schema-rest.api.table-test/update-data-authority-test]], which PUTs `:active` back. There
@@ -300,8 +300,8 @@
   "Update all `Table` in `ids`.
 
   Deprecated, should use PUT /table/edit from now on."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [ids], :as body} :- [:map {:closed true}
                                [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
@@ -384,7 +384,7 @@
    serves mainly as a placeholder to avoid having to change anything on the frontend."
   [_route-params :- [:map {:closed true}
                      [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   []) ; return empty array
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -395,7 +395,7 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
@@ -421,8 +421,8 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (let [table (api/write-check (t2/select-one :model/Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -447,8 +447,8 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (api/write-check (t2/select-one :model/Table :id id))
   (when-let [field-ids (t2/select-pks-set :model/Field :table_id id)]
     (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
@@ -462,7 +462,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
@@ -470,7 +470,7 @@
   "Reorder fields"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
    body :- [:or
             [:sequential ms/PositiveInt]
@@ -510,7 +510,7 @@
                :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    _body
    ;; The outer map is the raw Ring request, so it stays open. Multipart-params is closed so a file part smuggled
    ;; under another part name is rejected; collection_id is the text field the frontend sends alongside the file.
@@ -541,7 +541,7 @@
                :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    _body
    ;; The outer map is the raw Ring request, so it stays open. Multipart-params is closed so a file part smuggled
    ;; under another part name is rejected; collection_id is the text field the frontend sends alongside the file.
@@ -575,8 +575,8 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (let [table    (api/check-404 (t2/select-one :model/Table :id id))
         database (api/check-404 (t2/select-one :model/Database
                                                :id (:db_id table)

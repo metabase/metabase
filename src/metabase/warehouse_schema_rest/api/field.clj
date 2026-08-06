@@ -57,8 +57,8 @@
 (api.macros/defendpoint :post "/table-ids" :- [:map
                                                [:table_ids [:sequential ms/PositiveInt]]]
   "Get unique Table IDs for a list of Field IDs."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [field_ids]} :- [:map {:closed true}
                            [:field_ids [:sequential ms/PositiveInt]]]]
   (api/check-400 (<= (count field_ids) max-field-ids-for-table-id-lookup)
@@ -139,7 +139,7 @@
   "Update `Field` with ID."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; Not closed: the handler picks the keys it updates with `select-keys-when`, and callers routinely PUT back a
    ;; whole Field they just read -- our own e2e suite sends read-only attributes (`table_id`, `name`, `base_type`)
    ;; and the pre-0.39 `special_type` alias this way. Rejecting them would break existing API clients, and there is
@@ -228,7 +228,7 @@
   "Get the count and distinct count of `Field` with ID."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
      [:distincts (metadata-from-qp/field-distinct-count field)]]))
@@ -243,7 +243,7 @@
   "Sets the dimension for the given field at ID"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
    :- [:map {:closed true}
        [:type                    [:enum "internal" "external"]]
@@ -279,7 +279,7 @@
   "Remove the dimension associated to field at ID"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/write-check :model/Field id)
   (t2/delete! :model/Dimension :field_id id)
   api/generic-204-no-content)
@@ -294,7 +294,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (let [field (api/query-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
 
@@ -318,7 +318,7 @@
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {value-pairs :values} :- [:map {:closed true}
                              [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]
                              ;; ignored: callers edit and POST back the whole `GET /api/field/:id/values` response,
@@ -351,8 +351,8 @@
    FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -374,8 +374,8 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
   {:status :success})
 
@@ -427,5 +427,5 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))

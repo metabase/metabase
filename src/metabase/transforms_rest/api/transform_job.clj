@@ -89,8 +89,8 @@
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
   "Create a new transform job."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [name description schedule ui_display_type tag_ids]} :- [:map {:closed true}
                                                                    [:name ms/NonBlankString]
                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
@@ -135,8 +135,8 @@
 
   Reports per-job outcome counts: `:updated` (successfully flipped) and `:failed` (raised an
   error during the flip — the row update or Quartz write failed and was logged)."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [active]} :- [:map {:closed true}
                         [:active :boolean]]]
   (api/check-superuser)
@@ -159,7 +159,7 @@
   "Update a transform job."
   [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {tag-ids :tag_ids
     :keys [name description schedule ui_display_type active]} :- [:map {:closed true}
                                                                   [:name {:optional true} ms/NonBlankString]
@@ -230,7 +230,7 @@
   pulled-in dependencies are skipped; pass `run_all` to force-refresh the whole plan."
   [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {:keys [run_all]} :- [:map {:closed true}
                          [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
@@ -272,7 +272,7 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformJobResponse]
   "Get all transform jobs."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [last-run-start-time next-run-start-time last-run-statuses tag-ids]} :-
    [:map {:closed true}
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
@@ -335,7 +335,7 @@
   [{:keys [job-id run-id]} :- [:map {:closed true}
                                [:job-id ms/PositiveInt]
                                [:run-id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (api/read-check :model/TransformJob job-id)
   (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
   (let [runs (transforms.core/transform-runs-for-job-run run-id)]

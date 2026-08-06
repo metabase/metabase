@@ -49,8 +49,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from notifications, with the hash given through email."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [email hash notification-handler-id]} :- [:map {:closed true}
                                                     [:notification-handler-id ms/PositiveInt]
                                                     [:email                   ms/NonBlankString]
@@ -75,8 +75,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from notifications, with the hash given through email."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [email hash notification-handler-id]} :- [:map {:closed true}
                                                     [:notification-handler-id ms/PositiveInt]
                                                     [:email                   ms/NonBlankString]

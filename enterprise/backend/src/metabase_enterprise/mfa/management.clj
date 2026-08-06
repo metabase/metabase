@@ -95,8 +95,8 @@
   "Start TOTP enrollment for the current user. Requires the account password (LDAP users re-bind
   against the directory) and the `:multi-factor-auth` feature. Returns the Base32 `secret` and an
   `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [password]} :- [:map {:closed true}
                           [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
@@ -124,8 +124,8 @@
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
   "Confirm TOTP enrollment by verifying a code from the authenticator app. Activates the second
   factor and returns the single-use recovery codes — the only time they exist in plaintext."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [code]} :- [:map {:closed true}
                       [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
@@ -141,8 +141,8 @@
 (api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a
   TOTP code or an unused recovery code — never just the password."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [code]} :- [:map {:closed true}
                       [:code ms/NonBlankString]]]
   (throttled :disable
@@ -164,8 +164,8 @@
                                            [:method                   [:maybe :string]]
                                            [:recovery_codes_remaining :int]]
   "The current user's MFA status, for the account-settings UI."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    _body         :- [:map {:closed true}]]
   (let [user-id api/*current-user-id*
         method  (enrollment/enrolled-method user-id)]
@@ -188,8 +188,8 @@
   and the admin UI never collects a code. Self-removal goes through the normal Security page, which
   re-auths with a fresh factor via `/disable`. Without this guard a hijacked admin session could
   strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {user-id :user_id} :- [:map {:closed true}
                           [:user_id ms/PositiveInt]]]
   (api/check-superuser)
@@ -232,8 +232,8 @@
                                                    [:unenrolled_count   :int]]
   "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and
   whether the instance encrypts secrets at rest."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    _body         :- [:map {:closed true}]]
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
@@ -322,10 +322,10 @@
   locked-out user.
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [query]} :- [:map {:closed true}
                        [:query {:optional true} [:maybe :string]]]
-   _body :- [:map {:closed true}]]
+   _body]
   (api/check-superuser)
   (user-list-response enrolled-user-where enrolled-at-select query))
 
@@ -335,10 +335,10 @@
   challenges them — their identity provider owns MFA. Never feature-gated, as above.
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [query]} :- [:map {:closed true}
                        [:query {:optional true} [:maybe :string]]]
-   _body :- [:map {:closed true}]]
+   _body]
   (api/check-superuser)
   (user-list-response unenrolled-user-where nil query))
 
@@ -348,8 +348,8 @@
   "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a
   fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [code]} :- [:map {:closed true}
                       [:code ms/NonBlankString]]]
   (throttled :regenerate

@@ -24,8 +24,8 @@
 
 (api.macros/defendpoint :post "/" :- TransformTagResponse
   "Create a new transform tag."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag")
@@ -38,7 +38,7 @@
   "Update a transform tag."
   [{:keys [tag-id]} :- [:map {:closed true}
                         [:tag-id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
@@ -59,8 +59,8 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]
   "Get a list of all transform tags."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]]
+  [_route-params
+   _query-params]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
   (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))

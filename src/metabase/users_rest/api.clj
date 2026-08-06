@@ -171,7 +171,7 @@
   Also takes `group_id`, which filters on group id.
 
   If the user is a sandboxed user, only return themselves regardless of the query parameters."
-  [_route-params :- [:map {:closed true}]
+  [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map {:closed true}
        [:status                  {:optional true} [:maybe :string]]
@@ -257,8 +257,8 @@
    - If user-visibility is :all or the user is an admin, include all users.
    - If user-visibility is :group, include only users in the same group (excluding the all users group).
    - If user-visibility is :none or the user is sandboxed, include only themselves."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]]
+  [_route-params
+   _query-params]
   ;; defining these functions so the branching logic below can be as clear as possible
   (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
@@ -375,8 +375,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]]
+  [_route-params
+   _query-params]
   (-> (api/check-404 @api/*current-user*)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
@@ -395,7 +395,7 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]]
+   _query-params]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -414,8 +414,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    ;; deliberately open: this endpoint's contract is that unknown keys are silently dropped rather than
    ;; rejected -- `metabase.users-rest.api-test/create-user-add-to-admin-group-test-2` POSTs `:is_superuser`
    ;; and asserts a 200 with the flag ignored.
@@ -482,7 +482,7 @@
   Group Managers can only add/remove users from groups they are manager of."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
    ;; deliberately open: the handler picks the keys it updates out of the body with `u/select-keys-when`, and
    ;; read-modify-write of a whole `GET /api/user/:id` payload is a supported (and used) way to call this --
@@ -575,7 +575,7 @@
   "Reactivate user at `:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    ;; deliberately open: the endpoint reads nothing from the body, but
    ;; `metabase.users-rest.api-test/reactivate-user-test` PUTs a user payload here and expects it ignored.
    _body :- [:map {:closed false}]]
@@ -605,7 +605,7 @@
   "Update a user's password."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
+   _query-params
    {:keys [password old_password]} :- [:map {:closed true}
                                        [:password ms/ValidPassword]
                                        ;; only required for non-superusers; verified against the stored hash below
@@ -639,8 +639,8 @@
   The link expires in 48 hours."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (api/check-superuser)
   (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
     (api/check-404 (:is_active user))
@@ -663,8 +663,8 @@
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
@@ -688,8 +688,8 @@
   [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]
-   _query-params :- [:map {:closed true}]
-   _body :- [:map {:closed true}]]
+   _query-params
+   _body]
   (users/check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb

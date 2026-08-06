@@ -89,8 +89,8 @@
 
 (api.macros/defendpoint :post "/generate-content" :- generate-content-response-schema
   "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent."
-  [_route-params :- [:map {:closed true}]
-   _query-params :- [:map {:closed true}]
+  [_route-params
+   _query-params
    {:keys [instructions references]} :- generate-content-body-schema]
   (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
     (metabot.config/check-metabot-enabled! metabot-id)
