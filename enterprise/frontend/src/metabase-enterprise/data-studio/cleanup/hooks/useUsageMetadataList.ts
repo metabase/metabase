@@ -34,6 +34,25 @@ function pageParams(params: ListUsageMetadataRequest, offset: number) {
   };
 }
 
+export function appendUniqueItems<T>(
+  currentItems: T[],
+  nextItems: T[],
+  getItemId: (item: T) => number,
+) {
+  const ids = new Set(currentItems.map(getItemId));
+  return [
+    ...currentItems,
+    ...nextItems.filter((item) => {
+      const id = getItemId(item);
+      if (ids.has(id)) {
+        return false;
+      }
+      ids.add(id);
+      return true;
+    }),
+  ];
+}
+
 function useUsageMetadataPages<T>(
   params: ListUsageMetadataRequest,
   firstPage: UsageMetadataPage<T> | undefined,
@@ -42,6 +61,7 @@ function useUsageMetadataPages<T>(
   fetchPage: (
     params: ListUsageMetadataRequest,
   ) => Promise<UsageMetadataPage<T>>,
+  getItemId: (item: T) => number,
   refetch: () => void,
 ): UsageMetadataListResult<T> {
   const [data, setData] = useState<UsageMetadataPage<T>>();
@@ -79,6 +99,16 @@ function useUsageMetadataPages<T>(
           "The usage metadata snapshot changed while loading the list",
         );
       }
+      if (nextPage.total !== data.total) {
+        // Candidate mutations can change queue membership without creating a
+        // new mining snapshot. Offsets are no longer trustworthy, so keep the
+        // cached UI visible and restart pagination from the first page.
+        generation.current += 1;
+        isNextPagePending.current = false;
+        setIsFetchingNextPage(false);
+        refetch();
+        return;
+      }
       setData((currentData) => {
         if (
           currentData == null ||
@@ -88,7 +118,7 @@ function useUsageMetadataPages<T>(
         }
         return {
           ...currentData,
-          data: [...currentData.data, ...nextPage.data],
+          data: appendUniqueItems(currentData.data, nextPage.data, getItemId),
           total: nextPage.total,
         };
       });
@@ -102,7 +132,7 @@ function useUsageMetadataPages<T>(
         setIsFetchingNextPage(false);
       }
     }
-  }, [data, fetchPage, params]);
+  }, [data, fetchPage, getItemId, params, refetch]);
 
   return {
     data,
@@ -113,6 +143,10 @@ function useUsageMetadataPages<T>(
     refetch,
   };
 }
+
+const getTableId = (table: UsageMetadataTableSummary) => Number(table.table.id);
+const getCandidateId = (candidate: UsageMetadataCandidateSummary) =>
+  candidate.id;
 
 export function useUsageMetadataTables(
   params: ListUsageMetadataRequest,
@@ -136,6 +170,7 @@ export function useUsageMetadataTables(
     firstPageQuery.error,
     firstPageQuery.isFetching,
     fetchPage,
+    getTableId,
     firstPageQuery.refetch,
   );
 }
@@ -166,6 +201,7 @@ export function useUsageMetadataCandidates(
     firstPageQuery.error,
     firstPageQuery.isFetching,
     fetchPage,
+    getCandidateId,
     firstPageQuery.refetch,
   );
 }
