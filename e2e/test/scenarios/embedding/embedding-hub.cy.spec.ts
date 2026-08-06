@@ -526,6 +526,61 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
   });
 });
 
+describe("scenarios > embedding > embedding hub > appearance", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("carries the theme listing and the branding settings on one tab", () => {
+      cy.visit("/embedding");
+
+      cy.findByTestId("embedding-hub-nav")
+        .findByRole("link", { name: "Appearance" })
+        .click();
+
+      cy.url().should("include", "/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByRole("heading", { name: "Appearance" }).should("be.visible");
+        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
+        cy.findByRole("heading", { name: "Branding elements" }).should(
+          "be.visible",
+        );
+        cy.findByText("Loading message").should("be.visible");
+      });
+    });
+
+    it("opens the theme editor inside the hub", () => {
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("button", { name: /New theme/ })
+        .click();
+
+      cy.url().should("include", "/embedding/appearance/new");
+      cy.url().should("not.include", "/admin/embedding/themes");
+    });
+  });
+
+  describe("oss", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells rather than hiding the tab", () => {
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Create custom themes")
+        .should("be.visible");
+    });
+  });
+});
+
 function configureSaml() {
   cy.readFile("test_resources/sso/auth0-public-idp.cert", "utf8").then(
     (certificate) => {

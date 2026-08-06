@@ -35,6 +35,8 @@ describe("embedding hub routes", () => {
       "embedding/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName",
       "embedding/permissions/collections/:collectionId",
       "embedding/tenancy",
+      "embedding/appearance",
+      "embedding/appearance/:themeId",
     ]);
   });
 

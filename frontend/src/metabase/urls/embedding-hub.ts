@@ -25,3 +25,7 @@ export function embeddingHubPermissions() {
 export function embeddingHubTenancy() {
   return `${ROOT_URL}/tenancy`;
 }
+
+export function embeddingHubAppearance() {
+  return `${ROOT_URL}/appearance`;
+}
