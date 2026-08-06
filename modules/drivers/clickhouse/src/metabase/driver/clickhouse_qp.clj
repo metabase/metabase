@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
@@ -430,6 +431,28 @@
   [driver [_ _opts field pred]]
   [:sum [:case (sql.qp/->honeysql driver pred) (sql.qp/->honeysql driver field)
          :else 0]])
+
+(defn- format-rows-between-unbounded
+  [_clause _args]
+  ["ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING"])
+
+(sql/register-clause! ::rows-between-unbounded #'format-rows-between-unbounded nil)
+
+;; ClickHouse has no standard lag/lead (25.6+ only adds lowercase-only sugar for them); its lagInFrame/leadInFrame
+;; equivalents respect the window frame, so the frame must explicitly cover the whole partition. Out-of-frame rows
+;; produce the column type's default value (e.g. 0) rather than NULL — toNullable makes that default NULL.
+(defmethod sql.qp/->honeysql [:clickhouse :offset]
+  [driver [_offset _opts expr n]]
+  {:pre [(integer? n) ((some-fn pos-int? neg-int?) n)]} ; offset not allowed to be zero
+  (sql.qp/window-aggregation-over-rows
+   driver
+   (let [[f n]     (if (pos? n)
+                     [:'leadInFrame n]
+                     [:'lagInFrame (- n)])
+         expr-hsql (sql.qp/->honeysql driver expr)]
+     (-> [f [:'toNullable expr-hsql] [:inline n]]
+         (h2x/with-database-type-info (h2x/database-type expr-hsql))))
+   {::rows-between-unbounded []}))
 
 (defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]

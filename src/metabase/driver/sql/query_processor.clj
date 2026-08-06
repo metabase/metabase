@@ -1127,8 +1127,11 @@
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
     {:order-by (vec order-bys)}))
 
-(defn- window-aggregation-over-rows
-  "Generate an OVER (...) window function expression for stuff like `:offset` (`lag` and `lead`)."
+(defn window-aggregation-over-rows
+  "Generate an OVER (...) window function expression for stuff like `:offset` (`lag` and `lead`).
+
+  `additional-hsql` is merged into the window expression map; drivers overriding window-function clauses can use it
+  to add things like an explicit frame clause to the OVER expression."
   ([driver expr]
    (window-aggregation-over-rows driver expr nil))
 

@@ -75,7 +75,7 @@
                               :transforms/table                 true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
-                              :window-functions/offset          false}]
+                              :window-functions/offset          true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :clickhouse
