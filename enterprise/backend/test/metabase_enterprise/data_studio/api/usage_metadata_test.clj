@@ -72,10 +72,8 @@
      :display_name          "Recent orders"
      :suggested_name        "Recent orders"
      :suggested_description "Recent orders on Orders"
-     :family_key            (apply str (repeat 64 "f"))
      :family_order          0
      :family_position       0
-     :family_depth          0
      :modeling_status       :missing
      :verified_source_count 1
      :official_source_count 0
@@ -375,7 +373,6 @@
                                   {:suggested_name "Shared concept"
                                    :display_name "Shared concept"
                                    :signature_hash (apply str (repeat 64 "7"))
-                                   :family_key (apply str (repeat 64 "7"))
                                    :family_order 0
                                    :family_position 0})
                    :model/UsageMetadataCandidate child
@@ -383,16 +380,13 @@
                                   {:suggested_name "Shared concept with detail"
                                    :display_name "Shared concept with detail"
                                    :signature_hash (apply str (repeat 64 "8"))
-                                   :family_key (apply str (repeat 64 "7"))
                                    :family_order 0
-                                   :family_position 1
-                                   :family_depth 1})
+                                   :family_position 1})
                    :model/UsageMetadataCandidate other
                    (candidate-row (:id run)
                                   {:suggested_name "Other concept"
                                    :display_name "Other concept"
                                    :signature_hash (apply str (repeat 64 "9"))
-                                   :family_key (apply str (repeat 64 "9"))
                                    :family_order 1
                                    :family_position 0
                                    :verified_source_count 10

@@ -57,10 +57,8 @@ databaseChangeLog:
               - column: {name: distinct_source_count, type: int, remarks: Distinct source cards, constraints: {nullable: false}}
               - column: {name: total_view_count, type: int, remarks: Sum of source card views, constraints: {nullable: false}}
               - column: {name: complexity, type: int, remarks: Predicate or condition atom count, constraints: {nullable: false}}
-              - column: {name: family_key, type: char(64), remarks: Signature hash of the recommendation-family root, constraints: {nullable: false}}
               - column: {name: family_order, type: int, remarks: Global family order within the snapshot, constraints: {nullable: false}}
               - column: {name: family_position, type: int, remarks: Depth-first position inside the recommendation family, constraints: {nullable: false}}
-              - column: {name: family_depth, type: int, remarks: Primary subset-parent depth inside the family, constraints: {nullable: false}}
 
   # These indexes precede constraints that can replace MySQL's automatically generated foreign-key indexes. They are
   # intentionally retained during partial rollback and marked as already applied when migrations run forward again.
