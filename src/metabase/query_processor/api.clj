@@ -97,9 +97,7 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
-   query :- [:map {:closed false}
-             [:database {:optional true} [:maybe :int]]]]
+   query :- ::qp.schema/api-query]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -139,13 +137,16 @@
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map {:closed true}
-       ;; TODO: `query` is an MBQL query typed loosely as a map; give it a real schema.
        [:query                  [:map
+                                 ;; open: the query is checked against the schema for its own MBQL version further
+                                 ;; down, and it may not be normalized yet when it gets here
                                  {:closed     false
                                   :decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode+kw))}]]
        [:visualization_settings {:default {}} [:map
+                                               ;; open: visualization settings are an open-ended bag of display
+                                               ;; options keyed by column reference as well as by setting name
                                                {:closed     false
                                                 :decode/api (fn [x]
                                                               (cond-> x
@@ -188,11 +189,12 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
-   query :- [:map {:closed false}
-             [:database ms/PositiveInt]
-             [:settings {:optional true} [:maybe [:map {:closed false}
-                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
+   query :- [:merge
+             ::qp.schema/api-query
+             [:map {:closed true}
+              [:database ms/PositiveInt]
+              [:settings {:optional true} [:maybe [:map {:closed true}
+                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]]
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
@@ -206,10 +208,11 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
-   {:keys [database pretty] :as query} :- [:map {:closed false}
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty] :as query} :- [:merge
+                                           ::qp.schema/api-query
+                                           [:map {:closed true}
+                                            [:database ms/PositiveInt]
+                                            [:pretty {:default true} [:maybe :boolean]]]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
@@ -223,10 +226,18 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   ;; Open because the frontend also sends `pivot_rows`, `pivot_cols`, `show_row_totals`, `show_column_totals`.
-   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
-   {:keys [database] :as query} :- [:map {:closed false}
-                                    [:database ms/PositiveInt]]]
+   {:keys [database] :as query} :- [:merge
+                                    ::qp.schema/api-query
+                                    [:map {:closed true}
+                                     [:database ms/PositiveInt]
+                                     ;; pivot options ride along at the top level of the query. They are snake_case
+                                     ;; here and get kebab-cased by query normalization further down, so it is the
+                                     ;; snake_case spelling that has to be declared
+                                     [:pivot_rows         {:optional true} [:maybe [:sequential :int]]]
+                                     [:pivot_cols         {:optional true} [:maybe [:sequential :int]]]
+                                     [:pivot_measures     {:optional true} [:maybe [:sequential :int]]]
+                                     [:show_row_totals    {:optional true} [:maybe :boolean]]
+                                     [:show_column_totals {:optional true} [:maybe :boolean]]]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]

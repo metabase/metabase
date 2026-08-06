@@ -97,11 +97,22 @@
               :updated_at              true
               :archived                false
               :definition true}
+             ;; `show_in_getting_started`, `caveats` and `points_of_interest` are not settable here -- the endpoint
+             ;; only reads `name`, `description` and `definition`, so sending them is rejected. They come back at
+             ;; their column defaults.
              (-> (mt/user-http-request :crowberto :post 200 "segment"
-                                       {:name                    "A Segment"
-                                        :description             "I did it!"
-                                        :definition              (definition-fn (mt/id :users :id) 20)})
+                                       {:name        "A Segment"
+                                        :description "I did it!"
+                                        :definition  (definition-fn (mt/id :users :id) 20)})
                  segment-response))))))
+
+(deftest create-segment-rejects-unsettable-fields-test
+  (testing "POST /api/segment rejects fields it would otherwise ignore"
+    (is (=? {:errors {:show_in_getting_started "disallowed key"}}
+            (mt/user-http-request :crowberto :post 400 "segment"
+                                  {:name                    "A Segment"
+                                   :definition              (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)
+                                   :show_in_getting_started false})))))
 
 (deftest create-segment-derives-table-id-test
   (testing "POST /api/segment derives table_id from the definition"

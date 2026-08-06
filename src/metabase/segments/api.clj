@@ -1,6 +1,7 @@
 (ns metabase.segments.api
   "/api/segment endpoints."
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -38,11 +39,12 @@
   "Create a new `Segment`. The Segment's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map {:closed true}
-                                                       [:name                    ms/NonBlankString]
-                                                       ;; TODO: `definition` is an MBQL query typed loosely as a map; give it a real schema.
-                                                       [:definition              ms/Map]
-                                                       [:description             {:optional true} [:maybe :string]]]]
+   {:keys [name description definition], :as body}
+   :- [:map {:closed true}
+       [:name ms/NonBlankString]
+       ;; open: an MBQL fragment, checked against the MBQL schema rather than here
+       [:definition  (mut/update-properties ms/Map assoc :closed false)]
+       [:description {:optional true} [:maybe :string]]]]
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
@@ -121,8 +123,8 @@
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            ;; TODO: `definition` is an MBQL query typed loosely as a map; give it a real schema.
-            [:definition              {:optional true} [:maybe :map]]
+            ;; open: an MBQL fragment, checked against the MBQL schema rather than here
+            [:definition              {:optional true} [:maybe [:map {:closed false}]]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]

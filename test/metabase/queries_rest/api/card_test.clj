@@ -3429,14 +3429,14 @@
               (testing "Descriptions can be cleared (#20517)"
                 (is (= ["foo" "foo"]
                        (->> (update-card! card
-                                        {:result_metadata (map #(assoc % :description "foo")
-                                                               (:result_metadata card))})
+                                          {:result_metadata (map #(assoc % :description "foo")
+                                                                 (:result_metadata card))})
                             :result_metadata
                             (map :description))))
                 (is (= ["" ""]
                        (->> (update-card! card
-                                        {:result_metadata (map #(assoc % :description "")
-                                                               (:result_metadata card))})
+                                          {:result_metadata (map #(assoc % :description "")
+                                                                 (:result_metadata card))})
                             :result_metadata
                             (map :description))))))))))))
 
