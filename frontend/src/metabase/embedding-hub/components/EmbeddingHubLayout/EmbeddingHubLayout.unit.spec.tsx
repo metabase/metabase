@@ -23,7 +23,7 @@ jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => null,
 }));
 
-const TAB_LABELS = ["Get started", "Security", "Authentication"];
+const TAB_LABELS = ["Get started", "Security", "Authentication", "Permissions"];
 
 type SetupOptions = {
   initialRoute?: string;
@@ -96,6 +96,17 @@ describe("EmbeddingHubLayout", () => {
     expect(
       await within(nav).findByRole("link", { name: "Get started" }),
     ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("does not light up Permissions on the permissions-setup wizard", async () => {
+    setup({ initialRoute: "/embedding/get-started/permissions-setup" });
+
+    const nav = await findNav();
+
+    // The wizard belongs to Get started, so Permissions must not claim it.
+    expect(
+      await within(nav).findByRole("link", { name: "Permissions" }),
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("keeps the width cap on the permissions-setup wizard", async () => {

@@ -17,3 +17,7 @@ export function embeddingHubSecurity() {
 export function embeddingHubAuthentication() {
   return `${ROOT_URL}/authentication`;
 }
+
+export function embeddingHubPermissions() {
+  return `${ROOT_URL}/permissions`;
+}

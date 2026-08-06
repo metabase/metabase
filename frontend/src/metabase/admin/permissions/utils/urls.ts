@@ -1,42 +1,44 @@
 import type { GroupId, PermissionEntityId } from "metabase-types/api";
 
+import { getPermissionsBasePath } from "./base-path";
 import {
   isDatabaseEntityId,
   isSchemaEntityId,
   isTableEntityId,
 } from "./data-entity-id";
 
-export const DATABASES_BASE_PATH = `/admin/permissions/data/database`;
-export const GROUPS_BASE_PATH = `/admin/permissions/data/group`;
+export const getDatabasesBasePath = () =>
+  `${getPermissionsBasePath()}/data/database`;
+export const getGroupsBasePath = () => `${getPermissionsBasePath()}/data/group`;
 
 export const getDatabaseFocusPermissionsUrl = (
   entityId?: PermissionEntityId,
 ) => {
   if (entityId == null) {
-    return DATABASES_BASE_PATH;
+    return getDatabasesBasePath();
   }
 
   if (isTableEntityId(entityId)) {
     return entityId.schemaName != null && entityId.schemaName !== ""
-      ? `${DATABASES_BASE_PATH}/${
+      ? `${getDatabasesBasePath()}/${
           entityId.databaseId
         }/schema/${encodeURIComponent(entityId.schemaName)}/table/${
           entityId.tableId
         }`
-      : `${DATABASES_BASE_PATH}/${entityId.databaseId}/table/${entityId.tableId}`;
+      : `${getDatabasesBasePath()}/${entityId.databaseId}/table/${entityId.tableId}`;
   }
 
   if (isSchemaEntityId(entityId)) {
-    return `${DATABASES_BASE_PATH}/${
+    return `${getDatabasesBasePath()}/${
       entityId.databaseId
     }/schema/${encodeURIComponent(entityId.schemaName)}`;
   }
 
   if (isDatabaseEntityId(entityId)) {
-    return `${DATABASES_BASE_PATH}/${entityId.databaseId}`;
+    return `${getDatabasesBasePath()}/${entityId.databaseId}`;
   }
 
-  return DATABASES_BASE_PATH;
+  return getDatabasesBasePath();
 };
 
 export const getGroupFocusPermissionsUrl = (
@@ -44,22 +46,22 @@ export const getGroupFocusPermissionsUrl = (
   entityId?: PermissionEntityId,
 ) => {
   if (groupId == null) {
-    return GROUPS_BASE_PATH;
+    return getGroupsBasePath();
   }
 
   if (entityId == null) {
-    return `${GROUPS_BASE_PATH}/${groupId}`;
+    return `${getGroupsBasePath()}/${groupId}`;
   }
 
   if (isSchemaEntityId(entityId)) {
-    return `${GROUPS_BASE_PATH}/${groupId}/database/${
+    return `${getGroupsBasePath()}/${groupId}/database/${
       entityId.databaseId
     }/schema/${encodeURIComponent(entityId.schemaName)}`;
   }
 
   if (isDatabaseEntityId(entityId)) {
-    return `${GROUPS_BASE_PATH}/${groupId}/database/${entityId.databaseId}`;
+    return `${getGroupsBasePath()}/${groupId}/database/${entityId.databaseId}`;
   }
 
-  return GROUPS_BASE_PATH;
+  return getGroupsBasePath();
 };
